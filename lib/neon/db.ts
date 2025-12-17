@@ -1,13 +1,15 @@
-import { neon, Pool } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 
 // Get database connection string from environment
-const databaseUrl = process.env.DATABASE_URL || '';
+const databaseUrl = process.env.DATABASE_URL;
 
-// Create a SQL query function for simple queries
+// Create SQL query function - returns null if not configured
 export const sql = databaseUrl ? neon(databaseUrl) : null;
-
-// Create a connection pool for transactions
-export const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
 
 // Helper to check if database is configured
 export const isDbConfigured = () => !!databaseUrl;
+
+// Helper to generate UUID for public tokens
+export function generateToken(): string {
+    return crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+}
