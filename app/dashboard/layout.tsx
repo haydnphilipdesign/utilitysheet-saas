@@ -36,6 +36,11 @@ export default function DashboardLayout({
 
     useEffect(() => {
         const supabase = createClient();
+        // In demo mode, set a mock user
+        if (!supabase) {
+            setUser({ email: 'demo@utilitysheet.com' } as User);
+            return;
+        }
         supabase.auth.getUser().then(({ data }) => {
             setUser(data.user);
         });
@@ -43,7 +48,9 @@ export default function DashboardLayout({
 
     const handleSignOut = async () => {
         const supabase = createClient();
-        await supabase.auth.signOut();
+        if (supabase) {
+            await supabase.auth.signOut();
+        }
         router.push('/auth/login');
         router.refresh();
     };

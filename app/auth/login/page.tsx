@@ -24,6 +24,13 @@ export default function LoginPage() {
 
         const supabase = createClient();
 
+        // Demo mode - just redirect to dashboard
+        if (!supabase) {
+            router.push('/dashboard');
+            router.refresh();
+            return;
+        }
+
         const { error } = await supabase.auth.signInWithPassword({
             email,
             password,
