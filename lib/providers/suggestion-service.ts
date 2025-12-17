@@ -1,4 +1,5 @@
 import { ProviderSuggestion, UtilityCategory } from '@/types';
+import { generateJSON, isGeminiConfigured } from '@/lib/ai/gemini-client';
 import { MOCK_PROVIDERS, STATE_PROVIDERS, DEFAULT_PROVIDERS } from './mock-data';
 
 // Simple cache for suggestions
@@ -34,9 +35,89 @@ function getCacheKey(address: string, category: UtilityCategory): string {
     return `${state}:${category}`;
 }
 
+// AI prompt for provider suggestions
+function buildSuggestionPrompt(address: string, category: UtilityCategory): string {
+    return `You are an expert on utility providers in the United States.
+
+Given the following property address and utility category, identify the most likely utility providers that serve this location.
+
+Address: ${address}
+Utility Category: ${category}
+
+Respond with a JSON array of provider suggestions. Each suggestion should have:
+- display_name: The official name of the utility provider
+- confidence: A number between 0 and 1 indicating how confident you are this is the correct provider (1 = very confident)
+- rationale_short: A brief explanation of why this provider serves this area
+
+Return 1-3 providers, ordered by confidence (highest first).
+Only include providers you are reasonably confident serve this specific area.
+
+Example response format:
+[
+  {
+    "display_name": "Duke Energy",
+    "confidence": 0.9,
+    "rationale_short": "Major electric provider in North Carolina"
+  }
+]
+
+Respond ONLY with the JSON array, no additional text.`;
+}
+
+/**
+ * Get provider suggestions using Gemini AI
+ * Falls back to mock data if AI is unavailable
+ */
+async function getAISuggestions(
+    address: string,
+    category: UtilityCategory
+): Promise<ProviderSuggestion[] | null> {
+    if (!isGeminiConfigured()) {
+        return null;
+    }
+
+    const prompt = buildSuggestionPrompt(address, category);
+    const result = await generateJSON<ProviderSuggestion[]>(prompt);
+
+    if (!result || !Array.isArray(result)) {
+        return null;
+    }
+
+    // Validate and normalize the response
+    return result
+        .filter(s => s.display_name && typeof s.confidence === 'number')
+        .map(s => ({
+            display_name: s.display_name,
+            confidence: Math.max(0, Math.min(1, s.confidence)),
+            rationale_short: s.rationale_short || `${category} provider for this area`,
+        }));
+}
+
+/**
+ * Get fallback suggestions from mock data
+ */
+function getMockSuggestions(address: string, category: UtilityCategory): ProviderSuggestion[] {
+    const state = extractState(address);
+    const providerNames = state && STATE_PROVIDERS[state]
+        ? STATE_PROVIDERS[state][category]
+        : DEFAULT_PROVIDERS[category];
+
+    return providerNames.map((name, index) => {
+        const canonical = MOCK_PROVIDERS.find((p) => p.normalized_name === name);
+        return {
+            display_name: name,
+            canonical_id: canonical?.id,
+            confidence: Math.max(0.6, 0.95 - index * 0.15),
+            rationale_short: state
+                ? `Common ${category} provider in ${state}`
+                : `Common ${category} provider`,
+        };
+    });
+}
+
 /**
  * Get provider suggestions based on address and category
- * This is a mock implementation that uses static data
+ * Uses Gemini AI when available, falls back to mock data
  */
 export async function getSuggestions(
     address: string,
@@ -50,26 +131,15 @@ export async function getSuggestions(
         return cached.suggestions;
     }
 
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
+    // Try AI first, fall back to mock data
+    let suggestions = await getAISuggestions(address, category);
 
-    const state = extractState(address);
-    const providerNames = state && STATE_PROVIDERS[state]
-        ? STATE_PROVIDERS[state][category]
-        : DEFAULT_PROVIDERS[category];
-
-    // Convert to suggestions with confidence scores
-    const suggestions: ProviderSuggestion[] = providerNames.map((name, index) => {
-        const canonical = MOCK_PROVIDERS.find((p) => p.normalized_name === name);
-        return {
-            display_name: name,
-            canonical_id: canonical?.id,
-            confidence: Math.max(0.6, 0.95 - index * 0.15), // First suggestion has highest confidence
-            rationale_short: state
-                ? `Common ${category} provider in ${state}`
-                : `Common ${category} provider`,
-        };
-    });
+    if (!suggestions || suggestions.length === 0) {
+        console.log(`[Suggestions] Using mock data for ${category} at ${address}`);
+        suggestions = getMockSuggestions(address, category);
+    } else {
+        console.log(`[Suggestions] Got AI suggestions for ${category} at ${address}`);
+    }
 
     // Cache results
     suggestionCache.set(cacheKey, { suggestions, timestamp: Date.now() });
@@ -107,9 +177,8 @@ export async function searchProviders(
     query: string,
     category?: UtilityCategory
 ): Promise<ProviderSuggestion[]> {
-    // Simulate network delay
-    await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 100));
-
+    // For search, we still use the mock data as it provides canonical matches
+    // AI is better for location-based suggestions, not search autocomplete
     const lowerQuery = query.toLowerCase();
 
     const matches = MOCK_PROVIDERS.filter((provider) => {
