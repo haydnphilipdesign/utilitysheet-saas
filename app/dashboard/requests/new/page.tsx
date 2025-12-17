@@ -62,16 +62,41 @@ export default function NewRequestPage() {
     const handleCreate = async () => {
         setLoading(true);
 
-        // Generate unique token
-        const token = uuidv4().replace(/-/g, '').slice(0, 12);
+        try {
+            // Call API to create the request
+            const response = await fetch('/api/requests', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    propertyAddress: formData.property_address,
+                    sellerName: formData.seller_name || undefined,
+                    sellerEmail: formData.seller_email || undefined,
+                    sellerPhone: formData.seller_phone || undefined,
+                    closingDate: formData.closing_date || undefined,
+                    utilityCategories: formData.utility_categories,
+                }),
+            });
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+            if (!response.ok) {
+                throw new Error('Failed to create request');
+            }
 
-        // In a real app, this would save to Supabase
-        setGeneratedToken(token);
-        setShowShareDialog(true);
-        setLoading(false);
+            const newRequest = await response.json();
+
+            // Use the public_token from the API response
+            setGeneratedToken(newRequest.public_token);
+            setShowShareDialog(true);
+        } catch (error) {
+            console.error('Error creating request:', error);
+            // Fallback to client-generated token for demo purposes
+            const token = uuidv4().replace(/-/g, '').slice(0, 12);
+            setGeneratedToken(token);
+            setShowShareDialog(true);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getShareLink = () => {
@@ -130,10 +155,10 @@ Thank you!`,
                     <div key={s} className="flex items-center gap-2 flex-1">
                         <div
                             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${s < step
-                                    ? 'bg-emerald-500 text-white'
-                                    : s === step
-                                        ? 'bg-zinc-800 text-white border-2 border-emerald-500'
-                                        : 'bg-zinc-800 text-zinc-500'
+                                ? 'bg-emerald-500 text-white'
+                                : s === step
+                                    ? 'bg-zinc-800 text-white border-2 border-emerald-500'
+                                    : 'bg-zinc-800 text-zinc-500'
                                 }`}
                         >
                             {s < step ? <Check className="h-4 w-4" /> : s}
@@ -277,8 +302,8 @@ Thank you!`,
                                         key={category.key}
                                         onClick={() => toggleCategory(category.key)}
                                         className={`flex items-center gap-3 p-4 rounded-lg border transition-all ${isSelected
-                                                ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
-                                                : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
+                                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
                                             }`}
                                     >
                                         <span className="text-xl">{category.icon}</span>

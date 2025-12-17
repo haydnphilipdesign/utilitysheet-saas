@@ -17,7 +17,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { Check, X, HelpCircle, ChevronDown, Loader2, Search, Zap } from 'lucide-react';
+import { Check, X, HelpCircle, ChevronDown, Loader2, Search, Zap, AlertTriangle } from 'lucide-react';
 import type { UtilityCategory, ProviderSuggestion, ProviderEntryMode, WaterSource, SewerType, HeatingType } from '@/types';
 import { UTILITY_CATEGORIES } from '@/lib/providers/mock-data';
 import { getAllSuggestions, searchProviders } from '@/lib/providers/suggestion-service';
@@ -36,47 +36,80 @@ interface FormState {
     utilities: Record<UtilityCategory, UtilityState>;
 }
 
-// Mock request data (would come from API in real app)
-const mockRequest = {
-    property_address: '123 Oak Street, Charlotte, NC 28202',
-    utility_categories: ['electric', 'gas', 'water', 'sewer', 'trash'] as UtilityCategory[],
-};
+interface RequestData {
+    property_address: string;
+    utility_categories: UtilityCategory[];
+}
 
 export default function SellerFormPage({ params }: { params: Promise<{ token: string }> }) {
     const resolvedParams = use(params);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [suggestions, setSuggestions] = useState<Record<UtilityCategory, ProviderSuggestion[]>>({} as Record<UtilityCategory, ProviderSuggestion[]>);
+
+    // Request data from API (replaces hardcoded mockRequest)
+    const [requestData, setRequestData] = useState<RequestData | null>(null);
 
     const [formState, setFormState] = useState<FormState>({
         water_source: 'not_sure',
         sewer_type: 'not_sure',
         heating_type: 'not_sure',
-        utilities: mockRequest.utility_categories.reduce((acc, cat) => {
-            acc[cat] = { entry_mode: null, display_name: null, raw_text: null, hidden: false };
-            return acc;
-        }, {} as Record<UtilityCategory, UtilityState>),
+        utilities: {} as Record<UtilityCategory, UtilityState>,
     });
 
+    // Fetch request data from API
     useEffect(() => {
-        // Fetch suggestions for all categories
-        async function loadSuggestions() {
+        async function loadRequestData() {
             try {
-                const result = await getAllSuggestions(
-                    mockRequest.property_address,
-                    mockRequest.utility_categories
+                const response = await fetch(`/api/seller/${resolvedParams.token}`);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        setError('Request not found. Please check your link and try again.');
+                    } else {
+                        setError('Failed to load request. Please try again later.');
+                    }
+                    setLoading(false);
+                    return;
+                }
+
+                const data = await response.json();
+                const request = data.request;
+
+                const reqData: RequestData = {
+                    property_address: request.property_address,
+                    utility_categories: request.utility_categories || ['electric', 'gas', 'water', 'sewer', 'trash'],
+                };
+
+                setRequestData(reqData);
+
+                // Initialize form state with utility categories
+                setFormState(prev => ({
+                    ...prev,
+                    utilities: reqData.utility_categories.reduce((acc, cat) => {
+                        acc[cat] = { entry_mode: null, display_name: null, raw_text: null, hidden: false };
+                        return acc;
+                    }, {} as Record<UtilityCategory, UtilityState>),
+                }));
+
+                // Fetch suggestions for all categories
+                const suggestionResult = await getAllSuggestions(
+                    reqData.property_address,
+                    reqData.utility_categories
                 );
-                setSuggestions(result);
-            } catch (error) {
-                console.error('Failed to load suggestions:', error);
+                setSuggestions(suggestionResult);
+            } catch (err) {
+                console.error('Failed to load request data:', err);
+                setError('Failed to load request. Please try again later.');
             } finally {
                 setLoading(false);
             }
         }
 
-        loadSuggestions();
-    }, []);
+        loadRequestData();
+    }, [resolvedParams.token]);
 
     // Update hidden state based on applicability toggles
     useEffect(() => {
@@ -189,8 +222,8 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
     const completedCount = Object.values(formState.utilities).filter(
         (u) => u.entry_mode !== null
     ).length;
-    const totalCount = mockRequest.utility_categories.length;
-    const progress = (completedCount / totalCount) * 100;
+    const totalCount = requestData?.utility_categories.length || 0;
+    const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
     if (loading) {
         return (
@@ -199,6 +232,24 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                     <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
                     <p className="text-zinc-400">Loading your form...</p>
                 </div>
+            </div>
+        );
+    }
+
+    if (error || !requestData) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-950 to-black flex items-center justify-center p-4">
+                <Card className="max-w-md w-full border-zinc-800 bg-zinc-900/80 backdrop-blur-xl">
+                    <CardContent className="pt-8 pb-8 text-center">
+                        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
+                            <AlertTriangle className="h-8 w-8 text-red-400" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-white mb-2">Oops!</h1>
+                        <p className="text-zinc-400 mb-6">
+                            {error || 'Something went wrong. Please check your link and try again.'}
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
@@ -239,7 +290,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                         Utility Information
                     </h1>
                     <p className="text-sm text-zinc-400 truncate">
-                        {mockRequest.property_address}
+                        {requestData.property_address}
                     </p>
                     {/* Progress bar */}
                     <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
@@ -279,8 +330,8 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                                         key={option}
                                         onClick={() => setFormState((prev) => ({ ...prev, water_source: option }))}
                                         className={`flex-1 py-2 px-3 text-sm rounded-lg border transition-colors ${formState.water_source === option
-                                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                                : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
                                             }`}
                                     >
                                         {option === 'city' ? 'City' : option === 'well' ? 'Well' : 'Not Sure'}
@@ -298,8 +349,8 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                                         key={option}
                                         onClick={() => setFormState((prev) => ({ ...prev, sewer_type: option }))}
                                         className={`flex-1 py-2 px-3 text-sm rounded-lg border transition-colors ${formState.sewer_type === option
-                                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                                : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
                                             }`}
                                     >
                                         {option === 'public' ? 'Public' : option === 'septic' ? 'Septic' : 'Not Sure'}
@@ -317,8 +368,8 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                                         key={option}
                                         onClick={() => setFormState((prev) => ({ ...prev, heating_type: option }))}
                                         className={`py-2 px-3 text-sm rounded-lg border transition-colors ${formState.heating_type === option
-                                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                                : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
                                             }`}
                                     >
                                         {option === 'natural_gas' ? 'Gas' : option === 'electric' ? 'Electric' : 'Not Sure'}
@@ -330,7 +381,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 </Card>
 
                 {/* Utility Cards */}
-                {mockRequest.utility_categories.map((category) => {
+                {requestData.utility_categories.map((category: UtilityCategory) => {
                     const catInfo = UTILITY_CATEGORIES.find((c) => c.key === category);
                     const state = formState.utilities[category];
                     const categorySuggestions = suggestions[category] || [];
