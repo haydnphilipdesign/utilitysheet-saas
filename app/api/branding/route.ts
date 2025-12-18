@@ -10,8 +10,9 @@ export async function GET() {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
         const accountId = account.id;
+        const organizationId = account.active_organization_id;
 
-        const profiles = await getBrandProfiles(accountId);
+        const profiles = await getBrandProfiles(accountId, organizationId);
         return NextResponse.json(profiles);
     } catch (error) {
         console.error('Error fetching brand profiles:', error);
@@ -30,9 +31,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
         const accountId = account.id;
+        const organizationId = account.active_organization_id;
 
         const profile = await createBrandProfile({
             accountId,
+            organizationId,
             name: body.name,
             primaryColor: body.primary_color,
             secondaryColor: body.secondary_color,

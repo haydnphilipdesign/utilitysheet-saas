@@ -12,14 +12,35 @@ CREATE TABLE IF NOT EXISTS accounts (
     full_name TEXT,
     company_name TEXT,
     phone TEXT,
+    active_organization_id UUID, -- References organizations(id) later
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Brand Profiles table
+-- Organizations table
+CREATE TABLE IF NOT EXISTS organizations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    logo_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Organization Members table
+CREATE TABLE IF NOT EXISTS organization_members (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(organization_id, account_id)
+);
+
 CREATE TABLE IF NOT EXISTS brand_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     logo_url TEXT,
     primary_color TEXT DEFAULT '#10b981',
@@ -34,10 +55,10 @@ CREATE TABLE IF NOT EXISTS brand_profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Requests table (utility sheet requests)
 CREATE TABLE IF NOT EXISTS requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
     brand_profile_id UUID REFERENCES brand_profiles(id) ON DELETE SET NULL,
     property_address TEXT NOT NULL,
     property_address_structured JSONB,

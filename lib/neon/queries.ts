@@ -1,13 +1,22 @@
 import { sql, generateToken } from '@/lib/neon/db';
 import type { Request, BrandProfile } from '@/types';
 
-// Get all requests for an account
-export async function getRequests(accountId: string): Promise<Request[]> {
+// Get all requests for an account or organization
+export async function getRequests(accountId: string, organizationId?: string): Promise<Request[]> {
   if (!sql) return [];
+
+  if (organizationId) {
+    const result = await sql`
+      SELECT * FROM requests 
+      WHERE organization_id = ${organizationId}
+      ORDER BY created_at DESC
+    `;
+    return result as Request[];
+  }
 
   const result = await sql`
     SELECT * FROM requests 
-    WHERE account_id = ${accountId}
+    WHERE account_id = ${accountId} AND organization_id IS NULL
     ORDER BY created_at DESC
   `;
 
@@ -39,6 +48,7 @@ export async function getRequestByToken(token: string): Promise<Request | null> 
 // Create a new request
 export async function createRequest(data: {
   accountId: string;
+  organizationId?: string;
   brandProfileId?: string;
   propertyAddress: string;
   sellerName?: string;
@@ -54,6 +64,7 @@ export async function createRequest(data: {
   const result = await sql`
     INSERT INTO requests (
       account_id,
+      organization_id,
       brand_profile_id,
       property_address,
       seller_name,
@@ -65,6 +76,7 @@ export async function createRequest(data: {
       status
     ) VALUES (
       ${data.accountId},
+      ${data.organizationId || null},
       ${data.brandProfileId || null},
       ${data.propertyAddress},
       ${data.sellerName || null},
@@ -99,10 +111,14 @@ export async function updateRequestStatus(
 }
 
 // Get dashboard stats
-export async function getDashboardStats(accountId: string) {
+export async function getDashboardStats(accountId: string, organizationId?: string) {
   if (!sql) {
     return { total_requests: 0, draft: 0, sent: 0, in_progress: 0, submitted: 0, needs_attention: 0 };
   }
+
+  const query = organizationId
+    ? sql`SELECT * FROM requests WHERE organization_id = ${organizationId}`
+    : sql`SELECT * FROM requests WHERE account_id = ${accountId} AND organization_id IS NULL`;
 
   const result = await sql`
     SELECT 
@@ -113,7 +129,7 @@ export async function getDashboardStats(accountId: string) {
       COUNT(*) FILTER (WHERE status = 'submitted') as submitted,
       COUNT(*) FILTER (WHERE status = 'sent' AND created_at < NOW() - INTERVAL '3 days') as needs_attention
     FROM requests 
-    WHERE account_id = ${accountId}
+    WHERE ${organizationId ? sql`organization_id = ${organizationId}` : sql`account_id = ${accountId} AND organization_id IS NULL`}
   `;
 
   return {
@@ -127,12 +143,21 @@ export async function getDashboardStats(accountId: string) {
 }
 
 // Brand Profile queries
-export async function getBrandProfiles(accountId: string): Promise<BrandProfile[]> {
+export async function getBrandProfiles(accountId: string, organizationId?: string): Promise<BrandProfile[]> {
   if (!sql) return [];
+
+  if (organizationId) {
+    const result = await sql`
+      SELECT * FROM brand_profiles 
+      WHERE organization_id = ${organizationId}
+      ORDER BY is_default DESC, created_at DESC
+    `;
+    return result as BrandProfile[];
+  }
 
   const result = await sql`
     SELECT * FROM brand_profiles 
-    WHERE account_id = ${accountId}
+    WHERE account_id = ${accountId} AND organization_id IS NULL
     ORDER BY is_default DESC, created_at DESC
   `;
 
@@ -141,6 +166,7 @@ export async function getBrandProfiles(accountId: string): Promise<BrandProfile[
 
 export async function createBrandProfile(data: {
   accountId: string;
+  organizationId?: string;
   name: string;
   primaryColor?: string;
   secondaryColor?: string;
@@ -153,18 +179,27 @@ export async function createBrandProfile(data: {
 }): Promise<BrandProfile | null> {
   if (!sql) return null;
 
-  // If this is default, unset other defaults first
+  // If this is default, unset other defaults first (within account or organization)
   if (data.isDefault) {
-    await sql`
-      UPDATE brand_profiles 
-      SET is_default = FALSE 
-      WHERE account_id = ${data.accountId}
-    `;
+    if (data.organizationId) {
+      await sql`
+        UPDATE brand_profiles 
+        SET is_default = FALSE 
+        WHERE organization_id = ${data.organizationId}
+      `;
+    } else {
+      await sql`
+        UPDATE brand_profiles 
+        SET is_default = FALSE 
+        WHERE account_id = ${data.accountId} AND organization_id IS NULL
+      `;
+    }
   }
 
   const result = await sql`
     INSERT INTO brand_profiles (
       account_id,
+      organization_id,
       name,
       primary_color,
       secondary_color,
@@ -176,6 +211,7 @@ export async function createBrandProfile(data: {
       is_default
     ) VALUES (
       ${data.accountId},
+      ${data.organizationId || null},
       ${data.name},
       ${data.primaryColor || '#10b981'},
       ${data.secondaryColor || '#059669'},
@@ -244,3 +280,62 @@ export async function getOrCreateAccount(authUserId: string, email: string, full
 
   return result[0] || null;
 }
+
+// Organization Management
+export async function createOrganization(name: string, accountId: string) {
+  if (!sql) return null;
+
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+  // Create organization
+  const orgResult = await sql`
+    INSERT INTO organizations (name, slug)
+    VALUES (${name}, ${slug})
+    RETURNING *
+  `;
+
+  const organization = orgResult[0];
+
+  // Add creator as admin
+  await sql`
+    INSERT INTO organization_members (organization_id, account_id, role)
+    VALUES (${organization.id}, ${accountId}, 'admin')
+  `;
+
+  // Update account's active organization
+  await sql`
+    UPDATE accounts 
+    SET active_organization_id = ${organization.id}
+    WHERE id = ${accountId}
+  `;
+
+  return organization;
+}
+
+export async function getAccountOrganizations(accountId: string) {
+  if (!sql) return [];
+
+  const result = await sql`
+    SELECT o.*, om.role
+    FROM organizations o
+    JOIN organization_members om ON o.id = om.organization_id
+    WHERE om.account_id = ${accountId}
+    ORDER BY o.created_at ASC
+  `;
+
+  return result;
+}
+
+export async function setActiveOrganization(accountId: string, organizationId: string | null) {
+  if (!sql) return null;
+
+  const result = await sql`
+    UPDATE accounts 
+    SET active_organization_id = ${organizationId}
+    WHERE id = ${accountId}
+    RETURNING *
+  `;
+
+  return result[0];
+}
+

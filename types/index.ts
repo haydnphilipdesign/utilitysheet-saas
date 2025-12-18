@@ -40,21 +40,37 @@ export type EventName =
 // Entities
 export interface Account {
     id: string;
+    auth_user_id: string | null;
     email: string;
     full_name: string | null;
-    plan: 'free' | 'pro' | 'team';
+    company_name: string | null;
+    phone: string | null;
+    active_organization_id: string | null;
     created_at: string;
+    updated_at: string;
 }
 
-export interface Team {
+export interface Organization {
     id: string;
     name: string;
+    slug: string;
+    logo_url: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface OrganizationMember {
+    id: string;
+    organization_id: string;
+    account_id: string;
+    role: 'admin' | 'member';
     created_at: string;
 }
 
 export interface BrandProfile {
     id: string;
     account_id: string;
+    organization_id: string | null;
     name: string;
     logo_url: string | null;
     primary_color: string;
@@ -79,6 +95,7 @@ export interface PropertyAddressStructured {
 export interface Request {
     id: string;
     account_id: string;
+    organization_id: string | null;
     brand_profile_id: string | null;
     property_address: string;
     property_address_structured: PropertyAddressStructured | null;

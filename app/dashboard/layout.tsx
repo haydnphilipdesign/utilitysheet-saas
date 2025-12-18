@@ -32,17 +32,24 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const router = useRouter();
     const [user, setUser] = useState<User | null>(null);
+    const [organization, setOrganization] = useState<any>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const supabase = createClient();
-        // In demo mode, set a mock user
-        if (!supabase) {
+        if (supabase) {
+            supabase.auth.getUser().then(({ data }) => {
+                setUser(data.user);
+            });
+        } else {
             setUser({ email: 'demo@utilitysheet.com' } as User);
-            return;
         }
-        supabase.auth.getUser().then(({ data }) => {
-            setUser(data.user);
+
+        // Fetch organization info
+        fetch('/api/account').then(res => res.json()).then(data => {
+            if (data.activeOrganization) {
+                setOrganization(data.activeOrganization);
+            }
         });
     }, []);
 
@@ -71,7 +78,14 @@ export default function DashboardLayout({
                                 <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
                                     <Zap className="h-5 w-5 text-white" />
                                 </div>
-                                <span className="text-xl font-bold text-white hidden sm:block">UtilitySheet</span>
+                                <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
+                                    <span className="text-xl font-bold text-white">UtilitySheet</span>
+                                    {organization && (
+                                        <span className="text-sm font-medium text-zinc-500 hidden sm:block border-l border-zinc-700 pl-2">
+                                            {organization.name}
+                                        </span>
+                                    )}
+                                </div>
                             </Link>
 
                             {/* Desktop Navigation */}

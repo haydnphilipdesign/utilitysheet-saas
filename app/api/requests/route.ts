@@ -11,16 +11,17 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
         const accountId = account.id;
+        const organizationId = account.active_organization_id;
 
         const url = new URL(request.url);
         const stats = url.searchParams.get('stats');
 
         if (stats === 'true') {
-            const dashboardStats = await getDashboardStats(accountId);
+            const dashboardStats = await getDashboardStats(accountId, organizationId);
             return NextResponse.json(dashboardStats);
         }
 
-        const requests = await getRequests(accountId);
+        const requests = await getRequests(accountId, organizationId);
         return NextResponse.json(requests);
     } catch (error) {
         console.error('Error fetching requests:', error);
@@ -39,9 +40,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
         const accountId = account.id;
+        const organizationId = account.active_organization_id;
 
         const newRequest = await createRequest({
             accountId,
+            organizationId,
             brandProfileId: body.brandProfileId,
             propertyAddress: body.propertyAddress,
             sellerName: body.sellerName,

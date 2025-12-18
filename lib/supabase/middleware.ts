@@ -21,16 +21,12 @@ export async function updateSession(request: NextRequest) {
         request.nextUrl.pathname.startsWith('/s/') ||
         request.nextUrl.pathname.startsWith('/packet/');
     const isDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard');
+    const isOnboardingRoute = request.nextUrl.pathname.startsWith('/onboarding');
     const isRootRoute = request.nextUrl.pathname === '/';
 
-    // For now in demo mode, just allow all routes
-    // Real auth checking would happen here with Neon Auth
-
-    // Redirect root to dashboard
-    if (isRootRoute) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/dashboard';
-        return NextResponse.redirect(url);
+    // Allow marketing page and public routes
+    if (isRootRoute || isPublicRoute) {
+        return NextResponse.next();
     }
 
     return NextResponse.next();
