@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import { WizardLoader } from '@/components/ui/wizard-loader';
 import type { UtilityCategory, ProviderSuggestion } from '@/types';
 import { SellerWizard } from '@/components/seller-form/SellerWizard';
 
@@ -56,14 +57,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
     }, [resolvedParams.token]);
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
-                    <p className="text-zinc-500 text-sm">Loading...</p>
-                </div>
-            </div>
-        );
+        return <WizardLoader />;
     }
 
     if (error || !requestData) {

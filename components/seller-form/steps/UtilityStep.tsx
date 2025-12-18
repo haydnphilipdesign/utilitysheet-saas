@@ -13,7 +13,7 @@ interface UtilityStepProps {
     categoryLabel: string;
     state: WizardState;
     updateState: (category: UtilityCategory, updates: any) => void;
-    suggestion?: ProviderSuggestion;
+    suggestions: ProviderSuggestion[];
     onNext: () => void;
     onBack: () => void;
 }
@@ -23,7 +23,7 @@ export function UtilityStep({
     categoryLabel,
     state,
     updateState,
-    suggestion,
+    suggestions,
     onNext,
     onBack
 }: UtilityStepProps) {
@@ -31,6 +31,12 @@ export function UtilityStep({
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<ProviderSuggestion[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+
+    // Primary suggestion is the first one
+    const topSuggestion = suggestions?.[0];
+
+    // Alternative suggestions (2nd, 3rd, etc)
+    const alternativeSuggestions = suggestions?.slice(1) || [];
 
     // Reset local state when category changes
     useEffect(() => {
@@ -63,11 +69,10 @@ export function UtilityStep({
     const currentUtilityState = state.utilities[category];
     const isCompleted = currentUtilityState?.entry_mode !== null;
 
-    const handleConfirmSuggestion = () => {
-        if (!suggestion) return;
+    const handleConfirmSuggestion = (s: ProviderSuggestion) => {
         updateState(category, {
             entry_mode: 'suggested_confirmed',
-            display_name: suggestion.display_name,
+            display_name: s.display_name,
             raw_text: null
         });
         onNext();
@@ -123,7 +128,7 @@ export function UtilityStep({
 
             {mode === 'view' && (
                 <div className="space-y-6">
-                    {suggestion ? (
+                    {topSuggestion ? (
                         <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 space-y-4">
                             <p className="text-sm text-zinc-500 uppercase tracking-wider font-semibold">We found a match</p>
                             <div className="flex items-center gap-4">
@@ -131,13 +136,13 @@ export function UtilityStep({
                                     ⚡
                                 </div>
                                 <div className="text-xl font-medium text-white">
-                                    {suggestion.display_name}
+                                    {topSuggestion.display_name}
                                 </div>
                             </div>
 
                             <div className="pt-4 grid grid-cols-2 gap-3">
                                 <button
-                                    onClick={handleConfirmSuggestion}
+                                    onClick={() => handleConfirmSuggestion(topSuggestion)}
                                     className="col-span-2 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors"
                                 >
                                     Yes, that's it
@@ -206,12 +211,13 @@ export function UtilityStep({
                         )}
                     </div>
 
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                         {isSearching && (
                             <div className="p-4 text-center text-zinc-500 text-sm">Searching...</div>
                         )}
 
-                        {!isSearching && searchResults.map((result) => (
+                        {/* Search Results */}
+                        {!isSearching && searchQuery.length >= 2 && searchResults.map((result) => (
                             <button
                                 key={result.display_name}
                                 onClick={() => handleSelectResult(result.display_name)}
@@ -221,6 +227,36 @@ export function UtilityStep({
                                 <Check className="h-4 w-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                         ))}
+
+                        {/* Alternative Suggestions (when not searching or search is empty) */}
+                        {!isSearching && (!searchQuery || searchQuery.length < 2) && alternativeSuggestions.length > 0 && (
+                            <>
+                                <div className="px-1 pt-2 pb-1">
+                                    <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">Suggested for your area</p>
+                                </div>
+                                {alternativeSuggestions.map((suggestion) => (
+                                    <button
+                                        key={suggestion.display_name}
+                                        onClick={() => handleConfirmSuggestion(suggestion)}
+                                        className="w-full flex items-center justify-between p-4 bg-zinc-900/30 hover:bg-zinc-800 border border-white/5 rounded-xl text-left transition-all group"
+                                    >
+                                        <div>
+                                            <span className="font-medium text-zinc-300 group-hover:text-white transition-colors block">
+                                                {suggestion.display_name}
+                                            </span>
+                                            {suggestion.rationale_short && (
+                                                <span className="text-xs text-zinc-500 mt-0.5 block">
+                                                    {suggestion.rationale_short}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Check className="h-4 w-4 text-emerald-500" />
+                                        </div>
+                                    </button>
+                                ))}
+                            </>
+                        )}
 
                         {!isSearching && searchQuery.length >= 2 && searchResults.length === 0 && (
                             <div className="text-center pt-4 pb-2">

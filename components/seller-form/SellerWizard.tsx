@@ -234,7 +234,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token }: 
                         categoryLabel={visibleUtilities[utilityIndex].charAt(0).toUpperCase() + visibleUtilities[utilityIndex].slice(1)}
                         state={state}
                         updateState={updateUtilityState}
-                        suggestion={initialSuggestions[visibleUtilities[utilityIndex]]?.[0]}
+                        suggestions={initialSuggestions[visibleUtilities[utilityIndex]] || []}
                         onNext={handleNext}
                         onBack={handleBack}
                     />
