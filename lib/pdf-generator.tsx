@@ -98,9 +98,9 @@ export async function generatePacketPdf(token: string): Promise<void> {
                 <h1 style="font-size: 28px; font-weight: bold; color: #ffffff; margin: 0 0 16px 0;">
                     Utility Handoff Packet
                 </h1>
-                <div style="display: inline-flex; align-items: center; gap: 8px; background: #27272a; padding: 8px 16px; border-radius: 8px;">
-                    <span style="color: #34d399;">📍</span>
-                    <span style="color: #ffffff; font-weight: 500;">${request.property_address}</span>
+                <div style="background: #27272a; padding: 10px 20px; border-radius: 8px; border: 1px solid #3f3f46; display: block; width: fit-content; margin: 0 auto;">
+                    <span style="color: #34d399; margin-right: 8px; font-size: 16px; vertical-align: middle;">📍</span>
+                    <span style="color: #ffffff; font-weight: 500; font-size: 16px; vertical-align: middle;">${request.property_address}</span>
                 </div>
                 <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; font-size: 14px; color: #71717a;">
                     <span>📅</span>
