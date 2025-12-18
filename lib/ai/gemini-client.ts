@@ -7,7 +7,7 @@ const apiKey = process.env.GOOGLE_AI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 // Model configuration
-const MODEL_NAME = 'gemini-2.0-flash';
+const MODEL_NAME = 'gemini-3-flash';
 
 /**
  * Get the configured Gemini model instance

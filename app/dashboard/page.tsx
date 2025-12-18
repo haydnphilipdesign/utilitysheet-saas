@@ -39,83 +39,6 @@ import {
 import type { Request, DashboardStats } from '@/types';
 import { format } from 'date-fns';
 
-// Mock data for demo
-const mockRequests: Request[] = [
-    {
-        id: '1',
-        account_id: '1',
-        brand_profile_id: '1',
-        property_address: '123 Oak Street, Charlotte, NC 28202',
-        property_address_structured: null,
-        seller_name: 'John Smith',
-        seller_email: 'john@example.com',
-        seller_phone: null,
-        closing_date: '2024-01-15',
-        status: 'submitted',
-        public_token: 'abc123',
-        created_at: '2024-12-10T10:00:00Z',
-        updated_at: '2024-12-12T14:30:00Z',
-        last_activity_at: '2024-12-12T14:30:00Z',
-    },
-    {
-        id: '2',
-        account_id: '1',
-        brand_profile_id: '1',
-        property_address: '456 Maple Ave, Raleigh, NC 27601',
-        property_address_structured: null,
-        seller_name: 'Sarah Johnson',
-        seller_email: 'sarah@example.com',
-        seller_phone: null,
-        closing_date: '2024-01-20',
-        status: 'in_progress',
-        public_token: 'def456',
-        created_at: '2024-12-11T09:00:00Z',
-        updated_at: '2024-12-13T11:00:00Z',
-        last_activity_at: '2024-12-13T11:00:00Z',
-    },
-    {
-        id: '3',
-        account_id: '1',
-        brand_profile_id: '1',
-        property_address: '789 Pine Road, Durham, NC 27701',
-        property_address_structured: null,
-        seller_name: 'Mike Williams',
-        seller_email: null,
-        seller_phone: '555-0123',
-        closing_date: null,
-        status: 'sent',
-        public_token: 'ghi789',
-        created_at: '2024-12-12T15:00:00Z',
-        updated_at: '2024-12-12T15:00:00Z',
-        last_activity_at: '2024-12-12T15:00:00Z',
-    },
-    {
-        id: '4',
-        account_id: '1',
-        brand_profile_id: null,
-        property_address: '321 Elm Street, Chapel Hill, NC 27514',
-        property_address_structured: null,
-        seller_name: null,
-        seller_email: null,
-        seller_phone: null,
-        closing_date: '2024-02-01',
-        status: 'draft',
-        public_token: 'jkl012',
-        created_at: '2024-12-13T08:00:00Z',
-        updated_at: '2024-12-13T08:00:00Z',
-        last_activity_at: '2024-12-13T08:00:00Z',
-    },
-];
-
-const mockStats: DashboardStats = {
-    total_requests: 47,
-    draft: 5,
-    sent: 12,
-    in_progress: 8,
-    submitted: 22,
-    needs_attention: 3,
-};
-
 const statusConfig = {
     draft: { label: 'Draft', color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30', icon: FileText },
     sent: { label: 'Sent', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: Send },
@@ -124,15 +47,43 @@ const statusConfig = {
 };
 
 export default function DashboardPage() {
-    const [requests, setRequests] = useState<Request[]>(mockRequests);
-    const [stats, setStats] = useState<DashboardStats>(mockStats);
+    const [requests, setRequests] = useState<Request[]>([]);
+    const [stats, setStats] = useState<DashboardStats>({
+        total_requests: 0,
+        draft: 0,
+        sent: 0,
+        in_progress: 0,
+        submitted: 0,
+        needs_attention: 0,
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Simulate loading
-        const timer = setTimeout(() => setLoading(false), 500);
-        return () => clearTimeout(timer);
+        async function fetchData() {
+            try {
+                const [requestsRes, statsRes] = await Promise.all([
+                    fetch('/api/requests'),
+                    fetch('/api/requests?stats=true')
+                ]);
+
+                if (requestsRes.ok) {
+                    const data = await requestsRes.json();
+                    setRequests(data);
+                }
+
+                if (statsRes.ok) {
+                    const data = await statsRes.json();
+                    setStats(data);
+                }
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchData();
     }, []);
 
     const filteredRequests = requests.filter((request) =>

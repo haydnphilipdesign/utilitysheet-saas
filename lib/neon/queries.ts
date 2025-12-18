@@ -3,55 +3,55 @@ import type { Request, BrandProfile } from '@/types';
 
 // Get all requests for an account
 export async function getRequests(accountId: string): Promise<Request[]> {
-    if (!sql) return [];
+  if (!sql) return [];
 
-    const result = await sql`
+  const result = await sql`
     SELECT * FROM requests 
     WHERE account_id = ${accountId}
     ORDER BY created_at DESC
   `;
 
-    return result as Request[];
+  return result as Request[];
 }
 
 // Get a single request by ID
 export async function getRequestById(id: string): Promise<Request | null> {
-    if (!sql) return null;
+  if (!sql) return null;
 
-    const result = await sql`
+  const result = await sql`
     SELECT * FROM requests WHERE id = ${id}
   `;
 
-    return result[0] as Request || null;
+  return result[0] as Request || null;
 }
 
 // Get request by public token
 export async function getRequestByToken(token: string): Promise<Request | null> {
-    if (!sql) return null;
+  if (!sql) return null;
 
-    const result = await sql`
+  const result = await sql`
     SELECT * FROM requests WHERE public_token = ${token}
   `;
 
-    return result[0] as Request || null;
+  return result[0] as Request || null;
 }
 
 // Create a new request
 export async function createRequest(data: {
-    accountId: string;
-    brandProfileId?: string;
-    propertyAddress: string;
-    sellerName?: string;
-    sellerEmail?: string;
-    sellerPhone?: string;
-    closingDate?: string;
-    utilityCategories: string[];
+  accountId: string;
+  brandProfileId?: string;
+  propertyAddress: string;
+  sellerName?: string;
+  sellerEmail?: string;
+  sellerPhone?: string;
+  closingDate?: string;
+  utilityCategories: string[];
 }): Promise<Request | null> {
-    if (!sql) return null;
+  if (!sql) return null;
 
-    const publicToken = generateToken();
+  const publicToken = generateToken();
 
-    const result = await sql`
+  const result = await sql`
     INSERT INTO requests (
       account_id,
       brand_profile_id,
@@ -78,87 +78,91 @@ export async function createRequest(data: {
     RETURNING *
   `;
 
-    return result[0] as Request || null;
+  return result[0] as Request || null;
 }
 
 // Update request status
 export async function updateRequestStatus(
-    id: string,
-    status: 'draft' | 'sent' | 'in_progress' | 'submitted'
+  id: string,
+  status: 'draft' | 'sent' | 'in_progress' | 'submitted'
 ): Promise<Request | null> {
-    if (!sql) return null;
+  if (!sql) return null;
 
-    const result = await sql`
+  const result = await sql`
     UPDATE requests 
     SET status = ${status}, last_activity_at = NOW()
     WHERE id = ${id}
     RETURNING *
   `;
 
-    return result[0] as Request || null;
+  return result[0] as Request || null;
 }
 
 // Get dashboard stats
 export async function getDashboardStats(accountId: string) {
-    if (!sql) {
-        return { total: 0, pending: 0, completed: 0, needsAttention: 0 };
-    }
+  if (!sql) {
+    return { total_requests: 0, draft: 0, sent: 0, in_progress: 0, submitted: 0, needs_attention: 0 };
+  }
 
-    const result = await sql`
+  const result = await sql`
     SELECT 
-      COUNT(*) as total,
-      COUNT(*) FILTER (WHERE status IN ('sent', 'in_progress')) as pending,
-      COUNT(*) FILTER (WHERE status = 'submitted') as completed,
+      COUNT(*) as total_requests,
+      COUNT(*) FILTER (WHERE status = 'draft') as draft,
+      COUNT(*) FILTER (WHERE status = 'sent') as sent,
+      COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
+      COUNT(*) FILTER (WHERE status = 'submitted') as submitted,
       COUNT(*) FILTER (WHERE status = 'sent' AND created_at < NOW() - INTERVAL '3 days') as needs_attention
     FROM requests 
     WHERE account_id = ${accountId}
   `;
 
-    return {
-        total: Number(result[0].total) || 0,
-        pending: Number(result[0].pending) || 0,
-        completed: Number(result[0].completed) || 0,
-        needsAttention: Number(result[0].needs_attention) || 0,
-    };
+  return {
+    total_requests: Number(result[0].total_requests) || 0,
+    draft: Number(result[0].draft) || 0,
+    sent: Number(result[0].sent) || 0,
+    in_progress: Number(result[0].in_progress) || 0,
+    submitted: Number(result[0].submitted) || 0,
+    needs_attention: Number(result[0].needs_attention) || 0,
+  };
 }
 
 // Brand Profile queries
 export async function getBrandProfiles(accountId: string): Promise<BrandProfile[]> {
-    if (!sql) return [];
+  if (!sql) return [];
 
-    const result = await sql`
+  const result = await sql`
     SELECT * FROM brand_profiles 
     WHERE account_id = ${accountId}
     ORDER BY is_default DESC, created_at DESC
   `;
 
-    return result as BrandProfile[];
+  return result as BrandProfile[];
 }
 
 export async function createBrandProfile(data: {
-    accountId: string;
-    name: string;
-    primaryColor?: string;
-    secondaryColor?: string;
-    contactName?: string;
-    contactPhone?: string;
-    contactEmail?: string;
-    contactWebsite?: string;
-    disclaimerText?: string;
-    isDefault?: boolean;
+  accountId: string;
+  name: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  contactWebsite?: string;
+  disclaimerText?: string;
+  isDefault?: boolean;
 }): Promise<BrandProfile | null> {
-    if (!sql) return null;
+  if (!sql) return null;
 
-    // If this is default, unset other defaults first
-    if (data.isDefault) {
-        await sql`
+  // If this is default, unset other defaults first
+  if (data.isDefault) {
+    await sql`
       UPDATE brand_profiles 
       SET is_default = FALSE 
       WHERE account_id = ${data.accountId}
     `;
-    }
+  }
 
-    const result = await sql`
+  const result = await sql`
     INSERT INTO brand_profiles (
       account_id,
       name,
@@ -185,28 +189,58 @@ export async function createBrandProfile(data: {
     RETURNING *
   `;
 
-    return result[0] as BrandProfile || null;
+  return result[0] as BrandProfile || null;
 }
 
-// Get or create account for authenticated user
-export async function getOrCreateAccount(authUserId: string, email: string, fullName?: string) {
-    if (!sql) return null;
+// Get a single brand profile by ID
+export async function getBrandProfile(id: string): Promise<BrandProfile | null> {
+  if (!sql) return null;
 
-    // Try to find existing account
-    let result = await sql`
+  const result = await sql`
+    SELECT * FROM brand_profiles WHERE id = ${id}
+  `;
+
+  return result[0] as BrandProfile || null;
+}
+
+// Get utility entries for a request
+export async function getUtilityEntriesByRequestId(requestId: string): Promise<any[]> {
+  if (!sql) return [];
+
+  const result = await sql`
+    SELECT 
+        id,
+        request_id,
+        category,
+        entry_mode,
+        display_name as provider_name,
+        contact_phone as provider_phone,
+        contact_url as provider_website
+    FROM utility_entries 
+    WHERE request_id = ${requestId}
+    ORDER BY created_at ASC
+  `;
+
+  return result as any[];
+}
+export async function getOrCreateAccount(authUserId: string, email: string, fullName?: string) {
+  if (!sql) return null;
+
+  // Try to find existing account
+  let result = await sql`
     SELECT * FROM accounts WHERE auth_user_id = ${authUserId}
   `;
 
-    if (result.length > 0) {
-        return result[0];
-    }
+  if (result.length > 0) {
+    return result[0];
+  }
 
-    // Create new account
-    result = await sql`
+  // Create new account
+  result = await sql`
     INSERT INTO accounts (auth_user_id, email, full_name)
     VALUES (${authUserId}, ${email}, ${fullName || null})
     RETURNING *
   `;
 
-    return result[0] || null;
+  return result[0] || null;
 }

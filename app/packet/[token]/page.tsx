@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, use } from 'react';
+import { useRef, useState, use, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -11,66 +11,34 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Download, Copy, Check, Phone, ExternalLink, Zap, Calendar, MapPin } from 'lucide-react';
+import { Download, Copy, Check, Phone, ExternalLink, Zap, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-
-// Mock packet data (would come from API in real app)
-const mockPacket = {
-    property_address: '123 Oak Street, Charlotte, NC 28202',
-    generated_at: new Date().toISOString(),
-    brand: {
-        name: 'Haydn Real Estate Group',
-        logo_url: null,
-        primary_color: '#10b981',
-        contact_name: 'Haydn Watters',
-        contact_phone: '(555) 123-4567',
-        contact_email: 'haydn@haydnrealty.com',
-        contact_website: 'haydnrealty.com',
-    },
-    utilities: [
-        {
-            category: 'Electric',
-            icon: '⚡',
-            provider_name: 'Duke Energy',
-            phone: '1-800-777-9898',
-            website: 'https://www.duke-energy.com/start-stop-move',
-        },
-        {
-            category: 'Natural Gas',
-            icon: '🔥',
-            provider_name: 'Piedmont Natural Gas',
-            phone: '1-800-752-7504',
-            website: 'https://www.piedmontng.com/start-service',
-        },
-        {
-            category: 'Water',
-            icon: '💧',
-            provider_name: 'Charlotte Water',
-            phone: '311',
-            website: 'https://charlottenc.gov/water',
-        },
-        {
-            category: 'Sewer',
-            icon: '🚰',
-            provider_name: 'Charlotte Water',
-            phone: '311',
-            website: null,
-        },
-        {
-            category: 'Trash',
-            icon: '🗑️',
-            provider_name: 'Waste Management',
-            phone: '1-800-963-4776',
-            website: 'https://www.wm.com',
-        },
-    ],
-};
+import { UTILITY_CATEGORIES } from '@/lib/constants';
 
 export default function PacketPage({ params }: { params: Promise<{ token: string }> }) {
     const resolvedParams = use(params);
     const packetRef = useRef<HTMLDivElement>(null);
     const [copied, setCopied] = useState(false);
     const [downloading, setDownloading] = useState(false);
+    const [data, setData] = useState<{ request: any, brand: any, utilities: any[] } | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchPacket() {
+            try {
+                const response = await fetch(`/api/packet/${resolvedParams.token}`);
+                if (response.ok) {
+                    const result = await response.json();
+                    setData(result);
+                }
+            } catch (error) {
+                console.error('Error fetching packet data:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchPacket();
+    }, [resolvedParams.token]);
 
     const copyLink = () => {
         navigator.clipboard.writeText(window.location.href);
@@ -79,6 +47,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     };
 
     const downloadPdf = async () => {
+        if (!data) return;
         setDownloading(true);
 
         // Dynamic import for PDF generation
@@ -93,6 +62,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                 scale: 2,
                 useCORS: true,
                 backgroundColor: '#18181b',
+                logging: false
             });
 
             const imgData = canvas.toDataURL('image/png');
@@ -103,13 +73,35 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
             });
 
             pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            pdf.save(`utility-packet-${mockPacket.property_address.split(',')[0].replace(/\s/g, '-')}.pdf`);
+            pdf.save(`utility-packet-${data.request.property_address.split(',')[0].replace(/\s/g, '-')}.pdf`);
         } catch (error) {
             console.error('Error generating PDF:', error);
         } finally {
             setDownloading(false);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+            </div>
+        );
+    }
+
+    if (!data) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold text-white mb-2">Packet Not Found</h1>
+                    <p className="text-zinc-400">The link may be invalid or expired.</p>
+                </div>
+            </div>
+        );
+    }
+
+    const { request, brand, utilities } = data;
+    const primaryColor = brand?.primary_color || '#10b981';
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-950 to-black">
@@ -151,28 +143,28 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     {/* Branding Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
                         <div className="flex items-center gap-4">
-                            {mockPacket.brand.logo_url ? (
+                            {brand?.logo_url ? (
                                 <img
-                                    src={mockPacket.brand.logo_url}
-                                    alt={mockPacket.brand.name}
+                                    src={brand.logo_url}
+                                    alt={brand.name}
                                     className="h-12 w-auto"
                                 />
                             ) : (
                                 <div
                                     className="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold text-lg"
-                                    style={{ backgroundColor: mockPacket.brand.primary_color }}
+                                    style={{ backgroundColor: primaryColor }}
                                 >
-                                    {mockPacket.brand.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                                    {brand?.name ? brand.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2) : 'US'}
                                 </div>
                             )}
                             <div>
-                                <h2 className="font-semibold text-white">{mockPacket.brand.name}</h2>
-                                <p className="text-sm text-zinc-400">{mockPacket.brand.contact_phone}</p>
+                                <h2 className="font-semibold text-white">{brand?.name || 'Real Estate Group'}</h2>
+                                <p className="text-sm text-zinc-400">{brand?.contact_phone || ''}</p>
                             </div>
                         </div>
                         <div className="text-left sm:text-right">
-                            <p className="text-sm text-zinc-400">{mockPacket.brand.contact_email}</p>
-                            <p className="text-sm text-zinc-400">{mockPacket.brand.contact_website}</p>
+                            <p className="text-sm text-zinc-400">{brand?.contact_email || ''}</p>
+                            <p className="text-sm text-zinc-400">{brand?.contact_website || ''}</p>
                         </div>
                     </div>
 
@@ -183,11 +175,11 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                         </h1>
                         <div className="inline-flex items-center gap-2 bg-zinc-800/50 px-4 py-2 rounded-lg">
                             <MapPin className="h-4 w-4 text-emerald-400" />
-                            <span className="text-white font-medium">{mockPacket.property_address}</span>
+                            <span className="text-white font-medium">{request.property_address}</span>
                         </div>
                         <div className="flex items-center justify-center gap-2 mt-3 text-sm text-zinc-400">
                             <Calendar className="h-4 w-4" />
-                            Generated {format(new Date(mockPacket.generated_at), 'MMMM d, yyyy')}
+                            Generated {format(new Date(request.created_at), 'MMMM d, yyyy')}
                         </div>
                     </div>
 
@@ -207,43 +199,53 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {mockPacket.utilities.map((utility, index) => (
-                                            <TableRow key={index} className="border-zinc-700 hover:bg-zinc-800/50">
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xl">{utility.icon}</span>
-                                                        <span className="font-medium text-white">{utility.category}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-zinc-300">
-                                                    {utility.provider_name}
-                                                </TableCell>
-                                                <TableCell className="hidden sm:table-cell">
-                                                    <div className="flex items-center gap-3">
-                                                        {utility.phone && (
-                                                            <a
-                                                                href={`tel:${utility.phone}`}
-                                                                className="flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300"
-                                                            >
-                                                                <Phone className="h-3 w-3" />
-                                                                {utility.phone}
-                                                            </a>
-                                                        )}
-                                                        {utility.website && (
-                                                            <a
-                                                                href={utility.website}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
-                                                            >
-                                                                <ExternalLink className="h-3 w-3" />
-                                                                Website
-                                                            </a>
-                                                        )}
-                                                    </div>
+                                        {utilities.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-center py-8 text-zinc-500">
+                                                    No utility information provided yet.
                                                 </TableCell>
                                             </TableRow>
-                                        ))}
+                                        ) : (
+                                            utilities.map((utility: any, index: number) => (
+                                                <TableRow key={index} className="border-zinc-700 hover:bg-zinc-800/50">
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xl">
+                                                                {UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}
+                                                            </span>
+                                                            <span className="font-medium text-white capitalize">{utility.category}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-zinc-300">
+                                                        {utility.provider_name}
+                                                    </TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
+                                                        <div className="flex items-center gap-3">
+                                                            {utility.provider_phone && (
+                                                                <a
+                                                                    href={`tel:${utility.provider_phone}`}
+                                                                    className="flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300"
+                                                                >
+                                                                    <Phone className="h-3 w-3" />
+                                                                    {utility.provider_phone}
+                                                                </a>
+                                                            )}
+                                                            {utility.provider_website && (
+                                                                <a
+                                                                    href={utility.provider_website}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+                                                                >
+                                                                    <ExternalLink className="h-3 w-3" />
+                                                                    Website
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
                                     </TableBody>
                                 </Table>
                             </div>
@@ -280,7 +282,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     {/* Footer */}
                     <div className="text-center pt-6 border-t border-zinc-800">
                         <p className="text-sm text-zinc-500">
-                            Generated by UtilitySheet • {mockPacket.brand.contact_email}
+                            Generated by UtilitySheet {brand?.contact_email ? `• ${brand.contact_email}` : ''}
                         </p>
                     </div>
                 </div>

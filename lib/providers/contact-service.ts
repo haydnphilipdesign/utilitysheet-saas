@@ -1,6 +1,6 @@
 import { ProviderContact } from '@/types';
 import { generateJSON, isGeminiConfigured } from '@/lib/ai/gemini-client';
-import { MOCK_PROVIDERS } from './mock-data';
+// Mock data removed
 
 // Contact cache
 const contactCache = new Map<string, { contact: ProviderContact | null; timestamp: number }>();
@@ -57,25 +57,10 @@ async function getAIContact(providerName: string): Promise<ProviderContact | nul
 }
 
 /**
- * Get fallback contact info from mock data
+ * Fallback removed
  */
 function getMockContact(providerNameOrId: string): ProviderContact | null {
-    const provider = MOCK_PROVIDERS.find(
-        (p) =>
-            p.id === providerNameOrId ||
-            p.normalized_name.toLowerCase() === providerNameOrId.toLowerCase() ||
-            p.aliases.some((a) => a.toLowerCase() === providerNameOrId.toLowerCase())
-    );
-
-    if (!provider) {
-        return null;
-    }
-
-    return {
-        customer_service_phone: provider.contact_phone || undefined,
-        start_stop_service_url: provider.contact_urls[0] || undefined,
-        main_website: provider.contact_urls[0]?.split('/').slice(0, 3).join('/') || undefined,
-    };
+    return null;
 }
 
 /**
@@ -91,13 +76,10 @@ export async function resolveContact(
         return cached.contact;
     }
 
-    // Try AI first, fall back to mock data
+    // Try AI first
     let contact = await getAIContact(providerNameOrId);
 
-    if (!contact || (!contact.customer_service_phone && !contact.start_stop_service_url)) {
-        console.log(`[Contact] Using mock data for ${providerNameOrId}`);
-        contact = getMockContact(providerNameOrId);
-    } else {
+    if (contact) {
         console.log(`[Contact] Got AI contact info for ${providerNameOrId}`);
     }
 

@@ -1,6 +1,6 @@
 import { ProviderSuggestion, UtilityCategory } from '@/types';
 import { generateJSON, isGeminiConfigured } from '@/lib/ai/gemini-client';
-import { MOCK_PROVIDERS, STATE_PROVIDERS, DEFAULT_PROVIDERS } from './mock-data';
+// Mock providers removed - using AI only
 
 // Simple cache for suggestions
 const suggestionCache = new Map<string, { suggestions: ProviderSuggestion[]; timestamp: number }>();
@@ -94,25 +94,10 @@ async function getAISuggestions(
 }
 
 /**
- * Get fallback suggestions from mock data
+ * Fallback removed - using AI only
  */
 function getMockSuggestions(address: string, category: UtilityCategory): ProviderSuggestion[] {
-    const state = extractState(address);
-    const providerNames = state && STATE_PROVIDERS[state]
-        ? STATE_PROVIDERS[state][category]
-        : DEFAULT_PROVIDERS[category];
-
-    return providerNames.map((name, index) => {
-        const canonical = MOCK_PROVIDERS.find((p) => p.normalized_name === name);
-        return {
-            display_name: name,
-            canonical_id: canonical?.id,
-            confidence: Math.max(0.6, 0.95 - index * 0.15),
-            rationale_short: state
-                ? `Common ${category} provider in ${state}`
-                : `Common ${category} provider`,
-        };
-    });
+    return [];
 }
 
 /**
@@ -131,12 +116,11 @@ export async function getSuggestions(
         return cached.suggestions;
     }
 
-    // Try AI first, fall back to mock data
+    // Try AI - no mock fallback
     let suggestions = await getAISuggestions(address, category);
 
-    if (!suggestions || suggestions.length === 0) {
-        console.log(`[Suggestions] Using mock data for ${category} at ${address}`);
-        suggestions = getMockSuggestions(address, category);
+    if (!suggestions) {
+        suggestions = [];
     } else {
         console.log(`[Suggestions] Got AI suggestions for ${category} at ${address}`);
     }
@@ -177,28 +161,6 @@ export async function searchProviders(
     query: string,
     category?: UtilityCategory
 ): Promise<ProviderSuggestion[]> {
-    // For search, we still use the mock data as it provides canonical matches
-    // AI is better for location-based suggestions, not search autocomplete
-    const lowerQuery = query.toLowerCase();
-
-    const matches = MOCK_PROVIDERS.filter((provider) => {
-        // Filter by category if specified
-        if (category && !provider.service_types.includes(category)) {
-            return false;
-        }
-
-        // Match against name and aliases
-        const nameMatch = provider.normalized_name.toLowerCase().includes(lowerQuery);
-        const aliasMatch = provider.aliases.some((alias) =>
-            alias.toLowerCase().includes(lowerQuery)
-        );
-
-        return nameMatch || aliasMatch;
-    });
-
-    return matches.map((provider) => ({
-        display_name: provider.normalized_name,
-        canonical_id: provider.id,
-        confidence: 1.0, // User searched explicitly
-    }));
+    // Canonical search removed - could be replaced with AI search if needed
+    return [];
 }

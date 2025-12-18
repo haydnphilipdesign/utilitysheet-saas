@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Check, Copy, MessageSquare, Mail, Loader2, MapPin } from 'lucide-react';
 import type { UtilityCategory } from '@/types';
-import { UTILITY_CATEGORIES } from '@/lib/providers/mock-data';
+import { UTILITY_CATEGORIES } from '@/lib/constants';
 
 interface FormData {
     property_address: string;
@@ -90,10 +90,7 @@ export default function NewRequestPage() {
             setShowShareDialog(true);
         } catch (error) {
             console.error('Error creating request:', error);
-            // Fallback to client-generated token for demo purposes
-            const token = uuidv4().replace(/-/g, '').slice(0, 12);
-            setGeneratedToken(token);
-            setShowShareDialog(true);
+            alert('Failed to create request. Please check your connection and try again.');
         } finally {
             setLoading(false);
         }

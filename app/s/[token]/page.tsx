@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/popover';
 import { Check, X, HelpCircle, ChevronDown, Loader2, Search, Zap, AlertTriangle } from 'lucide-react';
 import type { UtilityCategory, ProviderSuggestion, ProviderEntryMode, WaterSource, SewerType, HeatingType } from '@/types';
-import { UTILITY_CATEGORIES } from '@/lib/providers/mock-data';
+import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { getAllSuggestions, searchProviders } from '@/lib/providers/suggestion-service';
 
 interface UtilityState {

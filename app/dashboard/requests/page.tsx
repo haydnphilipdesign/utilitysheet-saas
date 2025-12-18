@@ -43,75 +43,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Request } from '@/types';
-import { useState } from 'react';
-
-// Mock data - same as dashboard
-const mockRequests: Request[] = [
-    {
-        id: '1',
-        account_id: '1',
-        brand_profile_id: '1',
-        property_address: '123 Oak Street, Charlotte, NC 28202',
-        property_address_structured: null,
-        seller_name: 'John Smith',
-        seller_email: 'john@example.com',
-        seller_phone: null,
-        closing_date: '2024-01-15',
-        status: 'submitted',
-        public_token: 'abc123',
-        created_at: '2024-12-10T10:00:00Z',
-        updated_at: '2024-12-12T14:30:00Z',
-        last_activity_at: '2024-12-12T14:30:00Z',
-    },
-    {
-        id: '2',
-        account_id: '1',
-        brand_profile_id: '1',
-        property_address: '456 Maple Ave, Raleigh, NC 27601',
-        property_address_structured: null,
-        seller_name: 'Sarah Johnson',
-        seller_email: 'sarah@example.com',
-        seller_phone: null,
-        closing_date: '2024-01-20',
-        status: 'in_progress',
-        public_token: 'def456',
-        created_at: '2024-12-11T09:00:00Z',
-        updated_at: '2024-12-13T11:00:00Z',
-        last_activity_at: '2024-12-13T11:00:00Z',
-    },
-    {
-        id: '3',
-        account_id: '1',
-        brand_profile_id: '1',
-        property_address: '789 Pine Road, Durham, NC 27701',
-        property_address_structured: null,
-        seller_name: 'Mike Williams',
-        seller_email: null,
-        seller_phone: '555-0123',
-        closing_date: null,
-        status: 'sent',
-        public_token: 'ghi789',
-        created_at: '2024-12-12T15:00:00Z',
-        updated_at: '2024-12-12T15:00:00Z',
-        last_activity_at: '2024-12-12T15:00:00Z',
-    },
-    {
-        id: '4',
-        account_id: '1',
-        brand_profile_id: null,
-        property_address: '321 Elm Street, Chapel Hill, NC 27514',
-        property_address_structured: null,
-        seller_name: null,
-        seller_email: null,
-        seller_phone: null,
-        closing_date: '2024-02-01',
-        status: 'draft',
-        public_token: 'jkl012',
-        created_at: '2024-12-13T08:00:00Z',
-        updated_at: '2024-12-13T08:00:00Z',
-        last_activity_at: '2024-12-13T08:00:00Z',
-    },
-];
+import { useEffect, useState } from 'react';
 
 const statusConfig = {
     draft: { label: 'Draft', color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30', icon: FileText },
@@ -121,10 +53,30 @@ const statusConfig = {
 };
 
 export default function RequestsPage() {
+    const [requests, setRequests] = useState<Request[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [loading, setLoading] = useState(true);
 
-    const filteredRequests = mockRequests.filter((request) => {
+    useEffect(() => {
+        async function fetchRequests() {
+            try {
+                const response = await fetch('/api/requests');
+                if (response.ok) {
+                    const data = await response.json();
+                    setRequests(data);
+                }
+            } catch (error) {
+                console.error('Error fetching requests:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchRequests();
+    }, []);
+
+    const filteredRequests = requests.filter((request) => {
         const matchesSearch =
             request.property_address.toLowerCase().includes(searchQuery.toLowerCase()) ||
             request.seller_name?.toLowerCase().includes(searchQuery.toLowerCase());
