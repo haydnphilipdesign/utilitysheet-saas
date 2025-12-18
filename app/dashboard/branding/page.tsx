@@ -19,6 +19,7 @@ const mockBrands: BrandProfile[] = [
     {
         id: '1',
         account_id: '1',
+        organization_id: null,
         name: 'Haydn Real Estate Group',
         logo_url: null,
         primary_color: '#10b981',
@@ -34,6 +35,7 @@ const mockBrands: BrandProfile[] = [
     {
         id: '2',
         account_id: '1',
+        organization_id: null,
         name: 'Charlotte Homes Team',
         logo_url: null,
         primary_color: '#3b82f6',
