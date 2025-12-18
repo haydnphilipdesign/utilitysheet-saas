@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { authClient } from '@/lib/neon/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,28 +23,51 @@ export default function LoginPage() {
         setLoading(true);
         setError(null);
 
-        const supabase = createClient();
+        try {
+            // 1. Try Neon Auth first
+            if (authClient) {
+                // @ts-ignore - Dynamic dispatch based on identified API
+                const { error: authError } = await authClient.signIn.email({
+                    email,
+                    password,
+                });
 
-        // Demo mode - just redirect to dashboard
-        if (!supabase) {
+                if (authError) {
+                    throw new Error(authError.message || 'Failed to sign in');
+                }
+
+                router.push('/dashboard');
+                router.refresh();
+                return;
+            }
+
+            // 2. Try Supabase Auth
+            if (isSupabaseConfigured()) {
+                const supabase = createClient();
+                if (supabase) {
+                    const { error: supabaseError } = await supabase.auth.signInWithPassword({
+                        email,
+                        password,
+                    });
+
+                    if (supabaseError) {
+                        throw new Error(supabaseError.message);
+                    }
+
+                    router.push('/dashboard');
+                    router.refresh();
+                    return;
+                }
+            }
+
+            // 3. Fallback to Demo Mode
+            // Just redirect to dashboard
             router.push('/dashboard');
             router.refresh();
-            return;
-        }
-
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
-        if (error) {
-            setError(error.message);
+        } catch (err: any) {
+            setError(err.message || 'Failed to sign in');
             setLoading(false);
-            return;
         }
-
-        router.push('/dashboard');
-        router.refresh();
     };
 
     return (

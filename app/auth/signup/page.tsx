@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { authClient } from '@/lib/neon/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,33 +25,56 @@ export default function SignupPage() {
         setLoading(true);
         setError(null);
 
-        const supabase = createClient();
+        try {
+            // 1. Try Neon Auth first
+            if (authClient) {
+                // @ts-ignore - Dynamic dispatch based on identified API
+                const { error: authError } = await authClient.signUp.email({
+                    email,
+                    password,
+                    name: fullName,
+                });
 
-        // Demo mode - show success message
-        if (!supabase) {
+                if (authError) {
+                    throw new Error(authError.message || 'Failed to create account');
+                }
+
+                setSuccess(true);
+                setLoading(false);
+                return;
+            }
+
+            // 2. Try Supabase Auth
+            if (isSupabaseConfigured()) {
+                const supabase = createClient();
+                if (supabase) {
+                    const { error: supabaseError } = await supabase.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            data: {
+                                full_name: fullName,
+                            },
+                        },
+                    });
+
+                    if (supabaseError) {
+                        throw new Error(supabaseError.message);
+                    }
+
+                    setSuccess(true);
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // 3. Fallback to Demo Mode
             setSuccess(true);
             setLoading(false);
-            return;
-        }
-
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: {
-                    full_name: fullName,
-                },
-            },
-        });
-
-        if (error) {
-            setError(error.message);
+        } catch (err: any) {
+            setError(err.message || 'Failed to create account');
             setLoading(false);
-            return;
         }
-
-        setSuccess(true);
-        setLoading(false);
     };
 
     if (success) {
