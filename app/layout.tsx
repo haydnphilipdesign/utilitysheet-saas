@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
 import { Toaster } from "sonner";
+import { StackAuthProvider } from "@/components/providers/stack-auth-provider";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -21,7 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${figtree.variable} font-sans antialiased`}>
-        {children}
+        <StackAuthProvider>
+          {children}
+        </StackAuthProvider>
         <Toaster
           theme="dark"
           position="bottom-right"

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { authClient } from '@/lib/neon/auth';
+import { stackClientApp } from '@/lib/stack/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,47 +24,54 @@ export default function LoginPage() {
         setError(null);
 
         try {
-            // 1. Try Neon Auth first
-            if (authClient) {
-                // @ts-ignore - Dynamic dispatch based on identified API
-                const { error: authError } = await authClient.signIn.email({
-                    email,
-                    password,
-                });
+            // 1. Try Stack Auth first (Neon's built-in auth)
+            const result = await stackClientApp.signInWithCredential({
+                email,
+                password,
+                noRedirect: true,
+            });
 
-                if (authError) {
-                    throw new Error(authError.message || 'Failed to sign in');
+            if (result.status === 'error') {
+                throw new Error(result.error.message || 'Invalid email or password');
+            }
+
+            router.push('/dashboard');
+            router.refresh();
+            return;
+        } catch (err: any) {
+            // Check if Stack Auth is not configured (project ID missing)
+            if (err.message?.includes('project') || err.message?.includes('NEXT_PUBLIC_STACK')) {
+                // Fall back to Supabase or demo mode
+                if (isSupabaseConfigured()) {
+                    try {
+                        const supabase = createClient();
+                        if (supabase) {
+                            const { error: supabaseError } = await supabase.auth.signInWithPassword({
+                                email,
+                                password,
+                            });
+
+                            if (supabaseError) {
+                                throw new Error(supabaseError.message);
+                            }
+
+                            router.push('/dashboard');
+                            router.refresh();
+                            return;
+                        }
+                    } catch (supaErr: any) {
+                        setError(supaErr.message || 'Failed to sign in');
+                        setLoading(false);
+                        return;
+                    }
                 }
 
+                // Fall back to demo mode
                 router.push('/dashboard');
                 router.refresh();
                 return;
             }
 
-            // 2. Try Supabase Auth
-            if (isSupabaseConfigured()) {
-                const supabase = createClient();
-                if (supabase) {
-                    const { error: supabaseError } = await supabase.auth.signInWithPassword({
-                        email,
-                        password,
-                    });
-
-                    if (supabaseError) {
-                        throw new Error(supabaseError.message);
-                    }
-
-                    router.push('/dashboard');
-                    router.refresh();
-                    return;
-                }
-            }
-
-            // 3. Fallback to Demo Mode
-            // Just redirect to dashboard
-            router.push('/dashboard');
-            router.refresh();
-        } catch (err: any) {
             setError(err.message || 'Failed to sign in');
             setLoading(false);
         }

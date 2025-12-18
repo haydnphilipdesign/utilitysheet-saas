@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { authClient } from '@/lib/neon/auth';
+import { stackClientApp } from '@/lib/stack/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,52 +26,60 @@ export default function SignupPage() {
         setError(null);
 
         try {
-            // 1. Try Neon Auth first
-            if (authClient) {
-                // @ts-ignore - Dynamic dispatch based on identified API
-                const { error: authError } = await authClient.signUp.email({
-                    email,
-                    password,
-                    name: fullName,
-                });
+            // 1. Try Stack Auth first (Neon's built-in auth)
+            const result = await stackClientApp.signUpWithCredential({
+                email,
+                password,
+                noRedirect: true,
+                noVerificationCallback: true,
+            });
 
-                if (authError) {
-                    throw new Error(authError.message || 'Failed to create account');
+            if (result.status === 'error') {
+                throw new Error(result.error.message || 'Failed to create account');
+            }
+
+            setSuccess(true);
+            setLoading(false);
+            return;
+        } catch (err: any) {
+            // Check if Stack Auth is not configured (project ID missing)
+            if (err.message?.includes('project') || err.message?.includes('NEXT_PUBLIC_STACK')) {
+                // Fall back to Supabase or demo mode
+                if (isSupabaseConfigured()) {
+                    try {
+                        const supabase = createClient();
+                        if (supabase) {
+                            const { error: supabaseError } = await supabase.auth.signUp({
+                                email,
+                                password,
+                                options: {
+                                    data: {
+                                        full_name: fullName,
+                                    },
+                                },
+                            });
+
+                            if (supabaseError) {
+                                throw new Error(supabaseError.message);
+                            }
+
+                            setSuccess(true);
+                            setLoading(false);
+                            return;
+                        }
+                    } catch (supaErr: any) {
+                        setError(supaErr.message || 'Failed to create account');
+                        setLoading(false);
+                        return;
+                    }
                 }
 
+                // Fall back to demo mode
                 setSuccess(true);
                 setLoading(false);
                 return;
             }
 
-            // 2. Try Supabase Auth
-            if (isSupabaseConfigured()) {
-                const supabase = createClient();
-                if (supabase) {
-                    const { error: supabaseError } = await supabase.auth.signUp({
-                        email,
-                        password,
-                        options: {
-                            data: {
-                                full_name: fullName,
-                            },
-                        },
-                    });
-
-                    if (supabaseError) {
-                        throw new Error(supabaseError.message);
-                    }
-
-                    setSuccess(true);
-                    setLoading(false);
-                    return;
-                }
-            }
-
-            // 3. Fallback to Demo Mode
-            setSuccess(true);
-            setLoading(false);
-        } catch (err: any) {
             setError(err.message || 'Failed to create account');
             setLoading(false);
         }
