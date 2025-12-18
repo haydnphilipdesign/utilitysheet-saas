@@ -1,0 +1,248 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Check, Search, AlertCircle, X, HelpCircle } from 'lucide-react';
+import { WizardState } from '../SellerWizard';
+import { UtilityCategory, ProviderSuggestion } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+
+interface UtilityStepProps {
+    category: UtilityCategory;
+    categoryLabel: string;
+    state: WizardState;
+    updateState: (category: UtilityCategory, updates: any) => void;
+    suggestion?: ProviderSuggestion;
+    onNext: () => void;
+    onBack: () => void;
+}
+
+export function UtilityStep({
+    category,
+    categoryLabel,
+    state,
+    updateState,
+    suggestion,
+    onNext,
+    onBack
+}: UtilityStepProps) {
+    const [mode, setMode] = useState<'view' | 'search'>('view');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<ProviderSuggestion[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    // Reset local state when category changes
+    useEffect(() => {
+        setMode('view');
+        setSearchQuery('');
+        setSearchResults([]);
+    }, [category]);
+
+    // Search effect
+    useEffect(() => {
+        if (!searchQuery || searchQuery.length < 2) {
+            setSearchResults([]);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const res = await fetch(`/api/suggestions/search?query=${encodeURIComponent(searchQuery)}&category=${category}`);
+                if (res.ok) setSearchResults(await res.json());
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery, category]);
+
+    const currentUtilityState = state.utilities[category];
+    const isCompleted = currentUtilityState?.entry_mode !== null;
+
+    const handleConfirmSuggestion = () => {
+        if (!suggestion) return;
+        updateState(category, {
+            entry_mode: 'suggested_confirmed',
+            display_name: suggestion.display_name,
+            raw_text: null
+        });
+        onNext();
+    };
+
+    const handleSelectResult = (name: string) => {
+        updateState(category, {
+            entry_mode: 'search_selected',
+            display_name: name,
+            raw_text: name
+        });
+        onNext();
+    };
+
+    const handleManualEntry = () => {
+        updateState(category, {
+            entry_mode: 'free_text',
+            display_name: searchQuery,
+            raw_text: searchQuery
+        });
+        onNext();
+    };
+
+    const handleSkip = () => {
+        updateState(category, {
+            entry_mode: 'unknown',
+            display_name: null,
+            raw_text: null
+        });
+        onNext();
+    };
+
+    return (
+        <motion.div
+            key={category}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+        >
+            <div className="flex items-center gap-4 mb-8">
+                <button
+                    onClick={onBack}
+                    className="p-2 -ml-2 rounded-full hover:bg-white/10 text-zinc-400 transition-colors"
+                >
+                    ←
+                </button>
+                <div>
+                    <h3 className="text-xl font-bold text-white mb-1">{categoryLabel} Provider</h3>
+                    <p className="text-zinc-400 text-sm">Who provides your {categoryLabel.toLowerCase()}?</p>
+                </div>
+            </div>
+
+            {mode === 'view' && (
+                <div className="space-y-6">
+                    {suggestion ? (
+                        <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 space-y-4">
+                            <p className="text-sm text-zinc-500 uppercase tracking-wider font-semibold">We found a match</p>
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-xl">
+                                    ⚡
+                                </div>
+                                <div className="text-xl font-medium text-white">
+                                    {suggestion.display_name}
+                                </div>
+                            </div>
+
+                            <div className="pt-4 grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={handleConfirmSuggestion}
+                                    className="col-span-2 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors"
+                                >
+                                    Yes, that's it
+                                </button>
+                                <button
+                                    onClick={() => setMode('search')}
+                                    className="py-3 bg-white/5 hover:bg-white/10 text-zinc-300 rounded-xl font-medium transition-colors"
+                                >
+                                    Search
+                                </button>
+                                <button
+                                    onClick={handleSkip}
+                                    className="py-3 bg-transparent border border-white/5 text-zinc-500 hover:text-zinc-400 rounded-xl font-medium transition-colors"
+                                >
+                                    I don't know
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-8 text-center space-y-6">
+                            <div className="mx-auto w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center">
+                                <Search className="h-8 w-8 text-zinc-500" />
+                            </div>
+                            <div>
+                                <h4 className="text-lg font-medium text-white">Search for your provider</h4>
+                                <p className="text-zinc-500 text-sm mt-1">We couldn't auto-detect this one.</p>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3">
+                                <button
+                                    onClick={() => setMode('search')}
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors"
+                                >
+                                    Search Providers
+                                </button>
+                                <button
+                                    onClick={handleSkip}
+                                    className="w-full py-3 bg-transparent border border-white/5 text-zinc-500 hover:text-zinc-400 rounded-xl font-medium transition-colors"
+                                >
+                                    I don't know
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {mode === 'search' && (
+                <div className="space-y-4">
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+                        <input
+                            autoFocus
+                            type="text"
+                            placeholder={`Search ${categoryLabel} providers...`}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-zinc-900/50 border border-white/10 rounded-xl py-4 pl-12 pr-12 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full text-zinc-500"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                        {isSearching && (
+                            <div className="p-4 text-center text-zinc-500 text-sm">Searching...</div>
+                        )}
+
+                        {!isSearching && searchResults.map((result) => (
+                            <button
+                                key={result.display_name}
+                                onClick={() => handleSelectResult(result.display_name)}
+                                className="w-full flex items-center justify-between p-4 bg-zinc-900/30 hover:bg-zinc-800 border border-white/5 rounded-xl text-left transition-all group"
+                            >
+                                <span className="font-medium text-zinc-300 group-hover:text-white transition-colors">{result.display_name}</span>
+                                <Check className="h-4 w-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
+                        ))}
+
+                        {!isSearching && searchQuery.length >= 2 && searchResults.length === 0 && (
+                            <div className="text-center pt-4 pb-2">
+                                <p className="text-zinc-500 text-sm mb-3">No matching providers found.</p>
+                                <button
+                                    onClick={handleManualEntry}
+                                    className="text-emerald-400 hover:text-emerald-300 text-sm font-medium underline underline-offset-4"
+                                >
+                                    Use "{searchQuery}" anyway
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={() => setMode('view')}
+                        className="w-full py-3 text-zinc-500 hover:text-white transition-colors text-sm"
+                    >
+                        Cancel Search
+                    </button>
+                </div>
+            )}
+        </motion.div>
+    );
+}
