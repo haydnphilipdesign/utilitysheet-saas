@@ -49,7 +49,8 @@ Respond with a JSON array of provider suggestions. Each suggestion should have:
 - confidence: A number between 0 and 1 indicating how confident you are this is the correct provider (1 = very confident)
 - rationale_short: A brief explanation of why this provider serves this area
 
-Return 1-3 providers, ordered by confidence (highest first).
+Return 3-5 likely providers, ordered by confidence (highest first).
+If there is one dominant provider, list it first, but still try to provide 2-3 other plausible alternatives or competitors in the area (mark them with slightly lower confidence).
 Only include providers you are reasonably confident serve this specific area.
 
 Example response format:

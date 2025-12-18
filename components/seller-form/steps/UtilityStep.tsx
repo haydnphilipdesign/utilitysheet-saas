@@ -35,8 +35,8 @@ export function UtilityStep({
     // Primary suggestion is the first one
     const topSuggestion = suggestions?.[0];
 
-    // Alternative suggestions (2nd, 3rd, etc)
-    const alternativeSuggestions = suggestions?.slice(1) || [];
+    // All suggestions available for search
+    const alternativeSuggestions = suggestions || [];
 
     // Reset local state when category changes
     useEffect(() => {
@@ -128,34 +128,47 @@ export function UtilityStep({
 
             {mode === 'view' && (
                 <div className="space-y-6">
-                    {topSuggestion ? (
-                        <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 space-y-4">
-                            <p className="text-sm text-zinc-500 uppercase tracking-wider font-semibold">We found a match</p>
-                            <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-xl">
-                                    ⚡
-                                </div>
-                                <div className="text-xl font-medium text-white">
-                                    {topSuggestion.display_name}
-                                </div>
+                    {suggestions.length > 0 ? (
+                        <div className="space-y-4">
+                            <p className="text-sm text-zinc-500 uppercase tracking-wider font-semibold">Suggested for your area</p>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                {suggestions.slice(0, 3).map((s) => (
+                                    <button
+                                        key={s.display_name}
+                                        onClick={() => handleConfirmSuggestion(s)}
+                                        className="w-full flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl text-left transition-all group"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-lg shrink-0">
+                                                ⚡
+                                            </div>
+                                            <div>
+                                                <span className="font-medium text-white block">
+                                                    {s.display_name}
+                                                </span>
+                                                {s.rationale_short && (
+                                                    <span className="text-xs text-zinc-500 mt-0.5 block">
+                                                        {s.rationale_short}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <Check className="h-5 w-5 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </button>
+                                ))}
                             </div>
 
-                            <div className="pt-4 grid grid-cols-2 gap-3">
-                                <button
-                                    onClick={() => handleConfirmSuggestion(topSuggestion)}
-                                    className="col-span-2 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors"
-                                >
-                                    Yes, that's it
-                                </button>
+                            <div className="grid grid-cols-2 gap-3 pt-2">
                                 <button
                                     onClick={() => setMode('search')}
-                                    className="py-3 bg-white/5 hover:bg-white/10 text-zinc-300 rounded-xl font-medium transition-colors"
+                                    className="py-3 bg-transparent border border-white/5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl font-medium transition-colors text-sm"
                                 >
-                                    Search
+                                    Search for another
                                 </button>
                                 <button
                                     onClick={handleSkip}
-                                    className="py-3 bg-transparent border border-white/5 text-zinc-500 hover:text-zinc-400 rounded-xl font-medium transition-colors"
+                                    className="py-3 bg-transparent border border-white/5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl font-medium transition-colors text-sm"
                                 >
                                     I don't know
                                 </button>
