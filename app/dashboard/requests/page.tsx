@@ -40,10 +40,13 @@ import {
     Send,
     Clock,
     CheckCircle2,
+    Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Request } from '@/types';
 import { useEffect, useState } from 'react';
+import { generatePacketPdf } from '@/lib/pdf-generator';
+import { toast } from 'sonner';
 
 const statusConfig = {
     draft: { label: 'Draft', color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30', icon: FileText },
@@ -57,6 +60,7 @@ export default function RequestsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [loading, setLoading] = useState(true);
+    const [downloadingPdfToken, setDownloadingPdfToken] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchRequests() {
@@ -87,6 +91,20 @@ export default function RequestsPage() {
     const copyLink = (token: string) => {
         const link = `${window.location.origin}/s/${token}`;
         navigator.clipboard.writeText(link);
+        toast.success('Link copied to clipboard');
+    };
+
+    const handleDownloadPdf = async (token: string) => {
+        setDownloadingPdfToken(token);
+        try {
+            await generatePacketPdf(token);
+            toast.success('PDF downloaded successfully');
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            toast.error('Failed to generate PDF. Please try again.');
+        } finally {
+            setDownloadingPdfToken(null);
+        }
     };
 
     return (
@@ -212,10 +230,15 @@ export default function RequestsPage() {
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem
                                                                         className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
-                                                                        onClick={() => window.open(`/packet/${request.public_token}`, '_blank')}
+                                                                        onClick={() => handleDownloadPdf(request.public_token)}
+                                                                        disabled={downloadingPdfToken === request.public_token}
                                                                     >
-                                                                        <Download className="mr-2 h-4 w-4" />
-                                                                        Download PDF
+                                                                        {downloadingPdfToken === request.public_token ? (
+                                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                        ) : (
+                                                                            <Download className="mr-2 h-4 w-4" />
+                                                                        )}
+                                                                        {downloadingPdfToken === request.public_token ? 'Generating...' : 'Download PDF'}
                                                                     </DropdownMenuItem>
                                                                 </>
                                                             )}
