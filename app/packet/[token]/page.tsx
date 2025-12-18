@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, use, useEffect } from 'react';
+import { useState, use, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -14,10 +14,11 @@ import {
 import { Download, Copy, Check, Phone, ExternalLink, Zap, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
+import { generatePacketPdf } from '@/lib/pdf-generator';
+import { toast } from 'sonner';
 
 export default function PacketPage({ params }: { params: Promise<{ token: string }> }) {
     const resolvedParams = use(params);
-    const packetRef = useRef<HTMLDivElement>(null);
     const [copied, setCopied] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [data, setData] = useState<{ request: any, brand: any, utilities: any[] } | null>(null);
@@ -50,32 +51,12 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
         if (!data) return;
         setDownloading(true);
 
-        // Dynamic import for PDF generation
-        const html2canvas = (await import('html2canvas')).default;
-        const jsPDF = (await import('jspdf')).default;
-
         try {
-            const element = packetRef.current;
-            if (!element) return;
-
-            const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#18181b',
-                logging: false
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'px',
-                format: [canvas.width, canvas.height],
-            });
-
-            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-            pdf.save(`utility-packet-${data.request.property_address.split(',')[0].replace(/\s/g, '-')}.pdf`);
+            await generatePacketPdf(resolvedParams.token);
+            toast.success('PDF downloaded successfully');
         } catch (error) {
             console.error('Error generating PDF:', error);
+            toast.error('Failed to generate PDF. Please try again.');
         } finally {
             setDownloading(false);
         }
@@ -139,7 +120,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
 
             {/* Packet Content */}
             <main className="max-w-4xl mx-auto px-4 py-8">
-                <div ref={packetRef} className="space-y-6 p-8 bg-zinc-900 rounded-xl">
+                <div className="space-y-6 p-8 bg-zinc-900 rounded-xl">
                     {/* Branding Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
                         <div className="flex items-center gap-4">
