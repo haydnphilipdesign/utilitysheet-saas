@@ -16,7 +16,10 @@ export type UtilityCategory =
     | 'water'
     | 'sewer'
     | 'trash'
-    | 'internet';
+    | 'internet'
+    | 'cable'
+    | 'propane'
+    | 'oil';
 
 export type WaterSource = 'city' | 'well' | 'not_sure';
 export type SewerType = 'public' | 'septic' | 'not_sure';
@@ -147,6 +150,9 @@ export interface SellerFormData {
     water_source: WaterSource;
     sewer_type: SewerType;
     heating_type: HeatingType;
+    fuels_present: (HeatingType | 'not_sure')[];
+    primary_heating_type: HeatingType | 'not_sure';
+    trash_handled_by: 'municipal' | 'private' | 'not_sure';
     utilities: Record<UtilityCategory, UtilityFormEntry>;
 }
 

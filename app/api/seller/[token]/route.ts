@@ -77,7 +77,7 @@ export async function POST(
       UPDATE requests SET
         water_source = ${body.water_source || null},
         sewer_type = ${body.sewer_type || null},
-        heating_type = ${body.heating_type || null},
+        heating_type = ${body.primary_heating_type || null},
         status = 'submitted',
         last_activity_at = NOW()
       WHERE id = ${requestData.id}
@@ -88,8 +88,20 @@ export async function POST(
 
         // Insert utility entries
         for (const [category, entry] of Object.entries(body.utilities || {})) {
-            const e = entry as { entry_mode: string; display_name?: string; raw_text?: string };
-            if (e.entry_mode) {
+            const e = entry as { entry_mode: string; display_name?: string; raw_text?: string; hidden?: boolean; extra?: any };
+            if (e.entry_mode && !e.hidden) {
+                let finalRawText = e.raw_text || '';
+                if (e.extra) {
+                    const extraParts = [];
+                    if (e.extra.tank) extraParts.push(`Tank: ${e.extra.tank}`);
+                    if (e.extra.auto_delivery) extraParts.push(`Auto-delivery: ${e.extra.auto_delivery}`);
+                    if (e.extra.trash_type) extraParts.push(`Type: ${e.extra.trash_type}`);
+                    if (e.extra.notes) extraParts.push(`Notes: ${e.extra.notes}`);
+                    if (extraParts.length > 0) {
+                        finalRawText = finalRawText ? `${finalRawText} (${extraParts.join(', ')})` : extraParts.join(', ');
+                    }
+                }
+
                 await sql`
           INSERT INTO utility_entries (
             request_id, category, entry_mode, display_name, raw_text
@@ -98,7 +110,7 @@ export async function POST(
             ${category},
             ${e.entry_mode},
             ${e.display_name || null},
-            ${e.raw_text || null}
+            ${finalRawText || null}
           )
         `;
             }

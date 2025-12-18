@@ -28,12 +28,17 @@ interface UtilityState {
     display_name: string | null;
     raw_text: string | null;
     hidden: boolean;
+    notes?: string;
+    extra?: Record<string, any>;
 }
 
 interface FormState {
     water_source: WaterSource;
     sewer_type: SewerType;
     heating_type: HeatingType;
+    fuels_present: string[];
+    primary_heating_type: string | null;
+    trash_handled_by: 'municipal' | 'private' | 'not_sure';
     utilities: Record<UtilityCategory, UtilityState>;
 }
 
@@ -57,8 +62,12 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
         water_source: 'not_sure',
         sewer_type: 'not_sure',
         heating_type: 'not_sure',
+        fuels_present: [],
+        primary_heating_type: null,
+        trash_handled_by: 'not_sure',
         utilities: {} as Record<UtilityCategory, UtilityState>,
     });
+    const [activeCategories, setActiveCategories] = useState<UtilityCategory[]>([]);
 
     // Fetch request data from API
     useEffect(() => {
@@ -88,9 +97,15 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 setSuggestions(data.suggestions || {});
 
                 // Initialize form state with utility categories
+                let categories = reqData.utility_categories || ['electric', 'water', 'sewer', 'trash'];
+                if (!categories.includes('electric')) {
+                    categories = ['electric', ...categories];
+                }
+                setActiveCategories(categories);
+
                 setFormState(prev => ({
                     ...prev,
-                    utilities: reqData.utility_categories.reduce((acc, cat) => {
+                    utilities: categories.reduce((acc, cat) => {
                         acc[cat] = { entry_mode: null, display_name: null, raw_text: null, hidden: false };
                         return acc;
                     }, {} as Record<UtilityCategory, UtilityState>),
@@ -107,30 +122,46 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
         loadRequestData();
     }, [resolvedParams.token]);
 
-    // Update hidden state based on applicability toggles
+    // Update utilities based on activeCategories and fuels
     useEffect(() => {
-        setFormState((prev) => ({
-            ...prev,
-            utilities: {
-                ...prev.utilities,
-                water: {
-                    ...prev.utilities.water,
-                    hidden: prev.water_source === 'well',
-                    entry_mode: prev.water_source === 'well' ? 'not_applicable' : prev.utilities.water?.entry_mode,
-                },
-                sewer: {
-                    ...prev.utilities.sewer,
-                    hidden: prev.sewer_type === 'septic',
-                    entry_mode: prev.sewer_type === 'septic' ? 'not_applicable' : prev.utilities.sewer?.entry_mode,
-                },
-                gas: {
-                    ...prev.utilities.gas,
-                    hidden: prev.heating_type === 'electric',
-                    entry_mode: prev.heating_type === 'electric' ? 'not_applicable' : prev.utilities.gas?.entry_mode,
-                },
-            },
-        }));
-    }, [formState.water_source, formState.sewer_type, formState.heating_type]);
+        setFormState((prev) => {
+            const newUtilities = { ...prev.utilities };
+
+            // Ensure all active categories have a state
+            activeCategories.forEach((cat) => {
+                if (!newUtilities[cat]) {
+                    newUtilities[cat] = { entry_mode: null, display_name: null, raw_text: null, hidden: false };
+                }
+                newUtilities[cat].hidden = false;
+            });
+
+            // Handle fuels
+            const fuelCategories: UtilityCategory[] = ['gas', 'propane', 'oil'];
+            fuelCategories.forEach((cat) => {
+                const isPresent = prev.fuels_present.includes(cat === 'gas' ? 'natural_gas' : cat);
+                if (isPresent) {
+                    if (!newUtilities[cat]) {
+                        newUtilities[cat] = { entry_mode: null, display_name: null, raw_text: null, hidden: false };
+                    }
+                    newUtilities[cat].hidden = false;
+                } else {
+                    if (newUtilities[cat]) {
+                        newUtilities[cat].hidden = true;
+                    }
+                }
+            });
+
+            // Hide categories not in activeCategories (and not fuels handled above)
+            Object.keys(newUtilities).forEach((cat) => {
+                const category = cat as UtilityCategory;
+                if (!activeCategories.includes(category) && !fuelCategories.includes(category)) {
+                    newUtilities[category].hidden = true;
+                }
+            });
+
+            return { ...prev, utilities: newUtilities };
+        });
+    }, [activeCategories, formState.fuels_present]);
 
     const handleConfirm = (category: UtilityCategory, suggestion: ProviderSuggestion) => {
         setFormState((prev) => ({
@@ -209,10 +240,25 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
 
     const handleSubmit = async () => {
         setSubmitting(true);
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        setSubmitted(true);
-        setSubmitting(false);
+        try {
+            const response = await fetch(`/api/seller/${resolvedParams.token}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formState),
+            });
+
+            if (response.ok) {
+                setSubmitted(true);
+            } else {
+                const data = await response.json();
+                setError(data.error || 'Failed to submit form. Please try again.');
+            }
+        } catch (err) {
+            console.error('Failed to submit form:', err);
+            setError('An error occurred. Please try again later.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const completedCount = Object.values(formState.utilities).filter(
@@ -312,95 +358,150 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                     </CardContent>
                 </Card>
 
-                {/* Applicability Toggles */}
+                {/* Utilities Checklist */}
+                <div className="space-y-3">
+                    <p className="text-sm font-semibold text-white px-1">Utilities to confirm</p>
+                    <div className="flex flex-wrap gap-2">
+                        {['electric', 'water', 'sewer', 'trash', 'internet', 'cable'].map((key) => {
+                            const cat = UTILITY_CATEGORIES.find(c => c.key === key);
+                            const isActive = activeCategories.includes(key as UtilityCategory);
+                            const isElectric = key === 'electric';
+
+                            return (
+                                <button
+                                    key={key}
+                                    onClick={() => {
+                                        if (isElectric) return; // Electric is required/pre-selected
+                                        setActiveCategories(prev =>
+                                            isActive
+                                                ? prev.filter(c => c !== key)
+                                                : [...prev, key as UtilityCategory]
+                                        );
+                                    }}
+                                    className={`py-2 px-4 rounded-full border text-sm font-medium transition-all ${isActive
+                                        ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20'
+                                        : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                        } ${isElectric ? 'cursor-default' : 'cursor-pointer'}`}
+                                >
+                                    {cat?.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Fuels Selection */}
                 <Card className="border-zinc-800 bg-zinc-900/50">
-                    <CardContent className="py-4 space-y-4">
-                        <p className="text-sm font-medium text-white">Property Details</p>
-
-                        {/* Water Source */}
-                        <div className="space-y-2">
-                            <p className="text-xs text-zinc-400">Water Source</p>
-                            <div className="flex gap-2">
-                                {(['city', 'well', 'not_sure'] as WaterSource[]).map((option) => (
-                                    <button
-                                        key={option}
-                                        onClick={() => setFormState((prev) => ({ ...prev, water_source: option }))}
-                                        className={`flex-1 py-2 px-3 text-sm rounded-lg border transition-colors ${formState.water_source === option
-                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
-                                            }`}
-                                    >
-                                        {option === 'city' ? 'City' : option === 'well' ? 'Well' : 'Not Sure'}
-                                    </button>
-                                ))}
+                    <CardContent className="py-5 space-y-6">
+                        <div className="space-y-3">
+                            <p className="text-sm font-medium text-white flex items-center gap-2">
+                                <span className="p-1 rounded bg-zinc-800">🔥</span>
+                                Fuels present
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { id: 'natural_gas', label: 'Natural Gas' },
+                                    { id: 'propane', label: 'Propane' },
+                                    { id: 'oil', label: 'Heating Oil' },
+                                    { id: 'electric', label: 'Electric-only (no gas/propane/oil)' },
+                                    { id: 'not_sure', label: 'Not sure' }
+                                ].map((fuel) => {
+                                    const isSelected = formState.fuels_present.includes(fuel.id);
+                                    return (
+                                        <button
+                                            key={fuel.id}
+                                            onClick={() => {
+                                                setFormState(prev => {
+                                                    let next = [...prev.fuels_present];
+                                                    if (isSelected) {
+                                                        next = next.filter(f => f !== fuel.id);
+                                                    } else {
+                                                        // If selecting 'electric' or 'not_sure', clear others
+                                                        if (fuel.id === 'electric' || fuel.id === 'not_sure') {
+                                                            next = [fuel.id];
+                                                        } else {
+                                                            // If selecting a fuel, remove 'electric' and 'not_sure'
+                                                            next = next.filter(f => f !== 'electric' && f !== 'not_sure');
+                                                            next.push(fuel.id);
+                                                        }
+                                                    }
+                                                    return { ...prev, fuels_present: next };
+                                                });
+                                            }}
+                                            className={`py-3 px-3 text-xs text-left rounded-xl border transition-all ${isSelected
+                                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400 font-medium'
+                                                : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                                }`}
+                                        >
+                                            {fuel.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        {/* Sewer Type */}
-                        <div className="space-y-2">
-                            <p className="text-xs text-zinc-400">Sewer System</p>
-                            <div className="flex gap-2">
-                                {(['public', 'septic', 'not_sure'] as SewerType[]).map((option) => (
-                                    <button
-                                        key={option}
-                                        onClick={() => setFormState((prev) => ({ ...prev, sewer_type: option }))}
-                                        className={`flex-1 py-2 px-3 text-sm rounded-lg border transition-colors ${formState.sewer_type === option
-                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
-                                            }`}
-                                    >
-                                        {option === 'public' ? 'Public' : option === 'septic' ? 'Septic' : 'Not Sure'}
-                                    </button>
-                                ))}
+                        {/* Primary Heat Source - only show if multiple fuels or gas/propane/oil selected */}
+                        {(formState.fuels_present.length > 0 && !formState.fuels_present.includes('electric') && !formState.fuels_present.includes('not_sure')) && (
+                            <div className="space-y-3 pt-4 border-t border-zinc-800/50">
+                                <p className="text-sm font-medium text-white">Primary heat source</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {['Gas', 'Propane', 'Oil', 'Electric', 'Not sure'].map((option) => (
+                                        <button
+                                            key={option}
+                                            onClick={() => setFormState(prev => ({ ...prev, primary_heating_type: option }))}
+                                            className={`py-2 px-4 rounded-lg border text-xs transition-colors ${formState.primary_heating_type === option
+                                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                                : 'bg-zinc-800/50 border-zinc-700 text-zinc-500 hover:text-zinc-300'
+                                                }`}
+                                        >
+                                            {option}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-
-                        {/* Heating Type */}
-                        <div className="space-y-2">
-                            <p className="text-xs text-zinc-400">Heating Fuel</p>
-                            <div className="grid grid-cols-3 gap-2">
-                                {(['natural_gas', 'electric', 'not_sure'] as HeatingType[]).map((option) => (
-                                    <button
-                                        key={option}
-                                        onClick={() => setFormState((prev) => ({ ...prev, heating_type: option }))}
-                                        className={`py-2 px-3 text-sm rounded-lg border transition-colors ${formState.heating_type === option
-                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
-                                            }`}
-                                    >
-                                        {option === 'natural_gas' ? 'Gas' : option === 'electric' ? 'Electric' : 'Not Sure'}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        )}
                     </CardContent>
                 </Card>
 
                 {/* Utility Cards */}
-                {requestData.utility_categories.map((category: UtilityCategory) => {
-                    const catInfo = UTILITY_CATEGORIES.find((c) => c.key === category);
-                    const state = formState.utilities[category];
-                    const categorySuggestions = suggestions[category] || [];
-                    const primarySuggestion = categorySuggestions[0];
+                <div className="space-y-4 pt-6">
+                    <div className="flex items-center justify-between px-1">
+                        <p className="text-sm font-semibold text-white">Utility Providers</p>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Confirm each below</p>
+                    </div>
+                    {requestData.utility_categories.map((category: UtilityCategory) => {
+                        const catInfo = UTILITY_CATEGORIES.find((c) => c.key === category);
+                        const state = formState.utilities[category];
+                        const categorySuggestions = suggestions[category] || [];
+                        const primarySuggestion = categorySuggestions[0];
 
-                    if (state?.hidden) return null;
+                        if (state?.hidden) return null;
 
-                    return (
-                        <UtilityCard
-                            key={category}
-                            category={category}
-                            label={catInfo?.label || category}
-                            icon={catInfo?.icon || '⚡'}
-                            state={state}
-                            primarySuggestion={primarySuggestion}
-                            onConfirm={() => primarySuggestion && handleConfirm(category, primarySuggestion)}
-                            onNotSure={() => handleNotSure(category)}
-                            onSelectProvider={(name) => handleSelectProvider(category, name)}
-                            onFreeText={(text) => handleFreeText(category, text)}
-                            onReset={() => resetCategory(category)}
-                        />
-                    );
-                })}
+                        return (
+                            <UtilityCard
+                                key={category}
+                                category={category}
+                                label={catInfo?.label || category}
+                                icon={catInfo?.icon || '⚡'}
+                                state={state}
+                                primarySuggestion={primarySuggestion}
+                                onConfirm={() => primarySuggestion && handleConfirm(category, primarySuggestion)}
+                                onNotSure={() => handleNotSure(category)}
+                                onSelectProvider={(name) => handleSelectProvider(category, name)}
+                                onFreeText={(text) => handleFreeText(category, text)}
+                                onReset={() => resetCategory(category)}
+                                extra={state?.extra}
+                                onUpdateExtra={(extra) => setFormState(prev => ({
+                                    ...prev,
+                                    utilities: {
+                                        ...prev.utilities,
+                                        [category]: { ...prev.utilities[category], extra }
+                                    }
+                                }))}
+                            />
+                        );
+                    })}
+                </div>
 
                 {/* Submit Button */}
                 <div className="sticky bottom-0 py-4 bg-gradient-to-t from-zinc-950 to-transparent">
@@ -442,6 +543,8 @@ interface UtilityCardProps {
     onSelectProvider: (name: string) => void;
     onFreeText: (text: string) => void;
     onReset: () => void;
+    extra?: Record<string, any>;
+    onUpdateExtra?: (extra: Record<string, any>) => void;
 }
 
 function UtilityCard({
@@ -455,8 +558,11 @@ function UtilityCard({
     onSelectProvider,
     onFreeText,
     onReset,
+    extra,
+    onUpdateExtra,
 }: UtilityCardProps) {
     const [showSearch, setShowSearch] = useState(false);
+    const [showExtra, setShowExtra] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<ProviderSuggestion[]>([]);
     const [searching, setSearching] = useState(false);
@@ -503,17 +609,17 @@ function UtilityCard({
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-3 border-zinc-700 text-zinc-400 hover:text-white"
+                                onClick={onReset}
+                            >
+                                Edit
+                            </Button>
                             <div className="p-1 rounded-full bg-emerald-500/20">
                                 <Check className="h-4 w-4 text-emerald-400" />
                             </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-zinc-500 hover:text-white"
-                                onClick={onReset}
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
                         </div>
                     </div>
                 </CardContent>
@@ -595,55 +701,155 @@ function UtilityCard({
                     <p className="font-medium text-white">{label}</p>
                 </div>
 
-                {primarySuggestion ? (
+                {category === 'trash' && !state.entry_mode && (
+                    <div className="space-y-4 mb-4">
+                        <p className="text-sm text-zinc-400">Trash is handled by:</p>
+                        <div className="grid grid-cols-1 gap-2">
+                            {[
+                                { id: 'municipal', label: 'Municipal / HOA (Included)', icon: '🏛️' },
+                                { id: 'private', label: 'Private Hauler (I pay a bill)', icon: '🚛' },
+                                { id: 'not_sure', label: 'Not sure', icon: '❓' }
+                            ].map((option) => (
+                                <button
+                                    key={option.id}
+                                    onClick={() => {
+                                        onUpdateExtra?.({ ...extra, trash_type: option.id });
+                                        if (option.id === 'municipal') {
+                                            onSelectProvider('Municipal/HOA');
+                                        }
+                                    }}
+                                    className={`w-full flex items-center justify-between py-3 px-4 rounded-xl border transition-all ${extra?.trash_type === option.id
+                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400 font-medium'
+                                        : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                        }`}
+                                >
+                                    <span>{option.label}</span>
+                                    <span>{option.icon}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {(category !== 'trash' || (category === 'trash' && extra?.trash_type === 'private' && !state.entry_mode)) && (
                     <>
-                        <div className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
-                            <p className="text-sm text-zinc-400 mb-1">We think your provider is:</p>
-                            <p className="text-lg font-medium text-white">{primarySuggestion.display_name}</p>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                            <Button
-                                onClick={onConfirm}
-                                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30"
-                            >
-                                <Check className="mr-1 h-4 w-4" />
-                                Confirm
-                            </Button>
-                            <Button
-                                onClick={() => setShowSearch(true)}
-                                variant="outline"
-                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-                            >
-                                Not This
-                            </Button>
-                            <Button
-                                onClick={onNotSure}
-                                variant="outline"
-                                className="border-zinc-700 text-zinc-400 hover:bg-zinc-800"
-                            >
-                                <HelpCircle className="mr-1 h-4 w-4" />
-                                Unsure
-                            </Button>
-                        </div>
+                        {primarySuggestion ? (
+                            <>
+                                <div className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                                    <p className="text-sm text-zinc-400 mb-1">We think your provider is:</p>
+                                    <p className="text-lg font-medium text-white">{primarySuggestion.display_name}</p>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button
+                                        onClick={onConfirm}
+                                        className="bg-emerald-500 text-white rounded-lg py-2.5 px-2 text-xs font-semibold shadow-lg shadow-emerald-500/20 active:scale-95 transition-transform"
+                                    >
+                                        Confirm
+                                    </button>
+                                    <button
+                                        onClick={() => setShowSearch(true)}
+                                        className="bg-zinc-800 text-zinc-300 border border-zinc-700 rounded-lg py-2.5 px-2 text-xs font-medium active:scale-95 transition-transform"
+                                    >
+                                        Not This
+                                    </button>
+                                    <button
+                                        onClick={onNotSure}
+                                        className="bg-zinc-800 text-zinc-400 border border-zinc-700 rounded-lg py-2.5 px-2 text-xs font-medium active:scale-95 transition-transform"
+                                    >
+                                        Unsure
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                    onClick={() => setShowSearch(true)}
+                                    variant="outline"
+                                    className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 text-sm"
+                                >
+                                    <Search className="mr-2 h-4 w-4" />
+                                    Search
+                                </Button>
+                                <Button
+                                    onClick={onNotSure}
+                                    variant="outline"
+                                    className="border-zinc-700 text-zinc-400 hover:bg-zinc-800 text-sm"
+                                >
+                                    <HelpCircle className="mr-2 h-4 w-4" />
+                                    Not Sure
+                                </Button>
+                            </div>
+                        )}
                     </>
-                ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                        <Button
-                            onClick={() => setShowSearch(true)}
-                            variant="outline"
-                            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                )}
+
+                {/* Extra fields for specific utilities */}
+                {(category === 'propane' || category === 'oil' || (category === 'trash' && extra?.trash_type === 'private')) && (
+                    <div className="pt-2 border-t border-zinc-800/50 mt-4">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowExtra(!showExtra);
+                            }}
+                            className="flex items-center text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
                         >
-                            <Search className="mr-2 h-4 w-4" />
-                            Search Provider
-                        </Button>
-                        <Button
-                            onClick={onNotSure}
-                            variant="outline"
-                            className="border-zinc-700 text-zinc-400 hover:bg-zinc-800"
-                        >
-                            <HelpCircle className="mr-2 h-4 w-4" />
-                            Not Sure
-                        </Button>
+                            <ChevronDown className={`mr-1 h-3 w-3 transition-transform ${showExtra ? 'rotate-180' : ''}`} />
+                            More details
+                        </button>
+
+                        {showExtra && (
+                            <div className="mt-3 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                {category === 'propane' && (
+                                    <div className="space-y-2">
+                                        <p className="text-xs text-zinc-400">Tank Ownership</p>
+                                        <div className="flex gap-2">
+                                            {['Owned', 'Leased', 'Unsure'].map((option) => (
+                                                <button
+                                                    key={option}
+                                                    onClick={() => onUpdateExtra?.({ ...extra, tank: option })}
+                                                    className={`flex-1 py-1.5 px-2 text-xs rounded-md border transition-colors ${extra?.tank === option
+                                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                                        : 'bg-zinc-800/50 border-zinc-700 text-zinc-400'
+                                                        }`}
+                                                >
+                                                    {option}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {category === 'oil' && (
+                                    <div className="space-y-2">
+                                        <p className="text-xs text-zinc-400">Auto-delivery plan?</p>
+                                        <div className="flex gap-2">
+                                            {['Yes', 'No', 'Unsure'].map((option) => (
+                                                <button
+                                                    key={option}
+                                                    onClick={() => onUpdateExtra?.({ ...extra, auto_delivery: option })}
+                                                    className={`flex-1 py-1.5 px-2 text-xs rounded-md border transition-colors ${extra?.auto_delivery === option
+                                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
+                                                        : 'bg-zinc-800/50 border-zinc-700 text-zinc-400'
+                                                        }`}
+                                                >
+                                                    {option}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    <p className="text-xs text-zinc-400">Notes (optional)</p>
+                                    <Input
+                                        placeholder="Add any additional details..."
+                                        value={extra?.notes || ''}
+                                        onChange={(e) => onUpdateExtra?.({ ...extra, notes: e.target.value })}
+                                        className="h-8 text-xs bg-zinc-800/50 border-zinc-700 text-zinc-300"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </CardContent>
