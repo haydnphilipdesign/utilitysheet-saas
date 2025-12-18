@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getOrCreateAccount } from '@/lib/neon/queries';
 
 // GET /api/requests - Get all requests for the current user
 export async function GET(request: Request) {
     try {
         // TODO: Get real account ID from auth session
-        // For now, use a demo account ID
-        const accountId = 'demo-account';
+        // For now, use a demo account
+        const account = await getOrCreateAccount('demo-user', 'demo@utilitysheet.com', 'Demo User');
+        if (!account) {
+            return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
+        }
+        const accountId = account.id;
 
         const url = new URL(request.url);
         const stats = url.searchParams.get('stats');
@@ -30,7 +34,11 @@ export async function POST(request: Request) {
         const body = await request.json();
 
         // TODO: Get real account ID from auth session
-        const accountId = 'demo-account';
+        const account = await getOrCreateAccount('demo-user', 'demo@utilitysheet.com', 'Demo User');
+        if (!account) {
+            return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
+        }
+        const accountId = account.id;
 
         const newRequest = await createRequest({
             accountId,

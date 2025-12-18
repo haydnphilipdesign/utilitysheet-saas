@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getBrandProfiles, createBrandProfile } from '@/lib/neon/queries';
+import { getBrandProfiles, createBrandProfile, getOrCreateAccount } from '@/lib/neon/queries';
 
 // GET /api/branding - Get all brand profiles
 export async function GET() {
     try {
         // TODO: Get real account ID from auth session
-        const accountId = 'demo-account';
+        const account = await getOrCreateAccount('demo-user', 'demo@utilitysheet.com', 'Demo User');
+        if (!account) {
+            return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
+        }
+        const accountId = account.id;
 
         const profiles = await getBrandProfiles(accountId);
         return NextResponse.json(profiles);
@@ -21,7 +25,11 @@ export async function POST(request: Request) {
         const body = await request.json();
 
         // TODO: Get real account ID from auth session
-        const accountId = 'demo-account';
+        const account = await getOrCreateAccount('demo-user', 'demo@utilitysheet.com', 'Demo User');
+        if (!account) {
+            return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
+        }
+        const accountId = account.id;
 
         const profile = await createBrandProfile({
             accountId,
