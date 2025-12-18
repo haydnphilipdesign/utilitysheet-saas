@@ -32,7 +32,7 @@ export function FaqSection() {
             <div className="mx-auto max-w-3xl">
                 <h2 className="text-3xl font-bold text-white text-center mb-12">Frequently Asked Questions</h2>
 
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion className="w-full">
                     {faqs.map((faq, i) => (
                         <AccordionItem key={i} value={`item-${i}`} className="border-zinc-800">
                             <AccordionTrigger className="text-lg text-zinc-200 hover:text-emerald-400 transition-colors text-left">
