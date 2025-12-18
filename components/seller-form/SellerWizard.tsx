@@ -66,69 +66,66 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token }: 
 
     const [visibleUtilities, setVisibleUtilities] = useState<UtilityCategory[]>([]);
 
-    // Initialize utilities based on request data
+    // Calculate visible utilities based on state
     useEffect(() => {
-        const initialUtilities: Record<string, UtilityWizardState> = {};
-        // Start with requested categories
-        let cats = [...initialRequestData.utility_categories];
+        const nextUtilities: UtilityCategory[] = ['electric']; // Always include electric
 
-        // Ensure electric is always there if not present
-        if (!cats.includes('electric')) cats.unshift('electric');
+        // Water - if public (city)
+        if (state.water_source === 'city') {
+            nextUtilities.push('water');
+        }
 
-        cats.forEach(cat => {
-            initialUtilities[cat] = {
-                entry_mode: null,
-                display_name: null,
-                raw_text: null,
-                hidden: false
-            };
-        });
-        setState(prev => ({ ...prev, utilities: initialUtilities as any }));
-        setVisibleUtilities(cats as UtilityCategory[]);
-    }, [initialRequestData]);
+        // Sewer - if public
+        if (state.sewer_type === 'public') {
+            nextUtilities.push('sewer');
+        }
 
-    // Recalculate visible utilities when fuels change
-    useEffect(() => {
-        const fuelCats: UtilityCategory[] = ['gas', 'propane', 'oil'];
-        const activeFuels = state.fuels_present.map(f => f === 'natural_gas' ? 'gas' : f);
+        // Fuels
+        const fuelMap: Record<string, UtilityCategory> = {
+            'natural_gas': 'gas',
+            'propane': 'propane',
+            'oil': 'oil'
+        };
 
-        let newVisible = [...visibleUtilities];
-
-        // Add fuel categories if present
-        activeFuels.forEach(fuel => {
-            if (fuelCats.includes(fuel as any) && !newVisible.includes(fuel as any)) {
-                newVisible.push(fuel as any);
+        state.fuels_present.forEach(fuel => {
+            const mapped = fuelMap[fuel];
+            if (mapped) {
+                nextUtilities.push(mapped);
             }
         });
 
-        // Remove fuel categories if NOT present
-        newVisible = newVisible.filter(cat => {
-            if (fuelCats.includes(cat)) {
-                // Keep if in activeFuels
-                const correspondingFuelId = cat === 'gas' ? 'natural_gas' : cat;
-                return state.fuels_present.includes(correspondingFuelId);
-            }
-            return true;
-        });
+        // Trash - preserve if it was in the initial request (or default)
+        if (initialRequestData.utility_categories.includes('trash')) {
+            nextUtilities.push('trash');
+        }
 
-        // Ensure utilities state object has keys for new visible utilities
+        // Remove duplicates and set
+        const uniqueUtils = Array.from(new Set(nextUtilities));
+
+        // Update visible utilities
+        setVisibleUtilities(uniqueUtils);
+
+        // Ensure state exists for all visible utilities
         setState(prev => {
-            const nextUtilities = { ...prev.utilities };
-            newVisible.forEach(cat => {
-                if (!nextUtilities[cat]) {
-                    nextUtilities[cat] = {
+            const nextUtilitiesState = { ...prev.utilities };
+            let hasChanges = false;
+
+            uniqueUtils.forEach(cat => {
+                if (!nextUtilitiesState[cat]) {
+                    nextUtilitiesState[cat] = {
                         entry_mode: null,
                         display_name: null,
                         raw_text: null,
                         hidden: false
                     };
+                    hasChanges = true;
                 }
             });
-            return { ...prev, utilities: nextUtilities };
+
+            return hasChanges ? { ...prev, utilities: nextUtilitiesState } : prev;
         });
 
-        setVisibleUtilities(newVisible);
-    }, [state.fuels_present]);
+    }, [state.water_source, state.sewer_type, state.fuels_present, initialRequestData.utility_categories]);
 
     const totalUtilities = visibleUtilities.length;
     // Simplify progress: Welcome(0.5) + Basics(1) + Each Util(1) + Review(1)

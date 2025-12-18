@@ -36,7 +36,7 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {[
-                        { id: 'public', label: 'Public Water' },
+                        { id: 'city', label: 'Public Water' },
                         { id: 'well', label: 'Private Well' },
                         { id: 'condo', label: 'HOA / Condo' }
                     ].map((opt) => (
@@ -156,8 +156,8 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                                     key={fuelId}
                                     onClick={() => updateState({ primary_heating_type: fuelId })}
                                     className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${state.primary_heating_type === fuelId
-                                            ? 'bg-emerald-500 text-white border-emerald-500'
-                                            : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/10'
+                                        ? 'bg-emerald-500 text-white border-emerald-500'
+                                        : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/10'
                                         }`}
                                 >
                                     {label}
