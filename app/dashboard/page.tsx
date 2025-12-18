@@ -220,24 +220,39 @@ export default function DashboardPage() {
                                                                 <Copy className="mr-2 h-4 w-4" />
                                                                 Copy seller link
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer">
+                                                            <DropdownMenuItem
+                                                                className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                                onClick={() => window.open(`/s/${request.public_token}`, '_blank')}
+                                                            >
                                                                 <Eye className="mr-2 h-4 w-4" />
                                                                 View details
                                                             </DropdownMenuItem>
                                                             {request.status === 'submitted' && (
                                                                 <>
-                                                                    <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer">
+                                                                    <DropdownMenuItem
+                                                                        className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                                        onClick={() => window.open(`/packet/${request.public_token}`, '_blank')}
+                                                                    >
                                                                         <ExternalLink className="mr-2 h-4 w-4" />
                                                                         View packet
                                                                     </DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer">
+                                                                    <DropdownMenuItem
+                                                                        className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                                        onClick={() => window.open(`/packet/${request.public_token}`, '_blank')}
+                                                                    >
                                                                         <Download className="mr-2 h-4 w-4" />
                                                                         Download PDF
                                                                     </DropdownMenuItem>
                                                                 </>
                                                             )}
                                                             {['sent', 'in_progress'].includes(request.status) && (
-                                                                <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer">
+                                                                <DropdownMenuItem
+                                                                    className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                                    onClick={() => {
+                                                                        // TODO: Implement reminder functionality
+                                                                        console.log('Sending reminder to:', request.seller_name);
+                                                                    }}
+                                                                >
                                                                     <Mail className="mr-2 h-4 w-4" />
                                                                     Send reminder
                                                                 </DropdownMenuItem>
