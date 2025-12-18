@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getRequestByToken } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import type { UtilityEntry } from '@/types';
+import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 
 // GET /api/seller/[token] - Get request data for seller form
 export async function GET(
@@ -34,10 +35,17 @@ export async function GET(
             utilityEntries = entries as UtilityEntry[];
         }
 
+        // Get AI suggestions for each category
+        const suggestions = await getAllSuggestions(
+            requestData.property_address,
+            (requestData as any).utility_categories || ['electric', 'gas', 'water', 'sewer', 'trash']
+        );
+
         return NextResponse.json({
             request: requestData,
             brandProfile,
             utilityEntries,
+            suggestions,
         });
     } catch (error) {
         console.error('Error fetching seller data:', error);

@@ -155,12 +155,41 @@ export async function getAllSuggestions(
 }
 
 /**
- * Search providers by name (for autocomplete)
+ * Search providers by name (for autocomplete) using Gemini AI
  */
 export async function searchProviders(
     query: string,
     category?: UtilityCategory
 ): Promise<ProviderSuggestion[]> {
-    // Canonical search removed - could be replaced with AI search if needed
-    return [];
+    if (!isGeminiConfigured() || query.length < 2) {
+        return [];
+    }
+
+    const prompt = `You are an expert on utility providers in the United States.
+    
+    A user is searching for a utility provider. 
+    Query: "${query}"
+    ${category ? `Expected Category: ${category}` : ''}
+
+    Find the most likely official utility providers matching this query. 
+    Respond with a JSON array of up to 5 provider suggestions. Each suggestion should have:
+    - display_name: The official name of the utility provider
+    - confidence: A number between 0 and 1 indicating how confident you are this is a real and relevant provider
+    - rationale_short: A brief explanation of who they are/where they serve
+
+    Respond ONLY with the JSON array, no additional text.`;
+
+    const result = await generateJSON<ProviderSuggestion[]>(prompt);
+
+    if (!result || !Array.isArray(result)) {
+        return [];
+    }
+
+    return result
+        .filter(s => s.display_name && typeof s.confidence === 'number')
+        .map(s => ({
+            display_name: s.display_name,
+            confidence: Math.max(0, Math.min(1, s.confidence)),
+            rationale_short: s.rationale_short || (category ? `${category} provider` : 'Utility provider'),
+        }));
 }

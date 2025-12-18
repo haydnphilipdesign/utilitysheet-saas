@@ -20,7 +20,8 @@ import {
 import { Check, X, HelpCircle, ChevronDown, Loader2, Search, Zap, AlertTriangle } from 'lucide-react';
 import type { UtilityCategory, ProviderSuggestion, ProviderEntryMode, WaterSource, SewerType, HeatingType } from '@/types';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
-import { getAllSuggestions, searchProviders } from '@/lib/providers/suggestion-service';
+// Suggestion service only used server-side now
+// import { getAllSuggestions, searchProviders } from '@/lib/providers/suggestion-service';
 
 interface UtilityState {
     entry_mode: ProviderEntryMode | null;
@@ -84,6 +85,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 };
 
                 setRequestData(reqData);
+                setSuggestions(data.suggestions || {});
 
                 // Initialize form state with utility categories
                 setFormState(prev => ({
@@ -94,12 +96,6 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                     }, {} as Record<UtilityCategory, UtilityState>),
                 }));
 
-                // Fetch suggestions for all categories
-                const suggestionResult = await getAllSuggestions(
-                    reqData.property_address,
-                    reqData.utility_categories
-                );
-                setSuggestions(suggestionResult);
             } catch (err) {
                 console.error('Failed to load request data:', err);
                 setError('Failed to load request. Please try again later.');
@@ -473,9 +469,17 @@ function UtilityCard({
 
         const timer = setTimeout(async () => {
             setSearching(true);
-            const results = await searchProviders(searchQuery, category);
-            setSearchResults(results);
-            setSearching(false);
+            try {
+                const response = await fetch(`/api/suggestions/search?query=${encodeURIComponent(searchQuery)}&category=${category}`);
+                if (response.ok) {
+                    const results = await response.json();
+                    setSearchResults(results);
+                }
+            } catch (err) {
+                console.error('Search failed:', err);
+            } finally {
+                setSearching(false);
+            }
         }, 300);
 
         return () => clearTimeout(timer);
