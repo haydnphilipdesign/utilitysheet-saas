@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrCreateAccount, getAccountOrganizations, updateAccount } from '@/lib/neon/queries';
+import { getOrCreateAccount, getAccountOrganizations, updateAccount, getMonthlyUsage } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 
 export async function GET() {
@@ -17,11 +17,16 @@ export async function GET() {
         const organizations = await getAccountOrganizations(account.id);
         const activeOrg = organizations.find((o: any) => o.id === account.active_organization_id);
 
+        // Get monthly usage for the current billing period
+        const usage = await getMonthlyUsage(account.id, activeOrg?.id);
+
         return NextResponse.json({
             account,
             organizations,
-            activeOrganization: activeOrg || null
+            activeOrganization: activeOrg || null,
+            usage
         });
+
     } catch (error) {
         console.error('Error fetching account:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

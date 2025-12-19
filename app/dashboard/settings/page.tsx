@@ -22,6 +22,12 @@ export default function SettingsPage() {
         contact_resolution: true,
         weekly_summary: false,
     });
+    const [usage, setUsage] = useState({
+        used: 0,
+        limit: 3,
+        plan: 'free'
+    });
+
 
     // Update profile when Stack user loads, but prefer fetching from DB
     useEffect(() => {
@@ -37,6 +43,9 @@ export default function SettingsPage() {
                         });
                         if (data.account.notification_preferences) {
                             setNotifications(prev => ({ ...prev, ...data.account.notification_preferences }));
+                        }
+                        if (data.usage) {
+                            setUsage(data.usage);
                         }
                         return;
                     }
@@ -202,15 +211,39 @@ export default function SettingsPage() {
                         Manage your plan and billing
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
                         <div>
-                            <p className="text-white font-medium">Free Plan</p>
-                            <p className="text-sm text-zinc-400">3 requests per month</p>
+                            <p className="text-white font-medium capitalize">{usage.plan === 'free' ? 'Free Plan' : usage.plan}</p>
+                            <p className="text-sm text-zinc-400">{usage.limit} requests per month</p>
                         </div>
                         <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white">
                             Upgrade
                         </Button>
+                    </div>
+
+                    {/* Usage Progress */}
+                    <div className="p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm text-zinc-300">Monthly Usage</p>
+                            <p className="text-sm font-medium text-white">{usage.used} of {usage.limit} requests</p>
+                        </div>
+                        <div className="w-full h-2 bg-zinc-700 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all ${usage.used >= usage.limit
+                                        ? 'bg-red-500'
+                                        : usage.used >= usage.limit * 0.8
+                                            ? 'bg-yellow-500'
+                                            : 'bg-emerald-500'
+                                    }`}
+                                style={{ width: `${Math.min((usage.used / usage.limit) * 100, 100)}%` }}
+                            />
+                        </div>
+                        {usage.used >= usage.limit && (
+                            <p className="text-sm text-red-400 mt-2">
+                                You've reached your monthly limit. Upgrade to continue creating requests.
+                            </p>
+                        )}
                     </div>
                 </CardContent>
             </Card>

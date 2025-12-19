@@ -431,3 +431,39 @@ export async function setActiveOrganization(accountId: string, organizationId: s
   return result[0];
 }
 
+// Get monthly usage for an account (counts requests created this month)
+export async function getMonthlyUsage(accountId: string, organizationId?: string): Promise<{ used: number; limit: number; plan: string }> {
+  if (!sql) return { used: 0, limit: 3, plan: 'free' };
+
+  // Count requests created in the current calendar month
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const query = organizationId
+    ? sql`
+        SELECT COUNT(*) as count 
+        FROM requests 
+        WHERE organization_id = ${organizationId}
+          AND created_at >= ${startOfMonth.toISOString()}
+      `
+    : sql`
+        SELECT COUNT(*) as count 
+        FROM requests 
+        WHERE account_id = ${accountId} 
+          AND organization_id IS NULL
+          AND created_at >= ${startOfMonth.toISOString()}
+      `;
+
+  const result = await query;
+  const used = Number(result[0]?.count) || 0;
+
+  // TODO: Fetch actual plan from account/subscription table when billing is implemented
+  // For now, free plan = 3 requests per month
+  return {
+    used,
+    limit: 3,
+    plan: 'free'
+  };
+}
+
