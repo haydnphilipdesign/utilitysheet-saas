@@ -273,8 +273,23 @@ export async function getOrCreateAccount(authUserId: string, email: string, full
 
   // Create new account
   result = await sql`
-    INSERT INTO accounts (auth_user_id, email, full_name)
-    VALUES (${authUserId}, ${email}, ${fullName || null})
+    INSERT INTO accounts (auth_user_id, email, full_name, notification_preferences)
+    VALUES (${authUserId}, ${email}, ${fullName || null}, '{}'::jsonb)
+    RETURNING *
+  `;
+
+
+  return result[0] || null;
+}
+
+export async function updateAccount(accountId: string, data: { fullName?: string, notificationPreferences?: any }) {
+  if (!sql) return null;
+
+  const result = await sql`
+    UPDATE accounts
+    SET full_name = COALESCE(${data.fullName}, full_name),
+        notification_preferences = COALESCE(${data.notificationPreferences}, notification_preferences)
+    WHERE id = ${accountId}
     RETURNING *
   `;
 
