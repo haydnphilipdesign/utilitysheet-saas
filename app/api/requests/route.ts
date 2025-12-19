@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getRequests, createRequest, getDashboardStats, getOrCreateAccount } from '@/lib/neon/queries';
+import { stackServerApp } from '@/lib/stack/server';
 
+// GET /api/requests - Get all requests for the current user
 // GET /api/requests - Get all requests for the current user
 export async function GET(request: Request) {
     try {
-        // TODO: Get real account ID from auth session
-        // For now, use a demo account
-        const account = await getOrCreateAccount('demo-user', 'demo@utilitysheet.com', 'Demo User');
+        const user = await stackServerApp.getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
         if (!account) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
@@ -32,10 +37,14 @@ export async function GET(request: Request) {
 // POST /api/requests - Create a new request
 export async function POST(request: Request) {
     try {
+        const user = await stackServerApp.getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
 
-        // TODO: Get real account ID from auth session
-        const account = await getOrCreateAccount('demo-user', 'demo@utilitysheet.com', 'Demo User');
+        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
         if (!account) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }

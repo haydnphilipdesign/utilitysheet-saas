@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Palette, Star, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Palette, Star, MoreHorizontal, Pencil, Trash2, Loader2, RefreshCcw } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,45 +13,89 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { BrandProfile } from '@/types';
-
-// Mock data
-const mockBrands: BrandProfile[] = [
-    {
-        id: '1',
-        account_id: '1',
-        organization_id: null,
-        name: 'Haydn Real Estate Group',
-        logo_url: null,
-        primary_color: '#10b981',
-        secondary_color: '#059669',
-        contact_name: 'Haydn Watters',
-        contact_phone: '(555) 123-4567',
-        contact_email: 'haydn@haydnrealty.com',
-        contact_website: 'haydnrealty.com',
-        disclaimer_text: null,
-        is_default: true,
-        created_at: '2024-01-01T00:00:00Z',
-    },
-    {
-        id: '2',
-        account_id: '1',
-        organization_id: null,
-        name: 'Charlotte Homes Team',
-        logo_url: null,
-        primary_color: '#3b82f6',
-        secondary_color: '#2563eb',
-        contact_name: 'Sarah Johnson',
-        contact_phone: '(555) 987-6543',
-        contact_email: 'sarah@charlottehomes.com',
-        contact_website: 'charlottehomes.com',
-        disclaimer_text: null,
-        is_default: false,
-        created_at: '2024-01-15T00:00:00Z',
-    },
-];
+import { toast } from 'sonner';
 
 export default function BrandingPage() {
-    const [brands] = useState<BrandProfile[]>(mockBrands);
+    const [brands, setBrands] = useState<BrandProfile[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchBrands = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/branding');
+            if (response.ok) {
+                const data = await response.json();
+                setBrands(data);
+            } else {
+                toast.error('Failed to fetch brand profiles');
+            }
+        } catch (error) {
+            console.error('Error fetching brands:', error);
+            toast.error('Error fetching brand profiles');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchBrands();
+    }, []);
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this profile?')) return;
+
+        try {
+            const response = await fetch(`/api/branding/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                toast.success('Profile deleted successfully');
+                fetchBrands();
+            } else {
+                const error = await response.json();
+                toast.error(error.error || 'Failed to delete profile');
+            }
+        } catch (error) {
+            console.error('Error deleting profile:', error);
+            toast.error('Error deleting profile');
+        }
+    };
+
+    const handleSetDefault = async (profile: BrandProfile) => {
+        try {
+            // We use the update endpoint to set as default
+            const response = await fetch(`/api/branding/${profile.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...profile,
+                    is_default: true
+                }),
+            });
+
+            if (response.ok) {
+                toast.success('Default profile updated');
+                fetchBrands();
+            } else {
+                const error = await response.json();
+                toast.error(error.error || 'Failed to update default profile');
+            }
+        } catch (error) {
+            console.error('Error setting default:', error);
+            toast.error('Error setting default profile');
+        }
+    };
+
+    if (loading && brands.length === 0) {
+        return (
+            <div className="flex h-96 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-8">
@@ -81,7 +125,7 @@ export default function BrandingPage() {
                                         className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold"
                                         style={{ backgroundColor: brand.primary_color }}
                                     >
-                                        {brand.name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                                        {brand.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                                     </div>
                                     <div>
                                         <CardTitle className="text-white text-lg flex items-center gap-2">
@@ -94,7 +138,7 @@ export default function BrandingPage() {
                                             )}
                                         </CardTitle>
                                         <CardDescription className="text-zinc-400">
-                                            {brand.contact_name}
+                                            {brand.contact_name || 'No contact name'}
                                         </CardDescription>
                                     </div>
                                 </div>
@@ -103,17 +147,25 @@ export default function BrandingPage() {
                                         <MoreHorizontal className="h-4 w-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
-                                        <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer">
-                                            <Pencil className="mr-2 h-4 w-4" />
-                                            Edit
-                                        </DropdownMenuItem>
-                                        {!brand.is_default && (
+                                        <Link href={`/dashboard/branding/${brand.id}`}>
                                             <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer">
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                Edit
+                                            </DropdownMenuItem>
+                                        </Link>
+                                        {!brand.is_default && (
+                                            <DropdownMenuItem
+                                                className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                onClick={() => handleSetDefault(brand)}
+                                            >
                                                 <Star className="mr-2 h-4 w-4" />
                                                 Set as Default
                                             </DropdownMenuItem>
                                         )}
-                                        <DropdownMenuItem className="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer">
+                                        <DropdownMenuItem
+                                            className="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
+                                            onClick={() => handleDelete(brand.id)}
+                                        >
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Delete
                                         </DropdownMenuItem>
@@ -125,11 +177,11 @@ export default function BrandingPage() {
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-zinc-500">Email</span>
-                                    <span className="text-zinc-300">{brand.contact_email}</span>
+                                    <span className="text-zinc-300">{brand.contact_email || '-'}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-zinc-500">Phone</span>
-                                    <span className="text-zinc-300">{brand.contact_phone}</span>
+                                    <span className="text-zinc-300">{brand.contact_phone || '-'}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-zinc-500">Colors</span>

@@ -239,6 +239,83 @@ export async function getBrandProfile(id: string): Promise<BrandProfile | null> 
   return result[0] as BrandProfile || null;
 }
 
+// Update a brand profile
+export async function updateBrandProfile(
+  id: string,
+  data: Partial<Omit<BrandProfile, 'id' | 'account_id' | 'organization_id' | 'created_at'>> & {
+    accountId?: string;
+    organizationId?: string;
+  }
+): Promise<BrandProfile | null> {
+  if (!sql) return null;
+
+  // If setting as default, unset other defaults first
+  if (data.is_default) {
+    // We need to know who owns this to unset others
+    if (data.organizationId) {
+      await sql`
+        UPDATE brand_profiles 
+        SET is_default = FALSE 
+        WHERE organization_id = ${data.organizationId} AND id != ${id}
+      `;
+    } else if (data.accountId) {
+      await sql`
+        UPDATE brand_profiles 
+        SET is_default = FALSE 
+        WHERE account_id = ${data.accountId} AND organization_id IS NULL AND id != ${id}
+      `;
+    } else {
+      // Fallback: fetch the profile to check ownership if not passed
+      // For efficiency we might want to pass context, but let's do a safe check
+      const currentCheck = await sql`SELECT account_id, organization_id FROM brand_profiles WHERE id = ${id}`;
+      if (currentCheck.length > 0) {
+        if (currentCheck[0].organization_id) {
+          await sql`
+                    UPDATE brand_profiles 
+                    SET is_default = FALSE 
+                    WHERE organization_id = ${currentCheck[0].organization_id} AND id != ${id}
+                `;
+        } else {
+          await sql`
+                    UPDATE brand_profiles 
+                    SET is_default = FALSE 
+                    WHERE account_id = ${currentCheck[0].account_id} AND organization_id IS NULL AND id != ${id}
+                `;
+        }
+      }
+    }
+  }
+
+  const result = await sql`
+    UPDATE brand_profiles
+    SET
+      name = COALESCE(${data.name}, name),
+      primary_color = COALESCE(${data.primary_color}, primary_color),
+      secondary_color = COALESCE(${data.secondary_color}, secondary_color),
+      contact_name = COALESCE(${data.contact_name}, contact_name),
+      contact_phone = COALESCE(${data.contact_phone}, contact_phone),
+      contact_email = COALESCE(${data.contact_email}, contact_email),
+      contact_website = COALESCE(${data.contact_website}, contact_website),
+      disclaimer_text = COALESCE(${data.disclaimer_text}, disclaimer_text),
+      is_default = COALESCE(${data.is_default}, is_default)
+    WHERE id = ${id}
+    RETURNING *
+  `;
+
+  return result[0] as BrandProfile || null;
+}
+
+// Delete a brand profile
+export async function deleteBrandProfile(id: string): Promise<boolean> {
+  if (!sql) return false;
+
+  const result = await sql`
+    DELETE FROM brand_profiles WHERE id = ${id} RETURNING id
+  `;
+
+  return result.length > 0;
+}
+
 // Get utility entries for a request
 export async function getUtilityEntriesByRequestId(requestId: string): Promise<any[]> {
   if (!sql) return [];
