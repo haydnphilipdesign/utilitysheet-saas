@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useUser } from '@stackframe/stack';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,11 +10,22 @@ import { Separator } from '@/components/ui/separator';
 import { Settings, User, Bell, CreditCard, Loader2, Save } from 'lucide-react';
 
 export default function SettingsPage() {
+    const stackUser = useUser();
     const [loading, setLoading] = useState(false);
     const [profile, setProfile] = useState({
-        full_name: 'Haydn Watters',
-        email: 'haydn@example.com',
+        full_name: '',
+        email: '',
     });
+
+    // Update profile when Stack user loads
+    useEffect(() => {
+        if (stackUser) {
+            setProfile({
+                full_name: stackUser.displayName || '',
+                email: stackUser.primaryEmail || '',
+            });
+        }
+    }, [stackUser]);
 
     const handleSave = async () => {
         setLoading(true);
