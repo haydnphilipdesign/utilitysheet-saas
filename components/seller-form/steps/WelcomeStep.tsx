@@ -16,7 +16,7 @@ export function WelcomeStep({ address, onNext }: WelcomeStepProps) {
             exit={{ opacity: 0, y: -20 }}
             className="flex flex-col items-center justify-center flex-1 text-center space-y-8"
         >
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/10 flex items-center justify-center ring-1 ring-white/10 backdrop-blur-md">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/10 flex items-center justify-center ring-1 ring-border backdrop-blur-md">
                 <Sparkles className="h-10 w-10 text-emerald-400" />
             </div>
 

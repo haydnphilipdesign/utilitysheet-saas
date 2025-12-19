@@ -44,8 +44,8 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                             key={opt.id}
                             onClick={() => updateState({ water_source: opt.id as any })}
                             className={`p-4 rounded-xl border text-left transition-all ${state.water_source === opt.id
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-white shadow-lg shadow-emerald-900/20'
-                                : 'bg-muted/50 border-border text-muted-foreground hover:border-ring hover:bg-muted'
+                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
                             <span className="block font-medium">{opt.label}</span>
@@ -70,8 +70,8 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                             key={opt.id}
                             onClick={() => updateState({ sewer_type: opt.id as any })}
                             className={`p-4 rounded-xl border text-left transition-all ${state.sewer_type === opt.id
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-white shadow-lg shadow-emerald-900/20'
-                                : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/10 hover:bg-zinc-900'
+                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
                             <span className="block font-medium">{opt.label}</span>
@@ -122,8 +122,8 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                                     });
                                 }}
                                 className={`p-4 rounded-xl border text-left transition-all ${isSelected
-                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-white shadow-lg shadow-emerald-900/20'
-                                    : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/10 hover:bg-zinc-900'
+                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                    : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                     }`}
                             >
                                 <span className="block font-medium">{fuel.label}</span>

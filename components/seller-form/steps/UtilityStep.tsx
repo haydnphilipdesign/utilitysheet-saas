@@ -217,7 +217,7 @@ export function UtilityStep({
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full text-zinc-500"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full text-muted-foreground"
                             >
                                 <X className="h-4 w-4" />
                             </button>
@@ -226,7 +226,7 @@ export function UtilityStep({
 
                     <div className="space-y-2 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                         {isSearching && (
-                            <div className="p-4 text-center text-zinc-500 text-sm">Searching...</div>
+                            <div className="p-4 text-center text-muted-foreground text-sm">Searching...</div>
                         )}
 
                         {/* Search Results */}
@@ -234,9 +234,9 @@ export function UtilityStep({
                             <button
                                 key={result.display_name}
                                 onClick={() => handleSelectResult(result.display_name)}
-                                className="w-full flex items-center justify-between p-4 bg-zinc-900/30 hover:bg-zinc-800 border border-white/5 rounded-xl text-left transition-all group"
+                                className="w-full flex items-center justify-between p-4 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left transition-all group"
                             >
-                                <span className="font-medium text-zinc-300 group-hover:text-white transition-colors">{result.display_name}</span>
+                                <span className="font-medium text-foreground transition-colors">{result.display_name}</span>
                                 <Check className="h-4 w-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                         ))}
@@ -245,20 +245,20 @@ export function UtilityStep({
                         {!isSearching && (!searchQuery || searchQuery.length < 2) && alternativeSuggestions.length > 0 && (
                             <>
                                 <div className="px-1 pt-2 pb-1">
-                                    <p className="text-xs text-zinc-500 font-semibold uppercase tracking-wider">Suggested for your area</p>
+                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Suggested for your area</p>
                                 </div>
                                 {alternativeSuggestions.map((suggestion) => (
                                     <button
                                         key={suggestion.display_name}
                                         onClick={() => handleConfirmSuggestion(suggestion)}
-                                        className="w-full flex items-center justify-between p-4 bg-zinc-900/30 hover:bg-zinc-800 border border-white/5 rounded-xl text-left transition-all group"
+                                        className="w-full flex items-center justify-between p-4 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left transition-all group"
                                     >
                                         <div>
-                                            <span className="font-medium text-zinc-300 group-hover:text-white transition-colors block">
+                                            <span className="font-medium text-foreground transition-colors block">
                                                 {suggestion.display_name}
                                             </span>
                                             {suggestion.rationale_short && (
-                                                <span className="text-xs text-zinc-500 mt-0.5 block">
+                                                <span className="text-xs text-muted-foreground mt-0.5 block">
                                                     {suggestion.rationale_short}
                                                 </span>
                                             )}
@@ -273,7 +273,7 @@ export function UtilityStep({
 
                         {!isSearching && searchQuery.length >= 2 && searchResults.length === 0 && (
                             <div className="text-center pt-4 pb-2">
-                                <p className="text-zinc-500 text-sm mb-3">No matching providers found.</p>
+                                <p className="text-muted-foreground text-sm mb-3">No matching providers found.</p>
                                 <button
                                     onClick={handleManualEntry}
                                     className="text-emerald-400 hover:text-emerald-300 text-sm font-medium underline underline-offset-4"
@@ -286,7 +286,7 @@ export function UtilityStep({
 
                     <button
                         onClick={() => setMode('view')}
-                        className="w-full py-3 text-zinc-500 hover:text-white transition-colors text-sm"
+                        className="w-full py-3 text-muted-foreground hover:text-foreground transition-colors text-sm"
                     >
                         Cancel Search
                     </button>
