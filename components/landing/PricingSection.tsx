@@ -39,12 +39,12 @@ const tiers = [
 
 export function PricingSection() {
     return (
-        <section id="pricing" className="py-32 bg-zinc-950 border-t border-zinc-900/50">
+        <section id="pricing" className="py-32 bg-background border-t border-border/50">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-20">
                     <h2 className="text-emerald-500 font-bold text-sm tracking-wider uppercase mb-3">Pricing</h2>
-                    <h3 className="text-3xl md:text-5xl font-bold text-white tracking-tight mb-4">Simple, transparent pricing</h3>
-                    <p className="text-zinc-400 text-lg max-w-2xl mx-auto">
+                    <h3 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight mb-4">Simple, transparent pricing</h3>
+                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
                         Choose the plan that best fits your business needs. No hidden fees.
                     </p>
                 </div>
@@ -54,8 +54,8 @@ export function PricingSection() {
                         <div
                             key={tier.name}
                             className={`relative rounded-3xl p-8 border ${tier.popular
-                                    ? 'bg-zinc-900/40 border-emerald-500/50 shadow-2xl shadow-emerald-500/10'
-                                    : 'bg-zinc-900/20 border-zinc-800'
+                                    ? 'bg-card/40 border-emerald-500/50 shadow-2xl shadow-emerald-500/10'
+                                    : 'bg-card/20 border-border'
                                 } flex flex-col`}
                         >
                             {tier.popular && (
@@ -65,14 +65,14 @@ export function PricingSection() {
                             )}
 
                             <div className="mb-8">
-                                <h4 className="text-lg font-medium text-zinc-200">{tier.name}</h4>
-                                <div className="mt-4 flex items-baseline text-white">
+                                <h4 className="text-lg font-medium text-foreground">{tier.name}</h4>
+                                <div className="mt-4 flex items-baseline text-foreground">
                                     <span className="text-5xl font-bold tracking-tight">{tier.price}</span>
                                     {tier.period && (
-                                        <span className="ml-1 text-xl font-medium text-zinc-500">{tier.period}</span>
+                                        <span className="ml-1 text-xl font-medium text-muted-foreground">{tier.period}</span>
                                     )}
                                 </div>
-                                <p className="mt-4 text-zinc-400 text-sm h-10">{tier.description}</p>
+                                <p className="mt-4 text-muted-foreground text-sm h-10">{tier.description}</p>
                             </div>
 
                             <ul className="space-y-4 mb-8 flex-1">
@@ -81,7 +81,7 @@ export function PricingSection() {
                                         <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center mt-0.5">
                                             <Check className="h-3.5 w-3.5 text-emerald-500" />
                                         </div>
-                                        <span className="ml-3 text-zinc-300 text-sm">{feature}</span>
+                                        <span className="ml-3 text-secondary-foreground text-sm">{feature}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -90,7 +90,7 @@ export function PricingSection() {
                                 <Button
                                     className={`w-full h-12 text-base font-semibold ${tier.popular
                                             ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                            : 'bg-white text-zinc-900 hover:bg-zinc-100'
+                                            : 'bg-foreground text-background hover:bg-foreground/90'
                                         }`}
                                 >
                                     {tier.cta}

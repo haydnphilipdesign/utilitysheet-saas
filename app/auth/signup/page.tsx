@@ -98,31 +98,31 @@ export default function SignupPage() {
 
     if (success) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-950 to-black p-4">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background p-4">
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                     <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
                     <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
                 </div>
 
-                <Card className="relative z-10 w-full max-w-md border-zinc-800 bg-zinc-900/80 backdrop-blur-xl shadow-2xl">
+                <Card className="relative z-10 w-full max-w-md border-border bg-card/80 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="space-y-4 text-center pb-2">
                         <div className="mx-auto p-3 rounded-full bg-emerald-500/10">
                             <CheckCircle2 className="h-12 w-12 text-emerald-400" />
                         </div>
-                        <CardTitle className="text-2xl text-white">Check your email</CardTitle>
-                        <CardDescription className="text-zinc-400">
-                            We&apos;ve sent a confirmation link to <span className="text-white font-medium">{email}</span>
+                        <CardTitle className="text-2xl text-foreground">Check your email</CardTitle>
+                        <CardDescription className="text-muted-foreground">
+                            We&apos;ve sent a confirmation link to <span className="text-foreground font-medium">{email}</span>
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-4">
-                        <p className="text-sm text-zinc-500 text-center">
+                        <p className="text-sm text-muted-foreground text-center">
                             Click the link in your email to verify your account and get started with UtilitySheet.
                         </p>
                     </CardContent>
                     <CardFooter>
                         <Button
                             variant="outline"
-                            className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                            className="w-full border-input text-muted-foreground hover:bg-accent hover:text-foreground"
                             onClick={() => router.push('/auth/login')}
                         >
                             Back to Sign In
@@ -134,7 +134,7 @@ export default function SignupPage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-950 to-black p-4">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background p-4">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
@@ -147,13 +147,13 @@ export default function SignupPage() {
                     <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
                         <Zap className="h-8 w-8 text-white" />
                     </div>
-                    <span className="text-3xl font-bold text-white">UtilitySheet</span>
+                    <span className="text-3xl font-bold text-foreground">UtilitySheet</span>
                 </div>
 
-                <Card className="border-zinc-800 bg-zinc-900/80 backdrop-blur-xl shadow-2xl">
+                <Card className="border-border bg-card/80 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="space-y-1">
-                        <CardTitle className="text-2xl text-center text-white">Create an account</CardTitle>
-                        <CardDescription className="text-center text-zinc-400">
+                        <CardTitle className="text-2xl text-center text-foreground">Create an account</CardTitle>
+                        <CardDescription className="text-center text-muted-foreground">
                             Start creating utility handoff packets in minutes
                         </CardDescription>
                     </CardHeader>
@@ -171,7 +171,7 @@ export default function SignupPage() {
                                     variant="outline"
                                     onClick={handleGoogleLogin}
                                     disabled={loading}
-                                    className="w-full bg-white text-black hover:bg-zinc-200 border-zinc-200 font-medium"
+                                    className="w-full bg-background text-foreground hover:bg-muted border-border font-medium"
                                 >
                                     <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
                                         <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
@@ -181,16 +181,16 @@ export default function SignupPage() {
 
                                 <div className="relative">
                                     <div className="absolute inset-0 flex items-center">
-                                        <span className="w-full border-t border-zinc-800" />
+                                        <span className="w-full border-t border-border" />
                                     </div>
                                     <div className="relative flex justify-center text-xs uppercase">
-                                        <span className="bg-zinc-900 px-2 text-zinc-400">Or continue with email</span>
+                                        <span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="fullName" className="text-zinc-300">Full Name</Label>
+                                <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
                                 <Input
                                     id="fullName"
                                     type="text"
@@ -198,11 +198,11 @@ export default function SignupPage() {
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
                                     required
-                                    className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:ring-emerald-500/20"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-zinc-300">Email</Label>
+                                <Label htmlFor="email" className="text-foreground">Email</Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -210,11 +210,11 @@ export default function SignupPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:ring-emerald-500/20"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="password" className="text-zinc-300">Password</Label>
+                                <Label htmlFor="password" className="text-foreground">Password</Label>
                                 <Input
                                     id="password"
                                     type="password"
@@ -223,7 +223,7 @@ export default function SignupPage() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     minLength={8}
-                                    className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:ring-emerald-500/20"
                                 />
                             </div>
                         </CardContent>
@@ -242,7 +242,7 @@ export default function SignupPage() {
                                     'Create Account'
                                 )}
                             </Button>
-                            <p className="text-sm text-zinc-400 text-center">
+                            <p className="text-sm text-muted-foreground text-center">
                                 Already have an account?{' '}
                                 <Link href="/auth/login" className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
                                     Sign in
@@ -256,15 +256,15 @@ export default function SignupPage() {
                 <div className="mt-8 grid grid-cols-3 gap-4 text-center">
                     <div className="space-y-2">
                         <div className="text-2xl">⚡</div>
-                        <p className="text-xs text-zinc-500">2-min seller forms</p>
+                        <p className="text-xs text-muted-foreground">2-min seller forms</p>
                     </div>
                     <div className="space-y-2">
                         <div className="text-2xl">📄</div>
-                        <p className="text-xs text-zinc-500">Branded packets</p>
+                        <p className="text-xs text-muted-foreground">Branded packets</p>
                     </div>
                     <div className="space-y-2">
                         <div className="text-2xl">🔄</div>
-                        <p className="text-xs text-zinc-500">Auto contact lookup</p>
+                        <p className="text-xs text-muted-foreground">Auto contact lookup</p>
                     </div>
                 </div>
             </div>

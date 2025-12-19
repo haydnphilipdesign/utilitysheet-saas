@@ -21,25 +21,25 @@ export function WelcomeStep({ address, onNext }: WelcomeStepProps) {
             </div>
 
             <div className="space-y-4 max-w-md">
-                <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-zinc-400">
+                <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground">
                     Let's set up the utilities
                 </h2>
                 <div className="space-y-1">
-                    <p className="text-zinc-400">
+                    <p className="text-muted-foreground">
                         We're gathering utility info for:
                     </p>
-                    <p className="text-lg font-medium text-white px-4 py-2 bg-zinc-900/50 rounded-lg border border-white/5 inline-block">
+                    <p className="text-lg font-medium text-foreground px-4 py-2 bg-muted/50 rounded-lg border border-border inline-block">
                         {address}
                     </p>
                 </div>
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-muted-foreground">
                     This will only take about 2 minutes. We'll ask about your services, then you can confirm the providers.
                 </p>
             </div>
 
             <button
                 onClick={onNext}
-                className="group relative inline-flex items-center justify-center px-8 py-3.5 text-base font-semibold text-white transition-all duration-200 bg-white/10 hover:bg-white/15 border border-white/5 rounded-full backdrop-blur-sm overflow-hidden"
+                className="group relative inline-flex items-center justify-center px-8 py-3.5 text-base font-semibold text-foreground transition-all duration-200 bg-muted hover:bg-muted/80 border border-border rounded-full backdrop-blur-sm overflow-hidden"
             >
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <span className="mr-2">Get Started</span>

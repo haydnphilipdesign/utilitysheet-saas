@@ -27,11 +27,11 @@ const steps = [
 
 export function HowItWorks() {
     return (
-        <section id="how-it-works" className="py-32 bg-zinc-950 relative overflow-hidden">
+        <section id="how-it-works" className="py-32 bg-background relative overflow-hidden">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="text-center mb-24">
                     <h2 className="text-emerald-500 font-bold text-sm tracking-wider uppercase mb-3">Workflow</h2>
-                    <h3 className="text-3xl md:text-5xl font-bold text-white tracking-tight">How it works</h3>
+                    <h3 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">How it works</h3>
                 </div>
 
                 <div className="grid lg:grid-cols-3 gap-8">
@@ -45,17 +45,17 @@ export function HowItWorks() {
                             className="relative group"
                         >
                             <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                            <div className="relative p-8 rounded-2xl border border-zinc-800 bg-zinc-900/20 hover:border-emerald-500/30 transition-colors h-full">
-                                <div className="absolute top-4 right-6 text-6xl font-black text-zinc-800/50 select-none group-hover:text-emerald-500/10 transition-colors">
+                            <div className="relative p-8 rounded-2xl border border-border bg-card/20 hover:border-emerald-500/30 transition-colors h-full">
+                                <div className="absolute top-4 right-6 text-6xl font-black text-border/50 select-none group-hover:text-emerald-500/10 transition-colors">
                                     {step.id}
                                 </div>
 
-                                <div className="w-14 h-14 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-8 shadow-lg group-hover:shadow-emerald-500/20 group-hover:border-emerald-500/50 transition-all">
-                                    <step.icon className="h-6 w-6 text-zinc-400 group-hover:text-emerald-400 transition-colors" />
+                                <div className="w-14 h-14 rounded-xl bg-card border border-border flex items-center justify-center mb-8 shadow-lg group-hover:shadow-emerald-500/20 group-hover:border-emerald-500/50 transition-all">
+                                    <step.icon className="h-6 w-6 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
                                 </div>
 
-                                <h4 className="text-xl font-bold text-white mb-4">{step.title}</h4>
-                                <p className="text-zinc-400 leading-relaxed">
+                                <h4 className="text-xl font-bold text-foreground mb-4">{step.title}</h4>
+                                <p className="text-muted-foreground leading-relaxed">
                                     {step.description}
                                 </p>
                             </div>

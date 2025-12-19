@@ -18,15 +18,15 @@ export function SuccessStep() {
             </div>
 
             <div className="space-y-4 max-w-md">
-                <h2 className="text-3xl font-bold text-white">
+                <h2 className="text-3xl font-bold text-foreground">
                     All Done!
                 </h2>
                 <div className="p-4 bg-emerald-900/20 border border-emerald-500/20 rounded-xl">
-                    <p className="text-emerald-200">
+                    <p className="text-emerald-500 dark:text-emerald-200">
                         Thank you for providing this info. Your agent has been notified and the utility sheet is ready for the buyers.
                     </p>
                 </div>
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-muted-foreground">
                     You can safely close this page now.
                 </p>
             </div>

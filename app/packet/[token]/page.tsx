@@ -64,7 +64,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
+            <div className="min-h-screen bg-background flex items-center justify-center">
                 <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
             </div>
         );
@@ -72,10 +72,10 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
 
     if (!data) {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center">
+            <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="text-center">
-                    <h1 className="text-2xl font-bold text-white mb-2">Packet Not Found</h1>
-                    <p className="text-zinc-400">The link may be invalid or expired.</p>
+                    <h1 className="text-2xl font-bold text-foreground mb-2">Packet Not Found</h1>
+                    <p className="text-muted-foreground">The link may be invalid or expired.</p>
                 </div>
             </div>
         );
@@ -85,21 +85,21 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     const primaryColor = brand?.primary_color || '#10b981';
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-950 to-black">
+        <div className="min-h-screen bg-background">
             {/* Header Actions */}
-            <header className="sticky top-0 z-50 border-b border-zinc-800/50 bg-zinc-900/80 backdrop-blur-xl">
+            <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
                             <Zap className="h-4 w-4 text-white" />
                         </div>
-                        <span className="font-bold text-white">UtilitySheet</span>
+                        <span className="font-bold text-foreground">UtilitySheet</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
                             size="sm"
-                            className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                            className="border-input text-foreground hover:bg-muted"
                             onClick={copyLink}
                         >
                             {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
@@ -120,9 +120,9 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
 
             {/* Packet Content */}
             <main className="max-w-4xl mx-auto px-4 py-8">
-                <div className="space-y-6 p-8 bg-zinc-900 rounded-xl">
+                <div className="space-y-6 p-8 bg-card rounded-xl border border-border">
                     {/* Branding Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
                         <div className="flex items-center gap-4">
                             {brand?.logo_url ? (
                                 <img
@@ -139,65 +139,65 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                 </div>
                             )}
                             <div>
-                                <h2 className="font-semibold text-white">{brand?.name || 'Real Estate Group'}</h2>
-                                <p className="text-sm text-zinc-400">{brand?.contact_phone || ''}</p>
+                                <h2 className="font-semibold text-foreground">{brand?.name || 'Real Estate Group'}</h2>
+                                <p className="text-sm text-muted-foreground">{brand?.contact_phone || ''}</p>
                             </div>
                         </div>
                         <div className="text-left sm:text-right">
-                            <p className="text-sm text-zinc-400">{brand?.contact_email || ''}</p>
-                            <p className="text-sm text-zinc-400">{brand?.contact_website || ''}</p>
+                            <p className="text-sm text-muted-foreground">{brand?.contact_email || ''}</p>
+                            <p className="text-sm text-muted-foreground">{brand?.contact_website || ''}</p>
                         </div>
                     </div>
 
                     {/* Title Section */}
                     <div className="text-center py-6">
-                        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
                             Utility Handoff Packet
                         </h1>
-                        <div className="inline-flex items-center gap-2 bg-zinc-800/50 px-4 py-2 rounded-lg">
+                        <div className="inline-flex items-center gap-2 bg-muted px-4 py-2 rounded-lg">
                             <MapPin className="h-4 w-4 text-emerald-400" />
-                            <span className="text-white font-medium">{request.property_address}</span>
+                            <span className="text-foreground font-medium">{request.property_address}</span>
                         </div>
-                        <div className="flex items-center justify-center gap-2 mt-3 text-sm text-zinc-400">
+                        <div className="flex items-center justify-center gap-2 mt-3 text-sm text-muted-foreground">
                             <Calendar className="h-4 w-4" />
                             Generated {format(new Date(request.created_at), 'MMMM d, yyyy')}
                         </div>
                     </div>
 
                     {/* Utility Table */}
-                    <Card className="border-zinc-800 bg-zinc-800/30">
+                    <Card className="border-border bg-card/50">
                         <CardHeader className="pb-2">
-                            <h3 className="text-lg font-semibold text-white">Utility Providers</h3>
+                            <h3 className="text-lg font-semibold text-foreground">Utility Providers</h3>
                         </CardHeader>
                         <CardContent>
-                            <div className="rounded-lg border border-zinc-700 overflow-hidden">
+                            <div className="rounded-lg border border-border overflow-hidden">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="border-zinc-700 hover:bg-transparent">
-                                            <TableHead className="text-zinc-400">Utility</TableHead>
-                                            <TableHead className="text-zinc-400">Provider</TableHead>
-                                            <TableHead className="text-zinc-400 hidden sm:table-cell">Contact</TableHead>
+                                        <TableRow className="border-border hover:bg-transparent">
+                                            <TableHead className="text-muted-foreground">Utility</TableHead>
+                                            <TableHead className="text-muted-foreground">Provider</TableHead>
+                                            <TableHead className="text-muted-foreground hidden sm:table-cell">Contact</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {utilities.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={3} className="text-center py-8 text-zinc-500">
+                                                <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                                                     No utility information provided yet.
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
                                             utilities.map((utility: any, index: number) => (
-                                                <TableRow key={index} className="border-zinc-700 hover:bg-zinc-800/50">
+                                                <TableRow key={index} className="border-border hover:bg-muted/50">
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-xl">
                                                                 {UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}
                                                             </span>
-                                                            <span className="font-medium text-white capitalize">{utility.category}</span>
+                                                            <span className="font-medium text-foreground capitalize">{utility.category}</span>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-zinc-300">
+                                                    <TableCell className="text-muted-foreground">
                                                         {utility.provider_name}
                                                     </TableCell>
                                                     <TableCell className="hidden sm:table-cell">
@@ -234,12 +234,12 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     </Card>
 
                     {/* Next Steps */}
-                    <Card className="border-zinc-800 bg-zinc-800/30">
+                    <Card className="border-border bg-card/50">
                         <CardHeader className="pb-2">
-                            <h3 className="text-lg font-semibold text-white">Buyer Next Steps</h3>
+                            <h3 className="text-lg font-semibold text-foreground">Buyer Next Steps</h3>
                         </CardHeader>
                         <CardContent>
-                            <ol className="space-y-3 text-zinc-300">
+                            <ol className="space-y-3 text-muted-foreground">
                                 <li className="flex gap-3">
                                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-medium">1</span>
                                     <span>Contact each utility provider above to set up new service in your name.</span>
@@ -261,8 +261,8 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     </Card>
 
                     {/* Footer */}
-                    <div className="text-center pt-6 border-t border-zinc-800">
-                        <p className="text-sm text-zinc-500">
+                    <div className="text-center pt-6 border-t border-border">
+                        <p className="text-sm text-muted-foreground">
                             Generated by UtilitySheet {brand?.contact_email ? `• ${brand.contact_email}` : ''}
                         </p>
                     </div>

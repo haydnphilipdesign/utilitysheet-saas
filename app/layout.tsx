@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
 import { Toaster } from "sonner";
 import { StackAuthProvider } from "@/components/providers/stack-auth-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -20,22 +21,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${figtree.variable} font-sans antialiased`}>
-        <StackAuthProvider>
-          {children}
-        </StackAuthProvider>
-        <Toaster
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: '#18181b',
-              border: '1px solid #27272a',
-              color: '#fafafa',
-            },
-          }}
-        />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <StackAuthProvider>
+            {children}
+          </StackAuthProvider>
+          <Toaster
+            position="bottom-right"
+          />
+        </ThemeProvider>
       </body>
     </html>
   );

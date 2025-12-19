@@ -17,7 +17,7 @@ export function SellerLayout({
     totalCount
 }: SellerLayoutProps) {
     return (
-        <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+        <div className="min-h-screen bg-black text-white selection:bg-emerald-500/30">
             {/* Background Gradients */}
             <div className="fixed inset-0 z-0 pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-900/10 rounded-full blur-[128px]" />
@@ -25,7 +25,7 @@ export function SellerLayout({
             </div>
 
             {/* Header */}
-            <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/50 backdrop-blur-xl">
+            <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-black/50 backdrop-blur-xl">
                 <div className="max-w-2xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
@@ -39,19 +39,19 @@ export function SellerLayout({
                         </div>
                         {address && (
                             <div className="text-right hidden sm:block">
-                                <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Property</p>
-                                <p className="text-sm text-foreground font-medium truncate max-w-[200px]">{address}</p>
+                                <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">Property</p>
+                                <p className="text-sm text-zinc-300 font-medium truncate max-w-[200px]">{address}</p>
                             </div>
                         )}
                     </div>
 
                     {/* Progress Bar */}
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center justify-between text-xs text-zinc-500">
                             <span>Progress</span>
                             <span>{Math.round(progress)}%</span>
                         </div>
-                        <div className="h-1 bg-muted rounded-full overflow-hidden">
+                        <div className="h-1 bg-zinc-900 rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-500 ease-out"
                                 style={{ width: `${progress}%` }}

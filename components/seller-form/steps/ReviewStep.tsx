@@ -32,43 +32,43 @@ export function ReviewStep({
             className="space-y-8"
         >
             <div className="space-y-2">
-                <h3 className="text-2xl font-bold text-white">Review & Submit</h3>
-                <p className="text-zinc-400">Please verify your information below.</p>
+                <h3 className="text-2xl font-bold text-foreground">Review & Submit</h3>
+                <p className="text-muted-foreground">Please verify your information below.</p>
             </div>
 
             <div className="space-y-6">
                 {/* Home Basics Summary */}
-                <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                        <h4 className="font-semibold text-white">Home Basics</h4>
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
+                        <h4 className="font-semibold text-foreground">Home Basics</h4>
                         <button onClick={onBack} className="text-xs text-emerald-400 hover:text-emerald-300">Edit</button>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <p className="text-zinc-500 mb-1">Water</p>
-                            <p className="text-zinc-200 capitalize">{state.water_source.replace('_', ' ')}</p>
+                            <p className="text-muted-foreground mb-1">Water</p>
+                            <p className="text-foreground capitalize">{state.water_source.replace('_', ' ')}</p>
                         </div>
                         <div>
-                            <p className="text-zinc-500 mb-1">Sewer</p>
-                            <p className="text-zinc-200 capitalize">{state.sewer_type.replace('_', ' ')}</p>
+                            <p className="text-muted-foreground mb-1">Sewer</p>
+                            <p className="text-foreground capitalize">{state.sewer_type.replace('_', ' ')}</p>
                         </div>
                         <div className="col-span-2">
-                            <p className="text-zinc-500 mb-1">Fuels Present</p>
+                            <p className="text-muted-foreground mb-1">Fuels Present</p>
                             <div className="flex flex-wrap gap-2 mb-2">
                                 {state.fuels_present.length > 0 ? (
                                     state.fuels_present.map(f => (
-                                        <span key={f} className="px-2 py-1 rounded bg-zinc-800 text-zinc-300 text-xs capitalize">
+                                        <span key={f} className="px-2 py-1 rounded bg-muted text-foreground text-xs capitalize">
                                             {f.replace('_', ' ')}
                                         </span>
                                     ))
                                 ) : (
-                                    <span className="text-zinc-500 italic">None selected</span>
+                                    <span className="text-muted-foreground italic">None selected</span>
                                 )}
                             </div>
                             {state.primary_heating_type && (
                                 <div>
-                                    <p className="text-zinc-500 mb-1 text-xs">Primary Heat</p>
-                                    <span className="text-zinc-200 text-sm capitalize font-medium">
+                                    <p className="text-muted-foreground mb-1 text-xs">Primary Heat</p>
+                                    <span className="text-foreground text-sm capitalize font-medium">
                                         {state.primary_heating_type.replace('_', ' ')}
                                     </span>
                                 </div>
@@ -78,9 +78,9 @@ export function ReviewStep({
                 </div>
 
                 {/* Utilities Summary */}
-                <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6 space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                        <h4 className="font-semibold text-white">Utility Providers</h4>
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
+                        <h4 className="font-semibold text-foreground">Utility Providers</h4>
                     </div>
                     <div className="space-y-4">
                         {visibleUtilities.map(cat => {
@@ -90,9 +90,9 @@ export function ReviewStep({
                             return (
                                 <div key={cat} className="flex items-start justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-zinc-400 mb-1">{label}</p>
-                                        <p className="text-lg text-white font-medium">
-                                            {utilState.display_name || <span className="italic text-zinc-500">Not sure/unknown</span>}
+                                        <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
+                                        <p className="text-lg text-foreground font-medium">
+                                            {utilState.display_name || <span className="italic text-muted-foreground">Not sure/unknown</span>}
                                         </p>
                                     </div>
                                     {utilState.entry_mode !== null && (
@@ -110,7 +110,7 @@ export function ReviewStep({
             <div className="pt-4 flex gap-3">
                 <button
                     onClick={onBack}
-                    className="flex-1 py-4 text-center rounded-xl font-medium border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                    className="flex-1 py-4 text-center rounded-xl font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     disabled={submitting}
                 >
                     Back

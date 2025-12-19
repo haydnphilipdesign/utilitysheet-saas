@@ -122,8 +122,8 @@ export default function BrandingPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Branding Profiles</h1>
-                    <p className="text-zinc-400 mt-1">Customize how your utility packets look</p>
+                    <h1 className="text-3xl font-bold text-foreground">Branding Profiles</h1>
+                    <p className="text-muted-foreground mt-1">Customize how your utility packets look</p>
                 </div>
                 {isPro ? (
                     <Link href="/dashboard/branding/new">
@@ -133,7 +133,7 @@ export default function BrandingPage() {
                         </Button>
                     </Link>
                 ) : (
-                    <Button disabled className="bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700">
+                    <Button disabled className="bg-secondary text-muted-foreground cursor-not-allowed border border-border">
                         <Lock className="mr-2 h-4 w-4" />
                         Upgrade to Create Profile
                     </Button>
@@ -147,8 +147,8 @@ export default function BrandingPage() {
                             <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
                                 <Lock className="h-6 w-6 text-amber-500" />
                             </div>
-                            <h3 className="text-xl font-bold text-white mb-2">Unlock Custom Branding</h3>
-                            <p className="text-zinc-400 max-w-md mb-6">
+                            <h3 className="text-xl font-bold text-foreground mb-2">Unlock Custom Branding</h3>
+                            <p className="text-muted-foreground max-w-md mb-6">
                                 Upgrade to the Pro plan to create custom branding profiles for your utility packets.
                                 Verify instant credibility with your clients.
                             </p>
@@ -165,7 +165,7 @@ export default function BrandingPage() {
             {/* Brands Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {brands.map((brand) => (
-                    <Card key={brand.id} className="border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900/70 transition-colors">
+                    <Card key={brand.id} className="border-border bg-card/50 hover:bg-card/70 transition-colors">
                         <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-3">
@@ -177,7 +177,7 @@ export default function BrandingPage() {
                                         {brand.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                                     </div>
                                     <div>
-                                        <CardTitle className="text-white text-lg flex items-center gap-2">
+                                        <CardTitle className="text-foreground text-lg flex items-center gap-2">
                                             {brand.name}
                                             {brand.is_default && (
                                                 <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs">
@@ -186,25 +186,25 @@ export default function BrandingPage() {
                                                 </Badge>
                                             )}
                                         </CardTitle>
-                                        <CardDescription className="text-zinc-400">
+                                        <CardDescription className="text-muted-foreground">
                                             {brand.contact_name || 'No contact name'}
                                         </CardDescription>
                                     </div>
                                 </div>
                                 <DropdownMenu>
-                                    <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded text-zinc-400 hover:text-white hover:bg-zinc-800">
+                                    <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary">
                                         <MoreHorizontal className="h-4 w-4" />
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                                    <DropdownMenuContent align="end">
                                         {isPro ? (
                                             <Link href={`/dashboard/branding/${brand.id}`}>
-                                                <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer">
+                                                <DropdownMenuItem className="cursor-pointer">
                                                     <Pencil className="mr-2 h-4 w-4" />
                                                     Edit
                                                 </DropdownMenuItem>
                                             </Link>
                                         ) : (
-                                            <DropdownMenuItem disabled className="text-zinc-500 cursor-not-allowed">
+                                            <DropdownMenuItem disabled className="text-muted-foreground cursor-not-allowed">
                                                 <Lock className="mr-2 h-4 w-4" />
                                                 Edit (Pro Only)
                                             </DropdownMenuItem>
@@ -213,14 +213,14 @@ export default function BrandingPage() {
                                         {!brand.is_default && (
                                             isPro ? (
                                                 <DropdownMenuItem
-                                                    className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                    className="cursor-pointer"
                                                     onClick={() => handleSetDefault(brand)}
                                                 >
                                                     <Star className="mr-2 h-4 w-4" />
                                                     Set as Default
                                                 </DropdownMenuItem>
                                             ) : (
-                                                <DropdownMenuItem disabled className="text-zinc-500 cursor-not-allowed">
+                                                <DropdownMenuItem disabled className="text-muted-foreground cursor-not-allowed">
                                                     <Lock className="mr-2 h-4 w-4" />
                                                     Set Default (Pro Only)
                                                 </DropdownMenuItem>
@@ -229,14 +229,14 @@ export default function BrandingPage() {
 
                                         {isPro ? (
                                             <DropdownMenuItem
-                                                className="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
+                                                className="text-destructive focus:text-destructive cursor-pointer"
                                                 onClick={() => handleDelete(brand.id)}
                                             >
                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                 Delete
                                             </DropdownMenuItem>
                                         ) : (
-                                            <DropdownMenuItem disabled className="text-zinc-500 cursor-not-allowed">
+                                            <DropdownMenuItem disabled className="text-muted-foreground cursor-not-allowed">
                                                 <Lock className="mr-2 h-4 w-4" />
                                                 Delete (Pro Only)
                                             </DropdownMenuItem>
@@ -248,33 +248,33 @@ export default function BrandingPage() {
                         <CardContent>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-zinc-500">Email</span>
-                                    <span className="text-zinc-300">{brand.contact_email || '-'}</span>
+                                    <span className="text-muted-foreground">Email</span>
+                                    <span className="text-secondary-foreground">{brand.contact_email || '-'}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-zinc-500">Phone</span>
-                                    <span className="text-zinc-300">{brand.contact_phone || '-'}</span>
+                                    <span className="text-muted-foreground">Phone</span>
+                                    <span className="text-secondary-foreground">{brand.contact_phone || '-'}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-zinc-500">Colors</span>
+                                    <span className="text-muted-foreground">Colors</span>
                                     <div className="flex gap-1">
                                         <div
-                                            className="w-6 h-6 rounded border border-zinc-700"
+                                            className="w-6 h-6 rounded border border-border"
                                             style={{ backgroundColor: brand.primary_color }}
                                         />
                                         <div
-                                            className="w-6 h-6 rounded border border-zinc-700"
+                                            className="w-6 h-6 rounded border border-border"
                                             style={{ backgroundColor: brand.secondary_color }}
                                         />
                                     </div>
                                 </div>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-zinc-800">
+                            <div className="mt-4 pt-4 border-t border-border">
                                 {isPro ? (
                                     <Link href={`/dashboard/branding/${brand.id}`}>
                                         <Button
                                             variant="outline"
-                                            className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                                            className="w-full"
                                         >
                                             <Pencil className="mr-2 h-4 w-4" />
                                             Edit Profile
@@ -284,7 +284,7 @@ export default function BrandingPage() {
                                     <Button
                                         variant="outline"
                                         disabled
-                                        className="w-full border-zinc-700 text-zinc-500 cursor-not-allowed"
+                                        className="w-full cursor-not-allowed"
                                     >
                                         <Lock className="mr-2 h-4 w-4" />
                                         Edit Profile (Pro)
@@ -298,13 +298,13 @@ export default function BrandingPage() {
                 {/* Add New Card - Only show if Pro, otherwise header button handles it or the banner above */}
                 {isPro && (
                     <Link href="/dashboard/branding/new">
-                        <Card className="border-zinc-800 border-dashed bg-transparent hover:bg-zinc-900/30 transition-colors cursor-pointer h-full min-h-[280px] flex items-center justify-center">
+                        <Card className="border-border border-dashed bg-transparent hover:bg-card/30 transition-colors cursor-pointer h-full min-h-[280px] flex items-center justify-center">
                             <CardContent className="text-center">
-                                <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-zinc-800/50 flex items-center justify-center">
-                                    <Plus className="h-6 w-6 text-zinc-500" />
+                                <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-secondary/50 flex items-center justify-center">
+                                    <Plus className="h-6 w-6 text-muted-foreground" />
                                 </div>
-                                <p className="text-zinc-400 font-medium">Create New Profile</p>
-                                <p className="text-sm text-zinc-500 mt-1">Add another branding style</p>
+                                <p className="text-muted-foreground font-medium">Create New Profile</p>
+                                <p className="text-sm text-muted-foreground/70 mt-1">Add another branding style</p>
                             </CardContent>
                         </Card>
                     </Link>

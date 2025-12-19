@@ -8,8 +8,8 @@ export default function MarketingLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-50">
-            <header className="fixed top-0 z-50 w-full border-b border-zinc-800/50 bg-zinc-950/50 backdrop-blur-xl">
+        <div className="flex min-h-screen flex-col bg-background text-foreground">
+            <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2">
@@ -21,20 +21,20 @@ export default function MarketingLayout({
                     </div>
 
                     <nav className="hidden items-center gap-8 md:flex">
-                        <Link href="#features" className="text-sm font-medium text-zinc-400 transition-colors hover:text-white">
+                        <Link href="#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                             Features
                         </Link>
-                        <Link href="#how-it-works" className="text-sm font-medium text-zinc-400 transition-colors hover:text-white">
+                        <Link href="#how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                             How it Works
                         </Link>
-                        <Link href="#pricing" className="text-sm font-medium text-zinc-400 transition-colors hover:text-white">
+                        <Link href="#pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                             Pricing
                         </Link>
                     </nav>
 
                     <div className="flex items-center gap-4">
                         <Link href="/auth/login">
-                            <Button variant="ghost" className="text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50">
+                            <Button variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
                                 Sign In
                             </Button>
                         </Link>
@@ -51,7 +51,7 @@ export default function MarketingLayout({
                 {children}
             </main>
 
-            <footer className="border-t border-zinc-900 bg-zinc-950 py-12">
+            <footer className="border-t border-border bg-background py-12">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
                         <div className="col-span-2 lg:col-span-2">
@@ -59,36 +59,36 @@ export default function MarketingLayout({
                                 <Zap className="h-5 w-5 text-emerald-500" />
                                 <span className="text-xl font-bold">UtilitySheet</span>
                             </Link>
-                            <p className="mt-4 max-w-xs text-sm text-zinc-400">
+                            <p className="mt-4 max-w-xs text-sm text-muted-foreground">
                                 Standardizing and accelerating utility handoffs for real estate professionals.
                             </p>
                         </div>
                         <div>
-                            <h3 className="text-sm font-semibold text-white">Product</h3>
-                            <ul className="mt-4 space-y-2 text-sm text-zinc-400">
-                                <li><Link href="#features" className="hover:text-white">Features</Link></li>
-                                <li><Link href="#how-it-works" className="hover:text-white">How it Works</Link></li>
-                                <li><Link href="#pricing" className="hover:text-white">Pricing</Link></li>
+                            <h3 className="text-sm font-semibold text-foreground">Product</h3>
+                            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                                <li><Link href="#features" className="hover:text-foreground">Features</Link></li>
+                                <li><Link href="#how-it-works" className="hover:text-foreground">How it Works</Link></li>
+                                <li><Link href="#pricing" className="hover:text-foreground">Pricing</Link></li>
                             </ul>
                         </div>
                         <div>
-                            <h3 className="text-sm font-semibold text-white">Company</h3>
-                            <ul className="mt-4 space-y-2 text-sm text-zinc-400">
-                                <li><Link href="#" className="hover:text-white">About</Link></li>
-                                <li><Link href="#" className="hover:text-white">Blog</Link></li>
-                                <li><Link href="#" className="hover:text-white">Careers</Link></li>
+                            <h3 className="text-sm font-semibold text-foreground">Company</h3>
+                            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                                <li><Link href="#" className="hover:text-foreground">About</Link></li>
+                                <li><Link href="#" className="hover:text-foreground">Blog</Link></li>
+                                <li><Link href="#" className="hover:text-foreground">Careers</Link></li>
                             </ul>
                         </div>
                         <div>
-                            <h3 className="text-sm font-semibold text-white">Legal</h3>
-                            <ul className="mt-4 space-y-2 text-sm text-zinc-400">
-                                <li><Link href="#" className="hover:text-white">Privacy</Link></li>
-                                <li><Link href="#" className="hover:text-white">Terms</Link></li>
-                                <li><Link href="#" className="hover:text-white">Cookie Policy</Link></li>
+                            <h3 className="text-sm font-semibold text-foreground">Legal</h3>
+                            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                                <li><Link href="#" className="hover:text-foreground">Privacy</Link></li>
+                                <li><Link href="#" className="hover:text-foreground">Terms</Link></li>
+                                <li><Link href="#" className="hover:text-foreground">Cookie Policy</Link></li>
                             </ul>
                         </div>
                     </div>
-                    <div className="mt-12 border-t border-zinc-900 pt-8 text-center text-sm text-zinc-500">
+                    <div className="mt-12 border-t border-border pt-8 text-center text-sm text-muted-foreground">
                         <p>© {new Date().getFullYear()} UtilitySheet. All rights reserved.</p>
                     </div>
                 </div>

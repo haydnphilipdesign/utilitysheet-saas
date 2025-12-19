@@ -49,7 +49,7 @@ import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
 
 const statusConfig = {
-    draft: { label: 'Draft', color: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30', icon: FileText },
+    draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
     sent: { label: 'Sent', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: Send },
     in_progress: { label: 'In Progress', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: Clock },
     submitted: { label: 'Submitted', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: CheckCircle2 },
@@ -112,8 +112,8 @@ export default function RequestsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Requests</h1>
-                    <p className="text-zinc-400 mt-1">All utility sheet requests</p>
+                    <h1 className="text-3xl font-bold text-foreground">Requests</h1>
+                    <p className="text-muted-foreground mt-1">All utility sheet requests</p>
                 </div>
                 <Link href="/dashboard/requests/new">
                     <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20">
@@ -124,22 +124,22 @@ export default function RequestsPage() {
             </div>
 
             {/* Filters */}
-            <Card className="border-zinc-800 bg-zinc-900/50">
+            <Card className="border-border bg-card/50">
                 <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row gap-4">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Search by address or seller..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500"
+                                className="pl-10 bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
                             />
                         </div>
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full sm:w-[180px] h-9 px-3 rounded-md bg-zinc-800/50 border border-zinc-700 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full sm:w-[180px] h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         >
                             <option value="all">All Statuses</option>
                             <option value="draft">Draft</option>
@@ -152,24 +152,24 @@ export default function RequestsPage() {
             </Card>
 
             {/* Table */}
-            <Card className="border-zinc-800 bg-zinc-900/50">
+            <Card className="border-border bg-card/50">
                 <CardContent className="pt-6">
-                    <div className="rounded-lg border border-zinc-800 overflow-hidden">
+                    <div className="rounded-lg border border-border overflow-hidden">
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-zinc-800 hover:bg-transparent">
-                                    <TableHead className="text-zinc-400">Property</TableHead>
-                                    <TableHead className="text-zinc-400">Seller</TableHead>
-                                    <TableHead className="text-zinc-400 hidden md:table-cell">Closing Date</TableHead>
-                                    <TableHead className="text-zinc-400 hidden lg:table-cell">Created</TableHead>
-                                    <TableHead className="text-zinc-400">Status</TableHead>
-                                    <TableHead className="text-zinc-400 text-right">Actions</TableHead>
+                                <TableRow className="border-border hover:bg-transparent">
+                                    <TableHead className="text-muted-foreground">Property</TableHead>
+                                    <TableHead className="text-muted-foreground">Seller</TableHead>
+                                    <TableHead className="text-muted-foreground hidden md:table-cell">Closing Date</TableHead>
+                                    <TableHead className="text-muted-foreground hidden lg:table-cell">Created</TableHead>
+                                    <TableHead className="text-muted-foreground">Status</TableHead>
+                                    <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredRequests.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-12 text-zinc-500">
+                                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                             No requests match your filters
                                         </TableCell>
                                     </TableRow>
@@ -177,20 +177,20 @@ export default function RequestsPage() {
                                     filteredRequests.map((request) => {
                                         const status = statusConfig[request.status];
                                         return (
-                                            <TableRow key={request.id} className="border-zinc-800 hover:bg-zinc-800/30">
+                                            <TableRow key={request.id} className="border-border hover:bg-muted/30">
                                                 <TableCell>
-                                                    <p className="font-medium text-white">{request.property_address}</p>
+                                                    <p className="font-medium text-foreground">{request.property_address}</p>
                                                 </TableCell>
-                                                <TableCell className="text-zinc-300">
+                                                <TableCell className="text-muted-foreground">
                                                     {request.seller_name || '—'}
                                                 </TableCell>
-                                                <TableCell className="hidden md:table-cell text-zinc-300">
+                                                <TableCell className="hidden md:table-cell text-muted-foreground">
                                                     {request.closing_date
                                                         ? format(new Date(request.closing_date), 'MMM d, yyyy')
                                                         : '—'
                                                     }
                                                 </TableCell>
-                                                <TableCell className="hidden lg:table-cell text-zinc-400 text-sm">
+                                                <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
                                                     {format(new Date(request.created_at), 'MMM d, yyyy')}
                                                 </TableCell>
                                                 <TableCell>
@@ -201,19 +201,19 @@ export default function RequestsPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
-                                                        <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded text-zinc-400 hover:text-white hover:bg-zinc-800">
+                                                        <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted">
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
+                                                        <DropdownMenuContent align="end" className="bg-popover border-border">
                                                             <DropdownMenuItem
-                                                                className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                                className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
                                                                 onClick={() => copyLink(request.public_token)}
                                                             >
                                                                 <Copy className="mr-2 h-4 w-4" />
                                                                 Copy seller link
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
-                                                                className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                                className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
                                                                 onClick={() => window.open(`/s/${request.public_token}`, '_blank')}
                                                             >
                                                                 <Eye className="mr-2 h-4 w-4" />
@@ -222,14 +222,14 @@ export default function RequestsPage() {
                                                             {request.status === 'submitted' && (
                                                                 <>
                                                                     <DropdownMenuItem
-                                                                        className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                                        className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
                                                                         onClick={() => window.open(`/packet/${request.public_token}`, '_blank')}
                                                                     >
                                                                         <ExternalLink className="mr-2 h-4 w-4" />
                                                                         View packet
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem
-                                                                        className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                                        className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
                                                                         onClick={() => handleDownloadPdf(request.public_token)}
                                                                         disabled={downloadingPdfToken === request.public_token}
                                                                     >
@@ -244,7 +244,7 @@ export default function RequestsPage() {
                                                             )}
                                                             {['sent', 'in_progress'].includes(request.status) && (
                                                                 <DropdownMenuItem
-                                                                    className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                                    className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
                                                                     onClick={() => {
                                                                         // TODO: Implement reminder functionality
                                                                         console.log('Sending reminder to:', request.seller_name);

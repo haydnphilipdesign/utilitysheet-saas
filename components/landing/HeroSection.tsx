@@ -56,11 +56,11 @@ function HeroFeatureAnimation() {
     return (
         <div className="w-full h-full flex flex-col font-sans">
             {/* Mock Header */}
-            <div className="h-12 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900/50">
-                <div className="w-24 h-4 bg-zinc-800 rounded-full" />
+            <div className="h-12 border-b border-border flex items-center justify-between px-6 bg-secondary/50">
+                <div className="w-24 h-4 bg-secondary rounded-full" />
                 <div className="flex gap-2">
-                    <div className="w-6 h-6 rounded-full bg-zinc-800" />
-                    <div className="w-6 h-6 rounded-full bg-zinc-800" />
+                    <div className="w-6 h-6 rounded-full bg-secondary" />
+                    <div className="w-6 h-6 rounded-full bg-secondary" />
                 </div>
             </div>
 
@@ -76,12 +76,12 @@ function HeroFeatureAnimation() {
                             className="flex flex-col items-center justify-center h-full gap-6"
                         >
                             <div className="text-center space-y-2">
-                                <h3 className="text-xl font-medium text-white">Where are you moving?</h3>
-                                <p className="text-zinc-500 text-sm">We'll find the providers for you.</p>
+                                <h3 className="text-xl font-medium text-foreground">Where are you moving?</h3>
+                                <p className="text-muted-foreground text-sm">We'll find the providers for you.</p>
                             </div>
-                            <div className="w-full max-w-md bg-zinc-900 border border-zinc-700 rounded-lg h-12 flex items-center px-4 gap-3 shadow-lg shadow-black/20">
-                                <Search className="w-4 h-4 text-zinc-500" />
-                                <span className="text-zinc-200">
+                            <div className="w-full max-w-md bg-card border border-border rounded-lg h-12 flex items-center px-4 gap-3 shadow-lg shadow-black/10 dark:shadow-black/20">
+                                <Search className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-foreground">
                                     {text}
                                     <span className="animate-pulse text-emerald-500">|</span>
                                 </span>
@@ -98,7 +98,7 @@ function HeroFeatureAnimation() {
                             className="flex flex-col items-center justify-center h-full gap-4"
                         >
                             <div className="w-12 h-12 rounded-full border-2 border-emerald-500/20 border-t-emerald-500 animate-spin" />
-                            <p className="text-zinc-400 text-sm">Scanning providers...</p>
+                            <p className="text-muted-foreground text-sm">Scanning providers...</p>
                         </motion.div>
                     )}
 
@@ -112,8 +112,8 @@ function HeroFeatureAnimation() {
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <div className="space-y-1">
-                                    <h4 className="text-white font-medium">Select Electric</h4>
-                                    <p className="text-xs text-zinc-500">Based on your address</p>
+                                    <h4 className="text-foreground font-medium">Select Electric</h4>
+                                    <p className="text-xs text-muted-foreground">Based on your address</p>
                                 </div>
                                 <Zap className="w-5 h-5 text-emerald-500" />
                             </div>
@@ -122,15 +122,15 @@ function HeroFeatureAnimation() {
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.2 }}
-                                className="p-4 rounded-xl bg-zinc-800/50 border border-emerald-500/50 flex items-center justify-between shadow-lg shadow-emerald-500/10 cursor-pointer"
+                                className="p-4 rounded-xl bg-secondary/50 border border-emerald-500/50 flex items-center justify-between shadow-lg shadow-emerald-500/10 cursor-pointer"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
-                                        <Zap className="w-6 h-6 text-black fill-black" />
+                                    <div className="w-10 h-10 rounded-lg bg-card border border-border flex items-center justify-center">
+                                        <Zap className="w-6 h-6 text-foreground fill-foreground" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-white font-medium">National Grid</span>
-                                        <span className="text-xs text-emerald-400">98% Match</span>
+                                        <span className="text-foreground font-medium">National Grid</span>
+                                        <span className="text-xs text-emerald-500">98% Match</span>
                                     </div>
                                 </div>
                                 <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center scale-0 animate-[scale-in_0.3s_ease-out_1s_forwards]">
@@ -142,14 +142,14 @@ function HeroFeatureAnimation() {
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 transition={{ delay: 0.4 }}
-                                className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-between opacity-50"
+                                className="p-4 rounded-xl bg-card border border-border flex items-center justify-between opacity-50"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
-                                        <Zap className="w-6 h-6 text-zinc-600" />
+                                    <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                                        <Zap className="w-6 h-6 text-muted-foreground" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-zinc-400 font-medium">Eversource</span>
+                                        <span className="text-muted-foreground font-medium">Eversource</span>
                                     </div>
                                 </div>
                             </motion.div>
@@ -172,14 +172,14 @@ function HeroFeatureAnimation() {
                             >
                                 <CheckCircle2 className="w-10 h-10 text-emerald-500" />
                             </motion.div>
-                            <h3 className="text-2xl font-bold text-white">Packet Ready!</h3>
-                            <p className="text-zinc-400 max-w-[200px]">All utilities confirmed. Ready for download.</p>
+                            <h3 className="text-2xl font-bold text-foreground">Packet Ready!</h3>
+                            <p className="text-muted-foreground max-w-[200px]">All utilities confirmed. Ready for download.</p>
 
-                            <div className="mt-4 p-3 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center gap-3 w-48">
+                            <div className="mt-4 p-3 rounded-lg bg-card border border-border flex items-center gap-3 w-48">
                                 <div className="p-2 bg-emerald-500/10 rounded">
                                     <FileText className="w-4 h-4 text-emerald-500" />
                                 </div>
-                                <span className="text-sm text-zinc-300">Detailed PDF</span>
+                                <span className="text-sm text-foreground">Detailed PDF</span>
                             </div>
                         </motion.div>
                     )}
@@ -225,11 +225,11 @@ function Hero3DCard() {
                 rotateX,
                 transformStyle: "preserve-3d",
             }}
-            className="relative w-full max-w-4xl mx-auto aspect-video rounded-xl bg-zinc-900/50 border border-zinc-800 backdrop-blur-sm shadow-2xl shadow-emerald-500/10 flex items-center justify-center"
+            className="relative w-full max-w-4xl mx-auto aspect-video rounded-xl bg-card/50 border border-border backdrop-blur-sm shadow-2xl shadow-emerald-500/10 flex items-center justify-center"
         >
             <div
                 style={{ transform: "translateZ(75px)", transformStyle: "preserve-3d" }}
-                className="absolute inset-4 bg-zinc-950 rounded-lg border border-zinc-800 overflow-hidden flex flex-col shadow-inner"
+                className="absolute inset-4 bg-background rounded-lg border border-border overflow-hidden flex flex-col shadow-inner"
             >
                 <HeroFeatureAnimation />
             </div>
@@ -251,19 +251,19 @@ export function HeroSection() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
                 >
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/80 border border-zinc-800 text-zinc-400 text-sm font-medium mb-8 hover:bg-zinc-800/80 transition-colors cursor-default backdrop-blur-sm">
-                        <Sparkles className="w-4 h-4 text-emerald-400" />
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/80 border border-border text-muted-foreground text-sm font-medium mb-8 hover:bg-secondary transition-colors cursor-default backdrop-blur-sm">
+                        <Sparkles className="w-4 h-4 text-emerald-500" />
                         <span>Reimagining Utility Transfers</span>
                     </div>
 
-                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-white mb-8">
+                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-foreground mb-8">
                         Utility Handoffs <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-300 to-emerald-500 animate-gradient-x">
                             Simplified.
                         </span>
                     </h1>
 
-                    <p className="mx-auto max-w-2xl text-lg md:text-xl text-zinc-400 mb-10 leading-relaxed">
+                    <p className="mx-auto max-w-2xl text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
                         Stop spending hours on phone calls. Let our AI handle utility transfers for your clients in minutes, not days.
                     </p>
 
@@ -274,7 +274,7 @@ export function HeroSection() {
                             </Button>
                         </Link>
                         <Link href="#how-it-works">
-                            <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 hover:border-zinc-700 bg-zinc-950/50 backdrop-blur-sm">
+                            <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-border text-muted-foreground hover:text-foreground hover:bg-secondary hover:border-border bg-card/50 backdrop-blur-sm">
                                 How it Works
                             </Button>
                         </Link>

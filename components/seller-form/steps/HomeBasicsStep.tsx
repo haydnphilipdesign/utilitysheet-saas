@@ -24,8 +24,8 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
             className="space-y-8"
         >
             <div className="text-center space-y-2">
-                <h3 className="text-2xl font-bold text-white">Home Basics</h3>
-                <p className="text-zinc-400">Let's start with the essentials.</p>
+                <h3 className="text-2xl font-bold text-foreground">Home Basics</h3>
+                <p className="text-muted-foreground">Let's start with the essentials.</p>
             </div>
 
             {/* Water Source */}
@@ -45,7 +45,7 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                             onClick={() => updateState({ water_source: opt.id as any })}
                             className={`p-4 rounded-xl border text-left transition-all ${state.water_source === opt.id
                                 ? 'bg-emerald-500/10 border-emerald-500/50 text-white shadow-lg shadow-emerald-900/20'
-                                : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/10 hover:bg-zinc-900'
+                                : 'bg-muted/50 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
                             <span className="block font-medium">{opt.label}</span>
@@ -157,7 +157,7 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                                     onClick={() => updateState({ primary_heating_type: fuelId })}
                                     className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${state.primary_heating_type === fuelId
                                         ? 'bg-emerald-500 text-white border-emerald-500'
-                                        : 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:border-white/10'
+                                        : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
                                         }`}
                                 >
                                     {label}

@@ -148,14 +148,14 @@ Thank you!`,
             <div className="mb-8">
                 <Button
                     variant="ghost"
-                    className="text-zinc-400 hover:text-white mb-4"
+                    className="text-muted-foreground hover:text-foreground mb-4"
                     onClick={() => router.back()}
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
                 </Button>
-                <h1 className="text-3xl font-bold text-white">New Utility Sheet Request</h1>
-                <p className="text-zinc-400 mt-1">Create a request link to send to your seller</p>
+                <h1 className="text-3xl font-bold text-foreground">New Utility Sheet Request</h1>
+                <p className="text-muted-foreground mt-1">Create a request link to send to your seller</p>
             </div>
 
             {/* Progress Steps */}
@@ -166,15 +166,15 @@ Thank you!`,
                             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${s < step
                                 ? 'bg-emerald-500 text-white'
                                 : s === step
-                                    ? 'bg-zinc-800 text-white border-2 border-emerald-500'
-                                    : 'bg-zinc-800 text-zinc-500'
+                                    ? 'bg-muted text-foreground border-2 border-emerald-500'
+                                    : 'bg-muted text-muted-foreground'
                                 }`}
                         >
                             {s < step ? <Check className="h-4 w-4" /> : s}
                         </div>
                         {s < 3 && (
                             <div
-                                className={`flex-1 h-0.5 ${s < step ? 'bg-emerald-500' : 'bg-zinc-800'}`}
+                                className={`flex-1 h-0.5 ${s < step ? 'bg-emerald-500' : 'bg-muted'}`}
                             />
                         )}
                     </div>
@@ -183,25 +183,25 @@ Thank you!`,
 
             {/* Step 1: Property Address */}
             {step === 1 && (
-                <Card className="border-zinc-800 bg-zinc-900/50">
+                <Card className="border-border bg-card/50">
                     <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
+                        <CardTitle className="text-foreground flex items-center gap-2">
                             <MapPin className="h-5 w-5 text-emerald-400" />
                             Property Address
                         </CardTitle>
-                        <CardDescription className="text-zinc-400">
+                        <CardDescription className="text-muted-foreground">
                             Enter the property address for this utility sheet
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="address" className="text-zinc-300">Full Address *</Label>
+                            <Label htmlFor="address" className="text-foreground">Full Address *</Label>
                             <Input
                                 id="address"
                                 placeholder="123 Main Street, City, State, ZIP"
                                 value={formData.property_address}
                                 onChange={(e) => updateField('property_address', e.target.value)}
-                                className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500"
+                                className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
                             />
                         </div>
                         <div className="flex justify-end">
@@ -220,63 +220,63 @@ Thank you!`,
 
             {/* Step 2: Seller Info (Optional) */}
             {step === 2 && (
-                <Card className="border-zinc-800 bg-zinc-900/50">
+                <Card className="border-border bg-card/50">
                     <CardHeader>
-                        <CardTitle className="text-white">Seller Information</CardTitle>
-                        <CardDescription className="text-zinc-400">
+                        <CardTitle className="text-foreground">Seller Information</CardTitle>
+                        <CardDescription className="text-muted-foreground">
                             Optional - helps personalize the request and enable reminders
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="sellerName" className="text-zinc-300">Seller Name</Label>
+                            <Label htmlFor="sellerName" className="text-foreground">Seller Name</Label>
                             <Input
                                 id="sellerName"
                                 placeholder="John Smith"
                                 value={formData.seller_name}
                                 onChange={(e) => updateField('seller_name', e.target.value)}
-                                className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500"
+                                className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
                             />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="sellerEmail" className="text-zinc-300">Email</Label>
+                                <Label htmlFor="sellerEmail" className="text-foreground">Email</Label>
                                 <Input
                                     id="sellerEmail"
                                     type="email"
                                     placeholder="john@example.com"
                                     value={formData.seller_email}
                                     onChange={(e) => updateField('seller_email', e.target.value)}
-                                    className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="sellerPhone" className="text-zinc-300">Phone</Label>
+                                <Label htmlFor="sellerPhone" className="text-foreground">Phone</Label>
                                 <Input
                                     id="sellerPhone"
                                     type="tel"
                                     placeholder="(555) 123-4567"
                                     value={formData.seller_phone}
                                     onChange={(e) => updateField('seller_phone', e.target.value)}
-                                    className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
                                 />
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="closingDate" className="text-zinc-300">Closing Date</Label>
+                            <Label htmlFor="closingDate" className="text-foreground">Closing Date</Label>
                             <Input
                                 id="closingDate"
                                 type="date"
                                 value={formData.closing_date}
                                 onChange={(e) => updateField('closing_date', e.target.value)}
-                                className="bg-zinc-800/50 border-zinc-700 text-white"
+                                className="bg-background/50 border-input text-foreground"
                             />
                         </div>
                         <div className="flex justify-between">
                             <Button
                                 variant="outline"
                                 onClick={() => setStep(1)}
-                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                                className="border-border text-foreground hover:bg-muted"
                             >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back
@@ -295,10 +295,10 @@ Thank you!`,
 
             {/* Step 3: Utility Categories */}
             {step === 3 && (
-                <Card className="border-zinc-800 bg-zinc-900/50">
+                <Card className="border-border bg-card/50">
                     <CardHeader>
-                        <CardTitle className="text-white">Utility Categories</CardTitle>
-                        <CardDescription className="text-zinc-400">
+                        <CardTitle className="text-foreground">Utility Categories</CardTitle>
+                        <CardDescription className="text-muted-foreground">
                             Select which utilities to include in the request
                         </CardDescription>
                     </CardHeader>
@@ -311,8 +311,8 @@ Thank you!`,
                                         key={category.key}
                                         onClick={() => toggleCategory(category.key)}
                                         className={`flex items-center gap-3 p-4 rounded-lg border transition-all ${isSelected
-                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
-                                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                                            ? 'bg-emerald-500/10 border-emerald-500/50 text-foreground'
+                                            : 'bg-muted/50 border-border text-muted-foreground hover:border-input'
                                             }`}
                                     >
                                         <span className="text-xl">{category.icon}</span>
@@ -328,7 +328,7 @@ Thank you!`,
                             <Button
                                 variant="outline"
                                 onClick={() => setStep(2)}
-                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                                className="border-border text-foreground hover:bg-muted"
                             >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back
@@ -357,27 +357,27 @@ Thank you!`,
 
             {/* Share Dialog */}
             <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+                <DialogContent className="bg-popover border-border max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="text-white text-xl">Request Created! 🎉</DialogTitle>
-                        <DialogDescription className="text-zinc-400">
+                        <DialogTitle className="text-foreground text-xl">Request Created! 🎉</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
                             Share this link with your seller to collect utility information
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 pt-4">
                         {/* Link Copy */}
                         <div className="space-y-2">
-                            <Label className="text-zinc-300">Seller Link</Label>
+                            <Label className="text-muted-foreground">Seller Link</Label>
                             <div className="flex gap-2">
                                 <Input
                                     value={getShareLink()}
                                     readOnly
-                                    className="bg-zinc-800 border-zinc-700 text-white font-mono text-sm"
+                                    className="bg-muted border-input text-foreground font-mono text-sm"
                                 />
                                 <Button
                                     onClick={copyLink}
                                     variant="outline"
-                                    className={`border-zinc-700 shrink-0 ${copied ? 'text-emerald-400 border-emerald-500' : 'text-zinc-300'
+                                    className={`border-input shrink-0 ${copied ? 'text-emerald-400 border-emerald-500' : 'text-foreground'
                                         }`}
                                 >
                                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -387,11 +387,11 @@ Thank you!`,
 
                         {/* Message Templates */}
                         <div className="space-y-3">
-                            <Label className="text-zinc-300">Quick Share</Label>
+                            <Label className="text-muted-foreground">Quick Share</Label>
                             <div className="grid grid-cols-2 gap-3">
                                 <Button
                                     variant="outline"
-                                    className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 h-auto py-3"
+                                    className="border-input text-foreground hover:bg-muted h-auto py-3"
                                     onClick={() => {
                                         navigator.clipboard.writeText(getSmsTemplate());
                                         setCopied(true);
@@ -403,7 +403,7 @@ Thank you!`,
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 h-auto py-3"
+                                    className="border-input text-foreground hover:bg-muted h-auto py-3"
                                     onClick={() => {
                                         const email = getEmailTemplate();
                                         const mailto = `mailto:${formData.seller_email}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`;
@@ -418,16 +418,16 @@ Thank you!`,
 
                         {/* SMS Preview */}
                         <div className="space-y-2">
-                            <Label className="text-zinc-400 text-sm">SMS Template</Label>
-                            <div className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
-                                <p className="text-sm text-zinc-300 whitespace-pre-wrap">{getSmsTemplate()}</p>
+                            <Label className="text-muted-foreground text-sm">SMS Template</Label>
+                            <div className="p-3 bg-muted/50 rounded-lg border border-border">
+                                <p className="text-sm text-foreground whitespace-pre-wrap">{getSmsTemplate()}</p>
                             </div>
                         </div>
 
                         <div className="flex justify-end gap-3 pt-2">
                             <Button
                                 variant="outline"
-                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                                className="border-input text-foreground hover:bg-muted"
                                 onClick={() => {
                                     setShowShareDialog(false);
                                     router.push('/dashboard');

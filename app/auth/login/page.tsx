@@ -89,7 +89,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-950 to-black p-4">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background p-4">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
@@ -102,13 +102,13 @@ export default function LoginPage() {
                     <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
                         <Zap className="h-8 w-8 text-white" />
                     </div>
-                    <span className="text-3xl font-bold text-white">UtilitySheet</span>
+                    <span className="text-3xl font-bold text-foreground">UtilitySheet</span>
                 </div>
 
-                <Card className="border-zinc-800 bg-zinc-900/80 backdrop-blur-xl shadow-2xl">
+                <Card className="border-border bg-card/80 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="space-y-1">
-                        <CardTitle className="text-2xl text-center text-white">Welcome back</CardTitle>
-                        <CardDescription className="text-center text-zinc-400">
+                        <CardTitle className="text-2xl text-center text-foreground">Welcome back</CardTitle>
+                        <CardDescription className="text-center text-muted-foreground">
                             Sign in to your account to continue
                         </CardDescription>
                     </CardHeader>
@@ -126,7 +126,7 @@ export default function LoginPage() {
                                     variant="outline"
                                     onClick={handleGoogleLogin}
                                     disabled={loading}
-                                    className="w-full bg-white text-black hover:bg-zinc-200 border-zinc-200 font-medium"
+                                    className="w-full bg-background text-foreground hover:bg-muted border-border font-medium"
                                 >
                                     <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
                                         <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
@@ -136,16 +136,16 @@ export default function LoginPage() {
 
                                 <div className="relative">
                                     <div className="absolute inset-0 flex items-center">
-                                        <span className="w-full border-t border-zinc-800" />
+                                        <span className="w-full border-t border-border" />
                                     </div>
                                     <div className="relative flex justify-center text-xs uppercase">
-                                        <span className="bg-zinc-900 px-2 text-zinc-400">Or continue with email</span>
+                                        <span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-zinc-300">Email</Label>
+                                <Label htmlFor="email" className="text-foreground">Email</Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -153,12 +153,12 @@ export default function LoginPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:ring-emerald-500/20"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="password" className="text-zinc-300">Password</Label>
+                                    <Label htmlFor="password" className="text-foreground">Password</Label>
                                     <Link
                                         href="/auth/forgot-password"
                                         className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
@@ -172,7 +172,7 @@ export default function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:ring-emerald-500/20"
                                 />
                             </div>
                         </CardContent>
@@ -191,7 +191,7 @@ export default function LoginPage() {
                                     'Sign In'
                                 )}
                             </Button>
-                            <p className="text-sm text-zinc-400 text-center">
+                            <p className="text-sm text-muted-foreground text-center">
                                 Don&apos;t have an account?{' '}
                                 <Link href="/auth/signup" className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
                                     Sign up
@@ -201,11 +201,11 @@ export default function LoginPage() {
                     </form>
                 </Card>
 
-                <p className="mt-8 text-center text-sm text-zinc-500">
+                <p className="mt-8 text-center text-sm text-muted-foreground">
                     By continuing, you agree to our{' '}
-                    <Link href="/terms" className="text-zinc-400 hover:text-white underline">Terms of Service</Link>
+                    <Link href="/terms" className="text-muted-foreground hover:text-foreground underline">Terms of Service</Link>
                     {' '}and{' '}
-                    <Link href="/privacy" className="text-zinc-400 hover:text-white underline">Privacy Policy</Link>
+                    <Link href="/privacy" className="text-muted-foreground hover:text-foreground underline">Privacy Policy</Link>
                 </p>
             </div>
         </div>

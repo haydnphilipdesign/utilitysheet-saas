@@ -106,40 +106,40 @@ export default function SettingsPage() {
         <div className="max-w-3xl mx-auto space-y-8 pb-10">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold text-white">Settings</h1>
-                <p className="text-zinc-400 mt-1">Manage your account and preferences</p>
+                <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+                <p className="text-muted-foreground mt-1">Manage your account and preferences</p>
             </div>
 
             {/* Profile Section */}
-            <Card className="border-zinc-800 bg-zinc-900/50">
+            <Card className="border-border bg-card/50">
                 <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
+                    <CardTitle className="text-foreground flex items-center gap-2">
                         <User className="h-5 w-5 text-emerald-400" />
                         Profile
                     </CardTitle>
-                    <CardDescription className="text-zinc-400">
+                    <CardDescription className="text-muted-foreground">
                         Your personal information
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="fullName" className="text-zinc-300">Full Name</Label>
+                            <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
                             <Input
                                 id="fullName"
                                 value={profile.full_name}
                                 onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                                className="bg-zinc-800/50 border-zinc-700 text-white"
+                                className="bg-background/50 border-input text-foreground"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="email" className="text-zinc-300">Email</Label>
+                            <Label htmlFor="email" className="text-foreground">Email</Label>
                             <Input
                                 id="email"
                                 type="email"
                                 value={profile.email}
                                 disabled
-                                className="bg-zinc-800/50 border-zinc-700 text-zinc-400"
+                                className="bg-muted border-input text-muted-foreground"
                             />
                         </div>
                     </div>
@@ -147,13 +147,13 @@ export default function SettingsPage() {
             </Card>
 
             {/* Notifications Section */}
-            <Card className="border-zinc-800 bg-zinc-900/50">
+            <Card className="border-border bg-card/50">
                 <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
+                    <CardTitle className="text-foreground flex items-center gap-2">
                         <Bell className="h-5 w-5 text-emerald-400" />
                         Notifications
                     </CardTitle>
-                    <CardDescription className="text-zinc-400">
+                    <CardDescription className="text-muted-foreground">
                         Email notification preferences
                     </CardDescription>
                 </CardHeader>
@@ -161,40 +161,40 @@ export default function SettingsPage() {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-white">Seller submissions</p>
-                                <p className="text-sm text-zinc-400">Get notified when a seller completes a form</p>
+                                <p className="text-foreground">Seller submissions</p>
+                                <p className="text-sm text-muted-foreground">Get notified when a seller completes a form</p>
                             </div>
                             <input
                                 type="checkbox"
                                 checked={notifications.seller_submissions}
                                 onChange={(e) => setNotifications({ ...notifications, seller_submissions: e.target.checked })}
-                                className="h-5 w-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-zinc-900"
+                                className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
                             />
                         </div>
-                        <Separator className="bg-zinc-800" />
+                        <Separator className="bg-border" />
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-white">Contact resolution alerts</p>
-                                <p className="text-sm text-zinc-400">Get notified about unresolved provider contacts</p>
+                                <p className="text-foreground">Contact resolution alerts</p>
+                                <p className="text-sm text-muted-foreground">Get notified about unresolved provider contacts</p>
                             </div>
                             <input
                                 type="checkbox"
                                 checked={notifications.contact_resolution}
                                 onChange={(e) => setNotifications({ ...notifications, contact_resolution: e.target.checked })}
-                                className="h-5 w-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-zinc-900"
+                                className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
                             />
                         </div>
-                        <Separator className="bg-zinc-800" />
+                        <Separator className="bg-border" />
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-white">Weekly summary</p>
-                                <p className="text-sm text-zinc-400">Receive a weekly activity report</p>
+                                <p className="text-foreground">Weekly summary</p>
+                                <p className="text-sm text-muted-foreground">Receive a weekly activity report</p>
                             </div>
                             <input
                                 type="checkbox"
                                 checked={notifications.weekly_summary}
                                 onChange={(e) => setNotifications({ ...notifications, weekly_summary: e.target.checked })}
-                                className="h-5 w-5 rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-zinc-900"
+                                className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
                             />
                         </div>
                     </div>
@@ -202,30 +202,30 @@ export default function SettingsPage() {
             </Card>
 
             {/* Subscription Section */}
-            <Card className="border-zinc-800 bg-zinc-900/50">
+            <Card className="border-border bg-card/50">
                 <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
+                    <CardTitle className="text-foreground flex items-center gap-2">
                         <CreditCard className="h-5 w-5 text-emerald-400" />
                         Subscription
                     </CardTitle>
-                    <CardDescription className="text-zinc-400">
+                    <CardDescription className="text-muted-foreground">
                         Manage your plan and billing
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
                         <div>
-                            <p className="text-white font-medium">
+                            <p className="text-foreground font-medium">
                                 {usage.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
                             </p>
-                            <p className="text-sm text-zinc-400">
+                            <p className="text-sm text-muted-foreground">
                                 {usage.plan === 'pro' ? 'Unlimited requests' : `${usage.limit} requests per month`}
                             </p>
                         </div>
                         {usage.plan === 'pro' ? (
                             <Button
                                 variant="outline"
-                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                                className="border-input text-foreground hover:bg-muted"
                                 onClick={async () => {
                                     setBillingLoading(true);
                                     try {
@@ -284,12 +284,12 @@ export default function SettingsPage() {
 
                     {/* Usage Progress - only show for free plan */}
                     {usage.plan === 'free' && (
-                        <div className="p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                        <div className="p-4 bg-muted/50 rounded-lg border border-border">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm text-zinc-300">Monthly Usage</p>
-                                <p className="text-sm font-medium text-white">{usage.used} of {usage.limit} requests</p>
+                                <p className="text-sm text-muted-foreground">Monthly Usage</p>
+                                <p className="text-sm font-medium text-foreground">{usage.used} of {usage.limit} requests</p>
                             </div>
-                            <div className="w-full h-2 bg-zinc-700 rounded-full overflow-hidden">
+                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all ${usage.used >= usage.limit
                                         ? 'bg-red-500'
@@ -311,13 +311,13 @@ export default function SettingsPage() {
             </Card>
 
             {/* Account Actions Section */}
-            <Card className="border-zinc-800 bg-zinc-900/50">
+            <Card className="border-border bg-card/50">
                 <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
+                    <CardTitle className="text-foreground flex items-center gap-2">
                         <User className="h-5 w-5 text-emerald-400" />
                         Account Actions
                     </CardTitle>
-                    <CardDescription className="text-zinc-400">
+                    <CardDescription className="text-muted-foreground">
                         Manage your session
                     </CardDescription>
                 </CardHeader>

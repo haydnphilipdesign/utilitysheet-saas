@@ -257,11 +257,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token }: 
 
                 {/* Fallback */}
                 {currentStep > Step.SUCCESS && (
-                    <div className="text-white text-center pt-20">
+                    <div className="text-foreground text-center pt-20">
                         <p>Something went wrong.</p>
                         <button
                             onClick={() => setCurrentStep(Step.WELCOME)}
-                            className="mt-4 px-4 py-2 bg-zinc-800 rounded-lg text-sm"
+                            className="mt-4 px-4 py-2 bg-secondary rounded-lg text-sm"
                         >
                             Back to Start
                         </button>

@@ -10,7 +10,7 @@ import { FaqSection } from '@/components/landing/FaqSection';
 
 export default function LandingPage() {
     return (
-        <div className="relative overflow-hidden bg-zinc-950 min-h-screen">
+        <div className="relative overflow-hidden bg-background min-h-screen">
             <HeroSection />
             <FeatureSection />
             <HowItWorks />

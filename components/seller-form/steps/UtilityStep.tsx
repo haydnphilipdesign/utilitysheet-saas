@@ -116,13 +116,13 @@ export function UtilityStep({
             <div className="flex items-center gap-4 mb-8">
                 <button
                     onClick={onBack}
-                    className="p-2 -ml-2 rounded-full hover:bg-white/10 text-zinc-400 transition-colors"
+                    className="p-2 -ml-2 rounded-full hover:bg-muted text-muted-foreground transition-colors"
                 >
                     ←
                 </button>
                 <div>
-                    <h3 className="text-xl font-bold text-white mb-1">{categoryLabel} Provider</h3>
-                    <p className="text-zinc-400 text-sm">Who provides your {categoryLabel.toLowerCase()}?</p>
+                    <h3 className="text-xl font-bold text-foreground mb-1">{categoryLabel} Provider</h3>
+                    <p className="text-muted-foreground text-sm">Who provides your {categoryLabel.toLowerCase()}?</p>
                 </div>
             </div>
 
@@ -130,25 +130,25 @@ export function UtilityStep({
                 <div className="space-y-6">
                     {suggestions.length > 0 ? (
                         <div className="space-y-4">
-                            <p className="text-sm text-zinc-500 uppercase tracking-wider font-semibold">Suggested for your area</p>
+                            <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">Suggested for your area</p>
 
                             <div className="grid grid-cols-1 gap-3">
                                 {suggestions.slice(0, 3).map((s) => (
                                     <button
                                         key={s.display_name}
                                         onClick={() => handleConfirmSuggestion(s)}
-                                        className="w-full flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-xl text-left transition-all group"
+                                        className="w-full flex items-center justify-between p-4 bg-muted/50 hover:bg-muted border border-border rounded-xl text-left transition-all group"
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-lg shrink-0">
                                                 ⚡
                                             </div>
                                             <div>
-                                                <span className="font-medium text-white block">
+                                                <span className="font-medium text-foreground block">
                                                     {s.display_name}
                                                 </span>
                                                 {s.rationale_short && (
-                                                    <span className="text-xs text-zinc-500 mt-0.5 block">
+                                                    <span className="text-xs text-muted-foreground mt-0.5 block">
                                                         {s.rationale_short}
                                                     </span>
                                                 )}
@@ -162,26 +162,26 @@ export function UtilityStep({
                             <div className="grid grid-cols-2 gap-3 pt-2">
                                 <button
                                     onClick={() => setMode('search')}
-                                    className="py-3 bg-transparent border border-white/5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl font-medium transition-colors text-sm"
+                                    className="py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-sm"
                                 >
                                     Search for another
                                 </button>
                                 <button
                                     onClick={handleSkip}
-                                    className="py-3 bg-transparent border border-white/5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl font-medium transition-colors text-sm"
+                                    className="py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-sm"
                                 >
                                     I don't know
                                 </button>
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-8 text-center space-y-6">
-                            <div className="mx-auto w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center">
-                                <Search className="h-8 w-8 text-zinc-500" />
+                        <div className="bg-muted/50 border border-border rounded-2xl p-8 text-center space-y-6">
+                            <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                                <Search className="h-8 w-8 text-muted-foreground" />
                             </div>
                             <div>
-                                <h4 className="text-lg font-medium text-white">Search for your provider</h4>
-                                <p className="text-zinc-500 text-sm mt-1">We couldn't auto-detect this one.</p>
+                                <h4 className="text-lg font-medium text-foreground">Search for your provider</h4>
+                                <p className="text-muted-foreground text-sm mt-1">We couldn't auto-detect this one.</p>
                             </div>
                             <div className="grid grid-cols-1 gap-3">
                                 <button
@@ -192,7 +192,7 @@ export function UtilityStep({
                                 </button>
                                 <button
                                     onClick={handleSkip}
-                                    className="w-full py-3 bg-transparent border border-white/5 text-zinc-500 hover:text-zinc-400 rounded-xl font-medium transition-colors"
+                                    className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors"
                                 >
                                     I don't know
                                 </button>
@@ -205,14 +205,14 @@ export function UtilityStep({
             {mode === 'search' && (
                 <div className="space-y-4">
                     <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <input
                             autoFocus
                             type="text"
                             placeholder={`Search ${categoryLabel} providers...`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-xl py-4 pl-12 pr-12 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                            className="w-full bg-muted/50 border border-border rounded-xl py-4 pl-12 pr-12 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                         />
                         {searchQuery && (
                             <button
