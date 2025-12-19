@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getOrCreateAccount } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 
 // GET /api/requests - Get all requests for the current user
@@ -50,6 +50,19 @@ export async function POST(request: Request) {
         }
         const accountId = account.id;
         const organizationId = account.active_organization_id;
+
+        // Check plan limits before creating request
+        const usage = await getMonthlyUsage(accountId, organizationId);
+        if (usage.used >= usage.limit) {
+            return NextResponse.json(
+                {
+                    error: 'Monthly limit reached',
+                    message: `You have reached your ${usage.plan} plan limit of ${usage.limit} requests per month. Please upgrade to continue.`,
+                    usage
+                },
+                { status: 403 }
+            );
+        }
 
         const newRequest = await createRequest({
             accountId,

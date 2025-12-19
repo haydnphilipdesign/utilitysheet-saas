@@ -15,9 +15,10 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, ArrowRight, Check, Copy, MessageSquare, Mail, Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Copy, MessageSquare, Mail, Loader2, MapPin, Sparkles, AlertTriangle } from 'lucide-react';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
+import Link from 'next/link';
 
 interface FormData {
     property_address: string;
@@ -44,6 +45,8 @@ export default function NewRequestPage() {
     const [loading, setLoading] = useState(false);
     const [generatedToken, setGeneratedToken] = useState<string | null>(null);
     const [showShareDialog, setShowShareDialog] = useState(false);
+    const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+    const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [copied, setCopied] = useState(false);
 
     const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
@@ -80,7 +83,16 @@ export default function NewRequestPage() {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to create request');
+                const errorData = await response.json();
+
+                // Handle plan limit error specifically
+                if (response.status === 403 && errorData.usage) {
+                    setUsageInfo(errorData.usage);
+                    setShowUpgradeDialog(true);
+                    return;
+                }
+
+                throw new Error(errorData.message || 'Failed to create request');
             }
 
             const newRequest = await response.json();
@@ -422,6 +434,79 @@ Thank you!`,
                                 }}
                             >
                                 Go to Dashboard
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Upgrade Dialog */}
+            <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+                <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-2">
+                            <AlertTriangle className="h-6 w-6 text-amber-500" />
+                        </div>
+                        <DialogTitle className="text-white text-xl text-center">Monthly Limit Reached</DialogTitle>
+                        <DialogDescription className="text-zinc-400 text-center">
+                            You&apos;ve used all your requests for this month
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 pt-4">
+                        {/* Usage Display */}
+                        {usageInfo && (
+                            <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-zinc-400 text-sm">Monthly Usage</span>
+                                    <span className="text-white font-medium">
+                                        {usageInfo.used} of {usageInfo.limit} requests
+                                    </span>
+                                </div>
+                                <div className="w-full bg-zinc-700 rounded-full h-2">
+                                    <div
+                                        className="bg-red-500 h-2 rounded-full"
+                                        style={{ width: '100%' }}
+                                    />
+                                </div>
+                                <p className="text-zinc-500 text-xs mt-2 capitalize">
+                                    Current plan: {usageInfo.plan}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Upgrade Benefits */}
+                        <div className="space-y-3">
+                            <div className="flex items-start gap-3">
+                                <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <Sparkles className="h-3 w-3 text-emerald-400" />
+                                </div>
+                                <div>
+                                    <p className="text-white text-sm font-medium">Upgrade to Pro</p>
+                                    <p className="text-zinc-400 text-sm">Unlimited requests, custom branding, and priority support</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-col gap-2">
+                            <Link href="/dashboard/settings" className="w-full">
+                                <Button
+                                    className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                                    onClick={() => setShowUpgradeDialog(false)}
+                                >
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    Upgrade Now
+                                </Button>
+                            </Link>
+                            <Button
+                                variant="outline"
+                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                                onClick={() => {
+                                    setShowUpgradeDialog(false);
+                                    router.push('/dashboard');
+                                }}
+                            >
+                                Back to Dashboard
                             </Button>
                         </div>
                     </div>
