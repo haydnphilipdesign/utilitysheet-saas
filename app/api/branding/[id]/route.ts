@@ -76,6 +76,13 @@ export async function PUT(
             }
         }
 
+        if (account.subscription_status !== 'pro') {
+            return NextResponse.json({
+                error: 'Custom branding is available on the Pro plan',
+                code: 'UPGRADE_REQUIRED'
+            }, { status: 403 });
+        }
+
         const updatedProfile = await updateBrandProfile(id, {
             name: body.name,
             primary_color: body.primary_color,
@@ -132,6 +139,13 @@ export async function DELETE(
             if (profile.account_id !== account.id) {
                 return NextResponse.json({ error: 'Unauthorized access to account profile' }, { status: 403 });
             }
+        }
+
+        if (account.subscription_status !== 'pro') {
+            return NextResponse.json({
+                error: 'Custom branding is available on the Pro plan',
+                code: 'UPGRADE_REQUIRED'
+            }, { status: 403 });
         }
 
         const success = await deleteBrandProfile(id);

@@ -42,6 +42,13 @@ export async function POST(request: Request) {
         const accountId = account.id;
         const organizationId = account.active_organization_id;
 
+        if (account.subscription_status !== 'pro') {
+            return NextResponse.json({
+                error: 'Custom branding is available on the Pro plan',
+                code: 'UPGRADE_REQUIRED'
+            }, { status: 403 });
+        }
+
         const profile = await createBrandProfile({
             accountId,
             organizationId,

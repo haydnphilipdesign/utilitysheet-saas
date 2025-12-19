@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Palette, Star, MoreHorizontal, Pencil, Trash2, Loader2, RefreshCcw } from 'lucide-react';
+import { Plus, Palette, Star, MoreHorizontal, Pencil, Trash2, Loader2, RefreshCcw, Lock } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -18,30 +18,45 @@ import { toast } from 'sonner';
 export default function BrandingPage() {
     const [brands, setBrands] = useState<BrandProfile[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isPro, setIsPro] = useState(false);
 
-    const fetchBrands = async () => {
+    const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/branding');
-            if (response.ok) {
-                const data = await response.json();
+            const [brandsResponse, accountResponse] = await Promise.all([
+                fetch('/api/branding'),
+                fetch('/api/account')
+            ]);
+
+            if (brandsResponse.ok) {
+                const data = await brandsResponse.json();
                 setBrands(data);
             } else {
                 toast.error('Failed to fetch brand profiles');
             }
+
+            if (accountResponse.ok) {
+                const data = await accountResponse.json();
+                setIsPro(data.account.subscription_status === 'pro');
+            }
         } catch (error) {
-            console.error('Error fetching brands:', error);
-            toast.error('Error fetching brand profiles');
+            console.error('Error fetching data:', error);
+            toast.error('Error loading branding page');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchBrands();
+        fetchData();
     }, []);
 
     const handleDelete = async (id: string) => {
+        if (!isPro) {
+            toast.error('Upgrade to Pro to manage branding profiles');
+            return;
+        }
+
         if (!confirm('Are you sure you want to delete this profile?')) return;
 
         try {
@@ -51,7 +66,7 @@ export default function BrandingPage() {
 
             if (response.ok) {
                 toast.success('Profile deleted successfully');
-                fetchBrands();
+                fetchData();
             } else {
                 const error = await response.json();
                 toast.error(error.error || 'Failed to delete profile');
@@ -63,6 +78,11 @@ export default function BrandingPage() {
     };
 
     const handleSetDefault = async (profile: BrandProfile) => {
+        if (!isPro) {
+            toast.error('Upgrade to Pro to manage branding profiles');
+            return;
+        }
+
         try {
             // We use the update endpoint to set as default
             const response = await fetch(`/api/branding/${profile.id}`, {
@@ -78,7 +98,7 @@ export default function BrandingPage() {
 
             if (response.ok) {
                 toast.success('Default profile updated');
-                fetchBrands();
+                fetchData();
             } else {
                 const error = await response.json();
                 toast.error(error.error || 'Failed to update default profile');
@@ -89,7 +109,7 @@ export default function BrandingPage() {
         }
     };
 
-    if (loading && brands.length === 0) {
+    if (loading) {
         return (
             <div className="flex h-96 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
@@ -105,13 +125,42 @@ export default function BrandingPage() {
                     <h1 className="text-3xl font-bold text-white">Branding Profiles</h1>
                     <p className="text-zinc-400 mt-1">Customize how your utility packets look</p>
                 </div>
-                <Link href="/dashboard/branding/new">
-                    <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20">
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Profile
+                {isPro ? (
+                    <Link href="/dashboard/branding/new">
+                        <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Profile
+                        </Button>
+                    </Link>
+                ) : (
+                    <Button disabled className="bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700">
+                        <Lock className="mr-2 h-4 w-4" />
+                        Upgrade to Create Profile
                     </Button>
-                </Link>
+                )}
             </div>
+
+            {!isPro && brands.length === 0 && (
+                <Card className="border-amber-500/20 bg-amber-500/5">
+                    <CardContent className="pt-6">
+                        <div className="flex flex-col items-center text-center p-4">
+                            <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
+                                <Lock className="h-6 w-6 text-amber-500" />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Unlock Custom Branding</h3>
+                            <p className="text-zinc-400 max-w-md mb-6">
+                                Upgrade to the Pro plan to create custom branding profiles for your utility packets.
+                                Verify instant credibility with your clients.
+                            </p>
+                            <Link href="/dashboard/settings">
+                                <Button className="bg-amber-500 hover:bg-amber-600 text-black font-medium">
+                                    Upgrade to Pro
+                                </Button>
+                            </Link>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Brands Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -147,28 +196,51 @@ export default function BrandingPage() {
                                         <MoreHorizontal className="h-4 w-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="bg-zinc-900 border-zinc-800">
-                                        <Link href={`/dashboard/branding/${brand.id}`}>
-                                            <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer">
-                                                <Pencil className="mr-2 h-4 w-4" />
-                                                Edit
-                                            </DropdownMenuItem>
-                                        </Link>
-                                        {!brand.is_default && (
-                                            <DropdownMenuItem
-                                                className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
-                                                onClick={() => handleSetDefault(brand)}
-                                            >
-                                                <Star className="mr-2 h-4 w-4" />
-                                                Set as Default
+                                        {isPro ? (
+                                            <Link href={`/dashboard/branding/${brand.id}`}>
+                                                <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer">
+                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                    Edit
+                                                </DropdownMenuItem>
+                                            </Link>
+                                        ) : (
+                                            <DropdownMenuItem disabled className="text-zinc-500 cursor-not-allowed">
+                                                <Lock className="mr-2 h-4 w-4" />
+                                                Edit (Pro Only)
                                             </DropdownMenuItem>
                                         )}
-                                        <DropdownMenuItem
-                                            className="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
-                                            onClick={() => handleDelete(brand.id)}
-                                        >
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete
-                                        </DropdownMenuItem>
+
+                                        {!brand.is_default && (
+                                            isPro ? (
+                                                <DropdownMenuItem
+                                                    className="text-zinc-300 focus:bg-zinc-800 focus:text-white cursor-pointer"
+                                                    onClick={() => handleSetDefault(brand)}
+                                                >
+                                                    <Star className="mr-2 h-4 w-4" />
+                                                    Set as Default
+                                                </DropdownMenuItem>
+                                            ) : (
+                                                <DropdownMenuItem disabled className="text-zinc-500 cursor-not-allowed">
+                                                    <Lock className="mr-2 h-4 w-4" />
+                                                    Set Default (Pro Only)
+                                                </DropdownMenuItem>
+                                            )
+                                        )}
+
+                                        {isPro ? (
+                                            <DropdownMenuItem
+                                                className="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
+                                                onClick={() => handleDelete(brand.id)}
+                                            >
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete
+                                            </DropdownMenuItem>
+                                        ) : (
+                                            <DropdownMenuItem disabled className="text-zinc-500 cursor-not-allowed">
+                                                <Lock className="mr-2 h-4 w-4" />
+                                                Delete (Pro Only)
+                                            </DropdownMenuItem>
+                                        )}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -198,32 +270,45 @@ export default function BrandingPage() {
                                 </div>
                             </div>
                             <div className="mt-4 pt-4 border-t border-zinc-800">
-                                <Link href={`/dashboard/branding/${brand.id}`}>
+                                {isPro ? (
+                                    <Link href={`/dashboard/branding/${brand.id}`}>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                                        >
+                                            <Pencil className="mr-2 h-4 w-4" />
+                                            Edit Profile
+                                        </Button>
+                                    </Link>
+                                ) : (
                                     <Button
                                         variant="outline"
-                                        className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                                        disabled
+                                        className="w-full border-zinc-700 text-zinc-500 cursor-not-allowed"
                                     >
-                                        <Pencil className="mr-2 h-4 w-4" />
-                                        Edit Profile
+                                        <Lock className="mr-2 h-4 w-4" />
+                                        Edit Profile (Pro)
                                     </Button>
-                                </Link>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
                 ))}
 
-                {/* Add New Card */}
-                <Link href="/dashboard/branding/new">
-                    <Card className="border-zinc-800 border-dashed bg-transparent hover:bg-zinc-900/30 transition-colors cursor-pointer h-full min-h-[280px] flex items-center justify-center">
-                        <CardContent className="text-center">
-                            <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-zinc-800/50 flex items-center justify-center">
-                                <Plus className="h-6 w-6 text-zinc-500" />
-                            </div>
-                            <p className="text-zinc-400 font-medium">Create New Profile</p>
-                            <p className="text-sm text-zinc-500 mt-1">Add another branding style</p>
-                        </CardContent>
-                    </Card>
-                </Link>
+                {/* Add New Card - Only show if Pro, otherwise header button handles it or the banner above */}
+                {isPro && (
+                    <Link href="/dashboard/branding/new">
+                        <Card className="border-zinc-800 border-dashed bg-transparent hover:bg-zinc-900/30 transition-colors cursor-pointer h-full min-h-[280px] flex items-center justify-center">
+                            <CardContent className="text-center">
+                                <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-zinc-800/50 flex items-center justify-center">
+                                    <Plus className="h-6 w-6 text-zinc-500" />
+                                </div>
+                                <p className="text-zinc-400 font-medium">Create New Profile</p>
+                                <p className="text-sm text-zinc-500 mt-1">Add another branding style</p>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                )}
             </div>
         </div>
     );
