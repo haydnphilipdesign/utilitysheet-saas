@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import BrandProfileForm from '@/components/branding/BrandProfileForm';
 import type { BrandProfileFormData } from '@/types';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
-export default function EditBrandingPage({ params }: { params: { id: string } }) {
+export default function EditBrandingPage({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = use(params);
     const router = useRouter();
     const [initialData, setInitialData] = useState<BrandProfileFormData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -15,7 +16,7 @@ export default function EditBrandingPage({ params }: { params: { id: string } })
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const response = await fetch(`/api/branding/${params.id}`);
+                const response = await fetch(`/api/branding/${resolvedParams.id}`);
                 if (response.ok) {
                     const data = await response.json();
                     setInitialData(data);
@@ -33,11 +34,11 @@ export default function EditBrandingPage({ params }: { params: { id: string } })
         };
 
         fetchProfile();
-    }, [params.id, router]);
+    }, [resolvedParams.id, router]);
 
     const handleSubmit = async (data: BrandProfileFormData) => {
         try {
-            const response = await fetch(`/api/branding/${params.id}`, {
+            const response = await fetch(`/api/branding/${resolvedParams.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

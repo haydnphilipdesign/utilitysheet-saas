@@ -4,7 +4,7 @@ import { stackServerApp } from '@/lib/stack/server';
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await stackServerApp.getUser();
@@ -12,7 +12,8 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const profile = await getBrandProfile(params.id);
+        const { id } = await params;
+        const profile = await getBrandProfile(id);
 
         if (!profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
@@ -43,7 +44,7 @@ export async function GET(
 
 export async function PUT(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await stackServerApp.getUser();
@@ -54,7 +55,8 @@ export async function PUT(
         const body = await request.json();
 
         // Verify ownership first
-        const profile = await getBrandProfile(params.id);
+        const { id } = await params;
+        const profile = await getBrandProfile(id);
         if (!profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
@@ -74,7 +76,7 @@ export async function PUT(
             }
         }
 
-        const updatedProfile = await updateBrandProfile(params.id, {
+        const updatedProfile = await updateBrandProfile(id, {
             name: body.name,
             primary_color: body.primary_color,
             secondary_color: body.secondary_color,
@@ -102,7 +104,7 @@ export async function PUT(
 
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await stackServerApp.getUser();
@@ -111,7 +113,8 @@ export async function DELETE(
         }
 
         // Verify ownership
-        const profile = await getBrandProfile(params.id);
+        const { id } = await params;
+        const profile = await getBrandProfile(id);
         if (!profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
@@ -131,7 +134,7 @@ export async function DELETE(
             }
         }
 
-        const success = await deleteBrandProfile(params.id);
+        const success = await deleteBrandProfile(id);
 
         if (!success) {
             return NextResponse.json({ error: 'Failed to delete brand profile' }, { status: 500 });
