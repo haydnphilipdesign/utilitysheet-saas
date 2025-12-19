@@ -69,12 +69,12 @@ export async function generatePacketPdf(token: string): Promise<void> {
     // We add base styles directly to the iframe body to ensure clean slate
     iframeBody.style.margin = '0';
     iframeBody.style.padding = '0';
-    iframeBody.style.backgroundColor = '#18181b';
+    iframeBody.style.backgroundColor = '#ffffff';
 
     iframeBody.innerHTML = `
-        <div style="padding: 48px; background: #18181b; color: #ffffff; font-family: Arial, sans-serif, system-ui; min-height: 100%; box-sizing: border-box;">
+        <div style="padding: 48px; background: #ffffff; color: #09090b; font-family: Arial, sans-serif, system-ui; min-height: 100%; box-sizing: border-box;">
             <!-- Branding Header -->
-            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 1px solid #27272a; margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 2px solid #e4e4e7; margin-bottom: 32px;">
                 <div style="display: flex; align-items: center; gap: 16px;">
                     ${brand?.logo_url
             ? `<img src="${brand.logo_url}" alt="${brand.name}" style="height: 48px; width: auto;" crossorigin="anonymous" />`
@@ -83,45 +83,47 @@ export async function generatePacketPdf(token: string): Promise<void> {
                         </div>`
         }
                     <div>
-                        <h2 style="font-weight: 600; color: #ffffff; margin: 0; font-size: 18px;">${brand?.name || 'Real Estate Group'}</h2>
-                        <p style="font-size: 14px; color: #a1a1aa; margin: 4px 0 0 0;">${brand?.contact_phone || ''}</p>
+                        <h2 style="font-weight: 700; color: #09090b; margin: 0; font-size: 20px;">${brand?.name || 'Real Estate Group'}</h2>
+                        <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${brand?.contact_phone || ''}</p>
                     </div>
                 </div>
                 <div style="text-align: right;">
-                    <p style="font-size: 14px; color: #a1a1aa; margin: 0;">${brand?.contact_email || ''}</p>
-                    <p style="font-size: 14px; color: #a1a1aa; margin: 4px 0 0 0;">${brand?.contact_website || ''}</p>
+                    <p style="font-size: 14px; color: #71717a; margin: 0;">${brand?.contact_email || ''}</p>
+                    <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${brand?.contact_website || ''}</p>
                 </div>
             </div>
 
             <!-- Title Section -->
-            <div style="text-align: center; padding: 24px 0;">
-                <h1 style="font-size: 28px; font-weight: bold; color: #ffffff; margin: 0 0 16px 0;">
+            <div style="text-align: center; padding: 24px 0 48px 0;">
+                <h1 style="font-size: 32px; font-weight: 800; color: #09090b; margin: 0 0 16px 0; letter-spacing: -0.02em;">
                     Utility Handoff Packet
                 </h1>
-                <div style="background: #27272a; padding: 10px 20px; border-radius: 8px; border: 1px solid #3f3f46; display: block; width: fit-content; margin: 0 auto;">
-                    <span style="color: #34d399; margin-right: 8px; font-size: 16px; vertical-align: middle;">📍</span>
-                    <span style="color: #ffffff; font-weight: 500; font-size: 16px; vertical-align: middle;">${request.property_address}</span>
+                <div style="background: #f4f4f5; padding: 12px 24px; border-radius: 12px; border: 1px solid #e4e4e7; display: inline-block; margin: 0 auto;">
+                    <span style="color: #059669; margin-right: 8px; font-size: 18px; vertical-align: middle;">📍</span>
+                    <span style="color: #09090b; font-weight: 600; font-size: 18px; vertical-align: middle;">${request.property_address}</span>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; font-size: 14px; color: #71717a;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; font-size: 14px; color: #52525b;">
                     <span>📅</span>
-                    <span>Generated ${format(new Date(request.created_at), 'MMMM d, yyyy')}</span>
+                    <span>Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</span>
                 </div>
             </div>
 
             <!-- Utility Table -->
-            <div style="background: #27272a; border: 1px solid #3f3f46; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="font-size: 18px; font-weight: 600; color: #ffffff; margin: 0 0 16px 0;">Utility Providers</h3>
+            <div style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+                <div style="background: #f9fafb; padding: 16px 24px; border-bottom: 1px solid #e4e4e7;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Utility Providers</h3>
+                </div>
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr style="border-bottom: 1px solid #3f3f46;">
-                            <th style="text-align: left; padding: 12px 8px; color: #a1a1aa; font-weight: 500; font-size: 14px;">Utility</th>
-                            <th style="text-align: left; padding: 12px 8px; color: #a1a1aa; font-weight: 500; font-size: 14px;">Provider</th>
-                            <th style="text-align: left; padding: 12px 8px; color: #a1a1aa; font-weight: 500; font-size: 14px;">Contact</th>
+                        <tr style="border-bottom: 1px solid #e4e4e7; background: #ffffff;">
+                            <th style="text-align: left; padding: 16px 24px; color: #52525b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Utility</th>
+                            <th style="text-align: left; padding: 16px 24px; color: #52525b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Provider</th>
+                            <th style="text-align: left; padding: 16px 24px; color: #52525b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Contact</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody style="background: #ffffff;">
                         ${utilities.length === 0
-            ? `<tr><td colspan="3" style="text-align: center; padding: 32px; color: #71717a;">No utility information provided yet.</td></tr>`
+            ? `<tr><td colspan="3" style="text-align: center; padding: 48px; color: #71717a;">No utility information provided yet.</td></tr>`
             : utilities.map((utility) => {
                 // Safely extract hostname from URL
                 let websiteDisplay = '';
@@ -133,18 +135,18 @@ export async function generatePacketPdf(token: string): Promise<void> {
                     }
                 }
                 return `
-                                <tr style="border-bottom: 1px solid #3f3f46;">
-                                    <td style="padding: 12px 8px;">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 20px;">${UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}</span>
-                                            <span style="font-weight: 500; color: #ffffff; text-transform: capitalize;">${utility.category}</span>
+                                <tr style="border-bottom: 1px solid #e4e4e7;">
+                                    <td style="padding: 16px 24px;">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <span style="font-size: 20px; color: #09090b;">${UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}</span>
+                                            <span style="font-weight: 600; color: #09090b; text-transform: capitalize;">${utility.category}</span>
                                         </div>
                                     </td>
-                                    <td style="padding: 12px 8px; color: #d4d4d8;">${utility.provider_name}</td>
-                                    <td style="padding: 12px 8px;">
-                                        ${utility.provider_phone ? `<span style="color: #34d399; font-size: 14px;">${utility.provider_phone}</span>` : ''}
-                                        ${utility.provider_phone && websiteDisplay ? '<span style="color: #71717a; margin: 0 8px;">•</span>' : ''}
-                                        ${websiteDisplay ? `<span style="color: #60a5fa; font-size: 14px;">${websiteDisplay}</span>` : ''}
+                                    <td style="padding: 16px 24px; color: #3f3f46; font-weight: 500;">${utility.provider_name}</td>
+                                    <td style="padding: 16px 24px;">
+                                        ${utility.provider_phone ? `<span style="color: #059669; font-size: 14px; font-weight: 500;">${utility.provider_phone}</span>` : ''}
+                                        ${utility.provider_phone && websiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
+                                        ${websiteDisplay ? `<span style="color: #2563eb; font-size: 14px;">${websiteDisplay}</span>` : ''}
                                     </td>
                                 </tr>
                             `;
@@ -155,8 +157,8 @@ export async function generatePacketPdf(token: string): Promise<void> {
             </div>
 
             <!-- Next Steps -->
-            <div style="background: #27272a; border: 1px solid #3f3f46; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="font-size: 18px; font-weight: 600; color: #ffffff; margin: 0 0 16px 0;">Buyer Next Steps</h3>
+            <div style="background: #f9fafb; border: 1px solid #e4e4e7; border-radius: 12px; padding: 32px; margin-bottom: 32px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0 0 20px 0;">Buyer Next Steps</h3>
                 <ol style="margin: 0; padding: 0; list-style: none;">
                     ${[
             'Contact each utility provider above to set up new service in your name.',
@@ -164,8 +166,8 @@ export async function generatePacketPdf(token: string): Promise<void> {
             'Have your closing documents handy — providers may ask for verification of ownership.',
             'If transferring internet service, contact your provider at least 1-2 weeks in advance.'
         ].map((step, i) => `
-                        <li style="display: flex; gap: 12px; margin-bottom: 12px; color: #d4d4d8;">
-                            <span style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px; background: #064e3b; color: #34d399; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500;">${i + 1}</span>
+                        <li style="display: flex; gap: 16px; margin-bottom: 16px; color: #3f3f46; align-items: flex-start; line-height: 1.5;">
+                            <span style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">${i + 1}</span>
                             <span>${step}</span>
                         </li>
                     `).join('')}
@@ -173,8 +175,8 @@ export async function generatePacketPdf(token: string): Promise<void> {
             </div>
 
             <!-- Footer -->
-            <div style="text-align: center; padding-top: 24px; border-top: 1px solid #27272a;">
-                <p style="font-size: 14px; color: #71717a; margin: 0;">
+            <div style="text-align: center; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+                <p style="font-size: 13px; color: #71717a; margin: 0;">
                     Generated by UtilitySheet ${brand?.contact_email ? `• ${brand.contact_email}` : ''}
                 </p>
             </div>
@@ -206,7 +208,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
         const canvas = await html2canvas(iframeBody.firstElementChild as HTMLElement, {
             scale: 2,
             useCORS: true,
-            backgroundColor: '#18181b',
+            backgroundColor: '#ffffff',
             logging: false, // Disable logging for html2canvas
             allowTaint: true, // Allow tainted images (might help if CORS fails)
         });
