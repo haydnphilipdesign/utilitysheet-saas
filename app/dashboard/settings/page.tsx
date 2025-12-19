@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Settings, User, Bell, CreditCard, Loader2, Save } from 'lucide-react';
+import { Settings, User, Bell, CreditCard, Loader2, Save, Sparkles, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
@@ -27,6 +27,7 @@ export default function SettingsPage() {
         limit: 3,
         plan: 'free'
     });
+    const [billingLoading, setBillingLoading] = useState(false);
 
 
     // Update profile when Stack user loads, but prefer fetching from DB
@@ -214,37 +215,98 @@ export default function SettingsPage() {
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
                         <div>
-                            <p className="text-white font-medium capitalize">{usage.plan === 'free' ? 'Free Plan' : usage.plan}</p>
-                            <p className="text-sm text-zinc-400">{usage.limit} requests per month</p>
+                            <p className="text-white font-medium">
+                                {usage.plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
+                            </p>
+                            <p className="text-sm text-zinc-400">
+                                {usage.plan === 'pro' ? 'Unlimited requests' : `${usage.limit} requests per month`}
+                            </p>
                         </div>
-                        <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white">
-                            Upgrade
-                        </Button>
+                        {usage.plan === 'pro' ? (
+                            <Button
+                                variant="outline"
+                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                                onClick={async () => {
+                                    setBillingLoading(true);
+                                    try {
+                                        const response = await fetch('/api/billing/portal', { method: 'POST' });
+                                        const data = await response.json();
+                                        if (data.url) {
+                                            window.location.href = data.url;
+                                        } else {
+                                            toast.error('Failed to open billing portal');
+                                        }
+                                    } catch (error) {
+                                        toast.error('Failed to open billing portal');
+                                    } finally {
+                                        setBillingLoading(false);
+                                    }
+                                }}
+                                disabled={billingLoading}
+                            >
+                                {billingLoading ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                )}
+                                Manage Subscription
+                            </Button>
+                        ) : (
+                            <Button
+                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                                onClick={async () => {
+                                    setBillingLoading(true);
+                                    try {
+                                        const response = await fetch('/api/billing/checkout', { method: 'POST' });
+                                        const data = await response.json();
+                                        if (data.url) {
+                                            window.location.href = data.url;
+                                        } else {
+                                            toast.error(data.error || 'Failed to start checkout');
+                                        }
+                                    } catch (error) {
+                                        toast.error('Failed to start checkout');
+                                    } finally {
+                                        setBillingLoading(false);
+                                    }
+                                }}
+                                disabled={billingLoading}
+                            >
+                                {billingLoading ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                )}
+                                Upgrade to Pro
+                            </Button>
+                        )}
                     </div>
 
-                    {/* Usage Progress */}
-                    <div className="p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-                        <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm text-zinc-300">Monthly Usage</p>
-                            <p className="text-sm font-medium text-white">{usage.used} of {usage.limit} requests</p>
-                        </div>
-                        <div className="w-full h-2 bg-zinc-700 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full rounded-full transition-all ${usage.used >= usage.limit
+                    {/* Usage Progress - only show for free plan */}
+                    {usage.plan === 'free' && (
+                        <div className="p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm text-zinc-300">Monthly Usage</p>
+                                <p className="text-sm font-medium text-white">{usage.used} of {usage.limit} requests</p>
+                            </div>
+                            <div className="w-full h-2 bg-zinc-700 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all ${usage.used >= usage.limit
                                         ? 'bg-red-500'
                                         : usage.used >= usage.limit * 0.8
                                             ? 'bg-yellow-500'
                                             : 'bg-emerald-500'
-                                    }`}
-                                style={{ width: `${Math.min((usage.used / usage.limit) * 100, 100)}%` }}
-                            />
+                                        }`}
+                                    style={{ width: `${Math.min((usage.used / usage.limit) * 100, 100)}%` }}
+                                />
+                            </div>
+                            {usage.used >= usage.limit && (
+                                <p className="text-sm text-red-400 mt-2">
+                                    You've reached your monthly limit. Upgrade to continue creating requests.
+                                </p>
+                            )}
                         </div>
-                        {usage.used >= usage.limit && (
-                            <p className="text-sm text-red-400 mt-2">
-                                You've reached your monthly limit. Upgrade to continue creating requests.
-                            </p>
-                        )}
-                    </div>
+                    )}
                 </CardContent>
             </Card>
 

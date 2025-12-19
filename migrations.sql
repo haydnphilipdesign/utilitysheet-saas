@@ -59,3 +59,23 @@ CREATE INDEX IF NOT EXISTS idx_organization_members_org ON organization_members(
 -- SELECT column_name FROM information_schema.columns WHERE table_name = 'requests';
 -- SELECT column_name FROM information_schema.columns WHERE table_name = 'accounts';
 -- SELECT column_name FROM information_schema.columns WHERE table_name = 'brand_profiles';
+
+-- =====================================================
+-- STEP 7: Add Stripe subscription fields to accounts
+-- Generated: 2025-12-19 (Billing Integration)
+-- =====================================================
+ALTER TABLE accounts 
+ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+
+ALTER TABLE accounts 
+ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'free' 
+  CHECK (subscription_status IN ('free', 'pro', 'canceled'));
+
+ALTER TABLE accounts 
+ADD COLUMN IF NOT EXISTS subscription_id TEXT;
+
+ALTER TABLE accounts 
+ADD COLUMN IF NOT EXISTS subscription_ends_at TIMESTAMPTZ;
+
+-- Index for finding accounts by Stripe customer ID
+CREATE INDEX IF NOT EXISTS idx_accounts_stripe_customer_id ON accounts(stripe_customer_id);

@@ -458,8 +458,22 @@ export async function getMonthlyUsage(accountId: string, organizationId?: string
   const result = await query;
   const used = Number(result[0]?.count) || 0;
 
-  // TODO: Fetch actual plan from account/subscription table when billing is implemented
-  // For now, free plan = 3 requests per month
+  // Fetch subscription status from account
+  const accountResult = await sql`
+    SELECT subscription_status FROM accounts WHERE id = ${accountId}
+  `;
+  const subscriptionStatus = accountResult[0]?.subscription_status || 'free';
+
+  // Pro users get unlimited requests
+  if (subscriptionStatus === 'pro') {
+    return {
+      used,
+      limit: 999999, // Effectively unlimited
+      plan: 'pro'
+    };
+  }
+
+  // Free plan = 3 requests per month
   return {
     used,
     limit: 3,
@@ -467,3 +481,51 @@ export async function getMonthlyUsage(accountId: string, organizationId?: string
   };
 }
 
+// Update Stripe customer ID for an account
+export async function updateAccountStripeCustomer(accountId: string, stripeCustomerId: string) {
+  if (!sql) return null;
+
+  const result = await sql`
+    UPDATE accounts
+    SET stripe_customer_id = ${stripeCustomerId}
+    WHERE id = ${accountId}
+    RETURNING *
+  `;
+
+  return result[0] || null;
+}
+
+// Update subscription status for an account
+export async function updateAccountSubscription(
+  accountId: string,
+  data: {
+    subscriptionStatus: string;
+    subscriptionId: string | null;
+    subscriptionEndsAt: Date | null;
+  }
+) {
+  if (!sql) return null;
+
+  const result = await sql`
+    UPDATE accounts
+    SET 
+      subscription_status = ${data.subscriptionStatus},
+      subscription_id = ${data.subscriptionId},
+      subscription_ends_at = ${data.subscriptionEndsAt?.toISOString() || null}
+    WHERE id = ${accountId}
+    RETURNING *
+  `;
+
+  return result[0] || null;
+}
+
+// Get account by Stripe customer ID
+export async function getAccountByStripeCustomerId(stripeCustomerId: string) {
+  if (!sql) return null;
+
+  const result = await sql`
+    SELECT * FROM accounts WHERE stripe_customer_id = ${stripeCustomerId}
+  `;
+
+  return result[0] || null;
+}
