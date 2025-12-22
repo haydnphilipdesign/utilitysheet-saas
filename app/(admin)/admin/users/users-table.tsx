@@ -145,8 +145,8 @@ export function UsersTable({ users }: UsersTableProps) {
             accessorKey: 'plan',
             header: 'Plan',
             cell: ({ row }) => (
-                <Badge variant={row.original.plan === 'pro' ? 'default' : 'outline'}>
-                    {row.original.plan === 'pro' ? 'Pro' : 'Free'}
+                <Badge variant={row.original.subscription_status === 'pro' ? 'default' : 'outline'}>
+                    {row.original.subscription_status === 'pro' ? 'Pro' : 'Free'}
                 </Badge>
             ),
         },
@@ -216,7 +216,7 @@ export function UsersTable({ users }: UsersTableProps) {
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
-                                {user.plan === 'pro' ? (
+                                {user.subscription_status === 'pro' ? (
                                     <DropdownMenuItem
                                         onClick={() => handleDowngradePlan(user.id)}
                                         className="cursor-pointer"

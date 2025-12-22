@@ -70,7 +70,7 @@ export async function getAllUsers(limit = 50, offset = 0): Promise<{ users: Acco
     const [users, countResult] = await Promise.all([
         sql`
             SELECT id, auth_user_id, email, full_name, company_name, phone, 
-                   active_organization_id, role, plan, created_at, updated_at
+                   active_organization_id, role, subscription_status, created_at, updated_at
             FROM accounts
             ORDER BY created_at DESC
             LIMIT ${limit} OFFSET ${offset}
@@ -113,7 +113,7 @@ export async function updateUserRole(userId: string, role: UserRole): Promise<Ac
 export async function updateUserPlan(userId: string, plan: Plan): Promise<Account | null> {
     if (!sql) return null;
     const result = await sql`
-        UPDATE accounts SET plan = ${plan} WHERE id = ${userId}
+        UPDATE accounts SET subscription_status = ${plan} WHERE id = ${userId}
         RETURNING *
     `;
     return (result[0] as Account) || null;

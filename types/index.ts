@@ -62,7 +62,7 @@ export interface Account {
     phone: string | null;
     active_organization_id: string | null;
     role: UserRole;
-    plan: Plan;
+    subscription_status: Plan;
     created_at: string;
     updated_at: string;
 }

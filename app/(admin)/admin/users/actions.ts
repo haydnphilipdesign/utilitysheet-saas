@@ -172,7 +172,7 @@ export async function updateUserPlanAction(userId: string, plan: Plan) {
         return { success: false, error: 'User not found' };
     }
 
-    const previousPlan = targetUser.plan;
+    const previousPlan = targetUser.subscription_status;
     const result = await updateUserPlan(userId, plan);
 
     if (result) {
