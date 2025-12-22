@@ -136,6 +136,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token }: 
     if (currentStep > Step.HOME_BASICS) currentProgressWeight += 1;
     if (currentStep === Step.UTILITIES) currentProgressWeight += utilityIndex;
     if (currentStep > Step.UTILITIES) currentProgressWeight += totalUtilities;
+    if (currentStep > Step.REVIEW) currentProgressWeight += 1;
 
     const progress = Math.min((currentProgressWeight / totalStepsWeight) * 100, 100);
 
