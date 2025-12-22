@@ -25,7 +25,7 @@ export default function RootLayout({
       <body className={`${figtree.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >

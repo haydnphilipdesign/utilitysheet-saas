@@ -159,10 +159,7 @@ export function UsersTable({ users }: UsersTableProps) {
                 const user = row.original;
                 return (
                     <DropdownMenu>
-                        <DropdownMenuTrigger
-                            className="inline-flex items-center justify-center h-8 w-8 p-0 rounded-md hover:bg-secondary transition-colors disabled:opacity-50"
-                            disabled={isPending}
-                        >
+                        <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 p-0 rounded-md hover:bg-secondary transition-colors">
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>

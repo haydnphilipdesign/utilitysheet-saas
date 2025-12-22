@@ -28,20 +28,32 @@ async function getAccountByAuthId(authUserId: string): Promise<Account | null> {
 export async function requireAdmin(): Promise<{ user: any; account: Account }> {
     const user = await stackServerApp.getUser();
 
+    console.log('[Admin] Checking admin access for user:', user?.id, user?.primaryEmail);
+
     if (!user) {
+        console.log('[Admin] No user found - not authenticated');
         throw new AdminAuthorizationError('Not authenticated');
     }
 
     const account = await getAccountByAuthId(user.id);
 
+    console.log('[Admin] Account lookup result:', account ? {
+        id: account.id,
+        email: account.email,
+        role: account.role
+    } : 'NOT FOUND');
+
     if (!account) {
+        console.log('[Admin] Account not found for auth_user_id:', user.id);
         throw new AdminAuthorizationError('Account not found');
     }
 
     if (account.role !== 'admin') {
+        console.log('[Admin] User role is:', account.role, '- admin access denied');
         throw new AdminAuthorizationError('Admin access required');
     }
 
+    console.log('[Admin] Access granted for:', account.email);
     return { user, account };
 }
 
