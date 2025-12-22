@@ -41,7 +41,7 @@ export function WizardLoader() {
     }, [currentStep]);
 
     return (
-        <div className="fixed inset-0 bg-black flex flex-col items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-4 z-50">
             <div className="w-full max-w-sm">
                 <div className="relative mb-12 flex justify-center">
                     {/* Pulsing center effect */}
@@ -59,7 +59,7 @@ export function WizardLoader() {
                     />
 
                     {/* Icon container */}
-                    <div className="relative h-20 w-20 bg-zinc-900/80 backdrop-blur-sm border border-white/5 rounded-2xl flex items-center justify-center shadow-2xl">
+                    <div className="relative h-20 w-20 bg-background/80 backdrop-blur-sm border border-border rounded-2xl flex items-center justify-center shadow-lg dark:shadow-2xl dark:shadow-black/50">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={currentStep}
@@ -85,7 +85,7 @@ export function WizardLoader() {
                             transition={{ duration: 0.3 }}
                             className="space-y-2"
                         >
-                            <h3 className="text-xl font-medium text-white tracking-tight">
+                            <h3 className="text-xl font-medium text-foreground tracking-tight">
                                 {LOADING_STEPS[currentStep].text}
                             </h3>
                             <div className="flex justify-center gap-1.5 pt-2">
