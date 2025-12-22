@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Search, Check, Zap, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -175,50 +175,16 @@ function HeroFeatureAnimation() {
 }
 
 function Hero3DCard() {
-    const x = useMotionValue(0);
-    const y = useMotionValue(0);
-
-    const mouseXSpring = useSpring(x);
-    const mouseYSpring = useSpring(y);
-
-    const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["17.5deg", "-17.5deg"]);
-    const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-17.5deg", "17.5deg"]);
-
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const width = rect.width;
-        const height = rect.height;
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const xPct = mouseX / width - 0.5;
-        const yPct = mouseY / height - 0.5;
-        x.set(xPct);
-        y.set(yPct);
-    };
-
-    const handleMouseLeave = () => {
-        x.set(0);
-        y.set(0);
-    };
-
     return (
-        <motion.div
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-            style={{
-                rotateY,
-                rotateX,
-                transformStyle: "preserve-3d",
-            }}
-            className="relative w-full max-w-4xl mx-auto aspect-video rounded-xl bg-card/50 border border-border backdrop-blur-sm shadow-2xl shadow-emerald-500/10 flex items-center justify-center"
+        <div
+            className="relative w-full max-w-4xl mx-auto aspect-video rounded-xl bg-card/50 border border-border backdrop-blur-sm shadow-2xl shadow-emerald-500/10 flex items-center justify-center p-2"
         >
             <div
-                style={{ transform: "translateZ(75px)", transformStyle: "preserve-3d" }}
-                className="absolute inset-4 bg-background rounded-lg border border-border overflow-hidden flex flex-col shadow-inner"
+                className="w-full h-full bg-background rounded-lg border border-border overflow-hidden flex flex-col shadow-inner"
             >
                 <HeroFeatureAnimation />
             </div>
-        </motion.div>
+        </div>
     );
 }
 
