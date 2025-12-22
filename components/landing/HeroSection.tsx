@@ -217,7 +217,7 @@ export function HeroSection() {
                         </h1>
 
                         <p className="mx-auto lg:mx-0 max-w-2xl text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
-                            Stop spending hours on phone calls. Let our AI handle utility transfers for your clients in minutes, not days.
+                            Stop spending hours on phone calls. Generate professional utility info sheets for your buyers in minutes, not days.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-12 lg:mb-0">

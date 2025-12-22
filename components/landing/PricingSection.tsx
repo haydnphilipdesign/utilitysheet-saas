@@ -10,9 +10,9 @@ const tiers = [
         price: 'Free',
         description: 'Perfect for individual agents just getting started.',
         features: [
-            '3 Usage per month',
-            'Standard PDF Generation',
-            'Basic Email Support',
+            '3 requests per month',
+            'Standard PDF generation',
+            'Basic email support',
             '7-day data retention'
         ],
         cta: 'Start for Free',
@@ -25,11 +25,11 @@ const tiers = [
         period: '/month',
         description: 'For high-volume agents and teams needing more power.',
         features: [
-            'Unlimited Usage',
-            'Custom Branding & Colors',
-            'Priority Support',
+            'Unlimited requests',
+            'Custom branding & colors',
+            'Priority support',
             'Indefinite data retention',
-            'Team Management (Coming Soon)'
+            'Team management (coming soon)'
         ],
         cta: 'Get Started',
         href: '/auth/signup?plan=pro',

@@ -14,11 +14,11 @@ const faqs = [
     },
     {
         question: "Is it really free to start?",
-        answer: "Yes! Our Starter plan is completely free. You can use it for up to 3 properties per month. No credit card required."
+        answer: "Yes! Our Starter plan is completely free. You can use it for up to 3 requests per month. No credit card required."
     },
     {
         question: "Can I customize the branding?",
-        answer: "Absolutely. On the Pro plan, you can upload your brokerage logo, setting custom colors, and even adding your headshot to the final PDF info sheet."
+        answer: "Absolutely. On the Pro plan, you can upload your brokerage logo, set custom colors, and even add your headshot to the final PDF info sheet."
     },
     {
         question: "What happens if a provider is missing?",

@@ -7,17 +7,17 @@ const features = [
     {
         icon: Clock,
         title: "2-Minute Seller Form",
-        description: "Smart suggestions mean sellers just tap to confirm providers. No bills or manual typing required."
+        description: "Smart suggestions let sellers confirm providers with a tap—no utility bills or manual typing required."
     },
     {
         icon: Zap,
         title: "Instant AI Resolution",
-        description: "Our AI engine automatically finds contact info for every provider."
+        description: "Our AI engine automatically finds accurate contact info for every utility provider."
     },
     {
         icon: Shield,
         title: "Branded Info Sheets",
-        description: "Generate beautiful, professional PDFs for buyers with your brokerage's branding and colors."
+        description: "Generate polished, professional PDFs featuring your brokerage's logo and brand colors."
     },
     {
         icon: Smartphone,
@@ -27,7 +27,7 @@ const features = [
     {
         icon: Sparkles,
         title: "Smart Suggestions",
-        description: "We predict utility providers based on address location with high accuracy."
+        description: "Our AI predicts utility providers based on address location with high accuracy."
     },
     {
         icon: CheckCircle2,
