@@ -68,7 +68,7 @@ export default function RequestsPage() {
                 const response = await fetch('/api/requests');
                 if (response.ok) {
                     const data = await response.json();
-                    setRequests(data);
+                    setRequests(data.data || []);
                 }
             } catch (error) {
                 console.error('Error fetching requests:', error);
