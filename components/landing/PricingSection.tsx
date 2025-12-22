@@ -21,7 +21,7 @@ const tiers = [
     },
     {
         name: 'Pro',
-        price: '$29',
+        price: '$9',
         period: '/month',
         description: 'For high-volume agents and teams needing more power.',
         features: [
@@ -54,8 +54,8 @@ export function PricingSection() {
                         <div
                             key={tier.name}
                             className={`relative rounded-3xl p-8 border ${tier.popular
-                                    ? 'bg-card/40 border-emerald-500/50 shadow-2xl shadow-emerald-500/10'
-                                    : 'bg-card/20 border-border'
+                                ? 'bg-card/40 border-emerald-500/50 shadow-2xl shadow-emerald-500/10'
+                                : 'bg-card/20 border-border'
                                 } flex flex-col`}
                         >
                             {tier.popular && (
@@ -89,8 +89,8 @@ export function PricingSection() {
                             <Link href={tier.href} className="block mt-auto">
                                 <Button
                                     className={`w-full h-12 text-base font-semibold ${tier.popular
-                                            ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                            : 'bg-foreground text-background hover:bg-foreground/90'
+                                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                        : 'bg-foreground text-background hover:bg-foreground/90'
                                         }`}
                                 >
                                     {tier.cta}
