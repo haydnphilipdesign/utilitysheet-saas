@@ -37,6 +37,18 @@ export type EventName =
     | 'pdf_downloaded'
     | 'reminder_sent';
 
+// User Role enum for admin functionality
+export type UserRole = 'user' | 'admin' | 'banned';
+
+// Admin audit action types
+export type AdminAction =
+    | 'user_banned'
+    | 'user_unbanned'
+    | 'role_changed'
+    | 'impersonation_started'
+    | 'impersonation_ended'
+    | 'user_updated';
+
 // Entities
 export interface Account {
     id: string;
@@ -46,6 +58,7 @@ export interface Account {
     company_name: string | null;
     phone: string | null;
     active_organization_id: string | null;
+    role: UserRole;
     created_at: string;
     updated_at: string;
 }
@@ -134,6 +147,17 @@ export interface EventLog {
     actor_type: ActorType;
     event_name: EventName;
     payload: Record<string, unknown> | null;
+    created_at: string;
+}
+
+// Admin Audit Log for tracking admin actions
+export interface AdminAuditLog {
+    id: string;
+    admin_id: string;
+    target_user_id: string | null;
+    action: AdminAction;
+    metadata: Record<string, unknown> | null;
+    ip_address: string | null;
     created_at: string;
 }
 

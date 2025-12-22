@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     company_name TEXT,
     phone TEXT,
     active_organization_id UUID, -- References organizations(id) later
+    role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin', 'banned')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -104,6 +105,17 @@ CREATE TABLE IF NOT EXISTS event_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Admin Audit Logs table (for tracking admin actions)
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    admin_id UUID NOT NULL REFERENCES accounts(id),
+    target_user_id UUID REFERENCES accounts(id),
+    action TEXT NOT NULL,
+    metadata JSONB,
+    ip_address TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_requests_account_id ON requests(account_id);
 CREATE INDEX IF NOT EXISTS idx_requests_public_token ON requests(public_token);
@@ -111,6 +123,9 @@ CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
 CREATE INDEX IF NOT EXISTS idx_utility_entries_request_id ON utility_entries(request_id);
 CREATE INDEX IF NOT EXISTS idx_brand_profiles_account_id ON brand_profiles(account_id);
 CREATE INDEX IF NOT EXISTS idx_event_logs_request_id ON event_logs(request_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_id ON admin_audit_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_target_user_id ON admin_audit_logs(target_user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON admin_audit_logs(created_at DESC);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
