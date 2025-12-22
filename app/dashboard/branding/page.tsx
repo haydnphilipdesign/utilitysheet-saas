@@ -140,27 +140,47 @@ export default function BrandingPage() {
                 )}
             </div>
 
-            {!isPro && brands.length === 0 && (
-                <Card className="border-amber-500/20 bg-amber-500/5">
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col items-center text-center p-4">
-                            <div className="h-12 w-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
-                                <Lock className="h-6 w-6 text-amber-500" />
+            {brands.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-border rounded-3xl bg-card/30 backdrop-blur-sm">
+                    <div className="relative mb-6">
+                        <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
+                        <img
+                            src="/branding_empty_state_illustration_1766440299963.png"
+                            alt="Branding"
+                            className="relative w-48 h-48 object-contain"
+                        />
+                    </div>
+
+                    {isPro ? (
+                        <div className="text-center max-w-sm">
+                            <h3 className="text-xl font-bold text-foreground mb-2">No branding profiles yet</h3>
+                            <p className="text-muted-foreground mb-6">Create your first profile to customize your utility sheets with your own logo and colors.</p>
+                            <Link href="/dashboard/branding/new">
+                                <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create First Profile
+                                </Button>
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="text-center max-w-md">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium mb-4">
+                                <Star className="h-3 w-3 fill-emerald-400" />
+                                Pro Feature
                             </div>
-                            <h3 className="text-xl font-bold text-foreground mb-2">Unlock Custom Branding</h3>
-                            <p className="text-muted-foreground max-w-md mb-6">
-                                Upgrade to the Pro plan to create custom branding profiles for your utility info sheets.
-                                Verify instant credibility with your clients.
+                            <h3 className="text-2xl font-bold text-foreground mb-2">Unlock Custom Branding</h3>
+                            <p className="text-muted-foreground mb-8">
+                                Stand out from the competition. Pro users can create unlimited branding profiles with custom logos, colors, and contact information.
                             </p>
                             <Link href="/dashboard/settings">
-                                <Button className="bg-amber-500 hover:bg-amber-600 text-black font-medium">
+                                <Button className="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold h-11 px-8">
                                     Upgrade to Pro
                                 </Button>
                             </Link>
                         </div>
-                    </CardContent>
-                </Card>
-            )}
+                    )}
+                </div>
+            ) : null}
 
             {/* Brands Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

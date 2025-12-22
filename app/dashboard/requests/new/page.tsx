@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, ArrowRight, Check, Copy, MessageSquare, Mail, Loader2, MapPin, Sparkles, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Copy, MessageSquare, Mail, Loader2, MapPin, Sparkles, AlertTriangle, Plus } from 'lucide-react';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
 import Link from 'next/link';
@@ -27,6 +27,7 @@ interface FormData {
     seller_phone: string;
     closing_date: string;
     utility_categories: UtilityCategory[];
+    brand_profile_id: string;
 }
 
 const initialFormData: FormData = {
@@ -36,6 +37,7 @@ const initialFormData: FormData = {
     seller_phone: '',
     closing_date: '',
     utility_categories: ['electric', 'gas', 'water', 'sewer', 'trash'],
+    brand_profile_id: '',
 };
 
 export default function NewRequestPage() {
@@ -43,11 +45,32 @@ export default function NewRequestPage() {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<FormData>(initialFormData);
     const [loading, setLoading] = useState(false);
+    const [brands, setBrands] = useState<any[]>([]);
     const [generatedToken, setGeneratedToken] = useState<string | null>(null);
     const [showShareDialog, setShowShareDialog] = useState(false);
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        async function fetchBrands() {
+            try {
+                const response = await fetch('/api/branding');
+                if (response.ok) {
+                    const data = await response.json();
+                    setBrands(data);
+                    // Set default brand if available
+                    const defaultBrand = data.find((b: any) => b.is_default) || data[0];
+                    if (defaultBrand) {
+                        setFormData(prev => ({ ...prev, brand_profile_id: defaultBrand.id }));
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching brands:', error);
+            }
+        }
+        fetchBrands();
+    }, []);
 
     const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -79,6 +102,7 @@ export default function NewRequestPage() {
                     sellerPhone: formData.seller_phone || undefined,
                     closingDate: formData.closing_date || undefined,
                     utilityCategories: formData.utility_categories,
+                    brandProfileId: formData.brand_profile_id || undefined,
                 }),
             });
 
@@ -160,7 +184,7 @@ Thank you!`,
 
             {/* Progress Steps */}
             <div className="flex items-center gap-2 mb-8">
-                {[1, 2, 3].map((s) => (
+                {[1, 2, 3, 4].map((s) => (
                     <div key={s} className="flex items-center gap-2 flex-1">
                         <div
                             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${s < step
@@ -172,7 +196,7 @@ Thank you!`,
                         >
                             {s < step ? <Check className="h-4 w-4" /> : s}
                         </div>
-                        {s < 3 && (
+                        {s < 4 && (
                             <div
                                 className={`flex-1 h-0.5 ${s < step ? 'bg-emerald-500' : 'bg-muted'}`}
                             />
@@ -218,8 +242,79 @@ Thank you!`,
                 </Card>
             )}
 
-            {/* Step 2: Seller Info (Optional) */}
+            {/* Step 2: Branding Profile */}
             {step === 2 && (
+                <Card className="border-border bg-card/50">
+                    <CardHeader>
+                        <CardTitle className="text-foreground flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-emerald-400" />
+                            Branding Profile
+                        </CardTitle>
+                        <CardDescription className="text-muted-foreground">
+                            Choose which branding to display on the utility sheet
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {brands.map((brand) => (
+                                <button
+                                    key={brand.id}
+                                    onClick={() => updateField('brand_profile_id', brand.id)}
+                                    className={`text-left p-4 rounded-xl border transition-all ${formData.brand_profile_id === brand.id
+                                        ? 'bg-emerald-500/10 border-emerald-500/50 shadow-lg shadow-emerald-500/5'
+                                        : 'bg-muted/50 border-border hover:border-input'
+                                        }`}
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="font-semibold text-foreground">{brand.name}</p>
+                                        {formData.brand_profile_id === brand.id && (
+                                            <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                                                <Check className="h-3 w-3 text-white" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground line-clamp-1">{brand.contact_name || 'No contact name'}</p>
+                                    <div className="flex gap-1.5 mt-3">
+                                        <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: brand.primary_color }} />
+                                        <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: brand.secondary_color }} />
+                                    </div>
+                                </button>
+                            ))}
+
+                            <Link href="/dashboard/branding/new">
+                                <Button variant="outline" className="w-full h-full min-h-[100px] border-dashed border-2 border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-400 group">
+                                    <div className="flex flex-col items-center">
+                                        <Plus className="h-5 w-5 mb-1 group-hover:scale-110 transition-transform" />
+                                        <span>New Profile</span>
+                                    </div>
+                                </Button>
+                            </Link>
+                        </div>
+
+                        <div className="flex justify-between pt-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setStep(1)}
+                                className="border-border text-foreground hover:bg-muted"
+                            >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back
+                            </Button>
+                            <Button
+                                onClick={() => setStep(3)}
+                                disabled={!formData.brand_profile_id}
+                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                            >
+                                Continue
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Step 3: Seller Info (Optional) */}
+            {step === 3 && (
                 <Card className="border-border bg-card/50">
                     <CardHeader>
                         <CardTitle className="text-foreground">Seller Information</CardTitle>
@@ -275,14 +370,14 @@ Thank you!`,
                         <div className="flex justify-between">
                             <Button
                                 variant="outline"
-                                onClick={() => setStep(1)}
+                                onClick={() => setStep(2)}
                                 className="border-border text-foreground hover:bg-muted"
                             >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 Back
                             </Button>
                             <Button
-                                onClick={() => setStep(3)}
+                                onClick={() => setStep(4)}
                                 className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
                             >
                                 Continue
@@ -293,8 +388,8 @@ Thank you!`,
                 </Card>
             )}
 
-            {/* Step 3: Utility Categories */}
-            {step === 3 && (
+            {/* Step 4: Utility Categories */}
+            {step === 4 && (
                 <Card className="border-border bg-card/50">
                     <CardHeader>
                         <CardTitle className="text-foreground">Utility Categories</CardTitle>
@@ -327,7 +422,7 @@ Thank you!`,
                         <div className="flex justify-between pt-4">
                             <Button
                                 variant="outline"
-                                onClick={() => setStep(2)}
+                                onClick={() => setStep(3)}
                                 className="border-border text-foreground hover:bg-muted"
                             >
                                 <ArrowLeft className="mr-2 h-4 w-4" />

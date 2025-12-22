@@ -1,26 +1,54 @@
 import { sql, generateToken } from '@/lib/neon/db';
 import type { Request, BrandProfile } from '@/types';
 
-// Get all requests for an account or organization
-export async function getRequests(accountId: string, organizationId?: string): Promise<Request[]> {
-  if (!sql) return [];
+// Pagination result interface
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
-  if (organizationId) {
-    const result = await sql`
-      SELECT * FROM requests 
-      WHERE organization_id = ${organizationId}
-      ORDER BY created_at DESC
-    `;
-    return result as Request[];
-  }
+// Get all requests for an account or organization (with pagination)
+export async function getRequests(
+  accountId: string,
+  organizationId?: string,
+  options: { page?: number; limit?: number } = {}
+): Promise<PaginatedResult<Request>> {
+  const page = Math.max(1, options.page || 1);
+  const limit = Math.min(100, Math.max(1, options.limit || 10));
+  const offset = (page - 1) * limit;
 
+  if (!sql) return { data: [], total: 0, page, limit, totalPages: 0 };
+
+  // Build the WHERE clause
+  const whereClause = organizationId
+    ? sql`organization_id = ${organizationId}`
+    : sql`account_id = ${accountId} AND organization_id IS NULL`;
+
+  // Get total count
+  const countResult = await sql`
+    SELECT COUNT(*) as count FROM requests WHERE ${whereClause}
+  `;
+  const total = Number(countResult[0]?.count) || 0;
+  const totalPages = Math.ceil(total / limit);
+
+  // Get paginated data
   const result = await sql`
     SELECT * FROM requests 
-    WHERE account_id = ${accountId} AND organization_id IS NULL
+    WHERE ${whereClause}
     ORDER BY created_at DESC
+    LIMIT ${limit} OFFSET ${offset}
   `;
 
-  return result as Request[];
+  return {
+    data: result as Request[],
+    total,
+    page,
+    limit,
+    totalPages
+  };
 }
 
 // Get a single request by ID
@@ -108,6 +136,23 @@ export async function updateRequestStatus(
   `;
 
   return result[0] as Request || null;
+}
+
+// Delete a request
+export async function deleteRequest(id: string): Promise<boolean> {
+  if (!sql) return false;
+
+  // First delete associated utility entries
+  await sql`
+    DELETE FROM utility_entries WHERE request_id = ${id}
+  `;
+
+  // Then delete the request
+  const result = await sql`
+    DELETE FROM requests WHERE id = ${id} RETURNING id
+  `;
+
+  return result.length > 0;
 }
 
 // Get dashboard stats

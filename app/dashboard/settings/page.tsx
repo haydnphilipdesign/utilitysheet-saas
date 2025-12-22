@@ -253,7 +253,7 @@ export default function SettingsPage() {
                             </Button>
                         ) : (
                             <Button
-                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20 font-bold h-11 px-8 border-none transition-all hover:scale-105 active:scale-95"
                                 onClick={async () => {
                                     setBillingLoading(true);
                                     try {
@@ -275,7 +275,7 @@ export default function SettingsPage() {
                                 {billingLoading ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
-                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    <Sparkles className="mr-2 h-4 w-4 fill-white animate-pulse" />
                                 )}
                                 Upgrade to Pro
                             </Button>
@@ -289,12 +289,12 @@ export default function SettingsPage() {
                                 <p className="text-sm text-muted-foreground">Monthly Usage</p>
                                 <p className="text-sm font-medium text-foreground">{usage.used} of {usage.limit} requests</p>
                             </div>
-                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="w-full h-3 bg-background rounded-full overflow-hidden border border-border shadow-inner">
                                 <div
-                                    className={`h-full rounded-full transition-all ${usage.used >= usage.limit
+                                    className={`h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(16,185,129,0.3)] ${usage.used >= usage.limit
                                         ? 'bg-red-500'
                                         : usage.used >= usage.limit * 0.8
-                                            ? 'bg-yellow-500'
+                                            ? 'bg-amber-500'
                                             : 'bg-emerald-500'
                                         }`}
                                     style={{ width: `${Math.min((usage.used / usage.limit) * 100, 100)}%` }}
