@@ -151,7 +151,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                     <CardHeader>
                         <CardTitle className="text-foreground">Contact Information</CardTitle>
                         <CardDescription className="text-muted-foreground">
-                            Shown on the packet for buyer questions
+                            Shown on the info sheet for buyer questions
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -241,7 +241,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                     <CardHeader>
                         <CardTitle className="text-foreground">Preview</CardTitle>
                         <CardDescription className="text-muted-foreground">
-                            How your branding will appear on packets
+                            How your branding will appear on info sheets
                         </CardDescription>
                     </CardHeader>
                     <CardContent>

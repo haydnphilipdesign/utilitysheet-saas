@@ -14,7 +14,7 @@ UtilitySheet is an address-first SaaS that standardizes and accelerates the coll
 
 1. **Minimize seller effort** to near-zero.
 2. **Maximize completion rate** and reduce agent/TC follow-ups.
-3. Produce a **standardized, professional utility packet** that becomes the default artifact used across parties.
+3. Produce a **standardized, professional utility info sheet** that becomes the default artifact used across parties.
 4. Improve provider suggestions over time without user-maintained databases.
 
 ### Success metrics (MVP targets)
@@ -22,7 +22,7 @@ UtilitySheet is an address-first SaaS that standardizes and accelerates the coll
 * Seller median completion time: **≤ 2 minutes**
 * Form completion rate (within 48 hours of send): **≥ 70%**
 * Suggested-provider confirm rate: **≥ 60%** (rising over time)
-* Packets generated per month per paid account: growth indicator
+* Info sheets generated per month per paid account: growth indicator
 * Reduction in “chasing seller” follow-ups (self-reported / event proxy)
 
 ---
@@ -49,7 +49,7 @@ UtilitySheet is an address-first SaaS that standardizes and accelerates the coll
    * Wants the quickest possible flow with minimal typing.
 4. **Buyer (Secondary Recipient)**
 
-   * Receives a packet with clear next steps and contacts.
+   * Receives an info sheet with clear next steps and contacts.
 
 ---
 
@@ -69,7 +69,7 @@ UtilitySheet is an address-first SaaS that standardizes and accelerates the coll
 
 * Request creation in **≤ 60 seconds**
 * Link is copyable and works without seller login
-* Branding is applied to both web packet + PDF
+* Branding is applied to both web info sheet + PDF
 
 ---
 
@@ -94,16 +94,16 @@ UtilitySheet is an address-first SaaS that standardizes and accelerates the coll
 
 ---
 
-### Journey C: Packet generation + tracking (Agent/TC)
+### Journey C: Info sheet generation + tracking (Agent/TC)
 
 1. Seller submits → dashboard shows **Submitted**
-2. Agent views generated packet web page
+2. Agent views generated info sheet web page
 3. Agent downloads PDF
 4. Optional: send packet link to buyer/title
 
 **Acceptance criteria**
 
-* Packet is generated automatically on submission
+* Info sheet is generated automatically on submission
 * PDF generation completes in **< 10 seconds** typical
 * Dashboard shows “Needs attention” only for system-resolution failures (not seller tasks)
 
@@ -123,7 +123,7 @@ UtilitySheet is an address-first SaaS that standardizes and accelerates the coll
   * Provider name autocomplete
   * Applicability toggles (Well/Septic/Propane/Oil)
 * Provider Resolution Engine (suggest + normalize + contact lookup)
-* Packet web page + PDF export
+* Info sheet web page + PDF export
 * Dashboard with statuses + basic filters
 * Reminder automation (simple: nudge seller if not completed)
 
@@ -158,7 +158,7 @@ UtilitySheet is an address-first SaaS that standardizes and accelerates the coll
 * Create new request
 * Copy seller link
 * View seller form (preview)
-* View packet
+* View info sheet
 * Download PDF
 * Resend reminder
 
@@ -206,7 +206,7 @@ UtilitySheet is an address-first SaaS that standardizes and accelerates the coll
 
 **Acceptance**
 
-* Preview shows how packet header looks
+* Preview shows how info sheet header looks
 * Multiple profiles allowed (plans may gate)
 
 ---
@@ -247,7 +247,7 @@ If **Not this**:
 
 ---
 
-### 7.5 Packet Web Page
+### 7.5 Info Sheet Web Page
 
 **Sections**
 
@@ -481,7 +481,7 @@ Track:
 * Agent can create request, send link, and see status updates.
 * Seller can complete in ≤ 2 minutes with no typing when suggestions are correct.
 * Seller can submit with unknowns; no bill uploads anywhere.
-* Packet is generated as web + PDF with branding.
+* Info sheet is generated as web + PDF with branding.
 * Contact info auto-fills when resolvable; otherwise flagged for agent/TC.
 * System does not require customer-managed provider/region data setup.
 
@@ -489,7 +489,7 @@ Track:
 
 ## 16) MVP milestones (suggested)
 
-1. **Request + seller form (no AI yet)**: manual provider-name entry + packet
+1. **Request + seller form (no AI yet)**: manual provider-name entry + info sheet
 2. Add **provider-name autocomplete** (system-owned canonical list + aliasing)
 3. Add **address-based suggestions** (cached)
 4. Add **contact resolution** + dashboard flags

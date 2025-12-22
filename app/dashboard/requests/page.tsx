@@ -226,7 +226,7 @@ export default function RequestsPage() {
                                                                         onClick={() => window.open(`/packet/${request.public_token}`, '_blank')}
                                                                     >
                                                                         <ExternalLink className="mr-2 h-4 w-4" />
-                                                                        View packet
+                                                                        View info sheet
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuItem
                                                                         className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"

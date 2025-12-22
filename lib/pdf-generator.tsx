@@ -26,13 +26,13 @@ interface PacketData {
 }
 
 /**
- * Fetches packet data and generates a PDF download
+ * Fetches info sheet data and generates a PDF download
  */
 export async function generatePacketPdf(token: string): Promise<void> {
-    // 1. Fetch packet data
+    // 1. Fetch info sheet data
     const response = await fetch(`/api/packet/${token}`);
     if (!response.ok) {
-        throw new Error('Failed to fetch packet data');
+        throw new Error('Failed to fetch info sheet data');
     }
     const data: PacketData = await response.json();
 
@@ -65,7 +65,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
     // Ensure primary color is a safe hex/rgb value
     const safePrimaryColor = primaryColor.startsWith('oklch') || primaryColor.startsWith('lab') ? '#10b981' : primaryColor;
 
-    // 4. Render the packet content into the iframe
+    // 4. Render the info sheet content into the iframe
     // We add base styles directly to the iframe body to ensure clean slate
     iframeBody.style.margin = '0';
     iframeBody.style.padding = '0';
@@ -254,7 +254,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
         pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
 
         // 8. Download PDF
-        const filename = `utility-packet-${request.property_address.split(',')[0].replace(/\s/g, '-')}.pdf`;
+        const filename = `utility-info-sheet-${request.property_address.split(',')[0].replace(/\s/g, '-')}.pdf`;
         pdf.save(filename);
         console.log('PDF Gen: PDF saved');
     } catch (err) {

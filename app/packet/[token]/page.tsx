@@ -74,7 +74,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="text-center">
-                    <h1 className="text-2xl font-bold text-foreground mb-2">Packet Not Found</h1>
+                    <h1 className="text-2xl font-bold text-foreground mb-2">Info Sheet Not Found</h1>
                     <p className="text-muted-foreground">The link may be invalid or expired.</p>
                 </div>
             </div>

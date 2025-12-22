@@ -34,7 +34,7 @@ export async function GET(
             utilities: utilities
         });
     } catch (error) {
-        console.error('Error fetching packet data:', error);
-        return NextResponse.json({ error: 'Failed to fetch packet data' }, { status: 500 });
+        console.error('Error fetching info sheet data:', error);
+        return NextResponse.json({ error: 'Failed to fetch info sheet data' }, { status: 500 });
     }
 }

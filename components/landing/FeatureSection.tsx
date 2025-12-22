@@ -16,7 +16,7 @@ const features = [
     },
     {
         icon: Shield,
-        title: "Branded Packets",
+        title: "Branded Info Sheets",
         description: "Generate beautiful, professional PDFs for buyers with your brokerage's branding and colors."
     },
     {

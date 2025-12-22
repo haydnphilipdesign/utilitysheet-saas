@@ -19,7 +19,7 @@ const steps = [
     },
     {
         id: "03",
-        title: "Download Packet",
+        title: "Download Info Sheet",
         description: "Get a professional, branded PDF with all contact info, start-service links, and instructions.",
         icon: Download
     }
@@ -102,7 +102,7 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
                                 <span className="text-emerald-500 mr-2">03.</span>
-                                Download Packet
+                                Download Info Sheet
                             </h4>
                             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
                                 Get a professional, branded PDF with all contact info, start-service links, and instructions ready to hand off to the buyer.

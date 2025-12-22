@@ -18,7 +18,7 @@ const faqs = [
     },
     {
         question: "Can I customize the branding?",
-        answer: "Absolutely. On the Pro plan, you can upload your brokerage logo, setting custom colors, and even adding your headshot to the final PDF packet."
+        answer: "Absolutely. On the Pro plan, you can upload your brokerage logo, setting custom colors, and even adding your headshot to the final PDF info sheet."
     },
     {
         question: "What happens if a provider is missing?",
