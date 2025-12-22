@@ -5,7 +5,7 @@ import { sendSellerReminderEmail } from '@/lib/email/email-service';
 
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await stackServerApp.getUser();
@@ -18,7 +18,7 @@ export async function POST(
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
 
-        const requestId = params.id;
+        const { id: requestId } = await params;
         const requestData = await getRequestById(requestId);
 
         if (!requestData) {
