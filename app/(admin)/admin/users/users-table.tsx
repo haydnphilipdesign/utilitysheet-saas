@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
@@ -163,51 +164,53 @@ export function UsersTable({ users }: UsersTableProps) {
                             <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onClick={() => handleImpersonate(user.id)}
-                                className="cursor-pointer"
-                            >
-                                <UserCheck className="mr-2 h-4 w-4" />
-                                Impersonate
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {user.role === 'admin' ? (
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                    onClick={() => handleDemote(user.id)}
+                                    onClick={() => handleImpersonate(user.id)}
                                     className="cursor-pointer"
-                                >
-                                    <User className="mr-2 h-4 w-4" />
-                                    Demote to User
-                                </DropdownMenuItem>
-                            ) : (
-                                <DropdownMenuItem
-                                    onClick={() => handlePromote(user.id)}
-                                    className="cursor-pointer"
-                                >
-                                    <Shield className="mr-2 h-4 w-4" />
-                                    Promote to Admin
-                                </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            {user.role === 'banned' ? (
-                                <DropdownMenuItem
-                                    onClick={() => handleUnban(user.id)}
-                                    className="cursor-pointer text-emerald-500"
                                 >
                                     <UserCheck className="mr-2 h-4 w-4" />
-                                    Unban User
+                                    Impersonate
                                 </DropdownMenuItem>
-                            ) : (
-                                <DropdownMenuItem
-                                    onClick={() => handleBan(user.id)}
-                                    className="cursor-pointer text-destructive"
-                                >
-                                    <Ban className="mr-2 h-4 w-4" />
-                                    Ban User
-                                </DropdownMenuItem>
-                            )}
+                                <DropdownMenuSeparator />
+                                {user.role === 'admin' ? (
+                                    <DropdownMenuItem
+                                        onClick={() => handleDemote(user.id)}
+                                        className="cursor-pointer"
+                                    >
+                                        <User className="mr-2 h-4 w-4" />
+                                        Demote to User
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <DropdownMenuItem
+                                        onClick={() => handlePromote(user.id)}
+                                        className="cursor-pointer"
+                                    >
+                                        <Shield className="mr-2 h-4 w-4" />
+                                        Promote to Admin
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                {user.role === 'banned' ? (
+                                    <DropdownMenuItem
+                                        onClick={() => handleUnban(user.id)}
+                                        className="cursor-pointer text-emerald-500"
+                                    >
+                                        <UserCheck className="mr-2 h-4 w-4" />
+                                        Unban User
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <DropdownMenuItem
+                                        onClick={() => handleBan(user.id)}
+                                        className="cursor-pointer text-destructive"
+                                    >
+                                        <Ban className="mr-2 h-4 w-4" />
+                                        Ban User
+                                    </DropdownMenuItem>
+                                )}
+                            </DropdownMenuGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 );
