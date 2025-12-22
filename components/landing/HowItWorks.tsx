@@ -118,7 +118,7 @@ export function HowItWorks() {
                             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
                                 <img
                                     src="/landing/utility-packet.png"
-                                    alt="Generated Utility Handoff Packet PDF"
+                                    alt="Generated Utility Info Sheet PDF"
                                     className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />

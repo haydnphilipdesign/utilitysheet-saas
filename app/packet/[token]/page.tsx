@@ -152,7 +152,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     {/* Title Section */}
                     <div className="text-center py-6">
                         <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
-                            Utility Handoff Packet
+                            Utility Info Sheet
                         </h1>
                         <div className="inline-flex items-center gap-2 bg-muted px-4 py-2 rounded-lg">
                             <MapPin className="h-4 w-4 text-emerald-400" />

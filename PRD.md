@@ -2,7 +2,7 @@
 
 ## 1) Product summary
 
-UtilitySheet is an address-first SaaS that standardizes and accelerates the collection and handoff of **utility provider information** during a home sale. Agents/TCs generate a request link for a property; sellers complete a **tap-to-confirm** form in minutes; UtilitySheet generates a **branded Utility Handoff Packet** (PDF + share link) and provides a dashboard for tracking completion and exceptions.
+UtilitySheet is an address-first SaaS that standardizes and accelerates the collection and handoff of **utility provider information** during a home sale. Agents/TCs generate a request link for a property; sellers complete a **tap-to-confirm** form in minutes; UtilitySheet generates a **branded Utility Info Sheet** (PDF + share link) and provides a dashboard for tracking completion and exceptions.
 
 **Hard constraint:** Sellers are never asked to upload bills or research provider contact details. At most, they confirm suggested providers or type/select a provider name.
 

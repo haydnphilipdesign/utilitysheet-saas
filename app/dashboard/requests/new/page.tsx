@@ -133,7 +133,7 @@ As part of the home sale process, we need to collect utility provider informatio
 Please complete this quick form (takes under 2 minutes):
 ${getShareLink()}
 
-This information will be compiled into a Utility Handoff Packet for the buyers.
+This information will be compiled into a Utility Info Sheet for the buyers.
 
 Thank you!`,
         };

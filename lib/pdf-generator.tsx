@@ -96,7 +96,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
             <!-- Title Section -->
             <div style="text-align: center; padding: 24px 0 48px 0;">
                 <h1 style="font-size: 32px; font-weight: 800; color: #09090b; margin: 0 0 16px 0; letter-spacing: -0.02em;">
-                    Utility Handoff Packet
+                    Utility Info Sheet
                 </h1>
                 <div style="background: #f4f4f5; padding: 12px 24px; border-radius: 12px; border: 1px solid #e4e4e7; display: inline-block; margin: 0 auto;">
                     <span style="color: #059669; margin-right: 8px; font-size: 18px; vertical-align: middle;">📍</span>

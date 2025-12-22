@@ -154,7 +154,7 @@ export default function SignupPage() {
                     <CardHeader className="space-y-1">
                         <CardTitle className="text-2xl text-center text-foreground">Create an account</CardTitle>
                         <CardDescription className="text-center text-muted-foreground">
-                            Start creating utility handoff packets in minutes
+                            Start creating utility info sheets in minutes
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleSignup}>

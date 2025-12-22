@@ -62,7 +62,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                     Back
                 </Button>
                 <h1 className="text-3xl font-bold text-foreground">{isEditing ? 'Edit Branding Profile' : 'New Branding Profile'}</h1>
-                <p className="text-muted-foreground mt-1">{isEditing ? 'Update your custom look' : 'Create a custom look for your utility packets'}</p>
+                <p className="text-muted-foreground mt-1">{isEditing ? 'Update your custom look' : 'Create a custom look for your utility info sheets'}</p>
             </div>
 
             <div className="grid gap-6">

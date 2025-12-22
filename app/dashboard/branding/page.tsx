@@ -123,7 +123,7 @@ export default function BrandingPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground">Branding Profiles</h1>
-                    <p className="text-muted-foreground mt-1">Customize how your utility packets look</p>
+                    <p className="text-muted-foreground mt-1">Customize how your utility info sheets look</p>
                 </div>
                 {isPro ? (
                     <Link href="/dashboard/branding/new">
@@ -149,7 +149,7 @@ export default function BrandingPage() {
                             </div>
                             <h3 className="text-xl font-bold text-foreground mb-2">Unlock Custom Branding</h3>
                             <p className="text-muted-foreground max-w-md mb-6">
-                                Upgrade to the Pro plan to create custom branding profiles for your utility packets.
+                                Upgrade to the Pro plan to create custom branding profiles for your utility info sheets.
                                 Verify instant credibility with your clients.
                             </p>
                             <Link href="/dashboard/settings">
