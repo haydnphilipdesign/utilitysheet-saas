@@ -11,12 +11,22 @@ interface RequestData {
     utility_categories: UtilityCategory[];
 }
 
+interface BrandProfile {
+    name?: string;
+    logo_url?: string;
+    primary_color?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    contact_website?: string;
+}
+
 export default function SellerFormPage({ params }: { params: Promise<{ token: string }> }) {
     const resolvedParams = use(params);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [requestData, setRequestData] = useState<RequestData | null>(null);
     const [suggestions, setSuggestions] = useState<Record<UtilityCategory, ProviderSuggestion[]>>({} as Record<UtilityCategory, ProviderSuggestion[]>);
+    const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
 
     // Fetch request data from API
     useEffect(() => {
@@ -44,6 +54,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
 
                 setRequestData(reqData);
                 setSuggestions(data.suggestions || {});
+                setBrandProfile(data.brandProfile || null);
 
             } catch (err) {
                 console.error('Failed to load request data:', err);
@@ -81,6 +92,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
             initialRequestData={requestData}
             initialSuggestions={suggestions}
             token={resolvedParams.token}
+            brandProfile={brandProfile}
         />
     );
 }

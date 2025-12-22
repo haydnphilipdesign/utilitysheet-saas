@@ -32,6 +32,15 @@ export interface UtilityWizardState {
     extra?: Record<string, any>;
 }
 
+interface BrandProfile {
+    name?: string;
+    logo_url?: string;
+    primary_color?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    contact_website?: string;
+}
+
 interface SellerWizardProps {
     initialRequestData: {
         property_address: string;
@@ -39,9 +48,10 @@ interface SellerWizardProps {
     };
     initialSuggestions: Record<UtilityCategory, ProviderSuggestion[]>;
     token: string;
+    brandProfile?: BrandProfile | null;
 }
 
-export function SellerWizard({ initialRequestData, initialSuggestions, token }: SellerWizardProps) {
+export function SellerWizard({ initialRequestData, initialSuggestions, token, brandProfile }: SellerWizardProps) {
     // Steps definition
     enum Step {
         WELCOME = 0,
@@ -215,6 +225,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token }: 
             address={initialRequestData.property_address}
             completedCount={Object.values(state.utilities).filter(u => u?.entry_mode !== null).length}
             totalCount={visibleUtilities.length}
+            brandProfile={brandProfile}
         >
             <AnimatePresence mode="wait">
                 {currentStep === Step.WELCOME && (

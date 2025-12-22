@@ -1,12 +1,22 @@
 import { ReactNode } from 'react';
 import { Zap } from 'lucide-react';
 
+interface BrandProfile {
+    name?: string;
+    logo_url?: string;
+    primary_color?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    contact_website?: string;
+}
+
 interface SellerLayoutProps {
     children: ReactNode;
     progress: number; // 0 to 100
     address?: string;
     completedCount: number;
     totalCount: number;
+    brandProfile?: BrandProfile | null;
 }
 
 export function SellerLayout({
@@ -14,8 +24,14 @@ export function SellerLayout({
     progress,
     address,
     completedCount,
-    totalCount
+    totalCount,
+    brandProfile
 }: SellerLayoutProps) {
+    // Use brand primary color or fallback to emerald
+    const primaryColor = brandProfile?.primary_color || '#10b981';
+    // Ensure color is safe (not oklch or lab format)
+    const safePrimaryColor = primaryColor.startsWith('oklch') || primaryColor.startsWith('lab') ? '#10b981' : primaryColor;
+
     return (
         <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
             {/* Background Gradients */}
@@ -29,12 +45,31 @@ export function SellerLayout({
                 <div className="max-w-2xl mx-auto px-4 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
-                                <Zap className="h-4 w-4 text-white" />
-                            </div>
+                            {brandProfile?.logo_url ? (
+                                <img
+                                    src={brandProfile.logo_url}
+                                    alt={brandProfile.name || 'Organization'}
+                                    className="h-10 w-auto max-w-[120px] object-contain"
+                                />
+                            ) : brandProfile?.name ? (
+                                <div
+                                    className="p-2 rounded-xl shadow-lg flex items-center justify-center text-white font-bold text-sm"
+                                    style={{ backgroundColor: safePrimaryColor }}
+                                >
+                                    {brandProfile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                                </div>
+                            ) : (
+                                <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
+                                    <Zap className="h-4 w-4 text-white" />
+                                </div>
+                            )}
                             <div>
-                                <h1 className="font-bold text-sm text-foreground">UtilitySheet</h1>
-                                <p className="text-xs text-muted-foreground">Simplify Utility Handoffs</p>
+                                <h1 className="font-bold text-sm text-foreground">
+                                    {brandProfile?.name || 'UtilitySheet'}
+                                </h1>
+                                <p className="text-xs text-muted-foreground">
+                                    {brandProfile?.name ? 'Utility Information Request' : 'Simplify Utility Handoffs'}
+                                </p>
                             </div>
                         </div>
                         {address && (
@@ -53,8 +88,13 @@ export function SellerLayout({
                         </div>
                         <div className="h-1 bg-muted rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-500 ease-out"
-                                style={{ width: `${progress}%` }}
+                                className="h-full transition-all duration-500 ease-out"
+                                style={{
+                                    width: `${progress}%`,
+                                    background: brandProfile?.primary_color
+                                        ? `linear-gradient(to right, ${safePrimaryColor}, ${safePrimaryColor}dd)`
+                                        : 'linear-gradient(to right, rgb(5, 150, 105), rgb(52, 211, 153))'
+                                }}
                             />
                         </div>
                     </div>
@@ -68,3 +108,4 @@ export function SellerLayout({
         </div>
     );
 }
+
