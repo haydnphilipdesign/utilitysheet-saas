@@ -74,17 +74,15 @@ export default function MarketingLayout({
                         <div>
                             <h3 className="text-sm font-semibold text-foreground">Company</h3>
                             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                                <li><Link href="#" className="hover:text-foreground">About</Link></li>
-                                <li><Link href="#" className="hover:text-foreground">Blog</Link></li>
-                                <li><Link href="#" className="hover:text-foreground">Careers</Link></li>
+                                <li><Link href="/about" className="hover:text-foreground">About</Link></li>
                             </ul>
                         </div>
                         <div>
                             <h3 className="text-sm font-semibold text-foreground">Legal</h3>
                             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                                <li><Link href="#" className="hover:text-foreground">Privacy</Link></li>
-                                <li><Link href="#" className="hover:text-foreground">Terms</Link></li>
-                                <li><Link href="#" className="hover:text-foreground">Cookie Policy</Link></li>
+                                <li><Link href="/privacy" className="hover:text-foreground">Privacy</Link></li>
+                                <li><Link href="/terms" className="hover:text-foreground">Terms</Link></li>
+                                <li><Link href="/cookie-policy" className="hover:text-foreground">Cookie Policy</Link></li>
                             </ul>
                         </div>
                     </div>
