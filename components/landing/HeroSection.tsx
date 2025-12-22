@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Search, Check, Zap, CheckCircle2, FileText } from 'lucide-react';
+import { ArrowRight, Sparkles, Search, Check, Zap, CheckCircle2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { UtilitySheetPreview } from './UtilitySheetPreview';
 
 const AnimationState = {
     INPUT: 0,
@@ -45,7 +46,7 @@ function HeroFeatureAnimation() {
                 timeout = setTimeout(() => {
                     setStep(AnimationState.INPUT);
                     setText("");
-                }, 4000);
+                }, 6000); // Longer pause to view the sheet
             }
         };
 
@@ -65,7 +66,7 @@ function HeroFeatureAnimation() {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 p-8 relative overflow-hidden">
+            <div className="flex-1 p-8 relative overflow-hidden bg-white/50 dark:bg-black/20">
                 <AnimatePresence mode="wait">
                     {step === AnimationState.INPUT && (
                         <motion.div
@@ -159,28 +160,12 @@ function HeroFeatureAnimation() {
                     {step === AnimationState.SUCCESS && (
                         <motion.div
                             key="success"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="flex flex-col items-center justify-center h-full gap-4 text-center"
+                            className="w-full h-full"
                         >
-                            <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ type: "spring" }}
-                                className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mb-2"
-                            >
-                                <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-                            </motion.div>
-                            <h3 className="text-2xl font-bold text-foreground">Packet Ready!</h3>
-                            <p className="text-muted-foreground max-w-[200px]">All utilities confirmed. Ready for download.</p>
-
-                            <div className="mt-4 p-3 rounded-lg bg-card border border-border flex items-center gap-3 w-48">
-                                <div className="p-2 bg-emerald-500/10 rounded">
-                                    <FileText className="w-4 h-4 text-emerald-500" />
-                                </div>
-                                <span className="text-sm text-foreground">Detailed PDF</span>
-                            </div>
+                            <UtilitySheetPreview />
                         </motion.div>
                     )}
                 </AnimatePresence>
