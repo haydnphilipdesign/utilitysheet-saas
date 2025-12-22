@@ -65,10 +65,20 @@ export async function POST(request: Request) {
             );
         }
 
+        // Automatically associate with default brand profile if not specified
+        let brandProfileId = body.brandProfileId;
+        if (!brandProfileId) {
+            const { getDefaultBrandProfile } = await import('@/lib/neon/queries');
+            const defaultBrand = await getDefaultBrandProfile(accountId, organizationId);
+            if (defaultBrand) {
+                brandProfileId = defaultBrand.id;
+            }
+        }
+
         const newRequest = await createRequest({
             accountId,
             organizationId,
-            brandProfileId: body.brandProfileId,
+            brandProfileId: brandProfileId,
             propertyAddress: body.propertyAddress,
             sellerName: body.sellerName,
             sellerEmail: body.sellerEmail,

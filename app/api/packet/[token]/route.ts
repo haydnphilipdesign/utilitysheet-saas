@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestByToken, getBrandProfile, getUtilityEntriesByRequestId } from '@/lib/neon/queries';
+import { getRequestByToken, getBrandProfile, getUtilityEntriesByRequestId, getDefaultBrandProfile } from '@/lib/neon/queries';
 
 export async function GET(
     request: Request,
@@ -18,6 +18,11 @@ export async function GET(
         let brandProfile = null;
         if (requestData.brand_profile_id) {
             brandProfile = await getBrandProfile(requestData.brand_profile_id);
+        }
+
+        // Fallback to default brand if none assigned to request
+        if (!brandProfile) {
+            brandProfile = await getDefaultBrandProfile(requestData.account_id, requestData.organization_id ?? undefined);
         }
 
         // 3. Get utility entries

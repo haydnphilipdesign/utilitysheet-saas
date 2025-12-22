@@ -239,6 +239,45 @@ export async function getBrandProfile(id: string): Promise<BrandProfile | null> 
   return result[0] as BrandProfile || null;
 }
 
+// Get the default brand profile for an account or organization
+export async function getDefaultBrandProfile(accountId: string, organizationId?: string): Promise<BrandProfile | null> {
+  if (!sql) return null;
+
+  if (organizationId) {
+    const result = await sql`
+      SELECT * FROM brand_profiles 
+      WHERE organization_id = ${organizationId} AND is_default = TRUE
+      LIMIT 1
+    `;
+    if (result.length > 0) return result[0] as BrandProfile;
+
+    // Fallback to any profile in organization if no default set
+    const fallbackResult = await sql`
+      SELECT * FROM brand_profiles 
+      WHERE organization_id = ${organizationId}
+      ORDER BY created_at ASC
+      LIMIT 1
+    `;
+    return fallbackResult[0] as BrandProfile || null;
+  }
+
+  const result = await sql`
+    SELECT * FROM brand_profiles 
+    WHERE account_id = ${accountId} AND organization_id IS NULL AND is_default = TRUE
+    LIMIT 1
+  `;
+  if (result.length > 0) return result[0] as BrandProfile;
+
+  // Fallback to any profile for account if no default set
+  const fallbackResult = await sql`
+    SELECT * FROM brand_profiles 
+    WHERE account_id = ${accountId} AND organization_id IS NULL
+    ORDER BY created_at ASC
+    LIMIT 1
+  `;
+  return fallbackResult[0] as BrandProfile || null;
+}
+
 // Update a brand profile
 export async function updateBrandProfile(
   id: string,

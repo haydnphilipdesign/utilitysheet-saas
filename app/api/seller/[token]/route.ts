@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestByToken } from '@/lib/neon/queries';
+import { getRequestByToken, getBrandProfile, getUtilityEntriesByRequestId, getDefaultBrandProfile } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import type { UtilityEntry } from '@/types';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
@@ -21,17 +21,22 @@ export async function GET(
         let brandProfile = null;
         if (requestData.brand_profile_id && sql) {
             const result = await sql`
-        SELECT * FROM brand_profiles WHERE id = ${requestData.brand_profile_id}
-      `;
+                SELECT * FROM brand_profiles WHERE id = ${requestData.brand_profile_id}
+            `;
             brandProfile = result[0] || null;
+        }
+
+        // Fallback to default brand if none assigned to request
+        if (!brandProfile) {
+            brandProfile = await getDefaultBrandProfile(requestData.account_id, requestData.organization_id ?? undefined);
         }
 
         // Get existing utility entries
         let utilityEntries: UtilityEntry[] = [];
         if (sql) {
             const entries = await sql`
-        SELECT * FROM utility_entries WHERE request_id = ${requestData.id}
-      `;
+                SELECT * FROM utility_entries WHERE request_id = ${requestData.id}
+            `;
             utilityEntries = entries as UtilityEntry[];
         }
 
@@ -74,14 +79,14 @@ export async function POST(
 
         // Update request with applicability info
         await sql`
-      UPDATE requests SET
-        water_source = ${body.water_source || null},
-        sewer_type = ${body.sewer_type || null},
-        heating_type = ${body.primary_heating_type || null},
-        status = 'submitted',
-        last_activity_at = NOW()
-      WHERE id = ${requestData.id}
-    `;
+            UPDATE requests SET
+            water_source = ${body.water_source || null},
+            sewer_type = ${body.sewer_type || null},
+            heating_type = ${body.primary_heating_type || null},
+            status = 'submitted',
+            last_activity_at = NOW()
+            WHERE id = ${requestData.id}
+        `;
 
         // Delete existing entries and insert new ones
         await sql`DELETE FROM utility_entries WHERE request_id = ${requestData.id}`;
@@ -111,26 +116,26 @@ export async function POST(
                 }
 
                 await sql`
-          INSERT INTO utility_entries (
-            request_id, category, entry_mode, display_name, raw_text, contact_phone, contact_url
-          ) VALUES (
-            ${requestData.id},
-            ${category},
-            ${e.entry_mode},
-            ${e.display_name || null},
-            ${finalRawText || null},
-            ${e.contact_phone || null},
-            ${e.contact_url || null}
-          )
-        `;
+                    INSERT INTO utility_entries (
+                        request_id, category, entry_mode, display_name, raw_text, contact_phone, contact_url
+                    ) VALUES (
+                        ${requestData.id},
+                        ${category},
+                        ${e.entry_mode},
+                        ${e.display_name || null},
+                        ${finalRawText || null},
+                        ${e.contact_phone || null},
+                        ${e.contact_url || null}
+                    )
+                `;
             }
         }
 
         // Log event
         await sql`
-      INSERT INTO event_logs (request_id, event_type, event_data)
-      VALUES (${requestData.id}, 'seller_submitted', ${JSON.stringify(body)})
-    `;
+            INSERT INTO event_logs (request_id, event_type, event_data)
+            VALUES (${requestData.id}, 'seller_submitted', ${JSON.stringify(body)})
+        `;
 
         return NextResponse.json({ success: true });
     } catch (error) {

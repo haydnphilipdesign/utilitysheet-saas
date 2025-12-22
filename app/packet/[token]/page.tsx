@@ -139,7 +139,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                 </div>
                             )}
                             <div>
-                                <h2 className="font-semibold text-foreground">{brand?.name || 'Real Estate Group'}</h2>
+                                <h2 className="font-semibold text-foreground">{brand?.name || 'UtilitySheet'}</h2>
                                 <p className="text-sm text-muted-foreground">{brand?.contact_phone || ''}</p>
                             </div>
                         </div>

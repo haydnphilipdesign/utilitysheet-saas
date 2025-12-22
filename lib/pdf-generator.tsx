@@ -83,7 +83,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
                         </div>`
         }
                     <div>
-                        <h2 style="font-weight: 700; color: #09090b; margin: 0; font-size: 20px;">${brand?.name || 'Real Estate Group'}</h2>
+                        <h2 style="font-weight: 700; color: #09090b; margin: 0; font-size: 20px;">${brand?.name || 'UtilitySheet'}</h2>
                         <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${brand?.contact_phone || ''}</p>
                     </div>
                 </div>
