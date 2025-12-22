@@ -40,11 +40,14 @@ export type EventName =
 // User Role enum for admin functionality
 export type UserRole = 'user' | 'admin' | 'banned';
 
+export type Plan = 'free' | 'pro';
+
 // Admin audit action types
 export type AdminAction =
     | 'user_banned'
     | 'user_unbanned'
     | 'role_changed'
+    | 'plan_changed'
     | 'impersonation_started'
     | 'impersonation_ended'
     | 'user_updated';
@@ -59,6 +62,7 @@ export interface Account {
     phone: string | null;
     active_organization_id: string | null;
     role: UserRole;
+    plan: Plan;
     created_at: string;
     updated_at: string;
 }

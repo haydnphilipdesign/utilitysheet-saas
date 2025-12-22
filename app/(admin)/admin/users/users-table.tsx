@@ -37,7 +37,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Account, UserRole } from '@/types';
-import { impersonateUser, updateUserRoleAction, banUserAction, unbanUserAction } from './actions';
+import { impersonateUser, updateUserRoleAction, banUserAction, unbanUserAction, updateUserPlanAction } from './actions';
 
 interface UsersTableProps {
     users: Account[];
@@ -85,6 +85,20 @@ export function UsersTable({ users }: UsersTableProps) {
         });
     };
 
+    const handleUpgradePlan = async (userId: string) => {
+        startTransition(async () => {
+            await updateUserPlanAction(userId, 'pro');
+            router.refresh();
+        });
+    };
+
+    const handleDowngradePlan = async (userId: string) => {
+        startTransition(async () => {
+            await updateUserPlanAction(userId, 'free');
+            router.refresh();
+        });
+    };
+
     const getRoleBadge = (role: UserRole) => {
         switch (role) {
             case 'admin':
@@ -125,6 +139,15 @@ export function UsersTable({ users }: UsersTableProps) {
             header: 'Email',
             cell: ({ row }) => (
                 <span className="text-muted-foreground">{row.original.email}</span>
+            ),
+        },
+        {
+            accessorKey: 'plan',
+            header: 'Plan',
+            cell: ({ row }) => (
+                <Badge variant={row.original.plan === 'pro' ? 'default' : 'outline'}>
+                    {row.original.plan === 'pro' ? 'Pro' : 'Free'}
+                </Badge>
             ),
         },
         {
@@ -190,6 +213,24 @@ export function UsersTable({ users }: UsersTableProps) {
                                     >
                                         <Shield className="mr-2 h-4 w-4" />
                                         Promote to Admin
+                                    </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                {user.plan === 'pro' ? (
+                                    <DropdownMenuItem
+                                        onClick={() => handleDowngradePlan(user.id)}
+                                        className="cursor-pointer"
+                                    >
+                                        <ArrowUpDown className="mr-2 h-4 w-4" />
+                                        Downgrade to Free
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <DropdownMenuItem
+                                        onClick={() => handleUpgradePlan(user.id)}
+                                        className="cursor-pointer"
+                                    >
+                                        <ArrowUpDown className="mr-2 h-4 w-4" />
+                                        Upgrade to Pro
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />

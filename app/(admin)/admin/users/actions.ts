@@ -1,8 +1,8 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { requireAdmin, createAuditLog, banUser, unbanUser, updateUserRole, getUserById } from '@/lib/admin';
-import type { UserRole } from '@/types';
+import { requireAdmin, createAuditLog, banUser, unbanUser, updateUserRole, getUserById, updateUserPlan } from '@/lib/admin';
+import type { UserRole, Plan } from '@/types';
 
 const IMPERSONATION_COOKIE = 'impersonator_id';
 const IMPERSONATED_USER_COOKIE = 'impersonated_user_id';
@@ -155,6 +155,36 @@ export async function unbanUserAction(userId: string) {
             targetUserId: userId,
             action: 'user_unbanned',
             metadata: { timestamp: new Date().toISOString() },
+        });
+    }
+
+    return { success: !!result };
+}
+
+/**
+ * Update a user's plan
+ */
+export async function updateUserPlanAction(userId: string, plan: Plan) {
+    const { account } = await requireAdmin();
+
+    const targetUser = await getUserById(userId);
+    if (!targetUser) {
+        return { success: false, error: 'User not found' };
+    }
+
+    const previousPlan = targetUser.plan;
+    const result = await updateUserPlan(userId, plan);
+
+    if (result) {
+        await createAuditLog({
+            adminId: account.id,
+            targetUserId: userId,
+            action: 'plan_changed',
+            metadata: {
+                previousPlan,
+                newPlan: plan,
+                timestamp: new Date().toISOString(),
+            },
         });
     }
 

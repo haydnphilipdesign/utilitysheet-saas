@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     phone TEXT,
     active_organization_id UUID, -- References organizations(id) later
     role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin', 'banned')),
+    plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'pro')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
