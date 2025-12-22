@@ -190,51 +190,59 @@ function Hero3DCard() {
 
 export function HeroSection() {
     return (
-        <section className="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-32 px-4 lg:px-8">
+        <section className="relative overflow-hidden pt-24 pb-16 sm:pt-32 sm:pb-24 lg:pt-40 lg:pb-32 px-4 lg:px-8">
             <div className="absolute inset-0 -z-10">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-emerald-500/20 blur-[120px] rounded-full opacity-30 pointer-events-none" />
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
             </div>
 
-            <div className="mx-auto max-w-7xl text-center z-10 relative">
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                >
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/80 border border-border text-muted-foreground text-sm font-medium mb-8 hover:bg-secondary transition-colors cursor-default backdrop-blur-sm">
-                        <Sparkles className="w-4 h-4 text-emerald-500" />
-                        <span>Reimagining Utility Transfers</span>
-                    </div>
+            <div className="mx-auto max-w-7xl px-6 lg:px-8 z-10 relative">
+                <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+                    <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="text-center lg:text-left"
+                    >
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/80 border border-border text-muted-foreground text-sm font-medium mb-8 hover:bg-secondary transition-colors cursor-default backdrop-blur-sm">
+                            <Sparkles className="w-4 h-4 text-emerald-500" />
+                            <span>Reimagining Utility Transfers</span>
+                        </div>
 
-                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-foreground mb-8">
-                        Utility Handoffs <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-300 to-emerald-500 animate-gradient-x">
-                            Simplified.
-                        </span>
-                    </h1>
+                        <h1 className="text-5xl md:text-7xl lg:text-7xl font-black tracking-tight text-foreground mb-8">
+                            Utility Handoffs <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-300 to-emerald-500 animate-gradient-x">
+                                Simplified.
+                            </span>
+                        </h1>
 
-                    <p className="mx-auto max-w-2xl text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
-                        Stop spending hours on phone calls. Let our AI handle utility transfers for your clients in minutes, not days.
-                    </p>
+                        <p className="mx-auto lg:mx-0 max-w-2xl text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
+                            Stop spending hours on phone calls. Let our AI handle utility transfers for your clients in minutes, not days.
+                        </p>
 
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                        <Link href="/auth/signup">
-                            <Button size="lg" className="h-14 px-8 text-lg bg-emerald-500 text-white hover:bg-emerald-400 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(16,185,129,0.5)]">
-                                Start Free Trial <ArrowRight className="ml-2 h-5 w-5" />
-                            </Button>
-                        </Link>
-                        <Link href="#how-it-works">
-                            <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-border text-muted-foreground hover:text-foreground hover:bg-secondary hover:border-border bg-card/50 backdrop-blur-sm">
-                                How it Works
-                            </Button>
-                        </Link>
-                    </div>
+                        <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-12 lg:mb-0">
+                            <Link href="/auth/signup">
+                                <Button size="lg" className="h-14 px-8 text-lg bg-emerald-500 text-white hover:bg-emerald-400 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(16,185,129,0.5)]">
+                                    Start Free Trial <ArrowRight className="ml-2 h-5 w-5" />
+                                </Button>
+                            </Link>
+                            <Link href="#how-it-works">
+                                <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-border text-muted-foreground hover:text-foreground hover:bg-secondary hover:border-border bg-card/50 backdrop-blur-sm">
+                                    How it Works
+                                </Button>
+                            </Link>
+                        </div>
+                    </motion.div>
 
-                    <div style={{ perspective: "1000px" }} className="w-full flex justify-center">
+                    <motion.div
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+                        className="w-full flex justify-center"
+                    >
                         <Hero3DCard />
-                    </div>
-                </motion.div>
+                    </motion.div>
+                </div>
             </div>
         </section>
     );
