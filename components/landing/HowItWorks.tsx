@@ -27,40 +27,104 @@ const steps = [
 
 export function HowItWorks() {
     return (
-        <section id="how-it-works" className="py-32 bg-background relative overflow-hidden">
+        <section id="how-it-works" className="py-24 sm:py-32 bg-background relative overflow-hidden">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="text-center mb-24">
                     <h2 className="text-emerald-500 font-bold text-sm tracking-wider uppercase mb-3">Workflow</h2>
                     <h3 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">How it works</h3>
                 </div>
 
-                <div className="grid lg:grid-cols-3 gap-8">
-                    {steps.map((step, i) => (
+                <div className="space-y-24 sm:space-y-32">
+                    {/* Step 1: Generate Link */}
+                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                        <div className="flex-1 text-center lg:text-left">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-500 mb-8">
+                                <MousePointer2 className="w-8 h-8" />
+                            </div>
+                            <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+                                <span className="text-emerald-500 mr-2">01.</span>
+                                Generate a Link
+                            </h4>
+                            <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
+                                Enter the property address and select needed utilities. We generate a secure unique link in seconds to send to your client.
+                            </p>
+                        </div>
+                        <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
+                            <div className="relative aspect-video rounded-xl bg-card border border-border flex items-center justify-center shadow-lg overflow-hidden group">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                <div className="text-center p-8">
+                                    <div className="bg-emerald-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                                        <MousePointer2 className="w-10 h-10 text-emerald-500" />
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">Secure Dashboard Link Generated</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Step 2: Seller Confirms */}
+                    <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-20">
+                        <div className="flex-1 text-center lg:text-left">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-500 mb-8">
+                                <FileCheck className="w-8 h-8" />
+                            </div>
+                            <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+                                <span className="text-emerald-500 mr-2">02.</span>
+                                Seller Confirms
+                            </h4>
+                            <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
+                                Sellers tap to confirm likely providers suggested by our AI. No account setup or complex forms required for them.
+                            </p>
+                        </div>
                         <motion.div
-                            key={step.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.2, duration: 0.5 }}
-                            viewport={{ once: true }}
-                            className="relative group"
+                            initial={{ opacity: 0, x: -50 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true, margin: "-100px" }}
+                            transition={{ duration: 0.7 }}
+                            className="flex-1 w-full max-w-[500px] lg:max-w-none"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                            <div className="relative p-8 rounded-2xl border border-border bg-card/20 hover:border-emerald-500/30 transition-colors h-full">
-                                <div className="absolute top-4 right-6 text-6xl font-black text-border/50 select-none group-hover:text-emerald-500/10 transition-colors">
-                                    {step.id}
-                                </div>
-
-                                <div className="w-14 h-14 rounded-xl bg-card border border-border flex items-center justify-center mb-8 shadow-lg group-hover:shadow-emerald-500/20 group-hover:border-emerald-500/50 transition-all">
-                                    <step.icon className="h-6 w-6 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
-                                </div>
-
-                                <h4 className="text-xl font-bold text-foreground mb-4">{step.title}</h4>
-                                <p className="text-muted-foreground leading-relaxed">
-                                    {step.description}
-                                </p>
+                            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card">
+                                <img
+                                    src="/landing/seller-wizard-electric.png"
+                                    alt="Seller Wizard Interface - Confirming Electric Provider"
+                                    className="w-full h-auto object-cover"
+                                />
+                                <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />
                             </div>
                         </motion.div>
-                    ))}
+                    </div>
+
+                    {/* Step 3: Download Packet */}
+                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                        <div className="flex-1 text-center lg:text-left">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-500 mb-8">
+                                <Download className="w-8 h-8" />
+                            </div>
+                            <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+                                <span className="text-emerald-500 mr-2">03.</span>
+                                Download Packet
+                            </h4>
+                            <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
+                                Get a professional, branded PDF with all contact info, start-service links, and instructions ready to hand off to the buyer.
+                            </p>
+                        </div>
+                        <motion.div
+                            initial={{ opacity: 0, x: 50 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true, margin: "-100px" }}
+                            transition={{ duration: 0.7 }}
+                            className="flex-1 w-full max-w-[500px] lg:max-w-none"
+                        >
+                            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
+                                <img
+                                    src="/landing/utility-packet.png"
+                                    alt="Generated Utility Handoff Packet PDF"
+                                    className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
+                                />
+                                <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />
+                            </div>
+                        </motion.div>
+                    </div>
                 </div>
             </div>
         </section>

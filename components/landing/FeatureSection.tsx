@@ -12,7 +12,7 @@ const features = [
     {
         icon: Zap,
         title: "Instant AI Resolution",
-        description: "Our AI engine automatically finds contact info and 'Start Service' links for every provider."
+        description: "Our AI engine automatically finds contact info for every provider."
     },
     {
         icon: Shield,
