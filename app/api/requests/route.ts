@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
+import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 
 // GET /api/requests - Get all requests for the current user
 // GET /api/requests - Get all requests for the current user
@@ -80,9 +81,37 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
         }
 
+        // Send email notification to seller if email is provided
+        if (body.sellerEmail) {
+            // Get agent name from brand profile or account
+            let agentName: string | undefined;
+            if (body.brandProfileId) {
+                const brandProfile = await getBrandProfile(body.brandProfileId);
+                agentName = brandProfile?.contact_name || undefined;
+            }
+            // Fallback to account name if no brand profile contact name
+            if (!agentName) {
+                agentName = account.full_name || user.displayName || undefined;
+            }
+
+            // Send email asynchronously - don't block the response
+            sendSellerNotificationEmail({
+                sellerEmail: body.sellerEmail,
+                sellerName: body.sellerName,
+                propertyAddress: body.propertyAddress,
+                closingDate: body.closingDate,
+                agentName,
+                publicToken: newRequest.public_token,
+            }).catch((error) => {
+                // Log but don't fail the request
+                console.error('Failed to send seller notification email:', error);
+            });
+        }
+
         return NextResponse.json(newRequest, { status: 201 });
     } catch (error) {
         console.error('Error creating request:', error);
         return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
     }
 }
+

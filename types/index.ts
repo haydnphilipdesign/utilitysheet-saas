@@ -153,6 +153,8 @@ export interface ProviderSuggestion {
     canonical_id?: string;
     confidence: number;
     rationale_short?: string;
+    contact_phone?: string;
+    contact_website?: string;
 }
 
 export interface ProviderContact {

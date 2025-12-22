@@ -214,15 +214,44 @@ export async function generatePacketPdf(token: string): Promise<void> {
         });
 
         console.log('PDF Gen: Canvas created, generating PDF...');
-        // 7. Create PDF
+        // 7. Create PDF with standard US Letter size (8.5" x 11")
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
             orientation: 'portrait',
-            unit: 'px',
-            format: [canvas.width, canvas.height],
+            unit: 'in',
+            format: 'letter', // 8.5" x 11"
         });
 
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        // Letter size in inches: 8.5 x 11
+        // Use margins of 0.5" on each side for content area of 7.5" x 10"
+        const pageWidth = 8.5;
+        const pageHeight = 11;
+        const margin = 0.5;
+        const contentWidth = pageWidth - (margin * 2);
+        const contentHeight = pageHeight - (margin * 2);
+
+        // Calculate scale to fit content within the page, maintaining aspect ratio
+        const canvasAspectRatio = canvas.width / canvas.height;
+        const contentAspectRatio = contentWidth / contentHeight;
+
+        let imgWidth: number;
+        let imgHeight: number;
+
+        if (canvasAspectRatio > contentAspectRatio) {
+            // Canvas is wider - fit to width
+            imgWidth = contentWidth;
+            imgHeight = contentWidth / canvasAspectRatio;
+        } else {
+            // Canvas is taller - fit to height
+            imgHeight = contentHeight;
+            imgWidth = contentHeight * canvasAspectRatio;
+        }
+
+        // Center the image on the page
+        const xOffset = margin + (contentWidth - imgWidth) / 2;
+        const yOffset = margin;
+
+        pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
 
         // 8. Download PDF
         const filename = `utility-packet-${request.property_address.split(',')[0].replace(/\s/g, '-')}.pdf`;

@@ -88,7 +88,15 @@ export async function POST(
 
         // Insert utility entries
         for (const [category, entry] of Object.entries(body.utilities || {})) {
-            const e = entry as { entry_mode: string; display_name?: string; raw_text?: string; hidden?: boolean; extra?: any };
+            const e = entry as {
+                entry_mode: string;
+                display_name?: string;
+                raw_text?: string;
+                hidden?: boolean;
+                contact_phone?: string;
+                contact_url?: string;
+                extra?: any
+            };
             if (e.entry_mode && !e.hidden) {
                 let finalRawText = e.raw_text || '';
                 if (e.extra) {
@@ -104,13 +112,15 @@ export async function POST(
 
                 await sql`
           INSERT INTO utility_entries (
-            request_id, category, entry_mode, display_name, raw_text
+            request_id, category, entry_mode, display_name, raw_text, contact_phone, contact_url
           ) VALUES (
             ${requestData.id},
             ${category},
             ${e.entry_mode},
             ${e.display_name || null},
-            ${finalRawText || null}
+            ${finalRawText || null},
+            ${e.contact_phone || null},
+            ${e.contact_url || null}
           )
         `;
             }

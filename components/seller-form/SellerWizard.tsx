@@ -27,6 +27,8 @@ export interface UtilityWizardState {
     display_name: string | null;
     raw_text: string | null;
     hidden: boolean;
+    contact_phone?: string | null;
+    contact_url?: string | null;
     extra?: Record<string, any>;
 }
 
@@ -94,10 +96,14 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token }: 
             }
         });
 
-        // Trash - preserve if it was in the initial request (or default)
-        if (initialRequestData.utility_categories.includes('trash')) {
-            nextUtilities.push('trash');
-        }
+        // Preserve utilities from initial request that aren't dynamically determined
+        // This includes: trash, internet, cable, and any other non-conditional utilities
+        const preservedCategories: UtilityCategory[] = ['trash', 'internet', 'cable'];
+        preservedCategories.forEach(cat => {
+            if (initialRequestData.utility_categories.includes(cat)) {
+                nextUtilities.push(cat);
+            }
+        });
 
         // Remove duplicates and set
         const uniqueUtils = Array.from(new Set(nextUtilities));

@@ -73,16 +73,20 @@ export function UtilityStep({
         updateState(category, {
             entry_mode: 'suggested_confirmed',
             display_name: s.display_name,
-            raw_text: null
+            raw_text: null,
+            contact_phone: s.contact_phone || null,
+            contact_url: s.contact_website || null
         });
         onNext();
     };
 
-    const handleSelectResult = (name: string) => {
+    const handleSelectResult = (result: ProviderSuggestion) => {
         updateState(category, {
             entry_mode: 'search_selected',
-            display_name: name,
-            raw_text: name
+            display_name: result.display_name,
+            raw_text: result.display_name,
+            contact_phone: result.contact_phone || null,
+            contact_url: result.contact_website || null
         });
         onNext();
     };
@@ -233,7 +237,7 @@ export function UtilityStep({
                         {!isSearching && searchQuery.length >= 2 && searchResults.map((result) => (
                             <button
                                 key={result.display_name}
-                                onClick={() => handleSelectResult(result.display_name)}
+                                onClick={() => handleSelectResult(result)}
                                 className="w-full flex items-center justify-between p-4 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left transition-all group"
                             >
                                 <span className="font-medium text-foreground transition-colors">{result.display_name}</span>
