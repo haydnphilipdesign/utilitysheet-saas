@@ -177,7 +177,7 @@ function HeroFeatureAnimation() {
 function Hero3DCard() {
     return (
         <div
-            className="relative w-full max-w-4xl mx-auto aspect-video rounded-xl bg-card/50 border border-border backdrop-blur-sm shadow-2xl shadow-emerald-500/10 flex items-center justify-center p-2"
+            className="relative w-full max-w-4xl mx-auto aspect-[4/3] md:aspect-video lg:aspect-[4/3] rounded-xl bg-card/50 border border-border backdrop-blur-sm shadow-2xl shadow-emerald-500/10 flex items-center justify-center p-2"
         >
             <div
                 className="w-full h-full bg-background rounded-lg border border-border overflow-hidden flex flex-col shadow-inner"
