@@ -33,6 +33,7 @@ export function DashboardLayoutContent({
     const router = useRouter();
     const user = useUser();
     const [organization, setOrganization] = useState<any>(null);
+    const [account, setAccount] = useState<any>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
@@ -40,6 +41,9 @@ export function DashboardLayoutContent({
         fetch('/api/account').then(res => res.json()).then(data => {
             if (data.activeOrganization) {
                 setOrganization(data.activeOrganization);
+            }
+            if (data.account) {
+                setAccount(data.account);
             }
         });
     }, []);
@@ -122,7 +126,7 @@ export function DashboardLayoutContent({
                                 <DropdownMenuTrigger className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-secondary">
                                     <Avatar className="h-9 w-9 border-2 border-border">
                                         <AvatarFallback className="bg-secondary text-muted-foreground text-sm">
-                                            {getInitials(user?.displayName, user?.primaryEmail)}
+                                            {getInitials(account?.full_name || user?.displayName, user?.primaryEmail)}
                                         </AvatarFallback>
                                     </Avatar>
                                 </DropdownMenuTrigger>
@@ -130,7 +134,7 @@ export function DashboardLayoutContent({
                                     <div className="px-2 py-1.5 font-normal">
                                         <div className="flex flex-col space-y-1">
                                             <p className="text-sm font-medium text-foreground truncate">
-                                                {user?.displayName || 'User'}
+                                                {account?.full_name || user?.displayName || 'User'}
                                             </p>
                                             <p className="text-xs text-muted-foreground truncate">
                                                 {user?.primaryEmail || 'No email'}
