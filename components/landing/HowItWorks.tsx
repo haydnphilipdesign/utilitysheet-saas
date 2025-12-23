@@ -38,7 +38,7 @@ export function HowItWorks() {
                     {/* Step 1: Generate Link */}
                     <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-slate-600 mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-500/10 text-slate-600 mb-8">
                                 <MousePointer2 className="w-8 h-8" />
                             </div>
                             <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
@@ -53,7 +53,7 @@ export function HowItWorks() {
                             <div className="relative aspect-video rounded-xl bg-card border border-border flex items-center justify-center shadow-lg overflow-hidden group">
                                 <div className="absolute inset-0 bg-gradient-to-tr from-slate-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                 <div className="text-center p-8">
-                                    <div className="bg-emerald-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+                                    <div className="bg-slate-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
                                         <MousePointer2 className="w-10 h-10 text-slate-600" />
                                     </div>
                                     <p className="text-sm text-muted-foreground">Secure Dashboard Link Generated</p>
@@ -65,7 +65,7 @@ export function HowItWorks() {
                     {/* Step 2: Seller Confirms */}
                     <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-slate-600 mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-500/10 text-slate-600 mb-8">
                                 <FileCheck className="w-8 h-8" />
                             </div>
                             <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
@@ -97,7 +97,7 @@ export function HowItWorks() {
                     {/* Step 3: Download Packet */}
                     <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-slate-600 mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-500/10 text-slate-600 mb-8">
                                 <Download className="w-8 h-8" />
                             </div>
                             <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">

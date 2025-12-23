@@ -54,7 +54,7 @@ export function PricingSection() {
                         <div
                             key={tier.name}
                             className={`relative rounded-3xl p-8 border ${tier.popular
-                                ? 'bg-card/40 border-emerald-500/50 shadow-2xl shadow-slate-500/10'
+                                ? 'bg-card/40 border-slate-500/50 shadow-2xl shadow-slate-500/10'
                                 : 'bg-card/20 border-border'
                                 } flex flex-col`}
                         >

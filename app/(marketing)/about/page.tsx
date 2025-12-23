@@ -11,7 +11,7 @@ export default function AboutPage() {
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                     <div className="max-w-3xl">
                         <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl mb-6">
-                            Empowering Real Estate Professionals to <span className="text-emerald-500">Close Faster</span>
+                            Empowering Real Estate Professionals to <span className="text-slate-500">Close Faster</span>
                         </h1>
                         <p className="text-xl text-muted-foreground leading-relaxed">
                             UtilitySheet is on a mission to standardize and automate the utility handoff process, saving agents hours of manual work and ensuring a seamless experience for buyers and sellers.
@@ -35,22 +35,22 @@ export default function AboutPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-6">
                             <div className="bg-background p-6 rounded-2xl shadow-sm border border-border/50">
-                                <Clock className="h-8 w-8 text-emerald-500 mb-4" />
+                                <Clock className="h-8 w-8 text-slate-500 mb-4" />
                                 <h3 className="font-semibold text-foreground mb-2">Time Saved</h3>
                                 <p className="text-sm text-muted-foreground">Reducing hours of phone calls to minutes of clicks.</p>
                             </div>
                             <div className="bg-background p-6 rounded-2xl shadow-sm border border-border/50 mt-12">
-                                <Shield className="h-8 w-8 text-emerald-500 mb-4" />
+                                <Shield className="h-8 w-8 text-slate-500 mb-4" />
                                 <h3 className="font-semibold text-foreground mb-2">Accuracy</h3>
                                 <p className="text-sm text-muted-foreground">Eliminating errors in critical service transfers.</p>
                             </div>
                             <div className="bg-background p-6 rounded-2xl shadow-sm border border-border/50">
-                                <Users className="h-8 w-8 text-emerald-500 mb-4" />
+                                <Users className="h-8 w-8 text-slate-500 mb-4" />
                                 <h3 className="font-semibold text-foreground mb-2">Experience</h3>
                                 <p className="text-sm text-muted-foreground">Delivering a premium closing experience.</p>
                             </div>
                             <div className="bg-background p-6 rounded-2xl shadow-sm border border-border/50 mt-12">
-                                <Zap className="h-8 w-8 text-emerald-500 mb-4" />
+                                <Zap className="h-8 w-8 text-slate-500 mb-4" />
                                 <h3 className="font-semibold text-foreground mb-2">Speed</h3>
                                 <p className="text-sm text-muted-foreground">Instant access to verified utility data.</p>
                             </div>
@@ -67,7 +67,7 @@ export default function AboutPage() {
                         Founded by industry veterans who were tired of the "utility scramble" before every closing, UtilitySheet was born out of necessity. We realized that while the rest of the real estate transaction had gone digital, utility coordination was still stuck in the age of sticky notes and phone calls.
                     </p>
                     <p className="text-lg text-muted-foreground leading-relaxed">
-                        Today, we serve thousands of agents and TCs, helping them standardize their workflow and provide a white-glove service to their clients.
+                        Today, we help agents and TCs standardize their workflow and provide a white-glove service to their clients.
                     </p>
                 </div>
             </section>
@@ -75,19 +75,19 @@ export default function AboutPage() {
             {/* CTA Section */}
             <section className="py-24 px-4 sm:px-6 lg:px-8 relative">
                 <div className="mx-auto max-w-5xl">
-                    <div className="relative rounded-3xl bg-emerald-600 p-8 md:p-16 text-center shadow-2xl shadow-emerald-500/20 overflow-hidden">
+                    <div className="relative rounded-3xl bg-slate-700 p-8 md:p-16 text-center shadow-2xl shadow-slate-500/20 overflow-hidden">
                         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 mix-blend-overlay"></div>
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-400/20 blur-[80px] rounded-full" />
-                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-800/40 blur-[80px] rounded-full" />
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-slate-500/20 blur-[80px] rounded-full" />
+                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-slate-900/40 blur-[80px] rounded-full" />
 
                         <div className="relative z-10">
                             <h2 className="text-3xl font-bold text-white mb-6 sm:text-5xl tracking-tight">Ready to streamline your workflow?</h2>
-                            <p className="text-emerald-50/90 text-lg mb-10 max-w-2xl mx-auto font-medium">
+                            <p className="text-slate-100/90 text-lg mb-10 max-w-2xl mx-auto font-medium">
                                 Join the top real estate professionals who trust UtilitySheet.
                             </p>
                             <Link href="/auth/signup">
-                                <Button size="lg" className="bg-white text-emerald-700 hover:bg-emerald-50 h-14 px-10 text-xl font-bold shadow-xl shadow-black/10 hover:shadow-black/20 transform hover:-translate-y-1 transition-all">
-                                    Get Started for Free
+                                <Button size="lg" className="bg-white text-slate-700 hover:bg-slate-50 h-14 px-10 text-xl font-bold shadow-xl shadow-black/10 hover:shadow-black/20 transform hover:-translate-y-1 transition-all">
+                                    Get Started Free
                                 </Button>
                             </Link>
                         </div>

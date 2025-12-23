@@ -50,7 +50,7 @@ export function FeatureSection() {
                         <motion.div
                             key={idx}
                             whileHover={{ y: -5 }}
-                            className="group p-8 rounded-2xl bg-card/40 border border-border hover:border-emerald-500/30 transition-all hover:bg-card/60"
+                            className="group p-8 rounded-2xl bg-card/40 border border-border hover:border-slate-500/30 transition-all hover:bg-card/60"
                         >
                             <div className="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center mb-6 group-hover:bg-slate-500/20 transition-colors">
                                 <feature.icon className="h-6 w-6 text-slate-600" />

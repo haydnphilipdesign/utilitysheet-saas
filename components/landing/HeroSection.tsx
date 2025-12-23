@@ -223,7 +223,7 @@ export function HeroSection() {
                         <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-12 lg:mb-0">
                             <Link href="/auth/signup">
                                 <Button size="lg" className="h-14 px-8 text-lg bg-slate-600 text-white hover:bg-slate-500 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(71,85,105,0.5)]">
-                                    Start Free Trial <ArrowRight className="ml-2 h-5 w-5" />
+                                    Get Started Free <ArrowRight className="ml-2 h-5 w-5" />
                                 </Button>
                             </Link>
                             <Link href="#how-it-works">
