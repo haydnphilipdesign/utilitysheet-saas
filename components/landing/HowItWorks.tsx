@@ -50,14 +50,13 @@ export function HowItWorks() {
                             </p>
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
-                            <div className="relative aspect-video rounded-xl bg-card border border-border flex items-center justify-center shadow-lg overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-tr from-slate-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                                <div className="text-center p-8">
-                                    <div className="bg-slate-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                                        <MousePointer2 className="w-10 h-10 text-slate-600" />
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">Secure Dashboard Link Generated</p>
-                                </div>
+                            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
+                                <img
+                                    src="/landing/new-request.png"
+                                    alt="New Request Dashboard - Creating a utility request"
+                                    className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
+                                />
+                                <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />
                             </div>
                         </div>
                     </div>
@@ -83,11 +82,11 @@ export function HowItWorks() {
                             transition={{ duration: 0.7 }}
                             className="flex-1 w-full max-w-[500px] lg:max-w-none"
                         >
-                            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card">
+                            <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
                                 <img
-                                    src="/landing/seller-wizard-electric.png"
-                                    alt="Seller Wizard Interface - Confirming Electric Provider"
-                                    className="w-full h-auto object-cover"
+                                    src="/landing/seller-wizard.png"
+                                    alt="Seller Wizard Interface - Confirming Utility Providers"
+                                    className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />
                             </div>
@@ -117,7 +116,7 @@ export function HowItWorks() {
                         >
                             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
                                 <img
-                                    src="/landing/utility-packet.png"
+                                    src="/landing/utility-info-sheet.png"
                                     alt="Generated Utility Info Sheet PDF"
                                     className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
                                 />
