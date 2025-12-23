@@ -1,12 +1,17 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Zap } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 export default function MarketingLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
     return (
         <div className="flex min-h-screen flex-col bg-background text-foreground">
             <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -35,19 +40,81 @@ export default function MarketingLayout({
                         </Link>
                     </nav>
 
-                    <div className="flex items-center gap-4">
-                        <Link href="/auth/login">
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <Link href="/auth/login" className="hidden sm:block">
                             <Button variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
                                 Sign In
                             </Button>
                         </Link>
-                        <Link href="/auth/signup">
+                        <Link href="/auth/signup" className="hidden sm:block">
                             <Button className="bg-slate-600 text-white hover:bg-slate-700 shadow-lg shadow-slate-500/20">
                                 Get Started
                             </Button>
                         </Link>
+
+                        {/* Mobile Menu Button */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="md:hidden text-muted-foreground hover:text-foreground"
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        >
+                            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                        </Button>
                     </div>
                 </div>
+
+                {/* Mobile Navigation */}
+                {mobileMenuOpen && (
+                    <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
+                        <nav className="mx-auto max-w-7xl px-4 py-4 space-y-2">
+                            <Link
+                                href="/#features"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                            >
+                                Features
+                            </Link>
+                            <Link
+                                href="/#how-it-works"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                            >
+                                How it Works
+                            </Link>
+                            <Link
+                                href="/#pricing"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                            >
+                                Pricing
+                            </Link>
+                            <Link
+                                href="/about"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                            >
+                                About
+                            </Link>
+                            <div className="pt-4 space-y-2 border-t border-border mt-2">
+                                <Link
+                                    href="/auth/login"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                                >
+                                    Sign In
+                                </Link>
+                                <Link
+                                    href="/auth/signup"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="block px-4 py-3 text-sm font-medium text-center bg-slate-600 text-white hover:bg-slate-700 rounded-lg transition-colors"
+                                >
+                                    Get Started
+                                </Link>
+                            </div>
+                        </nav>
+                    </div>
+                )}
             </header>
 
             <main className="flex-1 pt-16">

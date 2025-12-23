@@ -159,7 +159,7 @@ export default function RequestsPage() {
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-transparent">
                                     <TableHead className="text-muted-foreground">Property</TableHead>
-                                    <TableHead className="text-muted-foreground">Seller</TableHead>
+                                    <TableHead className="text-muted-foreground hidden md:table-cell">Seller</TableHead>
                                     <TableHead className="text-muted-foreground hidden md:table-cell">Closing Date</TableHead>
                                     <TableHead className="text-muted-foreground hidden lg:table-cell">Created</TableHead>
                                     <TableHead className="text-muted-foreground">Status</TableHead>
@@ -181,7 +181,7 @@ export default function RequestsPage() {
                                                 <TableCell>
                                                     <p className="font-medium text-foreground">{request.property_address}</p>
                                                 </TableCell>
-                                                <TableCell className="text-muted-foreground">
+                                                <TableCell className="hidden md:table-cell text-muted-foreground">
                                                     {request.seller_name || '—'}
                                                 </TableCell>
                                                 <TableCell className="hidden md:table-cell text-muted-foreground">

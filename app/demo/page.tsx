@@ -119,17 +119,17 @@ export default function DemoPage() {
                         <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center shadow-xl">
                             <MapPin className="h-8 w-8 text-white" />
                         </div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
                             Try the Seller Experience
                         </h1>
-                        <p className="text-slate-400 text-sm sm:text-base">
+                        <p className="text-muted-foreground text-sm sm:text-base">
                             Enter any address you know the utility providers for. Our AI will suggest providers — see how accurate it is!
                         </p>
                     </div>
 
-                    <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 space-y-4">
+                    <div className="bg-card/50 border border-border rounded-2xl p-6 space-y-4">
                         <div>
-                            <label htmlFor="address" className="block text-sm font-medium text-slate-300 mb-2">
+                            <label htmlFor="address" className="block text-sm font-medium text-muted-foreground mb-2">
                                 Property Address
                             </label>
                             <input
@@ -142,7 +142,7 @@ export default function DemoPage() {
                                 }}
                                 onKeyDown={(e) => e.key === 'Enter' && handleStartDemo()}
                                 placeholder="123 Main St, Austin, TX 78701"
-                                className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all"
+                                className="w-full px-4 py-3 bg-background/50 border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all"
                             />
                             {error && (
                                 <motion.p
@@ -158,13 +158,13 @@ export default function DemoPage() {
                         <button
                             onClick={handleStartDemo}
                             disabled={loading || !address.trim()}
-                            className="w-full py-3.5 px-6 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 disabled:from-slate-700 disabled:to-slate-800 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-slate-900/50"
+                            className="w-full py-3.5 px-6 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 disabled:from-slate-700 disabled:to-slate-800 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-slate-500/20"
                         >
                             Start Demo
                             <ArrowRight className="h-5 w-5" />
                         </button>
 
-                        <p className="text-xs text-slate-500 text-center">
+                        <p className="text-xs text-muted-foreground text-center">
                             Your address is only used to generate suggestions and won't be saved.
                         </p>
                     </div>
@@ -172,7 +172,7 @@ export default function DemoPage() {
                     <div className="mt-6 text-center">
                         <Link
                             href="/auth/signup"
-                            className="text-slate-400 hover:text-slate-300 text-sm underline underline-offset-2"
+                            className="text-muted-foreground hover:text-foreground text-sm underline underline-offset-2"
                         >
                             Ready to sign up instead?
                         </Link>

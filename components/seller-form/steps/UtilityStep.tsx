@@ -280,7 +280,7 @@ export function UtilityStep({
                                 <p className="text-muted-foreground text-sm mb-3">No matching providers found.</p>
                                 <button
                                     onClick={handleManualEntry}
-                                    className="text-emerald-400 hover:text-emerald-300 text-sm font-medium underline underline-offset-4"
+                                    className="text-slate-500 hover:text-slate-400 text-sm font-medium underline underline-offset-4"
                                 >
                                     Use "{searchQuery}" anyway
                                 </button>
