@@ -2,11 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Users, Shield, FileText, ArrowLeft, Zap } from 'lucide-react';
+import { Users, Shield, FileText, ArrowLeft, Zap, LayoutDashboard, Inbox, Building2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const adminNavigation = [
+    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Users', href: '/admin/users', icon: Users },
+    { name: 'Requests', href: '/admin/requests', icon: Inbox },
+    { name: 'Orgs', href: '/admin/organizations', icon: Building2 },
     { name: 'Audit Logs', href: '/admin/audit-logs', icon: FileText },
 ];
 
@@ -46,8 +49,8 @@ export function AdminLayoutContent({ children }: { children: React.ReactNode }) 
                                             key={item.name}
                                             href={item.href}
                                             className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isActive
-                                                    ? 'bg-red-500/10 text-red-500'
-                                                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                                                ? 'bg-red-500/10 text-red-500'
+                                                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                                                 }`}
                                         >
                                             <item.icon className="h-4 w-4" />
