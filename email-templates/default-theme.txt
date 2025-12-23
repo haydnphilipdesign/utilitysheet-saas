@@ -1,0 +1,50 @@
+import { Html, Head, Tailwind, Body, Container, Link, Section, Img, Text } from '@react-email/components';
+import { ThemeProps, ProjectLogo } from "@stackframe/emails";
+
+export function EmailTheme({ children, unsubscribeLink, projectLogos }: ThemeProps) {
+  return (
+    <Html>
+      <Head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      </Head>
+      <Tailwind>
+        <Body className="bg-[#f8fafc] font-sans text-base m-0 p-0" style={{ fontFamily: "'Figtree', 'Segoe UI', Roboto, sans-serif" }}>
+          {/* Header with gradient accent */}
+          <Container className="mx-auto max-w-[580px] pt-8">
+            <Section className="bg-gradient-to-r from-[#475569] via-[#64748b] to-[#475569] h-2 rounded-t-lg" />
+            <Section className="bg-white px-12 py-8 rounded-b-lg shadow-lg">
+              {/* Logo Section */}
+              <div className="text-center pb-6 border-b border-[#e2e8f0]">
+                <ProjectLogo data={projectLogos} mode="light" />
+              </div>
+              {/* Email Content */}
+              <div className="py-6">
+                {children}
+              </div>
+            </Section>
+            {/* Footer */}
+            <Section className="py-6 text-center">
+              <Text className="text-[#94a3b8] text-xs m-0">
+                © 2024 UtilitySheet. All rights reserved.
+              </Text>
+              {unsubscribeLink && (
+                <Text className="text-[#94a3b8] text-xs m-0 pt-2">
+                  <Link href={unsubscribeLink} className="text-[#64748b] underline">
+                    Unsubscribe
+                  </Link>
+                  {" "}from these emails
+                </Text>
+              )}
+            </Section>
+          </Container>
+        </Body>
+      </Tailwind>
+    </Html>
+  );
+}
+
+EmailTheme.PreviewProps = {
+  unsubscribeLink: "https://utilitysheet.com/unsubscribe",
+} satisfies Partial<ThemeProps>

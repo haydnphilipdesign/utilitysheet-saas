@@ -49,9 +49,10 @@ interface SellerWizardProps {
     initialSuggestions: Record<UtilityCategory, ProviderSuggestion[]>;
     token: string;
     brandProfile?: BrandProfile | null;
+    isDemo?: boolean;
 }
 
-export function SellerWizard({ initialRequestData, initialSuggestions, token, brandProfile }: SellerWizardProps) {
+export function SellerWizard({ initialRequestData, initialSuggestions, token, brandProfile, isDemo = false }: SellerWizardProps) {
     // Steps definition
     enum Step {
         WELCOME = 0,
@@ -200,6 +201,15 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     const handleSubmit = async () => {
         setSubmitting(true);
+
+        // In demo mode, skip the API call and go straight to success
+        if (isDemo) {
+            // Small delay to simulate submission
+            await new Promise(resolve => setTimeout(resolve, 500));
+            setCurrentStep(Step.SUCCESS);
+            return;
+        }
+
         try {
             const response = await fetch(`/api/seller/${token}`, {
                 method: 'POST',
@@ -270,7 +280,14 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 )}
 
                 {currentStep === Step.SUCCESS && (
-                    <SuccessStep key="success" />
+                    <SuccessStep
+                        key="success"
+                        isDemo={isDemo}
+                        demoData={isDemo ? {
+                            address: initialRequestData.property_address,
+                            state: state
+                        } : undefined}
+                    />
                 )}
 
                 {/* Fallback */}

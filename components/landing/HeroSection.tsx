@@ -226,9 +226,10 @@ export function HeroSection() {
                                     Get Started Free <ArrowRight className="ml-2 h-5 w-5" />
                                 </Button>
                             </Link>
-                            <Link href="#how-it-works">
-                                <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-border text-muted-foreground hover:text-foreground hover:bg-secondary hover:border-border bg-card/50 backdrop-blur-sm">
-                                    How it Works
+                            <Link href="/demo">
+                                <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-slate-500/50 text-slate-500 hover:text-slate-600 hover:bg-slate-500/10 hover:border-slate-500 bg-card/50 backdrop-blur-sm">
+                                    <Sparkles className="mr-2 h-5 w-5" />
+                                    Try the Demo
                                 </Button>
                             </Link>
                         </div>

@@ -1,0 +1,70 @@
+import { type } from "arktype"
+import { Button, Section, Hr, Text, Heading } from "@react-email/components";
+import { Subject, NotificationCategory, Props } from "@stackframe/emails";
+
+export const variablesSchema = type({
+  emailVerificationLink: "string"
+})
+
+export function EmailTemplate({ user, project, variables }: Props<typeof variablesSchema.infer>) {
+  return (
+    <>
+      <Subject value={`Verify your email for UtilitySheet`} />
+      <NotificationCategory value="Transactional" />
+      
+      {/* Welcome Icon */}
+      <div className="text-center py-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#475569] to-[#64748b] rounded-full">
+          <span className="text-white text-2xl">✉️</span>
+        </div>
+      </div>
+
+      {/* Main Heading */}
+      <Heading className="text-[#1e293b] text-2xl font-bold text-center m-0 pb-2" style={{ fontFamily: "'Figtree', sans-serif" }}>
+        Verify Your Email
+      </Heading>
+      
+      {/* Subheading */}
+      <Text className="text-[#64748b] text-base text-center m-0 pb-6" style={{ fontFamily: "'Figtree', sans-serif" }}>
+        Hi{user.displayName ? ` ${user.displayName}` : ''}! Thanks for signing up for UtilitySheet.
+      </Text>
+
+      {/* Description */}
+      <Text className="text-[#475569] text-base text-center m-0 pb-6" style={{ fontFamily: "'Figtree', sans-serif" }}>
+        Click the button below to verify your email address and start simplifying your utility handoffs.
+      </Text>
+
+      {/* CTA Button */}
+      <div className="text-center py-4">
+        <Button
+          href={variables.emailVerificationLink}
+          target="_blank"
+          className="inline-block bg-[#475569] text-white font-semibold text-base py-4 px-8 rounded-lg no-underline"
+          style={{ fontFamily: "'Figtree', sans-serif" }}
+        >
+          Verify My Email
+        </Button>
+      </div>
+
+      {/* Alternative Link */}
+      <Text className="text-[#94a3b8] text-sm text-center m-0 py-4" style={{ fontFamily: "'Figtree', sans-serif" }}>
+        Or copy and paste this link into your browser:
+      </Text>
+      <Text className="text-[#64748b] text-xs text-center break-all m-0 pb-6 px-4" style={{ fontFamily: "'Figtree', sans-serif", wordBreak: 'break-all' }}>
+        {variables.emailVerificationLink}
+      </Text>
+
+      {/* Divider */}
+      <Hr className="border-[#e2e8f0] my-6" />
+
+      {/* Footer Note */}
+      <Text className="text-[#94a3b8] text-xs text-center m-0" style={{ fontFamily: "'Figtree', sans-serif" }}>
+        If you didn't create an account with UtilitySheet, you can safely ignore this email.
+      </Text>
+    </>
+  )
+}
+
+EmailTemplate.PreviewVariables = {
+  emailVerificationLink: "https://utilitysheet.com/verify?token=example"
+} satisfies typeof variablesSchema.infer
