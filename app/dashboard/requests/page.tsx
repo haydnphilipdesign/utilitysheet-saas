@@ -52,7 +52,7 @@ const statusConfig = {
     draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
     sent: { label: 'Sent', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: Send },
     in_progress: { label: 'In Progress', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: Clock },
-    submitted: { label: 'Submitted', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', icon: CheckCircle2 },
+    submitted: { label: 'Submitted', color: 'bg-sky-500/20 text-sky-600 dark:text-sky-400 border-sky-500/30', icon: CheckCircle2 },
 };
 
 export default function RequestsPage() {
@@ -116,7 +116,7 @@ export default function RequestsPage() {
                     <p className="text-muted-foreground mt-1">All utility sheet requests</p>
                 </div>
                 <Link href="/dashboard/requests/new">
-                    <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                    <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20">
                         <Plus className="mr-2 h-4 w-4" />
                         New Request
                     </Button>
@@ -139,7 +139,7 @@ export default function RequestsPage() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full sm:w-[180px] h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full sm:w-[180px] h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-sky-500"
                         >
                             <option value="all">All Statuses</option>
                             <option value="draft">Draft</option>

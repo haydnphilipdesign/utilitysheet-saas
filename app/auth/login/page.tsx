@@ -92,14 +92,14 @@ export default function LoginPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background p-4">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-slate-500/10 rounded-full blur-3xl" />
                 <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
             </div>
 
             <div className="relative z-10 w-full max-w-md">
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
+                    <div className="p-2 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
                         <Zap className="h-8 w-8 text-white" />
                     </div>
                     <span className="text-3xl font-bold text-foreground">UtilitySheet</span>
@@ -153,7 +153,7 @@ export default function LoginPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:ring-emerald-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -161,7 +161,7 @@ export default function LoginPage() {
                                     <Label htmlFor="password" className="text-foreground">Password</Label>
                                     <Link
                                         href="/auth/forgot-password"
-                                        className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+                                        className="text-sm text-slate-500 hover:text-slate-400 transition-colors"
                                     >
                                         Forgot password?
                                     </Link>
@@ -172,14 +172,14 @@ export default function LoginPage() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:ring-emerald-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20"
                                 />
                             </div>
                         </CardContent>
                         <CardFooter className="flex flex-col gap-4">
                             <Button
                                 type="submit"
-                                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20 transition-all duration-200"
+                                className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 transition-all duration-200"
                                 disabled={loading}
                             >
                                 {loading ? (
@@ -193,7 +193,7 @@ export default function LoginPage() {
                             </Button>
                             <p className="text-sm text-muted-foreground text-center">
                                 Don&apos;t have an account?{' '}
-                                <Link href="/auth/signup" className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors">
+                                <Link href="/auth/signup" className="text-slate-500 hover:text-slate-400 font-medium transition-colors">
                                     Sign up
                                 </Link>
                             </p>

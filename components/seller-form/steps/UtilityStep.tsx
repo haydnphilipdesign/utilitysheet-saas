@@ -144,7 +144,7 @@ export function UtilityStep({
                                         className="w-full flex items-center justify-between p-4 bg-muted/50 hover:bg-muted border border-border rounded-xl text-left transition-all group"
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-lg shrink-0">
+                                            <div className="h-10 w-10 rounded-full bg-slate-500/10 flex items-center justify-center text-lg shrink-0">
                                                 ⚡
                                             </div>
                                             <div>
@@ -158,7 +158,7 @@ export function UtilityStep({
                                                 )}
                                             </div>
                                         </div>
-                                        <Check className="h-5 w-5 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <Check className="h-5 w-5 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </button>
                                 ))}
                             </div>
@@ -190,7 +190,7 @@ export function UtilityStep({
                             <div className="grid grid-cols-1 gap-3">
                                 <button
                                     onClick={() => setMode('search')}
-                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors"
+                                    className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
                                 >
                                     Search Providers
                                 </button>
@@ -216,7 +216,7 @@ export function UtilityStep({
                             placeholder={`Search ${categoryLabel} providers...`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-muted/50 border border-border rounded-xl py-4 pl-12 pr-12 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                            className="w-full bg-muted/50 border border-border rounded-xl py-4 pl-12 pr-12 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
                         />
                         {searchQuery && (
                             <button
@@ -241,7 +241,7 @@ export function UtilityStep({
                                 className="w-full flex items-center justify-between p-4 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left transition-all group"
                             >
                                 <span className="font-medium text-foreground transition-colors">{result.display_name}</span>
-                                <Check className="h-4 w-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <Check className="h-4 w-4 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </button>
                         ))}
 
@@ -267,8 +267,8 @@ export function UtilityStep({
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Check className="h-4 w-4 text-emerald-500" />
+                                        <div className="h-8 w-8 rounded-full bg-slate-500/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Check className="h-4 w-4 text-slate-600" />
                                         </div>
                                     </button>
                                 ))}

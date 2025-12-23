@@ -105,7 +105,7 @@ export default function OnboardingPage() {
 
     if (!user && !account && step !== 1) {
         return <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
         </div>;
     }
 
@@ -113,13 +113,13 @@ export default function OnboardingPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-500/5 rounded-full blur-[120px]" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-slate-500/5 rounded-full blur-[120px]" />
             </div>
 
             <div className="relative z-10 w-full max-w-xl">
                 {/* Header */}
                 <div className="flex items-center justify-center gap-2 mb-8">
-                    <Zap className="h-6 w-6 text-emerald-500" />
+                    <Zap className="h-6 w-6 text-slate-600" />
                     <span className="text-xl font-bold text-foreground">UtilitySheet Onboarding</span>
                 </div>
 
@@ -128,7 +128,7 @@ export default function OnboardingPage() {
                     {[1, 2, 3].map((s) => (
                         <div
                             key={s}
-                            className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${s <= step ? 'bg-emerald-500' : 'bg-secondary'
+                            className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${s <= step ? 'bg-slate-600' : 'bg-secondary'
                                 }`}
                         />
                     ))}
@@ -147,8 +147,8 @@ export default function OnboardingPage() {
                         >
                             <Card className="border-border bg-card/80 backdrop-blur-xl">
                                 <CardHeader>
-                                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4">
-                                        <Building2 className="h-6 w-6 text-emerald-500" />
+                                    <div className="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center mb-4">
+                                        <Building2 className="h-6 w-6 text-slate-600" />
                                     </div>
                                     <CardTitle className="text-2xl text-foreground">Let's set up your business</CardTitle>
                                     <CardDescription className="text-muted-foreground">
@@ -171,7 +171,7 @@ export default function OnboardingPage() {
                                     <Button
                                         onClick={handleCreateOrg}
                                         disabled={!orgName || loading}
-                                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white h-12"
+                                        className="w-full bg-slate-600 hover:bg-slate-700 text-white h-12"
                                     >
                                         {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>}
                                     </Button>
@@ -192,8 +192,8 @@ export default function OnboardingPage() {
                         >
                             <Card className="border-border bg-card/80 backdrop-blur-xl">
                                 <CardHeader>
-                                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4">
-                                        <Palette className="h-6 w-6 text-emerald-500" />
+                                    <div className="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center mb-4">
+                                        <Palette className="h-6 w-6 text-slate-600" />
                                     </div>
                                     <CardTitle className="text-2xl text-foreground">Branding basics</CardTitle>
                                     <CardDescription className="text-muted-foreground">
@@ -242,7 +242,7 @@ export default function OnboardingPage() {
                                     <Button
                                         onClick={handleCreateBrand}
                                         disabled={loading}
-                                        className="flex-[2] bg-emerald-500 hover:bg-emerald-600 text-white h-12"
+                                        className="flex-[2] bg-slate-600 hover:bg-slate-700 text-white h-12"
                                     >
                                         {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Next <ArrowRight className="ml-2 h-4 w-4" /></>}
                                     </Button>
@@ -262,8 +262,8 @@ export default function OnboardingPage() {
                         >
                             <Card className="border-border bg-card/80 backdrop-blur-xl text-center">
                                 <CardHeader>
-                                    <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
-                                        <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+                                    <div className="w-20 h-20 rounded-full bg-slate-500/10 flex items-center justify-center mx-auto mb-6">
+                                        <CheckCircle2 className="h-10 w-10 text-slate-600" />
                                     </div>
                                     <CardTitle className="text-3xl text-foreground">You're all set!</CardTitle>
                                     <CardDescription className="text-muted-foreground text-lg">
@@ -279,7 +279,7 @@ export default function OnboardingPage() {
                                 <CardFooter>
                                     <Button
                                         onClick={handleFinish}
-                                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white h-14 text-lg font-bold shadow-lg shadow-emerald-500/20"
+                                        className="w-full bg-slate-600 hover:bg-slate-700 text-white h-14 text-lg font-bold shadow-lg shadow-slate-500/20"
                                     >
                                         Go to Dashboard
                                     </Button>

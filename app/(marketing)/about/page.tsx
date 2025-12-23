@@ -7,7 +7,7 @@ export default function AboutPage() {
         <div className="relative overflow-hidden bg-background">
             {/* Hero Section */}
             <section className="relative pt-24 pb-32 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-600/5 to-transparent" />
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                     <div className="max-w-3xl">
                         <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl mb-6">

@@ -44,7 +44,7 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                             key={opt.id}
                             onClick={() => updateState({ water_source: opt.id as any })}
                             className={`p-4 rounded-xl border text-left transition-all ${state.water_source === opt.id
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
@@ -70,7 +70,7 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                             key={opt.id}
                             onClick={() => updateState({ sewer_type: opt.id as any })}
                             className={`p-4 rounded-xl border text-left transition-all ${state.sewer_type === opt.id
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
@@ -122,7 +122,7 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                                     });
                                 }}
                                 className={`p-4 rounded-xl border text-left transition-all ${isSelected
-                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                    ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
                                     : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                     }`}
                             >
@@ -156,7 +156,7 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                                     key={fuelId}
                                     onClick={() => updateState({ primary_heating_type: fuelId })}
                                     className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${state.primary_heating_type === fuelId
-                                        ? 'bg-emerald-500 text-white border-emerald-500'
+                                        ? 'bg-slate-600 text-white border-slate-600'
                                         : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
                                         }`}
                                 >
@@ -171,7 +171,7 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
             <div className="pt-6">
                 <button
                     onClick={onNext}
-                    className="w-full py-4 text-center rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                    className="w-full py-4 text-center rounded-xl font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
                 >
                     Continue
                 </button>

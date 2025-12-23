@@ -16,7 +16,7 @@ export function UtilitySheetPreview() {
                 {/* Header - Branding */}
                 <div className="bg-neutral-50 border-b border-neutral-100 p-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center text-white font-bold text-xs">
+                        <div className="w-6 h-6 rounded bg-slate-500 flex items-center justify-center text-white font-bold text-xs">
                             U
                         </div>
                         <span className="font-semibold text-neutral-900 tracking-tight">UtilitySheet</span>
@@ -81,7 +81,7 @@ export function UtilitySheetPreview() {
                 {/* Footer Actions */}
                 <div className="p-3 bg-neutral-50 flex justify-end gap-2 border-t border-neutral-100">
                     <div className="h-6 w-20 bg-neutral-200 rounded animate-pulse" />
-                    <div className="h-6 w-24 bg-emerald-500 rounded shadow-sm opacity-90" />
+                    <div className="h-6 w-24 bg-slate-500 rounded shadow-sm opacity-90" />
                 </div>
             </motion.div>
         </div>
@@ -107,7 +107,7 @@ function UtilityRow({ icon, color, label, provider, status, delay }: any) {
             </div>
             <div className="flex items-center gap-2">
                 <span className="text-neutral-600 font-medium">{status}</span>
-                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                <Check className="w-3.5 h-3.5 text-slate-600" />
             </div>
         </motion.div>
     )

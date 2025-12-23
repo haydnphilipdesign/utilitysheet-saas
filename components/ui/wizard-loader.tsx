@@ -46,7 +46,7 @@ export function WizardLoader() {
                 <div className="relative mb-12 flex justify-center">
                     {/* Pulsing center effect */}
                     <motion.div
-                        className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-full"
+                        className="absolute inset-0 bg-slate-500/10 blur-3xl rounded-full"
                         animate={{
                             scale: [1, 1.2, 1],
                             opacity: [0.3, 0.6, 0.3],
@@ -92,7 +92,7 @@ export function WizardLoader() {
                                 {LOADING_STEPS.map((_, idx) => (
                                     <motion.div
                                         key={idx}
-                                        className={`h-1 rounded-full bg-emerald-500/20`}
+                                        className={`h-1 rounded-full bg-slate-500/20`}
                                         animate={{
                                             width: idx === currentStep ? 24 : 6,
                                             backgroundColor: idx === currentStep ? "rgba(16, 185, 129, 1)" : "rgba(16, 185, 129, 0.2)"

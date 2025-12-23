@@ -282,7 +282,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                     <Button
                         onClick={handleSubmit}
                         disabled={loading || !formData.name}
-                        className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                        className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                     >
                         {loading ? (
                             <>

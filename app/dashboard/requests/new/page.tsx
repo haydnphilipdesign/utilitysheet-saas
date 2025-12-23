@@ -232,7 +232,7 @@ Thank you!`,
                             <Button
                                 onClick={() => setStep(2)}
                                 disabled={!isStep1Valid}
-                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                             >
                                 Continue
                                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -261,7 +261,7 @@ Thank you!`,
                                     key={brand.id}
                                     onClick={() => updateField('brand_profile_id', brand.id)}
                                     className={`text-left p-4 rounded-xl border transition-all ${formData.brand_profile_id === brand.id
-                                        ? 'bg-emerald-500/10 border-emerald-500/50 shadow-lg shadow-emerald-500/5'
+                                        ? 'bg-emerald-500/10 border-emerald-500/50 shadow-lg shadow-slate-500/5'
                                         : 'bg-muted/50 border-border hover:border-input'
                                         }`}
                                 >
@@ -303,7 +303,7 @@ Thank you!`,
                             <Button
                                 onClick={() => setStep(3)}
                                 disabled={!formData.brand_profile_id}
-                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                             >
                                 Continue
                                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -378,7 +378,7 @@ Thank you!`,
                             </Button>
                             <Button
                                 onClick={() => setStep(4)}
-                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                             >
                                 Continue
                                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -431,7 +431,7 @@ Thank you!`,
                             <Button
                                 onClick={handleCreate}
                                 disabled={!isStep3Valid || loading}
-                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                             >
                                 {loading ? (
                                     <>
@@ -586,7 +586,7 @@ Thank you!`,
                         <div className="flex flex-col gap-2">
                             <Link href="/dashboard/settings" className="w-full">
                                 <Button
-                                    className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                                    className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                                     onClick={() => setShowUpgradeDialog(false)}
                                 >
                                     <Sparkles className="mr-2 h-4 w-4" />

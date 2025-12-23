@@ -30,7 +30,7 @@ export function HowItWorks() {
         <section id="how-it-works" className="py-24 sm:py-32 bg-background relative overflow-hidden">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="text-center mb-24">
-                    <h2 className="text-emerald-500 font-bold text-sm tracking-wider uppercase mb-3">Workflow</h2>
+                    <h2 className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Workflow</h2>
                     <h3 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">How it works</h3>
                 </div>
 
@@ -38,11 +38,11 @@ export function HowItWorks() {
                     {/* Step 1: Generate Link */}
                     <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-500 mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-slate-600 mb-8">
                                 <MousePointer2 className="w-8 h-8" />
                             </div>
                             <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-                                <span className="text-emerald-500 mr-2">01.</span>
+                                <span className="text-slate-600 mr-2">01.</span>
                                 Generate a Link
                             </h4>
                             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
@@ -51,10 +51,10 @@ export function HowItWorks() {
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
                             <div className="relative aspect-video rounded-xl bg-card border border-border flex items-center justify-center shadow-lg overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                <div className="absolute inset-0 bg-gradient-to-tr from-slate-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                                 <div className="text-center p-8">
                                     <div className="bg-emerald-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-                                        <MousePointer2 className="w-10 h-10 text-emerald-500" />
+                                        <MousePointer2 className="w-10 h-10 text-slate-600" />
                                     </div>
                                     <p className="text-sm text-muted-foreground">Secure Dashboard Link Generated</p>
                                 </div>
@@ -65,11 +65,11 @@ export function HowItWorks() {
                     {/* Step 2: Seller Confirms */}
                     <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-500 mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-slate-600 mb-8">
                                 <FileCheck className="w-8 h-8" />
                             </div>
                             <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-                                <span className="text-emerald-500 mr-2">02.</span>
+                                <span className="text-slate-600 mr-2">02.</span>
                                 Seller Confirms
                             </h4>
                             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
@@ -97,11 +97,11 @@ export function HowItWorks() {
                     {/* Step 3: Download Packet */}
                     <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-500 mb-8">
+                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 text-slate-600 mb-8">
                                 <Download className="w-8 h-8" />
                             </div>
                             <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
-                                <span className="text-emerald-500 mr-2">03.</span>
+                                <span className="text-slate-600 mr-2">03.</span>
                                 Download Info Sheet
                             </h4>
                             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">

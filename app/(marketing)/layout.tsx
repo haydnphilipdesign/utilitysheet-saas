@@ -13,7 +13,7 @@ export default function MarketingLayout({
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2">
-                            <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 p-1.5 shadow-lg shadow-emerald-500/20">
+                            <div className="rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 p-1.5 shadow-lg shadow-slate-500/20">
                                 <Zap className="h-5 w-5 text-white" />
                             </div>
                             <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
@@ -39,7 +39,7 @@ export default function MarketingLayout({
                             </Button>
                         </Link>
                         <Link href="/auth/signup">
-                            <Button className="bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20">
+                            <Button className="bg-slate-600 text-white hover:bg-slate-700 shadow-lg shadow-slate-500/20">
                                 Get Started
                             </Button>
                         </Link>
@@ -56,7 +56,7 @@ export default function MarketingLayout({
                     <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
                         <div className="col-span-2 lg:col-span-2">
                             <Link href="/" className="flex items-center gap-2">
-                                <Zap className="h-5 w-5 text-emerald-500" />
+                                <Zap className="h-5 w-5 text-slate-600" />
                                 <span className="text-xl font-bold">UtilitySheet</span>
                             </Link>
                             <p className="mt-4 max-w-xs text-sm text-muted-foreground">

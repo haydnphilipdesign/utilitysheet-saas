@@ -15,6 +15,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { FeedbackDialog } from '@/components/feedback-dialog';
 import { Zap, LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X } from 'lucide-react';
 
 const navigation = [
@@ -77,7 +78,7 @@ export function DashboardLayoutContent({
                         {/* Logo */}
                         <div className="flex items-center gap-8">
                             <Link href="/dashboard" className="flex items-center gap-2">
-                                <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
+                                <div className="p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20">
                                     <Zap className="h-5 w-5 text-white" />
                                 </div>
                                 <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
@@ -114,9 +115,10 @@ export function DashboardLayoutContent({
 
                         {/* Right Side */}
                         <div className="flex items-center gap-2">
+                            <FeedbackDialog />
                             <ThemeToggle />
                             <Link href="/dashboard/requests/new">
-                                <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hidden sm:flex">
+                                <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20 hidden sm:flex">
                                     New Request
                                 </Button>
                             </Link>
@@ -198,7 +200,7 @@ export function DashboardLayoutContent({
                             <Link
                                 href="/dashboard/requests/new"
                                 onClick={() => setMobileMenuOpen(false)}
-                                className="flex items-center justify-center gap-2 px-4 py-3 mt-4 text-sm font-medium rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white"
+                                className="flex items-center justify-center gap-2 px-4 py-3 mt-4 text-sm font-medium rounded-lg bg-gradient-to-r from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 text-white"
                             >
                                 New Request
                             </Link>

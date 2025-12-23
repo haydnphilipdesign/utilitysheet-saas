@@ -253,7 +253,7 @@ export default function SettingsPage() {
                             </Button>
                         ) : (
                             <Button
-                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20 font-bold h-11 px-8 border-none transition-all hover:scale-105 active:scale-95"
+                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 font-bold h-11 px-8 border-none transition-all hover:scale-105 active:scale-95"
                                 onClick={async () => {
                                     setBillingLoading(true);
                                     try {
@@ -337,7 +337,7 @@ export default function SettingsPage() {
                 <Button
                     onClick={handleSave}
                     disabled={loading}
-                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg"
+                    className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg"
                 >
                     {loading ? (
                         <>

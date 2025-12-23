@@ -27,16 +27,16 @@ export function SellerLayout({
     totalCount,
     brandProfile
 }: SellerLayoutProps) {
-    // Use brand primary color or fallback to emerald
-    const primaryColor = brandProfile?.primary_color || '#10b981';
+    // Use brand primary color or fallback to slate blue
+    const primaryColor = brandProfile?.primary_color || '#475569';
     // Ensure color is safe (not oklch or lab format)
-    const safePrimaryColor = primaryColor.startsWith('oklch') || primaryColor.startsWith('lab') ? '#10b981' : primaryColor;
+    const safePrimaryColor = primaryColor.startsWith('oklch') || primaryColor.startsWith('lab') ? '#475569' : primaryColor;
 
     return (
         <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
             {/* Background Gradients */}
             <div className="fixed inset-0 z-0 pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-900/10 rounded-full blur-[128px]" />
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-slate-900/10 rounded-full blur-[128px]" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[128px]" />
             </div>
 
@@ -59,7 +59,7 @@ export function SellerLayout({
                                     {brandProfile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                                 </div>
                             ) : (
-                                <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20">
+                                <div className="p-2 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
                                     <Zap className="h-4 w-4 text-white" />
                                 </div>
                             )}
@@ -93,7 +93,7 @@ export function SellerLayout({
                                     width: `${progress}%`,
                                     background: brandProfile?.primary_color
                                         ? `linear-gradient(to right, ${safePrimaryColor}, ${safePrimaryColor}dd)`
-                                        : 'linear-gradient(to right, rgb(5, 150, 105), rgb(52, 211, 153))'
+                                        : 'linear-gradient(to right, rgb(71, 85, 105), rgb(100, 116, 139))'
                                 }}
                             />
                         </div>

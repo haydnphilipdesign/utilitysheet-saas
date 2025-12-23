@@ -96,8 +96,8 @@ export function ReviewStep({
                                         </p>
                                     </div>
                                     {utilState.entry_mode !== null && (
-                                        <div className="p-1 rounded-full bg-emerald-500/10">
-                                            <Check className="h-4 w-4 text-emerald-500" />
+                                        <div className="p-1 rounded-full bg-slate-500/10">
+                                            <Check className="h-4 w-4 text-slate-600" />
                                         </div>
                                     )}
                                 </div>
@@ -118,7 +118,7 @@ export function ReviewStep({
                 <button
                     onClick={onSubmit}
                     disabled={submitting}
-                    className="flex-[2] py-4 text-center rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-[2] py-4 text-center rounded-xl font-bold bg-slate-700 hover:bg-slate-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                     {submitting ? (
                         <>

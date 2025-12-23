@@ -127,7 +127,7 @@ export default function BrandingPage() {
                 </div>
                 {isPro ? (
                     <Link href="/dashboard/branding/new">
-                        <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                        <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20">
                             <Plus className="mr-2 h-4 w-4" />
                             New Profile
                         </Button>
@@ -156,7 +156,7 @@ export default function BrandingPage() {
                             <h3 className="text-xl font-bold text-foreground mb-2">No branding profiles yet</h3>
                             <p className="text-muted-foreground mb-6">Create your first profile to customize your utility sheets with your own logo and colors.</p>
                             <Link href="/dashboard/branding/new">
-                                <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                                <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20">
                                     <Plus className="mr-2 h-4 w-4" />
                                     Create First Profile
                                 </Button>

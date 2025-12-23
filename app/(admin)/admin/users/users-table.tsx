@@ -237,7 +237,7 @@ export function UsersTable({ users }: UsersTableProps) {
                                 {user.role === 'banned' ? (
                                     <DropdownMenuItem
                                         onClick={() => handleUnban(user.id)}
-                                        className="cursor-pointer text-emerald-500"
+                                        className="cursor-pointer text-sky-500"
                                     >
                                         <UserCheck className="mr-2 h-4 w-4" />
                                         Unban User

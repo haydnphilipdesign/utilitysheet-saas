@@ -65,7 +65,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                <Loader2 className="h-8 w-8 text-slate-600 dark:text-sky-400 animate-spin" />
             </div>
         );
     }
@@ -90,7 +90,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
             <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600">
+                        <div className="p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600">
                             <Zap className="h-4 w-4 text-white" />
                         </div>
                         <span className="font-bold text-foreground">UtilitySheet</span>
@@ -107,7 +107,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white"
                             onClick={downloadPdf}
                             disabled={downloading}
                         >
@@ -155,7 +155,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                             Utility Info Sheet
                         </h1>
                         <div className="inline-flex items-center gap-2 bg-muted px-4 py-2 rounded-lg">
-                            <MapPin className="h-4 w-4 text-emerald-400" />
+                            <MapPin className="h-4 w-4 text-slate-500 dark:text-sky-400" />
                             <span className="text-foreground font-medium">{request.property_address}</span>
                         </div>
                         <div className="flex items-center justify-center gap-2 mt-3 text-sm text-muted-foreground">
@@ -205,7 +205,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                             {utility.provider_phone && (
                                                                 <a
                                                                     href={`tel:${utility.provider_phone}`}
-                                                                    className="flex items-center gap-1 text-sm text-emerald-400 hover:text-emerald-300"
+                                                                    className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-400 dark:text-sky-400 dark:hover:text-sky-300"
                                                                 >
                                                                     <Phone className="h-3 w-3" />
                                                                     {utility.provider_phone}
@@ -241,19 +241,19 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                         <CardContent>
                             <ol className="space-y-3 text-muted-foreground">
                                 <li className="flex gap-3">
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-medium">1</span>
+                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">1</span>
                                     <span>Contact each utility provider above to set up new service in your name.</span>
                                 </li>
                                 <li className="flex gap-3">
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-medium">2</span>
+                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">2</span>
                                     <span>Schedule service to begin on your closing date or the following business day.</span>
                                 </li>
                                 <li className="flex gap-3">
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-medium">3</span>
+                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">3</span>
                                     <span>Have your closing documents handy — providers may ask for verification of ownership.</span>
                                 </li>
                                 <li className="flex gap-3">
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-medium">4</span>
+                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">4</span>
                                     <span>If transferring internet service, contact your provider at least 1-2 weeks in advance.</span>
                                 </li>
                             </ol>
