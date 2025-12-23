@@ -17,7 +17,25 @@ export async function GET() {
         const accountId = account.id;
         const organizationId = account.active_organization_id;
 
-        const profiles = await getBrandProfiles(accountId, organizationId);
+        let profiles = await getBrandProfiles(accountId, organizationId);
+
+        // Auto-create a default brand profile if none exist (uses UtilitySheet branding)
+        if (profiles.length === 0) {
+            const defaultProfile = await createBrandProfile({
+                accountId,
+                organizationId,
+                name: 'UtilitySheet.com',
+                primaryColor: '#475569', // Slate-600
+                secondaryColor: '#0ea5e9', // Sky-500
+                contactWebsite: 'https://utilitysheet.com',
+                isDefault: true,
+            });
+
+            if (defaultProfile) {
+                profiles = [defaultProfile];
+            }
+        }
+
         return NextResponse.json(profiles);
     } catch (error) {
         console.error('Error fetching brand profiles:', error);

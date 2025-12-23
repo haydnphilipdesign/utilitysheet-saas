@@ -95,8 +95,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
         }
 
-        // Send email notification to seller if email is provided
-        if (body.sellerEmail) {
+        // Send email notification to seller if email is provided and sendSellerEmail is true
+        if (body.sellerEmail && body.sendSellerEmail !== false) {
             // Get agent name from brand profile or account
             let agentName: string | undefined;
             if (body.brandProfileId) {

@@ -28,6 +28,7 @@ interface FormData {
     closing_date: string;
     utility_categories: UtilityCategory[];
     brand_profile_id: string;
+    send_seller_email: boolean;
 }
 
 const initialFormData: FormData = {
@@ -38,6 +39,7 @@ const initialFormData: FormData = {
     closing_date: '',
     utility_categories: ['electric', 'gas', 'water', 'sewer', 'trash'],
     brand_profile_id: '',
+    send_seller_email: true,
 };
 
 export default function NewRequestPage() {
@@ -103,6 +105,7 @@ export default function NewRequestPage() {
                     closingDate: formData.closing_date || undefined,
                     utilityCategories: formData.utility_categories,
                     brandProfileId: formData.brand_profile_id || undefined,
+                    sendSellerEmail: formData.send_seller_email,
                 }),
             });
 
@@ -367,6 +370,27 @@ Thank you!`,
                                 className="bg-background/50 border-input text-foreground"
                             />
                         </div>
+
+                        {/* Email Notification Toggle */}
+                        {formData.seller_email && (
+                            <div className="flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30">
+                                <Checkbox
+                                    id="sendSellerEmail"
+                                    checked={formData.send_seller_email}
+                                    onCheckedChange={(checked) => updateField('send_seller_email', checked === true)}
+                                    className="mt-0.5"
+                                />
+                                <div className="space-y-1">
+                                    <Label htmlFor="sendSellerEmail" className="text-foreground font-medium cursor-pointer">
+                                        Send email notification to seller
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        An email with the form link will be sent to the seller when you create this request
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex justify-between">
                             <Button
                                 variant="outline"
