@@ -53,7 +53,7 @@ export default function LoginPage() {
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-3 mb-8">
                     <div className="p-2 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
-                        <Zap className="h-8 w-8 text-white" />
+                        <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-8 w-8" />
                     </div>
                     <span className="text-3xl font-bold text-foreground">UtilitySheet</span>
                 </div>

@@ -16,8 +16,8 @@ export function UtilitySheetPreview() {
                 {/* Header - Branding */}
                 <div className="bg-neutral-50 border-b border-neutral-100 p-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-slate-500 flex items-center justify-center text-white font-bold text-xs">
-                            U
+                        <div className="w-6 h-6 rounded bg-slate-500 flex items-center justify-center text-white font-bold text-xs p-1">
+                            <img src="/logo-sm.png" alt="Logo" className="w-full h-full object-contain" />
                         </div>
                         <span className="font-semibold text-neutral-900 tracking-tight">UtilitySheet</span>
                     </div>

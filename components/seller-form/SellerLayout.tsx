@@ -60,7 +60,7 @@ export function SellerLayout({
                                 </div>
                             ) : (
                                 <div className="p-2 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
-                                    <Zap className="h-4 w-4 text-white" />
+                                    <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-4 w-4" />
                                 </div>
                             )}
                             <div>

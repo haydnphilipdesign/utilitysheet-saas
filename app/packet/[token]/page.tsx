@@ -91,7 +91,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                 <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600">
-                            <Zap className="h-4 w-4 text-white" />
+                            <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-4 w-4" />
                         </div>
                         <span className="font-bold text-foreground">UtilitySheet</span>
                     </div>

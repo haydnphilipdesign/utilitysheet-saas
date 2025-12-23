@@ -119,7 +119,7 @@ export default function OnboardingPage() {
             <div className="relative z-10 w-full max-w-xl">
                 {/* Header */}
                 <div className="flex items-center justify-center gap-2 mb-8">
-                    <Zap className="h-6 w-6 text-slate-600" />
+                    <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-6 w-6" />
                     <span className="text-xl font-bold text-foreground">UtilitySheet Onboarding</span>
                 </div>
 

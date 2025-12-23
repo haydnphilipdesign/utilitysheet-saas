@@ -14,7 +14,7 @@ export default function MarketingLayout({
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 p-1.5 shadow-lg shadow-slate-500/20">
-                                <Zap className="h-5 w-5 text-white" />
+                                <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
                             </div>
                             <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
                         </Link>
@@ -56,7 +56,7 @@ export default function MarketingLayout({
                     <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
                         <div className="col-span-2 lg:col-span-2">
                             <Link href="/" className="flex items-center gap-2">
-                                <Zap className="h-5 w-5 text-slate-600" />
+                                <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
                                 <span className="text-xl font-bold">UtilitySheet</span>
                             </Link>
                             <p className="mt-4 max-w-xs text-sm text-muted-foreground">

@@ -79,7 +79,7 @@ export function DashboardLayoutContent({
                         <div className="flex items-center gap-8">
                             <Link href="/dashboard" className="flex items-center gap-2">
                                 <div className="p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20">
-                                    <Zap className="h-5 w-5 text-white" />
+                                    <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
                                 </div>
                                 <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
                                     <span className="text-xl font-bold text-foreground">UtilitySheet</span>

@@ -14,7 +14,7 @@ export default function DemoLayout({
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 p-1.5 shadow-lg shadow-slate-500/20">
-                                <Zap className="h-5 w-5 text-white" />
+                                <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
                             </div>
                             <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
                         </Link>

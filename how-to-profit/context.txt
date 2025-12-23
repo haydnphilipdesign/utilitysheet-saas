@@ -1,0 +1,135 @@
+UtilitySheet.com — Why I built it (and why my mom’s business is the reason it exists)
+
+UtilitySheet.com didn’t start as a startup idea. It started as me watching my mom do the same critical, high-friction work over and over—work that has to be correct because it impacts real closings, real deadlines, and real people.
+
+Who my mom is and what her business actually does
+
+My mom (Debbie / Deborah O’Brien) runs PA Real Estate Support Services, LLC, a transaction coordination business. If you’ve never worked with a TC before, the simplest way to describe it is:
+
+She’s the operational backbone of a real estate transaction.
+
+Agents are juggling listings, clients, showings, negotiations, and constant communication. The TC’s job is to make sure the transaction itself stays on rails:
+
+documents are collected, accurate, and signed
+
+deadlines are met
+
+parties stay aligned (agent, seller/buyer, lender, title, inspectors, HOA, etc.)
+
+nothing “small” gets missed (because small things turn into big delays)
+
+That’s the nature of her work: high volume, high responsibility, and lots of details that aren’t glamorous but absolutely matter.
+
+The reality of the workflow (and why “utility info” is sneakily painful)
+
+One of the recurring tasks in a home sale is collecting and passing along utility provider information—electric, water, sewer, trash, gas/propane/heating oil, internet/cable, HOA contacts, and more.
+
+On paper, this sounds simple:
+
+“Just tell us who the providers are.”
+
+In reality, it’s almost always messy:
+
+Sellers don’t remember exact provider names.
+
+They use nicknames (“the gas company”) or outdated names.
+
+Some homes have propane and electric, or heating oil and a separate service provider.
+
+Phone numbers and account instructions are rarely handy.
+
+The request comes in the middle of a hundred other things happening.
+
+Everyone handles it differently: text messages, emails, screenshots, half-filled PDFs, or “I’ll send it later” (and later becomes a fire drill).
+
+And the killer part: this information is needed because the transaction is moving. So it creates a ton of back-and-forth—exactly the kind of time sink that slows closings and frustrates everyone.
+
+What I do for her (and how that turned into product development)
+
+I’m a web designer/dev, and over time I became the person building the tools around her workflow—because I could see where the friction lived.
+
+My development work for her has included things like:
+
+Custom intake forms to collect info consistently (instead of a free-for-all over email/text)
+
+Structured checklists and process flows that match how TCs actually work
+
+Better templates for client communication (fewer follow-ups, clearer requests)
+
+Automation ideas around repeated tasks (the “same questions, every transaction” problem)
+
+PDF outputs that look professional and are easy to share with agents/clients/title/etc.
+
+Reducing data entry and “copy/paste across 5 systems” work
+
+And because she lives inside tools like Outlook/email, DocuSign, Dotloop, KW Command, MLS-related workflows, and all the constant coordination… I wasn’t building in a vacuum. I was building against reality.
+
+The more I helped, the more obvious it became:
+utility-provider collection is a perfect example of a task that should be fast, standardized, and shareable—but usually isn’t.
+
+The core insight that became UtilitySheet
+
+Most solutions in real estate software fail because they assume people will do extra setup:
+
+build a database
+
+configure regions
+
+maintain provider lists
+
+train everyone
+
+enforce compliance
+
+That’s not how real transactions work. People are busy, and deals move whether your software is ready or not.
+
+So UtilitySheet was designed around a different principle:
+
+The seller should be able to complete this in minutes with minimal effort.
+The agent/TC should get a clean, shareable result instantly.
+
+Not “upload your bill.” Not “verify every provider.” Not “spend an hour configuring your county.”
+
+Just:
+
+collect the provider names (and phone numbers if needed)
+
+structure it cleanly
+
+make it easy to pass forward
+
+make it repeatable across transactions
+
+What UtilitySheet.com is (in plain language)
+
+UtilitySheet.com is a lightweight, transaction-friendly way to collect utility provider information and output it in a clean, professional format that can travel with the deal.
+
+It exists because this task:
+
+happens constantly
+
+is always slightly different
+
+creates unnecessary back-and-forth
+
+and doesn’t need to be as painful as it is
+
+Why I’m posting this / who it’s for
+
+I built UtilitySheet because I’ve had a front-row seat to transaction coordination: the pace, the pressure, the volume, and the fact that simple missing info can snowball into delays.
+
+If you’re:
+
+a transaction coordinator
+
+an agent who’s tired of chasing sellers for utility info
+
+a team that wants a more consistent closing workflow
+
+…I built this for the exact problem you’ve probably already felt.
+
+Short version (for a punchier post)
+
+My mom runs a transaction coordination business (PA Real Estate Support Services, LLC). Watching her manage high-volume closings made one thing obvious: collecting and transferring utility provider info is way more chaotic than it should be—lots of back-and-forth, inconsistent formats, missing details, and last-minute scrambling.
+
+I’m a web designer/dev, and I’ve been building tools around her workflow for a while (forms, templates, structured outputs, PDF generation, reducing repetitive admin). UtilitySheet.com came directly from that: a fast, standardized way to collect utility providers from sellers and generate a clean sheet that can move with the transaction.
