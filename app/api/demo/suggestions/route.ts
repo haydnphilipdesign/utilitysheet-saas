@@ -16,7 +16,7 @@ export async function POST(request: Request) {
         }
 
         // Default categories for demo
-        const categories: UtilityCategory[] = ['electric', 'gas', 'water', 'sewer', 'trash'];
+        const categories: UtilityCategory[] = ['electric', 'gas', 'water', 'sewer', 'trash', 'internet', 'cable', 'propane'];
 
         // Fetch real AI suggestions
         const suggestions = await getAllSuggestions(address, categories);

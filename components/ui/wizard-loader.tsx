@@ -1,10 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Sparkles, MapPin, Search, CheckCircle2 } from 'lucide-react';
 
-const LOADING_STEPS = [
+export interface LoaderStep {
+    icon: ReactNode;
+    text: string;
+    duration: number;
+}
+
+const DEFAULT_STEPS: LoaderStep[] = [
     {
         icon: <Loader2 className="h-6 w-6 animate-spin text-emerald-400" />,
         text: "Verifying secure link...",
@@ -27,18 +33,22 @@ const LOADING_STEPS = [
     }
 ];
 
-export function WizardLoader() {
+interface WizardLoaderProps {
+    steps?: LoaderStep[];
+}
+
+export function WizardLoader({ steps = DEFAULT_STEPS }: WizardLoaderProps) {
     const [currentStep, setCurrentStep] = useState(0);
 
     useEffect(() => {
-        if (currentStep >= LOADING_STEPS.length - 1) return;
+        if (currentStep >= steps.length - 1) return;
 
         const timer = setTimeout(() => {
             setCurrentStep(prev => prev + 1);
-        }, LOADING_STEPS[currentStep].duration);
+        }, steps[currentStep].duration);
 
         return () => clearTimeout(timer);
-    }, [currentStep]);
+    }, [currentStep, steps]);
 
     return (
         <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-4 z-50">
@@ -68,7 +78,7 @@ export function WizardLoader() {
                                 exit={{ opacity: 0, scale: 0.8, rotate: 10 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                {LOADING_STEPS[currentStep].icon}
+                                {steps[currentStep].icon}
                             </motion.div>
                         </AnimatePresence>
                     </div>
@@ -86,10 +96,10 @@ export function WizardLoader() {
                             className="space-y-2"
                         >
                             <h3 className="text-xl font-medium text-foreground tracking-tight">
-                                {LOADING_STEPS[currentStep].text}
+                                {steps[currentStep].text}
                             </h3>
                             <div className="flex justify-center gap-1.5 pt-2">
-                                {LOADING_STEPS.map((_, idx) => (
+                                {steps.map((_, idx) => (
                                     <motion.div
                                         key={idx}
                                         className={`h-1 rounded-full bg-slate-500/20`}

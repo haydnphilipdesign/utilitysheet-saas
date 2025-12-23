@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { MapPin, ArrowRight, Loader2, Sparkles, Search } from 'lucide-react';
 import { SellerWizard } from '@/components/seller-form/SellerWizard';
+import { WizardLoader } from '@/components/ui/wizard-loader';
 import type { UtilityCategory, ProviderSuggestion } from '@/types';
 import Link from 'next/link';
 
@@ -12,6 +13,29 @@ const DEMO_BRAND = {
     name: "UtilitySheet",
     primary_color: "#475569",
 };
+
+const DEMO_STEPS = [
+    {
+        icon: <Loader2 className="h-6 w-6 animate-spin text-emerald-400" />,
+        text: "Verifying address...",
+        duration: 800
+    },
+    {
+        icon: <MapPin className="h-6 w-6 text-emerald-400" />,
+        text: "Locating property...",
+        duration: 1200
+    },
+    {
+        icon: <Search className="h-6 w-6 text-emerald-400" />,
+        text: "Analyzing local utility providers...",
+        duration: 2500
+    },
+    {
+        icon: <Sparkles className="h-6 w-6 text-emerald-400" />,
+        text: "Preparing your experience...",
+        duration: 1000
+    }
+];
 
 export default function DemoPage() {
     const [address, setAddress] = useState('');
@@ -30,6 +54,9 @@ export default function DemoPage() {
         setError(null);
 
         try {
+            // Artificial delay to show the "Verify address" step at least briefly if specific conditions are met,
+            // but usually the API takes a moment.
+            // We'll let the API control the timing mostly.
             const response = await fetch('/api/demo/suggestions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -42,6 +69,12 @@ export default function DemoPage() {
 
             const data = await response.json();
             setSuggestions(data.suggestions || {});
+
+            // If the API was too fast, maybe wait a bit? 
+            // Let's ensure at least 2 seconds of loading visualization for better UX
+            // relying on the user's desire for the "beautiful visual animation"
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
             setWizardReady(true);
         } catch (err) {
             console.error('Demo error:', err);
@@ -51,13 +84,17 @@ export default function DemoPage() {
         }
     };
 
+    if (loading) {
+        return <WizardLoader steps={DEMO_STEPS} />;
+    }
+
     // Once we have the address and suggestions, show the wizard
     if (wizardReady) {
         return (
             <SellerWizard
                 initialRequestData={{
                     property_address: address,
-                    utility_categories: ['electric', 'gas', 'water', 'sewer', 'trash'],
+                    utility_categories: ['electric', 'gas', 'water', 'sewer', 'trash', 'internet', 'cable', 'propane'],
                 }}
                 initialSuggestions={suggestions}
                 token="demo"
@@ -123,17 +160,8 @@ export default function DemoPage() {
                             disabled={loading || !address.trim()}
                             className="w-full py-3.5 px-6 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 disabled:from-slate-700 disabled:to-slate-800 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-slate-900/50"
                         >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                    Getting AI Suggestions...
-                                </>
-                            ) : (
-                                <>
-                                    Start Demo
-                                    <ArrowRight className="h-5 w-5" />
-                                </>
-                            )}
+                            Start Demo
+                            <ArrowRight className="h-5 w-5" />
                         </button>
 
                         <p className="text-xs text-slate-500 text-center">
