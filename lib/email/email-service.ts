@@ -316,3 +316,59 @@ function generateSellerReminderHtml({
 </html>
     `.trim();
 }
+
+interface SendFeedbackEmailParams {
+    userEmail: string;
+    message: string;
+    userId?: string;
+    userName?: string;
+}
+
+/**
+ * Sends a feedback email to the admin/support team.
+ */
+export async function sendFeedbackEmail({
+    userEmail,
+    message,
+    userId,
+    userName,
+}: SendFeedbackEmailParams): Promise<{ success: boolean; error?: string }> {
+    try {
+        const feedbackEmail = process.env.FEEDBACK_EMAIL;
+
+        if (!feedbackEmail) {
+            console.warn('FEEDBACK_EMAIL environment variable is not set. Feedback email will not be sent.');
+            return { success: false, error: 'Configuration error' };
+        }
+
+        const { data, error } = await getResend().emails.send({
+            from: 'UtilitySheet Feedback <feedback@utilitysheet.com>',
+            to: feedbackEmail,
+            replyTo: userEmail,
+            subject: `New Feedback from ${userName || userEmail}`,
+            html: `
+                <div>
+                    <h2>New Feedback Received</h2>
+                    <p><strong>From:</strong> ${userName ? `${userName} (${userEmail})` : userEmail}</p>
+                    ${userId ? `<p><strong>User ID:</strong> ${userId}</p>` : ''}
+                    <hr />
+                    <h3>Message:</h3>
+                    <p style="white-space: pre-wrap;">${message}</p>
+                </div>
+            `,
+        });
+
+        if (error) {
+            console.error('Failed to send feedback email:', error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending feedback email:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+}

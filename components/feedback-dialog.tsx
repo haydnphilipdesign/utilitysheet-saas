@@ -24,16 +24,28 @@ export function FeedbackDialog() {
         if (!message.trim()) return;
 
         setLoading(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            const response = await fetch('/api/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message.trim() }),
+            });
 
-        // In a real app, send to API/database
-        // await fetch('/api/feedback', { method: 'POST', body: JSON.stringify({ message }) });
+            if (!response.ok) {
+                throw new Error('Failed to send feedback');
+            }
 
-        toast.success("Thanks for your feedback!");
-        setLoading(false);
-        setMessage('');
-        setOpen(false);
+            toast.success("Thanks for your feedback!");
+            setMessage('');
+            setOpen(false);
+        } catch (error) {
+            console.error(error);
+            toast.error("Something went wrong. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
