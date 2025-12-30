@@ -613,3 +613,14 @@ export async function getAccountByStripeCustomerId(stripeCustomerId: string) {
 
   return result[0] || null;
 }
+
+// Get account by ID
+export async function getAccountById(accountId: string) {
+  if (!sql) return null;
+
+  const result = await sql`
+    SELECT * FROM accounts WHERE id = ${accountId}
+  `;
+
+  return result[0] || null;
+}

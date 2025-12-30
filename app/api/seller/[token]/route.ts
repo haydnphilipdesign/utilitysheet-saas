@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getRequestByToken, getBrandProfile, getUtilityEntriesByRequestId, getDefaultBrandProfile } from '@/lib/neon/queries';
+import { getRequestByToken, getBrandProfile, getUtilityEntriesByRequestId, getDefaultBrandProfile, getAccountById } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import type { UtilityEntry } from '@/types';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
+import { sendTCCompletionNotificationEmail } from '@/lib/email/email-service';
 
 // GET /api/seller/[token] - Get request data for seller form
 export async function GET(
@@ -136,6 +137,21 @@ export async function POST(
             INSERT INTO event_logs (request_id, event_type, event_data)
             VALUES (${requestData.id}, 'seller_submitted', ${JSON.stringify(body)})
         `;
+
+        // Send TC notification email
+        const account = await getAccountById(requestData.account_id);
+        if (account?.email) {
+            sendTCCompletionNotificationEmail({
+                tcEmail: account.email,
+                tcName: account.full_name || undefined,
+                propertyAddress: requestData.property_address,
+                sellerName: requestData.seller_name || undefined,
+                requestId: requestData.id,
+            }).catch((error) => {
+                // Log but don't fail the request
+                console.error('Failed to send TC completion notification email:', error);
+            });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {
