@@ -624,3 +624,54 @@ export async function getAccountById(accountId: string) {
 
   return result[0] || null;
 }
+
+// Get all accounts with weekly_summary notification enabled
+export async function getAccountsWithWeeklySummaryEnabled() {
+  if (!sql) return [];
+
+  const result = await sql`
+    SELECT * FROM accounts 
+    WHERE notification_preferences->>'weekly_summary' = 'true'
+    AND email IS NOT NULL
+  `;
+
+  return result;
+}
+
+// Get weekly stats for an account (requests from the past 7 days)
+export async function getWeeklyStats(accountId: string, organizationId?: string): Promise<{
+  totalRequests: number;
+  submitted: number;
+  sent: number;
+  inProgress: number;
+  needsAttention: number;
+}> {
+  if (!sql) return { totalRequests: 0, submitted: 0, sent: 0, inProgress: 0, needsAttention: 0 };
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const whereClause = organizationId
+    ? sql`organization_id = ${organizationId} AND created_at >= ${sevenDaysAgo.toISOString()}`
+    : sql`account_id = ${accountId} AND organization_id IS NULL AND created_at >= ${sevenDaysAgo.toISOString()}`;
+
+  const result = await sql`
+    SELECT 
+      COUNT(*) as total_requests,
+      COUNT(*) FILTER (WHERE status = 'submitted') as submitted,
+      COUNT(*) FILTER (WHERE status = 'sent') as sent,
+      COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
+      COUNT(*) FILTER (WHERE status = 'sent' AND created_at < NOW() - INTERVAL '3 days') as needs_attention
+    FROM requests 
+    WHERE ${whereClause}
+  `;
+
+  return {
+    totalRequests: Number(result[0]?.total_requests) || 0,
+    submitted: Number(result[0]?.submitted) || 0,
+    sent: Number(result[0]?.sent) || 0,
+    inProgress: Number(result[0]?.in_progress) || 0,
+    needsAttention: Number(result[0]?.needs_attention) || 0,
+  };
+}
+

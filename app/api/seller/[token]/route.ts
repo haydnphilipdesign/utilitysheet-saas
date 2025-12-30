@@ -3,7 +3,7 @@ import { getRequestByToken, getBrandProfile, getUtilityEntriesByRequestId, getDe
 import { sql } from '@/lib/neon/db';
 import type { UtilityEntry } from '@/types';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
-import { sendTCCompletionNotificationEmail } from '@/lib/email/email-service';
+import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
 
 // GET /api/seller/[token] - Get request data for seller form
 export async function GET(
@@ -92,6 +92,9 @@ export async function POST(
         // Delete existing entries and insert new ones
         await sql`DELETE FROM utility_entries WHERE request_id = ${requestData.id}`;
 
+        // Track entries for contact resolution alert
+        const unresolvedEntries: { category: string; displayName?: string }[] = [];
+
         // Insert utility entries
         for (const [category, entry] of Object.entries(body.utilities || {})) {
             const e = entry as {
@@ -129,6 +132,14 @@ export async function POST(
                         ${e.contact_url || null}
                     )
                 `;
+
+                // Track if this is an unresolved contact (free_text without contact info)
+                if (e.entry_mode === 'free_text' && !e.contact_phone && !e.contact_url) {
+                    unresolvedEntries.push({
+                        category,
+                        displayName: e.display_name || e.raw_text || category,
+                    });
+                }
             }
         }
 
@@ -138,29 +149,57 @@ export async function POST(
             VALUES (${requestData.id}, 'seller_submitted', ${JSON.stringify(body)})
         `;
 
-        // Send TC notification email (must await in serverless environment)
+        // Get account and notification preferences
         const account = await getAccountById(requestData.account_id);
+        const notificationPrefs = (account?.notification_preferences || {}) as {
+            seller_submissions?: boolean;
+            contact_resolution?: boolean;
+            weekly_summary?: boolean;
+        };
+
         console.log('TC Notification Debug:', {
             accountId: requestData.account_id,
             accountFound: !!account,
             accountEmail: account?.email,
             propertyAddress: requestData.property_address,
+            notificationPrefs,
         });
 
         if (account?.email) {
-            console.log('Sending TC notification email to:', account.email);
-            try {
-                const emailResult = await sendTCCompletionNotificationEmail({
-                    tcEmail: account.email,
-                    tcName: account.full_name || undefined,
-                    propertyAddress: requestData.property_address,
-                    sellerName: requestData.seller_name || undefined,
-                    requestId: requestData.id,
-                });
-                console.log('TC notification email result:', emailResult);
-            } catch (emailError) {
-                // Log but don't fail the seller submission
-                console.error('Failed to send TC completion notification email:', emailError);
+            // Send TC completion notification (if enabled, defaults to true)
+            if (notificationPrefs.seller_submissions !== false) {
+                console.log('Sending TC notification email to:', account.email);
+                try {
+                    const emailResult = await sendTCCompletionNotificationEmail({
+                        tcEmail: account.email,
+                        tcName: account.full_name || undefined,
+                        propertyAddress: requestData.property_address,
+                        sellerName: requestData.seller_name || undefined,
+                        requestId: requestData.id,
+                    });
+                    console.log('TC notification email result:', emailResult);
+                } catch (emailError) {
+                    console.error('Failed to send TC completion notification email:', emailError);
+                }
+            } else {
+                console.log('TC notification skipped: seller_submissions is disabled');
+            }
+
+            // Send contact resolution alert (if enabled and there are unresolved entries)
+            if (notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
+                console.log('Sending contact resolution alert for unresolved entries:', unresolvedEntries);
+                try {
+                    const alertResult = await sendContactResolutionAlertEmail({
+                        tcEmail: account.email,
+                        tcName: account.full_name || undefined,
+                        propertyAddress: requestData.property_address,
+                        unresolvedEntries,
+                        requestId: requestData.id,
+                    });
+                    console.log('Contact resolution alert result:', alertResult);
+                } catch (alertError) {
+                    console.error('Failed to send contact resolution alert:', alertError);
+                }
             }
         } else {
             console.warn('TC notification skipped: No account email found for account_id:', requestData.account_id);
@@ -172,3 +211,4 @@ export async function POST(
         return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 });
     }
 }
+

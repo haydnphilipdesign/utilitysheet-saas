@@ -49,6 +49,12 @@ export default function SignupPage() {
                 return;
             }
 
+            // Update the user's display name with the full name they provided
+            const currentUser = await stackClientApp.getUser();
+            if (currentUser && fullName) {
+                await currentUser.update({ displayName: fullName });
+            }
+
             // Redirect directly to dashboard - no email check screen!
             router.push('/dashboard');
         } catch (err: any) {
