@@ -392,10 +392,11 @@ export async function sendTCCompletionNotificationEmail({
     requestId,
 }: SendTCCompletionNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
     // Construct the dashboard URL to view the completed request
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
     const dashboardUrl = `${baseUrl}/dashboard/requests/${requestId}`;
+
+    console.log('sendTCCompletionNotificationEmail called:', { tcEmail, propertyAddress, dashboardUrl });
 
     const emailHtml = generateTCCompletionNotificationHtml({
         tcName,
@@ -405,22 +406,24 @@ export async function sendTCCompletionNotificationEmail({
     });
 
     try {
-        const { data, error } = await getResend().emails.send({
+        console.log('Calling Resend API for TC notification...');
+        const resend = getResend();
+        const { data, error } = await resend.emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: tcEmail,
-            subject: `✓ Utility Info Submitted for ${propertyAddress}`,
+            subject: `Utility Info Submitted for ${propertyAddress}`,
             html: emailHtml,
         });
 
         if (error) {
-            console.error('Failed to send TC completion notification email:', error);
+            console.error('Resend API returned error:', JSON.stringify(error));
             return { success: false, error: error.message };
         }
 
         console.log('TC completion notification email sent successfully:', data?.id);
         return { success: true };
     } catch (error) {
-        console.error('Error sending TC completion notification email:', error);
+        console.error('Exception in sendTCCompletionNotificationEmail:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
