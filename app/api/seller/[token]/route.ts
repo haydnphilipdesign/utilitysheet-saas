@@ -140,17 +140,28 @@ export async function POST(
 
         // Send TC notification email
         const account = await getAccountById(requestData.account_id);
+        console.log('TC Notification Debug:', {
+            accountId: requestData.account_id,
+            accountFound: !!account,
+            accountEmail: account?.email,
+            propertyAddress: requestData.property_address,
+        });
+
         if (account?.email) {
+            console.log('Sending TC notification email to:', account.email);
             sendTCCompletionNotificationEmail({
                 tcEmail: account.email,
                 tcName: account.full_name || undefined,
                 propertyAddress: requestData.property_address,
                 sellerName: requestData.seller_name || undefined,
                 requestId: requestData.id,
+            }).then((result) => {
+                console.log('TC notification email result:', result);
             }).catch((error) => {
-                // Log but don't fail the request
                 console.error('Failed to send TC completion notification email:', error);
             });
+        } else {
+            console.warn('TC notification skipped: No account email found for account_id:', requestData.account_id);
         }
 
         return NextResponse.json({ success: true });
