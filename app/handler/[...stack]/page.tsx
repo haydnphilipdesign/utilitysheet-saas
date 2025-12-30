@@ -1,11 +1,9 @@
-"use client";
-
 import { Suspense } from "react";
 import { StackHandler } from "@stackframe/stack";
-import { stackClientApp } from "@/lib/stack/client";
+import { stackServerApp } from "@/lib/stack/server";
 
 function StackHandlerContent(props: { params: Promise<{ stack: string[] }> }) {
-    return <StackHandler fullPage={true} app={stackClientApp} {...props} />;
+    return <StackHandler fullPage={true} app={stackServerApp} {...props} />;
 }
 
 function LoadingFallback() {
