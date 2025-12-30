@@ -35,8 +35,22 @@ export default function SignupPage() {
                 throw new Error(result.error.message || 'Failed to create account');
             }
 
-            setSuccess(true);
-            setLoading(false);
+            // Automatically sign in after successful signup
+            const signInResult = await stackClientApp.signInWithCredential({
+                email,
+                password,
+                noRedirect: true,
+            });
+
+            if (signInResult.status === 'error') {
+                // Signup succeeded but sign-in failed - show success and let them sign in manually
+                setSuccess(true);
+                setLoading(false);
+                return;
+            }
+
+            // Redirect directly to dashboard - no email check screen!
+            router.push('/dashboard');
         } catch (err: any) {
             setError(err.message || 'Failed to create account');
             setLoading(false);

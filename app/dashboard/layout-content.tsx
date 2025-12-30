@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { FeedbackDialog } from '@/components/feedback-dialog';
+import { EmailVerificationBanner } from '@/components/email-verification-banner';
 import { Zap, LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X } from 'lucide-react';
 
 const navigation = [
@@ -211,6 +212,7 @@ export function DashboardLayoutContent({
 
             {/* Main Content */}
             <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+                <EmailVerificationBanner />
                 {children}
             </main>
         </div>
