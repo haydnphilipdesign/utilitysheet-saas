@@ -184,6 +184,7 @@ export default function SettingsPage() {
                                 className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
                             />
                         </div>
+                        {/* Weekly summary disabled - requires Vercel cron upgrade
                         <Separator className="bg-border" />
                         <div className="flex items-center justify-between">
                             <div>
@@ -197,6 +198,7 @@ export default function SettingsPage() {
                                 className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
                             />
                         </div>
+                        */}
                     </div>
                 </CardContent>
             </Card>
