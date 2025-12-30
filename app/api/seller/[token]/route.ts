@@ -138,7 +138,7 @@ export async function POST(
             VALUES (${requestData.id}, 'seller_submitted', ${JSON.stringify(body)})
         `;
 
-        // Send TC notification email
+        // Send TC notification email (must await in serverless environment)
         const account = await getAccountById(requestData.account_id);
         console.log('TC Notification Debug:', {
             accountId: requestData.account_id,
@@ -149,17 +149,19 @@ export async function POST(
 
         if (account?.email) {
             console.log('Sending TC notification email to:', account.email);
-            sendTCCompletionNotificationEmail({
-                tcEmail: account.email,
-                tcName: account.full_name || undefined,
-                propertyAddress: requestData.property_address,
-                sellerName: requestData.seller_name || undefined,
-                requestId: requestData.id,
-            }).then((result) => {
-                console.log('TC notification email result:', result);
-            }).catch((error) => {
-                console.error('Failed to send TC completion notification email:', error);
-            });
+            try {
+                const emailResult = await sendTCCompletionNotificationEmail({
+                    tcEmail: account.email,
+                    tcName: account.full_name || undefined,
+                    propertyAddress: requestData.property_address,
+                    sellerName: requestData.seller_name || undefined,
+                    requestId: requestData.id,
+                });
+                console.log('TC notification email result:', emailResult);
+            } catch (emailError) {
+                // Log but don't fail the seller submission
+                console.error('Failed to send TC completion notification email:', emailError);
+            }
         } else {
             console.warn('TC notification skipped: No account email found for account_id:', requestData.account_id);
         }
