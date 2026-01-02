@@ -263,6 +263,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         state={state}
                         updateState={updateUtilityState}
                         suggestions={initialSuggestions[visibleUtilities[utilityIndex]] || []}
+                        propertyAddress={initialRequestData.property_address}
                         onNext={handleNext}
                         onBack={handleBack}
                     />

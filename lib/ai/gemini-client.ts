@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerationConfig } from '@google/generative-ai';
 
 // Get API key from environment
 const apiKey = process.env.GOOGLE_AI_API_KEY;
@@ -9,15 +9,58 @@ const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 // Model configuration
 const MODEL_NAME = 'gemini-3-flash-preview';
 
+// Retry configuration
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 500;
+
+/**
+ * Sleep for a specified duration
+ */
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Retry a function with exponential backoff
+ */
+async function withRetry<T>(
+    fn: () => Promise<T>,
+    retries: number = MAX_RETRIES
+): Promise<T | null> {
+    for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+            return await fn();
+        } catch (error) {
+            const isLastAttempt = attempt === retries - 1;
+            if (isLastAttempt) {
+                console.error(`[Gemini] All ${retries} attempts failed:`, error);
+                return null;
+            }
+            const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+            console.warn(`[Gemini] Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+            await sleep(delay);
+        }
+    }
+    return null;
+}
+
 /**
  * Get the configured Gemini model instance
  * Returns null if API key is not configured
  */
-export function getGeminiModel() {
+export function getGeminiModel(jsonMode: boolean = false) {
     if (!genAI) {
         return null;
     }
-    return genAI.getGenerativeModel({ model: MODEL_NAME });
+
+    const generationConfig: GenerationConfig = jsonMode
+        ? { responseMimeType: 'application/json' }
+        : {};
+
+    return genAI.getGenerativeModel({
+        model: MODEL_NAME,
+        generationConfig
+    });
 }
 
 /**
@@ -28,8 +71,8 @@ export function isGeminiConfigured(): boolean {
 }
 
 /**
- * Generate content using Gemini
- * Returns null if not configured or on error
+ * Generate content using Gemini with retry logic
+ * Returns null if not configured or on error after retries
  */
 export async function generateContent(prompt: string): Promise<string | null> {
     const model = getGeminiModel();
@@ -38,37 +81,46 @@ export async function generateContent(prompt: string): Promise<string | null> {
         return null;
     }
 
-    try {
+    return withRetry(async () => {
         const result = await model.generateContent(prompt);
         const response = result.response;
         return response.text();
-    } catch (error) {
-        console.error('[Gemini] Error generating content:', error);
-        return null;
-    }
+    });
 }
 
 /**
- * Generate JSON content using Gemini with structured output
- * Returns null if not configured or on error
+ * Generate JSON content using Gemini with structured output and retry logic
+ * Uses JSON mode for reliable structured responses
+ * Returns null if not configured or on error after retries
  */
 export async function generateJSON<T>(prompt: string): Promise<T | null> {
-    const text = await generateContent(prompt);
-    if (!text) {
+    const model = getGeminiModel(true); // Use JSON mode
+    if (!model) {
+        console.log('[Gemini] Not configured, skipping AI generation');
+        return null;
+    }
+
+    const result = await withRetry(async () => {
+        const response = await model.generateContent(prompt);
+        return response.response.text();
+    });
+
+    if (!result) {
         return null;
     }
 
     try {
-        // Extract JSON from the response (handle markdown code blocks)
-        let jsonStr = text;
-        const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+        // With JSON mode, response should be clean JSON, but still handle edge cases
+        let jsonStr = result.trim();
+        // Remove markdown code fences if present (fallback for edge cases)
+        const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (jsonMatch) {
             jsonStr = jsonMatch[1].trim();
         }
         return JSON.parse(jsonStr) as T;
     } catch (error) {
         console.error('[Gemini] Error parsing JSON response:', error);
-        console.error('[Gemini] Raw response:', text);
+        console.error('[Gemini] Raw response:', result);
         return null;
     }
 }

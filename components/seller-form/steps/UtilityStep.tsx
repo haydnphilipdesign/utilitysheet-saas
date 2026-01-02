@@ -14,6 +14,7 @@ interface UtilityStepProps {
     state: WizardState;
     updateState: (category: UtilityCategory, updates: any) => void;
     suggestions: ProviderSuggestion[];
+    propertyAddress: string;
     onNext: () => void;
     onBack: () => void;
 }
@@ -24,6 +25,7 @@ export function UtilityStep({
     state,
     updateState,
     suggestions,
+    propertyAddress,
     onNext,
     onBack
 }: UtilityStepProps) {
@@ -55,7 +57,7 @@ export function UtilityStep({
         const timer = setTimeout(async () => {
             setIsSearching(true);
             try {
-                const res = await fetch(`/api/suggestions/search?query=${encodeURIComponent(searchQuery)}&category=${category}`);
+                const res = await fetch(`/api/suggestions/search?query=${encodeURIComponent(searchQuery)}&category=${category}&address=${encodeURIComponent(propertyAddress)}`);
                 if (res.ok) setSearchResults(await res.json());
             } catch (e) {
                 console.error(e);
