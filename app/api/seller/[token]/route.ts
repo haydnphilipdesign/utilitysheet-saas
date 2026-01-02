@@ -4,6 +4,7 @@ import { sql } from '@/lib/neon/db';
 import type { UtilityEntry } from '@/types';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
+import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 
 // GET /api/seller/[token] - Get request data for seller form
 export async function GET(
@@ -66,6 +67,20 @@ export async function POST(
 ) {
     try {
         const { token } = await params;
+
+        // Rate limit by token to prevent submission spam
+        const rateLimitResult = await checkRateLimit(formSubmissionRatelimit, token);
+
+        if (!rateLimitResult.success) {
+            return NextResponse.json(
+                { error: 'Too many submissions. Please wait a moment before trying again.' },
+                {
+                    status: 429,
+                    headers: getRateLimitHeaders(rateLimitResult),
+                }
+            );
+        }
+
         const body = await request.json();
 
         const requestData = await getRequestByToken(token);

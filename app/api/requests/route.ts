@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
+import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 
-// GET /api/requests - Get all requests for the current user
 // GET /api/requests - Get all requests for the current user
 export async function GET(request: Request) {
     try {
@@ -47,6 +47,19 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        // Rate limit by user ID to prevent automated request creation
+        const rateLimitResult = await checkRateLimit(requestCreationRatelimit, user.id);
+
+        if (!rateLimitResult.success) {
+            return NextResponse.json(
+                { error: 'Too many requests created. Please slow down.' },
+                {
+                    status: 429,
+                    headers: getRateLimitHeaders(rateLimitResult),
+                }
+            );
+        }
+
         const body = await request.json();
 
         const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
@@ -55,6 +68,7 @@ export async function POST(request: Request) {
         }
         const accountId = account.id;
         const organizationId = account.active_organization_id;
+
 
         // Check plan limits before creating request
         const usage = await getMonthlyUsage(accountId, organizationId);
@@ -72,12 +86,12 @@ export async function POST(request: Request) {
         // Automatically associate with default brand profile if not specified
         let brandProfileId = body.brandProfileId;
         if (!brandProfileId) {
-            const { getDefaultBrandProfile } = await import('@/lib/neon/queries');
             const defaultBrand = await getDefaultBrandProfile(accountId, organizationId);
             if (defaultBrand) {
                 brandProfileId = defaultBrand.id;
             }
         }
+
 
         const newRequest = await createRequest({
             accountId,

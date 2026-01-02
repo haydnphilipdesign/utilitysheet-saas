@@ -1,9 +1,9 @@
 import { ProviderSuggestion, UtilityCategory } from '@/types';
 import { generateJSON, isGeminiConfigured } from '@/lib/ai/gemini-client';
+import { getFromCache, setInCache } from '@/lib/cache';
 
-// Simple cache for suggestions
-const suggestionCache = new Map<string, { suggestions: ProviderSuggestion[]; timestamp: number }>();
-const CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
+// Cache TTL: 30 days in seconds
+const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 // ============================================================================
 // US States Map (all 50 states + DC)
@@ -121,7 +121,7 @@ function getCacheKey(address: string, category: UtilityCategory): string {
     const parsed = parseAddress(address);
     const state = parsed.state || 'DEFAULT';
     const locality = parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'UNKNOWN');
-    return `${state}:${locality}:${category}`;
+    return `suggestions:${state}:${locality}:${category}`;
 }
 
 // ============================================================================
@@ -371,10 +371,11 @@ export async function getSuggestions(
 ): Promise<ProviderSuggestion[]> {
     const cacheKey = getCacheKey(address, category);
 
-    // Check cache
-    const cached = suggestionCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.suggestions;
+    // Check Redis cache (with in-memory fallback)
+    const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
+    if (cached && cached.length > 0) {
+        console.log(`[Suggestions] Cache hit for ${category}`);
+        return cached;
     }
 
     // Try AI first
@@ -388,8 +389,8 @@ export async function getSuggestions(
         suggestions = FALLBACK_PROVIDERS[category] || [];
     }
 
-    // Cache results
-    suggestionCache.set(cacheKey, { suggestions, timestamp: Date.now() });
+    // Cache results in Redis (or memory fallback)
+    await setInCache(cacheKey, suggestions, CACHE_TTL_SECONDS);
 
     return suggestions;
 }
@@ -441,3 +442,16 @@ export async function searchProviders(
         .filter(s => s.display_name && typeof s.confidence === 'number')
         .map(s => validateSuggestion(s, category || 'electric'));
 }
+
+// ============================================================================
+// Testing Exports (for unit tests only)
+// ============================================================================
+export const __testing = {
+    parseAddress,
+    getCacheKey,
+    isValidPhone,
+    isValidUrl,
+    validateSuggestion,
+    FALLBACK_PROVIDERS,
+    US_STATES,
+};

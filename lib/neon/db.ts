@@ -10,6 +10,7 @@ export const sql = databaseUrl ? neon(databaseUrl) : null;
 export const isDbConfigured = () => !!databaseUrl;
 
 // Helper to generate UUID for public tokens
+// Uses full 32-character UUID (without dashes) for maximum entropy
 export function generateToken(): string {
-    return crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+    return crypto.randomUUID().replace(/-/g, '');
 }

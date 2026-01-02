@@ -865,3 +865,13 @@ function generateWeeklySummaryHtml({
     `.trim();
 }
 
+// =============================================================================
+// Testing Exports (for unit tests only)
+// =============================================================================
+export const __testing = {
+    generateSellerNotificationHtml,
+    generateSellerReminderHtml,
+    generateTCCompletionNotificationHtml,
+    generateContactResolutionAlertHtml,
+    generateWeeklySummaryHtml,
+};

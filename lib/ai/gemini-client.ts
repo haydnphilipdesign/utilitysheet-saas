@@ -13,6 +13,76 @@ const MODEL_NAME = 'gemini-3-flash-preview';
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 500;
 
+// Circuit breaker configuration
+interface CircuitBreakerState {
+    failures: number;
+    lastFailure: number;
+    isOpen: boolean;
+}
+
+const circuitBreaker: CircuitBreakerState = {
+    failures: 0,
+    lastFailure: 0,
+    isOpen: false,
+};
+
+const CIRCUIT_FAILURE_THRESHOLD = 3;
+const CIRCUIT_RESET_TIMEOUT_MS = 60 * 1000; // 60 seconds
+
+/**
+ * Check if circuit breaker allows requests
+ */
+function isCircuitClosed(): boolean {
+    if (!circuitBreaker.isOpen) {
+        return true;
+    }
+
+    // Check if enough time has passed to attempt a reset
+    const timeSinceLastFailure = Date.now() - circuitBreaker.lastFailure;
+    if (timeSinceLastFailure >= CIRCUIT_RESET_TIMEOUT_MS) {
+        console.log('[Gemini] Circuit breaker attempting reset after timeout');
+        circuitBreaker.isOpen = false;
+        circuitBreaker.failures = 0;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Record a successful call - resets failure count
+ */
+function recordSuccess(): void {
+    circuitBreaker.failures = 0;
+    circuitBreaker.isOpen = false;
+}
+
+/**
+ * Record a failed call - may trip the circuit
+ */
+function recordFailure(): void {
+    circuitBreaker.failures++;
+    circuitBreaker.lastFailure = Date.now();
+
+    if (circuitBreaker.failures >= CIRCUIT_FAILURE_THRESHOLD) {
+        console.error(`[Gemini] Circuit breaker OPEN after ${circuitBreaker.failures} consecutive failures`);
+        circuitBreaker.isOpen = true;
+    }
+}
+
+/**
+ * Get circuit breaker status (for monitoring/debugging)
+ */
+export function getCircuitBreakerStatus() {
+    return {
+        isOpen: circuitBreaker.isOpen,
+        failures: circuitBreaker.failures,
+        timeSinceLastFailure: circuitBreaker.lastFailure
+            ? Date.now() - circuitBreaker.lastFailure
+            : null,
+    };
+}
+
 /**
  * Sleep for a specified duration
  */
@@ -27,13 +97,22 @@ async function withRetry<T>(
     fn: () => Promise<T>,
     retries: number = MAX_RETRIES
 ): Promise<T | null> {
+    // Check circuit breaker first
+    if (!isCircuitClosed()) {
+        console.warn('[Gemini] Circuit breaker is OPEN, skipping AI call');
+        return null;
+    }
+
     for (let attempt = 0; attempt < retries; attempt++) {
         try {
-            return await fn();
+            const result = await fn();
+            recordSuccess();
+            return result;
         } catch (error) {
             const isLastAttempt = attempt === retries - 1;
             if (isLastAttempt) {
                 console.error(`[Gemini] All ${retries} attempts failed:`, error);
+                recordFailure();
                 return null;
             }
             const delay = BASE_DELAY_MS * Math.pow(2, attempt);

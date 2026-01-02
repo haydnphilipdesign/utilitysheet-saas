@@ -8,11 +8,26 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await stackServerApp.getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
+        if (!account) {
+            return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
+        }
+
         const { id } = await params;
         const requestData = await getRequestById(id);
 
         if (!requestData) {
             return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+        }
+
+        // Security check: Ensure the request belongs to the user or their organization
+        if (requestData.account_id !== account.id && requestData.organization_id !== account.active_organization_id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         return NextResponse.json(requestData);
@@ -28,7 +43,28 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await stackServerApp.getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
+        if (!account) {
+            return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
+        }
+
         const { id } = await params;
+        const requestData = await getRequestById(id);
+
+        if (!requestData) {
+            return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+        }
+
+        // Security check: Ensure the request belongs to the user or their organization
+        if (requestData.account_id !== account.id && requestData.organization_id !== account.active_organization_id) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         const body = await request.json();
 
         if (body.status) {
@@ -45,6 +81,7 @@ export async function PATCH(
         return NextResponse.json({ error: 'Failed to update request' }, { status: 500 });
     }
 }
+
 
 // DELETE /api/requests/[id] - Delete a request
 export async function DELETE(
