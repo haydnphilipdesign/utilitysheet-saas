@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Zap, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export default function DemoLayout({
     children,
@@ -8,8 +8,8 @@ export default function DemoLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-black text-white">
-            <header className="fixed top-0 z-50 w-full border-b border-slate-800/50 bg-slate-900/80 backdrop-blur-xl">
+        <div className="flex min-h-screen flex-col bg-background text-foreground">
+            <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2">
@@ -21,14 +21,14 @@ export default function DemoLayout({
                     </div>
 
                     {/* Demo Badge */}
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-300 rounded-full text-xs font-medium">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-500/10 text-slate-600 dark:text-slate-300 rounded-full text-xs font-medium border border-border/60">
                         <Sparkles className="h-3.5 w-3.5" />
                         Demo Mode
                     </div>
 
                     <div className="flex items-center gap-4">
                         <Link href="/">
-                            <Button variant="ghost" className="text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800">
+                            <Button variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
                                 Back to Site
                             </Button>
                         </Link>
