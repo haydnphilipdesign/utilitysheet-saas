@@ -8,12 +8,13 @@ const tiers = [
     {
         name: 'Starter',
         price: 'Free',
-        description: 'Perfect for individual agents just getting started.',
+        description: 'Perfect for solo TCs and agents getting started.',
         features: [
             '3 requests per month',
-            'Standard PDF generation',
-            'Basic email support',
-            '7-day data retention'
+            'Shareable seller intake link',
+            'Downloadable PDF info sheet',
+            'Email reminders',
+            'Powered-by footer on share links'
         ],
         cta: 'Start for Free',
         href: '/auth/signup',
@@ -23,12 +24,12 @@ const tiers = [
         name: 'Pro',
         price: '$9',
         period: '/month',
-        description: 'For high-volume agents and teams needing more power.',
+        description: 'For high-volume TCs and teams who want full white-label.',
         features: [
             'Unlimited requests',
-            'Custom branding & colors',
+            'Custom branding (logo + colors)',
+            'Remove “Powered by UtilitySheet”',
             'Priority support',
-            'Indefinite data retention',
             'Team management (coming soon)'
         ],
         cta: 'Get Started',

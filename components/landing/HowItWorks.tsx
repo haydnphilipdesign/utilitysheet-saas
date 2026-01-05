@@ -4,27 +4,6 @@ import { motion } from 'framer-motion';
 import { MousePointer2, FileCheck, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const steps = [
-    {
-        id: "01",
-        title: "Generate a Link",
-        description: "Enter the property address and select needed utilities. We generate a secure unique link in seconds.",
-        icon: MousePointer2
-    },
-    {
-        id: "02",
-        title: "Seller Confirms",
-        description: "Sellers tap to confirm likely providers suggested by our AI. No account setup required for them.",
-        icon: FileCheck
-    },
-    {
-        id: "03",
-        title: "Download Info Sheet",
-        description: "Get a professional, branded PDF with all contact info, start-service links, and instructions.",
-        icon: Download
-    }
-];
-
 export function HowItWorks() {
     return (
         <section id="how-it-works" className="py-24 sm:py-32 bg-background relative overflow-hidden">
@@ -72,7 +51,7 @@ export function HowItWorks() {
                                 Seller Confirms
                             </h4>
                             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Sellers tap to confirm likely providers suggested by our AI. No account setup or complex forms required for them.
+                                Sellers tap to confirm providers suggested by our AI. If something’s wrong (or unknown), they can search, type, or mark “Not sure” and keep moving.
                             </p>
                         </div>
                         <motion.div
@@ -93,7 +72,7 @@ export function HowItWorks() {
                         </motion.div>
                     </div>
 
-                    {/* Step 3: Download Packet */}
+                    {/* Step 3: Share the Utility Sheet */}
                     <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
                             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-500/10 text-slate-600 mb-8">
@@ -101,10 +80,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
                                 <span className="text-slate-600 mr-2">03.</span>
-                                Download Info Sheet
+                                Share the Utility Sheet
                             </h4>
                             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Get a professional, branded PDF with all contact info, start-service links, and instructions ready to hand off to the buyer.
+                                Download a clean PDF and share the web link with buyers, agents, title, or your coordinator.
                             </p>
                         </div>
                         <motion.div

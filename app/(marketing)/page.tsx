@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { HeroSection } from '@/components/landing/HeroSection';
+import { ForTcsSection } from '@/components/landing/ForTcsSection';
 import { FeatureSection } from '@/components/landing/FeatureSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
+import { CopyTemplatesSection } from '@/components/landing/CopyTemplatesSection';
 import { PricingSection } from '@/components/landing/PricingSection';
 import { FaqSection } from '@/components/landing/FaqSection';
 
@@ -12,8 +14,10 @@ export default function LandingPage() {
     return (
         <div className="relative overflow-hidden bg-background min-h-screen">
             <HeroSection />
+            <ForTcsSection />
             <FeatureSection />
             <HowItWorks />
+            <CopyTemplatesSection />
             <PricingSection />
             <FaqSection />
 
@@ -26,15 +30,22 @@ export default function LandingPage() {
                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-slate-900/40 blur-[80px] rounded-full" />
 
                         <div className="relative z-10">
-                            <h2 className="text-3xl font-bold text-white mb-6 sm:text-5xl tracking-tight">Ready to save hours on every closing?</h2>
+                            <h2 className="text-3xl font-bold text-white mb-6 sm:text-5xl tracking-tight">Ready to stop the utility back-and-forth?</h2>
                             <p className="text-slate-100/90 text-lg mb-10 max-w-2xl mx-auto font-medium">
-                                Join real estate professionals who use UtilitySheet to simplify their workflow and wow their clients.
+                                Send one link to the seller and get a buyer-ready utility sheet back. Free to start—no credit card required.
                             </p>
-                            <Link href="/auth/signup">
-                                <Button size="lg" className="bg-white text-slate-700 hover:bg-slate-50 h-14 px-10 text-xl font-bold shadow-xl shadow-black/10 hover:shadow-black/20 transform hover:-translate-y-1 transition-all">
-                                    Get Started Free
-                                </Button>
-                            </Link>
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                                <Link href="/auth/signup">
+                                    <Button size="lg" className="bg-white text-slate-700 hover:bg-slate-50 h-14 px-10 text-xl font-bold shadow-xl shadow-black/10 hover:shadow-black/20 transform hover:-translate-y-1 transition-all">
+                                        Get Started Free
+                                    </Button>
+                                </Link>
+                                <Link href="/demo">
+                                    <Button size="lg" variant="outline" className="h-14 px-10 text-xl font-bold border-white/40 text-white hover:bg-white/10 hover:border-white/60">
+                                        Try the Demo
+                                    </Button>
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -124,8 +124,7 @@ export default function NewRequestPage() {
 
             const newRequest = await response.json();
 
-            // Use the public_token from the API response
-            setGeneratedToken(newRequest.public_token);
+            setGeneratedToken(newRequest.seller_token || newRequest.public_token);
             setShowShareDialog(true);
         } catch (error) {
             console.error('Error creating request:', error);

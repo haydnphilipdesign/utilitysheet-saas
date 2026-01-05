@@ -23,11 +23,17 @@ export function MarketingHeader() {
                 </div>
 
                 <nav className="hidden items-center gap-8 md:flex">
+                    <Link href="/#for-tcs" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                        For TCs
+                    </Link>
                     <Link href="/#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                         Features
                     </Link>
                     <Link href="/#how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                         How it Works
+                    </Link>
+                    <Link href="/demo" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                        Demo
                     </Link>
                     <Link href="/#pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                         Pricing
@@ -76,6 +82,13 @@ export function MarketingHeader() {
                 <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
                     <nav className="mx-auto max-w-7xl px-4 py-4 space-y-2">
                         <Link
+                            href="/#for-tcs"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                        >
+                            For TCs
+                        </Link>
+                        <Link
                             href="/#features"
                             onClick={() => setMobileMenuOpen(false)}
                             className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
@@ -95,6 +108,13 @@ export function MarketingHeader() {
                             className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                         >
                             Pricing
+                        </Link>
+                        <Link
+                            href="/demo"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                        >
+                            Demo
                         </Link>
                         <Link
                             href="/about"

@@ -11,9 +11,51 @@ const figtree = Figtree({
   subsets: ["latin"],
 });
 
+const appBaseUrl = (() => {
+  const envUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+    "http://localhost:3000";
+
+  try {
+    return new URL(envUrl);
+  } catch {
+    return new URL("http://localhost:3000");
+  }
+})();
+
+const defaultTitle = "UtilitySheet — Stop the utility back-and-forth";
+const defaultDescription =
+  "Send sellers a guided utility intake link. Generate a buyer-ready utility info sheet (PDF + link) with provider contacts—without chasing anyone.";
+
 export const metadata: Metadata = {
-  title: "UtilitySheet - Simplify Utility Handoffs",
-  description: "The fastest way to collect and share utility provider information during home sales.",
+  metadataBase: appBaseUrl,
+  title: {
+    default: defaultTitle,
+    template: "%s — UtilitySheet",
+  },
+  description: defaultDescription,
+  openGraph: {
+    title: defaultTitle,
+    description: defaultDescription,
+    type: "website",
+    siteName: "UtilitySheet",
+    url: "/",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "UtilitySheet — Stop the utility back-and-forth",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: defaultTitle,
+    description: defaultDescription,
+    images: ["/opengraph-image"],
+  },
 };
 
 export default function RootLayout({

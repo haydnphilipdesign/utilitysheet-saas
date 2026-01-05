@@ -29,6 +29,7 @@ export {
     getRequests,
     getRequestById,
     getRequestByToken,
+    getRequestBySellerToken,
     createRequest,
     updateRequestStatus,
     deleteRequest,

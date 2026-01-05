@@ -13,6 +13,36 @@ interface DemoPdfData {
  * Generates a demo PDF with watermark - does not require authentication
  */
 export async function generateDemoPdf({ address, state }: DemoPdfData): Promise<void> {
+    const escapeHtml = (value: string) =>
+        value
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+
+    const safeExternalUrl = (value: string | null | undefined): string | null => {
+        if (!value) return null;
+        try {
+            const parsed = new URL(value);
+            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                return null;
+            }
+            return parsed.toString();
+        } catch {
+            return null;
+        }
+    };
+
+    const sanitizeFilenamePart = (value: string): string => {
+        const cleaned = value
+            .trim()
+            .replaceAll(/[^\p{L}\p{N}]+/gu, '-')
+            .replaceAll(/-+/g, '-')
+            .replaceAll(/^-|-$/g, '');
+        return cleaned.slice(0, 60) || 'utility-info-sheet';
+    };
+
     // Dynamic import for PDF generation
     const html2canvas = (await import('html2canvas')).default;
     const jsPDF = (await import('jspdf')).default;
@@ -50,6 +80,8 @@ export async function generateDemoPdf({ address, state }: DemoPdfData): Promise<
     iframeBody.style.padding = '0';
     iframeBody.style.backgroundColor = '#ffffff';
 
+    const safeAddress = escapeHtml(address);
+
     iframeBody.innerHTML = `
         <div style="padding: 48px; background: #ffffff; color: #09090b; font-family: Arial, sans-serif, system-ui; min-height: 100%; box-sizing: border-box; position: relative;">
             <!-- DEMO Watermark -->
@@ -74,7 +106,7 @@ export async function generateDemoPdf({ address, state }: DemoPdfData): Promise<
                     </div>
                 </div>
                 <div style="text-align: right;">
-                    <p style="font-size: 14px; color: #71717a; margin: 0;">utilitrysheet.com</p>
+                    <p style="font-size: 14px; color: #71717a; margin: 0;">utilitysheet.com</p>
                 </div>
             </div>
 
@@ -85,7 +117,7 @@ export async function generateDemoPdf({ address, state }: DemoPdfData): Promise<
                 </h1>
                 <div style="background: #f4f4f5; padding: 12px 24px; border-radius: 12px; border: 1px solid #e4e4e7; display: inline-block; margin: 0 auto;">
                     <span style="color: #059669; margin-right: 8px; font-size: 18px; vertical-align: middle;">📍</span>
-                    <span style="color: #09090b; font-weight: 600; font-size: 18px; vertical-align: middle;">${address}</span>
+                    <span style="color: #09090b; font-weight: 600; font-size: 18px; vertical-align: middle;">${safeAddress}</span>
                 </div>
                 <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; font-size: 14px; color: #52525b;">
                     <span>📅</span>
@@ -110,27 +142,35 @@ export async function generateDemoPdf({ address, state }: DemoPdfData): Promise<
                         ${utilities.length === 0
             ? `<tr><td colspan="3" style="text-align: center; padding: 48px; color: #71717a;">No utility information provided yet.</td></tr>`
             : utilities.map((utility) => {
+                const safeCategory = escapeHtml(String(utility.category || ''));
+                const safeProviderName = escapeHtml(String(utility.provider_name || 'Not provided'));
+                const safeProviderPhone = utility.provider_phone ? escapeHtml(String(utility.provider_phone)) : '';
+
                 let websiteDisplay = '';
                 if (utility.provider_website) {
-                    try {
-                        websiteDisplay = new URL(utility.provider_website).hostname;
-                    } catch {
-                        websiteDisplay = utility.provider_website;
+                    const safeWebsiteUrl = safeExternalUrl(utility.provider_website);
+                    if (safeWebsiteUrl) {
+                        try {
+                            websiteDisplay = new URL(safeWebsiteUrl).hostname;
+                        } catch {
+                            websiteDisplay = safeWebsiteUrl;
+                        }
                     }
                 }
+                const safeWebsiteDisplay = websiteDisplay ? escapeHtml(websiteDisplay) : '';
                 return `
                                 <tr style="border-bottom: 1px solid #e4e4e7;">
                                     <td style="padding: 16px 24px;">
                                         <div style="display: flex; align-items: center; gap: 12px;">
                                             <span style="font-size: 20px; color: #09090b;">${UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}</span>
-                                            <span style="font-weight: 600; color: #09090b; text-transform: capitalize;">${utility.category}</span>
+                                            <span style="font-weight: 600; color: #09090b; text-transform: capitalize;">${safeCategory}</span>
                                         </div>
                                     </td>
-                                    <td style="padding: 16px 24px; color: #3f3f46; font-weight: 500;">${utility.provider_name}</td>
+                                    <td style="padding: 16px 24px; color: #3f3f46; font-weight: 500;">${safeProviderName}</td>
                                     <td style="padding: 16px 24px;">
-                                        ${utility.provider_phone ? `<span style="color: #059669; font-size: 14px; font-weight: 500;">${utility.provider_phone}</span>` : ''}
-                                        ${utility.provider_phone && websiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
-                                        ${websiteDisplay ? `<span style="color: #2563eb; font-size: 14px;">${websiteDisplay}</span>` : ''}
+                                        ${safeProviderPhone ? `<span style="color: #059669; font-size: 14px; font-weight: 500;">${safeProviderPhone}</span>` : ''}
+                                        ${safeProviderPhone && safeWebsiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
+                                        ${safeWebsiteDisplay ? `<span style="color: #2563eb; font-size: 14px;">${safeWebsiteDisplay}</span>` : ''}
                                     </td>
                                 </tr>
                             `;
@@ -152,7 +192,7 @@ export async function generateDemoPdf({ address, state }: DemoPdfData): Promise<
             <!-- Footer -->
             <div style="text-align: center; padding-top: 24px; border-top: 1px solid #e4e4e7;">
                 <p style="font-size: 13px; color: #71717a; margin: 0;">
-                    Demo generated by UtilitySheet • This is a sample preview
+                    Demo generated by UtilitySheet &bull; This is a sample preview
                 </p>
             </div>
         </div>
@@ -217,7 +257,7 @@ export async function generateDemoPdf({ address, state }: DemoPdfData): Promise<
         pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
 
         // Download PDF
-        const filename = `DEMO-utility-info-sheet-${address.split(',')[0].replace(/\s/g, '-')}.pdf`;
+        const filename = `DEMO-utility-info-sheet-${sanitizeFilenamePart(address.split(',')[0] || '')}.pdf`;
         pdf.save(filename);
     } catch (err) {
         console.error('Demo PDF Gen Error:', err);

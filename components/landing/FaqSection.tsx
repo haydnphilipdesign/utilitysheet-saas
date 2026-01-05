@@ -9,20 +9,24 @@ import {
 
 const faqs = [
     {
-        question: "How does UtilitySheet check for providers?",
-        answer: "We use a proprietary database combined with real-time address verification logic to identify utility providers that serve the specific address. Our AI then double-checks contact information."
+        question: "Who is UtilitySheet for?",
+        answer: "UtilitySheet is built for transaction coordinators and real estate agents who want a standardized, buyer-ready utility handoff without chasing sellers."
     },
     {
-        question: "Is it really free to start?",
-        answer: "Yes! Our Starter plan is completely free. You can use it for up to 3 requests per month. No credit card required."
+        question: "Does the seller need an account?",
+        answer: "No. Sellers open a secure link and complete the guided form on their phone—no login and no app install."
     },
     {
-        question: "Can I customize the branding?",
-        answer: "Absolutely. On the Pro plan, you can upload your brokerage logo, set custom colors, and even add your headshot to the final PDF info sheet."
+        question: "What if the seller doesn’t know a provider?",
+        answer: "They can tap “Not sure” and move on, or search/type the provider name if they do know it. You’ll still get a clean sheet with what they provided."
     },
     {
-        question: "What happens if a provider is missing?",
-        answer: "While rare, if a provider isn't automatically found, the seller can manually add it during their confirmation step, or you can add it from your dashboard."
+        question: "How do provider suggestions work?",
+        answer: "We use AI to suggest likely providers based on the address and utility type. Sellers can confirm with a tap or enter a provider manually if the suggestion isn’t correct."
+    },
+    {
+        question: "Can I remove UtilitySheet branding?",
+        answer: "Yes. Pro accounts can remove the “Powered by UtilitySheet” footer from share links and PDFs (white-label)."
     }
 ];
 

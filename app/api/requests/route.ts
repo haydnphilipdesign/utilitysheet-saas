@@ -129,7 +129,7 @@ export async function POST(request: Request) {
                 propertyAddress: body.propertyAddress,
                 closingDate: body.closingDate,
                 agentName,
-                publicToken: newRequest.public_token,
+                sellerToken: newRequest.seller_token || newRequest.public_token,
             }).catch((error) => {
                 // Log but don't fail the request
                 console.error('Failed to send seller notification email:', error);

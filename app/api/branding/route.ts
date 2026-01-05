@@ -24,10 +24,12 @@ export async function GET() {
             const defaultProfile = await createBrandProfile({
                 accountId,
                 organizationId,
-                name: 'UtilitySheet.com',
+                name: account.company_name || account.full_name || 'UtilitySheet',
                 primaryColor: '#475569', // Slate-600
                 secondaryColor: '#0ea5e9', // Sky-500
-                contactWebsite: 'https://utilitysheet.com',
+                contactName: account.full_name || undefined,
+                contactEmail: account.email || undefined,
+                contactPhone: account.phone || undefined,
                 isDefault: true,
             });
 

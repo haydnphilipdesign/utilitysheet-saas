@@ -23,12 +23,54 @@ interface PacketData {
         provider_phone?: string;
         provider_website?: string;
     }>;
+    meta?: {
+        show_powered_by?: boolean;
+    };
 }
 
 /**
  * Fetches info sheet data and generates a PDF download
  */
 export async function generatePacketPdf(token: string): Promise<void> {
+    const escapeHtml = (value: string) =>
+        value
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+
+    const safeExternalUrl = (value: string | null | undefined): string | null => {
+        if (!value) return null;
+        try {
+            const parsed = new URL(value);
+            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                return null;
+            }
+            return parsed.toString();
+        } catch {
+            return null;
+        }
+    };
+
+    const safeHexColor = (value: string | null | undefined, fallback: string): string => {
+        if (!value) return fallback;
+        const candidate = value.trim();
+        if (/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(candidate)) {
+            return candidate;
+        }
+        return fallback;
+    };
+
+    const sanitizeFilenamePart = (value: string): string => {
+        const cleaned = value
+            .trim()
+            .replaceAll(/[^\p{L}\p{N}]+/gu, '-')
+            .replaceAll(/-+/g, '-')
+            .replaceAll(/^-|-$/g, '');
+        return cleaned.slice(0, 60) || 'utility-info-sheet';
+    };
+
     // 1. Fetch info sheet data
     const response = await fetch(`/api/packet/${token}`);
     if (!response.ok) {
@@ -60,10 +102,29 @@ export async function generatePacketPdf(token: string): Promise<void> {
     }
 
     const { request, brand, utilities } = data;
-    const primaryColor = brand?.primary_color || '#10b981';
+    const showPoweredBy = data.meta?.show_powered_by ?? true;
+    const safePrimaryColor = safeHexColor(brand?.primary_color, '#10b981');
+    const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
+    const safeBrandName = escapeHtml(brand?.name || 'UtilitySheet');
+    const safeBrandContactPhone = escapeHtml(brand?.contact_phone || '');
+    const safeBrandContactEmail = escapeHtml(brand?.contact_email || '');
+    const safeBrandContactWebsite = escapeHtml(brand?.contact_website || '');
+    const safePropertyAddress = escapeHtml(request.property_address);
 
-    // Ensure primary color is a safe hex/rgb value
-    const safePrimaryColor = primaryColor.startsWith('oklch') || primaryColor.startsWith('lab') ? '#10b981' : primaryColor;
+    const footerText = showPoweredBy
+        ? `Powered by utilitysheet.com${brand?.contact_email ? ` &bull; ${safeBrandContactEmail}` : ''}`
+        : (brand?.contact_email ? safeBrandContactEmail : '');
+
+    const footerHtml = footerText
+        ? `
+            <!-- Footer -->
+            <div style="text-align: center; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+                <p style="font-size: 13px; color: #71717a; margin: 0;">
+                    ${footerText}
+                </p>
+            </div>
+        `
+        : '';
 
     // 4. Render the info sheet content into the iframe
     // We add base styles directly to the iframe body to ensure clean slate
@@ -76,20 +137,20 @@ export async function generatePacketPdf(token: string): Promise<void> {
             <!-- Branding Header -->
             <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 2px solid #e4e4e7; margin-bottom: 32px;">
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    ${brand?.logo_url
-            ? `<img src="${brand.logo_url}" alt="${brand.name}" style="height: 48px; width: auto;" crossorigin="anonymous" />`
+                    ${safeBrandLogoUrl
+            ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" style="height: 48px; width: auto;" crossorigin="anonymous" />`
             : `<div style="height: 48px; width: 48px; border-radius: 8px; background: ${safePrimaryColor}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">
-                            ${brand?.name ? brand.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2) : 'US'}
+                            ${escapeHtml(brand?.name ? brand.name.split(' ').map((w: string) => w[0] || '').join('').slice(0, 2) : 'US')}
                         </div>`
         }
                     <div>
-                        <h2 style="font-weight: 700; color: #09090b; margin: 0; font-size: 20px;">${brand?.name || 'UtilitySheet'}</h2>
-                        <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${brand?.contact_phone || ''}</p>
+                        <h2 style="font-weight: 700; color: #09090b; margin: 0; font-size: 20px;">${safeBrandName}</h2>
+                        <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${safeBrandContactPhone}</p>
                     </div>
                 </div>
                 <div style="text-align: right;">
-                    <p style="font-size: 14px; color: #71717a; margin: 0;">${brand?.contact_email || ''}</p>
-                    <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${brand?.contact_website || ''}</p>
+                    <p style="font-size: 14px; color: #71717a; margin: 0;">${safeBrandContactEmail}</p>
+                    <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${safeBrandContactWebsite}</p>
                 </div>
             </div>
 
@@ -100,7 +161,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
                 </h1>
                 <div style="background: #f4f4f5; padding: 12px 24px; border-radius: 12px; border: 1px solid #e4e4e7; display: inline-block; margin: 0 auto;">
                     <span style="color: #059669; margin-right: 8px; font-size: 18px; vertical-align: middle;">📍</span>
-                    <span style="color: #09090b; font-weight: 600; font-size: 18px; vertical-align: middle;">${request.property_address}</span>
+                    <span style="color: #09090b; font-weight: 600; font-size: 18px; vertical-align: middle;">${safePropertyAddress}</span>
                 </div>
                 <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; font-size: 14px; color: #52525b;">
                     <span>📅</span>
@@ -125,28 +186,36 @@ export async function generatePacketPdf(token: string): Promise<void> {
                         ${utilities.length === 0
             ? `<tr><td colspan="3" style="text-align: center; padding: 48px; color: #71717a;">No utility information provided yet.</td></tr>`
             : utilities.map((utility) => {
+                const safeCategory = escapeHtml(String(utility.category || ''));
+                const safeProviderName = escapeHtml(String(utility.provider_name || 'Not sure'));
+                const safeProviderPhone = utility.provider_phone ? escapeHtml(String(utility.provider_phone)) : '';
+
                 // Safely extract hostname from URL
                 let websiteDisplay = '';
                 if (utility.provider_website) {
-                    try {
-                        websiteDisplay = new URL(utility.provider_website).hostname;
-                    } catch {
-                        websiteDisplay = utility.provider_website;
+                    const safeWebsiteUrl = safeExternalUrl(utility.provider_website);
+                    if (safeWebsiteUrl) {
+                        try {
+                            websiteDisplay = new URL(safeWebsiteUrl).hostname;
+                        } catch {
+                            websiteDisplay = safeWebsiteUrl;
+                        }
                     }
                 }
+                const safeWebsiteDisplay = websiteDisplay ? escapeHtml(websiteDisplay) : '';
                 return `
                                 <tr style="border-bottom: 1px solid #e4e4e7;">
                                     <td style="padding: 16px 24px;">
                                         <div style="display: flex; align-items: center; gap: 12px;">
                                             <span style="font-size: 20px; color: #09090b;">${UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}</span>
-                                            <span style="font-weight: 600; color: #09090b; text-transform: capitalize;">${utility.category}</span>
+                                            <span style="font-weight: 600; color: #09090b; text-transform: capitalize;">${safeCategory}</span>
                                         </div>
                                     </td>
-                                    <td style="padding: 16px 24px; color: #3f3f46; font-weight: 500;">${utility.provider_name}</td>
+                                    <td style="padding: 16px 24px; color: #3f3f46; font-weight: 500;">${safeProviderName}</td>
                                     <td style="padding: 16px 24px;">
-                                        ${utility.provider_phone ? `<span style="color: #059669; font-size: 14px; font-weight: 500;">${utility.provider_phone}</span>` : ''}
-                                        ${utility.provider_phone && websiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
-                                        ${websiteDisplay ? `<span style="color: #2563eb; font-size: 14px;">${websiteDisplay}</span>` : ''}
+                                        ${safeProviderPhone ? `<span style="color: #059669; font-size: 14px; font-weight: 500;">${safeProviderPhone}</span>` : ''}
+                                        ${safeProviderPhone && safeWebsiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
+                                        ${safeWebsiteDisplay ? `<span style="color: #2563eb; font-size: 14px;">${safeWebsiteDisplay}</span>` : ''}
                                     </td>
                                 </tr>
                             `;
@@ -174,12 +243,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
                 </ol>
             </div>
 
-            <!-- Footer -->
-            <div style="text-align: center; padding-top: 24px; border-top: 1px solid #e4e4e7;">
-                <p style="font-size: 13px; color: #71717a; margin: 0;">
-                    Generated by UtilitySheet ${brand?.contact_email ? `• ${brand.contact_email}` : ''}
-                </p>
-            </div>
+            ${footerHtml}
         </div>
     `;
 
@@ -254,7 +318,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
         pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
 
         // 8. Download PDF
-        const filename = `utility-info-sheet-${request.property_address.split(',')[0].replace(/\s/g, '-')}.pdf`;
+        const filename = `utility-info-sheet-${sanitizeFilenamePart(request.property_address.split(',')[0] || '')}.pdf`;
         pdf.save(filename);
         console.log('PDF Gen: PDF saved');
     } catch (err) {

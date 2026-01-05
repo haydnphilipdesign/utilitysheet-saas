@@ -1,12 +1,25 @@
 import { getResend } from '@/lib/resend';
 
+function getAppBaseUrl(): string {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (appUrl) {
+        return appUrl.replace(/\/$/, '');
+    }
+
+    if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+    }
+
+    return 'http://localhost:3000';
+}
+
 interface SendSellerNotificationEmailParams {
     sellerEmail: string;
     sellerName?: string;
     propertyAddress: string;
     closingDate?: string;
     agentName?: string;
-    publicToken: string;
+    sellerToken: string;
 }
 
 /**
@@ -19,13 +32,11 @@ export async function sendSellerNotificationEmail({
     propertyAddress,
     closingDate,
     agentName,
-    publicToken,
+    sellerToken,
 }: SendSellerNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
     // Construct the seller form URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : 'http://localhost:3000';
-    const sellerFormUrl = `${baseUrl}/s/${publicToken}`;
+    const baseUrl = getAppBaseUrl();
+    const sellerFormUrl = `${baseUrl}/s/${sellerToken}`;
 
     // Format closing date if provided
     const formattedClosingDate = closingDate
@@ -78,12 +89,10 @@ export async function sendSellerReminderEmail({
     propertyAddress,
     closingDate,
     agentName,
-    publicToken,
+    sellerToken,
 }: SendSellerNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : 'http://localhost:3000';
-    const sellerFormUrl = `${baseUrl}/s/${publicToken}`;
+    const baseUrl = getAppBaseUrl();
+    const sellerFormUrl = `${baseUrl}/s/${sellerToken}`;
 
     const formattedClosingDate = closingDate
         ? new Date(closingDate).toLocaleDateString('en-US', {
@@ -392,8 +401,7 @@ export async function sendTCCompletionNotificationEmail({
     requestId,
 }: SendTCCompletionNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
     // Construct the dashboard URL to view the completed request
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
-        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const baseUrl = getAppBaseUrl();
     const dashboardUrl = `${baseUrl}/dashboard/requests/${requestId}`;
 
     console.log('sendTCCompletionNotificationEmail called:', { tcEmail, propertyAddress, dashboardUrl });
@@ -556,8 +564,7 @@ export async function sendContactResolutionAlertEmail({
     unresolvedEntries,
     requestId,
 }: SendContactResolutionAlertEmailParams): Promise<{ success: boolean; error?: string }> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
-        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const baseUrl = getAppBaseUrl();
     const dashboardUrl = `${baseUrl}/dashboard/requests/${requestId}`;
 
     const emailHtml = generateContactResolutionAlertHtml({
@@ -721,8 +728,7 @@ export async function sendWeeklySummaryEmail({
     tcName,
     stats,
 }: SendWeeklySummaryEmailParams): Promise<{ success: boolean; error?: string }> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
-        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const baseUrl = getAppBaseUrl();
     const dashboardUrl = `${baseUrl}/dashboard`;
 
     const emailHtml = generateWeeklySummaryHtml({

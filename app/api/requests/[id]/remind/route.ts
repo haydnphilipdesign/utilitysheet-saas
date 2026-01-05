@@ -51,7 +51,7 @@ export async function POST(
             propertyAddress: requestData.property_address,
             closingDate: requestData.closing_date || undefined,
             agentName,
-            publicToken: requestData.public_token,
+            sellerToken: requestData.seller_token || requestData.public_token,
         });
 
         if (!result.success) {

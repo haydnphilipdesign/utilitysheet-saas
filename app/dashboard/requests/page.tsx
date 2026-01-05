@@ -207,14 +207,14 @@ export default function RequestsPage() {
                                                         <DropdownMenuContent align="end" className="bg-popover border-border">
                                                             <DropdownMenuItem
                                                                 className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                onClick={() => copyLink(request.public_token)}
+                                                                onClick={() => copyLink(request.seller_token || request.public_token)}
                                                             >
                                                                 <Copy className="mr-2 h-4 w-4" />
                                                                 Copy seller link
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
                                                                 className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                onClick={() => window.open(`/s/${request.public_token}`, '_blank')}
+                                                                onClick={() => window.open(`/dashboard/requests/${request.id}`, '_self')}
                                                             >
                                                                 <Eye className="mr-2 h-4 w-4" />
                                                                 View details

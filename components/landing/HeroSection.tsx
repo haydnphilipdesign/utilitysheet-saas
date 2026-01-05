@@ -77,8 +77,8 @@ function HeroFeatureAnimation() {
                             className="flex flex-col items-center justify-center h-full gap-6"
                         >
                             <div className="text-center space-y-2">
-                                <h3 className="text-xl font-medium text-foreground">Where are you moving?</h3>
-                                <p className="text-muted-foreground text-sm">We'll find the providers for you.</p>
+                                <h3 className="text-xl font-medium text-foreground">Enter the property address</h3>
+                                <p className="text-muted-foreground text-sm">We’ll suggest likely utility providers.</p>
                             </div>
                             <div className="w-full max-w-md bg-card border border-border rounded-lg h-12 flex items-center px-4 gap-3 shadow-lg shadow-black/10 dark:shadow-black/20">
                                 <Search className="w-4 h-4 text-muted-foreground" />
@@ -206,21 +206,36 @@ export function HeroSection() {
                     >
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/80 border border-border text-muted-foreground text-sm font-medium mb-8 hover:bg-secondary transition-colors cursor-default backdrop-blur-sm">
                             <Sparkles className="w-4 h-4 text-slate-500" />
-                            <span>Reimagining Utility Transfers</span>
+                            <span>Built for transaction coordinators</span>
                         </div>
 
                         <h1 className="text-5xl md:text-7xl lg:text-7xl font-black tracking-tight text-foreground mb-8">
-                            Utility Handoffs <br />
+                            Stop chasing sellers <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-500 via-slate-400 to-slate-600 animate-gradient-x">
-                                Simplified.
+                                for utility providers.
                             </span>
                         </h1>
 
                         <p className="mx-auto lg:mx-0 max-w-2xl text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
-                            Stop spending hours on phone calls. Generate professional utility info sheets for your buyers in minutes, not days.
+                            Send a quick guided link to your seller. They tap to confirm utilities in minutes. UtilitySheet generates a clean, shareable utility info sheet (PDF + link) for buyers, agents, and title.
                         </p>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-12 lg:mb-0">
+                        <ul className="mx-auto lg:mx-0 max-w-2xl space-y-3 text-muted-foreground mb-10 text-left">
+                            <li className="flex items-start gap-3">
+                                <CheckCircle2 className="h-5 w-5 text-slate-500 mt-0.5" />
+                                <span>Seller-friendly: no login, no account numbers, no bills to upload.</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <CheckCircle2 className="h-5 w-5 text-slate-500 mt-0.5" />
+                                <span>AI suggestions + manual fallback: sellers can confirm, search, or type a provider.</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <CheckCircle2 className="h-5 w-5 text-slate-500 mt-0.5" />
+                                <span>Buyer-ready output: one-click PDF and a share link you can send anywhere.</span>
+                            </li>
+                        </ul>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-4">
                             <Link href="/auth/signup">
                                 <Button size="lg" className="h-14 px-8 text-lg bg-slate-600 text-white hover:bg-slate-500 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(71,85,105,0.5)]">
                                     Get Started Free <ArrowRight className="ml-2 h-5 w-5" />
@@ -233,6 +248,7 @@ export function HeroSection() {
                                 </Button>
                             </Link>
                         </div>
+                        <p className="text-sm text-muted-foreground">Free plan includes 3 requests/month. No credit card required.</p>
                     </motion.div>
 
                     <motion.div

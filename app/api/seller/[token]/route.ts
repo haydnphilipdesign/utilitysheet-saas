@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getRequestByToken, getBrandProfile, getUtilityEntriesByRequestId, getDefaultBrandProfile, getAccountById } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
-import type { UtilityEntry } from '@/types';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
 import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -13,10 +12,19 @@ export async function GET(
 ) {
     try {
         const { token } = await params;
-        const requestData = await getRequestByToken(token);
+        const requestData =
+            (await getRequestBySellerToken(token)) ||
+            (await getRequestByToken(token));
 
         if (!requestData) {
             return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+        }
+
+        // Enforce seller-token access when available (prevents packet token from granting write-side access)
+        if (requestData.seller_token && requestData.seller_token !== requestData.public_token) {
+            if (token !== requestData.seller_token) {
+                return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+            }
         }
 
         // Get associated brand profile if exists
@@ -33,25 +41,29 @@ export async function GET(
             brandProfile = await getDefaultBrandProfile(requestData.account_id, requestData.organization_id ?? undefined);
         }
 
-        // Get existing utility entries
-        let utilityEntries: UtilityEntry[] = [];
-        if (sql) {
-            const entries = await sql`
-                SELECT * FROM utility_entries WHERE request_id = ${requestData.id}
-            `;
-            utilityEntries = entries as UtilityEntry[];
-        }
+        const publicBrandProfile = brandProfile ? {
+            name: brandProfile.name,
+            logo_url: brandProfile.logo_url,
+            primary_color: brandProfile.primary_color,
+            contact_email: brandProfile.contact_email,
+            contact_phone: brandProfile.contact_phone,
+            contact_website: brandProfile.contact_website,
+        } : null;
 
         // Get AI suggestions for each category
-        const suggestions = await getAllSuggestions(
-            requestData.property_address,
-            (requestData as any).utility_categories || ['electric', 'gas', 'water', 'sewer', 'trash']
-        );
+        const utilityCategories =
+            (requestData as any).utility_categories ||
+            ['electric', 'gas', 'water', 'sewer', 'trash'];
+
+        const suggestions = await getAllSuggestions(requestData.property_address, utilityCategories);
 
         return NextResponse.json({
-            request: requestData,
-            brandProfile,
-            utilityEntries,
+            request: {
+                property_address: requestData.property_address,
+                utility_categories: utilityCategories,
+                status: requestData.status,
+            },
+            brandProfile: publicBrandProfile,
             suggestions,
         });
     } catch (error) {
@@ -83,10 +95,19 @@ export async function POST(
 
         const body = await request.json();
 
-        const requestData = await getRequestByToken(token);
+        const requestData =
+            (await getRequestBySellerToken(token)) ||
+            (await getRequestByToken(token));
 
         if (!requestData) {
             return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+        }
+
+        // Enforce seller-token access when available (prevents packet token from granting write-side access)
+        if (requestData.seller_token && requestData.seller_token !== requestData.public_token) {
+            if (token !== requestData.seller_token) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
         }
 
         if (!sql) {

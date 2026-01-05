@@ -1,38 +1,38 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Clock, Zap, Shield, Sparkles, Smartphone, CheckCircle2 } from 'lucide-react';
+import { Bell, FileText, Link2, Palette, ShieldCheck, Sparkles } from 'lucide-react';
 
 const features = [
     {
-        icon: Clock,
-        title: "2-Minute Seller Form",
-        description: "Smart suggestions let sellers confirm providers with a tap—no utility bills or manual typing required."
-    },
-    {
-        icon: Zap,
-        title: "Instant AI Resolution",
-        description: "Our AI engine automatically finds accurate contact info for every utility provider."
-    },
-    {
-        icon: Shield,
-        title: "Branded Info Sheets",
-        description: "Generate polished, professional PDFs featuring your brokerage's logo and brand colors."
-    },
-    {
-        icon: Smartphone,
-        title: "Mobile First",
-        description: "Designed for on-the-go agents and clients. Works perfectly on any device."
+        icon: Link2,
+        title: "Guided Seller Link",
+        description: "Send a secure link to your seller—no login. They confirm utilities on their phone in minutes."
     },
     {
         icon: Sparkles,
-        title: "Smart Suggestions",
-        description: "Our AI predicts utility providers based on address location with high accuracy."
+        title: "AI-Powered Suggestions",
+        description: "We suggest likely providers based on the address. Sellers can confirm, search, or type a provider anytime."
     },
     {
-        icon: CheckCircle2,
-        title: "Task Tracking",
-        description: "Keep track of every active listing's utility status in one dashboard."
+        icon: FileText,
+        title: "Buyer-Ready Utility Sheet",
+        description: "Generate a clean web sheet and a downloadable PDF with provider names and contact details."
+    },
+    {
+        icon: Bell,
+        title: "Tracking + Reminders",
+        description: "See Sent/In progress/Submitted at a glance and nudge sellers when they forget."
+    },
+    {
+        icon: ShieldCheck,
+        title: "Secure by Design",
+        description: "Seller intake links are separate from share links, and packets only unlock after submission."
+    },
+    {
+        icon: Palette,
+        title: "White-Label Branding (Pro)",
+        description: "Add your logo/colors and remove the UtilitySheet footer from share links and PDFs."
     }
 ];
 
@@ -42,7 +42,10 @@ export function FeatureSection() {
             <div className="mx-auto max-w-7xl">
                 <div className="text-center mb-20">
                     <h2 className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Features</h2>
-                    <h3 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Everything you need to automate utilities</h3>
+                    <h3 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Everything you need to stop the back-and-forth</h3>
+                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-4">
+                        Built around the real TC workflow: collect utility providers fast, standardize the handoff, and keep deals moving.
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

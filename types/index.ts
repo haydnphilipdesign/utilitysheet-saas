@@ -21,8 +21,8 @@ export type UtilityCategory =
     | 'propane'
     | 'oil';
 
-export type WaterSource = 'city' | 'well' | 'not_sure';
-export type SewerType = 'public' | 'septic' | 'not_sure';
+export type WaterSource = 'city' | 'well' | 'hoa' | 'not_sure';
+export type SewerType = 'public' | 'septic' | 'hoa' | 'not_sure';
 export type HeatingType = 'natural_gas' | 'propane' | 'oil' | 'electric' | 'not_sure';
 
 export type ActorType = 'agent' | 'seller' | 'system';
@@ -122,6 +122,7 @@ export interface Request {
     closing_date: string | null;
     status: RequestStatus;
     public_token: string;
+    seller_token?: string | null;
     created_at: string;
     updated_at: string;
     last_activity_at: string;

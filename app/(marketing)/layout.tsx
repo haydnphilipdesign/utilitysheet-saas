@@ -48,14 +48,16 @@ export default function MarketingLayout({
                                 <span className="text-xl font-bold">UtilitySheet</span>
                             </Link>
                             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-                                Standardizing and accelerating utility handoffs for real estate professionals.
+                                Seller utility intake to buyer-ready utility sheet (PDF + link).
                             </p>
                         </div>
                         <div>
                             <h3 className="text-sm font-semibold text-foreground">Product</h3>
                             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                                <li><Link href="/#for-tcs" className="hover:text-foreground">For TCs</Link></li>
                                 <li><Link href="/#features" className="hover:text-foreground">Features</Link></li>
                                 <li><Link href="/#how-it-works" className="hover:text-foreground">How it Works</Link></li>
+                                <li><Link href="/demo" className="hover:text-foreground">Demo</Link></li>
                                 <li><Link href="/#pricing" className="hover:text-foreground">Pricing</Link></li>
                             </ul>
                         </div>
@@ -75,7 +77,7 @@ export default function MarketingLayout({
                         </div>
                     </div>
                     <div className="mt-12 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-                        <p>© {new Date().getFullYear()} UtilitySheet. All rights reserved.</p>
+                        <p>&copy; {new Date().getFullYear()} UtilitySheet. All rights reserved.</p>
                     </div>
                 </div>
             </footer>

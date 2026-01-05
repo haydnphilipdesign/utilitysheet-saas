@@ -23,6 +23,20 @@ export function ReviewStep({
     submitting
 }: ReviewStepProps) {
 
+    const waterSourceLabel: Record<WizardState['water_source'], string> = {
+        city: 'Public water',
+        well: 'Private well',
+        hoa: 'HOA / Condo',
+        not_sure: 'Not sure',
+    };
+
+    const sewerTypeLabel: Record<WizardState['sewer_type'], string> = {
+        public: 'Public sewer',
+        septic: 'Septic system',
+        hoa: 'HOA / Condo',
+        not_sure: 'Not sure',
+    };
+
     // Group utilities for display
     return (
         <motion.div
@@ -46,11 +60,11 @@ export function ReviewStep({
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                             <p className="text-muted-foreground mb-1">Water</p>
-                            <p className="text-foreground capitalize">{state.water_source.replace('_', ' ')}</p>
+                            <p className="text-foreground">{waterSourceLabel[state.water_source]}</p>
                         </div>
                         <div>
                             <p className="text-muted-foreground mb-1">Sewer</p>
-                            <p className="text-foreground capitalize">{state.sewer_type.replace('_', ' ')}</p>
+                            <p className="text-foreground">{sewerTypeLabel[state.sewer_type]}</p>
                         </div>
                         <div className="col-span-2">
                             <p className="text-muted-foreground mb-1">Fuels Present</p>

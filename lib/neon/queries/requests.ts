@@ -84,6 +84,16 @@ export async function getRequestByToken(token: string): Promise<Request | null> 
     return (result[0] as Request) || null;
 }
 
+export async function getRequestBySellerToken(token: string): Promise<Request | null> {
+    if (!sql) return null;
+
+    const result = await sql`
+        SELECT * FROM requests WHERE seller_token = ${token}
+    `;
+
+    return (result[0] as Request) || null;
+}
+
 /**
  * Create a new request
  */
@@ -101,6 +111,7 @@ export async function createRequest(data: {
     if (!sql) return null;
 
     const publicToken = generateToken();
+    const sellerToken = generateToken();
 
     const result = await sql`
         INSERT INTO requests (
@@ -114,6 +125,7 @@ export async function createRequest(data: {
             closing_date,
             utility_categories,
             public_token,
+            seller_token,
             status
         ) VALUES (
             ${data.accountId},
@@ -126,6 +138,7 @@ export async function createRequest(data: {
             ${data.closingDate || null},
             ${data.utilityCategories},
             ${publicToken},
+            ${sellerToken},
             'sent'
         )
         RETURNING *

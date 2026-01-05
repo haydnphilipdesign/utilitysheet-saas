@@ -11,11 +11,6 @@ interface HomeBasicsStepProps {
 }
 
 export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepProps) {
-    const isWaterComplete = state.water_source !== 'not_sure' || true; // Allow defaults
-    const isSewerComplete = state.sewer_type !== 'not_sure' || true;
-
-    // Check validation if needed, for now we allow "Skip/Not Sure" which counts as a value
-
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -34,11 +29,12 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                     <Droplets className="h-4 w-4" />
                     Water Source
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
                         { id: 'city', label: 'Public Water' },
                         { id: 'well', label: 'Private Well' },
-                        { id: 'condo', label: 'HOA / Condo' }
+                        { id: 'hoa', label: 'HOA / Condo' },
+                        { id: 'not_sure', label: 'Not Sure' },
                     ].map((opt) => (
                         <button
                             key={opt.id}
@@ -60,11 +56,12 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                     <Waves className="h-4 w-4" />
                     Sewer Type
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
                         { id: 'public', label: 'Public Sewer' },
                         { id: 'septic', label: 'Septic System' },
-                        { id: 'none', label: 'None / Other' }
+                        { id: 'hoa', label: 'HOA / Condo' },
+                        { id: 'not_sure', label: 'Not Sure' },
                     ].map((opt) => (
                         <button
                             key={opt.id}
