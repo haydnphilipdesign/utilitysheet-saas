@@ -55,8 +55,9 @@ export async function POST(request: Request) {
 
                 const account = await getAccountByStripeCustomerId(customerId);
                 if (account) {
-                    const status = subscription.status === 'active' ? 'pro' :
-                        subscription.status === 'canceled' ? 'canceled' : 'free';
+                    // Map Stripe status to our Plan type ('free' | 'pro')
+                    // 'active' = pro, everything else (canceled, past_due, unpaid, etc.) = free
+                    const status = subscription.status === 'active' ? 'pro' : 'free';
 
                     const periodEnd = (subscription as any).current_period_end;
                     await updateAccountSubscription(account.id, {
