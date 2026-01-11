@@ -137,7 +137,8 @@ export async function getMonthlyUsage(
 ): Promise<{ used: number; limit: number; plan: string }> {
     if (!sql) return { used: 0, limit: 3, plan: 'free' };
 
-    // Count requests created in the current calendar month
+    // Count requests created in the current calendar month (excluding drafts)
+    // Drafts don't count against limit - only sent/completed requests do
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
@@ -148,6 +149,7 @@ export async function getMonthlyUsage(
             FROM requests 
             WHERE organization_id = ${organizationId}
                 AND created_at >= ${startOfMonth.toISOString()}
+                AND status != 'draft'
         `
         : sql`
             SELECT COUNT(*) as count 
@@ -155,6 +157,7 @@ export async function getMonthlyUsage(
             WHERE account_id = ${accountId} 
                 AND organization_id IS NULL
                 AND created_at >= ${startOfMonth.toISOString()}
+                AND status != 'draft'
         `;
 
     const result = await query;

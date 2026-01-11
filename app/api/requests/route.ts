@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -108,6 +108,10 @@ export async function POST(request: Request) {
         if (!newRequest) {
             return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
         }
+
+        // Mark request as 'sent' so it counts against plan limits
+        // Draft requests that are abandoned won't count
+        await updateRequestStatus(newRequest.id, 'sent');
 
         // Send email notification to seller if email is provided and sendSellerEmail is true
         if (body.sellerEmail && body.sendSellerEmail !== false) {
