@@ -1,14 +1,16 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import BrandProfileForm from '@/components/branding/BrandProfileForm';
 import type { BrandProfileFormData } from '@/types';
 import { toast } from 'sonner';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 
-export default function NewBrandingPage() {
+function NewBrandingPageContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const returnTo = searchParams.get('returnTo');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -47,7 +49,8 @@ export default function NewBrandingPage() {
             }
 
             toast.success('Brand profile created successfully');
-            router.push('/dashboard/branding');
+            // Redirect back to where they came from, or default to branding page
+            router.push(returnTo || '/dashboard/branding');
             router.refresh();
         } catch (error) {
             console.error('Error creating profile:', error);
@@ -64,4 +67,16 @@ export default function NewBrandingPage() {
     }
 
     return <BrandProfileForm onSubmit={handleSubmit} />;
+}
+
+export default function NewBrandingPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex h-96 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            </div>
+        }>
+            <NewBrandingPageContent />
+        </Suspense>
+    );
 }

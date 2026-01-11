@@ -87,6 +87,14 @@ export default function NewRequestPage() {
         }));
     };
 
+    const toggleAllCategories = () => {
+        const allSelected = formData.utility_categories.length === UTILITY_CATEGORIES.length;
+        setFormData((prev) => ({
+            ...prev,
+            utility_categories: allSelected ? [] : UTILITY_CATEGORIES.map(c => c.key),
+        }));
+    };
+
     const handleCreate = async () => {
         setLoading(true);
 
@@ -283,7 +291,7 @@ Thank you!`,
                                 </button>
                             ))}
 
-                            <Link href="/dashboard/branding/new">
+                            <Link href="/dashboard/branding/new?returnTo=/dashboard/requests/new">
                                 <Button variant="outline" className="w-full h-full min-h-[100px] border-dashed border-2 border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-400 group">
                                     <div className="flex flex-col items-center">
                                         <Plus className="h-5 w-5 mb-1 group-hover:scale-110 transition-transform" />
@@ -421,6 +429,18 @@ Thank you!`,
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {/* Select All Toggle */}
+                        <div className="flex items-center justify-between pb-2 border-b border-border">
+                            <span className="text-sm text-muted-foreground">
+                                {formData.utility_categories.length} of {UTILITY_CATEGORIES.length} selected
+                            </span>
+                            <button
+                                onClick={toggleAllCategories}
+                                className="text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors"
+                            >
+                                {formData.utility_categories.length === UTILITY_CATEGORIES.length ? 'Deselect All' : 'Select All'}
+                            </button>
+                        </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {UTILITY_CATEGORIES.map((category) => {
                                 const isSelected = formData.utility_categories.includes(category.key);
@@ -474,8 +494,14 @@ Thank you!`,
             )}
 
             {/* Share Dialog */}
-            <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-                <DialogContent className="bg-popover border-border max-w-lg">
+            <Dialog open={showShareDialog} onOpenChange={(open) => {
+                if (!open) {
+                    // When dialog closes, always redirect to dashboard to prevent duplicate submissions
+                    router.push('/dashboard');
+                }
+                setShowShareDialog(open);
+            }}>
+                <DialogContent className="bg-popover border-border sm:max-w-lg w-full" showCloseButton={false}>
                     <DialogHeader>
                         <DialogTitle className="text-foreground text-xl">Request Created! 🎉</DialogTitle>
                         <DialogDescription className="text-muted-foreground">
