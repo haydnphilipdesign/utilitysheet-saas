@@ -98,6 +98,12 @@ export async function createBrandProfile(data: {
     contactWebsite?: string;
     disclaimerText?: string;
     isDefault?: boolean;
+    // Advanced customization
+    buyerNextSteps?: string[];
+    nextStepsTitle?: string;
+    showPoweredBy?: boolean;
+    showGenerationDate?: boolean;
+    welcomeMessage?: string;
 }): Promise<BrandProfile | null> {
     if (!sql) return null;
 
@@ -131,7 +137,12 @@ export async function createBrandProfile(data: {
             contact_email,
             contact_website,
             disclaimer_text,
-            is_default
+            is_default,
+            buyer_next_steps,
+            next_steps_title,
+            show_powered_by,
+            show_generation_date,
+            welcome_message
         ) VALUES (
             ${data.accountId},
             ${data.organizationId || null},
@@ -144,7 +155,12 @@ export async function createBrandProfile(data: {
             ${data.contactEmail || null},
             ${data.contactWebsite || null},
             ${data.disclaimerText || null},
-            ${data.isDefault || false}
+            ${data.isDefault || false},
+            ${data.buyerNextSteps ? JSON.stringify(data.buyerNextSteps) : null},
+            ${data.nextStepsTitle || null},
+            ${data.showPoweredBy ?? true},
+            ${data.showGenerationDate ?? true},
+            ${data.welcomeMessage || null}
         )
         RETURNING *
     `;
@@ -199,6 +215,11 @@ export async function updateBrandProfile(
         }
     }
 
+    // Serialize buyer_next_steps if provided
+    const buyerNextStepsJson = data.buyer_next_steps !== undefined
+        ? (data.buyer_next_steps ? JSON.stringify(data.buyer_next_steps) : null)
+        : undefined;
+
     const result = await sql`
         UPDATE brand_profiles
         SET
@@ -211,7 +232,12 @@ export async function updateBrandProfile(
             contact_email = COALESCE(${data.contact_email}, contact_email),
             contact_website = COALESCE(${data.contact_website}, contact_website),
             disclaimer_text = COALESCE(${data.disclaimer_text}, disclaimer_text),
-            is_default = COALESCE(${data.is_default}, is_default)
+            is_default = COALESCE(${data.is_default}, is_default),
+            buyer_next_steps = COALESCE(${buyerNextStepsJson}::jsonb, buyer_next_steps),
+            next_steps_title = COALESCE(${data.next_steps_title}, next_steps_title),
+            show_powered_by = COALESCE(${data.show_powered_by}, show_powered_by),
+            show_generation_date = COALESCE(${data.show_generation_date}, show_generation_date),
+            welcome_message = COALESCE(${data.welcome_message}, welcome_message)
         WHERE id = ${id}
         RETURNING *
     `;

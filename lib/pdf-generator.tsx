@@ -1,6 +1,6 @@
 'use client';
 
-import { UTILITY_CATEGORIES } from '@/lib/constants';
+import { UTILITY_CATEGORIES, DEFAULT_BUYER_STEPS } from '@/lib/constants';
 import { format } from 'date-fns';
 
 interface PacketData {
@@ -16,6 +16,12 @@ interface PacketData {
         contact_email?: string;
         contact_phone?: string;
         contact_website?: string;
+        // Advanced customization
+        buyer_next_steps?: string[] | null;
+        next_steps_title?: string | null;
+        show_powered_by?: boolean;
+        show_generation_date?: boolean;
+        welcome_message?: string | null;
     } | null;
     utilities: Array<{
         category: string;
@@ -102,7 +108,9 @@ export async function generatePacketPdf(token: string): Promise<void> {
     }
 
     const { request, brand, utilities } = data;
-    const showPoweredBy = data.meta?.show_powered_by ?? true;
+    // Use brand-level show_powered_by if set, otherwise fall back to meta
+    const showPoweredBy = brand?.show_powered_by ?? data.meta?.show_powered_by ?? true;
+    const showGenerationDate = brand?.show_generation_date ?? true;
     const safePrimaryColor = safeHexColor(brand?.primary_color, '#10b981');
     const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
     const safeBrandName = escapeHtml(brand?.name || 'UtilitySheet');
@@ -110,6 +118,11 @@ export async function generatePacketPdf(token: string): Promise<void> {
     const safeBrandContactEmail = escapeHtml(brand?.contact_email || '');
     const safeBrandContactWebsite = escapeHtml(brand?.contact_website || '');
     const safePropertyAddress = escapeHtml(request.property_address);
+
+    // Advanced customization
+    const buyerNextSteps = brand?.buyer_next_steps || DEFAULT_BUYER_STEPS;
+    const nextStepsTitle = escapeHtml(brand?.next_steps_title || 'Buyer Next Steps');
+    const welcomeMessage = brand?.welcome_message ? escapeHtml(brand.welcome_message) : '';
 
     const footerText = showPoweredBy
         ? `Powered by utilitysheet.com${brand?.contact_email ? ` &bull; ${safeBrandContactEmail}` : ''}`
@@ -163,11 +176,20 @@ export async function generatePacketPdf(token: string): Promise<void> {
                     <span style="color: #059669; margin-right: 8px; font-size: 18px; vertical-align: middle;">📍</span>
                     <span style="color: #09090b; font-weight: 600; font-size: 18px; vertical-align: middle;">${safePropertyAddress}</span>
                 </div>
+                ${showGenerationDate ? `
                 <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; font-size: 14px; color: #52525b;">
                     <span>📅</span>
                     <span>Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</span>
                 </div>
+                ` : ''}
             </div>
+
+            ${welcomeMessage ? `
+            <!-- Welcome Message -->
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px;">
+                <p style="font-size: 14px; color: #1e40af; margin: 0; line-height: 1.6;">${welcomeMessage}</p>
+            </div>
+            ` : ''}
 
             <!-- Utility Table -->
             <div style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
@@ -227,17 +249,12 @@ export async function generatePacketPdf(token: string): Promise<void> {
 
             <!-- Next Steps -->
             <div style="background: #f9fafb; border: 1px solid #e4e4e7; border-radius: 12px; padding: 32px; margin-bottom: 32px;">
-                <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0 0 20px 0;">Buyer Next Steps</h3>
+                <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0 0 20px 0;">${nextStepsTitle}</h3>
                 <ol style="margin: 0; padding: 0; list-style: none;">
-                    ${[
-            'Contact each utility provider above to set up new service in your name.',
-            'Schedule service to begin on your closing date or the following business day.',
-            'Have your closing documents handy — providers may ask for verification of ownership.',
-            'If transferring internet service, contact your provider at least 1-2 weeks in advance.'
-        ].map((step, i) => `
+                    ${buyerNextSteps.filter((step: string) => step.trim()).map((step: string, i: number) => `
                         <li style="display: flex; gap: 16px; margin-bottom: 16px; color: #3f3f46; align-items: flex-start; line-height: 1.5;">
                             <span style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">${i + 1}</span>
-                            <span>${step}</span>
+                            <span>${escapeHtml(step)}</span>
                         </li>
                     `).join('')}
                 </ol>

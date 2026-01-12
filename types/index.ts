@@ -98,6 +98,12 @@ export interface BrandProfile {
     contact_website: string | null;
     disclaimer_text: string | null;
     is_default: boolean;
+    // Advanced customization fields
+    buyer_next_steps: string[] | null;
+    next_steps_title: string | null;
+    show_powered_by: boolean;
+    show_generation_date: boolean;
+    welcome_message: string | null;
     created_at: string;
 }
 
@@ -233,6 +239,12 @@ export interface BrandProfileFormData {
     contact_website?: string;
     disclaimer_text?: string;
     is_default: boolean;
+    // Advanced customization fields
+    buyer_next_steps?: string[];
+    next_steps_title?: string;
+    show_powered_by?: boolean;
+    show_generation_date?: boolean;
+    welcome_message?: string;
 }
 
 // Dashboard Stats

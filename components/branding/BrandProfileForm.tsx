@@ -9,9 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon, Plus, Trash2, RotateCcw, GripVertical, Settings2, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BrandProfileFormData } from '@/types';
+import { DEFAULT_BUYER_STEPS } from '@/lib/constants';
 import UtilitySheetPdfPreview from './UtilitySheetPdfPreview';
 
 interface BrandProfileFormProps {
@@ -30,6 +32,12 @@ const defaultFormData: BrandProfileFormData = {
     contact_website: '',
     disclaimer_text: '',
     is_default: false,
+    // Advanced customization defaults
+    buyer_next_steps: undefined, // undefined = use defaults
+    next_steps_title: '',
+    show_powered_by: true,
+    show_generation_date: true,
+    welcome_message: '',
 };
 
 export default function BrandProfileForm({ initialData, onSubmit, isEditing = false }: BrandProfileFormProps) {
@@ -339,6 +347,145 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                 >
                                     Set as default branding profile
                                 </label>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Display Options */}
+                    <Card className="border-border bg-card">
+                        <CardHeader>
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <Settings2 className="h-5 w-5 text-blue-500" />
+                                Display Options
+                            </CardTitle>
+                            <CardDescription className="text-muted-foreground">
+                                Control what appears on your info sheets
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <Label className="text-foreground">Show &quot;Powered by UtilitySheet&quot;</Label>
+                                    <p className="text-xs text-muted-foreground">Display powered by text in the footer</p>
+                                </div>
+                                <Switch
+                                    checked={formData.show_powered_by ?? true}
+                                    onCheckedChange={(checked) => updateField('show_powered_by', checked)}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <Label className="text-foreground">Show Generation Date</Label>
+                                    <p className="text-xs text-muted-foreground">Display when the info sheet was generated</p>
+                                </div>
+                                <Switch
+                                    checked={formData.show_generation_date ?? true}
+                                    onCheckedChange={(checked) => updateField('show_generation_date', checked)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="welcomeMessage" className="text-foreground">Welcome Message (optional)</Label>
+                                <Textarea
+                                    id="welcomeMessage"
+                                    placeholder="Add a brief message that appears above the utility list..."
+                                    value={formData.welcome_message || ''}
+                                    onChange={(e) => updateField('welcome_message', e.target.value)}
+                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[60px]"
+                                />
+                                <p className="text-xs text-muted-foreground">This message will appear above the utility providers table.</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Buyer Next Steps */}
+                    <Card className="border-border bg-card">
+                        <CardHeader>
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <ListChecks className="h-5 w-5 text-emerald-500" />
+                                Buyer Next Steps
+                            </CardTitle>
+                            <CardDescription className="text-muted-foreground">
+                                Customize the instructions shown to buyers
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="nextStepsTitle" className="text-foreground">Section Title</Label>
+                                <Input
+                                    id="nextStepsTitle"
+                                    placeholder="Buyer Next Steps"
+                                    value={formData.next_steps_title || ''}
+                                    onChange={(e) => updateField('next_steps_title', e.target.value)}
+                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                />
+                                <p className="text-xs text-muted-foreground">Leave blank to use default: &quot;Buyer Next Steps&quot;</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label className="text-foreground">Steps</Label>
+                                {(formData.buyer_next_steps || DEFAULT_BUYER_STEPS).map((step, index) => (
+                                    <div key={index} className="flex items-start gap-2">
+                                        <div className="flex items-center justify-center w-6 h-6 mt-2 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold flex-shrink-0">
+                                            {index + 1}
+                                        </div>
+                                        <Textarea
+                                            value={step}
+                                            onChange={(e) => {
+                                                const currentSteps = formData.buyer_next_steps || [...DEFAULT_BUYER_STEPS];
+                                                const newSteps = [...currentSteps];
+                                                newSteps[index] = e.target.value;
+                                                updateField('buyer_next_steps', newSteps);
+                                            }}
+                                            className="bg-background border-input text-foreground min-h-[60px] flex-1"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-muted-foreground hover:text-destructive flex-shrink-0 mt-1"
+                                            onClick={() => {
+                                                const currentSteps = formData.buyer_next_steps || [...DEFAULT_BUYER_STEPS];
+                                                if (currentSteps.length > 1) {
+                                                    const newSteps = currentSteps.filter((_, i) => i !== index);
+                                                    updateField('buyer_next_steps', newSteps);
+                                                } else {
+                                                    toast.error('You must have at least one step');
+                                                }
+                                            }}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        const currentSteps = formData.buyer_next_steps || [...DEFAULT_BUYER_STEPS];
+                                        updateField('buyer_next_steps', [...currentSteps, '']);
+                                    }}
+                                    className="flex-1"
+                                >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Add Step
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        updateField('buyer_next_steps', undefined);
+                                        toast.success('Steps reset to defaults');
+                                    }}
+                                    className="text-muted-foreground"
+                                >
+                                    <RotateCcw className="h-4 w-4 mr-1" />
+                                    Reset to Defaults
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>

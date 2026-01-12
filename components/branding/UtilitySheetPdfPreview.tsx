@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import type { BrandProfileFormData } from '@/types';
+import { DEFAULT_BUYER_STEPS } from '@/lib/constants';
 
 interface UtilitySheetPdfPreviewProps {
     branding: BrandProfileFormData;
@@ -16,19 +17,17 @@ const sampleUtilities = [
     { category: 'internet', provider: 'Xfinity', phone: '(800) 555-0104', icon: '📶' },
 ];
 
-const buyerSteps = [
-    'Contact each utility provider above to set up new service in your name.',
-    'Schedule service to begin on your closing date or the following business day.',
-    'Have your closing documents handy — providers may ask for verification.',
-    'If transferring internet, contact your provider 1-2 weeks in advance.',
-];
-
 export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPreviewProps) {
     const brandName = branding.name || 'Brand Name';
     const primaryColor = branding.primary_color || '#10b981';
     const contactPhone = branding.contact_phone || '';
     const contactEmail = branding.contact_email || '';
     const contactWebsite = branding.contact_website || '';
+    const showPoweredBy = branding.show_powered_by ?? true;
+    const showGenerationDate = branding.show_generation_date ?? true;
+    const welcomeMessage = branding.welcome_message || '';
+    const nextStepsTitle = branding.next_steps_title || 'Buyer Next Steps';
+    const buyerSteps = branding.buyer_next_steps || DEFAULT_BUYER_STEPS;
 
     // Generate initials for fallback when no logo
     const initials = brandName
@@ -103,11 +102,20 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
                         <span className="text-emerald-600">📍</span>
                         <span className="font-semibold text-neutral-900">123 Main St, Springfield</span>
                     </div>
-                    <div className="flex items-center justify-center gap-1 mt-2 text-neutral-500 text-[9px]">
-                        <span>📅</span>
-                        <span>Generated on January 12, 2026</span>
-                    </div>
+                    {showGenerationDate && (
+                        <div className="flex items-center justify-center gap-1 mt-2 text-neutral-500 text-[9px]">
+                            <span>📅</span>
+                            <span>Generated on January 12, 2026</span>
+                        </div>
+                    )}
                 </div>
+
+                {/* Welcome Message */}
+                {welcomeMessage && (
+                    <div className="mx-3 mb-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                        <p className="text-neutral-700 text-[9px] leading-relaxed">{welcomeMessage}</p>
+                    </div>
+                )}
 
                 {/* Utility Table */}
                 <div className="mx-3 mb-3 border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
@@ -150,9 +158,9 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
 
                 {/* Buyer Next Steps */}
                 <div className="mx-3 mb-3 bg-neutral-50 border border-neutral-200 rounded-lg p-3">
-                    <h3 className="font-semibold text-neutral-900 text-[11px] mb-2">Buyer Next Steps</h3>
+                    <h3 className="font-semibold text-neutral-900 text-[11px] mb-2">{nextStepsTitle}</h3>
                     <ol className="space-y-1.5">
-                        {buyerSteps.map((step, i) => (
+                        {buyerSteps.filter(step => step.trim()).map((step, i) => (
                             <li key={i} className="flex gap-2 text-neutral-600 items-start">
                                 <span
                                     className="flex-shrink-0 w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[8px] font-semibold"
@@ -166,10 +174,13 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
                 </div>
 
                 {/* Footer */}
-                <div className="text-center py-2 border-t border-neutral-200 text-[9px] text-neutral-500">
-                    Powered by utilitysheet.com
-                    {contactEmail && <span> • {contactEmail}</span>}
-                </div>
+                {(showPoweredBy || contactEmail) && (
+                    <div className="text-center py-2 border-t border-neutral-200 text-[9px] text-neutral-500">
+                        {showPoweredBy && 'Powered by utilitysheet.com'}
+                        {showPoweredBy && contactEmail && ' • '}
+                        {contactEmail && <span>{contactEmail}</span>}
+                    </div>
+                )}
             </div>
         </div>
     );

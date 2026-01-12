@@ -82,6 +82,12 @@ export async function POST(request: Request) {
             contactWebsite: body.contact_website,
             disclaimerText: body.disclaimer_text,
             isDefault: body.is_default,
+            // Advanced customization
+            buyerNextSteps: body.buyer_next_steps,
+            nextStepsTitle: body.next_steps_title,
+            showPoweredBy: body.show_powered_by,
+            showGenerationDate: body.show_generation_date,
+            welcomeMessage: body.welcome_message,
         });
 
         if (!profile) {
