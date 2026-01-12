@@ -210,6 +210,10 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         }
     };
 
+    const handleEditBasics = () => {
+        setCurrentStep(Step.HOME_BASICS);
+    };
+
     const updateUtilityState = (cat: UtilityCategory, updates: any) => {
         setState(prev => ({
             ...prev,
@@ -297,6 +301,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         state={state}
                         visibleUtilities={visibleUtilities}
                         onBack={handleBack}
+                        onEditBasics={handleEditBasics}
                         onSubmit={handleSubmit}
                         submitting={submitting}
                     />

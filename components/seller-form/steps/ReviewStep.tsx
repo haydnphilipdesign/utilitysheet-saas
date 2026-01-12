@@ -11,6 +11,7 @@ interface ReviewStepProps {
     state: WizardState;
     visibleUtilities: UtilityCategory[];
     onBack: () => void;
+    onEditBasics: () => void;
     onSubmit: () => Promise<void>;
     submitting: boolean;
 }
@@ -19,6 +20,7 @@ export function ReviewStep({
     state,
     visibleUtilities,
     onBack,
+    onEditBasics,
     onSubmit,
     submitting
 }: ReviewStepProps) {
@@ -55,7 +57,7 @@ export function ReviewStep({
                 <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
                     <div className="flex items-center justify-between border-b border-border pb-2">
                         <h4 className="font-semibold text-foreground">Home Basics</h4>
-                        <button onClick={onBack} className="text-xs text-emerald-400 hover:text-emerald-300">Edit</button>
+                        <button onClick={onEditBasics} className="text-xs text-emerald-400 hover:text-emerald-300">Edit</button>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>

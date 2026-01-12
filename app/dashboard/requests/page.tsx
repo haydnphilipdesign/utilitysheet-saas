@@ -61,6 +61,7 @@ export default function RequestsPage() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [loading, setLoading] = useState(true);
     const [downloadingPdfToken, setDownloadingPdfToken] = useState<string | null>(null);
+    const [sendingReminderRequestId, setSendingReminderRequestId] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchRequests() {
@@ -104,6 +105,26 @@ export default function RequestsPage() {
             toast.error('Failed to generate PDF. Please try again.');
         } finally {
             setDownloadingPdfToken(null);
+        }
+    };
+
+    const handleSendReminder = async (requestId: string) => {
+        setSendingReminderRequestId(requestId);
+        try {
+            const res = await fetch(`/api/requests/${requestId}/remind`, { method: 'POST' });
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                toast.error(data.error || 'Failed to send reminder');
+                return;
+            }
+
+            toast.success('Reminder sent');
+        } catch (error) {
+            console.error('Error sending reminder:', error);
+            toast.error('Failed to send reminder. Please try again.');
+        } finally {
+            setSendingReminderRequestId(null);
         }
     };
 
@@ -245,13 +266,15 @@ export default function RequestsPage() {
                                                             {['sent', 'in_progress'].includes(request.status) && (
                                                                 <DropdownMenuItem
                                                                     className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                    onClick={() => {
-                                                                        // TODO: Implement reminder functionality
-                                                                        console.log('Sending reminder to:', request.seller_name);
-                                                                    }}
+                                                                    onClick={() => handleSendReminder(request.id)}
+                                                                    disabled={!request.seller_email || sendingReminderRequestId === request.id}
                                                                 >
-                                                                    <Mail className="mr-2 h-4 w-4" />
-                                                                    Send reminder
+                                                                    {sendingReminderRequestId === request.id ? (
+                                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Mail className="mr-2 h-4 w-4" />
+                                                                    )}
+                                                                    {sendingReminderRequestId === request.id ? 'Sending...' : 'Send reminder'}
                                                                 </DropdownMenuItem>
                                                             )}
                                                         </DropdownMenuContent>

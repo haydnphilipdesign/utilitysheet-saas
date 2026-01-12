@@ -19,6 +19,7 @@ import { ArrowLeft, ArrowRight, Check, Copy, MessageSquare, Mail, Loader2, MapPi
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface FormData {
     property_address: string;
@@ -136,7 +137,7 @@ export default function NewRequestPage() {
             setShowShareDialog(true);
         } catch (error) {
             console.error('Error creating request:', error);
-            alert('Failed to create request. Please check your connection and try again.');
+            toast.error('Failed to create request. Please check your connection and try again.');
         } finally {
             setLoading(false);
         }

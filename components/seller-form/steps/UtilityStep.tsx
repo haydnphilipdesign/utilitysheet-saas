@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Search, AlertCircle, X, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Check, Search, AlertCircle, X, HelpCircle } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import { UtilityCategory, ProviderSuggestion } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -124,7 +124,7 @@ export function UtilityStep({
                     onClick={onBack}
                     className="p-2 -ml-2 rounded-full hover:bg-muted text-muted-foreground transition-colors"
                 >
-                    ←
+                    <ArrowLeft className="h-4 w-4" />
                 </button>
                 <div>
                     <h3 className="text-xl font-bold text-foreground mb-1">{categoryLabel} Provider</h3>

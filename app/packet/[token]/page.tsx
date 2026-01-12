@@ -297,7 +297,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                     </a>
                                     {brand?.contact_email ? (
                                         <>
-                                            <span className="mx-2">•</span>
+                                            <span className="mx-2">&bull;</span>
                                             <span>{brand.contact_email}</span>
                                         </>
                                     ) : null}
