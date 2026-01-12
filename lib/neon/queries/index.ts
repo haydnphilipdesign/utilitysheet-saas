@@ -32,6 +32,7 @@ export {
     getRequestByToken,
     getRequestBySellerToken,
     createRequest,
+    getRequestCountForAccount,
     updateRequestStatus,
     deleteRequest,
     getDashboardStats,

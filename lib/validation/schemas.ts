@@ -17,6 +17,7 @@ export const createRequestBodySchema = z.object({
     utilityCategories: z.array(utilityCategoryEnum).min(1).max(UTILITY_CATEGORY_KEYS.length).optional(),
     brandProfileId: z.string().uuid().optional(),
     sendSellerEmail: z.boolean().optional(),
+    isDemo: z.boolean().optional(),
 }).strict();
 
 const waterSourceEnum = z.enum(['city', 'well', 'hoa', 'not_sure']);

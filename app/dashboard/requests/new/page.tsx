@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,8 +43,13 @@ const initialFormData: FormData = {
     send_seller_email: true,
 };
 
+const ONBOARDING_SAMPLE_ADDRESS = '123 Maple Street, Anytown, PA 18301';
+
 export default function NewRequestPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isOnboarding = searchParams.get('onboarding') === '1' || searchParams.get('onboarding') === 'true';
+
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<FormData>(initialFormData);
     const [loading, setLoading] = useState(false);
@@ -55,6 +60,17 @@ export default function NewRequestPage() {
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [isPro, setIsPro] = useState(false);
+
+    useEffect(() => {
+        if (!isOnboarding) return;
+
+        setFormData((prev) => {
+            return {
+                ...prev,
+                property_address: prev.property_address.trim() ? prev.property_address : ONBOARDING_SAMPLE_ADDRESS,
+            };
+        });
+    }, [isOnboarding]);
 
     useEffect(() => {
         async function fetchData() {
@@ -111,22 +127,28 @@ export default function NewRequestPage() {
         setLoading(true);
 
         try {
+            const requestBody: Record<string, unknown> = {
+                propertyAddress: formData.property_address,
+                sellerName: formData.seller_name || undefined,
+                sellerEmail: formData.seller_email || undefined,
+                sellerPhone: formData.seller_phone || undefined,
+                closingDate: formData.closing_date || undefined,
+                utilityCategories: formData.utility_categories,
+                brandProfileId: formData.brand_profile_id || undefined,
+                sendSellerEmail: formData.send_seller_email,
+            };
+
+            if (isOnboarding) {
+                requestBody.isDemo = true;
+            }
+
             // Call API to create the request
             const response = await fetch('/api/requests', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    propertyAddress: formData.property_address,
-                    sellerName: formData.seller_name || undefined,
-                    sellerEmail: formData.seller_email || undefined,
-                    sellerPhone: formData.seller_phone || undefined,
-                    closingDate: formData.closing_date || undefined,
-                    utilityCategories: formData.utility_categories,
-                    brandProfileId: formData.brand_profile_id || undefined,
-                    sendSellerEmail: formData.send_seller_email,
-                }),
+                body: JSON.stringify(requestBody),
             });
 
             if (!response.ok) {
@@ -190,6 +212,22 @@ Thank you!`,
 
     return (
         <div className="max-w-2xl mx-auto">
+            {isOnboarding && (
+                <div className="mb-6 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-lg bg-emerald-500/10">
+                            <Sparkles className="h-5 w-5 text-emerald-400" />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="font-medium text-foreground">Guided first request</p>
+                            <p className="text-sm text-muted-foreground">
+                                Complete the &quot;New Request&quot; flow once. This request won&apos;t count against your monthly limit.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="mb-8">
                 <Button

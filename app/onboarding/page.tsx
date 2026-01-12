@@ -21,8 +21,7 @@ import {
     Globe,
     Eye,
     Send,
-    FileText,
-    PartyPopper
+    FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import UtilitySheetPdfPreview from '@/components/branding/UtilitySheetPdfPreview';
@@ -72,7 +71,6 @@ export default function OnboardingPage() {
     const [brandProfileId, setBrandProfileId] = useState<string | null>(null);
     const [brandProfileCreated, setBrandProfileCreated] = useState(false);
     const [contactInfoSaved, setContactInfoSaved] = useState(false);
-    const [demoRequestCreated, setDemoRequestCreated] = useState(false);
 
     // Form states
     const [orgName, setOrgName] = useState('');
@@ -335,37 +333,40 @@ export default function OnboardingPage() {
         }
     };
 
-    const handleCreateDemoRequest = async () => {
+    const completeOnboarding = async () => {
+        const response = await fetch('/api/onboarding/complete', { method: 'POST' });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data?.error || 'Failed to mark onboarding complete');
+        }
+    };
+
+    const handleStartFirstRequest = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/onboarding/demo-request', {
-                method: 'POST',
-            });
-
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data?.error || 'Failed to create demo request');
-            }
-
-            setDemoRequestCreated(true);
-            toast.success('Demo request created! Check your dashboard to see it.');
+            await completeOnboarding();
+            router.push('/dashboard/requests/new?onboarding=1');
+            router.refresh();
         } catch (error) {
             console.error(error);
-            toast.error(error instanceof Error ? error.message : 'Failed to create demo request');
+            toast.error(error instanceof Error ? error.message : 'Failed to continue');
         } finally {
             setLoading(false);
         }
     };
 
     const handleFinish = async () => {
+        setLoading(true);
         try {
-            await fetch('/api/onboarding/complete', { method: 'POST' });
+            await completeOnboarding();
+            router.push('/dashboard');
+            router.refresh();
         } catch (error) {
             console.error(error);
+            toast.error(error instanceof Error ? error.message : 'Failed to finish onboarding');
+        } finally {
+            setLoading(false);
         }
-
-        router.push('/dashboard');
-        router.refresh();
     };
 
     const handleBack = () => {
@@ -840,7 +841,7 @@ export default function OnboardingPage() {
                         </motion.div>
                     )}
 
-                    {/* Step 5: Demo Request + Finish */}
+                    {/* Step 5: First Request + Finish */}
                     {step === 5 && (
                         <motion.div
                             key="step5"
@@ -853,88 +854,54 @@ export default function OnboardingPage() {
                             <Card className="border-border bg-card/80 backdrop-blur-xl">
                                 <CardHeader className="text-center">
                                     <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                                        {demoRequestCreated ? (
-                                            <PartyPopper className="h-10 w-10 text-emerald-500" />
-                                        ) : (
-                                            <Send className="h-10 w-10 text-slate-600" />
-                                        )}
+                                        <Send className="h-10 w-10 text-slate-600" />
                                     </div>
-                                    <CardTitle className="text-3xl text-foreground">
-                                        {demoRequestCreated ? "You're All Set!" : "Try It Out!"}
-                                    </CardTitle>
+                                    <CardTitle className="text-3xl text-foreground">Create Your First Request</CardTitle>
                                     <CardDescription className="text-muted-foreground text-base">
-                                        {demoRequestCreated
-                                            ? "Your demo request is ready. Head to your dashboard to explore!"
-                                            : "Want to see how UtilitySheet works? Create a demo request to experience the full flow."
-                                        }
+                                        Walk through the exact &quot;New Request&quot; flow once. Your first request won&apos;t count against your monthly limit.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    {!demoRequestCreated && (
-                                        <div className="p-4 rounded-xl border border-border bg-muted/30 mb-6">
-                                            <div className="flex items-start gap-3">
-                                                <div className="p-2 rounded-lg bg-emerald-500/10">
-                                                    <FileText className="h-5 w-5 text-emerald-500" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-foreground">Demo Request</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        We'll create a sample request with a fictional property and seller.
-                                                        This won't count against your monthly limit!
-                                                    </p>
-                                                </div>
+                                    <div className="p-4 rounded-xl border border-border bg-muted/30 mb-2">
+                                        <div className="flex items-start gap-3">
+                                            <div className="p-2 rounded-lg bg-emerald-500/10">
+                                                <FileText className="h-5 w-5 text-emerald-500" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-foreground">Guided &quot;New Request&quot;</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    You&apos;ll enter an address, pick utilities, optionally add seller info, and get a shareable link.
+                                                </p>
                                             </div>
                                         </div>
-                                    )}
-
-                                    {demoRequestCreated && (
-                                        <div className="flex flex-col items-center gap-4 py-4">
-                                            <div className="flex items-center gap-2 text-emerald-500">
-                                                <CheckCircle2 className="h-5 w-5" />
-                                                <span className="font-medium">Demo request created</span>
-                                            </div>
-                                            <p className="text-center text-muted-foreground">
-                                                Check your dashboard to view the demo utility info sheet and explore all features.
-                                            </p>
-                                        </div>
-                                    )}
+                                    </div>
                                 </CardContent>
                                 <CardFooter className="flex flex-col gap-3">
-                                    {!demoRequestCreated ? (
-                                        <>
-                                            <Button
-                                                onClick={handleCreateDemoRequest}
-                                                disabled={loading}
-                                                className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white h-14 text-lg font-semibold shadow-lg shadow-slate-500/20"
-                                            >
-                                                {loading ? (
-                                                    <>
-                                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                                        <span className="ml-2">Creating...</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Send className="mr-2 h-5 w-5" />
-                                                        Create Demo Request
-                                                    </>
-                                                )}
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={handleFinish}
-                                                className="w-full text-muted-foreground hover:text-foreground"
-                                            >
-                                                Skip and go to dashboard
-                                            </Button>
-                                        </>
-                                    ) : (
-                                        <Button
-                                            onClick={handleFinish}
-                                            className="w-full bg-gradient-to-r from-slate-600 to-emerald-600 hover:from-slate-700 hover:to-emerald-700 text-white h-14 text-lg font-semibold shadow-lg shadow-emerald-500/20"
-                                        >
-                                            Go to Dashboard <ArrowRight className="ml-2 h-5 w-5" />
-                                        </Button>
-                                    )}
+                                    <Button
+                                        onClick={handleStartFirstRequest}
+                                        disabled={loading}
+                                        className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white h-14 text-lg font-semibold shadow-lg shadow-slate-500/20"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <span className="ml-2">Loading...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send className="mr-2 h-5 w-5" />
+                                                Walk Through New Request
+                                            </>
+                                        )}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        onClick={handleFinish}
+                                        disabled={loading}
+                                        className="w-full text-muted-foreground hover:text-foreground"
+                                    >
+                                        Skip and go to dashboard
+                                    </Button>
                                 </CardFooter>
                             </Card>
                         </motion.div>

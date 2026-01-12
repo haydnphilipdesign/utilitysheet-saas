@@ -107,6 +107,7 @@ export async function createRequest(data: {
     sellerPhone?: string;
     closingDate?: string;
     utilityCategories: string[];
+    isDemo?: boolean;
 }): Promise<Request | null> {
     if (!sql) return null;
 
@@ -126,6 +127,7 @@ export async function createRequest(data: {
             utility_categories,
             public_token,
             seller_token,
+            is_demo,
             status
         ) VALUES (
             ${data.accountId},
@@ -139,12 +141,25 @@ export async function createRequest(data: {
             ${data.utilityCategories},
             ${publicToken},
             ${sellerToken},
+            ${data.isDemo === true},
             'sent'
         )
         RETURNING *
     `;
 
     return (result[0] as Request) || null;
+}
+
+export async function getRequestCountForAccount(accountId: string): Promise<number> {
+    if (!sql) return 0;
+
+    const result = await sql`
+        SELECT COUNT(*) as count
+        FROM requests
+        WHERE account_id = ${accountId}
+    `;
+
+    return Number(result[0]?.count) || 0;
 }
 
 /**
