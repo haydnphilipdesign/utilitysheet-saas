@@ -3,16 +3,40 @@
  */
 import { sql } from '@/lib/neon/db';
 
+function slugifyOrganizationName(name: string) {
+    const slug = name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    return slug || 'organization';
+}
+
+async function getUniqueOrganizationSlug(baseSlug: string, excludeOrganizationId?: string) {
+    if (!sql) return baseSlug;
+
+    let slug = baseSlug;
+    for (let attempt = 0; attempt < 50; attempt++) {
+        const existing = excludeOrganizationId
+            ? await sql`SELECT 1 FROM organizations WHERE slug = ${slug} AND id != ${excludeOrganizationId} LIMIT 1`
+            : await sql`SELECT 1 FROM organizations WHERE slug = ${slug} LIMIT 1`;
+
+        if (existing.length === 0) return slug;
+
+        slug = `${baseSlug}-${attempt + 2}`;
+    }
+
+    throw new Error('Failed to generate a unique organization slug');
+}
+
 /**
  * Create a new organization and add the creator as admin
  */
 export async function createOrganization(name: string, accountId: string) {
     if (!sql) return null;
 
-    const slug = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
+    const baseSlug = slugifyOrganizationName(name);
+    const slug = await getUniqueOrganizationSlug(baseSlug);
 
     // Create organization
     const orgResult = await sql`
@@ -37,6 +61,25 @@ export async function createOrganization(name: string, accountId: string) {
     `;
 
     return organization;
+}
+
+/**
+ * Update organization name and slug
+ */
+export async function updateOrganization(organizationId: string, name: string) {
+    if (!sql) return null;
+
+    const baseSlug = slugifyOrganizationName(name);
+    const slug = await getUniqueOrganizationSlug(baseSlug, organizationId);
+
+    const result = await sql`
+        UPDATE organizations
+        SET name = ${name}, slug = ${slug}, updated_at = NOW()
+        WHERE id = ${organizationId}
+        RETURNING *
+    `;
+
+    return result[0] || null;
 }
 
 /**

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,8 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    Zap,
-    Building2,
     Palette,
     CheckCircle2,
     Loader2,
@@ -21,7 +19,6 @@ import {
     Phone,
     Mail,
     Globe,
-    Upload,
     Eye,
     Send,
     FileText,
@@ -29,6 +26,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import UtilitySheetPdfPreview from '@/components/branding/UtilitySheetPdfPreview';
+import type { Account, BrandProfile, Organization } from '@/types';
 
 // Steps configuration
 const STEPS = [
@@ -49,27 +47,44 @@ const BRAND_COLORS = [
     { name: 'Slate', value: '#64748b' },
 ];
 
+function clampChannel(value: number) {
+    return Math.min(255, Math.max(0, value));
+}
+
+function adjustHexColor(hex: string, amount: number) {
+    const normalized = hex.replace('#', '').trim();
+    if (normalized.length !== 6) return hex;
+
+    const r = clampChannel(parseInt(normalized.slice(0, 2), 16) + amount);
+    const g = clampChannel(parseInt(normalized.slice(2, 4), 16) + amount);
+    const b = clampChannel(parseInt(normalized.slice(4, 6), 16) + amount);
+
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
 export default function OnboardingPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [account, setAccount] = useState<any>(null);
+    const [account, setAccount] = useState<Account | null>(null);
+    const [activeOrganization, setActiveOrganization] = useState<Organization | null>(null);
     const [organizationCreated, setOrganizationCreated] = useState(false);
+    const [brandProfileId, setBrandProfileId] = useState<string | null>(null);
     const [brandProfileCreated, setBrandProfileCreated] = useState(false);
+    const [contactInfoSaved, setContactInfoSaved] = useState(false);
     const [demoRequestCreated, setDemoRequestCreated] = useState(false);
 
     // Form states
     const [orgName, setOrgName] = useState('');
     const [brandName, setBrandName] = useState('');
+    const [brandNameTouched, setBrandNameTouched] = useState(false);
     const [primaryColor, setPrimaryColor] = useState('#10b981');
-    const [secondaryColor, setSecondaryColor] = useState('#059669');
+    const secondaryColor = useMemo(() => adjustHexColor(primaryColor, -24), [primaryColor]);
     const [contactName, setContactName] = useState('');
     const [contactPhone, setContactPhone] = useState('');
     const [contactEmail, setContactEmail] = useState('');
     const [contactWebsite, setContactWebsite] = useState('');
-    const [logoPreview, setLogoPreview] = useState<string | null>(null);
-    const [logoFile, setLogoFile] = useState<File | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         let cancelled = false;
@@ -88,7 +103,10 @@ export default function OnboardingPage() {
                 }
 
                 if (cancelled) return;
-                setAccount(data.account);
+                setAccount(data.account as Account);
+
+                const nextActiveOrg = (data.activeOrganization || null) as Organization | null;
+                setActiveOrganization(nextActiveOrg);
 
                 // Pre-fill contact info from account
                 if (data.account?.full_name) setContactName(data.account.full_name);
@@ -98,16 +116,43 @@ export default function OnboardingPage() {
                 // If already has organization, skip to step 2 or redirect
                 if (data.activeOrganization || data.account?.active_organization_id) {
                     setOrganizationCreated(true);
-                    // Check if they have a brand profile - if so, redirect to dashboard
+                    if (nextActiveOrg?.name) {
+                        setOrgName(nextActiveOrg.name);
+                        setBrandName(nextActiveOrg.name);
+                    }
+
+                    // Load existing (or auto-created) default brand profile so onboarding edits it instead of creating duplicates
                     const brandRes = await fetch('/api/branding');
                     if (brandRes.ok) {
-                        const brandData = await brandRes.json();
-                        if (brandData.profiles?.length > 0) {
-                            router.push('/dashboard');
-                            return;
+                        const brandData = await brandRes.json().catch(() => []);
+                        const profiles = Array.isArray(brandData) ? (brandData as BrandProfile[]) : [];
+                        const defaultProfile = profiles.find((p) => p.is_default) || profiles[0];
+
+                        if (defaultProfile) {
+                            setBrandProfileId(defaultProfile.id);
+                            setBrandProfileCreated(true);
+                            setBrandName(defaultProfile.name);
+                            if (defaultProfile.primary_color) setPrimaryColor(defaultProfile.primary_color);
+                            if (defaultProfile.logo_url) setLogoUrl(defaultProfile.logo_url);
+
+                            // Prefer saved brand profile contact info (if present)
+                            if (defaultProfile.contact_name) setContactName(defaultProfile.contact_name);
+                            if (defaultProfile.contact_email) setContactEmail(defaultProfile.contact_email);
+                            if (defaultProfile.contact_phone) setContactPhone(defaultProfile.contact_phone);
+                            if (defaultProfile.contact_website) setContactWebsite(defaultProfile.contact_website);
+
+                            if (
+                                defaultProfile.contact_name ||
+                                defaultProfile.contact_email ||
+                                defaultProfile.contact_phone ||
+                                defaultProfile.contact_website
+                            ) {
+                                setContactInfoSaved(true);
+                            }
                         }
                     }
-                    // No brand profile, start at step 2
+
+                    // Start at step 2 when an org already exists
                     setStep(2);
                 }
             } catch (error) {
@@ -131,8 +176,9 @@ export default function OnboardingPage() {
 
         setLoading(true);
         try {
+            const isUpdate = Boolean(activeOrganization?.id);
             const response = await fetch('/api/onboarding/organization', {
-                method: 'POST',
+                method: isUpdate ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name }),
             });
@@ -142,8 +188,11 @@ export default function OnboardingPage() {
                 throw new Error(data?.error || 'Failed to create organization');
             }
 
+            setActiveOrganization(data.organization as Organization);
             setOrganizationCreated(true);
-            setBrandName(name); // Default brand name to org name
+            if (!brandNameTouched || brandName.trim().length === 0) {
+                setBrandName(name); // Default brand name to org name
+            }
             setStep(2);
         } catch (error) {
             console.error(error);
@@ -153,26 +202,70 @@ export default function OnboardingPage() {
         }
     };
 
+    const ensureBrandProfile = async () => {
+        if (brandProfileId) return brandProfileId;
+
+        const response = await fetch('/api/branding');
+        if (!response.ok) return null;
+
+        const brandData = await response.json().catch(() => []);
+        const profiles = Array.isArray(brandData) ? (brandData as BrandProfile[]) : [];
+        const defaultProfile = profiles.find((p) => p.is_default) || profiles[0];
+        if (!defaultProfile) return null;
+
+        setBrandProfileId(defaultProfile.id);
+        setBrandProfileCreated(true);
+        return defaultProfile.id;
+    };
+
     const handleCreateBrand = async () => {
         if (!account) {
             toast.error('Please wait for your account to load, then try again.');
             return;
         }
 
+        const resolvedBrandName = (brandName || orgName).trim();
+        if (resolvedBrandName.length < 2) {
+            toast.error('Please enter a brand name');
+            return;
+        }
+
         setLoading(true);
         try {
-            const response = await fetch('/api/onboarding/brand-profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: (brandName || orgName).trim(),
-                    primaryColor,
-                }),
-            });
+            if (brandProfileId) {
+                const response = await fetch(`/api/branding/${brandProfileId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: resolvedBrandName,
+                        primary_color: primaryColor,
+                        secondary_color: secondaryColor,
+                    }),
+                });
 
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data?.error || 'Failed to create brand profile');
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Failed to update brand profile');
+                }
+
+                setBrandProfileId((data as BrandProfile).id);
+            } else {
+                const response = await fetch('/api/onboarding/brand-profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: resolvedBrandName,
+                        primaryColor,
+                        secondaryColor,
+                    }),
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Failed to create brand profile');
+                }
+
+                setBrandProfileId((data.profile as BrandProfile).id);
             }
 
             setBrandProfileCreated(true);
@@ -185,16 +278,58 @@ export default function OnboardingPage() {
         }
     };
 
+    const handleSkipBranding = async () => {
+        if (brandProfileCreated) {
+            setStep(3);
+            return;
+        }
+
+        await handleCreateBrand();
+    };
+
     const handleSaveContactInfo = async () => {
-        // Save contact info to the brand profile
+        if (!account) {
+            toast.error('Please wait for your account to load, then try again.');
+            return;
+        }
+
         setLoading(true);
         try {
-            // For now, we'll skip this API call since we're in onboarding
-            // The user can update this later in settings
+            const profileId = brandProfileId || (await ensureBrandProfile());
+            if (!profileId) {
+                throw new Error('Unable to save branding details. Please try again.');
+            }
+
+            const normalizedWebsite = contactWebsite.trim()
+                ? (contactWebsite.trim().startsWith('http://') || contactWebsite.trim().startsWith('https://')
+                    ? contactWebsite.trim()
+                    : `https://${contactWebsite.trim()}`)
+                : undefined;
+
+            const response = await fetch(`/api/branding/${profileId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: (brandName || orgName).trim() || undefined,
+                    primary_color: primaryColor,
+                    secondary_color: secondaryColor,
+                    contact_name: contactName.trim() || undefined,
+                    contact_phone: contactPhone.trim() || undefined,
+                    contact_email: contactEmail.trim() || undefined,
+                    contact_website: normalizedWebsite,
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to save contact information');
+            }
+
+            setContactInfoSaved(true);
             setStep(4);
         } catch (error) {
             console.error(error);
-            toast.error('Failed to save contact information');
+            toast.error(error instanceof Error ? error.message : 'Failed to save contact information');
         } finally {
             setLoading(false);
         }
@@ -228,33 +363,8 @@ export default function OnboardingPage() {
 
     const handleBack = () => {
         if (step > 1) {
-            // Skip step 1 if org already created
-            if (step === 2 && organizationCreated) return;
             setStep(step - 1);
         }
-    };
-
-    const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        // Validate file
-        if (!file.type.startsWith('image/')) {
-            toast.error('Please select an image file');
-            return;
-        }
-
-        if (file.size > 2 * 1024 * 1024) {
-            toast.error('File size must be less than 2MB');
-            return;
-        }
-
-        setLogoFile(file);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            setLogoPreview(e.target?.result as string);
-        };
-        reader.readAsDataURL(file);
     };
 
     const variants = {
@@ -272,6 +382,21 @@ export default function OnboardingPage() {
             x: direction < 0 ? 50 : -50,
             opacity: 0
         })
+    };
+
+    const isStepComplete = (id: number) => {
+        switch (id) {
+            case 1:
+                return organizationCreated;
+            case 2:
+                return brandProfileCreated;
+            case 3:
+                return contactInfoSaved;
+            case 4:
+                return step > 4;
+            default:
+                return false;
+        }
     };
 
     if (!account && step !== 1) {
@@ -293,7 +418,7 @@ export default function OnboardingPage() {
             <div className="relative z-10 w-full max-w-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-center gap-2 mb-6">
-                    <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-6 w-6" />
+                    <Image src="/logo-sm.png" alt="UtilitySheet Logo" width={24} height={24} className="h-6 w-6" />
                     <span className="text-xl font-bold text-foreground">UtilitySheet</span>
                 </div>
 
@@ -301,25 +426,32 @@ export default function OnboardingPage() {
                 <div className="flex items-center justify-center gap-2 mb-8">
                     {STEPS.map((s, index) => (
                         <div key={s.id} className="flex items-center">
-                            <div
+                            <button
+                                type="button"
+                                onClick={() => setStep(s.id)}
+                                disabled={s.id > step}
+                                aria-label={`Go to ${s.title}`}
+                                aria-current={step === s.id ? 'step' : undefined}
                                 className={`
                                     flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300
-                                    ${step >= s.id
+                                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background
+                                    ${isStepComplete(s.id) || step === s.id
                                         ? 'bg-slate-600 text-white'
                                         : 'bg-muted text-muted-foreground'
                                     }
                                     ${step === s.id ? 'ring-2 ring-slate-400 ring-offset-2 ring-offset-background' : ''}
+                                    ${s.id > step ? 'cursor-not-allowed' : 'cursor-pointer'}
                                 `}
                             >
-                                {step > s.id ? (
-                                    <CheckCircle2 className="h-5 w-5" />
+                                {isStepComplete(s.id) && step !== s.id ? (
+                                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
                                 ) : (
-                                    <s.icon className="h-5 w-5" />
+                                    <s.icon className="h-5 w-5" aria-hidden="true" />
                                 )}
-                            </div>
+                            </button>
                             {index < STEPS.length - 1 && (
                                 <div
-                                    className={`w-8 h-0.5 mx-1 transition-all duration-300 ${step > s.id ? 'bg-slate-600' : 'bg-muted'
+                                    className={`w-8 h-0.5 mx-1 transition-all duration-300 ${isStepComplete(s.id) ? 'bg-slate-600' : 'bg-muted'
                                         }`}
                                 />
                             )}
@@ -344,9 +476,14 @@ export default function OnboardingPage() {
                                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-4">
                                         <Sparkles className="h-8 w-8 text-slate-500" />
                                     </div>
-                                    <CardTitle className="text-2xl text-foreground">Welcome to UtilitySheet!</CardTitle>
+                                    <CardTitle className="text-2xl text-foreground">
+                                        {organizationCreated ? 'Organization Details' : 'Welcome to UtilitySheet!'}
+                                    </CardTitle>
                                     <CardDescription className="text-muted-foreground text-base">
-                                        Let's get you set up in just a few minutes. First, tell us about your business.
+                                        {organizationCreated
+                                            ? "Update your organization name. You can change this later in settings, too."
+                                            : "Let's get you set up in just a few minutes. First, tell us about your business."
+                                        }
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
@@ -357,6 +494,8 @@ export default function OnboardingPage() {
                                             placeholder="e.g. The Evergreen Group, Smith Realty"
                                             value={orgName}
                                             onChange={(e) => setOrgName(e.target.value)}
+                                            autoComplete="organization"
+                                            autoFocus
                                             className="bg-background border-input text-foreground placeholder:text-muted-foreground h-12"
                                             onKeyDown={(e) => e.key === 'Enter' && orgName && handleCreateOrg()}
                                         />
@@ -372,9 +511,15 @@ export default function OnboardingPage() {
                                         className="w-full bg-slate-600 hover:bg-slate-700 text-white h-12"
                                     >
                                         {loading ? (
-                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            <>
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <span className="ml-2">Saving...</span>
+                                            </>
                                         ) : (
-                                            <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
+                                            <>
+                                                {organizationCreated ? 'Save & Continue' : 'Continue'}
+                                                <ArrowRight className="ml-2 h-4 w-4" />
+                                            </>
                                         )}
                                     </Button>
                                 </CardFooter>
@@ -409,8 +554,13 @@ export default function OnboardingPage() {
                                         <Input
                                             id="brandName"
                                             value={brandName}
-                                            onChange={(e) => setBrandName(e.target.value)}
+                                            onChange={(e) => {
+                                                setBrandNameTouched(true);
+                                                setBrandName(e.target.value);
+                                            }}
                                             placeholder="e.g. The Evergreen Group"
+                                            autoComplete="organization"
+                                            autoFocus
                                             className="bg-background border-input text-foreground h-12"
                                         />
                                     </div>
@@ -421,9 +571,13 @@ export default function OnboardingPage() {
                                             {BRAND_COLORS.map((color) => (
                                                 <button
                                                     key={color.value}
+                                                    type="button"
                                                     onClick={() => setPrimaryColor(color.value)}
+                                                    aria-label={`Select ${color.name} as your brand color`}
+                                                    aria-pressed={primaryColor === color.value}
                                                     className={`
                                                         w-12 h-12 rounded-xl border-2 transition-all duration-200
+                                                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background
                                                         ${primaryColor === color.value
                                                             ? 'border-foreground scale-110 shadow-lg'
                                                             : 'border-transparent hover:scale-105'
@@ -438,10 +592,11 @@ export default function OnboardingPage() {
                                                     type="color"
                                                     value={primaryColor}
                                                     onChange={(e) => setPrimaryColor(e.target.value)}
-                                                    className="absolute inset-0 w-12 h-12 opacity-0 cursor-pointer"
+                                                    aria-label="Choose a custom brand color"
+                                                    className="peer absolute inset-0 w-12 h-12 opacity-0 cursor-pointer"
                                                 />
                                                 <div
-                                                    className="w-12 h-12 rounded-xl border-2 border-dashed border-muted-foreground flex items-center justify-center cursor-pointer hover:border-foreground transition-colors"
+                                                    className="w-12 h-12 rounded-xl border-2 border-dashed border-muted-foreground flex items-center justify-center cursor-pointer hover:border-foreground transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-slate-400/50 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background"
                                                     style={!BRAND_COLORS.find(c => c.value === primaryColor) ? { backgroundColor: primaryColor } : {}}
                                                 >
                                                     {BRAND_COLORS.find(c => c.value === primaryColor) && (
@@ -463,24 +618,37 @@ export default function OnboardingPage() {
                                         <p className="text-sm text-muted-foreground">Utility Information Sheet</p>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="flex gap-3">
+                                <CardFooter className="flex flex-col gap-3">
+                                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleBack}
+                                            className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
+                                        >
+                                            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                                        </Button>
+                                        <Button
+                                            onClick={handleCreateBrand}
+                                            disabled={loading}
+                                            className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                    <span className="ml-2">Saving...</span>
+                                                </>
+                                            ) : (
+                                                <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
+                                            )}
+                                        </Button>
+                                    </div>
                                     <Button
                                         variant="ghost"
-                                        onClick={() => setStep(3)}
-                                        className="flex-1 text-muted-foreground hover:text-foreground"
+                                        onClick={handleSkipBranding}
+                                        className="w-full text-muted-foreground hover:text-foreground"
+                                        disabled={loading}
                                     >
                                         Skip for now
-                                    </Button>
-                                    <Button
-                                        onClick={handleCreateBrand}
-                                        disabled={loading}
-                                        className="flex-[2] bg-slate-600 hover:bg-slate-700 text-white h-12"
-                                    >
-                                        {loading ? (
-                                            <Loader2 className="h-5 w-5 animate-spin" />
-                                        ) : (
-                                            <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
-                                        )}
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -509,7 +677,7 @@ export default function OnboardingPage() {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="contactName" className="text-foreground flex items-center gap-2">
                                                 <User className="h-4 w-4" /> Name
@@ -517,7 +685,12 @@ export default function OnboardingPage() {
                                             <Input
                                                 id="contactName"
                                                 value={contactName}
-                                                onChange={(e) => setContactName(e.target.value)}
+                                                onChange={(e) => {
+                                                    setContactInfoSaved(false);
+                                                    setContactName(e.target.value);
+                                                }}
+                                                autoComplete="name"
+                                                autoFocus
                                                 placeholder="John Smith"
                                                 className="bg-background border-input text-foreground"
                                             />
@@ -528,8 +701,13 @@ export default function OnboardingPage() {
                                             </Label>
                                             <Input
                                                 id="contactPhone"
+                                                type="tel"
                                                 value={contactPhone}
-                                                onChange={(e) => setContactPhone(e.target.value)}
+                                                onChange={(e) => {
+                                                    setContactInfoSaved(false);
+                                                    setContactPhone(e.target.value);
+                                                }}
+                                                autoComplete="tel"
                                                 placeholder="(555) 123-4567"
                                                 className="bg-background border-input text-foreground"
                                             />
@@ -543,7 +721,11 @@ export default function OnboardingPage() {
                                             id="contactEmail"
                                             type="email"
                                             value={contactEmail}
-                                            onChange={(e) => setContactEmail(e.target.value)}
+                                            onChange={(e) => {
+                                                setContactInfoSaved(false);
+                                                setContactEmail(e.target.value);
+                                            }}
+                                            autoComplete="email"
                                             placeholder="john@example.com"
                                             className="bg-background border-input text-foreground"
                                         />
@@ -554,28 +736,36 @@ export default function OnboardingPage() {
                                         </Label>
                                         <Input
                                             id="contactWebsite"
+                                            type="url"
                                             value={contactWebsite}
-                                            onChange={(e) => setContactWebsite(e.target.value)}
+                                            onChange={(e) => {
+                                                setContactInfoSaved(false);
+                                                setContactWebsite(e.target.value);
+                                            }}
+                                            autoComplete="url"
                                             placeholder="www.yoursite.com"
                                             className="bg-background border-input text-foreground"
                                         />
                                     </div>
                                 </CardContent>
-                                <CardFooter className="flex gap-3">
+                                <CardFooter className="flex flex-col sm:flex-row gap-3">
                                     <Button
                                         variant="outline"
                                         onClick={handleBack}
-                                        className="border-border text-foreground hover:bg-muted"
+                                        className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
                                     >
                                         <ArrowLeft className="mr-2 h-4 w-4" /> Back
                                     </Button>
                                     <Button
                                         onClick={handleSaveContactInfo}
                                         disabled={loading}
-                                        className="flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
+                                        className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
                                     >
                                         {loading ? (
-                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                            <>
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <span className="ml-2">Saving...</span>
+                                            </>
                                         ) : (
                                             <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
                                         )}
@@ -616,7 +806,7 @@ export default function OnboardingPage() {
                                             contact_phone: contactPhone,
                                             contact_email: contactEmail,
                                             contact_website: contactWebsite,
-                                            logo_url: logoPreview || undefined,
+                                            logo_url: logoUrl,
                                             disclaimer_text: '',
                                             is_default: true,
                                             show_powered_by: true,
@@ -624,17 +814,17 @@ export default function OnboardingPage() {
                                         }}
                                     />
                                 </CardContent>
-                                <CardFooter className="flex gap-3">
+                                <CardFooter className="flex flex-col sm:flex-row gap-3">
                                     <Button
                                         variant="outline"
                                         onClick={handleBack}
-                                        className="border-border text-foreground hover:bg-muted"
+                                        className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
                                     >
                                         <ArrowLeft className="mr-2 h-4 w-4" /> Edit
                                     </Button>
                                     <Button
                                         onClick={() => setStep(5)}
-                                        className="flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
+                                        className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
                                     >
                                         Looks Great! <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
@@ -711,7 +901,10 @@ export default function OnboardingPage() {
                                                 className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white h-14 text-lg font-semibold shadow-lg shadow-slate-500/20"
                                             >
                                                 {loading ? (
-                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                    <>
+                                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                                        <span className="ml-2">Creating...</span>
+                                                    </>
                                                 ) : (
                                                     <>
                                                         <Send className="mr-2 h-5 w-5" />

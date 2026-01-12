@@ -12,6 +12,7 @@ export async function POST(request: Request) {
         const body = await request.json().catch(() => ({}));
         const name = typeof body?.name === 'string' ? body.name.trim() : '';
         const primaryColor = typeof body?.primaryColor === 'string' ? body.primaryColor.trim() : undefined;
+        const secondaryColor = typeof body?.secondaryColor === 'string' ? body.secondaryColor.trim() : undefined;
 
         if (name.length < 2 || name.length > 100) {
             return NextResponse.json({ error: 'Brand name is required' }, { status: 400 });
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
             organizationId: account.active_organization_id || undefined,
             name,
             primaryColor,
+            secondaryColor,
             isDefault: true,
             contactName: account.full_name || user.displayName || undefined,
             contactEmail: account.email || user.primaryEmail || undefined,
@@ -46,4 +48,3 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to create brand profile' }, { status: 500 });
     }
 }
-

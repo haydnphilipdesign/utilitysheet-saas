@@ -3,18 +3,37 @@
 import Image from 'next/image';
 import type { BrandProfileFormData } from '@/types';
 import { DEFAULT_BUYER_STEPS } from '@/lib/constants';
+import { CalendarDays, Droplets, Flame, MapPin, Trash2, Wifi, Zap } from 'lucide-react';
 
 interface UtilitySheetPdfPreviewProps {
     branding: BrandProfileFormData;
 }
 
+function hexToRgb(hex: string) {
+    const normalized = hex.replace('#', '').trim();
+    if (normalized.length !== 6) return null;
+
+    const r = parseInt(normalized.slice(0, 2), 16);
+    const g = parseInt(normalized.slice(2, 4), 16);
+    const b = parseInt(normalized.slice(4, 6), 16);
+
+    if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return null;
+    return { r, g, b };
+}
+
+function rgbaFromHex(hex: string, alpha: number) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return `rgba(16, 185, 129, ${alpha})`; // emerald-500 fallback
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+}
+
 // Sample utility data for preview
 const sampleUtilities = [
-    { category: 'electric', provider: 'Springfield Electric', phone: '(800) 555-0100', icon: '⚡' },
-    { category: 'gas', provider: 'County Gas Co.', phone: '(800) 555-0101', icon: '🔥' },
-    { category: 'water', provider: 'Springfield Water', phone: '(800) 555-0102', icon: '💧' },
-    { category: 'trash', provider: 'Waste Services', phone: '(800) 555-0103', icon: '🗑️' },
-    { category: 'internet', provider: 'Xfinity', phone: '(800) 555-0104', icon: '📶' },
+    { category: 'electric', provider: 'Springfield Electric', phone: '(800) 555-0100', icon: Zap },
+    { category: 'gas', provider: 'County Gas Co.', phone: '(800) 555-0101', icon: Flame },
+    { category: 'water', provider: 'Springfield Water', phone: '(800) 555-0102', icon: Droplets },
+    { category: 'trash', provider: 'Waste Services', phone: '(800) 555-0103', icon: Trash2 },
+    { category: 'internet', provider: 'Xfinity', phone: '(800) 555-0104', icon: Wifi },
 ];
 
 export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPreviewProps) {
@@ -28,6 +47,11 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
     const welcomeMessage = branding.welcome_message || '';
     const nextStepsTitle = branding.next_steps_title || 'Buyer Next Steps';
     const buyerSteps = branding.buyer_next_steps || DEFAULT_BUYER_STEPS;
+    const generatedOn = new Date().toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
 
     // Generate initials for fallback when no logo
     const initials = brandName
@@ -99,13 +123,13 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
                         Utility Info Sheet
                     </h1>
                     <div className="inline-flex items-center gap-1.5 bg-neutral-100 px-2.5 py-1.5 rounded-lg border border-neutral-200">
-                        <span className="text-emerald-600">📍</span>
+                        <MapPin className="h-3 w-3" style={{ color: primaryColor }} aria-hidden="true" />
                         <span className="font-semibold text-neutral-900">123 Main St, Springfield</span>
                     </div>
                     {showGenerationDate && (
                         <div className="flex items-center justify-center gap-1 mt-2 text-neutral-500 text-[9px]">
-                            <span>📅</span>
-                            <span>Generated on January 12, 2026</span>
+                            <CalendarDays className="h-3 w-3" aria-hidden="true" />
+                            <span>Generated on {generatedOn}</span>
                         </div>
                     )}
                 </div>
@@ -131,27 +155,30 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
                             </tr>
                         </thead>
                         <tbody>
-                            {sampleUtilities.map((utility, idx) => (
-                                <tr
-                                    key={utility.category}
-                                    className={idx !== sampleUtilities.length - 1 ? 'border-b border-neutral-100' : ''}
-                                >
-                                    <td className="px-3 py-1.5">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="text-xs">{utility.icon}</span>
-                                            <span className="font-medium text-neutral-900 capitalize">
-                                                {utility.category}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-1.5 text-neutral-700 font-medium">
-                                        {utility.provider}
-                                    </td>
-                                    <td className="px-3 py-1.5 text-emerald-600 font-medium">
-                                        {utility.phone}
-                                    </td>
-                                </tr>
-                            ))}
+                            {sampleUtilities.map((utility, idx) => {
+                                const Icon = utility.icon;
+                                return (
+                                    <tr
+                                        key={utility.category}
+                                        className={idx !== sampleUtilities.length - 1 ? 'border-b border-neutral-100' : ''}
+                                    >
+                                        <td className="px-3 py-1.5">
+                                            <div className="flex items-center gap-1.5">
+                                                <Icon className="h-3 w-3" style={{ color: primaryColor }} aria-hidden="true" />
+                                                <span className="font-medium text-neutral-900 capitalize">
+                                                    {utility.category}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-1.5 text-neutral-700 font-medium">
+                                            {utility.provider}
+                                        </td>
+                                        <td className="px-3 py-1.5 font-medium" style={{ color: primaryColor }}>
+                                            {utility.phone}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -160,16 +187,22 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
                 <div className="mx-3 mb-3 bg-neutral-50 border border-neutral-200 rounded-lg p-3">
                     <h3 className="font-semibold text-neutral-900 text-[11px] mb-2">{nextStepsTitle}</h3>
                     <ol className="space-y-1.5">
-                        {buyerSteps.filter(step => step.trim()).map((step, i) => (
-                            <li key={i} className="flex gap-2 text-neutral-600 items-start">
-                                <span
-                                    className="flex-shrink-0 w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[8px] font-semibold"
-                                >
-                                    {i + 1}
-                                </span>
-                                <span className="leading-snug text-[9px]">{step}</span>
-                            </li>
-                        ))}
+                        {buyerSteps
+                            .filter((step) => step.trim())
+                            .map((step, i) => (
+                                <li key={i} className="flex gap-2 text-neutral-600 items-start">
+                                    <span
+                                        className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-semibold"
+                                        style={{
+                                            backgroundColor: rgbaFromHex(primaryColor, 0.12),
+                                            color: primaryColor,
+                                        }}
+                                    >
+                                        {i + 1}
+                                    </span>
+                                    <span className="leading-snug text-[9px]">{step}</span>
+                                </li>
+                            ))}
                     </ol>
                 </div>
 

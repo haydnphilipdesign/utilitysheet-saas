@@ -51,6 +51,7 @@ export {
 // Organization queries
 export {
     createOrganization,
+    updateOrganization,
     getAccountOrganizations,
     setActiveOrganization,
 } from './organizations';
