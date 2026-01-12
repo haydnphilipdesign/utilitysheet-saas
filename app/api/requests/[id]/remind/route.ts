@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestById, getOrCreateAccount, getBrandProfile } from '@/lib/neon/queries';
+import { getRequestById, getOrCreateAccount, getBrandProfile, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerReminderEmail } from '@/lib/email/email-service';
 
@@ -57,6 +57,21 @@ export async function POST(
         if (!result.success) {
             return NextResponse.json({ error: result.error || 'Failed to send reminder' }, { status: 500 });
         }
+
+        const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+            request.headers.get('x-real-ip') ||
+            null;
+        const userAgent = request.headers.get('user-agent') || null;
+        await createEventLog({
+            requestId: requestData.id,
+            eventType: 'reminder_sent',
+            eventData: {
+                actor: 'agent',
+                channel: 'email',
+            },
+            ipAddress,
+            userAgent,
+        });
 
         return NextResponse.json({ success: true });
     } catch (error) {

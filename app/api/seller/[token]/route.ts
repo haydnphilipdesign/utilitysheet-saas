@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, createEventLog } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
@@ -27,6 +27,29 @@ export async function GET(
             if (token !== requestData.seller_token) {
                 return NextResponse.json({ error: 'Request not found' }, { status: 404 });
             }
+        }
+
+        // Log seller opened + transition status to in_progress on first open
+        const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+            request.headers.get('x-real-ip') ||
+            null;
+        const userAgent = request.headers.get('user-agent') || null;
+
+        await createEventLog({
+            requestId: requestData.id,
+            eventType: 'seller_opened',
+            eventData: { actor: 'seller' },
+            ipAddress,
+            userAgent,
+        });
+
+        if (sql) {
+            await sql`
+                UPDATE requests
+                SET status = 'in_progress', last_activity_at = NOW()
+                WHERE id = ${requestData.id}
+                AND status = 'sent'
+            `;
         }
 
         // Get associated brand profile if exists
@@ -123,6 +146,11 @@ export async function POST(
             return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
         }
 
+        const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+            request.headers.get('x-real-ip') ||
+            null;
+        const userAgent = request.headers.get('user-agent') || null;
+
         const requestedCategories = new Set<string>(
             (requestData as any).utility_categories || UTILITY_CATEGORY_KEYS
         );
@@ -197,10 +225,13 @@ export async function POST(
         }
 
         // Log event
-        await sql`
-            INSERT INTO event_logs (request_id, event_type, event_data)
-            VALUES (${requestData.id}, 'seller_submitted', ${JSON.stringify(parsedBody.data)})
-        `;
+        await createEventLog({
+            requestId: requestData.id,
+            eventType: 'seller_submitted',
+            eventData: parsedBody.data,
+            ipAddress,
+            userAgent,
+        });
 
         // Get account and notification preferences
         const account = await getAccountById(requestData.account_id);

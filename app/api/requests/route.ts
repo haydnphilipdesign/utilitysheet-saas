@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -125,6 +125,24 @@ export async function POST(request: Request) {
         // Mark request as 'sent' so it counts against plan limits
         // Draft requests that are abandoned won't count
         await updateRequestStatus(newRequest.id, 'sent');
+
+        // Log request creation event
+        const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+            request.headers.get('x-real-ip') ||
+            null;
+        const userAgent = request.headers.get('user-agent') || null;
+        await createEventLog({
+            requestId: newRequest.id,
+            eventType: 'request_created',
+            eventData: {
+                actor: 'agent',
+                utility_categories: selectedUtilityCategories,
+                has_seller_email: !!parsedBody.data.sellerEmail,
+                send_seller_email: parsedBody.data.sendSellerEmail !== false,
+            },
+            ipAddress,
+            userAgent,
+        });
 
         // Send email notification to seller if email is provided and sendSellerEmail is true
         if (parsedBody.data.sellerEmail && parsedBody.data.sendSellerEmail !== false) {

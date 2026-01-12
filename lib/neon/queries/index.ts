@@ -54,3 +54,8 @@ export {
     getAccountOrganizations,
     setActiveOrganization,
 } from './organizations';
+
+// Event log queries
+export {
+    createEventLog,
+} from './event-logs';
