@@ -357,8 +357,15 @@ export default function OnboardingPage() {
         }
     };
 
-    const handleFinish = () => {
+    const handleFinish = async () => {
+        try {
+            await fetch('/api/onboarding/complete', { method: 'POST' });
+        } catch (error) {
+            console.error(error);
+        }
+
         router.push('/dashboard');
+        router.refresh();
     };
 
     const handleBack = () => {

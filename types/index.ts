@@ -66,6 +66,7 @@ export interface Account {
     subscription_status: Plan;
     subscription_id?: string | null;
     subscription_ends_at?: string | null;
+    onboarding_completed_at?: string | null;
     notification_preferences?: Record<string, unknown>;
     created_at: string;
     updated_at: string;

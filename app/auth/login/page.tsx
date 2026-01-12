@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { stackClientApp } from '@/lib/stack/client';
@@ -17,6 +17,50 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const getPostAuthRoute = async () => {
+        try {
+            const response = await fetch('/api/account');
+            if (!response.ok) return '/dashboard';
+
+            const data = await response.json().catch(() => ({}));
+            const account = data?.account || {};
+            const hasCompletionFlag = Object.prototype.hasOwnProperty.call(account, 'onboarding_completed_at');
+
+            if (hasCompletionFlag) {
+                return account.onboarding_completed_at ? '/dashboard' : '/onboarding';
+            }
+
+            // Fallback for databases that haven't run the onboarding completion migration yet
+            return account.active_organization_id ? '/dashboard' : '/onboarding';
+        } catch (e) {
+            console.error(e);
+            return '/dashboard';
+        }
+    };
+
+    useEffect(() => {
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const response = await fetch('/api/account');
+                if (!response.ok) return;
+
+                const destination = await getPostAuthRoute();
+                if (cancelled) return;
+
+                router.push(destination);
+                router.refresh();
+            } catch {
+                // ignore
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [router]);
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -29,16 +73,17 @@ export default function LoginPage() {
                 noRedirect: true,
             });
 
-            if (result.status === 'error') {
-                throw new Error(result.error.message || 'Invalid email or password');
-            }
+             if (result.status === 'error') {
+                 throw new Error(result.error.message || 'Invalid email or password');
+             }
 
-            router.push('/dashboard');
-            router.refresh();
-        } catch (err: any) {
-            setError(err.message || 'Failed to sign in');
-            setLoading(false);
-        }
+             const destination = await getPostAuthRoute();
+             router.push(destination);
+             router.refresh();
+         } catch (err: any) {
+             setError(err.message || 'Failed to sign in');
+             setLoading(false);
+         }
     };
 
     return (

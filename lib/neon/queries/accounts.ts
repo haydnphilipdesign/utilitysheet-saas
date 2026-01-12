@@ -46,6 +46,23 @@ export async function updateAccount(accountId: string, data: { fullName?: string
 }
 
 /**
+ * Mark onboarding as completed for an account
+ */
+export async function setOnboardingCompleted(accountId: string) {
+    if (!sql) return null;
+
+    const result = await sql`
+        UPDATE accounts
+        SET onboarding_completed_at = COALESCE(onboarding_completed_at, NOW()),
+            updated_at = NOW()
+        WHERE id = ${accountId}
+        RETURNING *
+    `;
+
+    return result[0] || null;
+}
+
+/**
  * Get account by ID
  */
 export async function getAccountById(accountId: string) {

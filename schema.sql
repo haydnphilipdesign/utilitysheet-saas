@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     subscription_status TEXT DEFAULT 'free' CHECK (subscription_status IN ('free', 'pro', 'canceled')),
     subscription_id TEXT,
     subscription_ends_at TIMESTAMPTZ,
+    onboarding_completed_at TIMESTAMPTZ,
     notification_preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

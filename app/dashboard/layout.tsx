@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { stackServerApp } from '@/lib/stack/server';
+import { getOrCreateAccount } from '@/lib/neon/queries';
 import { DashboardLayoutContent } from './layout-content';
 
 function DashboardLoadingFallback() {
@@ -22,6 +23,12 @@ export default async function DashboardLayout({
     const user = await stackServerApp.getUser();
     if (!user) {
         redirect('/auth/login');
+    }
+
+    const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
+    const hasCompletionFlag = account && Object.prototype.hasOwnProperty.call(account, 'onboarding_completed_at');
+    if (hasCompletionFlag && !account.onboarding_completed_at) {
+        redirect('/onboarding');
     }
 
     return (

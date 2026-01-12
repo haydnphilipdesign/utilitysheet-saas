@@ -15,6 +15,7 @@
 export {
     getOrCreateAccount,
     updateAccount,
+    setOnboardingCompleted,
     getAccountById,
     getAccountByStripeCustomerId,
     updateAccountStripeCustomer,
