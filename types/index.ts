@@ -40,7 +40,7 @@ export type EventName =
 // User Role enum for admin functionality
 export type UserRole = 'user' | 'admin' | 'banned';
 
-export type Plan = 'free' | 'pro';
+export type Plan = 'free' | 'pro' | 'canceled';
 
 // Admin audit action types
 export type AdminAction =
@@ -62,7 +62,11 @@ export interface Account {
     phone: string | null;
     active_organization_id: string | null;
     role: UserRole;
+    stripe_customer_id?: string | null;
     subscription_status: Plan;
+    subscription_id?: string | null;
+    subscription_ends_at?: string | null;
+    notification_preferences?: Record<string, unknown>;
     created_at: string;
     updated_at: string;
 }
@@ -129,6 +133,10 @@ export interface Request {
     status: RequestStatus;
     public_token: string;
     seller_token?: string | null;
+    utility_categories?: UtilityCategory[] | null;
+    water_source?: WaterSource | null;
+    sewer_type?: SewerType | null;
+    heating_type?: HeatingType | null;
     created_at: string;
     updated_at: string;
     last_activity_at: string;
@@ -141,11 +149,11 @@ export interface UtilityEntry {
     id: string;
     request_id: string;
     category: UtilityCategory;
-    provider_entry_mode: ProviderEntryMode | null;
-    provider_display_name: string | null;
-    provider_raw_text: string | null;
-    provider_canonical_id: string | null;
-    suggestion_confidence: number | null;
+    entry_mode: ProviderEntryMode | null;
+    display_name: string | null;
+    raw_text: string | null;
+    canonical_id: string | null;
+    confidence_score: number | null;
     contact_phone: string | null;
     contact_url: string | null;
     created_at: string;
@@ -155,9 +163,10 @@ export interface UtilityEntry {
 export interface EventLog {
     id: string;
     request_id: string;
-    actor_type: ActorType;
-    event_name: EventName;
-    payload: Record<string, unknown> | null;
+    event_type: EventName | string;
+    event_data: Record<string, unknown> | null;
+    ip_address: string | null;
+    user_agent: string | null;
     created_at: string;
 }
 
