@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Loader2, Save, Palette, Upload } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import type { BrandProfileFormData } from '@/types';
 
 interface BrandProfileFormProps {
@@ -33,9 +35,63 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
     const router = useRouter();
     const [formData, setFormData] = useState<BrandProfileFormData>(initialData || defaultFormData);
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const updateField = <K extends keyof BrandProfileFormData>(field: K, value: BrandProfileFormData[K]) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+        if (!allowedTypes.includes(file.type)) {
+            toast.error('Invalid file type. Please use JPEG, PNG, WebP, or SVG.');
+            return;
+        }
+
+        // Validate file size (2MB max)
+        if (file.size > 2 * 1024 * 1024) {
+            toast.error('File too large. Maximum size is 2MB.');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const formDataUpload = new FormData();
+            formDataUpload.append('file', file);
+
+            const response = await fetch('/api/branding/upload', {
+                method: 'POST',
+                body: formDataUpload,
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Upload failed');
+            }
+
+            const { url } = await response.json();
+            updateField('logo_url', url);
+            toast.success('Logo uploaded successfully!');
+        } catch (error) {
+            console.error('Upload error:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to upload logo');
+        } finally {
+            setUploading(false);
+            // Reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    };
+
+    const handleRemoveLogo = () => {
+        updateField('logo_url', undefined);
+        toast.success('Logo removed');
     };
 
     const handleSubmit = async () => {
@@ -92,17 +148,64 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                         <div className="space-y-2">
                             <Label className="text-foreground">Logo</Label>
                             <div className="flex items-center gap-4">
-                                <div className="w-20 h-20 rounded-lg bg-muted border-2 border-dashed border-border flex items-center justify-center">
-                                    <Upload className="h-6 w-6 text-muted-foreground" />
+                                {/* Logo Preview */}
+                                <div className="relative w-20 h-20 rounded-lg bg-muted border-2 border-dashed border-border flex items-center justify-center overflow-hidden group">
+                                    {formData.logo_url ? (
+                                        <>
+                                            <Image
+                                                src={formData.logo_url}
+                                                alt="Brand logo"
+                                                fill
+                                                className="object-contain"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveLogo}
+                                                className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X className="h-6 w-6 text-white" />
+                                            </button>
+                                        </>
+                                    ) : uploading ? (
+                                        <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                                    ) : (
+                                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                                    )}
                                 </div>
                                 <div className="flex-1">
-                                    <Input
+                                    <input
+                                        ref={fileInputRef}
                                         type="file"
-                                        accept="image/*"
-                                        className="bg-background border-input text-foreground"
-                                        disabled
+                                        accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                                        onChange={handleFileSelect}
+                                        className="hidden"
+                                        id="logo-upload"
                                     />
-                                    <p className="text-xs text-muted-foreground mt-1">Logo upload coming soon</p>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                        className="w-full"
+                                    >
+                                        {uploading ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Uploading...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload className="mr-2 h-4 w-4" />
+                                                {formData.logo_url ? 'Replace Logo' : 'Upload Logo'}
+                                            </>
+                                        )}
+                                    </Button>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        JPEG, PNG, WebP, or SVG. Max 2MB.
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Recommended: 200×200px minimum. Square or horizontal logos work best.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -247,15 +350,26 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                     <CardContent>
                         <div className="p-6 rounded-lg bg-secondary/50 border border-border">
                             <div className="flex items-center gap-4">
-                                <div
-                                    className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold"
-                                    style={{ backgroundColor: formData.primary_color }}
-                                >
-                                    {formData.name
-                                        ? formData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                                        : 'BR'
-                                    }
-                                </div>
+                                {formData.logo_url ? (
+                                    <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                                        <Image
+                                            src={formData.logo_url}
+                                            alt="Brand logo preview"
+                                            fill
+                                            className="object-contain"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div
+                                        className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0"
+                                        style={{ backgroundColor: formData.primary_color }}
+                                    >
+                                        {formData.name
+                                            ? formData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+                                            : 'BR'
+                                        }
+                                    </div>
+                                )}
                                 <div>
                                     <h3 className="font-semibold text-foreground">
                                         {formData.name || 'Brand Name'}

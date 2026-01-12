@@ -89,6 +89,7 @@ export async function createBrandProfile(data: {
     accountId: string;
     organizationId?: string;
     name: string;
+    logoUrl?: string;
     primaryColor?: string;
     secondaryColor?: string;
     contactName?: string;
@@ -122,6 +123,7 @@ export async function createBrandProfile(data: {
             account_id,
             organization_id,
             name,
+            logo_url,
             primary_color,
             secondary_color,
             contact_name,
@@ -134,6 +136,7 @@ export async function createBrandProfile(data: {
             ${data.accountId},
             ${data.organizationId || null},
             ${data.name},
+            ${data.logoUrl || null},
             ${data.primaryColor || '#10b981'},
             ${data.secondaryColor || '#059669'},
             ${data.contactName || null},
@@ -200,6 +203,7 @@ export async function updateBrandProfile(
         UPDATE brand_profiles
         SET
             name = COALESCE(${data.name}, name),
+            logo_url = COALESCE(${data.logo_url}, logo_url),
             primary_color = COALESCE(${data.primary_color}, primary_color),
             secondary_color = COALESCE(${data.secondary_color}, secondary_color),
             contact_name = COALESCE(${data.contact_name}, contact_name),

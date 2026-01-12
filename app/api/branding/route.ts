@@ -73,6 +73,7 @@ export async function POST(request: Request) {
             accountId,
             organizationId,
             name: body.name,
+            logoUrl: body.logo_url,
             primaryColor: body.primary_color,
             secondaryColor: body.secondary_color,
             contactName: body.contact_name,

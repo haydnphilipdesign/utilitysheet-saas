@@ -85,6 +85,7 @@ export async function PUT(
 
         const updatedProfile = await updateBrandProfile(id, {
             name: body.name,
+            logo_url: body.logo_url,
             primary_color: body.primary_color,
             secondary_color: body.secondary_color,
             contact_name: body.contact_name,
