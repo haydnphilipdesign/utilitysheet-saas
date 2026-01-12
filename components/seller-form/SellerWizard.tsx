@@ -66,6 +66,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [currentStep, setCurrentStep] = useState<Step>(Step.WELCOME);
     const [utilityIndex, setUtilityIndex] = useState(0); // For iterating through utility providers
     const [submitting, setSubmitting] = useState(false);
+    const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
+    const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
 
     // Initialize state
     const [state, setState] = useState<WizardState>(() => {
@@ -85,6 +87,61 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     });
 
     const [visibleUtilities, setVisibleUtilities] = useState<UtilityCategory[]>([]);
+
+    // Lazy-load suggestions as needed (prefetch current + next)
+    useEffect(() => {
+        if (isDemo) return;
+        if (currentStep !== Step.HOME_BASICS && currentStep !== Step.UTILITIES) return;
+
+        const currentCategory = currentStep === Step.UTILITIES ? visibleUtilities[utilityIndex] : visibleUtilities[0];
+        const nextCategory = currentStep === Step.UTILITIES ? visibleUtilities[utilityIndex + 1] : visibleUtilities[1];
+        const candidateCategories = [currentCategory, nextCategory].filter(Boolean) as UtilityCategory[];
+
+        const categoriesToFetch = candidateCategories.filter((cat) => {
+            const hasSuggestions = Object.prototype.hasOwnProperty.call(suggestionsByCategory, cat);
+            return !hasSuggestions && !loadingSuggestions[cat];
+        });
+
+        if (categoriesToFetch.length === 0) return;
+
+        setLoadingSuggestions((prev) => ({
+            ...prev,
+            ...Object.fromEntries(categoriesToFetch.map((cat) => [cat, true])),
+        }));
+
+        (async () => {
+            try {
+                const res = await fetch(`/api/seller/${token}/suggestions?categories=${encodeURIComponent(categoriesToFetch.join(','))}`);
+                const data = await res.json().catch(() => ({}));
+
+                const fetched = (res.ok ? data.suggestions : {}) as Partial<Record<UtilityCategory, ProviderSuggestion[]>>;
+                setSuggestionsByCategory((prev) => {
+                    const next = { ...prev };
+                    categoriesToFetch.forEach((cat) => {
+                        next[cat] = fetched?.[cat] || [];
+                    });
+                    return next as Record<UtilityCategory, ProviderSuggestion[]>;
+                });
+            } catch (error) {
+                console.error('Failed to load suggestions:', error);
+                setSuggestionsByCategory((prev) => {
+                    const next = { ...prev };
+                    categoriesToFetch.forEach((cat) => {
+                        next[cat] = [];
+                    });
+                    return next as Record<UtilityCategory, ProviderSuggestion[]>;
+                });
+            } finally {
+                setLoadingSuggestions((prev) => {
+                    const next = { ...prev };
+                    categoriesToFetch.forEach((cat) => {
+                        next[cat] = false;
+                    });
+                    return next;
+                });
+            }
+        })();
+    }, [currentStep, utilityIndex, visibleUtilities, token, isDemo, suggestionsByCategory, loadingSuggestions]);
 
     // Calculate visible utilities based on state
     useEffect(() => {
@@ -288,7 +345,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         categoryLabel={visibleUtilities[utilityIndex].charAt(0).toUpperCase() + visibleUtilities[utilityIndex].slice(1)}
                         state={state}
                         updateState={updateUtilityState}
-                        suggestions={initialSuggestions[visibleUtilities[utilityIndex]] || []}
+                        suggestions={suggestionsByCategory[visibleUtilities[utilityIndex]] || []}
+                        loadingSuggestions={!!loadingSuggestions[visibleUtilities[utilityIndex]] && !Object.prototype.hasOwnProperty.call(suggestionsByCategory, visibleUtilities[utilityIndex])}
                         propertyAddress={initialRequestData.property_address}
                         onNext={handleNext}
                         onBack={handleBack}

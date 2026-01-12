@@ -2,11 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, Search, AlertCircle, X, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Check, Search, X, Loader2 } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import { UtilityCategory, ProviderSuggestion } from '@/types';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 
 interface UtilityStepProps {
     category: UtilityCategory;
@@ -14,6 +12,7 @@ interface UtilityStepProps {
     state: WizardState;
     updateState: (category: UtilityCategory, updates: any) => void;
     suggestions: ProviderSuggestion[];
+    loadingSuggestions?: boolean;
     propertyAddress: string;
     onNext: () => void;
     onBack: () => void;
@@ -25,6 +24,7 @@ export function UtilityStep({
     state,
     updateState,
     suggestions,
+    loadingSuggestions = false,
     propertyAddress,
     onNext,
     onBack
@@ -33,9 +33,6 @@ export function UtilityStep({
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<ProviderSuggestion[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-
-    // Primary suggestion is the first one
-    const topSuggestion = suggestions?.[0];
 
     // All suggestions available for search
     const alternativeSuggestions = suggestions || [];
@@ -66,7 +63,7 @@ export function UtilityStep({
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [searchQuery, category]);
+    }, [searchQuery, category, propertyAddress]);
 
     const currentUtilityState = state.utilities[category];
     const isCompleted = currentUtilityState?.entry_mode !== null;
@@ -134,7 +131,31 @@ export function UtilityStep({
 
             {mode === 'view' && (
                 <div className="space-y-6">
-                    {suggestions.length > 0 ? (
+                    {loadingSuggestions ? (
+                        <div className="bg-muted/50 border border-border rounded-2xl p-8 text-center space-y-6">
+                            <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                                <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+                            </div>
+                            <div>
+                                <h4 className="text-lg font-medium text-foreground">Finding providers...</h4>
+                                <p className="text-muted-foreground text-sm mt-1">Loading suggestions for your area.</p>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3">
+                                <button
+                                    onClick={() => setMode('search')}
+                                    className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors"
+                                >
+                                    Search Providers
+                                </button>
+                                <button
+                                    onClick={handleSkip}
+                                    className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors"
+                                >
+                                    I don't know
+                                </button>
+                            </div>
+                        </div>
+                    ) : suggestions.length > 0 ? (
                         <div className="space-y-4">
                             <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">Suggested for your area</p>
 

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, createEventLog } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
-import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import { hasValidContact, resolveContact } from '@/lib/providers/contact-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
 import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -81,8 +80,6 @@ export async function GET(
             (requestData as any).utility_categories ||
             UTILITY_CATEGORY_KEYS;
 
-        const suggestions = await getAllSuggestions(requestData.property_address, utilityCategories);
-
         return NextResponse.json({
             request: {
                 property_address: requestData.property_address,
@@ -90,7 +87,7 @@ export async function GET(
                 status: requestData.status,
             },
             brandProfile: publicBrandProfile,
-            suggestions,
+            suggestions: {},
         });
     } catch (error) {
         console.error('Error fetching seller data:', error);

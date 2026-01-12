@@ -1,9 +1,13 @@
 import { ProviderSuggestion, UtilityCategory } from '@/types';
 import { generateJSON, isGeminiConfigured } from '@/lib/ai/gemini-client';
 import { getFromCache, setInCache } from '@/lib/cache';
+import { createHash } from 'crypto';
 
 // Cache TTL: 30 days in seconds
 const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+// Search cache TTL: 7 days in seconds (queries change more often)
+const SEARCH_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 // ============================================================================
 // US States Map (all 50 states + DC)
@@ -122,6 +126,29 @@ function getCacheKey(address: string, category: UtilityCategory): string {
     const state = parsed.state || 'DEFAULT';
     const locality = parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'UNKNOWN');
     return `suggestions:${state}:${locality}:${category}`;
+}
+
+function hashCacheKeyPart(input: string): string {
+    return createHash('sha256').update(input).digest('hex').slice(0, 16);
+}
+
+function getSearchCacheKey(
+    query: string,
+    category?: UtilityCategory,
+    address?: string
+): string {
+    const normalizedQuery = query.trim().toLowerCase().slice(0, 200);
+    const categoryKey = category || 'any';
+    const queryHash = hashCacheKeyPart(normalizedQuery);
+
+    if (!address) {
+        return `provider-search:v1:GLOBAL:${categoryKey}:${queryHash}`;
+    }
+
+    const parsed = parseAddress(address);
+    const state = parsed.state || 'DEFAULT';
+    const locality = parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'UNKNOWN');
+    return `provider-search:v1:${state}:${locality}:${categoryKey}:${queryHash}`;
 }
 
 // ============================================================================
@@ -431,16 +458,26 @@ export async function searchProviders(
         return [];
     }
 
+    const cacheKey = getSearchCacheKey(query, category, address);
+    const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
+    if (cached) {
+        return cached;
+    }
+
     const prompt = buildSearchPrompt(query, category, address);
     const result = await generateJSON<ProviderSuggestion[]>(prompt);
 
     if (!result || !Array.isArray(result)) {
+        await setInCache(cacheKey, [], SEARCH_CACHE_TTL_SECONDS);
         return [];
     }
 
-    return result
+    const suggestions = result
         .filter(s => s.display_name && typeof s.confidence === 'number')
         .map(s => validateSuggestion(s, category || 'electric'));
+
+    await setInCache(cacheKey, suggestions, SEARCH_CACHE_TTL_SECONDS);
+    return suggestions;
 }
 
 // ============================================================================
