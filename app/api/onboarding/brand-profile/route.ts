@@ -22,12 +22,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
 
-        if (account.subscription_status !== 'pro') {
-            return NextResponse.json(
-                { error: 'Custom branding is available on the Pro plan', code: 'UPGRADE_REQUIRED' },
-                { status: 403 }
-            );
-        }
+        // Allow all users to create a brand profile during onboarding
+        // Pro features like logo upload and advanced customization are gated elsewhere
 
         const profile = await createBrandProfile({
             accountId: account.id,

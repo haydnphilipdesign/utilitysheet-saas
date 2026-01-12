@@ -54,13 +54,19 @@ export default function NewRequestPage() {
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [copied, setCopied] = useState(false);
+    const [isPro, setIsPro] = useState(false);
 
     useEffect(() => {
-        async function fetchBrands() {
+        async function fetchData() {
             try {
-                const response = await fetch('/api/branding');
-                if (response.ok) {
-                    const data = await response.json();
+                // Fetch brands and account data in parallel
+                const [brandsResponse, accountResponse] = await Promise.all([
+                    fetch('/api/branding'),
+                    fetch('/api/account')
+                ]);
+
+                if (brandsResponse.ok) {
+                    const data = await brandsResponse.json();
                     setBrands(data);
                     // Set default brand if available
                     const defaultBrand = data.find((b: any) => b.is_default) || data[0];
@@ -68,11 +74,16 @@ export default function NewRequestPage() {
                         setFormData(prev => ({ ...prev, brand_profile_id: defaultBrand.id }));
                     }
                 }
+
+                if (accountResponse.ok) {
+                    const accountData = await accountResponse.json();
+                    setIsPro(accountData.account?.subscription_status === 'pro');
+                }
             } catch (error) {
-                console.error('Error fetching brands:', error);
+                console.error('Error fetching data:', error);
             }
         }
-        fetchBrands();
+        fetchData();
     }, []);
 
     const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
@@ -292,14 +303,30 @@ Thank you!`,
                                 </button>
                             ))}
 
-                            <Link href="/dashboard/branding/new?returnTo=/dashboard/requests/new">
-                                <Button variant="outline" className="w-full h-full min-h-[100px] border-dashed border-2 border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-400 group">
-                                    <div className="flex flex-col items-center">
-                                        <Plus className="h-5 w-5 mb-1 group-hover:scale-110 transition-transform" />
-                                        <span>New Profile</span>
-                                    </div>
-                                </Button>
-                            </Link>
+                            {isPro ? (
+                                <Link href="/dashboard/branding/new?returnTo=/dashboard/requests/new">
+                                    <Button variant="outline" className="w-full h-full min-h-[100px] border-dashed border-2 border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-400 group">
+                                        <div className="flex flex-col items-center">
+                                            <Plus className="h-5 w-5 mb-1 group-hover:scale-110 transition-transform" />
+                                            <span>New Profile</span>
+                                        </div>
+                                    </Button>
+                                </Link>
+                            ) : (
+                                <div className="relative">
+                                    <Button
+                                        variant="outline"
+                                        disabled
+                                        className="w-full h-full min-h-[100px] border-dashed border-2 border-border text-muted-foreground/50 cursor-not-allowed"
+                                    >
+                                        <div className="flex flex-col items-center">
+                                            <Plus className="h-5 w-5 mb-1" />
+                                            <span>New Profile</span>
+                                            <span className="text-xs text-muted-foreground/50 mt-1">Pro Plan</span>
+                                        </div>
+                                    </Button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex justify-between pt-2">

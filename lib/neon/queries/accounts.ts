@@ -150,6 +150,7 @@ export async function getMonthlyUsage(
             WHERE organization_id = ${organizationId}
                 AND created_at >= ${startOfMonth.toISOString()}
                 AND status != 'draft'
+                AND (is_demo = FALSE OR is_demo IS NULL)
         `
         : sql`
             SELECT COUNT(*) as count 
@@ -158,6 +159,7 @@ export async function getMonthlyUsage(
                 AND organization_id IS NULL
                 AND created_at >= ${startOfMonth.toISOString()}
                 AND status != 'draft'
+                AND (is_demo = FALSE OR is_demo IS NULL)
         `;
 
     const result = await query;

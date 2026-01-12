@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS requests (
     water_source TEXT CHECK (water_source IN ('city', 'well', 'hoa', 'not_sure')),
     sewer_type TEXT CHECK (sewer_type IN ('public', 'septic', 'hoa', 'not_sure')),
     heating_type TEXT CHECK (heating_type IN ('natural_gas', 'electric', 'propane', 'oil', 'not_sure')),
+    is_demo BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     last_activity_at TIMESTAMPTZ DEFAULT NOW()
