@@ -28,6 +28,7 @@ import {
     PartyPopper
 } from 'lucide-react';
 import { toast } from 'sonner';
+import UtilitySheetPdfPreview from '@/components/branding/UtilitySheetPdfPreview';
 
 // Steps configuration
 const STEPS = [
@@ -606,53 +607,22 @@ export default function OnboardingPage() {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    {/* Simplified Preview */}
-                                    <div className="rounded-xl border border-border bg-white p-6 text-zinc-900">
-                                        {/* Header */}
-                                        <div
-                                            className="h-2 w-full rounded-full mb-4"
-                                            style={{ backgroundColor: primaryColor }}
-                                        />
-                                        <div className="flex items-start justify-between mb-6">
-                                            <div>
-                                                <h3 className="text-lg font-bold" style={{ color: primaryColor }}>
-                                                    {brandName || 'Your Brand Name'}
-                                                </h3>
-                                                <p className="text-sm text-zinc-600">Utility Information Sheet</p>
-                                            </div>
-                                            {logoPreview && (
-                                                <img src={logoPreview} alt="Logo" className="h-12 w-auto" />
-                                            )}
-                                        </div>
-
-                                        {/* Sample Content */}
-                                        <div className="space-y-3">
-                                            <div className="p-3 rounded-lg bg-zinc-100">
-                                                <p className="text-xs text-zinc-500 uppercase tracking-wide">Property</p>
-                                                <p className="font-medium">123 Sample Street, Anytown PA</p>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="p-3 rounded-lg bg-zinc-100">
-                                                    <p className="text-xs text-zinc-500">Electric</p>
-                                                    <p className="font-medium text-sm">Sample Electric Co.</p>
-                                                </div>
-                                                <div className="p-3 rounded-lg bg-zinc-100">
-                                                    <p className="text-xs text-zinc-500">Water</p>
-                                                    <p className="font-medium text-sm">Sample Water Authority</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Contact */}
-                                        {(contactName || contactEmail || contactPhone) && (
-                                            <div className="mt-6 pt-4 border-t border-zinc-200">
-                                                <p className="text-xs text-zinc-500 mb-1">Contact</p>
-                                                <p className="text-sm font-medium">{contactName}</p>
-                                                <p className="text-sm text-zinc-600">{contactEmail} {contactPhone && `• ${contactPhone}`}</p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <UtilitySheetPdfPreview
+                                        branding={{
+                                            name: brandName || orgName || 'Your Brand',
+                                            primary_color: primaryColor,
+                                            secondary_color: secondaryColor,
+                                            contact_name: contactName,
+                                            contact_phone: contactPhone,
+                                            contact_email: contactEmail,
+                                            contact_website: contactWebsite,
+                                            logo_url: logoPreview || undefined,
+                                            disclaimer_text: '',
+                                            is_default: true,
+                                            show_powered_by: true,
+                                            show_generation_date: true,
+                                        }}
+                                    />
                                 </CardContent>
                                 <CardFooter className="flex gap-3">
                                     <Button
