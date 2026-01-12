@@ -55,8 +55,8 @@ export default function SignupPage() {
                 await currentUser.update({ displayName: fullName });
             }
 
-            // Redirect directly to dashboard - no email check screen!
-            router.push('/dashboard');
+            // Redirect to onboarding for new users
+            router.push('/onboarding');
         } catch (err: any) {
             setError(err.message || 'Failed to create account');
             setLoading(false);
