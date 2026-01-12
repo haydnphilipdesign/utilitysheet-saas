@@ -3,6 +3,7 @@ import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getM
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
+import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 
 // GET /api/requests - Get all requests for the current user
 export async function GET(request: Request) {
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
             sellerEmail: body.sellerEmail,
             sellerPhone: body.sellerPhone,
             closingDate: body.closingDate,
-            utilityCategories: body.utilityCategories || ['electric', 'gas', 'water', 'sewer', 'trash'],
+            utilityCategories: body.utilityCategories || UTILITY_CATEGORY_KEYS,
         });
 
         if (!newRequest) {

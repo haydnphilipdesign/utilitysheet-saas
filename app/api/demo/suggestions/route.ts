@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import { UtilityCategory } from '@/types';
 import { aiRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
+import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 
 // Public API endpoint for demo - fetches AI suggestions for any address
 export async function POST(request: Request) {
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
         }
 
         // Default categories for demo
-        const categories: UtilityCategory[] = ['electric', 'gas', 'water', 'sewer', 'trash', 'internet', 'cable', 'propane'];
+        const categories: UtilityCategory[] = UTILITY_CATEGORY_KEYS;
 
         // Fetch real AI suggestions
         const suggestions = await getAllSuggestions(address, categories);

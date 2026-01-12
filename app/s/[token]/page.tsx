@@ -5,6 +5,7 @@ import { AlertTriangle } from 'lucide-react';
 import { WizardLoader } from '@/components/ui/wizard-loader';
 import type { UtilityCategory, ProviderSuggestion } from '@/types';
 import { SellerWizard } from '@/components/seller-form/SellerWizard';
+import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 
 interface RequestData {
     property_address: string;
@@ -58,7 +59,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
 
             const reqData: RequestData = {
                 property_address: request.property_address,
-                utility_categories: request.utility_categories || ['electric', 'gas', 'water', 'sewer', 'trash'],
+                utility_categories: request.utility_categories || UTILITY_CATEGORY_KEYS,
             };
 
             setRequestData(reqData);

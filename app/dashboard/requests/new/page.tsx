@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Check, Copy, MessageSquare, Mail, Loader2, MapPin, Sparkles, AlertTriangle, Plus } from 'lucide-react';
 import type { UtilityCategory } from '@/types';
-import { UTILITY_CATEGORIES } from '@/lib/constants';
+import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import Link from 'next/link';
 
 interface FormData {
@@ -37,7 +37,7 @@ const initialFormData: FormData = {
     seller_email: '',
     seller_phone: '',
     closing_date: '',
-    utility_categories: ['electric', 'gas', 'water', 'sewer', 'trash'],
+    utility_categories: UTILITY_CATEGORY_KEYS,
     brand_profile_id: '',
     send_seller_email: true,
 };
@@ -91,7 +91,7 @@ export default function NewRequestPage() {
         const allSelected = formData.utility_categories.length === UTILITY_CATEGORIES.length;
         setFormData((prev) => ({
             ...prev,
-            utility_categories: allSelected ? [] : UTILITY_CATEGORIES.map(c => c.key),
+            utility_categories: allSelected ? [] : UTILITY_CATEGORY_KEYS,
         }));
     };
 

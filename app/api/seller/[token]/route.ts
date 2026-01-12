@@ -4,6 +4,7 @@ import { sql } from '@/lib/neon/db';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
 import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
+import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 
 // GET /api/seller/[token] - Get request data for seller form
 export async function GET(
@@ -53,7 +54,7 @@ export async function GET(
         // Get AI suggestions for each category
         const utilityCategories =
             (requestData as any).utility_categories ||
-            ['electric', 'gas', 'water', 'sewer', 'trash'];
+            UTILITY_CATEGORY_KEYS;
 
         const suggestions = await getAllSuggestions(requestData.property_address, utilityCategories);
 

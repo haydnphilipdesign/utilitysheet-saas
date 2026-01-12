@@ -12,6 +12,8 @@ export const UTILITY_CATEGORIES: { key: UtilityCategory; label: string; icon: st
     { key: 'cable', label: 'Cable/TV', icon: '📺' },
 ];
 
+export const UTILITY_CATEGORY_KEYS: UtilityCategory[] = UTILITY_CATEGORIES.map((c) => c.key);
+
 // Default buyer next steps for info sheets
 export const DEFAULT_BUYER_STEPS = [
     'Contact each utility provider above to set up new service in your name.',

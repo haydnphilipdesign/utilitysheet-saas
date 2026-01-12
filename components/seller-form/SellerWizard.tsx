@@ -19,6 +19,7 @@ export interface WizardState {
     fuels_present: string[];
     primary_heating_type: string | null;
     trash_handled_by: 'municipal' | 'private' | 'not_sure';
+    optional_utilities: UtilityCategory[];
     utilities: Record<UtilityCategory, UtilityWizardState>;
 }
 
@@ -67,29 +68,37 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [submitting, setSubmitting] = useState(false);
 
     // Initialize state
-    const [state, setState] = useState<WizardState>({
-        water_source: 'not_sure',
-        sewer_type: 'not_sure',
-        heating_type: 'not_sure',
-        fuels_present: [],
-        primary_heating_type: null,
-        trash_handled_by: 'not_sure',
-        utilities: {} as Record<UtilityCategory, UtilityWizardState>
+    const [state, setState] = useState<WizardState>(() => {
+        const optionalCategories: UtilityCategory[] = ['trash', 'internet', 'cable'];
+        const requestedOptional = optionalCategories.filter((cat) => initialRequestData.utility_categories.includes(cat));
+
+        return {
+            water_source: 'not_sure',
+            sewer_type: 'not_sure',
+            heating_type: 'not_sure',
+            fuels_present: [],
+            primary_heating_type: null,
+            trash_handled_by: 'not_sure',
+            optional_utilities: requestedOptional,
+            utilities: {} as Record<UtilityCategory, UtilityWizardState>
+        };
     });
 
     const [visibleUtilities, setVisibleUtilities] = useState<UtilityCategory[]>([]);
 
     // Calculate visible utilities based on state
     useEffect(() => {
+        const requestedCategories = new Set<UtilityCategory>(initialRequestData.utility_categories);
+
         const nextUtilities: UtilityCategory[] = ['electric']; // Always include electric
 
         // Water - if public (city)
-        if (state.water_source === 'city') {
+        if (requestedCategories.has('water') && state.water_source === 'city') {
             nextUtilities.push('water');
         }
 
         // Sewer - if public
-        if (state.sewer_type === 'public') {
+        if (requestedCategories.has('sewer') && state.sewer_type === 'public') {
             nextUtilities.push('sewer');
         }
 
@@ -102,7 +111,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
         state.fuels_present.forEach(fuel => {
             const mapped = fuelMap[fuel];
-            if (mapped) {
+            if (mapped && requestedCategories.has(mapped)) {
                 nextUtilities.push(mapped);
             }
         });
@@ -111,7 +120,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         // This includes: trash, internet, cable, and any other non-conditional utilities
         const preservedCategories: UtilityCategory[] = ['trash', 'internet', 'cable'];
         preservedCategories.forEach(cat => {
-            if (initialRequestData.utility_categories.includes(cat)) {
+            if (requestedCategories.has(cat) && state.optional_utilities.includes(cat)) {
                 nextUtilities.push(cat);
             }
         });
@@ -125,6 +134,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         // Ensure state exists for all visible utilities
         setState(prev => {
             const nextUtilitiesState = { ...prev.utilities };
+            const visibleSet = new Set(uniqueUtils);
             let hasChanges = false;
 
             uniqueUtils.forEach(cat => {
@@ -136,13 +146,24 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         hidden: false
                     };
                     hasChanges = true;
+                } else if (nextUtilitiesState[cat].hidden) {
+                    nextUtilitiesState[cat] = { ...nextUtilitiesState[cat], hidden: false };
+                    hasChanges = true;
+                }
+            });
+
+            Object.entries(nextUtilitiesState).forEach(([cat, utilState]) => {
+                const category = cat as UtilityCategory;
+                if (!visibleSet.has(category) && utilState && utilState.hidden === false) {
+                    nextUtilitiesState[category] = { ...utilState, hidden: true };
+                    hasChanges = true;
                 }
             });
 
             return hasChanges ? { ...prev, utilities: nextUtilitiesState } : prev;
         });
 
-    }, [state.water_source, state.sewer_type, state.fuels_present, initialRequestData.utility_categories]);
+    }, [state.water_source, state.sewer_type, state.fuels_present, state.optional_utilities, initialRequestData.utility_categories]);
 
     const totalUtilities = visibleUtilities.length;
     // Simplify progress: Welcome(0.5) + Basics(1) + Each Util(1) + Review(1)
@@ -233,7 +254,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         <SellerLayout
             progress={progress}
             address={initialRequestData.property_address}
-            completedCount={Object.values(state.utilities).filter(u => u?.entry_mode !== null).length}
+            completedCount={visibleUtilities.filter((cat) => state.utilities[cat]?.entry_mode !== null).length}
             totalCount={visibleUtilities.length}
             brandProfile={brandProfile}
         >
@@ -251,6 +272,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         key="basics"
                         state={state}
                         updateState={(updates) => setState(prev => ({ ...prev, ...updates }))}
+                        requestedUtilityCategories={initialRequestData.utility_categories}
                         onNext={handleNext}
                     />
                 )}

@@ -1,16 +1,29 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Droplets, Flame, Waves } from 'lucide-react';
+import { Droplets, Flame, Waves, Wifi, Tv, Trash2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
+import type { UtilityCategory } from '@/types';
 
 interface HomeBasicsStepProps {
     state: WizardState;
     updateState: (updates: Partial<WizardState>) => void;
+    requestedUtilityCategories: UtilityCategory[];
     onNext: () => void;
 }
 
-export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepProps) {
+export function HomeBasicsStep({ state, updateState, requestedUtilityCategories, onNext }: HomeBasicsStepProps) {
+    const optionalUtilities = [
+        { id: 'trash' as const, label: 'Trash', icon: Trash2 },
+        { id: 'internet' as const, label: 'Internet', icon: Wifi },
+        { id: 'cable' as const, label: 'Cable/TV', icon: Tv },
+    ] satisfies { id: UtilityCategory; label: string; icon: LucideIcon }[];
+
+    const availableOptionalUtilities = optionalUtilities.filter((u) =>
+        requestedUtilityCategories.includes(u.id)
+    );
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -163,6 +176,54 @@ export function HomeBasicsStep({ state, updateState, onNext }: HomeBasicsStepPro
                         })}
                     </div>
                 </motion.div>
+            )}
+
+            {/* Optional Utilities */}
+            {availableOptionalUtilities.length > 0 && (
+                <div className="space-y-4">
+                    <label className="flex items-center gap-2 text-sm font-medium text-emerald-400">
+                        <span className="inline-flex -space-x-1">
+                            {availableOptionalUtilities.slice(0, 3).map((u) => {
+                                const Icon = u.icon;
+                                return (
+                                    <span key={u.id} className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted/60 border border-border">
+                                        <Icon className="h-3.5 w-3.5 text-emerald-400" />
+                                    </span>
+                                );
+                            })}
+                        </span>
+                        Other Utilities (Select all that apply)
+                    </label>
+                    <p className="text-xs text-muted-foreground -mt-2">
+                        Uncheck anything you don’t have — we’ll skip those questions.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {availableOptionalUtilities.map((util) => {
+                            const isSelected = state.optional_utilities.includes(util.id);
+                            const Icon = util.icon;
+                            return (
+                                <button
+                                    key={util.id}
+                                    onClick={() => {
+                                        const next = isSelected
+                                            ? state.optional_utilities.filter((u) => u !== util.id)
+                                            : [...state.optional_utilities, util.id];
+                                        updateState({ optional_utilities: next });
+                                    }}
+                                    className={`p-4 rounded-xl border text-left transition-all ${isSelected
+                                        ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
+                                        : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Icon className="h-4 w-4" />
+                                        <span className="block font-medium">{util.label}</span>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             )}
 
             <div className="pt-6">
