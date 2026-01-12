@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, createEventLog } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
+import { hasValidContact, resolveContact } from '@/lib/providers/contact-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
 import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
@@ -169,8 +170,8 @@ export async function POST(
         // Delete existing entries and insert new ones
         await sql`DELETE FROM utility_entries WHERE request_id = ${requestData.id}`;
 
-        // Track entries for contact resolution alert
-        const unresolvedEntries: { category: string; displayName?: string }[] = [];
+        // Track entries that need contact resolution
+        const contactResolutionTargets: { category: string; providerName: string }[] = [];
 
         // Insert utility entries
         for (const [category, entry] of Object.entries(parsedBody.data.utilities || {})) {
@@ -214,13 +215,40 @@ export async function POST(
                     )
                 `;
 
-                // Track if this is an unresolved contact (free_text without contact info)
-                if (e.entry_mode === 'free_text' && !e.contact_phone && !e.contact_url) {
-                    unresolvedEntries.push({
-                        category,
-                        displayName: e.display_name || e.raw_text || category,
-                    });
+                const providerName = String(e.display_name || e.raw_text || '').trim();
+                if (providerName && !e.contact_phone && !e.contact_url && e.entry_mode !== 'unknown') {
+                    contactResolutionTargets.push({ category, providerName });
                 }
+            }
+        }
+
+        // Attempt contact resolution for missing contact info
+        const unresolvedEntries: { category: string; displayName?: string }[] = [];
+        const seenContactTargets = new Set<string>();
+
+        for (const target of contactResolutionTargets) {
+            const dedupeKey = `${target.category}:${target.providerName.toLowerCase()}`;
+            if (seenContactTargets.has(dedupeKey)) continue;
+            seenContactTargets.add(dedupeKey);
+
+            const contact = await resolveContact(target.providerName);
+            if (hasValidContact(contact)) {
+                const resolvedPhone = contact?.customer_service_phone || null;
+                const resolvedUrl = contact?.start_stop_service_url || contact?.main_website || null;
+
+                await sql`
+                    UPDATE utility_entries
+                    SET
+                        contact_phone = COALESCE(contact_phone, ${resolvedPhone}),
+                        contact_url = COALESCE(contact_url, ${resolvedUrl})
+                    WHERE request_id = ${requestData.id}
+                    AND category = ${target.category}
+                `;
+            } else {
+                unresolvedEntries.push({
+                    category: target.category,
+                    displayName: target.providerName,
+                });
             }
         }
 

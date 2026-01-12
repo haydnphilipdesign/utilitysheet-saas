@@ -1,10 +1,26 @@
 import { ProviderContact } from '@/types';
 import { generateJSON, isGeminiConfigured } from '@/lib/ai/gemini-client';
-// Mock data removed
+import { getFromCache, setInCache } from '@/lib/cache';
 
-// Contact cache
-const contactCache = new Map<string, { contact: ProviderContact | null; timestamp: number }>();
-const CACHE_TTL = 90 * 24 * 60 * 60 * 1000; // 90 days in ms
+// Cache TTL: 90 days in seconds
+const CACHE_TTL_SECONDS = 90 * 24 * 60 * 60;
+
+type CachedContact = { v: ProviderContact | null };
+
+function toCacheKey(providerNameOrId: string): string {
+    return `contact:${providerNameOrId.trim().toLowerCase()}`;
+}
+
+function safeHttpUrl(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    try {
+        const parsed = new URL(value);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return undefined;
+        return parsed.toString();
+    } catch {
+        return undefined;
+    }
+}
 
 // AI prompt for contact resolution
 function buildContactPrompt(providerName: string): string {
@@ -47,11 +63,15 @@ async function getAIContact(providerName: string): Promise<ProviderContact | nul
         return null;
     }
 
-    // Normalize the response - convert empty strings to undefined
+    // Normalize and sanitize response
+    const customerServicePhone = result.customer_service_phone || undefined;
+    const startStopServiceUrl = safeHttpUrl(result.start_stop_service_url || undefined);
+    const mainWebsite = safeHttpUrl(result.main_website || undefined);
+
     return {
-        customer_service_phone: result.customer_service_phone || undefined,
-        start_stop_service_url: result.start_stop_service_url || undefined,
-        main_website: result.main_website || undefined,
+        customer_service_phone: customerServicePhone,
+        start_stop_service_url: startStopServiceUrl,
+        main_website: mainWebsite,
         hours: result.hours || undefined,
     };
 }
@@ -70,20 +90,23 @@ function getMockContact(providerNameOrId: string): ProviderContact | null {
 export async function resolveContact(
     providerNameOrId: string
 ): Promise<ProviderContact | null> {
-    // Check cache
-    const cached = contactCache.get(providerNameOrId);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.contact;
+    const cacheKey = toCacheKey(providerNameOrId);
+
+    // Check cache (Redis with in-memory fallback)
+    const cached = await getFromCache<CachedContact>(cacheKey);
+    if (cached) {
+        return cached.v;
     }
 
     // Try AI first
-    let contact = await getAIContact(providerNameOrId);
+    const contact = await getAIContact(providerNameOrId);
 
     if (contact) {
         console.log(`[Contact] Got AI contact info for ${providerNameOrId}`);
     }
 
-    contactCache.set(providerNameOrId, { contact, timestamp: Date.now() });
+    // Cache result (including null) to avoid repeated lookups
+    await setInCache(cacheKey, { v: contact }, CACHE_TTL_SECONDS);
 
     return contact;
 }
