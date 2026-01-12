@@ -216,19 +216,12 @@ export default function BrandingPage() {
                                         <MoreHorizontal className="h-4 w-4" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        {isPro ? (
-                                            <Link href={`/dashboard/branding/${brand.id}`}>
-                                                <DropdownMenuItem className="cursor-pointer">
-                                                    <Pencil className="mr-2 h-4 w-4" />
-                                                    Edit
-                                                </DropdownMenuItem>
-                                            </Link>
-                                        ) : (
-                                            <DropdownMenuItem disabled className="text-muted-foreground cursor-not-allowed">
-                                                <Lock className="mr-2 h-4 w-4" />
-                                                Edit (Pro Only)
+                                        <Link href={`/dashboard/branding/${brand.id}`}>
+                                            <DropdownMenuItem className="cursor-pointer">
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                Edit
                                             </DropdownMenuItem>
-                                        )}
+                                        </Link>
 
                                         {!brand.is_default && (
                                             isPro ? (
@@ -290,26 +283,15 @@ export default function BrandingPage() {
                                 </div>
                             </div>
                             <div className="mt-4 pt-4 border-t border-border">
-                                {isPro ? (
-                                    <Link href={`/dashboard/branding/${brand.id}`}>
-                                        <Button
-                                            variant="outline"
-                                            className="w-full"
-                                        >
-                                            <Pencil className="mr-2 h-4 w-4" />
-                                            Edit Profile
-                                        </Button>
-                                    </Link>
-                                ) : (
+                                <Link href={`/dashboard/branding/${brand.id}`}>
                                     <Button
                                         variant="outline"
-                                        disabled
-                                        className="w-full cursor-not-allowed"
+                                        className="w-full"
                                     >
-                                        <Lock className="mr-2 h-4 w-4" />
-                                        Edit Profile (Pro)
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        Edit Profile
                                     </Button>
-                                )}
+                                </Link>
                             </div>
                         </CardContent>
                     </Card>

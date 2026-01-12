@@ -76,12 +76,7 @@ export async function PUT(
             }
         }
 
-        if (account.subscription_status !== 'pro') {
-            return NextResponse.json({
-                error: 'Custom branding is available on the Pro plan',
-                code: 'UPGRADE_REQUIRED'
-            }, { status: 403 });
-        }
+        const isPro = account.subscription_status === 'pro';
 
         const updatedProfile = await updateBrandProfile(id, {
             name: body.name,
@@ -93,13 +88,15 @@ export async function PUT(
             contact_email: body.contact_email,
             contact_website: body.contact_website,
             disclaimer_text: body.disclaimer_text,
-            is_default: body.is_default,
-            // Advanced customization
-            buyer_next_steps: body.buyer_next_steps,
-            next_steps_title: body.next_steps_title,
-            show_powered_by: body.show_powered_by,
-            show_generation_date: body.show_generation_date,
-            welcome_message: body.welcome_message,
+            ...(isPro ? { is_default: body.is_default } : {}),
+            // Advanced customization (Pro only)
+            ...(isPro ? {
+                buyer_next_steps: body.buyer_next_steps,
+                next_steps_title: body.next_steps_title,
+                show_powered_by: body.show_powered_by,
+                show_generation_date: body.show_generation_date,
+                welcome_message: body.welcome_message,
+            } : {}),
             // Pass context for default handling
             accountId: account.id,
             organizationId: account.active_organization_id || undefined

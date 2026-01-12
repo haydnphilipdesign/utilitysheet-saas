@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon, Plus, Trash2, RotateCcw, GripVertical, Settings2, ListChecks } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon, Plus, Trash2, RotateCcw, GripVertical, Settings2, ListChecks, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BrandProfileFormData } from '@/types';
 import { DEFAULT_BUYER_STEPS } from '@/lib/constants';
@@ -20,6 +20,7 @@ interface BrandProfileFormProps {
     initialData?: BrandProfileFormData;
     onSubmit: (data: BrandProfileFormData) => Promise<void>;
     isEditing?: boolean;
+    isPro?: boolean;
 }
 
 const defaultFormData: BrandProfileFormData = {
@@ -40,7 +41,7 @@ const defaultFormData: BrandProfileFormData = {
     welcome_message: '',
 };
 
-export default function BrandProfileForm({ initialData, onSubmit, isEditing = false }: BrandProfileFormProps) {
+export default function BrandProfileForm({ initialData, onSubmit, isEditing = false, isPro = false }: BrandProfileFormProps) {
     const router = useRouter();
     const [formData, setFormData] = useState<BrandProfileFormData>(initialData || defaultFormData);
     const [loading, setLoading] = useState(false);
@@ -340,12 +341,13 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     id="isDefault"
                                     checked={formData.is_default}
                                     onCheckedChange={(checked: boolean | 'indeterminate') => updateField('is_default', checked === true)}
+                                    disabled={!isPro}
                                 />
                                 <label
                                     htmlFor="isDefault"
-                                    className="text-sm text-foreground cursor-pointer"
+                                    className={`text-sm ${isPro ? 'text-foreground cursor-pointer' : 'text-muted-foreground cursor-not-allowed'}`}
                                 >
-                                    Set as default branding profile
+                                    Set as default branding profile {!isPro ? '(Pro)' : ''}
                                 </label>
                             </div>
                         </CardContent>
@@ -357,6 +359,12 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                             <CardTitle className="text-foreground flex items-center gap-2">
                                 <Settings2 className="h-5 w-5 text-blue-500" />
                                 Display Options
+                                {!isPro && (
+                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-full px-2 py-0.5">
+                                        <Lock className="h-3 w-3" />
+                                        Pro
+                                    </span>
+                                )}
                             </CardTitle>
                             <CardDescription className="text-muted-foreground">
                                 Control what appears on your info sheets
@@ -369,8 +377,9 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     <p className="text-xs text-muted-foreground">Display powered by text in the footer</p>
                                 </div>
                                 <Switch
-                                    checked={formData.show_powered_by ?? true}
+                                    checked={isPro ? (formData.show_powered_by ?? true) : true}
                                     onCheckedChange={(checked) => updateField('show_powered_by', checked)}
+                                    disabled={!isPro}
                                 />
                             </div>
                             <div className="flex items-center justify-between">
@@ -379,8 +388,9 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     <p className="text-xs text-muted-foreground">Display when the info sheet was generated</p>
                                 </div>
                                 <Switch
-                                    checked={formData.show_generation_date ?? true}
+                                    checked={isPro ? (formData.show_generation_date ?? true) : true}
                                     onCheckedChange={(checked) => updateField('show_generation_date', checked)}
+                                    disabled={!isPro}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -391,6 +401,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     value={formData.welcome_message || ''}
                                     onChange={(e) => updateField('welcome_message', e.target.value)}
                                     className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[60px]"
+                                    disabled={!isPro}
                                 />
                                 <p className="text-xs text-muted-foreground">This message will appear above the utility providers table.</p>
                             </div>
@@ -403,6 +414,12 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                             <CardTitle className="text-foreground flex items-center gap-2">
                                 <ListChecks className="h-5 w-5 text-emerald-500" />
                                 Buyer Next Steps
+                                {!isPro && (
+                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-full px-2 py-0.5">
+                                        <Lock className="h-3 w-3" />
+                                        Pro
+                                    </span>
+                                )}
                             </CardTitle>
                             <CardDescription className="text-muted-foreground">
                                 Customize the instructions shown to buyers
@@ -417,6 +434,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     value={formData.next_steps_title || ''}
                                     onChange={(e) => updateField('next_steps_title', e.target.value)}
                                     className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                    disabled={!isPro}
                                 />
                                 <p className="text-xs text-muted-foreground">Leave blank to use default: &quot;Buyer Next Steps&quot;</p>
                             </div>
@@ -437,12 +455,14 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                                 updateField('buyer_next_steps', newSteps);
                                             }}
                                             className="bg-background border-input text-foreground min-h-[60px] flex-1"
+                                            disabled={!isPro}
                                         />
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="icon"
                                             className="text-muted-foreground hover:text-destructive flex-shrink-0 mt-1"
+                                            disabled={!isPro}
                                             onClick={() => {
                                                 const currentSteps = formData.buyer_next_steps || [...DEFAULT_BUYER_STEPS];
                                                 if (currentSteps.length > 1) {
@@ -469,6 +489,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         updateField('buyer_next_steps', [...currentSteps, '']);
                                     }}
                                     className="flex-1"
+                                    disabled={!isPro}
                                 >
                                     <Plus className="h-4 w-4 mr-1" />
                                     Add Step
@@ -482,6 +503,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         toast.success('Steps reset to defaults');
                                     }}
                                     className="text-muted-foreground"
+                                    disabled={!isPro}
                                 >
                                     <RotateCcw className="h-4 w-4 mr-1" />
                                     Reset to Defaults

@@ -12,18 +12,29 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
     const router = useRouter();
     const [initialData, setInitialData] = useState<BrandProfileFormData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isPro, setIsPro] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const response = await fetch(`/api/branding/${resolvedParams.id}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setInitialData(data);
-                } else {
+                const [profileResponse, accountResponse] = await Promise.all([
+                    fetch(`/api/branding/${resolvedParams.id}`),
+                    fetch('/api/account'),
+                ]);
+
+                if (accountResponse.ok) {
+                    const accountData = await accountResponse.json().catch(() => ({}));
+                    setIsPro(accountData?.account?.subscription_status === 'pro');
+                }
+
+                if (!profileResponse.ok) {
                     toast.error('Failed to fetch brand profile');
                     router.push('/dashboard/branding');
+                    return;
                 }
+
+                const data = await profileResponse.json();
+                setInitialData(data);
             } catch (error) {
                 console.error('Error fetching profile:', error);
                 toast.error('Error fetching brand profile');
@@ -75,6 +86,7 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
             initialData={initialData}
             onSubmit={handleSubmit}
             isEditing={true}
+            isPro={isPro}
         />
     );
 }

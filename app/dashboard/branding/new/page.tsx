@@ -12,6 +12,7 @@ function NewBrandingPageContent() {
     const searchParams = useSearchParams();
     const returnTo = searchParams.get('returnTo');
     const [loading, setLoading] = useState(true);
+    const [isPro, setIsPro] = useState(false);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -19,6 +20,7 @@ function NewBrandingPageContent() {
                 const response = await fetch('/api/account');
                 if (response.ok) {
                     const data = await response.json();
+                    setIsPro(data.account.subscription_status === 'pro');
                     if (data.account.subscription_status !== 'pro') {
                         toast.error('Upgrade to Pro to create custom branding');
                         router.push('/dashboard/branding');
@@ -66,7 +68,7 @@ function NewBrandingPageContent() {
         );
     }
 
-    return <BrandProfileForm onSubmit={handleSubmit} />;
+    return <BrandProfileForm onSubmit={handleSubmit} isPro={isPro} />;
 }
 
 export default function NewBrandingPage() {
