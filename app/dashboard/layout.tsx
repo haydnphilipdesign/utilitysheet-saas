@@ -1,6 +1,6 @@
-'use client';
-
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
+import { stackServerApp } from '@/lib/stack/server';
 import { DashboardLayoutContent } from './layout-content';
 
 function DashboardLoadingFallback() {
@@ -14,11 +14,16 @@ function DashboardLoadingFallback() {
     );
 }
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    const user = await stackServerApp.getUser();
+    if (!user) {
+        redirect('/auth/login');
+    }
+
     return (
         <Suspense fallback={<DashboardLoadingFallback />}>
             <DashboardLayoutContent>{children}</DashboardLayoutContent>
