@@ -56,6 +56,10 @@ export async function GET(
                 id: requestData.id,
                 property_address: requestData.property_address,
                 created_at: requestData.created_at,
+                // Home Basics fields for well/septic cases
+                water_source: (requestData as any).water_source || null,
+                sewer_type: (requestData as any).sewer_type || null,
+                heating_type: (requestData as any).heating_type || null,
             },
             brand: publicBrandProfile,
             utilities: utilities,

@@ -404,7 +404,7 @@ export async function sendTCCompletionNotificationEmail({
     const baseUrl = getAppBaseUrl();
     const dashboardUrl = `${baseUrl}/dashboard/requests/${requestId}`;
 
-    console.log('sendTCCompletionNotificationEmail called:', { tcEmail, propertyAddress, dashboardUrl });
+    console.log('sendTCCompletionNotificationEmail called:', { tcEmail, requestId });
 
     const emailHtml = generateTCCompletionNotificationHtml({
         tcName,

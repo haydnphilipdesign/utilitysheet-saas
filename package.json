@@ -19,8 +19,6 @@
     "@neondatabase/serverless": "^1.0.2",
     "@neondatabase/toolkit": "^0.1.2",
     "@stackframe/stack": "^2.8.56",
-    "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.88.0",
     "@tanstack/react-table": "^8.21.3",
     "@upstash/ratelimit": "^2.0.7",
     "@upstash/redis": "^1.36.0",

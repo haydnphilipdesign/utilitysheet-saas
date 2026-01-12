@@ -185,7 +185,9 @@ export async function POST(
                 contact_url?: string;
                 extra?: any
             };
-            if (e.entry_mode && !e.hidden) {
+            // Persist entry if not hidden - use 'unknown' if entry_mode is null
+            if (!e.hidden) {
+                const finalEntryMode = e.entry_mode || 'unknown';
                 let finalRawText = e.raw_text || '';
                 if (e.extra) {
                     const extraParts = [];
@@ -204,7 +206,7 @@ export async function POST(
                     ) VALUES (
                         ${requestData.id},
                         ${category},
-                        ${e.entry_mode},
+                        ${finalEntryMode},
                         ${e.display_name || null},
                         ${finalRawText || null},
                         ${e.contact_phone || null},
@@ -213,7 +215,7 @@ export async function POST(
                 `;
 
                 const providerName = String(e.display_name || e.raw_text || '').trim();
-                if (providerName && !e.contact_phone && !e.contact_url && e.entry_mode !== 'unknown') {
+                if (providerName && !e.contact_phone && !e.contact_url && finalEntryMode !== 'unknown') {
                     contactResolutionTargets.push({ category, providerName });
                 }
             }
@@ -266,46 +268,32 @@ export async function POST(
             weekly_summary?: boolean;
         };
 
-        console.log('TC Notification Debug:', {
-            accountId: requestData.account_id,
-            accountFound: !!account,
-            accountEmail: account?.email,
-            propertyAddress: requestData.property_address,
-            notificationPrefs,
-        });
-
         if (account?.email) {
             // Send TC completion notification (if enabled, defaults to true)
             if (notificationPrefs.seller_submissions !== false) {
-                console.log('Sending TC notification email to:', account.email);
                 try {
-                    const emailResult = await sendTCCompletionNotificationEmail({
+                    await sendTCCompletionNotificationEmail({
                         tcEmail: account.email,
                         tcName: account.full_name || undefined,
                         propertyAddress: requestData.property_address,
                         sellerName: requestData.seller_name || undefined,
                         requestId: requestData.id,
                     });
-                    console.log('TC notification email result:', emailResult);
                 } catch (emailError) {
                     console.error('Failed to send TC completion notification email:', emailError);
                 }
-            } else {
-                console.log('TC notification skipped: seller_submissions is disabled');
             }
 
             // Send contact resolution alert (if enabled and there are unresolved entries)
             if (notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
-                console.log('Sending contact resolution alert for unresolved entries:', unresolvedEntries);
                 try {
-                    const alertResult = await sendContactResolutionAlertEmail({
+                    await sendContactResolutionAlertEmail({
                         tcEmail: account.email,
                         tcName: account.full_name || undefined,
                         propertyAddress: requestData.property_address,
                         unresolvedEntries,
                         requestId: requestData.id,
                     });
-                    console.log('Contact resolution alert result:', alertResult);
                 } catch (alertError) {
                     console.error('Failed to send contact resolution alert:', alertError);
                 }

@@ -8,6 +8,10 @@ interface PacketData {
         id: string;
         property_address: string;
         created_at: string;
+        // Home Basics fields
+        water_source?: string | null;
+        sewer_type?: string | null;
+        heating_type?: string | null;
     };
     brand: {
         name?: string;
@@ -188,6 +192,35 @@ export async function generatePacketPdf(token: string): Promise<void> {
             <!-- Welcome Message -->
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px;">
                 <p style="font-size: 14px; color: #1e40af; margin: 0; line-height: 1.6;">${welcomeMessage}</p>
+            </div>
+            ` : ''}
+
+            ${(request as any).water_source || (request as any).sewer_type || (request as any).heating_type ? `
+            <!-- Home Basics -->
+            <div style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+                <div style="background: #f9fafb; padding: 16px 24px; border-bottom: 1px solid #e4e4e7;">
+                    <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Home Basics</h3>
+                </div>
+                <div style="padding: 20px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                    ${(request as any).water_source ? `
+                    <div>
+                        <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">Water Source</p>
+                        <p style="font-size: 16px; font-weight: 500; color: #09090b; margin: 0; text-transform: capitalize;">${escapeHtml(String((request as any).water_source).replace('_', ' '))}</p>
+                    </div>
+                    ` : ''}
+                    ${(request as any).sewer_type ? `
+                    <div>
+                        <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">Sewer Type</p>
+                        <p style="font-size: 16px; font-weight: 500; color: #09090b; margin: 0; text-transform: capitalize;">${escapeHtml(String((request as any).sewer_type).replace('_', ' '))}</p>
+                    </div>
+                    ` : ''}
+                    ${(request as any).heating_type ? `
+                    <div>
+                        <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">Heating Type</p>
+                        <p style="font-size: 16px; font-weight: 500; color: #09090b; margin: 0; text-transform: capitalize;">${escapeHtml(String((request as any).heating_type).replace('_', ' '))}</p>
+                    </div>
+                    ` : ''}
+                </div>
             </div>
             ` : ''}
 

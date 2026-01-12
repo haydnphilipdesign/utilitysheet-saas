@@ -157,18 +157,22 @@ export async function POST(request: Request) {
                 agentName = account.full_name || user.displayName || undefined;
             }
 
-            // Send email asynchronously - don't block the response
-            sendSellerNotificationEmail({
-                sellerEmail: parsedBody.data.sellerEmail,
-                sellerName: parsedBody.data.sellerName,
-                propertyAddress: parsedBody.data.propertyAddress,
-                closingDate: parsedBody.data.closingDate,
-                agentName,
-                sellerToken: newRequest.seller_token || newRequest.public_token,
-            }).catch((error) => {
-                // Log but don't fail the request
-                console.error('Failed to send seller notification email:', error);
-            });
+            // Send email notification - await with error handling (non-blocking to request success)
+            try {
+                await sendSellerNotificationEmail({
+                    sellerEmail: parsedBody.data.sellerEmail,
+                    sellerName: parsedBody.data.sellerName,
+                    propertyAddress: parsedBody.data.propertyAddress,
+                    closingDate: parsedBody.data.closingDate,
+                    agentName,
+                    sellerToken: newRequest.seller_token || newRequest.public_token,
+                });
+            } catch (emailError) {
+                // Log but don't fail the request - email is non-critical
+                if (process.env.NODE_ENV !== 'production') {
+                    console.error('Failed to send seller notification email:', emailError);
+                }
+            }
         }
 
         return NextResponse.json(newRequest, { status: 201 });

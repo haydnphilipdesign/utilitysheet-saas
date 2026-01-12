@@ -3,19 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Zap, Building2, Palette, CheckCircle2, Loader2, ArrowRight, ArrowLeft } from 'lucide-react';
-import { createOrganization, createBrandProfile, getOrCreateAccount } from '@/lib/neon/queries';
+import { toast } from 'sonner';
 
 export default function OnboardingPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [user, setUser] = useState<any>(null);
     const [account, setAccount] = useState<any>(null);
 
     // Form states
@@ -24,59 +22,103 @@ export default function OnboardingPage() {
     const [primaryColor, setPrimaryColor] = useState('#10b981');
 
     useEffect(() => {
-        const supabase = createClient();
-        if (!supabase) {
-            // Demo mode
-            setUser({ email: 'demo@utilitysheet.com' });
-            return;
-        }
+        let cancelled = false;
 
-        supabase.auth.getUser().then(async ({ data: { user } }) => {
-            if (!user) {
-                router.push('/auth/login');
-                return;
+        (async () => {
+            try {
+                const response = await fetch('/api/account');
+                if (response.status === 401) {
+                    router.push('/auth/login');
+                    return;
+                }
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data?.error || 'Failed to load account');
+                }
+
+                if (cancelled) return;
+                setAccount(data.account);
+
+                // If already has organization, skip onboarding
+                if (data.activeOrganization || data.account?.active_organization_id) {
+                    router.push('/dashboard');
+                }
+            } catch (error) {
+                console.error(error);
+                toast.error('Failed to load your account. Please try again.');
             }
-            setUser(user);
+        })();
 
-            // Sync/Get account
-            const acc = await getOrCreateAccount(user.id, user.email || '', user.user_metadata?.full_name);
-            setAccount(acc);
-
-            // If already has organization, skip onboarding
-            if (acc?.active_organization_id) {
-                router.push('/dashboard');
-            }
-        });
+        return () => {
+            cancelled = true;
+        };
     }, [router]);
 
     const handleCreateOrg = async () => {
-        if (!orgName) return;
+        const name = orgName.trim();
+        if (!name) return;
+        if (!account) {
+            toast.error('Please wait for your account to load, then try again.');
+            return;
+        }
+
         setLoading(true);
         try {
-            const org = await createOrganization(orgName, account.id);
-            setBrandName(orgName); // Default brand name to org name
+            const response = await fetch('/api/onboarding/organization', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to create organization');
+            }
+
+            setBrandName(name); // Default brand name to org name
             setStep(2);
         } catch (error) {
             console.error(error);
+            toast.error(error instanceof Error ? error.message : 'Failed to create organization');
         } finally {
             setLoading(false);
         }
     };
 
     const handleCreateBrand = async () => {
+        if (!account) {
+            toast.error('Please wait for your account to load, then try again.');
+            return;
+        }
+
         setLoading(true);
         try {
-            await createBrandProfile({
-                accountId: account.id,
-                name: brandName || orgName,
-                primaryColor: primaryColor,
-                isDefault: true,
-                // In a real app we'd also link to the organization_id here
-                // but for now let's just finish
+            const response = await fetch('/api/onboarding/brand-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: (brandName || orgName).trim(),
+                    primaryColor,
+                }),
             });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (response.status === 403 && data?.code === 'UPGRADE_REQUIRED') {
+                toast.error('Custom branding is available on the Pro plan.');
+                setStep(3);
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to create brand profile');
+            }
+
             setStep(3);
         } catch (error) {
             console.error(error);
+            toast.error(error instanceof Error ? error.message : 'Failed to create brand profile');
         } finally {
             setLoading(false);
         }
@@ -103,7 +145,7 @@ export default function OnboardingPage() {
         })
     };
 
-    if (!user && !account && step !== 1) {
+    if (!account && step !== 1) {
         return <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
         </div>;

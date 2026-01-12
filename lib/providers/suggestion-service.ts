@@ -117,6 +117,20 @@ function parseAddress(address: string): ParsedAddress {
     return result;
 }
 
+function getNonPiiLocationContext(address: string): { label: string; lines: string[] } {
+    const parsed = parseAddress(address);
+    const lines: string[] = [];
+
+    if (parsed.city) lines.push(`City: ${parsed.city}`);
+    if (parsed.state) lines.push(`State: ${parsed.state}`);
+    if (parsed.zip) lines.push(`ZIP: ${parsed.zip}`);
+
+    const labelParts = [parsed.city, parsed.state, parsed.zip].filter(Boolean) as string[];
+    const label = labelParts.length > 0 ? labelParts.join(', ') : 'Unknown';
+
+    return { label, lines };
+}
+
 /**
  * Generate cache key from address and category
  * Uses state + zip prefix for locality-specific caching
@@ -293,12 +307,15 @@ function getCategoryGuidance(category: UtilityCategory): string {
 
 function buildSuggestionPrompt(address: string, category: UtilityCategory): string {
     const categoryGuidance = getCategoryGuidance(category);
+    const location = getNonPiiLocationContext(address);
+    const locationLines = location.lines.length > 0 ? location.lines.join('\n') : 'Location: Unknown';
 
     return `You are an expert on utility providers in the United States.
 
-Given the following property address and utility category, identify the most likely utility providers that serve this location.
+Given the following property location context and utility category, identify the most likely utility providers that serve this area.
 
-Address: ${address}
+Location Context (non-PII):
+${locationLines}
 Utility Category: ${category}
 
 IMPORTANT GUIDANCE FOR ${category.toUpperCase()}:
@@ -333,7 +350,10 @@ Example response:
 
 function buildSearchPrompt(query: string, category?: UtilityCategory, address?: string): string {
     const categoryHint = category ? getCategoryGuidance(category) : '';
-    const locationContext = address ? `\nLocation Context: The user is filling out a form for property at: ${address}` : '';
+    const location = address ? getNonPiiLocationContext(address) : null;
+    const locationContext = location
+        ? `\nLocation Context (non-PII):\n${(location.lines.length > 0 ? location.lines : [`Location: ${location.label}`]).join('\n')}`
+        : '';
 
     return `You are an expert on utility providers in the United States.
 
@@ -397,6 +417,7 @@ export async function getSuggestions(
     category: UtilityCategory
 ): Promise<ProviderSuggestion[]> {
     const cacheKey = getCacheKey(address, category);
+    const location = getNonPiiLocationContext(address);
 
     // Check Redis cache (with in-memory fallback)
     const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
@@ -409,7 +430,7 @@ export async function getSuggestions(
     let suggestions = await getAISuggestions(address, category);
 
     if (suggestions && suggestions.length > 0) {
-        console.log(`[Suggestions] Got ${suggestions.length} AI suggestions for ${category} at ${address}`);
+        console.log(`[Suggestions] Got ${suggestions.length} AI suggestions for ${category} near ${location.label}`);
     } else {
         // Fallback to curated providers
         console.log(`[Suggestions] AI returned no results for ${category}, using fallback providers`);
