@@ -4,6 +4,7 @@ import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import { createRequestBodySchema } from '@/lib/validation/schemas';
 
 // GET /api/requests - Get all requests for the current user
 export async function GET(request: Request) {
@@ -62,6 +63,13 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
+        const parsedBody = createRequestBodySchema.safeParse(body);
+        if (!parsedBody.success) {
+            return NextResponse.json(
+                { error: 'Invalid request body', details: parsedBody.error.flatten() },
+                { status: 400 }
+            );
+        }
 
         const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
         if (!account) {
@@ -69,6 +77,10 @@ export async function POST(request: Request) {
         }
         const accountId = account.id;
         const organizationId = account.active_organization_id;
+
+        const selectedUtilityCategories = parsedBody.data.utilityCategories
+            ? UTILITY_CATEGORY_KEYS.filter((c) => parsedBody.data.utilityCategories!.includes(c))
+            : UTILITY_CATEGORY_KEYS;
 
 
         // Check plan limits before creating request
@@ -85,7 +97,7 @@ export async function POST(request: Request) {
         }
 
         // Automatically associate with default brand profile if not specified
-        let brandProfileId = body.brandProfileId;
+        let brandProfileId = parsedBody.data.brandProfileId;
         if (!brandProfileId) {
             const defaultBrand = await getDefaultBrandProfile(accountId, organizationId);
             if (defaultBrand) {
@@ -98,12 +110,12 @@ export async function POST(request: Request) {
             accountId,
             organizationId,
             brandProfileId: brandProfileId,
-            propertyAddress: body.propertyAddress,
-            sellerName: body.sellerName,
-            sellerEmail: body.sellerEmail,
-            sellerPhone: body.sellerPhone,
-            closingDate: body.closingDate,
-            utilityCategories: body.utilityCategories || UTILITY_CATEGORY_KEYS,
+            propertyAddress: parsedBody.data.propertyAddress,
+            sellerName: parsedBody.data.sellerName,
+            sellerEmail: parsedBody.data.sellerEmail,
+            sellerPhone: parsedBody.data.sellerPhone,
+            closingDate: parsedBody.data.closingDate,
+            utilityCategories: selectedUtilityCategories,
         });
 
         if (!newRequest) {
@@ -115,11 +127,11 @@ export async function POST(request: Request) {
         await updateRequestStatus(newRequest.id, 'sent');
 
         // Send email notification to seller if email is provided and sendSellerEmail is true
-        if (body.sellerEmail && body.sendSellerEmail !== false) {
+        if (parsedBody.data.sellerEmail && parsedBody.data.sendSellerEmail !== false) {
             // Get agent name from brand profile or account
             let agentName: string | undefined;
-            if (body.brandProfileId) {
-                const brandProfile = await getBrandProfile(body.brandProfileId);
+            if (brandProfileId) {
+                const brandProfile = await getBrandProfile(brandProfileId);
                 agentName = brandProfile?.contact_name || undefined;
             }
             // Fallback to account name if no brand profile contact name
@@ -129,10 +141,10 @@ export async function POST(request: Request) {
 
             // Send email asynchronously - don't block the response
             sendSellerNotificationEmail({
-                sellerEmail: body.sellerEmail,
-                sellerName: body.sellerName,
-                propertyAddress: body.propertyAddress,
-                closingDate: body.closingDate,
+                sellerEmail: parsedBody.data.sellerEmail,
+                sellerName: parsedBody.data.sellerName,
+                propertyAddress: parsedBody.data.propertyAddress,
+                closingDate: parsedBody.data.closingDate,
                 agentName,
                 sellerToken: newRequest.seller_token || newRequest.public_token,
             }).catch((error) => {

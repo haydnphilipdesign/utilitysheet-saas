@@ -5,6 +5,7 @@ import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
 import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
 
 // GET /api/seller/[token] - Get request data for seller form
 export async function GET(
@@ -95,6 +96,13 @@ export async function POST(
         }
 
         const body = await request.json();
+        const parsedBody = sellerSubmissionBodySchema.safeParse(body);
+        if (!parsedBody.success) {
+            return NextResponse.json(
+                { error: 'Invalid submission', details: parsedBody.error.flatten() },
+                { status: 400 }
+            );
+        }
 
         const requestData =
             (await getRequestBySellerToken(token)) ||
@@ -115,12 +123,16 @@ export async function POST(
             return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
         }
 
+        const requestedCategories = new Set<string>(
+            (requestData as any).utility_categories || UTILITY_CATEGORY_KEYS
+        );
+
         // Update request with applicability info
         await sql`
             UPDATE requests SET
-            water_source = ${body.water_source || null},
-            sewer_type = ${body.sewer_type || null},
-            heating_type = ${body.primary_heating_type || null},
+            water_source = ${parsedBody.data.water_source || null},
+            sewer_type = ${parsedBody.data.sewer_type || null},
+            heating_type = ${parsedBody.data.primary_heating_type || null},
             status = 'submitted',
             last_activity_at = NOW()
             WHERE id = ${requestData.id}
@@ -133,7 +145,11 @@ export async function POST(
         const unresolvedEntries: { category: string; displayName?: string }[] = [];
 
         // Insert utility entries
-        for (const [category, entry] of Object.entries(body.utilities || {})) {
+        for (const [category, entry] of Object.entries(parsedBody.data.utilities || {})) {
+            if (!requestedCategories.has(category)) {
+                continue;
+            }
+
             const e = entry as {
                 entry_mode: string;
                 display_name?: string;
@@ -183,7 +199,7 @@ export async function POST(
         // Log event
         await sql`
             INSERT INTO event_logs (request_id, event_type, event_data)
-            VALUES (${requestData.id}, 'seller_submitted', ${JSON.stringify(body)})
+            VALUES (${requestData.id}, 'seller_submitted', ${JSON.stringify(parsedBody.data)})
         `;
 
         // Get account and notification preferences
