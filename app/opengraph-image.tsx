@@ -97,6 +97,8 @@ export default function OpenGraphImage() {
 
                 <div
                     style={{
+                        display: 'flex',
+                        flexDirection: 'column',
                         fontSize: 64,
                         fontWeight: 950,
                         lineHeight: 1.05,
@@ -120,6 +122,7 @@ export default function OpenGraphImage() {
 
                 <div
                     style={{
+                        display: 'flex',
                         marginTop: 22,
                         fontSize: 26,
                         lineHeight: 1.35,
