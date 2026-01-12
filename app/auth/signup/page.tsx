@@ -19,9 +19,10 @@ export default function SignupPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    const getPostAuthRoute = async () => {
+    const getPostAuthRoute = async (): Promise<string | null> => {
         try {
             const response = await fetch('/api/account');
+            if (response.status === 401) return null;
             if (!response.ok) return '/dashboard';
 
             const data = await response.json().catch(() => ({}));
@@ -45,10 +46,8 @@ export default function SignupPage() {
 
         (async () => {
             try {
-                const response = await fetch('/api/account');
-                if (!response.ok) return;
-
                 const destination = await getPostAuthRoute();
+                if (!destination) return;
                 if (cancelled) return;
 
                 router.push(destination);
@@ -99,7 +98,7 @@ export default function SignupPage() {
                  await currentUser.update({ displayName: fullName });
              }
 
-             const destination = await getPostAuthRoute();
+             const destination = (await getPostAuthRoute()) || '/dashboard';
              router.push(destination);
              router.refresh();
          } catch (err: any) {
