@@ -5,10 +5,10 @@ import { Badge } from "@/components/ui/badge";
 interface UtilityEntry {
     id: string;
     category: string;
-    entry_mode: string;
-    display_name: string;
-    raw_text: string;
-    confidence_score: number;
+    entry_mode: string | null;
+    display_name: string | null;
+    raw_text: string | null;
+    confidence_score: number | null;
 }
 
 interface UtilityEntriesTableProps {
@@ -42,10 +42,12 @@ export function UtilityEntriesTable({ entries }: UtilityEntriesTableProps) {
                                 )}
                             </td>
                             <td className="p-4">
-                                <Badge variant="outline">{entry.entry_mode}</Badge>
+                                <Badge variant="outline">{entry.entry_mode || '-'}</Badge>
                             </td>
                             <td className="p-4 text-muted-foreground">
-                                {entry.confidence_score ? `${(entry.confidence_score * 100).toFixed(0)}%` : '-'}
+                                {entry.confidence_score !== null && entry.confidence_score !== undefined
+                                    ? `${(entry.confidence_score * 100).toFixed(0)}%`
+                                    : '-'}
                             </td>
                         </tr>
                     ))}

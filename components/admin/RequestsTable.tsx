@@ -10,7 +10,11 @@ interface Request {
     property_address: string;
     status: string;
     created_at: string;
-    utility_categories: string[];
+    utility_categories?: string[] | null;
+    user_name?: string | null;
+    user_email?: string | null;
+    seller_name?: string | null;
+    seller_email?: string | null;
 }
 
 interface RequestsTableProps {
@@ -28,6 +32,7 @@ export function RequestsTable({ requests }: RequestsTableProps) {
                 <thead>
                     <tr className="border-b bg-muted/50 text-left rounded-t-md">
                         <th className="p-4 font-medium">Address</th>
+                        <th className="p-4 font-medium">User</th>
                         <th className="p-4 font-medium">Status</th>
                         <th className="p-4 font-medium">Created</th>
                         <th className="p-4 font-medium center w-[50px]">Action</th>
@@ -37,6 +42,9 @@ export function RequestsTable({ requests }: RequestsTableProps) {
                     {requests.map((request) => (
                         <tr key={request.id} className="border-b last:border-0 hover:bg-muted/50">
                             <td className="p-4 font-medium">{request.property_address}</td>
+                            <td className="p-4 text-muted-foreground">
+                                {request.user_name || request.user_email || request.seller_name || request.seller_email || '-'}
+                            </td>
                             <td className="p-4">
                                 <Badge variant={
                                     request.status === 'submitted' ? 'default' :

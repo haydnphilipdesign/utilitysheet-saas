@@ -50,6 +50,9 @@ export type AdminAction =
     | 'plan_changed'
     | 'impersonation_started'
     | 'impersonation_ended'
+    | 'request_status_changed'
+    | 'request_seller_updated'
+    | 'request_reminder_sent'
     | 'user_updated';
 
 // Entities

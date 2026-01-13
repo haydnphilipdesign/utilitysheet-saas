@@ -5,6 +5,25 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Building2, Users } from 'lucide-react';
 
+type OrganizationRow = {
+    id: string;
+    name: string;
+    slug: string;
+    logo_url: string | null;
+    created_at: string;
+};
+
+type OrganizationMemberRow = {
+    id: string;
+    organization_id: string;
+    account_id: string;
+    role: 'admin' | 'member';
+    created_at: string;
+    full_name: string | null;
+    email: string;
+    user_role: string;
+};
+
 async function getOrgData(orgId: string) {
     if (!sql) return null;
 
@@ -22,8 +41,8 @@ async function getOrgData(orgId: string) {
     if (!orgRes[0]) return null;
 
     return {
-        org: orgRes[0],
-        members: membersRes
+        org: orgRes[0] as unknown as OrganizationRow,
+        members: membersRes as unknown as OrganizationMemberRow[],
     };
 }
 
@@ -76,7 +95,7 @@ export default async function OrgDetailPage({ params }: { params: { id: string }
                             </tr>
                         </thead>
                         <tbody>
-                            {members.map((member: any) => (
+                            {members.map((member) => (
                                 <tr key={member.id} className="border-b last:border-0 hover:bg-muted/50">
                                     <td className="p-4 font-medium">{member.full_name}</td>
                                     <td className="p-4 text-muted-foreground">{member.email}</td>

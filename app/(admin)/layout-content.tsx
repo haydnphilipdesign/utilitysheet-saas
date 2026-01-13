@@ -43,7 +43,9 @@ export function AdminLayoutContent({ children }: { children: React.ReactNode }) 
                         <div className="flex items-center gap-4">
                             <nav className="flex items-center gap-1">
                                 {adminNavigation.map((item) => {
-                                    const isActive = pathname.startsWith(item.href);
+                                    const isActive = item.href === '/admin'
+                                        ? pathname === '/admin'
+                                        : pathname.startsWith(item.href);
                                     return (
                                         <Link
                                             key={item.name}

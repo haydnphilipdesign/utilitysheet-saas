@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import { sql } from '@/lib/neon/db';
 import { StatsCard } from '@/components/admin/StatsCard';
 import { Overview } from '@/components/admin/Overview';

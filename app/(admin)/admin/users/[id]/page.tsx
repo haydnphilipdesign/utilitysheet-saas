@@ -2,14 +2,14 @@ import { notFound } from 'next/navigation';
 import { sql } from '@/lib/neon/db';
 import { RequestsTable } from '@/components/admin/RequestsTable';
 import { AuditLogTable } from '@/components/admin/AuditLogTable';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { impersonateUser, banUserAction, unbanUserAction } from '../actions';
-import { UserCheck, Ban, Shield, Mail, Phone, Calendar, Building } from 'lucide-react';
+import { Mail, Building } from 'lucide-react';
+import type { Request } from '@/types';
+import type { AdminAuditLog } from '@/types';
 
 async function getUserData(userId: string) {
     if (!sql) return null;
@@ -47,12 +47,6 @@ export default async function UserDetailPage({ params }: { params: { id: string 
         ? user.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
         : user.email.slice(0, 2).toUpperCase();
 
-    // Server actions wrapping
-    async function handleImpersonate() {
-        "use server";
-        await impersonateUser(user.id);
-    }
-
     return (
         <div className="space-y-8">
             {/* Header: Profile & Actions */}
@@ -82,15 +76,6 @@ export default async function UserDetailPage({ params }: { params: { id: string 
                             </div>
                         </div>
                     </div>
-                </div>
-                <div className="flex gap-2">
-                    <form action={handleImpersonate}>
-                        <Button variant="outline">
-                            <UserCheck className="mr-2 h-4 w-4" />
-                            Impersonate
-                        </Button>
-                    </form>
-                    {/* Add Ban/Unban buttons if needed here or rely on the dropdown in the table */}
                 </div>
             </div>
 
@@ -125,11 +110,13 @@ export default async function UserDetailPage({ params }: { params: { id: string 
                     <CardContent className="space-y-2">
                         <div className="flex justify-between py-1 border-b last:border-0 border-border/50">
                             <span className="text-muted-foreground text-sm">Plan</span>
-                            <span className="font-medium text-sm capitalize">{user.plan || 'Free'}</span>
+                            <span className="font-medium text-sm capitalize">{user.subscription_status || 'free'}</span>
                         </div>
                         <div className="flex justify-between py-1 border-b last:border-0 border-border/50">
                             <span className="text-muted-foreground text-sm">Status</span>
-                            <span className="font-medium text-sm capitalize">{user.subscription_status || 'Active'}</span>
+                            <span className="font-medium text-sm capitalize">
+                                {user.subscription_status === 'canceled' ? 'Canceled' : 'Active'}
+                            </span>
                         </div>
                     </CardContent>
                 </Card>
@@ -158,10 +145,10 @@ export default async function UserDetailPage({ params }: { params: { id: string 
                     <TabsTrigger value="log">Audit Log ({logs.length})</TabsTrigger>
                 </TabsList>
                 <TabsContent value="requests" className="mt-4">
-                    <RequestsTable requests={requests as any[]} />
+                    <RequestsTable requests={requests as unknown as Request[]} />
                 </TabsContent>
                 <TabsContent value="log" className="mt-4">
-                    <AuditLogTable logs={logs as any[]} />
+                    <AuditLogTable logs={logs as unknown as AdminAuditLog[]} />
                 </TabsContent>
             </Tabs>
         </div>

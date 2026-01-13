@@ -2,9 +2,11 @@ import { notFound } from 'next/navigation';
 import { sql } from '@/lib/neon/db';
 import { UtilityEntriesTable } from '@/components/admin/UtilityEntriesTable';
 import { EventLogTable } from '@/components/admin/EventLogTable';
+import { RequestAdminActions } from '@/components/admin/RequestAdminActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import type { EventLog, UtilityEntry } from '@/types';
 
 async function getRequestData(requestId: string) {
     if (!sql) return null;
@@ -54,6 +56,19 @@ export default async function RequestDetailPage({ params }: { params: { id: stri
                 </Badge>
             </div>
 
+            <RequestAdminActions
+                request={{
+                    id: request.id,
+                    status: request.status,
+                    property_address: request.property_address,
+                    seller_name: request.seller_name,
+                    seller_email: request.seller_email,
+                    seller_phone: request.seller_phone,
+                    seller_token: request.seller_token,
+                    public_token: request.public_token,
+                }}
+            />
+
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                     <CardHeader>
@@ -84,12 +99,12 @@ export default async function RequestDetailPage({ params }: { params: { id: stri
 
             <div>
                 <h3 className="text-lg font-medium mb-4">Utility Entries</h3>
-                <UtilityEntriesTable entries={entries as any[]} />
+                <UtilityEntriesTable entries={entries as unknown as UtilityEntry[]} />
             </div>
 
             <div>
                 <h3 className="text-lg font-medium mb-4">Event Logs</h3>
-                <EventLogTable logs={logs as any[]} />
+                <EventLogTable logs={logs as unknown as EventLog[]} />
             </div>
         </div>
     );

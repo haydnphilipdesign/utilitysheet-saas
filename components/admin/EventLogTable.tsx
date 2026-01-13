@@ -4,7 +4,7 @@ interface EventLog {
     id: string;
     event_type: string;
     event_data: any;
-    ip_address: string;
+    ip_address: string | null;
     created_at: string;
 }
 

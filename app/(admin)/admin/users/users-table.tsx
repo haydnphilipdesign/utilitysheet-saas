@@ -1,19 +1,18 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
     useReactTable,
     getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
     getSortedRowModel,
     flexRender,
     type ColumnDef,
     type SortingState,
 } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -24,79 +23,156 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     MoreHorizontal,
-    Search,
     UserCheck,
     Ban,
     Shield,
     User,
-    ChevronLeft,
-    ChevronRight,
     ArrowUpDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Account, UserRole } from '@/types';
-import { impersonateUser, updateUserRoleAction, banUserAction, unbanUserAction, updateUserPlanAction } from './actions';
+import { updateUserRoleAction, banUserAction, unbanUserAction, updateUserPlanAction } from './actions';
 
 interface UsersTableProps {
     users: Account[];
+}
+
+type ConfirmableAction =
+    | { type: 'promote'; user: Account }
+    | { type: 'demote'; user: Account }
+    | { type: 'ban'; user: Account }
+    | { type: 'unban'; user: Account }
+    | { type: 'upgradePlan'; user: Account }
+    | { type: 'downgradePlan'; user: Account };
+
+function getActionCopy(action: ConfirmableAction['type']) {
+    switch (action) {
+        case 'promote':
+            return { title: 'Promote to Admin', confirm: 'Promote', tone: 'default' as const };
+        case 'demote':
+            return { title: 'Demote to User', confirm: 'Demote', tone: 'default' as const };
+        case 'ban':
+            return { title: 'Ban User', confirm: 'Ban', tone: 'destructive' as const };
+        case 'unban':
+            return { title: 'Unban User', confirm: 'Unban', tone: 'default' as const };
+        case 'upgradePlan':
+            return { title: 'Upgrade Plan to Pro', confirm: 'Upgrade', tone: 'default' as const };
+        case 'downgradePlan':
+            return { title: 'Downgrade Plan to Free', confirm: 'Downgrade', tone: 'default' as const };
+    }
 }
 
 export function UsersTable({ users }: UsersTableProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [sorting, setSorting] = useState<SortingState>([]);
-    const [globalFilter, setGlobalFilter] = useState('');
+    const [confirmAction, setConfirmAction] = useState<ConfirmableAction | null>(null);
+    const [reason, setReason] = useState('');
 
-    const handleImpersonate = async (userId: string) => {
+    const reasonOk = reason.trim().length >= 3;
+
+    const runAction = (action: ConfirmableAction) => {
+        setConfirmAction(action);
+        setReason('');
+    };
+
+    const confirm = () => {
+        if (!confirmAction) return;
+
+        const reasonText = reason.trim();
+        if (reasonText.length < 3) {
+            toast.error('Please add a short reason (min 3 characters).');
+            return;
+        }
+
         startTransition(async () => {
-            await impersonateUser(userId);
-            router.push('/dashboard');
-            router.refresh();
+            try {
+                const userId = confirmAction.user.id;
+                const userEmail = confirmAction.user.email;
+                let result: { success: boolean; error?: string } = { success: false, error: 'Unknown action' };
+
+                switch (confirmAction.type) {
+                    case 'promote':
+                        result = await updateUserRoleAction(userId, 'admin', reasonText);
+                        break;
+                    case 'demote':
+                        result = await updateUserRoleAction(userId, 'user', reasonText);
+                        break;
+                    case 'ban':
+                        result = await banUserAction(userId, reasonText);
+                        break;
+                    case 'unban':
+                        result = await unbanUserAction(userId, reasonText);
+                        break;
+                    case 'upgradePlan':
+                        result = await updateUserPlanAction(userId, 'pro', reasonText);
+                        break;
+                    case 'downgradePlan':
+                        result = await updateUserPlanAction(userId, 'free', reasonText);
+                        break;
+                }
+
+                if (!result.success) {
+                    toast.error(result.error || 'Action failed');
+                    return;
+                }
+
+                const { title } = getActionCopy(confirmAction.type);
+                toast.success(`${title}: ${userEmail}`);
+                setConfirmAction(null);
+                setReason('');
+                router.refresh();
+            } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'Action failed');
+            }
         });
     };
 
     const handleBan = async (userId: string) => {
-        startTransition(async () => {
-            await banUserAction(userId);
-            router.refresh();
-        });
+        const user = users.find((u) => u.id === userId);
+        if (!user) return;
+        runAction({ type: 'ban', user });
     };
 
     const handleUnban = async (userId: string) => {
-        startTransition(async () => {
-            await unbanUserAction(userId);
-            router.refresh();
-        });
+        const user = users.find((u) => u.id === userId);
+        if (!user) return;
+        runAction({ type: 'unban', user });
     };
 
     const handlePromote = async (userId: string) => {
-        startTransition(async () => {
-            await updateUserRoleAction(userId, 'admin');
-            router.refresh();
-        });
+        const user = users.find((u) => u.id === userId);
+        if (!user) return;
+        runAction({ type: 'promote', user });
     };
 
     const handleDemote = async (userId: string) => {
-        startTransition(async () => {
-            await updateUserRoleAction(userId, 'user');
-            router.refresh();
-        });
+        const user = users.find((u) => u.id === userId);
+        if (!user) return;
+        runAction({ type: 'demote', user });
     };
 
     const handleUpgradePlan = async (userId: string) => {
-        startTransition(async () => {
-            await updateUserPlanAction(userId, 'pro');
-            router.refresh();
-        });
+        const user = users.find((u) => u.id === userId);
+        if (!user) return;
+        runAction({ type: 'upgradePlan', user });
     };
 
     const handleDowngradePlan = async (userId: string) => {
-        startTransition(async () => {
-            await updateUserPlanAction(userId, 'free');
-            router.refresh();
-        });
+        const user = users.find((u) => u.id === userId);
+        if (!user) return;
+        runAction({ type: 'downgradePlan', user });
     };
 
     const getRoleBadge = (role: UserRole) => {
@@ -125,9 +201,12 @@ export function UsersTable({ users }: UsersTableProps) {
             ),
             cell: ({ row }) => (
                 <div className="flex flex-col">
-                    <span className="font-medium text-foreground">
+                    <Link
+                        href={`/admin/users/${row.original.id}`}
+                        className="font-medium text-foreground hover:underline underline-offset-2"
+                    >
                         {row.original.full_name || 'No name'}
-                    </span>
+                    </Link>
                     <span className="text-xs text-muted-foreground">
                         ID: {row.original.id.slice(0, 8)}...
                     </span>
@@ -154,9 +233,6 @@ export function UsersTable({ users }: UsersTableProps) {
             accessorKey: 'role',
             header: 'Role',
             cell: ({ row }) => getRoleBadge(row.original.role),
-            filterFn: (row, id, value) => {
-                return value.includes(row.getValue(id));
-            },
         },
         {
             accessorKey: 'created_at',
@@ -189,14 +265,6 @@ export function UsersTable({ users }: UsersTableProps) {
                         <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
                             <DropdownMenuGroup>
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    onClick={() => handleImpersonate(user.id)}
-                                    className="cursor-pointer"
-                                >
-                                    <UserCheck className="mr-2 h-4 w-4" />
-                                    Impersonate
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {user.role === 'admin' ? (
                                     <DropdownMenuItem
@@ -264,33 +332,57 @@ export function UsersTable({ users }: UsersTableProps) {
         columns,
         onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        getFilteredRowModel: getFilteredRowModel(),
         state: {
             sorting,
-            globalFilter,
         },
-        onGlobalFilterChange: setGlobalFilter,
-        globalFilterFn: 'includesString',
     });
 
     return (
         <div className="p-4">
-            {/* Search */}
-            <div className="flex items-center py-4">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search users..."
-                        value={globalFilter ?? ''}
-                        onChange={(event) => setGlobalFilter(event.target.value)}
-                        className="pl-9"
-                    />
-                </div>
-            </div>
+            <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{confirmAction ? getActionCopy(confirmAction.type).title : 'Confirm action'}</DialogTitle>
+                        <DialogDescription>
+                            This action will be recorded in audit logs. Add a short reason before confirming.
+                        </DialogDescription>
+                    </DialogHeader>
 
-            {/* Table */}
+                    {confirmAction && (
+                        <div className="space-y-3">
+                            <div className="text-xs text-muted-foreground">
+                                Target: <span className="text-foreground font-medium">{confirmAction.user.email}</span> (ID{' '}
+                                <span className="font-mono">{confirmAction.user.id.slice(0, 8)}...</span>)
+                            </div>
+                            <Textarea
+                                placeholder="Reason (required)..."
+                                value={reason}
+                                onChange={(e) => setReason(e.target.value)}
+                                disabled={isPending}
+                            />
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setConfirmAction(null)}
+                            disabled={isPending}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant={confirmAction ? getActionCopy(confirmAction.type).tone : 'default'}
+                            onClick={confirm}
+                            disabled={!confirmAction || !reasonOk || isPending}
+                        >
+                            {confirmAction ? getActionCopy(confirmAction.type).confirm : 'Confirm'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <div className="rounded-lg border border-border overflow-hidden">
                 <table className="w-full">
                     <thead className="bg-secondary/50">
@@ -341,31 +433,6 @@ export function UsersTable({ users }: UsersTableProps) {
                         )}
                     </tbody>
                 </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between py-4">
-                <p className="text-sm text-muted-foreground">
-                    Showing {table.getRowModel().rows.length} of {users.length} users
-                </p>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => table.previousPage()}
-                        disabled={!table.getCanPreviousPage()}
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => table.nextPage()}
-                        disabled={!table.getCanNextPage()}
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
             </div>
         </div>
     );

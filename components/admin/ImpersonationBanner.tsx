@@ -3,6 +3,10 @@ import { ImpersonationBannerClient } from './ImpersonationBannerClient';
 import { sql } from '@/lib/neon/db';
 
 export async function ImpersonationBanner() {
+    if (process.env.ADMIN_ENABLE_IMPERSONATION !== 'true') {
+        return null;
+    }
+
     const cookieStore = await cookies();
     const impersonatorId = cookieStore.get('impersonator_id')?.value;
     const impersonatedUserId = cookieStore.get('impersonated_user_id')?.value;
