@@ -206,7 +206,7 @@ export function HeroSection() {
                     >
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/80 border border-border text-muted-foreground text-sm font-medium mb-8 hover:bg-secondary transition-colors cursor-default backdrop-blur-sm">
                             <Sparkles className="w-4 h-4 text-slate-500" />
-                            <span>Built for transaction coordinators</span>
+                            <span>Built for transaction coordinators & agents</span>
                         </div>
 
                         <h1 className="text-5xl md:text-7xl lg:text-7xl font-black tracking-tight text-foreground mb-8">
@@ -217,7 +217,7 @@ export function HeroSection() {
                         </h1>
 
                         <p className="mx-auto lg:mx-0 max-w-2xl text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
-                            Send a quick guided link to your seller. They tap to confirm utilities in minutes. UtilitySheet generates a clean, shareable utility info sheet (PDF + link) for buyers, agents, and title.
+                            Send sellers a guided intake link. They confirm utilities in minutes—no login. UtilitySheet generates a buyer-ready utility sheet (PDF + link) you can share with agents, buyers, and title.
                         </p>
 
                         <ul className="mx-auto lg:mx-0 max-w-2xl space-y-3 text-muted-foreground mb-10 text-left">

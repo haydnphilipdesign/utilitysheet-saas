@@ -1,8 +1,7 @@
-'use client';
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { HeroSection } from '@/components/landing/HeroSection';
+import { TrustStrip } from '@/components/landing/TrustStrip';
 import { ForTcsSection } from '@/components/landing/ForTcsSection';
 import { FeatureSection } from '@/components/landing/FeatureSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
@@ -14,6 +13,7 @@ export default function LandingPage() {
     return (
         <div className="relative overflow-hidden bg-background min-h-screen">
             <HeroSection />
+            <TrustStrip />
             <ForTcsSection />
             <FeatureSection />
             <HowItWorks />
@@ -25,14 +25,14 @@ export default function LandingPage() {
             <section className="py-24 px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="mx-auto max-w-5xl">
                     <div className="relative rounded-3xl bg-slate-700 p-8 md:p-16 text-center shadow-2xl shadow-slate-500/20 overflow-hidden">
-                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 mix-blend-overlay"></div>
+                        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 mix-blend-overlay"></div>
                         <div className="absolute top-0 right-0 w-64 h-64 bg-slate-500/20 blur-[80px] rounded-full" />
                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-slate-900/40 blur-[80px] rounded-full" />
 
                         <div className="relative z-10">
                             <h2 className="text-3xl font-bold text-white mb-6 sm:text-5xl tracking-tight">Ready to stop the utility back-and-forth?</h2>
                             <p className="text-slate-100/90 text-lg mb-10 max-w-2xl mx-auto font-medium">
-                                Send one link to the seller and get a buyer-ready utility sheet back. Free to start—no credit card required.
+                                Send one link to the seller and get a buyer-ready utility sheet back. Start free—no credit card required.
                             </p>
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                                 <Link href="/auth/signup">

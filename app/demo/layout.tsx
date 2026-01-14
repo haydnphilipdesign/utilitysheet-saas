@@ -1,6 +1,12 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
+
+export const metadata: Metadata = {
+    title: 'Demo',
+    description: 'Try the seller experience: see suggested utility providers and the guided confirmation flow.',
+};
 
 export default function DemoLayout({
     children,

@@ -8,13 +8,13 @@ const tiers = [
     {
         name: 'Starter',
         price: 'Free',
-        description: 'Perfect for solo TCs and agents getting started.',
+        description: 'Perfect for solo transaction coordinators and agents getting started.',
         features: [
             '3 requests per month',
             'Shareable seller intake link',
-            'Downloadable PDF info sheet',
+            'Buyer-ready PDF + share link',
             'Email reminders',
-            'Powered-by footer on share links'
+            'UtilitySheet footer on share links'
         ],
         cta: 'Start for Free',
         href: '/auth/signup',
@@ -24,11 +24,11 @@ const tiers = [
         name: 'Pro',
         price: '$9',
         period: '/month',
-        description: 'For high-volume TCs and teams who want full white-label.',
+        description: 'For high-volume TCs and teams who want white-label branding.',
         features: [
             'Unlimited requests',
             'Custom branding (logo + colors)',
-            'Remove “Powered by UtilitySheet”',
+            'Remove "Powered by UtilitySheet"',
             'Priority support',
             'Team management (coming soon)'
         ],
@@ -40,7 +40,7 @@ const tiers = [
 
 export function PricingSection() {
     return (
-        <section id="pricing" className="py-32 bg-background border-t border-border/50">
+        <section id="pricing" className="scroll-mt-24 py-32 bg-background border-t border-border/50">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-20">
                     <h2 className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Pricing</h2>
@@ -100,6 +100,10 @@ export function PricingSection() {
                         </div>
                     ))}
                 </div>
+
+                <p className="mt-10 text-center text-sm text-muted-foreground">
+                    Start on Starter with no credit card. Upgrade or cancel anytime.
+                </p>
             </div>
         </section>
     );

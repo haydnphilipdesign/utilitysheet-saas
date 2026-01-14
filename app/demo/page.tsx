@@ -123,7 +123,7 @@ export default function DemoPage() {
                             Try the Seller Experience
                         </h1>
                         <p className="text-muted-foreground text-sm sm:text-base">
-                            Enter any address you know the utility providers for. Our AI will suggest providers — see how accurate it is!
+                            Enter an address to see suggested providers. Sellers can confirm, search, or type—no login required.
                         </p>
                     </div>
 
@@ -144,6 +144,18 @@ export default function DemoPage() {
                                 placeholder="123 Main St, Austin, TX 78701"
                                 className="w-full px-4 py-3 bg-background/50 border border-input rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all"
                             />
+                            <div className="mt-2 flex items-center justify-between">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAddress('123 Main St, Austin, TX 78701');
+                                        setError(null);
+                                    }}
+                                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                                >
+                                    Use a sample address
+                                </button>
+                            </div>
                             {error && (
                                 <motion.p
                                     initial={{ opacity: 0, y: -5 }}
@@ -165,7 +177,7 @@ export default function DemoPage() {
                         </button>
 
                         <p className="text-xs text-muted-foreground text-center">
-                            Your address is only used to generate suggestions and won't be saved.
+                            Your address is only used to generate suggestions.
                         </p>
                     </div>
 

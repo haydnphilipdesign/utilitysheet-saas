@@ -48,7 +48,7 @@ export default function MarketingLayout({
                                 <span className="text-xl font-bold">UtilitySheet</span>
                             </Link>
                             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
-                                Seller utility intake to buyer-ready utility sheet (PDF + link).
+                                Collect utility providers from sellers. Share a buyer-ready utility sheet (PDF + link).
                             </p>
                         </div>
                         <div>
@@ -57,8 +57,10 @@ export default function MarketingLayout({
                                 <li><Link href="/#for-tcs" className="hover:text-foreground">For TCs</Link></li>
                                 <li><Link href="/#features" className="hover:text-foreground">Features</Link></li>
                                 <li><Link href="/#how-it-works" className="hover:text-foreground">How it Works</Link></li>
+                                <li><Link href="/#templates" className="hover:text-foreground">Templates</Link></li>
                                 <li><Link href="/demo" className="hover:text-foreground">Demo</Link></li>
                                 <li><Link href="/#pricing" className="hover:text-foreground">Pricing</Link></li>
+                                <li><Link href="/#faq" className="hover:text-foreground">FAQ</Link></li>
                             </ul>
                         </div>
                         <div>

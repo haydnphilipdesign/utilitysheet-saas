@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 
 export function HowItWorks() {
     return (
-        <section id="how-it-works" className="py-24 sm:py-32 bg-background relative overflow-hidden">
+        <section id="how-it-works" className="scroll-mt-24 py-24 sm:py-32 bg-background relative overflow-hidden">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="text-center mb-24">
                     <h2 className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Workflow</h2>
@@ -25,7 +25,7 @@ export function HowItWorks() {
                                 Generate a Link
                             </h4>
                             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Enter the property address and select needed utilities. We generate a secure unique link in seconds to send to your client.
+                                Enter the property address and select needed utilities. We generate a secure, unique link in seconds to send to your seller.
                             </p>
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
@@ -83,7 +83,7 @@ export function HowItWorks() {
                                 Share the Utility Sheet
                             </h4>
                             <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Download a clean PDF and share the web link with buyers, agents, title, or your coordinator.
+                                Download a clean PDF and share the web link with buyers, agents, title, or your team.
                             </p>
                         </div>
                         <motion.div

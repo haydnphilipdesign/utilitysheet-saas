@@ -47,7 +47,7 @@ export function CopyTemplatesSection() {
     }, []);
 
     return (
-        <section id="templates" className="py-24 bg-background px-4 sm:px-6 lg:px-8 border-t border-border/50">
+        <section id="templates" className="scroll-mt-24 py-24 bg-background px-4 sm:px-6 lg:px-8 border-t border-border/50">
             <div className="mx-auto max-w-7xl">
                 <div className="text-center mb-16">
                     <h2 className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Copy/Paste Templates</h2>
@@ -166,4 +166,3 @@ export function CopyTemplatesSection() {
         </section>
     );
 }
-

@@ -9,30 +9,38 @@ import {
 
 const faqs = [
     {
-        question: "Who is UtilitySheet for?",
-        answer: "UtilitySheet is built for transaction coordinators and real estate agents who want a standardized, buyer-ready utility handoff without chasing sellers."
+        question: 'Who is UtilitySheet for?',
+        answer: 'UtilitySheet is built for transaction coordinators and real estate agents who want a standardized, buyer-ready utility handoff—without chasing sellers.',
     },
     {
-        question: "Does the seller need an account?",
-        answer: "No. Sellers open a secure link and complete the guided form on their phone—no login and no app install."
+        question: 'Does the seller need an account?',
+        answer: 'No. Sellers open a secure link and complete the guided form on their phone—no login and no app install.',
     },
     {
-        question: "What if the seller doesn’t know a provider?",
-        answer: "They can tap “Not sure” and move on, or search/type the provider name if they do know it. You’ll still get a clean sheet with what they provided."
+        question: 'Do sellers need to upload bills or share account numbers?',
+        answer: 'No. UtilitySheet is designed to be quick and low-friction—no bill uploads and no account numbers.',
     },
     {
-        question: "How do provider suggestions work?",
-        answer: "We use AI to suggest likely providers based on the address and utility type. Sellers can confirm with a tap or enter a provider manually if the suggestion isn’t correct."
+        question: 'What if the seller doesn’t know a provider?',
+        answer: 'They can tap “Not sure” and keep moving, or search/type the provider name if they do know it. You’ll still get a clean sheet with whatever they provided.',
     },
     {
-        question: "Can I remove UtilitySheet branding?",
-        answer: "Yes. Pro accounts can remove the “Powered by UtilitySheet” footer from share links and PDFs (white-label)."
+        question: 'How do provider suggestions work?',
+        answer: 'We suggest likely providers based on the address and utility type. Sellers can confirm with a tap or enter a provider manually if the suggestion isn’t correct.',
+    },
+    {
+        question: 'What utilities can I collect?',
+        answer: 'Common categories like electric, gas, water, sewer, trash, internet, cable, and propane—based on what you select when creating the request.',
+    },
+    {
+        question: 'Can I remove UtilitySheet branding?',
+        answer: 'Yes. Pro accounts can remove the “Powered by UtilitySheet” footer from share links and PDFs (white-label).',
     }
 ];
 
 export function FaqSection() {
     return (
-        <section id="faq" className="py-24 bg-background px-4 sm:px-6 lg:px-8">
+        <section id="faq" className="scroll-mt-24 py-24 bg-background px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl">
                 <h2 className="text-3xl font-bold text-foreground text-center mb-12">Frequently Asked Questions</h2>
 
