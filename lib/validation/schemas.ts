@@ -7,6 +7,7 @@ export const utilityCategoryEnum = z.enum(
 );
 
 const isHttpUrl = (value: string) => value.startsWith('https://') || value.startsWith('http://');
+const allowedUtilityCategories = new Set<string>(UTILITY_CATEGORY_KEYS);
 
 export const createRequestBodySchema = z.object({
     propertyAddress: z.string().trim().min(5).max(200),
@@ -32,22 +33,40 @@ const providerEntryModeEnum = z.enum([
     'not_applicable',
 ]);
 
-// Preprocessor to convert empty strings/invalid URLs to null
+const nullToUndefined = (val: unknown) => (val === null ? undefined : val);
+
+const normalizeHttpUrlOrNull = (val: unknown): string | null | undefined => {
+    if (val === undefined) return undefined;
+    if (val === null) return null;
+    if (typeof val !== 'string') return null;
+
+    const trimmed = val.trim();
+    if (trimmed === '') return null;
+
+    const withScheme = isHttpUrl(trimmed) ? trimmed : `https://${trimmed}`;
+
+    try {
+        const parsed = new URL(withScheme);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+        return parsed.toString();
+    } catch {
+        return null;
+    }
+};
+
+// Preprocessor to convert empty strings/invalid URLs to null (and allow missing scheme)
 const httpUrlSchemaFlexible = z.preprocess(
-    (val) => {
-        if (typeof val !== 'string' || val.trim() === '') return null;
-        return val.trim();
-    },
+    normalizeHttpUrlOrNull,
     z.union([
         z.string().url().refine(isHttpUrl, { message: 'Must be an http(s) URL' }),
-        z.null()
+        z.null(),
     ])
 );
 
 const utilityWizardStateSchema = z.object({
-    entry_mode: providerEntryModeEnum.nullable(),
-    display_name: z.string().trim().max(200).nullable(),
-    raw_text: z.string().trim().max(500).nullable(),
+    entry_mode: z.preprocess(nullToUndefined, providerEntryModeEnum.nullable().default(null)),
+    display_name: z.preprocess(nullToUndefined, z.string().trim().max(200).nullable().default(null)),
+    raw_text: z.preprocess(nullToUndefined, z.string().trim().max(500).nullable().default(null)),
     hidden: z.boolean().optional().default(false),
     contact_phone: z.string().trim().max(50).nullable().optional(),
     contact_url: httpUrlSchemaFlexible.optional(),
@@ -62,9 +81,23 @@ export const sellerSubmissionBodySchema = z.object({
     primary_heating_type: heatingFuelEnum.nullable(),
     trash_handled_by: z.enum(['municipal', 'private', 'not_sure']),
     optional_utilities: z.array(z.enum(['trash', 'internet', 'cable'])).optional(),
-    utilities: z
-        .record(utilityCategoryEnum, utilityWizardStateSchema)
-        .refine((obj) => Object.keys(obj).length <= UTILITY_CATEGORY_KEYS.length, {
-            message: 'Too many utility entries',
-        }),
+    utilities: z.preprocess(
+        (val) => {
+            const input = val;
+            if (!input || typeof input !== 'object' || Array.isArray(input)) return input;
+
+            const filtered: Record<string, unknown> = {};
+            for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+                if (allowedUtilityCategories.has(k)) {
+                    filtered[k] = v;
+                }
+            }
+            return filtered;
+        },
+        z
+            .record(z.string(), utilityWizardStateSchema)
+            .refine((obj) => Object.keys(obj).length <= UTILITY_CATEGORY_KEYS.length, {
+                message: 'Too many utility entries',
+            })
+    ),
 }).passthrough(); // Allow extra fields like optional_utilities variants

@@ -302,7 +302,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             if (response.ok) {
                 setCurrentStep(Step.SUCCESS);
             } else {
-                console.error('Submission failed');
+                const errorBody = await response.json().catch(() => null);
+                console.error('Submission failed', {
+                    status: response.status,
+                    error: errorBody,
+                });
                 setSubmitting(false);
             }
         } catch (err) {
