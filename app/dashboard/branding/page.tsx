@@ -188,7 +188,7 @@ export default function BrandingPage() {
                     <Card key={brand.id} className="border-border bg-card/50 hover:bg-card/70 transition-colors">
                         <CardHeader className="pb-3">
                             <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
                                     {/* Brand Color Preview */}
                                     <div
                                         className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold"
@@ -196,9 +196,9 @@ export default function BrandingPage() {
                                     >
                                         {brand.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                                     </div>
-                                    <div>
-                                        <CardTitle className="text-foreground text-lg flex items-center gap-2">
-                                            {brand.name}
+                                    <div className="min-w-0">
+                                        <CardTitle className="text-foreground text-lg flex items-center gap-2 min-w-0">
+                                            <span className="truncate">{brand.name}</span>
                                             {brand.is_default && (
                                                 <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-xs">
                                                     <Star className="h-3 w-3 mr-1" />
@@ -206,7 +206,7 @@ export default function BrandingPage() {
                                                 </Badge>
                                             )}
                                         </CardTitle>
-                                        <CardDescription className="text-muted-foreground">
+                                        <CardDescription className="text-muted-foreground truncate">
                                             {brand.contact_name || 'No contact name'}
                                         </CardDescription>
                                     </div>
@@ -260,13 +260,17 @@ export default function BrandingPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                                     <span className="text-muted-foreground">Email</span>
-                                    <span className="text-secondary-foreground">{brand.contact_email || '-'}</span>
+                                    <span className="text-secondary-foreground break-all sm:break-normal sm:text-right sm:max-w-[60%]">
+                                        {brand.contact_email || '-'}
+                                    </span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                                     <span className="text-muted-foreground">Phone</span>
-                                    <span className="text-secondary-foreground">{brand.contact_phone || '-'}</span>
+                                    <span className="text-secondary-foreground break-all sm:break-normal sm:text-right sm:max-w-[60%]">
+                                        {brand.contact_phone || '-'}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Colors</span>

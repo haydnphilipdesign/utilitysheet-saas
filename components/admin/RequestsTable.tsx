@@ -27,8 +27,8 @@ export function RequestsTable({ requests }: RequestsTableProps) {
     }
 
     return (
-        <div className="rounded-md border">
-            <table className="w-full text-sm">
+        <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm min-w-[720px]">
                 <thead>
                     <tr className="border-b bg-muted/50 text-left rounded-t-md">
                         <th className="p-4 font-medium">Address</th>

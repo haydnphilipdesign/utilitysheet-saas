@@ -175,7 +175,7 @@ export default function RequestsPage() {
             {/* Table */}
             <Card className="border-border bg-card/50">
                 <CardContent className="pt-6">
-                    <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="rounded-lg border border-border overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-transparent">
@@ -199,8 +199,15 @@ export default function RequestsPage() {
                                         const status = statusConfig[request.status];
                                         return (
                                             <TableRow key={request.id} className="border-border hover:bg-muted/30">
-                                                <TableCell>
-                                                    <p className="font-medium text-foreground">{request.property_address}</p>
+                                                <TableCell className="py-3 sm:py-4">
+                                                    <div className="min-w-0">
+                                                        <p className="font-medium text-foreground text-sm sm:text-base truncate max-w-[180px] sm:max-w-none">
+                                                            {request.property_address}
+                                                        </p>
+                                                        <p className="text-xs sm:text-sm text-muted-foreground md:hidden truncate">
+                                                            {request.seller_name || '—'}
+                                                        </p>
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="hidden md:table-cell text-muted-foreground">
                                                     {request.seller_name || '—'}
@@ -214,13 +221,17 @@ export default function RequestsPage() {
                                                 <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
                                                     {format(new Date(request.created_at), 'MMM d, yyyy')}
                                                 </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className={`${status.color} border`}>
-                                                        <status.icon className="mr-1 h-3 w-3" />
-                                                        {status.label}
+                                                <TableCell className="py-3 sm:py-4">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={`${status.color} border text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5`}
+                                                    >
+                                                        <status.icon className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                                        <span className="hidden sm:inline">{status.label}</span>
+                                                        <span className="sm:hidden">{status.label.split(' ')[0]}</span>
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-right py-3 sm:py-4">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted">
                                                             <MoreHorizontal className="h-4 w-4" />

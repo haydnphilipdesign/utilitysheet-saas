@@ -211,7 +211,7 @@ Thank you!`,
     const isStep3Valid = formData.utility_categories.length > 0;
 
     return (
-        <div className="max-w-2xl mx-auto">
+        <div className="w-full max-w-2xl mx-auto">
             {isOnboarding && (
                 <div className="mb-6 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
                     <div className="flex items-start gap-3">
@@ -238,16 +238,16 @@ Thank you!`,
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
                 </Button>
-                <h1 className="text-3xl font-bold text-foreground">New Utility Sheet Request</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">New Utility Sheet Request</h1>
                 <p className="text-muted-foreground mt-1">Create a request link to send to your seller</p>
             </div>
 
             {/* Progress Steps */}
-            <div className="flex items-center gap-2 mb-8">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-8">
                 {[1, 2, 3, 4].map((s) => (
                     <div key={s} className="flex items-center gap-2 flex-1">
                         <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${s < step
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium transition-colors ${s < step
                                 ? 'bg-emerald-500 text-white'
                                 : s === step
                                     ? 'bg-muted text-foreground border-2 border-emerald-500'
@@ -507,20 +507,20 @@ Thank you!`,
                                 {formData.utility_categories.length === UTILITY_CATEGORIES.length ? 'Deselect All' : 'Select All'}
                             </button>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
                             {UTILITY_CATEGORIES.map((category) => {
                                 const isSelected = formData.utility_categories.includes(category.key);
                                 return (
                                     <button
                                         key={category.key}
                                         onClick={() => toggleCategory(category.key)}
-                                        className={`flex items-center gap-3 p-4 rounded-lg border transition-all ${isSelected
+                                        className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-all min-w-0 ${isSelected
                                             ? 'bg-emerald-500/10 border-emerald-500/50 text-foreground'
                                             : 'bg-muted/50 border-border text-muted-foreground hover:border-input'
                                             }`}
                                     >
-                                        <span className="text-xl">{category.icon}</span>
-                                        <span className="font-medium">{category.label}</span>
+                                        <span className="text-lg sm:text-xl">{category.icon}</span>
+                                        <span className="font-medium text-sm sm:text-base min-w-0 flex-1 truncate">{category.label}</span>
                                         {isSelected && (
                                             <Check className="h-4 w-4 text-emerald-400 ml-auto" />
                                         )}
