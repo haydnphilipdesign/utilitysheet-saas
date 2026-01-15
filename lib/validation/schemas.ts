@@ -32,11 +32,17 @@ const providerEntryModeEnum = z.enum([
     'not_applicable',
 ]);
 
-const httpUrlSchema = z
-    .string()
-    .trim()
-    .url()
-    .refine(isHttpUrl, { message: 'Must be an http(s) URL' });
+// Preprocessor to convert empty strings/invalid URLs to null
+const httpUrlSchemaFlexible = z.preprocess(
+    (val) => {
+        if (typeof val !== 'string' || val.trim() === '') return null;
+        return val.trim();
+    },
+    z.union([
+        z.string().url().refine(isHttpUrl, { message: 'Must be an http(s) URL' }),
+        z.null()
+    ])
+);
 
 const utilityWizardStateSchema = z.object({
     entry_mode: providerEntryModeEnum.nullable(),
@@ -44,9 +50,9 @@ const utilityWizardStateSchema = z.object({
     raw_text: z.string().trim().max(500).nullable(),
     hidden: z.boolean().optional().default(false),
     contact_phone: z.string().trim().max(50).nullable().optional(),
-    contact_url: z.union([httpUrlSchema, z.null()]).optional(),
+    contact_url: httpUrlSchemaFlexible.optional(),
     extra: z.record(z.string(), z.unknown()).optional(),
-}).strict();
+}).passthrough(); // Allow extra fields
 
 export const sellerSubmissionBodySchema = z.object({
     water_source: waterSourceEnum,
@@ -61,4 +67,4 @@ export const sellerSubmissionBodySchema = z.object({
         .refine((obj) => Object.keys(obj).length <= UTILITY_CATEGORY_KEYS.length, {
             message: 'Too many utility entries',
         }),
-}).strict();
+}).passthrough(); // Allow extra fields like optional_utilities variants
