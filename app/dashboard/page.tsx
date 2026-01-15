@@ -162,7 +162,7 @@ export default function DashboardPage() {
     };
 
     const handleDeleteRequest = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this request? This action cannot be undone.')) {
+        if (!window.confirm('Delete this request? If it has already been sent, it will still count toward your monthly usage. This action cannot be undone.')) {
             return;
         }
 

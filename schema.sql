@@ -83,7 +83,9 @@ CREATE TABLE IF NOT EXISTS requests (
     is_demo BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    last_activity_at TIMESTAMPTZ DEFAULT NOW()
+    last_activity_at TIMESTAMPTZ DEFAULT NOW(),
+    metered_at TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ
 );
 
 -- Utility Entries table (seller responses)
@@ -129,6 +131,8 @@ CREATE INDEX IF NOT EXISTS idx_requests_account_id ON requests(account_id);
 CREATE INDEX IF NOT EXISTS idx_requests_public_token ON requests(public_token);
 CREATE INDEX IF NOT EXISTS idx_requests_seller_token ON requests(seller_token);
 CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
+CREATE INDEX IF NOT EXISTS idx_requests_metered_at ON requests(metered_at);
+CREATE INDEX IF NOT EXISTS idx_requests_deleted_at ON requests(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_utility_entries_request_id ON utility_entries(request_id);
 CREATE INDEX IF NOT EXISTS idx_brand_profiles_account_id ON brand_profiles(account_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_stripe_customer_id ON accounts(stripe_customer_id);

@@ -29,10 +29,10 @@ export async function getRequests(
 
     if (!sql) return { data: [], total: 0, page, limit, totalPages: 0 };
 
-    // Build the WHERE clause
+    // Build the WHERE clause (exclude deleted requests from user-facing lists)
     const whereClause = organizationId
-        ? sql`organization_id = ${organizationId}`
-        : sql`account_id = ${accountId} AND organization_id IS NULL`;
+        ? sql`organization_id = ${organizationId} AND deleted_at IS NULL`
+        : sql`account_id = ${accountId} AND organization_id IS NULL AND deleted_at IS NULL`;
 
     // Get total count
     const countResult = await sql`
@@ -61,12 +61,19 @@ export async function getRequests(
 /**
  * Get a single request by ID
  */
-export async function getRequestById(id: string): Promise<Request | null> {
+export async function getRequestById(
+    id: string,
+    options: { includeDeleted?: boolean } = {}
+): Promise<Request | null> {
     if (!sql) return null;
 
-    const result = await sql`
-        SELECT * FROM requests WHERE id = ${id}
-    `;
+    const result = options.includeDeleted
+        ? await sql`
+            SELECT * FROM requests WHERE id = ${id}
+        `
+        : await sql`
+            SELECT * FROM requests WHERE id = ${id} AND deleted_at IS NULL
+        `;
 
     return (result[0] as Request) || null;
 }
@@ -78,7 +85,7 @@ export async function getRequestByToken(token: string): Promise<Request | null> 
     if (!sql) return null;
 
     const result = await sql`
-        SELECT * FROM requests WHERE public_token = ${token}
+        SELECT * FROM requests WHERE public_token = ${token} AND deleted_at IS NULL
     `;
 
     return (result[0] as Request) || null;
@@ -88,7 +95,7 @@ export async function getRequestBySellerToken(token: string): Promise<Request | 
     if (!sql) return null;
 
     const result = await sql`
-        SELECT * FROM requests WHERE seller_token = ${token}
+        SELECT * FROM requests WHERE seller_token = ${token} AND deleted_at IS NULL
     `;
 
     return (result[0] as Request) || null;
@@ -128,7 +135,8 @@ export async function createRequest(data: {
             public_token,
             seller_token,
             is_demo,
-            status
+            status,
+            metered_at
         ) VALUES (
             ${data.accountId},
             ${data.organizationId || null},
@@ -142,7 +150,8 @@ export async function createRequest(data: {
             ${publicToken},
             ${sellerToken},
             ${data.isDemo === true},
-            'sent'
+            'sent',
+            NOW()
         )
         RETURNING *
     `;
@@ -157,6 +166,7 @@ export async function getRequestCountForAccount(accountId: string): Promise<numb
         SELECT COUNT(*) as count
         FROM requests
         WHERE account_id = ${accountId}
+            AND metered_at IS NOT NULL
     `;
 
     return Number(result[0]?.count) || 0;
@@ -173,7 +183,13 @@ export async function updateRequestStatus(
 
     const result = await sql`
         UPDATE requests 
-        SET status = ${status}, last_activity_at = NOW()
+        SET
+            status = ${status},
+            last_activity_at = NOW(),
+            metered_at = CASE
+                WHEN metered_at IS NULL AND ${status}::text <> 'draft' THEN NOW()
+                ELSE metered_at
+            END
         WHERE id = ${id}
         RETURNING *
     `;
@@ -187,17 +203,40 @@ export async function updateRequestStatus(
 export async function deleteRequest(id: string): Promise<boolean> {
     if (!sql) return false;
 
-    // First delete associated utility entries
-    await sql`
-        DELETE FROM utility_entries WHERE request_id = ${id}
+    const requestResult = await sql`
+        SELECT id, metered_at, deleted_at
+        FROM requests
+        WHERE id = ${id}
     `;
 
-    // Then delete the request
+    const row = requestResult[0] as { id: string; metered_at: string | null; deleted_at: string | null } | undefined;
+    if (!row) return false;
+
+    // If a request has never been metered (e.g., a true draft), allow hard-delete.
+    // Metered requests are soft-deleted so they continue to count toward usage limits.
+    if (!row.metered_at) {
+        await sql`
+            DELETE FROM utility_entries WHERE request_id = ${id}
+        `;
+
+        const result = await sql`
+            DELETE FROM requests WHERE id = ${id} RETURNING id
+        `;
+
+        return result.length > 0;
+    }
+
     const result = await sql`
-        DELETE FROM requests WHERE id = ${id} RETURNING id
+        UPDATE requests
+        SET deleted_at = NOW(), last_activity_at = NOW()
+        WHERE id = ${id}
+            AND deleted_at IS NULL
+        RETURNING id
     `;
 
-    return result.length > 0;
+    // Treat already-deleted as success to avoid races between fetch + delete.
+    if (result.length > 0) return true;
+    return row.deleted_at != null;
 }
 
 /**
@@ -217,7 +256,9 @@ export async function getDashboardStats(accountId: string, organizationId?: stri
             COUNT(*) FILTER (WHERE status = 'submitted') as submitted,
             COUNT(*) FILTER (WHERE status = 'sent' AND created_at < NOW() - INTERVAL '3 days') as needs_attention
         FROM requests 
-        WHERE ${organizationId ? sql`organization_id = ${organizationId}` : sql`account_id = ${accountId} AND organization_id IS NULL`}
+        WHERE ${organizationId
+            ? sql`organization_id = ${organizationId} AND deleted_at IS NULL`
+            : sql`account_id = ${accountId} AND organization_id IS NULL AND deleted_at IS NULL`}
     `;
 
     return {
@@ -260,7 +301,7 @@ export async function getWeeklyStats(
             COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
             COUNT(*) FILTER (WHERE status = 'sent' AND created_at < NOW() - INTERVAL '3 days') as needs_attention
         FROM requests 
-        WHERE ${whereClause}
+        WHERE ${whereClause} AND deleted_at IS NULL
     `;
 
     return {

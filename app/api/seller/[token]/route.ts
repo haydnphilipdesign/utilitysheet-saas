@@ -46,7 +46,10 @@ export async function GET(
         if (sql) {
             await sql`
                 UPDATE requests
-                SET status = 'in_progress', last_activity_at = NOW()
+                SET
+                    status = 'in_progress',
+                    last_activity_at = NOW(),
+                    metered_at = COALESCE(metered_at, NOW())
                 WHERE id = ${requestData.id}
                 AND status = 'sent'
             `;
@@ -160,7 +163,8 @@ export async function POST(
             sewer_type = ${parsedBody.data.sewer_type || null},
             heating_type = ${parsedBody.data.primary_heating_type || null},
             status = 'submitted',
-            last_activity_at = NOW()
+            last_activity_at = NOW(),
+            metered_at = COALESCE(metered_at, NOW())
             WHERE id = ${requestData.id}
         `;
 
@@ -308,4 +312,3 @@ export async function POST(
         return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 });
     }
 }
-

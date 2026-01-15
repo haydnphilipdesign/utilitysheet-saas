@@ -141,6 +141,8 @@ export interface Request {
     water_source?: WaterSource | null;
     sewer_type?: SewerType | null;
     heating_type?: HeatingType | null;
+    metered_at?: string | null;
+    deleted_at?: string | null;
     created_at: string;
     updated_at: string;
     last_activity_at: string;

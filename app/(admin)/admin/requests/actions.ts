@@ -18,7 +18,7 @@ export async function updateRequestStatusAdminAction(requestId: string, status: 
         assertAdminWritesEnabled();
         assertAdminActionReason(reason);
 
-        const before = await getRequestById(requestId);
+        const before = await getRequestById(requestId, { includeDeleted: true });
         if (!before) {
             return { success: false, error: 'Request not found' };
         }
@@ -77,7 +77,7 @@ export async function updateRequestSellerAdminAction(
             return { success: false, error: 'Database not configured' };
         }
 
-        const before = await getRequestById(requestId);
+        const before = await getRequestById(requestId, { includeDeleted: true });
         if (!before) {
             return { success: false, error: 'Request not found' };
         }
@@ -148,7 +148,7 @@ export async function sendSellerReminderAdminAction(requestId: string, reason: s
         assertAdminWritesEnabled();
         assertAdminActionReason(reason);
 
-        const requestData = await getRequestById(requestId);
+        const requestData = await getRequestById(requestId, { includeDeleted: true });
         if (!requestData) {
             return { success: false, error: 'Request not found' };
         }
@@ -211,4 +211,3 @@ export async function sendSellerReminderAdminAction(requestId: string, reason: s
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 }
-
