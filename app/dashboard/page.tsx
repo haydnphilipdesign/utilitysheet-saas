@@ -204,19 +204,19 @@ export default function DashboardPage() {
     ];
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
             {loading ? (
                 <DashboardSkeleton />
             ) : (
                 <>
                     {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-                            <p className="text-muted-foreground mt-1">Manage your utility sheet requests</p>
+                            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
+                            <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">Manage your utility sheet requests</p>
                         </div>
-                        <Link href="/dashboard/requests/new">
-                            <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20">
+                        <Link href="/dashboard/requests/new" className="w-full sm:w-auto">
+                            <Button className="w-full sm:w-auto bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 active:scale-[0.98]">
                                 <Plus className="mr-2 h-4 w-4" />
                                 New Request
                             </Button>
@@ -224,17 +224,17 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         {statCards.map((stat) => (
                             <Card key={stat.label} className="border-border bg-card/50 backdrop-blur-sm">
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">{stat.label}</p>
-                                            <p className="text-3xl font-bold text-foreground mt-1">{stat.value}</p>
+                                <CardContent className="p-4 sm:p-6">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <p className="text-xs sm:text-sm text-muted-foreground truncate">{stat.label}</p>
+                                            <p className="text-2xl sm:text-3xl font-bold text-foreground mt-0.5 sm:mt-1">{stat.value}</p>
                                         </div>
-                                        <div className={`p-3 rounded-xl bg-muted/50 ${stat.color}`}>
-                                            <stat.icon className="h-6 w-6" />
+                                        <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl bg-muted/50 shrink-0 ${stat.color}`}>
+                                            <stat.icon className="h-5 w-5 sm:h-6 sm:w-6" />
                                         </div>
                                     </div>
                                 </CardContent>
@@ -244,11 +244,11 @@ export default function DashboardPage() {
 
                     {/* Requests Table */}
                     <Card className="border-border bg-card/50 backdrop-blur-sm">
-                        <CardHeader>
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <CardHeader className="px-4 sm:px-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                                 <div>
-                                    <CardTitle className="text-foreground">Recent Requests</CardTitle>
-                                    <CardDescription className="text-muted-foreground">
+                                    <CardTitle className="text-foreground text-lg sm:text-xl">Recent Requests</CardTitle>
+                                    <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                                         Your utility sheet requests and their status
                                     </CardDescription>
                                 </div>
@@ -256,23 +256,24 @@ export default function DashboardPage() {
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="Search by address or name..."
+                                        inputMode="search"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-10 bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
+                                        className="pl-10 bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 text-sm"
                                     />
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <div className="rounded-lg border border-border overflow-hidden">
+                        <CardContent className="px-4 sm:px-6">
+                            <div className="rounded-lg border border-border overflow-x-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="border-border hover:bg-transparent">
-                                            <TableHead className="text-muted-foreground">Property</TableHead>
-                                            <TableHead className="text-muted-foreground hidden md:table-cell">Seller</TableHead>
-                                            <TableHead className="text-muted-foreground hidden lg:table-cell">Closing Date</TableHead>
-                                            <TableHead className="text-muted-foreground">Status</TableHead>
-                                            <TableHead className="text-muted-foreground text-right">Actions</TableHead>
+                                            <TableHead className="text-muted-foreground text-xs sm:text-sm">Property</TableHead>
+                                            <TableHead className="text-muted-foreground text-xs sm:text-sm hidden md:table-cell">Seller</TableHead>
+                                            <TableHead className="text-muted-foreground text-xs sm:text-sm hidden lg:table-cell">Closing</TableHead>
+                                            <TableHead className="text-muted-foreground text-xs sm:text-sm">Status</TableHead>
+                                            <TableHead className="text-muted-foreground text-xs sm:text-sm text-right w-12"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -312,30 +313,31 @@ export default function DashboardPage() {
                                                 const status = statusConfig[request.status];
                                                 return (
                                                     <TableRow key={request.id} className="border-border hover:bg-muted/30">
-                                                        <TableCell>
-                                                            <div>
-                                                                <p className="font-medium text-foreground">{request.property_address}</p>
-                                                                <p className="text-sm text-muted-foreground md:hidden">
+                                                        <TableCell className="py-3 sm:py-4">
+                                                            <div className="min-w-0">
+                                                                <p className="font-medium text-foreground text-sm sm:text-base truncate max-w-[180px] sm:max-w-none">{request.property_address}</p>
+                                                                <p className="text-xs sm:text-sm text-muted-foreground md:hidden truncate">
                                                                     {request.seller_name || 'No seller info'}
                                                                 </p>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                                                        <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                                                             {request.seller_name || '—'}
                                                         </TableCell>
-                                                        <TableCell className="hidden lg:table-cell text-muted-foreground">
+                                                        <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
                                                             {request.closing_date
-                                                                ? format(new Date(request.closing_date), 'MMM d, yyyy')
+                                                                ? format(new Date(request.closing_date), 'MMM d')
                                                                 : '—'
                                                             }
                                                         </TableCell>
-                                                        <TableCell>
-                                                            <Badge variant="outline" className={`${status.color} border`}>
-                                                                <status.icon className="mr-1 h-3 w-3" />
-                                                                {status.label}
+                                                        <TableCell className="py-3 sm:py-4">
+                                                            <Badge variant="outline" className={`${status.color} border text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5`}>
+                                                                <status.icon className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                                                <span className="hidden sm:inline">{status.label}</span>
+                                                                <span className="sm:hidden">{status.label.split(' ')[0]}</span>
                                                             </Badge>
                                                         </TableCell>
-                                                        <TableCell className="text-right">
+                                                        <TableCell className="text-right py-3 sm:py-4">
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted">
                                                                     <MoreHorizontal className="h-4 w-4" />
@@ -418,39 +420,49 @@ export default function DashboardPage() {
 
                             {/* Pagination */}
                             {meta.totalPages > 1 && (
-                                <div className="flex items-center justify-between px-2 py-4 border-t border-border mt-4">
-                                    <div className="text-sm text-muted-foreground">
-                                        Showing <span className="font-medium text-foreground">{((meta.page - 1) * meta.limit) + 1}</span> to <span className="font-medium text-foreground">{Math.min(meta.page * meta.limit, meta.total)}</span> of <span className="font-medium text-foreground">{meta.total}</span> results
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2 py-4 border-t border-border mt-4">
+                                    <div className="text-xs sm:text-sm text-muted-foreground order-2 sm:order-1">
+                                        <span className="font-medium text-foreground">{((meta.page - 1) * meta.limit) + 1}</span>-<span className="font-medium text-foreground">{Math.min(meta.page * meta.limit, meta.total)}</span> of <span className="font-medium text-foreground">{meta.total}</span>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 order-1 sm:order-2">
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                             disabled={currentPage === 1}
-                                            className="border-border text-foreground hover:bg-muted"
+                                            className="border-border text-foreground hover:bg-muted h-9 px-3 text-xs sm:text-sm active:scale-[0.98]"
                                         >
-                                            Previous
+                                            Prev
                                         </Button>
-                                        <div className="flex items-center gap-1">
-                                            {Array.from({ length: meta.totalPages }, (_, i) => i + 1).map(pageNum => (
-                                                <Button
-                                                    key={pageNum}
-                                                    variant={currentPage === pageNum ? "secondary" : "ghost"}
-                                                    size="sm"
-                                                    onClick={() => setCurrentPage(pageNum)}
-                                                    className={`w-8 h-8 p-0 ${currentPage === pageNum ? 'bg-slate-600/10 text-slate-500 border border-emerald-500/30' : 'text-muted-foreground'}`}
-                                                >
-                                                    {pageNum}
-                                                </Button>
-                                            ))}
+                                        <div className="hidden sm:flex items-center gap-1">
+                                            {Array.from({ length: Math.min(meta.totalPages, 5) }, (_, i) => {
+                                                // Show first 5 pages or adjust based on current
+                                                let pageNum = i + 1;
+                                                if (meta.totalPages > 5 && currentPage > 3) {
+                                                    pageNum = Math.min(currentPage - 2 + i, meta.totalPages - 4 + i);
+                                                }
+                                                return (
+                                                    <Button
+                                                        key={pageNum}
+                                                        variant={currentPage === pageNum ? "secondary" : "ghost"}
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(pageNum)}
+                                                        className={`w-8 h-8 p-0 ${currentPage === pageNum ? 'bg-slate-600/10 text-slate-500 border border-slate-500/30' : 'text-muted-foreground'}`}
+                                                    >
+                                                        {pageNum}
+                                                    </Button>
+                                                );
+                                            })}
                                         </div>
+                                        <span className="sm:hidden flex items-center text-sm text-muted-foreground px-2">
+                                            {currentPage}/{meta.totalPages}
+                                        </span>
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             onClick={() => setCurrentPage(prev => Math.min(meta.totalPages, prev + 1))}
                                             disabled={currentPage === meta.totalPages}
-                                            className="border-border text-foreground hover:bg-muted"
+                                            className="border-border text-foreground hover:bg-muted h-9 px-3 text-xs sm:text-sm active:scale-[0.98]"
                                         >
                                             Next
                                         </Button>

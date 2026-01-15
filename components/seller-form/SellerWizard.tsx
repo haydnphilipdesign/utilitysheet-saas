@@ -315,6 +315,18 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         <SellerLayout
             progress={progress}
             address={initialRequestData.property_address}
+            stepName={(() => {
+                switch (currentStep) {
+                    case Step.WELCOME: return 'Welcome';
+                    case Step.HOME_BASICS: return 'Home Basics';
+                    case Step.UTILITIES:
+                        const cat = visibleUtilities[utilityIndex];
+                        return cat ? `${cat.charAt(0).toUpperCase() + cat.slice(1)} Provider` : 'Utilities';
+                    case Step.REVIEW: return 'Review';
+                    case Step.SUCCESS: return 'Done';
+                    default: return 'Progress';
+                }
+            })()}
             completedCount={visibleUtilities.filter((cat) => state.utilities[cat]?.entry_mode !== null).length}
             totalCount={visibleUtilities.length}
             brandProfile={brandProfile}
@@ -360,6 +372,10 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         visibleUtilities={visibleUtilities}
                         onBack={handleBack}
                         onEditBasics={handleEditBasics}
+                        onEditUtility={(index) => {
+                            setCurrentStep(Step.UTILITIES);
+                            setUtilityIndex(index);
+                        }}
                         onSubmit={handleSubmit}
                         submitting={submitting}
                     />

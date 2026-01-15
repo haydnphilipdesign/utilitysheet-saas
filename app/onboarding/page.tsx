@@ -425,13 +425,13 @@ export default function OnboardingPage() {
 
             <div className="relative z-10 w-full max-w-2xl">
                 {/* Header */}
-                <div className="flex items-center justify-center gap-2 mb-6">
-                    <Image src="/logo-sm.png" alt="UtilitySheet Logo" width={24} height={24} className="h-6 w-6" />
-                    <span className="text-xl font-bold text-foreground">UtilitySheet</span>
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-4 sm:mb-6">
+                    <Image src="/logo-sm.png" alt="UtilitySheet Logo" width={24} height={24} className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="text-lg sm:text-xl font-bold text-foreground">UtilitySheet</span>
                 </div>
 
                 {/* Progress Steps */}
-                <div className="flex items-center justify-center gap-2 mb-8">
+                <div className="flex items-center justify-center gap-1 sm:gap-2 mb-6 sm:mb-8 px-2">
                     {STEPS.map((s, index) => (
                         <div key={s.id} className="flex items-center">
                             <button
@@ -441,7 +441,7 @@ export default function OnboardingPage() {
                                 aria-label={`Go to ${s.title}`}
                                 aria-current={step === s.id ? 'step' : undefined}
                                 className={`
-                                    flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300
+                                    flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-300
                                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background
                                     ${isStepComplete(s.id) || step === s.id
                                         ? 'bg-slate-600 text-white'
@@ -452,14 +452,14 @@ export default function OnboardingPage() {
                                 `}
                             >
                                 {isStepComplete(s.id) && step !== s.id ? (
-                                    <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+                                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
                                 ) : (
-                                    <s.icon className="h-5 w-5" aria-hidden="true" />
+                                    <s.icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
                                 )}
                             </button>
                             {index < STEPS.length - 1 && (
                                 <div
-                                    className={`w-8 h-0.5 mx-1 transition-all duration-300 ${isStepComplete(s.id) ? 'bg-slate-600' : 'bg-muted'
+                                    className={`w-4 sm:w-8 h-0.5 mx-0.5 sm:mx-1 transition-all duration-300 ${isStepComplete(s.id) ? 'bg-slate-600' : 'bg-muted'
                                         }`}
                                 />
                             )}
@@ -480,23 +480,23 @@ export default function OnboardingPage() {
                             transition={{ duration: 0.3 }}
                         >
                             <Card className="border-border bg-card/80 backdrop-blur-xl">
-                                <CardHeader className="text-center">
-                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                                        <Sparkles className="h-8 w-8 text-slate-500" />
+                                <CardHeader className="text-center px-4 sm:px-6 pt-4 sm:pt-6">
+                                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                                        <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-slate-500" />
                                     </div>
-                                    <CardTitle className="text-2xl text-foreground">
+                                    <CardTitle className="text-xl sm:text-2xl text-foreground">
                                         {organizationCreated ? 'Organization Details' : 'Welcome to UtilitySheet!'}
                                     </CardTitle>
-                                    <CardDescription className="text-muted-foreground text-base">
+                                    <CardDescription className="text-muted-foreground text-sm sm:text-base">
                                         {organizationCreated
                                             ? "Update your organization name. You can change this later in settings, too."
                                             : "Let's get you set up in just a few minutes. First, tell us about your business."
                                         }
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="orgName" className="text-foreground">Organization or Team Name</Label>
+                                <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
+                                    <div className="space-y-1.5 sm:space-y-2">
+                                        <Label htmlFor="orgName" className="text-foreground text-sm">Organization or Team Name</Label>
                                         <Input
                                             id="orgName"
                                             placeholder="e.g. The Evergreen Group, Smith Realty"
@@ -504,23 +504,23 @@ export default function OnboardingPage() {
                                             onChange={(e) => setOrgName(e.target.value)}
                                             autoComplete="organization"
                                             autoFocus
-                                            className="bg-background border-input text-foreground placeholder:text-muted-foreground h-12"
+                                            className="bg-background border-input text-foreground placeholder:text-muted-foreground h-11 sm:h-12 text-base"
                                             onKeyDown={(e) => e.key === 'Enter' && orgName && handleCreateOrg()}
                                         />
-                                        <p className="text-sm text-muted-foreground">
+                                        <p className="text-xs sm:text-sm text-muted-foreground">
                                             This is how your team will be identified in the system.
                                         </p>
                                     </div>
                                 </CardContent>
-                                <CardFooter>
+                                <CardFooter className="px-4 sm:px-6 pb-4 sm:pb-6">
                                     <Button
                                         onClick={handleCreateOrg}
                                         disabled={!orgName || loading}
-                                        className="w-full bg-slate-600 hover:bg-slate-700 text-white h-12"
+                                        className="w-full bg-slate-600 hover:bg-slate-700 text-white h-11 sm:h-12 text-sm sm:text-base active:scale-[0.98]"
                                     >
                                         {loading ? (
                                             <>
-                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                                                 <span className="ml-2">Saving...</span>
                                             </>
                                         ) : (
@@ -909,7 +909,7 @@ export default function OnboardingPage() {
                 </AnimatePresence>
 
                 {/* Step indicator text */}
-                <p className="text-center text-sm text-muted-foreground mt-6">
+                <p className="text-center text-xs sm:text-sm text-muted-foreground mt-4 sm:mt-6">
                     Step {step} of {STEPS.length}: {STEPS[step - 1].title}
                 </p>
             </div>

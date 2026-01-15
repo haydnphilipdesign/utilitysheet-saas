@@ -567,27 +567,27 @@ Thank you!`,
                 }
                 setShowShareDialog(open);
             }}>
-                <DialogContent className="bg-popover border-border sm:max-w-lg w-full" showCloseButton={false}>
+                <DialogContent className="bg-popover border-border max-w-[calc(100vw-2rem)] sm:max-w-lg mx-4" showCloseButton={false}>
                     <DialogHeader>
-                        <DialogTitle className="text-foreground text-xl">Request Created! 🎉</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
+                        <DialogTitle className="text-foreground text-lg sm:text-xl">Request Created! 🎉</DialogTitle>
+                        <DialogDescription className="text-muted-foreground text-sm">
                             Share this link with your seller to collect utility information
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 pt-4">
+                    <div className="space-y-4 sm:space-y-6 pt-4">
                         {/* Link Copy */}
                         <div className="space-y-2">
-                            <Label className="text-muted-foreground">Seller Link</Label>
+                            <Label className="text-muted-foreground text-sm">Seller Link</Label>
                             <div className="flex gap-2">
                                 <Input
                                     value={getShareLink()}
                                     readOnly
-                                    className="bg-muted border-input text-foreground font-mono text-sm"
+                                    className="bg-muted border-input text-foreground font-mono text-xs sm:text-sm min-w-0"
                                 />
                                 <Button
                                     onClick={copyLink}
                                     variant="outline"
-                                    className={`border-input shrink-0 ${copied ? 'text-emerald-400 border-emerald-500' : 'text-foreground'
+                                    className={`border-input shrink-0 h-10 w-10 sm:w-auto sm:px-3 ${copied ? 'text-emerald-400 border-emerald-500' : 'text-foreground'
                                         }`}
                                 >
                                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -596,31 +596,31 @@ Thank you!`,
                         </div>
 
                         {/* Message Templates */}
-                        <div className="space-y-3">
-                            <Label className="text-muted-foreground">Quick Share</Label>
-                            <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2 sm:space-y-3">
+                            <Label className="text-muted-foreground text-sm">Quick Share</Label>
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3">
                                 <Button
                                     variant="outline"
-                                    className="border-input text-foreground hover:bg-muted h-auto py-3"
+                                    className="border-input text-foreground hover:bg-muted h-auto py-2.5 sm:py-3 text-sm active:scale-[0.98]"
                                     onClick={() => {
                                         navigator.clipboard.writeText(getSmsTemplate());
                                         setCopied(true);
                                         setTimeout(() => setCopied(false), 2000);
                                     }}
                                 >
-                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    <MessageSquare className="mr-1.5 sm:mr-2 h-4 w-4" />
                                     Copy SMS
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    className="border-input text-foreground hover:bg-muted h-auto py-3"
+                                    className="border-input text-foreground hover:bg-muted h-auto py-2.5 sm:py-3 text-sm active:scale-[0.98]"
                                     onClick={() => {
                                         const email = getEmailTemplate();
                                         const mailto = `mailto:${formData.seller_email}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`;
                                         window.open(mailto);
                                     }}
                                 >
-                                    <Mail className="mr-2 h-4 w-4" />
+                                    <Mail className="mr-1.5 sm:mr-2 h-4 w-4" />
                                     Open Email
                                 </Button>
                             </div>
@@ -628,16 +628,16 @@ Thank you!`,
 
                         {/* SMS Preview */}
                         <div className="space-y-2">
-                            <Label className="text-muted-foreground text-sm">SMS Template</Label>
-                            <div className="p-3 bg-muted/50 rounded-lg border border-border">
-                                <p className="text-sm text-foreground whitespace-pre-wrap">{getSmsTemplate()}</p>
+                            <Label className="text-muted-foreground text-xs sm:text-sm">SMS Template</Label>
+                            <div className="p-2.5 sm:p-3 bg-muted/50 rounded-lg border border-border">
+                                <p className="text-xs sm:text-sm text-foreground whitespace-pre-wrap break-words">{getSmsTemplate()}</p>
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-2">
+                        <div className="flex justify-end pt-2">
                             <Button
                                 variant="outline"
-                                className="border-input text-foreground hover:bg-muted"
+                                className="border-input text-foreground hover:bg-muted w-full sm:w-auto active:scale-[0.98]"
                                 onClick={() => {
                                     setShowShareDialog(false);
                                     router.push('/dashboard');
@@ -652,13 +652,13 @@ Thank you!`,
 
             {/* Upgrade Dialog */}
             <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
+                <DialogContent className="bg-zinc-900 border-zinc-800 max-w-[calc(100vw-2rem)] sm:max-w-md mx-4">
                     <DialogHeader>
-                        <div className="mx-auto w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-2">
-                            <AlertTriangle className="h-6 w-6 text-amber-500" />
+                        <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-2">
+                            <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500" />
                         </div>
-                        <DialogTitle className="text-white text-xl text-center">Monthly Limit Reached</DialogTitle>
-                        <DialogDescription className="text-zinc-400 text-center">
+                        <DialogTitle className="text-white text-lg sm:text-xl text-center">Monthly Limit Reached</DialogTitle>
+                        <DialogDescription className="text-zinc-400 text-center text-sm">
                             You&apos;ve used all your requests for this month
                         </DialogDescription>
                     </DialogHeader>

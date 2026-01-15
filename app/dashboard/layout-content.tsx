@@ -74,18 +74,18 @@ export function DashboardLayoutContent({
         <div className="min-h-screen bg-gradient-to-br from-secondary via-background to-background">
             {/* Top Navigation */}
             <header className="sticky top-0 z-50 border-b border-border/50 bg-card/80 backdrop-blur-xl">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 items-center justify-between">
+                <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+                    <div className="flex h-14 sm:h-16 items-center justify-between">
                         {/* Logo */}
-                        <div className="flex items-center gap-8">
-                            <Link href="/dashboard" className="flex items-center gap-2">
-                                <div className="p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20">
-                                    <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
+                        <div className="flex items-center gap-4 sm:gap-8">
+                            <Link href="/dashboard" className="flex items-center gap-1.5 sm:gap-2">
+                                <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20">
+                                    <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </div>
                                 <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
-                                    <span className="text-xl font-bold text-foreground">UtilitySheet</span>
+                                    <span className="text-base sm:text-xl font-bold text-foreground">UtilitySheet</span>
                                     {organization && (
-                                        <span className="text-sm font-medium text-muted-foreground hidden sm:block border-l border-border pl-2">
+                                        <span className="text-xs sm:text-sm font-medium text-muted-foreground hidden sm:block border-l border-border pl-2">
                                             {organization.name}
                                         </span>
                                     )}
@@ -115,11 +115,11 @@ export function DashboardLayoutContent({
                         </div>
 
                         {/* Right Side */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2">
                             <FeedbackDialog />
                             <ThemeToggle />
                             <Link href="/dashboard/requests/new">
-                                <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20 hidden sm:flex">
+                                <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20 hidden sm:flex text-sm h-9 px-3">
                                     New Request
                                 </Button>
                             </Link>
@@ -211,7 +211,7 @@ export function DashboardLayoutContent({
             </header>
 
             {/* Main Content */}
-            <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+            <main className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <EmailVerificationBanner />
                 {children}
             </main>

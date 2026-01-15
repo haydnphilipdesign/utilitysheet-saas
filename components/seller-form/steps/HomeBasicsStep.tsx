@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Droplets, Flame, Waves, Wifi, Tv, Trash2 } from 'lucide-react';
+import { Droplets, Flame, Waves, Wifi, Tv, Trash2, Check } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import type { UtilityCategory } from '@/types';
@@ -29,20 +29,20 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-8"
+            className="space-y-6 sm:space-y-8"
         >
-            <div className="text-center space-y-2">
-                <h3 className="text-2xl font-bold text-foreground">Home Basics</h3>
-                <p className="text-muted-foreground">Let's start with the essentials.</p>
+            <div className="text-center space-y-1 sm:space-y-2">
+                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Home Basics</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">Let's start with the essentials.</p>
             </div>
 
             {/* Water Source */}
-            <div className="space-y-4">
-                <label className="flex items-center gap-2 text-sm font-medium text-emerald-400">
-                    <Droplets className="h-4 w-4" />
+            <div className="space-y-3 sm:space-y-4">
+                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                    <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Water Source
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     {[
                         { id: 'city', label: 'Public Water' },
                         { id: 'well', label: 'Private Well' },
@@ -52,24 +52,24 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         <button
                             key={opt.id}
                             onClick={() => updateState({ water_source: opt.id as any })}
-                            className={`p-4 rounded-xl border text-left transition-all ${state.water_source === opt.id
+                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.water_source === opt.id
                                 ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
-                            <span className="block font-medium">{opt.label}</span>
+                            <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
                         </button>
                     ))}
                 </div>
             </div>
 
             {/* Sewer Type */}
-            <div className="space-y-4">
-                <label className="flex items-center gap-2 text-sm font-medium text-emerald-400">
-                    <Waves className="h-4 w-4" />
+            <div className="space-y-3 sm:space-y-4">
+                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                    <Waves className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Sewer Type
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     {[
                         { id: 'public', label: 'Public Sewer' },
                         { id: 'septic', label: 'Septic System' },
@@ -79,24 +79,27 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         <button
                             key={opt.id}
                             onClick={() => updateState({ sewer_type: opt.id as any })}
-                            className={`p-4 rounded-xl border text-left transition-all ${state.sewer_type === opt.id
+                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.sewer_type === opt.id
                                 ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
-                            <span className="block font-medium">{opt.label}</span>
+                            <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
                         </button>
                     ))}
                 </div>
             </div>
 
             {/* Heating Fuels */}
-            <div className="space-y-4">
-                <label className="flex items-center gap-2 text-sm font-medium text-emerald-400">
-                    <Flame className="h-4 w-4" />
-                    Fuel Sources (Select all that apply)
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="space-y-3 sm:space-y-4">
+                <div>
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                        <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Fuel Sources
+                    </label>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">Select all that apply to your home.</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     {[
                         { id: 'natural_gas', label: 'Natural Gas' },
                         { id: 'propane', label: 'Propane' },
@@ -131,12 +134,12 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                         primary_heating_type: nextPrimary
                                     });
                                 }}
-                                className={`p-4 rounded-xl border text-left transition-all ${isSelected
+                                className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${isSelected
                                     ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
                                     : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                     }`}
                             >
-                                <span className="block font-medium">{fuel.label}</span>
+                                <span className="block font-medium text-sm sm:text-base">{fuel.label}</span>
                             </button>
                         );
                     })}
@@ -148,13 +151,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="space-y-4"
+                    className="space-y-3 sm:space-y-4"
                 >
-                    <label className="flex items-center gap-2 text-sm font-medium text-emerald-400">
-                        <Flame className="h-4 w-4" />
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                        <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Which is your PRIMARY heat source?
                     </label>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
                         {state.fuels_present.map((fuelId) => {
                             const label = fuelId === 'natural_gas' ? 'Natural Gas' :
                                 fuelId === 'propane' ? 'Propane' :
@@ -165,7 +168,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                 <button
                                     key={fuelId}
                                     onClick={() => updateState({ primary_heating_type: fuelId })}
-                                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${state.primary_heating_type === fuelId
+                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all active:scale-95 ${state.primary_heating_type === fuelId
                                         ? 'bg-slate-600 text-white border-slate-600'
                                         : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
                                         }`}
@@ -180,24 +183,24 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             {/* Optional Utilities */}
             {availableOptionalUtilities.length > 0 && (
-                <div className="space-y-4">
-                    <label className="flex items-center gap-2 text-sm font-medium text-emerald-400">
+                <div className="space-y-3 sm:space-y-4">
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
                         <span className="inline-flex -space-x-1">
                             {availableOptionalUtilities.slice(0, 3).map((u) => {
                                 const Icon = u.icon;
                                 return (
-                                    <span key={u.id} className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-muted/60 border border-border">
-                                        <Icon className="h-3.5 w-3.5 text-emerald-400" />
+                                    <span key={u.id} className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
+                                        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
                                     </span>
                                 );
                             })}
                         </span>
-                        Other Utilities (Select all that apply)
+                        Do you have these utilities?
                     </label>
-                    <p className="text-xs text-muted-foreground -mt-2">
-                        Uncheck anything you don’t have — we’ll skip those questions.
+                    <p className="text-[10px] sm:text-xs text-muted-foreground -mt-1 sm:-mt-2">
+                        Tap to toggle. We'll only ask about utilities you have.
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                         {availableOptionalUtilities.map((util) => {
                             const isSelected = state.optional_utilities.includes(util.id);
                             const Icon = util.icon;
@@ -210,14 +213,21 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                             : [...state.optional_utilities, util.id];
                                         updateState({ optional_utilities: next });
                                     }}
-                                    className={`p-4 rounded-xl border text-left transition-all ${isSelected
-                                        ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
+                                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${isSelected
+                                        ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
                                 >
                                     <div className="flex items-center gap-2">
-                                        <Icon className="h-4 w-4" />
-                                        <span className="block font-medium">{util.label}</span>
+                                        <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                        <span className="block font-medium text-sm sm:text-base">{util.label}</span>
+                                    </div>
+                                    {/* Checkmark indicator */}
+                                    <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all ${isSelected
+                                        ? 'bg-emerald-500 text-white'
+                                        : 'bg-muted/60 border border-border text-muted-foreground/50'
+                                        }`}>
+                                        <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                                     </div>
                                 </button>
                             );
@@ -226,10 +236,10 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 </div>
             )}
 
-            <div className="pt-6">
+            <div className="pt-4 sm:pt-6">
                 <button
                     onClick={onNext}
-                    className="w-full py-4 text-center rounded-xl font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
+                    className="w-full py-3 sm:py-4 text-center rounded-xl font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors active:scale-[0.98] text-sm sm:text-base"
                 >
                     Continue
                 </button>

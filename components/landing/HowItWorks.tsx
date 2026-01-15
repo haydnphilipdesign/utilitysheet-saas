@@ -6,25 +6,25 @@ import { Button } from '@/components/ui/button';
 
 export function HowItWorks() {
     return (
-        <section id="how-it-works" className="scroll-mt-24 py-24 sm:py-32 bg-background relative overflow-hidden">
+        <section id="how-it-works" className="scroll-mt-24 py-16 sm:py-24 lg:py-32 bg-background relative overflow-hidden">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-                <div className="text-center mb-24">
-                    <h2 className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Workflow</h2>
-                    <h3 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">How it works</h3>
+                <div className="text-center mb-12 sm:mb-16 lg:mb-24">
+                    <h2 className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">Workflow</h2>
+                    <h3 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">How it works</h3>
                 </div>
 
-                <div className="space-y-24 sm:space-y-32">
+                <div className="space-y-16 sm:space-y-24 lg:space-y-32">
                     {/* Step 1: Generate Link */}
-                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                    <div className="flex flex-col lg:flex-row items-center gap-8 sm:gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-500/10 text-slate-600 mb-8">
-                                <MousePointer2 className="w-8 h-8" />
+                            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-slate-500/10 text-slate-600 mb-4 sm:mb-8">
+                                <MousePointer2 className="w-6 h-6 sm:w-8 sm:h-8" />
                             </div>
-                            <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+                            <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">01.</span>
                                 Generate a Link
                             </h4>
-                            <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
+                            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
                                 Enter the property address and select needed utilities. We generate a secure, unique link in seconds to send to your seller.
                             </p>
                         </div>
@@ -41,16 +41,16 @@ export function HowItWorks() {
                     </div>
 
                     {/* Step 2: Seller Confirms */}
-                    <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-20">
+                    <div className="flex flex-col lg:flex-row-reverse items-center gap-8 sm:gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-500/10 text-slate-600 mb-8">
-                                <FileCheck className="w-8 h-8" />
+                            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-slate-500/10 text-slate-600 mb-4 sm:mb-8">
+                                <FileCheck className="w-6 h-6 sm:w-8 sm:h-8" />
                             </div>
-                            <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+                            <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">02.</span>
                                 Seller Confirms
                             </h4>
-                            <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
+                            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
                                 Sellers tap to confirm providers suggested by our AI. If something’s wrong (or unknown), they can search, type, or mark “Not sure” and keep moving.
                             </p>
                         </div>
@@ -73,16 +73,16 @@ export function HowItWorks() {
                     </div>
 
                     {/* Step 3: Share the Utility Sheet */}
-                    <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+                    <div className="flex flex-col lg:flex-row items-center gap-8 sm:gap-12 lg:gap-20">
                         <div className="flex-1 text-center lg:text-left">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-500/10 text-slate-600 mb-8">
-                                <Download className="w-8 h-8" />
+                            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-slate-500/10 text-slate-600 mb-4 sm:mb-8">
+                                <Download className="w-6 h-6 sm:w-8 sm:h-8" />
                             </div>
-                            <h4 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
+                            <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">03.</span>
                                 Share the Utility Sheet
                             </h4>
-                            <p className="text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
+                            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
                                 Download a clean PDF and share the web link with buyers, agents, title, or your team.
                             </p>
                         </div>

@@ -204,51 +204,52 @@ export function HeroSection() {
                         transition={{ duration: 0.8, ease: "easeOut" }}
                         className="text-center lg:text-left"
                     >
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/80 border border-border text-muted-foreground text-sm font-medium mb-8 hover:bg-secondary transition-colors cursor-default backdrop-blur-sm">
-                            <Sparkles className="w-4 h-4 text-slate-500" />
+                        <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-secondary/80 border border-border text-muted-foreground text-xs sm:text-sm font-medium mb-4 sm:mb-8 hover:bg-secondary transition-colors cursor-default backdrop-blur-sm">
+                            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500" />
                             <span>Built for transaction coordinators & agents</span>
                         </div>
 
-                        <h1 className="text-5xl md:text-7xl lg:text-7xl font-black tracking-tight text-foreground mb-8">
-                            Stop chasing sellers <br />
+                        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-foreground mb-4 sm:mb-8">
+                            Stop chasing sellers <br className="hidden sm:block" />
+                            <span className="sm:hidden"> </span>
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-500 via-slate-400 to-slate-600 animate-gradient-x">
                                 for utility providers.
                             </span>
                         </h1>
 
-                        <p className="mx-auto lg:mx-0 max-w-2xl text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed">
+                        <p className="mx-auto lg:mx-0 max-w-2xl text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-10 leading-relaxed">
                             Send sellers a guided intake link. They confirm utilities in minutes—no login. UtilitySheet generates a buyer-ready utility sheet (PDF + link) you can share with agents, buyers, and title.
                         </p>
 
-                        <ul className="mx-auto lg:mx-0 max-w-2xl space-y-3 text-muted-foreground mb-10 text-left">
-                            <li className="flex items-start gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-slate-500 mt-0.5" />
+                        <ul className="mx-auto lg:mx-0 max-w-2xl space-y-2 sm:space-y-3 text-muted-foreground mb-6 sm:mb-10 text-left text-sm sm:text-base">
+                            <li className="flex items-start gap-2 sm:gap-3">
+                                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-500 mt-0.5 shrink-0" />
                                 <span>Seller-friendly: no login, no account numbers, no bills to upload.</span>
                             </li>
-                            <li className="flex items-start gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-slate-500 mt-0.5" />
+                            <li className="flex items-start gap-2 sm:gap-3">
+                                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-500 mt-0.5 shrink-0" />
                                 <span>AI suggestions + manual fallback: sellers can confirm, search, or type a provider.</span>
                             </li>
-                            <li className="flex items-start gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-slate-500 mt-0.5" />
+                            <li className="flex items-start gap-2 sm:gap-3">
+                                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-slate-500 mt-0.5 shrink-0" />
                                 <span>Buyer-ready output: one-click PDF and a share link you can send anywhere.</span>
                             </li>
                         </ul>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-4">
-                            <Link href="/auth/signup">
-                                <Button size="lg" className="h-14 px-8 text-lg bg-slate-600 text-white hover:bg-slate-500 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(71,85,105,0.5)]">
-                                    Get Started Free <ArrowRight className="ml-2 h-5 w-5" />
+                        <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4 mb-4">
+                            <Link href="/auth/signup" className="w-full sm:w-auto">
+                                <Button size="lg" className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg bg-slate-600 text-white hover:bg-slate-500 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(71,85,105,0.5)] active:scale-[0.98]">
+                                    Get Started Free <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                                 </Button>
                             </Link>
-                            <Link href="/demo">
-                                <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-slate-500/50 text-slate-500 hover:text-slate-600 hover:bg-slate-500/10 hover:border-slate-500 bg-card/50 backdrop-blur-sm">
-                                    <Sparkles className="mr-2 h-5 w-5" />
+                            <Link href="/demo" className="w-full sm:w-auto">
+                                <Button size="lg" variant="outline" className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg border-slate-500/50 text-slate-500 hover:text-slate-600 hover:bg-slate-500/10 hover:border-slate-500 bg-card/50 backdrop-blur-sm active:scale-[0.98]">
+                                    <Sparkles className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                                     Try the Demo
                                 </Button>
                             </Link>
                         </div>
-                        <p className="text-sm text-muted-foreground">Free plan includes 3 requests/month. No credit card required.</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Free plan includes 3 requests/month. No credit card required.</p>
                     </motion.div>
 
                     <motion.div

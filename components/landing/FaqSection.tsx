@@ -40,17 +40,17 @@ const faqs = [
 
 export function FaqSection() {
     return (
-        <section id="faq" className="scroll-mt-24 py-24 bg-background px-4 sm:px-6 lg:px-8">
+        <section id="faq" className="scroll-mt-24 py-16 sm:py-24 bg-background px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl">
-                <h2 className="text-3xl font-bold text-foreground text-center mb-12">Frequently Asked Questions</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-8 sm:mb-12">Frequently Asked Questions</h2>
 
                 <Accordion className="w-full">
                     {faqs.map((faq, i) => (
                         <AccordionItem key={i} value={`item-${i}`} className="border-border">
-                            <AccordionTrigger className="text-lg text-foreground hover:text-slate-600 transition-colors text-left">
+                            <AccordionTrigger className="text-base sm:text-lg text-foreground hover:text-slate-600 transition-colors text-left py-3 sm:py-4">
                                 {faq.question}
                             </AccordionTrigger>
-                            <AccordionContent className="text-muted-foreground text-base leading-relaxed">
+                            <AccordionContent className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                                 {faq.answer}
                             </AccordionContent>
                         </AccordionItem>

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Zap, Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 
 export default function SignupPage() {
     const router = useRouter();
@@ -94,46 +94,46 @@ export default function SignupPage() {
 
             // Update the user's display name with the full name they provided
             const currentUser = await stackClientApp.getUser();
-             if (currentUser && fullName) {
-                 await currentUser.update({ displayName: fullName });
-             }
+            if (currentUser && fullName) {
+                await currentUser.update({ displayName: fullName });
+            }
 
-             const destination = (await getPostAuthRoute()) || '/dashboard';
-             router.push(destination);
-             router.refresh();
-         } catch (err: any) {
-             setError(err.message || 'Failed to create account');
-             setLoading(false);
-         }
+            const destination = (await getPostAuthRoute()) || '/dashboard';
+            router.push(destination);
+            router.refresh();
+        } catch (err: any) {
+            setError(err.message || 'Failed to create account');
+            setLoading(false);
+        }
     };
 
     if (success) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background p-4">
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background px-4 py-8 sm:p-4">
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-slate-500/10 rounded-full blur-3xl" />
-                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+                    <div className="absolute top-1/4 left-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-slate-500/10 rounded-full blur-3xl" />
+                    <div className="absolute bottom-1/4 right-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-blue-500/10 rounded-full blur-3xl" />
                 </div>
 
                 <Card className="relative z-10 w-full max-w-md border-border bg-card/80 backdrop-blur-xl shadow-2xl">
-                    <CardHeader className="space-y-4 text-center pb-2">
-                        <div className="mx-auto p-3 rounded-full bg-slate-500/10">
-                            <CheckCircle2 className="h-12 w-12 text-slate-500" />
+                    <CardHeader className="space-y-3 sm:space-y-4 text-center pb-2 px-4 sm:px-6 pt-4 sm:pt-6">
+                        <div className="mx-auto p-2.5 sm:p-3 rounded-full bg-emerald-500/10">
+                            <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12 text-emerald-500" />
                         </div>
-                        <CardTitle className="text-2xl text-foreground">Check your email</CardTitle>
-                        <CardDescription className="text-muted-foreground">
-                            We&apos;ve sent a confirmation link to <span className="text-foreground font-medium">{email}</span>
+                        <CardTitle className="text-xl sm:text-2xl text-foreground">Check your email</CardTitle>
+                        <CardDescription className="text-muted-foreground text-sm">
+                            We&apos;ve sent a confirmation link to <span className="text-foreground font-medium break-all">{email}</span>
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="pt-4">
-                        <p className="text-sm text-muted-foreground text-center">
+                    <CardContent className="pt-3 sm:pt-4 px-4 sm:px-6">
+                        <p className="text-xs sm:text-sm text-muted-foreground text-center">
                             Click the link in your email to verify your account and get started with UtilitySheet.
                         </p>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="px-4 sm:px-6 pb-4 sm:pb-6">
                         <Button
                             variant="outline"
-                            className="w-full border-input text-muted-foreground hover:bg-accent hover:text-foreground"
+                            className="w-full h-10 sm:h-11 border-input text-muted-foreground hover:bg-accent hover:text-foreground text-sm sm:text-base active:scale-[0.98]"
                             onClick={() => router.push('/auth/login')}
                         >
                             Back to Sign In
@@ -145,79 +145,83 @@ export default function SignupPage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background p-4">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background px-4 py-8 sm:p-4">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-slate-500/10 rounded-full blur-3xl" />
-                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+                <div className="absolute top-1/4 left-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-slate-500/10 rounded-full blur-3xl" />
+                <div className="absolute bottom-1/4 right-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-blue-500/10 rounded-full blur-3xl" />
             </div>
 
             <div className="relative z-10 w-full max-w-md">
                 {/* Logo */}
-                <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="p-2 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
-                        <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-8 w-8" />
+                <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+                    <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
+                        <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-6 w-6 sm:h-8 sm:w-8" />
                     </div>
-                    <span className="text-3xl font-bold text-foreground">UtilitySheet</span>
+                    <span className="text-2xl sm:text-3xl font-bold text-foreground">UtilitySheet</span>
                 </div>
 
                 <Card className="border-border bg-card/80 backdrop-blur-xl shadow-2xl">
-                    <CardHeader className="space-y-1">
-                        <CardTitle className="text-2xl text-center text-foreground">Create an account</CardTitle>
-                        <CardDescription className="text-center text-muted-foreground">
+                    <CardHeader className="space-y-1 px-4 sm:px-6 pt-4 sm:pt-6">
+                        <CardTitle className="text-xl sm:text-2xl text-center text-foreground">Create an account</CardTitle>
+                        <CardDescription className="text-center text-muted-foreground text-sm">
                             Start creating utility info sheets in minutes
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleSignup}>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
                             {error && (
-                                <div className="p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                <div className="p-2.5 sm:p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
                                     {error}
                                 </div>
                             )}
 
-                            <div className="space-y-2">
-                                <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
+                            <div className="space-y-1.5 sm:space-y-2">
+                                <Label htmlFor="fullName" className="text-foreground text-sm">Full Name</Label>
                                 <Input
                                     id="fullName"
                                     type="text"
+                                    autoComplete="name"
                                     placeholder="Jane Smith"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
                                     required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20 h-10 sm:h-11 text-base"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="email" className="text-foreground">Email</Label>
+                            <div className="space-y-1.5 sm:space-y-2">
+                                <Label htmlFor="email" className="text-foreground text-sm">Email</Label>
                                 <Input
                                     id="email"
                                     type="email"
+                                    inputMode="email"
+                                    autoComplete="email"
                                     placeholder="agent@realty.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20 h-10 sm:h-11 text-base"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="password" className="text-foreground">Password</Label>
+                            <div className="space-y-1.5 sm:space-y-2">
+                                <Label htmlFor="password" className="text-foreground text-sm">Password</Label>
                                 <Input
                                     id="password"
                                     type="password"
+                                    autoComplete="new-password"
                                     placeholder="Min. 8 characters"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     minLength={8}
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20 h-10 sm:h-11 text-base"
                                 />
                             </div>
                         </CardContent>
-                        <CardFooter className="flex flex-col gap-4">
+                        <CardFooter className="flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 pb-4 sm:pb-6">
                             <Button
                                 type="submit"
-                                className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 transition-all duration-200"
+                                className="w-full h-10 sm:h-11 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
                                 disabled={loading}
                             >
                                 {loading ? (
@@ -229,7 +233,7 @@ export default function SignupPage() {
                                     'Create Account'
                                 )}
                             </Button>
-                            <p className="text-sm text-muted-foreground text-center">
+                            <p className="text-xs sm:text-sm text-muted-foreground text-center">
                                 Already have an account?{' '}
                                 <Link href="/auth/login" className="text-slate-500 hover:text-slate-400 font-medium transition-colors">
                                     Sign in
@@ -240,18 +244,18 @@ export default function SignupPage() {
                 </Card>
 
                 {/* Features */}
-                <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-                    <div className="space-y-2">
-                        <div className="text-2xl">⚡</div>
-                        <p className="text-xs text-muted-foreground">2-min seller forms</p>
+                <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-3 sm:gap-4 text-center px-2">
+                    <div className="space-y-1 sm:space-y-2">
+                        <div className="text-xl sm:text-2xl">⚡</div>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">2-min seller forms</p>
                     </div>
-                    <div className="space-y-2">
-                        <div className="text-2xl">📄</div>
-                        <p className="text-xs text-muted-foreground">Branded packets</p>
+                    <div className="space-y-1 sm:space-y-2">
+                        <div className="text-xl sm:text-2xl">📄</div>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Branded packets</p>
                     </div>
-                    <div className="space-y-2">
-                        <div className="text-2xl">🔄</div>
-                        <p className="text-xs text-muted-foreground">Auto contact lookup</p>
+                    <div className="space-y-1 sm:space-y-2">
+                        <div className="text-xl sm:text-2xl">🔄</div>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Auto contact lookup</p>
                     </div>
                 </div>
             </div>

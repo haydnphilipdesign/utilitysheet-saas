@@ -99,106 +99,106 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
         <div className="min-h-screen bg-background">
             {/* Header Actions */}
             <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
-                <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                         {showPoweredBy ? (
-                            <div className="p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600">
-                                <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-4 w-4" />
+                            <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shrink-0">
+                                <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </div>
                         ) : brand?.logo_url ? (
-                            <img src={brand.logo_url} alt={brand?.name || 'Brand logo'} className="h-6 w-auto" />
+                            <img src={brand.logo_url} alt={brand?.name || 'Brand logo'} className="h-5 sm:h-6 w-auto shrink-0" />
                         ) : (
                             <div
-                                className="h-6 w-6 rounded-md flex items-center justify-center text-white font-bold text-[10px]"
+                                className="h-5 w-5 sm:h-6 sm:w-6 rounded-md flex items-center justify-center text-white font-bold text-[8px] sm:text-[10px] shrink-0"
                                 style={{ backgroundColor: primaryColor }}
                             >
                                 {brand?.name ? brand.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2) : 'US'}
                             </div>
                         )}
-                        <span className="font-bold text-foreground">{headerBrandName}</span>
+                        <span className="font-bold text-foreground text-sm sm:text-base truncate">{headerBrandName}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <Button
                             variant="outline"
                             size="sm"
-                            className="border-input text-foreground hover:bg-muted"
+                            className="border-input text-foreground hover:bg-muted h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm active:scale-[0.98]"
                             onClick={copyLink}
                         >
-                            {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                            {copied ? 'Copied!' : 'Copy Link'}
+                            {copied ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> : <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />}
+                            <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy Link'}</span>
                         </Button>
                         <Button
                             size="sm"
-                            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white"
+                            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm active:scale-[0.98]"
                             onClick={downloadPdf}
                             disabled={downloading}
                         >
-                            <Download className="h-4 w-4 mr-1" />
-                            {downloading ? 'Generating...' : 'Download PDF'}
+                            <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">{downloading ? 'Generating...' : 'Download PDF'}</span>
                         </Button>
                     </div>
                 </div>
             </header>
 
             {/* Packet Content */}
-            <main className="max-w-4xl mx-auto px-4 py-8">
-                <div className="space-y-6 p-8 bg-card rounded-xl border border-border">
+            <main className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+                <div className="space-y-4 sm:space-y-6 p-4 sm:p-8 bg-card rounded-xl border border-border">
                     {/* Branding Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
-                        <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-border">
+                        <div className="flex items-center gap-3 sm:gap-4">
                             {brand?.logo_url ? (
                                 <img
                                     src={brand.logo_url}
                                     alt={brand.name}
-                                    className="h-12 w-auto"
+                                    className="h-10 sm:h-12 w-auto"
                                 />
                             ) : (
                                 <div
-                                    className="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold text-lg"
+                                    className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg flex items-center justify-center text-white font-bold text-base sm:text-lg"
                                     style={{ backgroundColor: primaryColor }}
                                 >
                                     {brand?.name ? brand.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2) : 'US'}
                                 </div>
                             )}
                             <div>
-                                <h2 className="font-semibold text-foreground">{brand?.name || 'UtilitySheet'}</h2>
-                                <p className="text-sm text-muted-foreground">{brand?.contact_phone || ''}</p>
+                                <h2 className="font-semibold text-foreground text-sm sm:text-base">{brand?.name || 'UtilitySheet'}</h2>
+                                <p className="text-xs sm:text-sm text-muted-foreground">{brand?.contact_phone || ''}</p>
                             </div>
                         </div>
                         <div className="text-left sm:text-right">
-                            <p className="text-sm text-muted-foreground">{brand?.contact_email || ''}</p>
-                            <p className="text-sm text-muted-foreground">{brand?.contact_website || ''}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">{brand?.contact_email || ''}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground">{brand?.contact_website || ''}</p>
                         </div>
                     </div>
 
                     {/* Title Section */}
-                    <div className="text-center py-6">
-                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">
+                    <div className="text-center py-4 sm:py-6">
+                        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-3 sm:mb-4">
                             Utility Info Sheet
                         </h1>
-                        <div className="inline-flex items-center gap-2 bg-muted px-4 py-2 rounded-lg">
-                            <MapPin className="h-4 w-4 text-slate-500 dark:text-sky-400" />
-                            <span className="text-foreground font-medium">{request.property_address}</span>
+                        <div className="inline-flex items-center gap-2 bg-muted px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg">
+                            <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500 dark:text-sky-400 shrink-0" />
+                            <span className="text-foreground font-medium text-sm sm:text-base">{request.property_address}</span>
                         </div>
-                        <div className="flex items-center justify-center gap-2 mt-3 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
+                        <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
+                            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Generated {format(new Date(request.created_at), 'MMMM d, yyyy')}
                         </div>
                     </div>
 
                     {/* Utility Table */}
                     <Card className="border-border bg-card/50">
-                        <CardHeader className="pb-2">
-                            <h3 className="text-lg font-semibold text-foreground">Utility Providers</h3>
+                        <CardHeader className="pb-2 px-4 sm:px-6">
+                            <h3 className="text-base sm:text-lg font-semibold text-foreground">Utility Providers</h3>
                         </CardHeader>
-                        <CardContent>
-                            <div className="rounded-lg border border-border overflow-hidden">
+                        <CardContent className="px-4 sm:px-6">
+                            <div className="rounded-lg border border-border overflow-x-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="border-border hover:bg-transparent">
-                                            <TableHead className="text-muted-foreground">Utility</TableHead>
-                                            <TableHead className="text-muted-foreground">Provider</TableHead>
-                                            <TableHead className="text-muted-foreground hidden sm:table-cell">Contact</TableHead>
+                                            <TableHead className="text-muted-foreground text-xs sm:text-sm">Utility</TableHead>
+                                            <TableHead className="text-muted-foreground text-xs sm:text-sm">Provider</TableHead>
+                                            <TableHead className="text-muted-foreground text-xs sm:text-sm hidden sm:table-cell">Contact</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -257,11 +257,11 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
 
                     {/* Next Steps */}
                     <Card className="border-border bg-card/50">
-                        <CardHeader className="pb-2">
-                            <h3 className="text-lg font-semibold text-foreground">Buyer Next Steps</h3>
+                        <CardHeader className="pb-2 px-4 sm:px-6">
+                            <h3 className="text-base sm:text-lg font-semibold text-foreground">Buyer Next Steps</h3>
                         </CardHeader>
-                        <CardContent>
-                            <ol className="space-y-3 text-muted-foreground">
+                        <CardContent className="px-4 sm:px-6">
+                            <ol className="space-y-2.5 sm:space-y-3 text-muted-foreground text-sm sm:text-base">
                                 <li className="flex gap-3">
                                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">1</span>
                                     <span>Contact each utility provider above to set up new service in your name.</span>
