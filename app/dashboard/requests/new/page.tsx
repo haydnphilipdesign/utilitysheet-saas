@@ -567,7 +567,7 @@ Thank you!`,
                 }
                 setShowShareDialog(open);
             }}>
-                <DialogContent className="bg-popover border-border max-w-[calc(100vw-2rem)] sm:max-w-lg mx-4" showCloseButton={false}>
+                <DialogContent className="bg-popover border-border !max-w-[calc(100vw-2rem)] sm:!max-w-lg" showCloseButton={false}>
                     <DialogHeader>
                         <DialogTitle className="text-foreground text-lg sm:text-xl">Request Created! 🎉</DialogTitle>
                         <DialogDescription className="text-muted-foreground text-sm">
@@ -652,7 +652,7 @@ Thank you!`,
 
             {/* Upgrade Dialog */}
             <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 max-w-[calc(100vw-2rem)] sm:max-w-md mx-4">
+                <DialogContent className="bg-zinc-900 border-zinc-800 !max-w-[calc(100vw-2rem)] sm:!max-w-md">
                     <DialogHeader>
                         <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-2">
                             <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500" />
