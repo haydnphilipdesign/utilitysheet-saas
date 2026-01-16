@@ -29,9 +29,12 @@ export async function getRequests(
 
     if (!sql) return { data: [], total: 0, page, limit, totalPages: 0 };
 
-    // Build the WHERE clause (exclude deleted requests from user-facing lists)
+    // Build the WHERE clause (exclude deleted requests from user-facing lists).
+    // If the account has an active organization, show:
+    // - all org requests, plus
+    // - the user's personal (pre-org) requests that have no organization.
     const whereClause = organizationId
-        ? sql`organization_id = ${organizationId} AND deleted_at IS NULL`
+        ? sql`deleted_at IS NULL AND (organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
         : sql`account_id = ${accountId} AND organization_id IS NULL AND deleted_at IS NULL`;
 
     // Get total count
@@ -257,7 +260,7 @@ export async function getDashboardStats(accountId: string, organizationId?: stri
             COUNT(*) FILTER (WHERE status = 'sent' AND created_at < NOW() - INTERVAL '3 days') as needs_attention
         FROM requests 
         WHERE ${organizationId
-            ? sql`organization_id = ${organizationId} AND deleted_at IS NULL`
+            ? sql`deleted_at IS NULL AND (organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
             : sql`account_id = ${accountId} AND organization_id IS NULL AND deleted_at IS NULL`}
     `;
 
@@ -290,8 +293,8 @@ export async function getWeeklyStats(
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const whereClause = organizationId
-        ? sql`organization_id = ${organizationId} AND created_at >= ${sevenDaysAgo.toISOString()}`
-        : sql`account_id = ${accountId} AND organization_id IS NULL AND created_at >= ${sevenDaysAgo.toISOString()}`;
+        ? sql`created_at >= ${sevenDaysAgo.toISOString()} AND deleted_at IS NULL AND (organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
+        : sql`account_id = ${accountId} AND organization_id IS NULL AND created_at >= ${sevenDaysAgo.toISOString()} AND deleted_at IS NULL`;
 
     const result = await sql`
         SELECT 
@@ -301,7 +304,7 @@ export async function getWeeklyStats(
             COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
             COUNT(*) FILTER (WHERE status = 'sent' AND created_at < NOW() - INTERVAL '3 days') as needs_attention
         FROM requests 
-        WHERE ${whereClause} AND deleted_at IS NULL
+        WHERE ${whereClause}
     `;
 
     return {

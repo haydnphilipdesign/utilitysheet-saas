@@ -150,7 +150,7 @@ export async function getAccountsWithWeeklySummaryEnabled() {
  */
 export async function getMonthlyUsage(
     accountId: string,
-    organizationId?: string
+    _organizationId?: string
 ): Promise<{ used: number; limit: number; plan: string }> {
     if (!sql) return { used: 0, limit: 3, plan: 'free' };
 
@@ -160,24 +160,15 @@ export async function getMonthlyUsage(
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
-    const query = organizationId
-        ? sql`
-            SELECT COUNT(*) as count 
-            FROM requests 
-            WHERE organization_id = ${organizationId}
-                AND metered_at IS NOT NULL
-                AND metered_at >= ${startOfMonth.toISOString()}
-                AND (is_demo = FALSE OR is_demo IS NULL)
-        `
-        : sql`
-            SELECT COUNT(*) as count 
-            FROM requests 
-            WHERE account_id = ${accountId} 
-                AND organization_id IS NULL
-                AND metered_at IS NOT NULL
-                AND metered_at >= ${startOfMonth.toISOString()}
-                AND (is_demo = FALSE OR is_demo IS NULL)
-        `;
+    // Usage is tracked per account (subscription lives on accounts), regardless of organization context.
+    const query = sql`
+        SELECT COUNT(*) as count
+        FROM requests
+        WHERE account_id = ${accountId}
+            AND metered_at IS NOT NULL
+            AND metered_at >= ${startOfMonth.toISOString()}
+            AND (is_demo = FALSE OR is_demo IS NULL)
+    `;
 
     const result = await query;
     const used = Number(result[0]?.count) || 0;
