@@ -8,6 +8,30 @@ export async function GET(
     try {
         const { token } = await params;
 
+        const normalizeSteps = (value: unknown): string[] | null => {
+            if (value === null || value === undefined) return null;
+            if (Array.isArray(value)) {
+                return value
+                    .filter((step) => typeof step === 'string')
+                    .map((step) => step.trim())
+                    .filter(Boolean);
+            }
+            if (typeof value === 'string') {
+                try {
+                    const parsed = JSON.parse(value);
+                    if (Array.isArray(parsed)) {
+                        return parsed
+                            .filter((step) => typeof step === 'string')
+                            .map((step) => step.trim())
+                            .filter(Boolean);
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+            return null;
+        };
+
         // 1. Get the request by public token
         const requestData = await getRequestByToken(token);
         if (!requestData) {
@@ -30,6 +54,12 @@ export async function GET(
             brandProfile = await getDefaultBrandProfile(requestData.account_id, requestData.organization_id ?? undefined);
         }
 
+        const account = await getAccountById(requestData.account_id);
+        const isPro = account?.subscription_status === 'pro';
+        const forceShowPoweredBy = !isPro;
+
+        const buyerNextSteps = isPro ? normalizeSteps(brandProfile?.buyer_next_steps) : null;
+
         const publicBrandProfile = brandProfile ? {
             name: brandProfile.name,
             logo_url: brandProfile.logo_url,
@@ -37,6 +67,12 @@ export async function GET(
             contact_email: brandProfile.contact_email,
             contact_phone: brandProfile.contact_phone,
             contact_website: brandProfile.contact_website,
+            // Advanced customization (Pro only)
+            buyer_next_steps: buyerNextSteps,
+            next_steps_title: isPro ? (brandProfile.next_steps_title ?? null) : null,
+            show_powered_by: forceShowPoweredBy ? true : brandProfile.show_powered_by,
+            show_generation_date: isPro ? brandProfile.show_generation_date : true,
+            welcome_message: isPro ? (brandProfile.welcome_message ?? null) : null,
         } : null;
 
         // 3. Get utility entries (map to public packet shape)
@@ -47,9 +83,6 @@ export async function GET(
             provider_phone: u.provider_phone || u.contact_phone || null,
             provider_website: u.provider_website || u.contact_url || null,
         }));
-
-        const account = await getAccountById(requestData.account_id);
-        const showPoweredBy = account?.subscription_status !== 'pro';
 
         return NextResponse.json({
             request: {
@@ -64,7 +97,7 @@ export async function GET(
             brand: publicBrandProfile,
             utilities: utilities,
             meta: {
-                show_powered_by: showPoweredBy,
+                show_powered_by: forceShowPoweredBy,
             },
         });
     } catch (error) {

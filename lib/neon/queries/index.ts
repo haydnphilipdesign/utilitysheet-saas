@@ -62,3 +62,10 @@ export {
 export {
     createEventLog,
 } from './event-logs';
+
+// Product updates (changelog) queries
+export {
+    getProductUpdates,
+    createProductUpdate,
+    deleteProductUpdate,
+} from './updates';

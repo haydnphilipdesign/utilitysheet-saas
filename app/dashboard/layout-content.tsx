@@ -17,12 +17,13 @@ import {
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { EmailVerificationBanner } from '@/components/email-verification-banner';
-import { Zap, LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X } from 'lucide-react';
+import { Zap, LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X, Megaphone } from 'lucide-react';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Requests', href: '/dashboard/requests', icon: FileText },
     { name: 'Branding', href: '/dashboard/branding', icon: Palette },
+    { name: 'Updates', href: '/dashboard/updates', icon: Megaphone },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 

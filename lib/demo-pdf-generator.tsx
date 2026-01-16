@@ -3,6 +3,7 @@
 import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { format } from 'date-fns';
 import type { WizardState } from '@/components/seller-form/SellerWizard';
+import { fitRectWithin } from '@/lib/pdf-fit';
 
 interface DemoPdfData {
     address: string;
@@ -223,7 +224,7 @@ export async function generateDemoPdf({ address, state }: DemoPdfData): Promise<
             allowTaint: true,
         });
 
-        // Create PDF with standard US Letter size
+        // Create PDF with standard US Letter size on a single page
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
             orientation: 'portrait',
@@ -231,28 +232,21 @@ export async function generateDemoPdf({ address, state }: DemoPdfData): Promise<
             format: 'letter',
         });
 
-        const pageWidth = 8.5;
-        const pageHeight = 11;
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
         const margin = 0.5;
-        const contentWidth = pageWidth - (margin * 2);
-        const contentHeight = pageHeight - (margin * 2);
+        const contentWidth = pageWidth - margin * 2;
+        const contentHeight = pageHeight - margin * 2;
 
-        const canvasAspectRatio = canvas.width / canvas.height;
-        const contentAspectRatio = contentWidth / contentHeight;
-
-        let imgWidth: number;
-        let imgHeight: number;
-
-        if (canvasAspectRatio > contentAspectRatio) {
-            imgWidth = contentWidth;
-            imgHeight = contentWidth / canvasAspectRatio;
-        } else {
-            imgHeight = contentHeight;
-            imgWidth = contentHeight * canvasAspectRatio;
-        }
+        const { width: imgWidth, height: imgHeight } = fitRectWithin({
+            sourceWidth: canvas.width,
+            sourceHeight: canvas.height,
+            targetWidth: contentWidth,
+            targetHeight: contentHeight,
+        });
 
         const xOffset = margin + (contentWidth - imgWidth) / 2;
-        const yOffset = margin;
+        const yOffset = margin + (contentHeight - imgHeight) / 2;
 
         pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
 

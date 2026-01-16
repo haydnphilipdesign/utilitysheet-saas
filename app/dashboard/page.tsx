@@ -37,11 +37,13 @@ import {
     ExternalLink,
     Loader2,
     Trash2,
+    Megaphone,
 } from 'lucide-react';
 import type { Request, DashboardStats } from '@/types';
 import { format } from 'date-fns';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
+import type { ProductUpdate } from '@/types';
 
 const statusConfig = {
     draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
@@ -74,6 +76,8 @@ export default function DashboardPage() {
     const [downloadingPdfToken, setDownloadingPdfToken] = useState<string | null>(null);
     const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [updates, setUpdates] = useState<ProductUpdate[]>([]);
+    const [updatesLoading, setUpdatesLoading] = useState(true);
 
     useEffect(() => {
         async function fetchRequests() {
@@ -114,6 +118,24 @@ export default function DashboardPage() {
         }
 
         fetchStats();
+    }, []);
+
+    useEffect(() => {
+        async function fetchUpdates() {
+            setUpdatesLoading(true);
+            try {
+                const res = await fetch('/api/updates?limit=3');
+                if (res.ok) {
+                    const data = await res.json();
+                    setUpdates(Array.isArray(data) ? data : []);
+                }
+            } catch (error) {
+                console.error('Error fetching updates:', error);
+            } finally {
+                setUpdatesLoading(false);
+            }
+        }
+        fetchUpdates();
     }, []);
 
     const filteredRequests = requests.filter((request) =>
@@ -241,6 +263,52 @@ export default function DashboardPage() {
                             </Card>
                         ))}
                     </div>
+
+                    {/* Updates */}
+                    <Card className="border-border bg-card/50 backdrop-blur-sm">
+                        <CardHeader className="px-4 sm:px-6">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <CardTitle className="text-foreground text-lg sm:text-xl flex items-center gap-2">
+                                        <Megaphone className="h-5 w-5 text-muted-foreground" />
+                                        What’s new
+                                    </CardTitle>
+                                    <CardDescription className="text-muted-foreground text-xs sm:text-sm">
+                                        Recent product updates and bugfixes
+                                    </CardDescription>
+                                </div>
+                                <Link href="/dashboard/updates" className="text-xs sm:text-sm text-muted-foreground hover:text-foreground">
+                                    View all
+                                </Link>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="px-4 sm:px-6 pb-6">
+                            {updatesLoading ? (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading updates...
+                                </div>
+                            ) : updates.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">No updates yet.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {updates.map((u) => {
+                                        const preview = u.body.length > 180 ? `${u.body.slice(0, 180).trim()}…` : u.body;
+                                        return (
+                                            <div key={u.id} className="rounded-lg border border-border bg-background/40 p-3 sm:p-4">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="font-semibold text-foreground">{u.title}</span>
+                                                    <Badge variant="secondary" className="capitalize">{u.category}</Badge>
+                                                    <span className="text-xs text-muted-foreground">{format(new Date(u.published_at), 'MMM d, yyyy')}</span>
+                                                </div>
+                                                <p className="mt-1.5 text-sm text-muted-foreground whitespace-pre-line">{preview}</p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
                     {/* Requests Table */}
                     <Card className="border-border bg-card/50 backdrop-blur-sm">

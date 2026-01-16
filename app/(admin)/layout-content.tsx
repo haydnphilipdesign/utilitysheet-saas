@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Users, Shield, FileText, ArrowLeft, Zap, LayoutDashboard, Inbox, Building2 } from 'lucide-react';
+import { Users, Shield, FileText, ArrowLeft, Zap, LayoutDashboard, Inbox, Building2, Megaphone } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const adminNavigation = [
@@ -10,6 +10,7 @@ const adminNavigation = [
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Requests', href: '/admin/requests', icon: Inbox },
     { name: 'Orgs', href: '/admin/organizations', icon: Building2 },
+    { name: 'Updates', href: '/admin/updates', icon: Megaphone },
     { name: 'Audit Logs', href: '/admin/audit-logs', icon: FileText },
 ];
 

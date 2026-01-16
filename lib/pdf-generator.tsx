@@ -2,6 +2,7 @@
 
 import { UTILITY_CATEGORIES, DEFAULT_BUYER_STEPS } from '@/lib/constants';
 import { format } from 'date-fns';
+import { fitRectWithin } from '@/lib/pdf-fit';
 
 interface PacketData {
     request: {
@@ -112,8 +113,9 @@ export async function generatePacketPdf(token: string): Promise<void> {
     }
 
     const { request, brand, utilities } = data;
-    // Use brand-level show_powered_by if set, otherwise fall back to meta
-    const showPoweredBy = brand?.show_powered_by ?? data.meta?.show_powered_by ?? true;
+    // Always respect forced "powered by" for non-Pro, but allow Pro profiles to opt in/out.
+    const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
+    const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
     const showGenerationDate = brand?.show_generation_date ?? true;
     const safePrimaryColor = safeHexColor(brand?.primary_color, '#10b981');
     const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
@@ -328,7 +330,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
         });
 
         console.log('PDF Gen: Canvas created, generating PDF...');
-        // 7. Create PDF with standard US Letter size (8.5" x 11")
+        // 7. Create PDF with standard US Letter size (8.5" x 11") on a single page.
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
             orientation: 'portrait',
@@ -336,34 +338,21 @@ export async function generatePacketPdf(token: string): Promise<void> {
             format: 'letter', // 8.5" x 11"
         });
 
-        // Letter size in inches: 8.5 x 11
-        // Use margins of 0.5" on each side for content area of 7.5" x 10"
-        const pageWidth = 8.5;
-        const pageHeight = 11;
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
         const margin = 0.5;
-        const contentWidth = pageWidth - (margin * 2);
-        const contentHeight = pageHeight - (margin * 2);
+        const contentWidth = pageWidth - margin * 2;
+        const contentHeight = pageHeight - margin * 2;
 
-        // Calculate scale to fit content within the page, maintaining aspect ratio
-        const canvasAspectRatio = canvas.width / canvas.height;
-        const contentAspectRatio = contentWidth / contentHeight;
+        const { width: imgWidth, height: imgHeight } = fitRectWithin({
+            sourceWidth: canvas.width,
+            sourceHeight: canvas.height,
+            targetWidth: contentWidth,
+            targetHeight: contentHeight,
+        });
 
-        let imgWidth: number;
-        let imgHeight: number;
-
-        if (canvasAspectRatio > contentAspectRatio) {
-            // Canvas is wider - fit to width
-            imgWidth = contentWidth;
-            imgHeight = contentWidth / canvasAspectRatio;
-        } else {
-            // Canvas is taller - fit to height
-            imgHeight = contentHeight;
-            imgWidth = contentHeight * canvasAspectRatio;
-        }
-
-        // Center the image on the page
         const xOffset = margin + (contentWidth - imgWidth) / 2;
-        const yOffset = margin;
+        const yOffset = margin + (contentHeight - imgHeight) / 2;
 
         pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
 

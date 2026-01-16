@@ -126,6 +126,19 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Product updates / changelog (shown on user dashboard)
+CREATE TABLE IF NOT EXISTS product_updates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    category TEXT NOT NULL CHECK (category IN ('bugfix', 'feature', 'announcement')),
+    is_published BOOLEAN NOT NULL DEFAULT TRUE,
+    published_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_requests_account_id ON requests(account_id);
 CREATE INDEX IF NOT EXISTS idx_requests_public_token ON requests(public_token);
@@ -140,6 +153,8 @@ CREATE INDEX IF NOT EXISTS idx_event_logs_request_id ON event_logs(request_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_id ON admin_audit_logs(admin_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_target_user_id ON admin_audit_logs(target_user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON admin_audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_product_updates_is_published ON product_updates(is_published);
+CREATE INDEX IF NOT EXISTS idx_product_updates_published_at ON product_updates(published_at DESC);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -172,5 +187,11 @@ CREATE TRIGGER update_requests_updated_at
 DROP TRIGGER IF EXISTS update_utility_entries_updated_at ON utility_entries;
 CREATE TRIGGER update_utility_entries_updated_at
     BEFORE UPDATE ON utility_entries
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_product_updates_updated_at ON product_updates;
+CREATE TRIGGER update_product_updates_updated_at
+    BEFORE UPDATE ON product_updates
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

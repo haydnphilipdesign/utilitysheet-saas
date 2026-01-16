@@ -42,6 +42,8 @@ export type UserRole = 'user' | 'admin' | 'banned';
 
 export type Plan = 'free' | 'pro' | 'canceled';
 
+export type UpdateCategory = 'bugfix' | 'feature' | 'announcement';
+
 // Admin audit action types
 export type AdminAction =
     | 'user_banned'
@@ -53,7 +55,9 @@ export type AdminAction =
     | 'request_status_changed'
     | 'request_seller_updated'
     | 'request_reminder_sent'
-    | 'user_updated';
+    | 'user_updated'
+    | 'product_update_created'
+    | 'product_update_deleted';
 
 // Entities
 export interface Account {
@@ -185,6 +189,18 @@ export interface AdminAuditLog {
     metadata: Record<string, unknown> | null;
     ip_address: string | null;
     created_at: string;
+}
+
+export interface ProductUpdate {
+    id: string;
+    title: string;
+    body: string;
+    category: UpdateCategory;
+    is_published: boolean;
+    published_at: string;
+    created_by: string | null;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface ProviderCanonical {

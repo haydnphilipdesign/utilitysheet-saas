@@ -13,13 +13,28 @@ import {
 } from '@/components/ui/table';
 import { Download, Copy, Check, Phone, ExternalLink, Zap, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { UTILITY_CATEGORIES } from '@/lib/constants';
+import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
 
+type PacketBrand = {
+    name?: string;
+    logo_url?: string;
+    primary_color?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    contact_website?: string;
+    // Advanced customization
+    buyer_next_steps?: string[] | null;
+    next_steps_title?: string | null;
+    show_powered_by?: boolean;
+    show_generation_date?: boolean;
+    welcome_message?: string | null;
+} | null;
+
 type PacketResponse = {
     request: any;
-    brand: any;
+    brand: PacketBrand;
     utilities: any[];
     meta?: {
         show_powered_by?: boolean;
@@ -92,8 +107,14 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
 
     const { request, brand, utilities } = data;
     const primaryColor = brand?.primary_color || '#10b981';
-    const showPoweredBy = data.meta?.show_powered_by ?? true;
+    const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
+    const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
+    const showGenerationDate = brand?.show_generation_date ?? true;
     const headerBrandName = showPoweredBy ? 'UtilitySheet' : (brand?.name || 'Utility Info Sheet');
+    const nextStepsTitle = brand?.next_steps_title || 'Buyer Next Steps';
+    const buyerSteps = (brand?.buyer_next_steps && brand.buyer_next_steps.length > 0 ? brand.buyer_next_steps : DEFAULT_BUYER_STEPS)
+        .map((step) => step.trim())
+        .filter(Boolean);
 
     return (
         <div className="min-h-screen bg-background">
@@ -180,10 +201,12 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                             <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500 dark:text-sky-400 shrink-0" />
                             <span className="text-foreground font-medium text-sm sm:text-base">{request.property_address}</span>
                         </div>
-                        <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
-                            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            Generated {format(new Date(request.created_at), 'MMMM d, yyyy')}
-                        </div>
+                        {showGenerationDate && (
+                            <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
+                                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                Generated {format(new Date(request.created_at), 'MMMM d, yyyy')}
+                            </div>
+                        )}
                     </div>
 
                     {/* Utility Table */}
@@ -258,26 +281,18 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     {/* Next Steps */}
                     <Card className="border-border bg-card/50">
                         <CardHeader className="pb-2 px-4 sm:px-6">
-                            <h3 className="text-base sm:text-lg font-semibold text-foreground">Buyer Next Steps</h3>
+                            <h3 className="text-base sm:text-lg font-semibold text-foreground">{nextStepsTitle}</h3>
                         </CardHeader>
                         <CardContent className="px-4 sm:px-6">
                             <ol className="space-y-2.5 sm:space-y-3 text-muted-foreground text-sm sm:text-base">
-                                <li className="flex gap-3">
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">1</span>
-                                    <span>Contact each utility provider above to set up new service in your name.</span>
-                                </li>
-                                <li className="flex gap-3">
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">2</span>
-                                    <span>Schedule service to begin on your closing date or the following business day.</span>
-                                </li>
-                                <li className="flex gap-3">
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">3</span>
-                                    <span>Have your closing documents handy — providers may ask for verification of ownership.</span>
-                                </li>
-                                <li className="flex gap-3">
-                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">4</span>
-                                    <span>If transferring internet service, contact your provider at least 1-2 weeks in advance.</span>
-                                </li>
+                                {buyerSteps.map((step, index) => (
+                                    <li key={index} className="flex gap-3">
+                                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">
+                                            {index + 1}
+                                        </span>
+                                        <span>{step}</span>
+                                    </li>
+                                ))}
                             </ol>
                         </CardContent>
                     </Card>
