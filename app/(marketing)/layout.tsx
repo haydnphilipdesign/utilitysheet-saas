@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
@@ -29,7 +29,7 @@ const MarketingHeader = dynamic(
 export default function MarketingLayout({
     children,
 }: {
-    children: React.ReactNode;
+    children: ReactNode;
 }) {
     return (
         <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -79,7 +79,18 @@ export default function MarketingLayout({
                         </div>
                     </div>
                     <div className="mt-12 border-t border-border pt-8 text-center text-sm text-muted-foreground">
-                        <p>&copy; {new Date().getFullYear()} UtilitySheet. All rights reserved.</p>
+                        <p>
+                            &copy; {new Date().getFullYear()} UtilitySheet. All rights reserved. Built by{' '}
+                            <a
+                                href="https://www.multimedium.dev"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-medium text-foreground/80 hover:text-foreground underline-offset-4 hover:underline"
+                            >
+                                Multimedium
+                            </a>
+                            .
+                        </p>
                     </div>
                 </div>
             </footer>
