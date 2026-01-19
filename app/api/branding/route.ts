@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getBrandProfiles, createBrandProfile, getOrCreateAccount } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
+import { brandProfileCreateBodySchema } from '@/lib/validation/schemas';
 
 // GET /api/branding - Get all brand profiles
 export async function GET() {
@@ -54,6 +55,14 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
+        const parsedBody = brandProfileCreateBodySchema.safeParse(body);
+        if (!parsedBody.success) {
+            return NextResponse.json(
+                { error: 'Invalid request body', details: parsedBody.error.flatten() },
+                { status: 400 }
+            );
+        }
+        const payload = parsedBody.data;
 
         const account = await getOrCreateAccount(user.id, user.primaryEmail!, user.displayName || undefined);
         if (!account) {
@@ -72,22 +81,22 @@ export async function POST(request: Request) {
         const profile = await createBrandProfile({
             accountId,
             organizationId,
-            name: body.name,
-            logoUrl: body.logo_url,
-            primaryColor: body.primary_color,
-            secondaryColor: body.secondary_color,
-            contactName: body.contact_name,
-            contactPhone: body.contact_phone,
-            contactEmail: body.contact_email,
-            contactWebsite: body.contact_website,
-            disclaimerText: body.disclaimer_text,
-            isDefault: body.is_default,
+            name: payload.name,
+            logoUrl: payload.logo_url,
+            primaryColor: payload.primary_color,
+            secondaryColor: payload.secondary_color,
+            contactName: payload.contact_name,
+            contactPhone: payload.contact_phone,
+            contactEmail: payload.contact_email,
+            contactWebsite: payload.contact_website,
+            disclaimerText: payload.disclaimer_text,
+            isDefault: payload.is_default,
             // Advanced customization
-            buyerNextSteps: body.buyer_next_steps,
-            nextStepsTitle: body.next_steps_title,
-            showPoweredBy: body.show_powered_by,
-            showGenerationDate: body.show_generation_date,
-            welcomeMessage: body.welcome_message,
+            buyerNextSteps: payload.buyer_next_steps,
+            nextStepsTitle: payload.next_steps_title,
+            showPoweredBy: payload.show_powered_by,
+            showGenerationDate: payload.show_generation_date,
+            welcomeMessage: payload.welcome_message,
         });
 
         if (!profile) {

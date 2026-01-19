@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getBrandProfile, updateBrandProfile, deleteBrandProfile, getOrCreateAccount } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
+import { brandProfileUpdateBodySchema } from '@/lib/validation/schemas';
 
 export async function GET(
     request: Request,
@@ -53,6 +54,14 @@ export async function PUT(
         }
 
         const body = await request.json();
+        const parsedBody = brandProfileUpdateBodySchema.safeParse(body);
+        if (!parsedBody.success) {
+            return NextResponse.json(
+                { error: 'Invalid request body', details: parsedBody.error.flatten() },
+                { status: 400 }
+            );
+        }
+        const payload = parsedBody.data;
 
         // Verify ownership first
         const { id } = await params;
@@ -79,23 +88,23 @@ export async function PUT(
         const isPro = account.subscription_status === 'pro';
 
         const updatedProfile = await updateBrandProfile(id, {
-            name: body.name,
-            logo_url: body.logo_url,
-            primary_color: body.primary_color,
-            secondary_color: body.secondary_color,
-            contact_name: body.contact_name,
-            contact_phone: body.contact_phone,
-            contact_email: body.contact_email,
-            contact_website: body.contact_website,
-            disclaimer_text: body.disclaimer_text,
-            ...(isPro ? { is_default: body.is_default } : {}),
+            name: payload.name,
+            logo_url: payload.logo_url,
+            primary_color: payload.primary_color,
+            secondary_color: payload.secondary_color,
+            contact_name: payload.contact_name,
+            contact_phone: payload.contact_phone,
+            contact_email: payload.contact_email,
+            contact_website: payload.contact_website,
+            disclaimer_text: payload.disclaimer_text,
+            ...(isPro ? { is_default: payload.is_default } : {}),
             // Advanced customization (Pro only)
             ...(isPro ? {
-                buyer_next_steps: body.buyer_next_steps,
-                next_steps_title: body.next_steps_title,
-                show_powered_by: body.show_powered_by,
-                show_generation_date: body.show_generation_date,
-                welcome_message: body.welcome_message,
+                buyer_next_steps: payload.buyer_next_steps,
+                next_steps_title: payload.next_steps_title,
+                show_powered_by: payload.show_powered_by,
+                show_generation_date: payload.show_generation_date,
+                welcome_message: payload.welcome_message,
             } : {}),
             // Pass context for default handling
             accountId: account.id,

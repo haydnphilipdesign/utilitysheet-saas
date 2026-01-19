@@ -24,6 +24,7 @@ type PacketBrand = {
     contact_email?: string;
     contact_phone?: string;
     contact_website?: string;
+    disclaimer_text?: string | null;
     // Advanced customization
     buyer_next_steps?: string[] | null;
     next_steps_title?: string | null;
@@ -299,6 +300,11 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
 
                     {/* Footer */}
                     <div className="text-center pt-6 border-t border-border">
+                        {brand?.disclaimer_text ? (
+                            <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-2">
+                                {brand.disclaimer_text}
+                            </p>
+                        ) : null}
                         <p className="text-sm text-muted-foreground">
                             {showPoweredBy ? (
                                 <>

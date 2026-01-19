@@ -36,6 +36,7 @@ describe('GET /api/packet/[token]', () => {
             name: 'My Brand',
             logo_url: null,
             primary_color: '#10b981',
+            disclaimer_text: 'My disclaimer',
             contact_email: 'me@example.com',
             contact_phone: '555-555-5555',
             contact_website: 'https://example.com',
@@ -61,6 +62,7 @@ describe('GET /api/packet/[token]', () => {
         expect(body.brand.next_steps_title).toBe('Next for Buyers');
         expect(body.brand.buyer_next_steps).toEqual(['Step A', 'Step B']);
         expect(body.brand.show_powered_by).toBe(false);
+        expect(body.brand.disclaimer_text).toBe('My disclaimer');
         expect(body.meta.show_powered_by).toBe(false);
     });
 
@@ -82,6 +84,7 @@ describe('GET /api/packet/[token]', () => {
             name: 'My Brand',
             logo_url: null,
             primary_color: '#10b981',
+            disclaimer_text: 'Non-pro disclaimer',
             contact_email: 'me@example.com',
             contact_phone: '555-555-5555',
             contact_website: 'https://example.com',
@@ -109,6 +112,6 @@ describe('GET /api/packet/[token]', () => {
         expect(body.brand.buyer_next_steps).toBe(null);
         expect(body.brand.next_steps_title).toBe(null);
         expect(body.brand.welcome_message).toBe(null);
+        expect(body.brand.disclaimer_text).toBe('Non-pro disclaimer');
     });
 });
-

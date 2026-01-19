@@ -14,6 +14,7 @@ import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon, Plus, Trash2, 
 import { toast } from 'sonner';
 import type { BrandProfileFormData } from '@/types';
 import { DEFAULT_BUYER_STEPS } from '@/lib/constants';
+import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import UtilitySheetPdfPreview from './UtilitySheetPdfPreview';
 
 interface BrandProfileFormProps {
@@ -154,6 +155,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     placeholder="e.g., Your Real Estate Team"
                                     value={formData.name}
                                     onChange={(e) => updateField('name', e.target.value)}
+                                    maxLength={BRAND_PROFILE_LIMITS.brandNameMax}
                                     className="bg-background border-input text-foreground placeholder:text-muted-foreground"
                                 />
                             </div>
@@ -279,6 +281,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         placeholder="Jane Smith"
                                         value={formData.contact_name || ''}
                                         onChange={(e) => updateField('contact_name', e.target.value)}
+                                        maxLength={BRAND_PROFILE_LIMITS.contactNameMax}
                                         className="bg-background border-input text-foreground placeholder:text-muted-foreground"
                                     />
                                 </div>
@@ -290,6 +293,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         placeholder="(555) 123-4567"
                                         value={formData.contact_phone || ''}
                                         onChange={(e) => updateField('contact_phone', e.target.value)}
+                                        maxLength={BRAND_PROFILE_LIMITS.contactPhoneMax}
                                         className="bg-background border-input text-foreground placeholder:text-muted-foreground"
                                     />
                                 </div>
@@ -303,6 +307,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         placeholder="agent@realty.com"
                                         value={formData.contact_email || ''}
                                         onChange={(e) => updateField('contact_email', e.target.value)}
+                                        maxLength={BRAND_PROFILE_LIMITS.contactEmailMax}
                                         className="bg-background border-input text-foreground placeholder:text-muted-foreground"
                                     />
                                 </div>
@@ -313,6 +318,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         placeholder="yourrealty.com"
                                         value={formData.contact_website || ''}
                                         onChange={(e) => updateField('contact_website', e.target.value)}
+                                        maxLength={BRAND_PROFILE_LIMITS.contactWebsiteMax}
                                         className="bg-background border-input text-foreground placeholder:text-muted-foreground"
                                     />
                                 </div>
@@ -333,6 +339,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     placeholder="Add any legal disclaimers or additional notes..."
                                     value={formData.disclaimer_text || ''}
                                     onChange={(e) => updateField('disclaimer_text', e.target.value)}
+                                    maxLength={BRAND_PROFILE_LIMITS.disclaimerTextMax}
                                     className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[80px]"
                                 />
                             </div>
@@ -400,6 +407,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     placeholder="Add a brief message that appears above the utility list..."
                                     value={formData.welcome_message || ''}
                                     onChange={(e) => updateField('welcome_message', e.target.value)}
+                                    maxLength={BRAND_PROFILE_LIMITS.welcomeMessageMax}
                                     className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[60px]"
                                     disabled={!isPro}
                                 />
@@ -433,6 +441,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     placeholder="Buyer Next Steps"
                                     value={formData.next_steps_title || ''}
                                     onChange={(e) => updateField('next_steps_title', e.target.value)}
+                                    maxLength={BRAND_PROFILE_LIMITS.nextStepsTitleMax}
                                     className="bg-background border-input text-foreground placeholder:text-muted-foreground"
                                     disabled={!isPro}
                                 />
@@ -454,6 +463,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                                 newSteps[index] = e.target.value;
                                                 updateField('buyer_next_steps', newSteps);
                                             }}
+                                            maxLength={BRAND_PROFILE_LIMITS.buyerNextStepMax}
                                             className="bg-background border-input text-foreground min-h-[60px] flex-1"
                                             disabled={!isPro}
                                         />
@@ -486,10 +496,14 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     size="sm"
                                     onClick={() => {
                                         const currentSteps = formData.buyer_next_steps || [...DEFAULT_BUYER_STEPS];
+                                        if (currentSteps.length >= BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems) {
+                                            toast.error(`Limit: ${BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems} steps`);
+                                            return;
+                                        }
                                         updateField('buyer_next_steps', [...currentSteps, '']);
                                     }}
                                     className="flex-1"
-                                    disabled={!isPro}
+                                    disabled={!isPro || (formData.buyer_next_steps || DEFAULT_BUYER_STEPS).length >= BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems}
                                 >
                                     <Plus className="h-4 w-4 mr-1" />
                                     Add Step

@@ -67,6 +67,7 @@ export async function GET(
             contact_email: brandProfile.contact_email,
             contact_phone: brandProfile.contact_phone,
             contact_website: brandProfile.contact_website,
+            disclaimer_text: brandProfile.disclaimer_text ?? null,
             // Advanced customization (Pro only)
             buyer_next_steps: buyerNextSteps,
             next_steps_title: isPro ? (brandProfile.next_steps_title ?? null) : null,

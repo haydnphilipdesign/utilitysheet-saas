@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 
 export const utilityCategoryEnum = z.enum(
     UTILITY_CATEGORY_KEYS as [UtilityCategory, ...UtilityCategory[]]
@@ -34,6 +35,44 @@ const providerEntryModeEnum = z.enum([
 ]);
 
 const nullToUndefined = (val: unknown) => (val === null ? undefined : val);
+
+const hexColorSchema = z.string().trim().regex(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/, {
+    message: 'Must be a valid hex color (e.g. #10b981)',
+});
+
+const optionalLimitedString = (maxLength: number) =>
+    z.preprocess(nullToUndefined, z.string().trim().max(maxLength).optional());
+
+const buyerNextStepsSchema = z.preprocess(
+    nullToUndefined,
+    z
+        .array(z.string().trim().min(1).max(BRAND_PROFILE_LIMITS.buyerNextStepMax))
+        .max(BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems)
+        .optional()
+);
+
+export const brandProfileCreateBodySchema = z
+    .object({
+        name: z.string().trim().min(1).max(BRAND_PROFILE_LIMITS.brandNameMax),
+        logo_url: optionalLimitedString(2048),
+        primary_color: hexColorSchema,
+        secondary_color: hexColorSchema,
+        contact_name: optionalLimitedString(BRAND_PROFILE_LIMITS.contactNameMax),
+        contact_phone: optionalLimitedString(BRAND_PROFILE_LIMITS.contactPhoneMax),
+        contact_email: optionalLimitedString(BRAND_PROFILE_LIMITS.contactEmailMax),
+        contact_website: optionalLimitedString(BRAND_PROFILE_LIMITS.contactWebsiteMax),
+        disclaimer_text: optionalLimitedString(BRAND_PROFILE_LIMITS.disclaimerTextMax),
+        is_default: z.preprocess(nullToUndefined, z.boolean().optional()),
+        // Advanced customization
+        buyer_next_steps: buyerNextStepsSchema,
+        next_steps_title: optionalLimitedString(BRAND_PROFILE_LIMITS.nextStepsTitleMax),
+        show_powered_by: z.preprocess(nullToUndefined, z.boolean().optional()),
+        show_generation_date: z.preprocess(nullToUndefined, z.boolean().optional()),
+        welcome_message: optionalLimitedString(BRAND_PROFILE_LIMITS.welcomeMessageMax),
+    })
+    .strip();
+
+export const brandProfileUpdateBodySchema = brandProfileCreateBodySchema.partial();
 
 const normalizeHttpUrlOrNull = (val: unknown): string | null | undefined => {
     if (val === undefined) return undefined;

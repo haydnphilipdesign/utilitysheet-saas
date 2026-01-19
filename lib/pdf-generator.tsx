@@ -3,6 +3,8 @@
 import { UTILITY_CATEGORIES, DEFAULT_BUYER_STEPS } from '@/lib/constants';
 import { format } from 'date-fns';
 import { fitRectWithin } from '@/lib/pdf-fit';
+import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
+import { clampBrandingText } from '@/lib/branding/text';
 
 interface PacketData {
     request: {
@@ -21,6 +23,7 @@ interface PacketData {
         contact_email?: string;
         contact_phone?: string;
         contact_website?: string;
+        disclaimer_text?: string | null;
         // Advanced customization
         buyer_next_steps?: string[] | null;
         next_steps_title?: string | null;
@@ -119,28 +122,48 @@ export async function generatePacketPdf(token: string): Promise<void> {
     const showGenerationDate = brand?.show_generation_date ?? true;
     const safePrimaryColor = safeHexColor(brand?.primary_color, '#10b981');
     const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
-    const safeBrandName = escapeHtml(brand?.name || 'UtilitySheet');
-    const safeBrandContactPhone = escapeHtml(brand?.contact_phone || '');
-    const safeBrandContactEmail = escapeHtml(brand?.contact_email || '');
-    const safeBrandContactWebsite = escapeHtml(brand?.contact_website || '');
-    const safePropertyAddress = escapeHtml(request.property_address);
+    const safeBrandName = escapeHtml(clampBrandingText(brand?.name || 'UtilitySheet', BRAND_PROFILE_LIMITS.brandNameMax) || 'UtilitySheet');
+    const safeBrandContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
+    const safeBrandContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
+    const safeBrandContactWebsite = escapeHtml(clampBrandingText(brand?.contact_website || '', BRAND_PROFILE_LIMITS.contactWebsiteMax));
+    const safePropertyAddress = escapeHtml(clampBrandingText(request.property_address, 140));
 
     // Advanced customization
-    const buyerNextSteps = brand?.buyer_next_steps || DEFAULT_BUYER_STEPS;
-    const nextStepsTitle = escapeHtml(brand?.next_steps_title || 'Buyer Next Steps');
-    const welcomeMessage = brand?.welcome_message ? escapeHtml(brand.welcome_message) : '';
+    const rawBuyerNextSteps = brand?.buyer_next_steps && brand.buyer_next_steps.length > 0
+        ? brand.buyer_next_steps
+        : DEFAULT_BUYER_STEPS;
+
+    const buyerNextSteps = rawBuyerNextSteps
+        .map((step: string) => clampBrandingText(step, BRAND_PROFILE_LIMITS.buyerNextStepMax))
+        .filter(Boolean)
+        .slice(0, BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems);
+
+    const nextStepsTitle = escapeHtml(clampBrandingText(brand?.next_steps_title || 'Buyer Next Steps', BRAND_PROFILE_LIMITS.nextStepsTitleMax) || 'Buyer Next Steps');
+    const welcomeMessage = brand?.welcome_message
+        ? escapeHtml(clampBrandingText(brand.welcome_message, BRAND_PROFILE_LIMITS.welcomeMessageMax))
+        : '';
+    const disclaimerText = brand?.disclaimer_text
+        ? escapeHtml(clampBrandingText(brand.disclaimer_text, BRAND_PROFILE_LIMITS.disclaimerTextMax))
+        : '';
 
     const footerText = showPoweredBy
-        ? `Powered by utilitysheet.com${brand?.contact_email ? ` &bull; ${safeBrandContactEmail}` : ''}`
-        : (brand?.contact_email ? safeBrandContactEmail : '');
+        ? `Powered by utilitysheet.com${safeBrandContactEmail ? ` &bull; ${safeBrandContactEmail}` : ''}`
+        : (safeBrandContactEmail ? safeBrandContactEmail : '');
 
-    const footerHtml = footerText
+    const footerHtml = footerText || disclaimerText
         ? `
             <!-- Footer -->
             <div style="text-align: center; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+                ${disclaimerText ? `
+                <p style="font-size: 11px; color: #71717a; margin: 0 0 8px 0; line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">
+                    ${disclaimerText}
+                </p>
+                ` : ''}
+                ${footerText ? `
                 <p style="font-size: 13px; color: #71717a; margin: 0;">
                     ${footerText}
                 </p>
+                ` : ''}
             </div>
         `
         : '';
@@ -193,7 +216,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
             ${welcomeMessage ? `
             <!-- Welcome Message -->
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px;">
-                <p style="font-size: 14px; color: #1e40af; margin: 0; line-height: 1.6;">${welcomeMessage}</p>
+                <p style="font-size: 14px; color: #1e40af; margin: 0; line-height: 1.6; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">${welcomeMessage}</p>
             </div>
             ` : ''}
 
@@ -289,7 +312,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
                     ${buyerNextSteps.filter((step: string) => step.trim()).map((step: string, i: number) => `
                         <li style="display: flex; gap: 16px; margin-bottom: 16px; color: #3f3f46; align-items: flex-start; line-height: 1.5;">
                             <span style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">${i + 1}</span>
-                            <span>${escapeHtml(step)}</span>
+                            <span style="flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">${escapeHtml(step)}</span>
                         </li>
                     `).join('')}
                 </ol>
