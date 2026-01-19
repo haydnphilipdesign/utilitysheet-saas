@@ -7,7 +7,7 @@ const apiKey = process.env.GOOGLE_AI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 // Model configuration
-const MODEL_NAME = 'gemini-3-pro-preview';
+const MODEL_NAME = 'gemini-3-flash-preview';
 
 // Retry configuration
 const MAX_RETRIES = 3;
