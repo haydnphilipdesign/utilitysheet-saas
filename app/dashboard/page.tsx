@@ -38,6 +38,7 @@ import {
     Loader2,
     Trash2,
     Megaphone,
+    X,
 } from 'lucide-react';
 import type { Request, DashboardStats } from '@/types';
 import { format } from 'date-fns';
@@ -78,6 +79,7 @@ export default function DashboardPage() {
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [updates, setUpdates] = useState<ProductUpdate[]>([]);
     const [updatesLoading, setUpdatesLoading] = useState(true);
+    const [dismissedUpdateId, setDismissedUpdateId] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchRequests() {
@@ -118,6 +120,14 @@ export default function DashboardPage() {
         }
 
         fetchStats();
+    }, []);
+
+    useEffect(() => {
+        // Load dismissed update ID from localStorage
+        const savedDismissedId = localStorage.getItem('dismissedUpdateId');
+        if (savedDismissedId) {
+            setDismissedUpdateId(savedDismissedId);
+        }
     }, []);
 
     useEffect(() => {
@@ -218,6 +228,18 @@ export default function DashboardPage() {
         }
     };
 
+    const handleDismissUpdates = () => {
+        if (updates.length > 0) {
+            // Store the ID of the most recent update
+            const latestUpdateId = updates[0].id;
+            localStorage.setItem('dismissedUpdateId', latestUpdateId);
+            setDismissedUpdateId(latestUpdateId);
+        }
+    };
+
+    // Check if there are new updates to show (updates not yet dismissed)
+    const hasNewUpdates = updates.length > 0 && updates[0].id !== dismissedUpdateId;
+
     const statCards = [
         { label: 'Total Requests', value: stats.total_requests, icon: FileText, color: 'text-muted-foreground' },
         { label: 'Pending', value: stats.sent + stats.in_progress, icon: Clock, color: 'text-blue-400' },
@@ -265,50 +287,62 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Updates */}
-                    <Card className="border-border bg-card/50 backdrop-blur-sm">
-                        <CardHeader className="px-4 sm:px-6">
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <CardTitle className="text-foreground text-lg sm:text-xl flex items-center gap-2">
-                                        <Megaphone className="h-5 w-5 text-muted-foreground" />
-                                        What’s new
-                                    </CardTitle>
-                                    <CardDescription className="text-muted-foreground text-xs sm:text-sm">
-                                        Recent product updates and bugfixes
-                                    </CardDescription>
+                    {hasNewUpdates && (
+                        <Card className="border-border bg-card/50 backdrop-blur-sm">
+                            <CardHeader className="px-4 sm:px-6">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <CardTitle className="text-foreground text-lg sm:text-xl flex items-center gap-2">
+                                            <Megaphone className="h-5 w-5 text-muted-foreground" />
+                                            What's new
+                                        </CardTitle>
+                                        <CardDescription className="text-muted-foreground text-xs sm:text-sm">
+                                            Recent product updates and bugfixes
+                                        </CardDescription>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Link href="/dashboard/updates" className="text-xs sm:text-sm text-muted-foreground hover:text-foreground">
+                                            View all
+                                        </Link>
+                                        <button
+                                            onClick={handleDismissUpdates}
+                                            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                            title="Dismiss"
+                                            aria-label="Dismiss updates"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
                                 </div>
-                                <Link href="/dashboard/updates" className="text-xs sm:text-sm text-muted-foreground hover:text-foreground">
-                                    View all
-                                </Link>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="px-4 sm:px-6 pb-6">
-                            {updatesLoading ? (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading updates...
-                                </div>
-                            ) : updates.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No updates yet.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {updates.map((u) => {
-                                        const preview = u.body.length > 180 ? `${u.body.slice(0, 180).trim()}…` : u.body;
-                                        return (
-                                            <div key={u.id} className="rounded-lg border border-border bg-background/40 p-3 sm:p-4">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="font-semibold text-foreground">{u.title}</span>
-                                                    <Badge variant="secondary" className="capitalize">{u.category}</Badge>
-                                                    <span className="text-xs text-muted-foreground">{format(new Date(u.published_at), 'MMM d, yyyy')}</span>
+                            </CardHeader>
+                            <CardContent className="px-4 sm:px-6 pb-6">
+                                {updatesLoading ? (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Loading updates...
+                                    </div>
+                                ) : updates.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">No updates yet.</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {updates.map((u) => {
+                                            const preview = u.body.length > 180 ? `${u.body.slice(0, 180).trim()}…` : u.body;
+                                            return (
+                                                <div key={u.id} className="rounded-lg border border-border bg-background/40 p-3 sm:p-4">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="font-semibold text-foreground">{u.title}</span>
+                                                        <Badge variant="secondary" className="capitalize">{u.category}</Badge>
+                                                        <span className="text-xs text-muted-foreground">{format(new Date(u.published_at), 'MMM d, yyyy')}</span>
+                                                    </div>
+                                                    <p className="mt-1.5 text-sm text-muted-foreground whitespace-pre-line">{preview}</p>
                                                 </div>
-                                                <p className="mt-1.5 text-sm text-muted-foreground whitespace-pre-line">{preview}</p>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Requests Table */}
                     <Card className="border-border bg-card/50 backdrop-blur-sm">
