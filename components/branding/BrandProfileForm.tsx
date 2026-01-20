@@ -10,12 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon, Plus, Trash2, RotateCcw, GripVertical, Settings2, ListChecks, Lock } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon, Plus, Trash2, RotateCcw, GripVertical, Settings2, ListChecks, Lock, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BrandProfileFormData } from '@/types';
 import { DEFAULT_BUYER_STEPS } from '@/lib/constants';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import UtilitySheetPdfPreview from './UtilitySheetPdfPreview';
+import { generateTestPdf } from '@/lib/test-pdf-generator';
 
 interface BrandProfileFormProps {
     initialData?: BrandProfileFormData;
@@ -47,6 +48,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
     const [formData, setFormData] = useState<BrandProfileFormData>(initialData || defaultFormData);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [generatingPdf, setGeneratingPdf] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const updateField = <K extends keyof BrandProfileFormData>(field: K, value: BrandProfileFormData[K]) => {
@@ -113,6 +115,19 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
             console.error('Error submitting form:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGenerateTestPdf = async () => {
+        setGeneratingPdf(true);
+        try {
+            await generateTestPdf(formData);
+            toast.success('Test PDF downloaded!');
+        } catch (error) {
+            console.error('Error generating test PDF:', error);
+            toast.error('Failed to generate test PDF');
+        } finally {
+            setGeneratingPdf(false);
         }
     };
 
@@ -558,8 +573,26 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
 
                 {/* Right Column: Live PDF Preview */}
                 <div className="hidden lg:block">
-                    <div className="sticky top-8">
+                    <div className="sticky top-8 space-y-4">
                         <UtilitySheetPdfPreview branding={formData} />
+                        <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={handleGenerateTestPdf}
+                            disabled={generatingPdf}
+                        >
+                            {generatingPdf ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <FileDown className="mr-2 h-4 w-4" />
+                                    Generate Test PDF
+                                </>
+                            )}
+                        </Button>
                     </div>
                 </div>
             </div>
