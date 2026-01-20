@@ -41,6 +41,7 @@ const sampleUtilities = [
 export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPreviewProps) {
     const brandName = clampBrandingText(branding.name, BRAND_PROFILE_LIMITS.brandNameMax) || 'Brand Name';
     const primaryColor = branding.primary_color || '#10b981';
+    const contactName = clampBrandingText(branding.contact_name, BRAND_PROFILE_LIMITS.contactNameMax);
     const contactPhone = clampBrandingText(branding.contact_phone, BRAND_PROFILE_LIMITS.contactPhoneMax);
     const contactEmail = clampBrandingText(branding.contact_email, BRAND_PROFILE_LIMITS.contactEmailMax);
     const contactWebsite = clampBrandingText(branding.contact_website, BRAND_PROFILE_LIMITS.contactWebsiteMax);
@@ -112,6 +113,9 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
                             <h2 className="font-bold text-neutral-900 text-xs leading-tight">
                                 {brandName}
                             </h2>
+                            {contactName && (
+                                <p className="text-neutral-700 text-[9px] font-medium">{contactName}</p>
+                            )}
                             {contactPhone && (
                                 <p className="text-neutral-500 text-[9px]">{contactPhone}</p>
                             )}
@@ -205,7 +209,7 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
                                     >
                                         {i + 1}
                                     </span>
-                                    <span className="leading-snug text-[9px] line-clamp-2">{step}</span>
+                                    <span className="leading-relaxed text-[9px]">{step}</span>
                                 </li>
                             ))}
                     </ol>

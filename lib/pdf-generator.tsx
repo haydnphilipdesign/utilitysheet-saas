@@ -20,6 +20,7 @@ interface PacketData {
         name?: string;
         logo_url?: string;
         primary_color?: string;
+        contact_name?: string;
         contact_email?: string;
         contact_phone?: string;
         contact_website?: string;
@@ -123,6 +124,7 @@ export async function generatePacketPdf(token: string): Promise<void> {
     const safePrimaryColor = safeHexColor(brand?.primary_color, '#10b981');
     const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
     const safeBrandName = escapeHtml(clampBrandingText(brand?.name || 'UtilitySheet', BRAND_PROFILE_LIMITS.brandNameMax) || 'UtilitySheet');
+    const safeBrandContactName = escapeHtml(clampBrandingText(brand?.contact_name || '', BRAND_PROFILE_LIMITS.contactNameMax));
     const safeBrandContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
     const safeBrandContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
     const safeBrandContactWebsite = escapeHtml(clampBrandingText(brand?.contact_website || '', BRAND_PROFILE_LIMITS.contactWebsiteMax));
@@ -187,7 +189,8 @@ export async function generatePacketPdf(token: string): Promise<void> {
         }
                     <div>
                         <h2 style="font-weight: 700; color: #09090b; margin: 0; font-size: 20px;">${safeBrandName}</h2>
-                        <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${safeBrandContactPhone}</p>
+                        ${safeBrandContactName ? `<p style="font-size: 14px; color: #3f3f46; margin: 4px 0 0 0; font-weight: 500;">${safeBrandContactName}</p>` : ''}
+                        ${safeBrandContactPhone ? `<p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${safeBrandContactPhone}</p>` : ''}
                     </div>
                 </div>
                 <div style="text-align: right;">
@@ -310,9 +313,9 @@ export async function generatePacketPdf(token: string): Promise<void> {
                 <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0 0 20px 0;">${nextStepsTitle}</h3>
                 <ol style="margin: 0; padding: 0; list-style: none;">
                     ${buyerNextSteps.filter((step: string) => step.trim()).map((step: string, i: number) => `
-                        <li style="display: flex; gap: 16px; margin-bottom: 16px; color: #3f3f46; align-items: flex-start; line-height: 1.5;">
+                        <li style="display: flex; gap: 16px; margin-bottom: 16px; color: #3f3f46; align-items: flex-start; line-height: 1.6;">
                             <span style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">${i + 1}</span>
-                            <span style="flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">${escapeHtml(step)}</span>
+                            <span style="flex: 1; min-width: 0; word-break: break-word; overflow-wrap: anywhere;">${escapeHtml(step)}</span>
                         </li>
                     `).join('')}
                 </ol>

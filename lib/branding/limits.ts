@@ -8,6 +8,6 @@ export const BRAND_PROFILE_LIMITS = {
     welcomeMessageMax: 320,
     nextStepsTitleMax: 40,
     buyerNextStepsMaxItems: 8,
-    buyerNextStepMax: 140,
+    buyerNextStepMax: 100,
 } as const;
 

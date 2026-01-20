@@ -64,6 +64,7 @@ export async function GET(
             name: brandProfile.name,
             logo_url: brandProfile.logo_url,
             primary_color: brandProfile.primary_color,
+            contact_name: brandProfile.contact_name,
             contact_email: brandProfile.contact_email,
             contact_phone: brandProfile.contact_phone,
             contact_website: brandProfile.contact_website,
