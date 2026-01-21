@@ -90,7 +90,9 @@ export default function LoginPage() {
         setGoogleLoading(true);
         setError(null);
         try {
-            await stackClientApp.signInWithOAuth('google');
+            await stackClientApp.signInWithOAuth('google', {
+                returnTo: '/dashboard',
+            });
         } catch (err: any) {
             setError(err.message || 'Failed to sign in with Google');
             setGoogleLoading(false);
