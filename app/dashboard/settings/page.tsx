@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@stackframe/stack';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Settings, User, Bell, CreditCard, Loader2, Save, Sparkles, ExternalLink, Users, UserPlus, Trash2, Shield } from 'lucide-react';
+import { User, Bell, Check, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
@@ -41,6 +42,20 @@ export default function SettingsPage() {
     const [teamSeats, setTeamSeats] = useState(3);
     const [teamBillingLoading, setTeamBillingLoading] = useState(false);
 
+    const TEAM_MIN_SEATS = 3;
+    const TEAM_PRICE_PER_SEAT_USD = 7;
+
+    const teamSeatCount = useMemo(() => {
+        const normalized = Number.isFinite(teamSeats) ? Math.floor(teamSeats) : TEAM_MIN_SEATS;
+        return Math.max(TEAM_MIN_SEATS, normalized);
+    }, [teamSeats]);
+
+    const teamsMonthlyTotal = useMemo(() => teamSeatCount * TEAM_PRICE_PER_SEAT_USD, [teamSeatCount]);
+
+    const usdNoCents = useMemo(
+        () => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }),
+        []
+    );
 
     // Update profile when Stack user loads, but prefer fetching from DB
     useEffect(() => {
@@ -164,7 +179,7 @@ export default function SettingsPage() {
             const response = await fetch('/api/organization/billing/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ seats: teamSeats }),
+                body: JSON.stringify({ seats: teamSeatCount }),
             });
             const data = await response.json().catch(() => ({}));
             if (data.url) {
@@ -519,10 +534,10 @@ export default function SettingsPage() {
                 <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
                         <Users className="h-5 w-5 text-emerald-400" />
-                        Team
+                        Teams
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                        Invite teammates and manage seats for your organization
+                        Invite teammates, manage seats, and learn how Teams billing works
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -568,39 +583,127 @@ export default function SettingsPage() {
                                 )}
                             </div>
 
-                            {orgIsAdmin && !orgIsTeam && (
-                                <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div>
-                                            <p className="text-sm font-medium text-foreground">Upgrade to Teams</p>
-                                            <p className="text-xs text-muted-foreground">Minimum 3 seats. Billing is per seat.</p>
+                            {!orgIsTeam && (
+                                <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="space-y-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="text-sm font-medium text-foreground">Teams (multi-seat)</p>
+                                                <Badge variant="secondary">{usdNoCents.format(TEAM_PRICE_PER_SEAT_USD)}/seat/mo</Badge>
+                                                <Badge variant="outline">{TEAM_MIN_SEATS} seat minimum</Badge>
+                                                {!orgIsAdmin && <Badge variant="outline">Admin only</Badge>}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                Best for 3+ users who want one shared organization and centralized billing. (Pro is single-seat.)
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                                        <div className="flex-1 space-y-2">
-                                            <Label htmlFor="teamSeats" className="text-foreground">Seats</Label>
-                                            <Input
-                                                id="teamSeats"
-                                                type="number"
-                                                min={3}
-                                                value={teamSeats}
-                                                onChange={(e) => setTeamSeats(Number(e.target.value) || 3)}
-                                                className="bg-background/50 border-input text-foreground"
-                                            />
+
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-medium text-foreground">What you get</p>
+                                            <ul className="space-y-1.5 text-xs text-muted-foreground">
+                                                <li className="flex items-start gap-2">
+                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                    Everything in Pro (unlimited requests + branding)
+                                                </li>
+                                                <li className="flex items-start gap-2">
+                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                    Shared organization workspace
+                                                </li>
+                                                <li className="flex items-start gap-2">
+                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                    Invite members with admin + member roles
+                                                </li>
+                                                <li className="flex items-start gap-2">
+                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                    Centralized billing + seat management
+                                                </li>
+                                            </ul>
                                         </div>
-                                        <Button
-                                            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
-                                            onClick={handleTeamCheckout}
-                                            disabled={teamBillingLoading}
-                                        >
-                                            {teamBillingLoading ? (
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <Sparkles className="mr-2 h-4 w-4 fill-white animate-pulse" />
-                                            )}
-                                            Start Teams
-                                        </Button>
+                                        <div className="space-y-2">
+                                            <p className="text-xs font-medium text-foreground">How seats work</p>
+                                            <ul className="space-y-1.5 text-xs text-muted-foreground">
+                                                <li className="flex items-start gap-2">
+                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                    1 seat = 1 active user in the organization
+                                                </li>
+                                                <li className="flex items-start gap-2">
+                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                    Pending invites count toward your seat limit
+                                                </li>
+                                                <li className="flex items-start gap-2">
+                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                    Start with at least {TEAM_MIN_SEATS} seats and adjust later
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
+
+                                    <Accordion className="border-border bg-background/20">
+                                        <AccordionItem value="billing">
+                                            <AccordionTrigger>How does Teams billing work?</AccordionTrigger>
+                                            <AccordionContent>
+                                                <p>
+                                                    Teams is billed monthly per seat. Your estimated total is{' '}
+                                                    <span className="font-medium text-foreground">{usdNoCents.format(teamsMonthlyTotal)}/mo</span>{' '}
+                                                    for <span className="font-medium text-foreground">{teamSeatCount}</span> seat{teamSeatCount === 1 ? '' : 's'}.
+                                                </p>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                        <AccordionItem value="change-seats">
+                                            <AccordionTrigger>Can I change seats later?</AccordionTrigger>
+                                            <AccordionContent>
+                                                <p>Yes. Admins can manage seats any time from the Teams billing portal.</p>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
+
+                                    {orgIsAdmin ? (
+                                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                                            <div className="flex-1 space-y-2">
+                                                <Label htmlFor="teamSeats" className="text-foreground">Seats (users)</Label>
+                                                <Input
+                                                    id="teamSeats"
+                                                    type="number"
+                                                    min={TEAM_MIN_SEATS}
+                                                    step={1}
+                                                    value={teamSeatCount}
+                                                    onChange={(e) => {
+                                                        const parsed = Number.parseInt(e.target.value, 10);
+                                                        setTeamSeats(Number.isFinite(parsed) ? Math.max(TEAM_MIN_SEATS, parsed) : TEAM_MIN_SEATS);
+                                                    }}
+                                                    className="bg-background/50 border-input text-foreground"
+                                                    disabled={teamBillingLoading}
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    {usdNoCents.format(TEAM_PRICE_PER_SEAT_USD)}/seat/mo • Estimated{' '}
+                                                    <span className="text-foreground">{usdNoCents.format(teamsMonthlyTotal)}/mo</span>
+                                                </p>
+                                            </div>
+                                            <Button
+                                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+                                                onClick={handleTeamCheckout}
+                                                disabled={teamBillingLoading}
+                                            >
+                                                {teamBillingLoading ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Sparkles className="mr-2 h-4 w-4 fill-white animate-pulse" />
+                                                )}
+                                                Start Teams
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background/20 p-3">
+                                            <p className="text-xs text-muted-foreground">
+                                                Only organization admins can start Teams. Ask an admin to upgrade and set seat quantity.
+                                            </p>
+                                            <Button variant="outline" className="border-input text-muted-foreground" disabled>
+                                                Managed by Admin
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
