@@ -34,7 +34,11 @@ const faqs = [
     },
     {
         question: 'Can I remove UtilitySheet branding?',
-        answer: 'Yes. Pro accounts can remove the “Powered by UtilitySheet” footer from share links and PDFs (white-label).',
+        answer: 'Yes. Pro and Teams accounts can remove the “Powered by UtilitySheet” footer from share links and PDFs (white-label).',
+    },
+    {
+        question: 'Do you offer Teams (multi-seat)?',
+        answer: 'Yes. Teams lets you invite multiple users under one organization. It’s $7 per seat per month with a 3 seat minimum.',
     }
 ];
 

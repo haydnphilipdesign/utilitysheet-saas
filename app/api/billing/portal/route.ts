@@ -26,6 +26,7 @@ export async function POST() {
         // Create billing portal session
         const session = await stripe.billingPortal.sessions.create({
             customer: account.stripe_customer_id,
+            configuration: process.env.STRIPE_PORTAL_CONFIGURATION_ID_PRO || undefined,
             return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings`,
         });
 

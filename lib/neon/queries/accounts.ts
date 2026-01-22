@@ -150,7 +150,7 @@ export async function getAccountsWithWeeklySummaryEnabled() {
  */
 export async function getMonthlyUsage(
     accountId: string,
-    _organizationId?: string
+    organizationId?: string
 ): Promise<{ used: number; limit: number; plan: string }> {
     if (!sql) return { used: 0, limit: 3, plan: 'free' };
 
@@ -186,6 +186,24 @@ export async function getMonthlyUsage(
             limit: 999999, // Effectively unlimited
             plan: 'pro',
         };
+    }
+
+    // Team users (org subscription) also get unlimited requests
+    if (organizationId) {
+        const orgResult = await sql`
+            SELECT subscription_status
+            FROM organizations
+            WHERE id = ${organizationId}
+        `;
+        const orgStatus = orgResult[0]?.subscription_status || 'free';
+
+        if (orgStatus === 'team') {
+            return {
+                used,
+                limit: 999999,
+                plan: 'team',
+            };
+        }
     }
 
     // Free plan = 3 requests per month

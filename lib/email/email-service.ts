@@ -135,6 +135,100 @@ export async function sendSellerReminderEmail({
     }
 }
 
+interface SendOrganizationInviteEmailParams {
+    toEmail: string;
+    organizationName: string;
+    invitedByName?: string;
+    inviteUrl: string;
+}
+
+export async function sendOrganizationInviteEmail({
+    toEmail,
+    organizationName,
+    invitedByName,
+    inviteUrl,
+}: SendOrganizationInviteEmailParams): Promise<{ success: boolean; error?: string }> {
+    const inviter = invitedByName ? ` by ${invitedByName}` : '';
+    const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You're invited to UtilitySheet</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%); padding: 28px 40px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700;">UtilitySheet</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 36px 40px;">
+                            <p style="margin: 0 0 16px; color: #111827; font-size: 16px; line-height: 1.6;">
+                                You’ve been invited${inviter} to join <strong>${organizationName}</strong>.
+                            </p>
+                            <p style="margin: 0 0 24px; color: #374151; font-size: 15px; line-height: 1.6;">
+                                Accept the invite to access your team's requests and branding in one shared workspace.
+                            </p>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #0f172a 0%, #334155 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 16px; font-weight: 700;">
+                                            Accept Invite
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin: 24px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                                If the button doesn’t work, copy and paste this link into your browser:<br>
+                                <a href="${inviteUrl}" style="color: #0f172a; word-break: break-all;">${inviteUrl}</a>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 18px 40px; background-color: #f9fafb; text-align: center;">
+                            <p style="margin: 0; color: #6b7280; font-size: 12px; line-height: 1.6;">
+                                If you weren’t expecting this invite, you can ignore this email.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+`;
+
+    try {
+        const { data, error } = await getResend().emails.send({
+            from: 'UtilitySheet <noreply@utilitysheet.com>',
+            to: toEmail,
+            subject: `You’re invited to join ${organizationName} on UtilitySheet`,
+            html: emailHtml,
+        });
+
+        if (error) {
+            console.error('Failed to send organization invite email:', error);
+            return { success: false, error: error.message };
+        }
+
+        console.log('Organization invite email sent successfully:', data?.id);
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending organization invite email:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+        };
+    }
+}
+
 interface GenerateEmailHtmlParams {
     sellerName?: string;
     propertyAddress: string;

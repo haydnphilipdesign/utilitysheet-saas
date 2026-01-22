@@ -67,5 +67,16 @@ describe('Requests: metering + soft-delete', () => {
         expect(usageQueryText).toContain('metered_at');
         expect(usageQueryText).not.toContain("status != 'draft'");
     });
-});
 
+    it('getMonthlyUsage treats Teams org members as unlimited', async () => {
+        sqlMock
+            .mockResolvedValueOnce([{ count: '2' }])
+            .mockResolvedValueOnce([{ subscription_status: 'free' }])
+            .mockResolvedValueOnce([{ subscription_status: 'team' }]);
+
+        const usage = await getMonthlyUsage('acct_1', 'org_1');
+
+        expect(usage).toEqual({ used: 2, limit: 999999, plan: 'team' });
+        expect(sqlMock).toHaveBeenCalledTimes(3);
+    });
+});

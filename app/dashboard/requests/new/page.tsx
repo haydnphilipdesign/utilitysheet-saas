@@ -93,7 +93,7 @@ export default function NewRequestPage() {
 
                 if (accountResponse.ok) {
                     const accountData = await accountResponse.json();
-                    setIsPro(accountData.account?.subscription_status === 'pro');
+                    setIsPro(accountData.account?.subscription_status === 'pro' || accountData.activeOrganization?.subscription_status === 'team');
                 }
             } catch (error) {
                 console.error('Error fetching data:', error);

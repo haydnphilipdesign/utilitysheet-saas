@@ -78,15 +78,18 @@ export function DashboardLayoutContent({
                 <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
                     <div className="flex h-14 sm:h-16 items-center justify-between">
                         {/* Logo */}
-                        <div className="flex items-center gap-4 sm:gap-8">
-                            <Link href="/dashboard" className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="flex flex-1 min-w-0 items-center gap-4 sm:gap-8">
+                            <Link href="/dashboard" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                                 <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20">
                                     <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </div>
-                                <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
-                                    <span className="text-base sm:text-xl font-bold text-foreground">UtilitySheet</span>
+                                <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-2">
+                                    <span className="shrink-0 text-base sm:text-xl font-bold text-foreground">UtilitySheet</span>
                                     {organization && (
-                                        <span className="text-xs sm:text-sm font-medium text-muted-foreground hidden sm:block border-l border-border pl-2">
+                                        <span
+                                            className="hidden min-w-0 max-w-[18ch] truncate border-l border-border pl-2 text-xs font-medium text-muted-foreground sm:block md:max-w-[24ch] lg:max-w-[32ch]"
+                                            title={organization.name}
+                                        >
                                             {organization.name}
                                         </span>
                                     )}

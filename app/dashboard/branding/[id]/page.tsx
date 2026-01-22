@@ -24,7 +24,7 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
 
                 if (accountResponse.ok) {
                     const accountData = await accountResponse.json().catch(() => ({}));
-                    setIsPro(accountData?.account?.subscription_status === 'pro');
+                    setIsPro(accountData?.account?.subscription_status === 'pro' || accountData?.activeOrganization?.subscription_status === 'team');
                 }
 
                 if (!profileResponse.ok) {

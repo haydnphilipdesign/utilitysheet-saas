@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestByToken, getBrandProfile, getUtilityEntriesByRequestId, getDefaultBrandProfile, getAccountById } from '@/lib/neon/queries';
+import { getRequestByToken, getBrandProfile, getUtilityEntriesByRequestId, getDefaultBrandProfile, getAccountById, getOrganizationById } from '@/lib/neon/queries';
 
 export async function GET(
     request: Request,
@@ -55,7 +55,8 @@ export async function GET(
         }
 
         const account = await getAccountById(requestData.account_id);
-        const isPro = account?.subscription_status === 'pro';
+        const organization = requestData.organization_id ? await getOrganizationById(requestData.organization_id) : null;
+        const isPro = account?.subscription_status === 'pro' || organization?.subscription_status === 'team';
         const forceShowPoweredBy = !isPro;
 
         const buyerNextSteps = isPro ? normalizeSteps(brandProfile?.buyer_next_steps) : null;

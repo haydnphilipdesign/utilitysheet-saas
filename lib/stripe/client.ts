@@ -11,3 +11,4 @@ export const stripe = process.env.STRIPE_SECRET_KEY
     : null;
 
 export const STRIPE_PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID || '';
+export const STRIPE_TEAMS_PRICE_ID = process.env.STRIPE_TEAMS_PRICE_ID || '';

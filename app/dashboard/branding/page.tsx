@@ -37,7 +37,7 @@ export default function BrandingPage() {
 
             if (accountResponse.ok) {
                 const data = await accountResponse.json();
-                setIsPro(data.account.subscription_status === 'pro');
+                setIsPro(data.account.subscription_status === 'pro' || data.activeOrganization?.subscription_status === 'team');
             }
         } catch (error) {
             console.error('Error fetching data:', error);

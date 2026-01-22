@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBrandProfiles, createBrandProfile, getOrCreateAccount } from '@/lib/neon/queries';
+import { getBrandProfiles, createBrandProfile, getOrCreateAccount, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileCreateBodySchema } from '@/lib/validation/schemas';
 
@@ -70,8 +70,10 @@ export async function POST(request: Request) {
         }
         const accountId = account.id;
         const organizationId = account.active_organization_id;
+        const organization = organizationId ? await getOrganizationById(organizationId) : null;
+        const hasPaidAccess = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
-        if (account.subscription_status !== 'pro') {
+        if (!hasPaidAccess) {
             return NextResponse.json({
                 error: 'Custom branding is available on the Pro plan',
                 code: 'UPGRADE_REQUIRED'

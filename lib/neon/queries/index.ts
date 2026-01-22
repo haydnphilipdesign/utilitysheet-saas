@@ -53,9 +53,27 @@ export {
 // Organization queries
 export {
     createOrganization,
+    getOrganizationById,
+    getOrganizationByStripeCustomerId,
+    updateOrganizationStripeCustomer,
+    updateOrganizationSubscription,
     updateOrganization,
     getAccountOrganizations,
     setActiveOrganization,
+    getOrganizationMemberRole,
+    getOrganizationMembers,
+    getOrganizationSeatUsage,
+    isOrganizationMemberByEmail,
+    getOrganizationAdminCount,
+    updateOrganizationMemberRole,
+    removeOrganizationMember,
+    clearActiveOrganizationIfMatches,
+    getPendingOrganizationInvite,
+    createOrganizationInvite,
+    getOrganizationInviteByToken,
+    getOrganizationInvites,
+    acceptOrganizationInvite,
+    addOrganizationMember,
 } from './organizations';
 
 // Event log queries

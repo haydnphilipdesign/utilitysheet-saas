@@ -1,7 +1,20 @@
 import { NextResponse } from 'next/server';
-import { getBrandProfile, updateBrandProfile, deleteBrandProfile, getOrCreateAccount } from '@/lib/neon/queries';
+import { getBrandProfile, updateBrandProfile, deleteBrandProfile, getOrCreateAccount, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileUpdateBodySchema } from '@/lib/validation/schemas';
+
+type AccountWithOrgContext = {
+    subscription_status?: string | null;
+    active_organization_id?: string | null;
+};
+
+async function hasPaidBrandingAccess(account: AccountWithOrgContext): Promise<boolean> {
+    if (account.subscription_status === 'pro') return true;
+    if (!account.active_organization_id) return false;
+
+    const org = await getOrganizationById(account.active_organization_id);
+    return org?.subscription_status === 'team';
+}
 
 export async function GET(
     request: Request,
@@ -75,6 +88,11 @@ export async function PUT(
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
 
+        const hasPaidAccess = await hasPaidBrandingAccess({
+            subscription_status: account.subscription_status,
+            active_organization_id: account.active_organization_id,
+        });
+
         if (profile.organization_id) {
             if (profile.organization_id !== account.active_organization_id) {
                 return NextResponse.json({ error: 'Unauthorized access to organization profile' }, { status: 403 });
@@ -85,7 +103,7 @@ export async function PUT(
             }
         }
 
-        const isPro = account.subscription_status === 'pro';
+        const isPro = hasPaidAccess;
 
         const updatedProfile = await updateBrandProfile(id, {
             name: payload.name,
@@ -144,6 +162,11 @@ export async function DELETE(
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
 
+        const hasPaidAccess = await hasPaidBrandingAccess({
+            subscription_status: account.subscription_status,
+            active_organization_id: account.active_organization_id,
+        });
+
         if (profile.organization_id) {
             if (profile.organization_id !== account.active_organization_id) {
                 return NextResponse.json({ error: 'Unauthorized access to organization profile' }, { status: 403 });
@@ -154,7 +177,7 @@ export async function DELETE(
             }
         }
 
-        if (account.subscription_status !== 'pro') {
+        if (!hasPaidAccess) {
             return NextResponse.json({
                 error: 'Custom branding is available on the Pro plan',
                 code: 'UPGRADE_REQUIRED'

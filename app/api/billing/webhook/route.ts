@@ -1,7 +1,24 @@
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/client';
-import { updateAccountSubscription, getAccountByStripeCustomerId } from '@/lib/neon/queries';
+import { STRIPE_TEAMS_PRICE_ID } from '@/lib/stripe/client';
+import {
+    updateAccountSubscription,
+    getAccountByStripeCustomerId,
+    getOrganizationByStripeCustomerId,
+    updateOrganizationSubscription,
+} from '@/lib/neon/queries';
 import Stripe from 'stripe';
+
+function isPaidStripeStatus(status: Stripe.Subscription.Status) {
+    return status === 'active' || status === 'trialing';
+}
+
+function getSeatQuantityFromSubscription(subscription: Stripe.Subscription) {
+    const items = subscription.items?.data || [];
+    const match = STRIPE_TEAMS_PRICE_ID ? items.find((i) => i.price?.id === STRIPE_TEAMS_PRICE_ID) : items[0];
+    const qty = match?.quantity;
+    return typeof qty === 'number' ? qty : null;
+}
 
 export async function POST(request: Request) {
     try {
@@ -42,6 +59,22 @@ export async function POST(request: Request) {
                             subscriptionEndsAt: periodEnd ? new Date(periodEnd * 1000) : null,
                         });
                         console.log(`Activated Pro subscription for account ${account.id}`);
+                        break;
+                    }
+
+                    const organization = await getOrganizationByStripeCustomerId(customerId);
+                    if (organization) {
+                        const subscriptionResponse = await stripe.subscriptions.retrieve(session.subscription as string);
+                        const periodEnd = (subscriptionResponse as any).current_period_end;
+                        const seatQuantity = getSeatQuantityFromSubscription(subscriptionResponse);
+
+                        await updateOrganizationSubscription(organization.id, {
+                            subscriptionStatus: isPaidStripeStatus(subscriptionResponse.status) ? 'team' : 'free',
+                            subscriptionId: subscriptionResponse.id,
+                            subscriptionEndsAt: periodEnd ? new Date(periodEnd * 1000) : null,
+                            seatQuantity,
+                        });
+                        console.log(`Activated Teams subscription for organization ${organization.id}`);
                     }
                 }
                 break;
@@ -56,8 +89,7 @@ export async function POST(request: Request) {
                 const account = await getAccountByStripeCustomerId(customerId);
                 if (account) {
                     // Map Stripe status to our Plan type ('free' | 'pro')
-                    // 'active' = pro, everything else (canceled, past_due, unpaid, etc.) = free
-                    const status = subscription.status === 'active' ? 'pro' : 'free';
+                    const status = isPaidStripeStatus(subscription.status) ? 'pro' : 'free';
 
                     const periodEnd = (subscription as any).current_period_end;
                     await updateAccountSubscription(account.id, {
@@ -66,6 +98,22 @@ export async function POST(request: Request) {
                         subscriptionEndsAt: periodEnd ? new Date(periodEnd * 1000) : null,
                     });
                     console.log(`Updated subscription status to ${status} for account ${account.id}`);
+                    break;
+                }
+
+                const organization = await getOrganizationByStripeCustomerId(customerId);
+                if (organization) {
+                    const status = isPaidStripeStatus(subscription.status) ? 'team' : 'free';
+                    const periodEnd = (subscription as any).current_period_end;
+                    const seatQuantity = getSeatQuantityFromSubscription(subscription);
+
+                    await updateOrganizationSubscription(organization.id, {
+                        subscriptionStatus: status,
+                        subscriptionId: subscription.id,
+                        subscriptionEndsAt: periodEnd ? new Date(periodEnd * 1000) : null,
+                        seatQuantity,
+                    });
+                    console.log(`Updated Teams subscription status to ${status} for organization ${organization.id}`);
                 }
                 break;
             }
@@ -84,6 +132,18 @@ export async function POST(request: Request) {
                         subscriptionEndsAt: null,
                     });
                     console.log(`Downgraded to free plan for account ${account.id}`);
+                    break;
+                }
+
+                const organization = await getOrganizationByStripeCustomerId(customerId);
+                if (organization) {
+                    await updateOrganizationSubscription(organization.id, {
+                        subscriptionStatus: 'free',
+                        subscriptionId: null,
+                        subscriptionEndsAt: null,
+                        seatQuantity: 0,
+                    });
+                    console.log(`Downgraded to free plan for organization ${organization.id}`);
                 }
                 break;
             }

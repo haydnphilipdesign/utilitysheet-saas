@@ -31,7 +31,7 @@ const features = [
     },
     {
         icon: Palette,
-        title: "White-Label Branding (Pro)",
+        title: "White-Label Branding (Pro + Teams)",
         description: "Add your logo/colors and remove the UtilitySheet footer from share links and PDFs."
     }
 ];

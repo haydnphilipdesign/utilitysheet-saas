@@ -20,8 +20,9 @@ function NewBrandingPageContent() {
                 const response = await fetch('/api/account');
                 if (response.ok) {
                     const data = await response.json();
-                    setIsPro(data.account.subscription_status === 'pro');
-                    if (data.account.subscription_status !== 'pro') {
+                    const hasPaidAccess = data.account.subscription_status === 'pro' || data.activeOrganization?.subscription_status === 'team';
+                    setIsPro(hasPaidAccess);
+                    if (!hasPaidAccess) {
                         toast.error('Upgrade to Pro to create custom branding');
                         router.push('/dashboard/branding');
                     }

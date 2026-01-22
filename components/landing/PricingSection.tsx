@@ -24,17 +24,33 @@ const tiers = [
         name: 'Pro',
         price: '$9',
         period: '/month',
-        description: 'For high-volume TCs and teams who want white-label branding.',
+        description: 'For high-volume TCs and agents who want white-label branding.',
         features: [
             'Unlimited requests',
             'Custom branding (logo + colors)',
             'Remove "Powered by UtilitySheet"',
             'Priority support',
-            'Team management (coming soon)'
+            'Single-seat (1 user)'
         ],
         cta: 'Get Started',
         href: '/auth/signup?plan=pro',
         popular: true
+    },
+    {
+        name: 'Teams',
+        price: '$7',
+        period: '/seat/mo',
+        description: 'For brokerages and teams who need multiple users under one organization.',
+        features: [
+            'Everything in Pro',
+            'Shared organization workspace',
+            'Invite members (admin + member roles)',
+            'Seat-based billing (3 seat minimum)',
+            'Priority support'
+        ],
+        cta: 'Start Teams',
+        href: '/auth/signup?plan=teams',
+        popular: false
     }
 ];
 
@@ -50,7 +66,7 @@ export function PricingSection() {
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
                     {tiers.map((tier) => (
                         <div
                             key={tier.name}
@@ -102,7 +118,7 @@ export function PricingSection() {
                 </div>
 
                 <p className="mt-10 text-center text-sm text-muted-foreground">
-                    Start on Starter with no credit card. Upgrade or cancel anytime.
+                    Start on Starter with no credit card. Upgrade or cancel anytime. Teams is billed per seat (3 seat minimum).
                 </p>
             </div>
         </section>

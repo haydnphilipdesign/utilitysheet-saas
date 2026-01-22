@@ -18,7 +18,15 @@ export default function LoginPage() {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const getSafeNext = (): string | null => {
+        if (typeof window === 'undefined') return null;
+        const nextParam = new URLSearchParams(window.location.search).get('next');
+        return nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
+    };
+
     const getPostAuthRoute = async (): Promise<string | null> => {
+        const safeNext = getSafeNext();
+        if (safeNext) return safeNext;
         try {
             const response = await fetch('/api/account');
             if (response.status === 401) return null;
@@ -91,7 +99,7 @@ export default function LoginPage() {
         setError(null);
         try {
             await stackClientApp.signInWithOAuth('google', {
-                returnTo: '/dashboard',
+                returnTo: getSafeNext() || '/dashboard',
             });
         } catch (err: any) {
             setError(err.message || 'Failed to sign in with Google');

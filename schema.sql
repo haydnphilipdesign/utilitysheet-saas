@@ -30,6 +30,11 @@ CREATE TABLE IF NOT EXISTS organizations (
     name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     logo_url TEXT,
+    stripe_customer_id TEXT,
+    subscription_status TEXT DEFAULT 'free' CHECK (subscription_status IN ('free', 'team', 'canceled')),
+    subscription_id TEXT,
+    subscription_ends_at TIMESTAMPTZ,
+    seat_quantity INT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -42,6 +47,20 @@ CREATE TABLE IF NOT EXISTS organization_members (
     role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(organization_id, account_id)
+);
+
+-- Organization Invitations table (for email invites / join links)
+CREATE TABLE IF NOT EXISTS organization_invitations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    role TEXT DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+    token TEXT UNIQUE NOT NULL,
+    invited_by_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    accepted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS brand_profiles (
@@ -149,12 +168,16 @@ CREATE INDEX IF NOT EXISTS idx_requests_deleted_at ON requests(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_utility_entries_request_id ON utility_entries(request_id);
 CREATE INDEX IF NOT EXISTS idx_brand_profiles_account_id ON brand_profiles(account_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_stripe_customer_id ON accounts(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_organizations_stripe_customer_id ON organizations(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS idx_event_logs_request_id ON event_logs(request_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_id ON admin_audit_logs(admin_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_target_user_id ON admin_audit_logs(target_user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON admin_audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_product_updates_is_published ON product_updates(is_published);
 CREATE INDEX IF NOT EXISTS idx_product_updates_published_at ON product_updates(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_org_invites_org_id ON organization_invitations(organization_id);
+CREATE INDEX IF NOT EXISTS idx_org_invites_token ON organization_invitations(token);
+CREATE INDEX IF NOT EXISTS idx_org_invites_expires_at ON organization_invitations(expires_at);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -193,5 +216,11 @@ CREATE TRIGGER update_utility_entries_updated_at
 DROP TRIGGER IF EXISTS update_product_updates_updated_at ON product_updates;
 CREATE TRIGGER update_product_updates_updated_at
     BEFORE UPDATE ON product_updates
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_org_invites_updated_at ON organization_invitations;
+CREATE TRIGGER update_org_invites_updated_at
+    BEFORE UPDATE ON organization_invitations
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

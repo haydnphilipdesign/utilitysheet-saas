@@ -41,6 +41,7 @@ export type EventName =
 export type UserRole = 'user' | 'admin' | 'banned';
 
 export type Plan = 'free' | 'pro' | 'canceled';
+export type OrganizationPlan = 'free' | 'team' | 'canceled';
 
 export type UpdateCategory = 'bugfix' | 'feature' | 'announcement';
 
@@ -84,6 +85,13 @@ export interface Organization {
     name: string;
     slug: string;
     logo_url: string | null;
+    stripe_customer_id?: string | null;
+    subscription_status?: OrganizationPlan;
+    subscription_id?: string | null;
+    subscription_ends_at?: string | null;
+    seat_quantity?: number;
+    // Returned by membership-joined queries (not a column on organizations)
+    role?: 'admin' | 'member';
     created_at: string;
     updated_at: string;
 }
