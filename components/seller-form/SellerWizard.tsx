@@ -71,9 +71,6 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     // Initialize state
     const [state, setState] = useState<WizardState>(() => {
-        const optionalCategories: UtilityCategory[] = ['trash', 'internet', 'cable'];
-        const requestedOptional = optionalCategories.filter((cat) => initialRequestData.utility_categories.includes(cat));
-
         return {
             water_source: 'not_sure',
             sewer_type: 'not_sure',
@@ -81,7 +78,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             fuels_present: [],
             primary_heating_type: null,
             trash_handled_by: 'not_sure',
-            optional_utilities: requestedOptional,
+            optional_utilities: [],
             utilities: {} as Record<UtilityCategory, UtilityWizardState>
         };
     });

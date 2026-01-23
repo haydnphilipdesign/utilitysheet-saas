@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS brand_profiles (
     contact_email TEXT,
     contact_website TEXT,
     disclaimer_text TEXT,
+    message_templates JSONB DEFAULT '{}'::jsonb,
     is_default BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

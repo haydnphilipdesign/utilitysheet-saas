@@ -10,13 +10,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon, Plus, Trash2, RotateCcw, GripVertical, Settings2, ListChecks, Lock, FileDown } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Loader2, Save, Palette, Upload, X, ImageIcon, Plus, Trash2, RotateCcw, GripVertical, Settings2, ListChecks, Lock, FileDown, Mail, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BrandProfileFormData } from '@/types';
 import { DEFAULT_BUYER_STEPS } from '@/lib/constants';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import UtilitySheetPdfPreview from './UtilitySheetPdfPreview';
 import { generateTestPdf } from '@/lib/test-pdf-generator';
+import { DEFAULT_MESSAGE_TEMPLATES } from '@/lib/message-templates';
 
 interface BrandProfileFormProps {
     initialData?: BrandProfileFormData;
@@ -41,11 +43,16 @@ const defaultFormData: BrandProfileFormData = {
     show_powered_by: true,
     show_generation_date: true,
     welcome_message: '',
+    message_templates: {},
 };
 
 export default function BrandProfileForm({ initialData, onSubmit, isEditing = false, isPro = false }: BrandProfileFormProps) {
     const router = useRouter();
-    const [formData, setFormData] = useState<BrandProfileFormData>(initialData || defaultFormData);
+    const [formData, setFormData] = useState<BrandProfileFormData>(() => ({
+        ...defaultFormData,
+        ...(initialData || {}),
+        message_templates: initialData?.message_templates || {},
+    }));
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -53,6 +60,15 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
 
     const updateField = <K extends keyof BrandProfileFormData>(field: K, value: BrandProfileFormData[K]) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const updateMessageTemplates = (
+        updater: (prev: NonNullable<BrandProfileFormData['message_templates']>) => NonNullable<BrandProfileFormData['message_templates']>
+    ) => {
+        setFormData((prev) => ({
+            ...prev,
+            message_templates: updater(prev.message_templates || {}),
+        }));
     };
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -372,6 +388,287 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     Set as default branding profile {!isPro ? '(Pro)' : ''}
                                 </label>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Request Message Templates */}
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-start justify-between gap-4">
+                            <div className="space-y-1">
+                                <CardTitle className="text-foreground flex items-center gap-2">
+                                    <MessageSquare className="h-5 w-5 text-violet-500" />
+                                    Request Message Templates
+                                </CardTitle>
+                                <CardDescription className="text-muted-foreground">
+                                    Customize the default SMS and email text used when sending seller requests
+                                </CardDescription>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-muted-foreground"
+                                onClick={() => {
+                                    updateField('message_templates', {});
+                                    toast.success('Templates reset to defaults');
+                                }}
+                            >
+                                <RotateCcw className="h-4 w-4 mr-1" />
+                                Reset
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="space-y-5">
+                            <div className="rounded-lg border border-border bg-muted/40 p-3">
+                                <p className="text-xs text-muted-foreground">
+                                    Available variables:{' '}
+                                    <span className="font-mono">
+                                        {'{{seller_first_name_with_space}}'} {'{{seller_name}}'} {'{{agent_name}}'} {'{{property_address}}'} {'{{closing_date}}'} {'{{link}}'}
+                                    </span>
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Leave a field blank to use the default template.
+                                </p>
+                            </div>
+
+                            <Tabs defaultValue="seller_request">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="seller_request">Seller Request</TabsTrigger>
+                                    <TabsTrigger value="seller_reminder">Seller Reminder</TabsTrigger>
+                                </TabsList>
+
+                                <TabsContent value="seller_request" className="space-y-6 mt-4">
+                                    {/* SMS */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                            <Label className="text-foreground">SMS (copy/share)</Label>
+                                        </div>
+                                        <Textarea
+                                            value={formData.message_templates?.seller_request?.sms || ''}
+                                            placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.sms || ''}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                updateMessageTemplates((prev) => ({
+                                                    ...prev,
+                                                    seller_request: {
+                                                        ...(prev.seller_request || {}),
+                                                        sms: value,
+                                                    },
+                                                }));
+                                            }}
+                                            className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[80px]"
+                                            maxLength={500}
+                                        />
+                                    </div>
+
+                                    {/* Manual mailto */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Mail className="h-4 w-4 text-muted-foreground" />
+                                            <Label className="text-foreground">Email (manual — mailto)</Label>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-foreground text-sm">Subject</Label>
+                                                <Input
+                                                    value={formData.message_templates?.seller_request?.mailto?.subject || ''}
+                                                    placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.mailto?.subject || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        updateMessageTemplates((prev) => ({
+                                                            ...prev,
+                                                            seller_request: {
+                                                                ...(prev.seller_request || {}),
+                                                                mailto: {
+                                                                    ...(prev.seller_request?.mailto || {}),
+                                                                    subject: value,
+                                                                },
+                                                            },
+                                                        }));
+                                                    }}
+                                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                                    maxLength={200}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-foreground text-sm">Body</Label>
+                                            <Textarea
+                                                value={formData.message_templates?.seller_request?.mailto?.body || ''}
+                                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.mailto?.body || ''}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    updateMessageTemplates((prev) => ({
+                                                        ...prev,
+                                                        seller_request: {
+                                                            ...(prev.seller_request || {}),
+                                                            mailto: {
+                                                                ...(prev.seller_request?.mailto || {}),
+                                                                body: value,
+                                                            },
+                                                        },
+                                                    }));
+                                                }}
+                                                className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[160px]"
+                                                maxLength={6000}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Automatic email */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Mail className="h-4 w-4 text-muted-foreground" />
+                                            <Label className="text-foreground">Email (automatic)</Label>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-foreground text-sm">Subject</Label>
+                                                <Input
+                                                    value={formData.message_templates?.seller_request?.email?.subject || ''}
+                                                    placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.subject || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        updateMessageTemplates((prev) => ({
+                                                            ...prev,
+                                                            seller_request: {
+                                                                ...(prev.seller_request || {}),
+                                                                email: {
+                                                                    ...(prev.seller_request?.email || {}),
+                                                                    subject: value,
+                                                                },
+                                                            },
+                                                        }));
+                                                    }}
+                                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                                    maxLength={200}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-foreground text-sm">Button Text</Label>
+                                                <Input
+                                                    value={formData.message_templates?.seller_request?.email?.button_text || ''}
+                                                    placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.button_text || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        updateMessageTemplates((prev) => ({
+                                                            ...prev,
+                                                            seller_request: {
+                                                                ...(prev.seller_request || {}),
+                                                                email: {
+                                                                    ...(prev.seller_request?.email || {}),
+                                                                    button_text: value,
+                                                                },
+                                                            },
+                                                        }));
+                                                    }}
+                                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                                    maxLength={80}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-foreground text-sm">Body</Label>
+                                            <Textarea
+                                                value={formData.message_templates?.seller_request?.email?.body || ''}
+                                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.body || ''}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    updateMessageTemplates((prev) => ({
+                                                        ...prev,
+                                                        seller_request: {
+                                                            ...(prev.seller_request || {}),
+                                                            email: {
+                                                                ...(prev.seller_request?.email || {}),
+                                                                body: value,
+                                                            },
+                                                        },
+                                                    }));
+                                                }}
+                                                className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[180px]"
+                                                maxLength={12000}
+                                            />
+                                        </div>
+                                    </div>
+                                </TabsContent>
+
+                                <TabsContent value="seller_reminder" className="space-y-6 mt-4">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <Mail className="h-4 w-4 text-muted-foreground" />
+                                            <Label className="text-foreground">Email (automatic)</Label>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-foreground text-sm">Subject</Label>
+                                                <Input
+                                                    value={formData.message_templates?.seller_reminder?.email?.subject || ''}
+                                                    placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.subject || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        updateMessageTemplates((prev) => ({
+                                                            ...prev,
+                                                            seller_reminder: {
+                                                                ...(prev.seller_reminder || {}),
+                                                                email: {
+                                                                    ...(prev.seller_reminder?.email || {}),
+                                                                    subject: value,
+                                                                },
+                                                            },
+                                                        }));
+                                                    }}
+                                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                                    maxLength={200}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-foreground text-sm">Button Text</Label>
+                                                <Input
+                                                    value={formData.message_templates?.seller_reminder?.email?.button_text || ''}
+                                                    placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.button_text || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        updateMessageTemplates((prev) => ({
+                                                            ...prev,
+                                                            seller_reminder: {
+                                                                ...(prev.seller_reminder || {}),
+                                                                email: {
+                                                                    ...(prev.seller_reminder?.email || {}),
+                                                                    button_text: value,
+                                                                },
+                                                            },
+                                                        }));
+                                                    }}
+                                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                                    maxLength={80}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-foreground text-sm">Body</Label>
+                                            <Textarea
+                                                value={formData.message_templates?.seller_reminder?.email?.body || ''}
+                                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.body || ''}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    updateMessageTemplates((prev) => ({
+                                                        ...prev,
+                                                        seller_reminder: {
+                                                            ...(prev.seller_reminder || {}),
+                                                            email: {
+                                                                ...(prev.seller_reminder?.email || {}),
+                                                                body: value,
+                                                            },
+                                                        },
+                                                    }));
+                                                }}
+                                                className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[180px]"
+                                                maxLength={12000}
+                                            />
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
                         </CardContent>
                     </Card>
 

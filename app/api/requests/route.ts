@@ -166,8 +166,9 @@ export async function POST(request: Request) {
         if (parsedBody.data.sellerEmail && parsedBody.data.sendSellerEmail !== false) {
             // Get agent name from brand profile or account
             let agentName: string | undefined;
+            let brandProfile = null;
             if (brandProfileId) {
-                const brandProfile = await getBrandProfile(brandProfileId);
+                brandProfile = await getBrandProfile(brandProfileId);
                 agentName = brandProfile?.contact_name || undefined;
             }
             // Fallback to account name if no brand profile contact name
@@ -183,6 +184,7 @@ export async function POST(request: Request) {
                     propertyAddress: parsedBody.data.propertyAddress,
                     closingDate: parsedBody.data.closingDate,
                     agentName,
+                    brandProfile: brandProfile || undefined,
                     sellerToken: newRequest.seller_token || newRequest.public_token,
                 });
             } catch (emailError) {

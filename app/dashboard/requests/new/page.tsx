@@ -16,10 +16,11 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Check, Copy, MessageSquare, Mail, Loader2, MapPin, Sparkles, AlertTriangle, Plus } from 'lucide-react';
-import type { UtilityCategory } from '@/types';
+import type { BrandProfile, UtilityCategory } from '@/types';
 import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { DEFAULT_MESSAGE_TEMPLATES, firstNameFromFullName, renderTemplate } from '@/lib/message-templates';
 
 interface FormData {
     property_address: string;
@@ -53,7 +54,7 @@ export default function NewRequestPage() {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<FormData>(initialFormData);
     const [loading, setLoading] = useState(false);
-    const [brands, setBrands] = useState<any[]>([]);
+    const [brands, setBrands] = useState<BrandProfile[]>([]);
     const [generatedToken, setGeneratedToken] = useState<string | null>(null);
     const [showShareDialog, setShowShareDialog] = useState(false);
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
@@ -188,22 +189,56 @@ export default function NewRequestPage() {
     };
 
     const getSmsTemplate = () => {
-        return `Hi${formData.seller_name ? ` ${formData.seller_name.split(' ')[0]}` : ''}! Please complete this quick utility info form for ${formData.property_address}. It takes under 2 minutes: ${getShareLink()}`;
+        const brand = brands.find((b) => b.id === formData.brand_profile_id);
+        const firstName = firstNameFromFullName(formData.seller_name);
+        const closingDate = formData.closing_date
+            ? new Date(formData.closing_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+            : '';
+        const variables = {
+            seller_name: formData.seller_name,
+            seller_first_name_with_space: firstName ? ` ${firstName}` : '',
+            agent_name: brand?.contact_name || '',
+            property_address: formData.property_address,
+            closing_date: closingDate,
+            link: getShareLink(),
+        };
+
+        const template =
+            brand?.message_templates?.seller_request?.sms?.trim()
+                ? brand.message_templates.seller_request!.sms!
+                : (DEFAULT_MESSAGE_TEMPLATES.seller_request?.sms || '');
+
+        return renderTemplate(template, variables);
     };
 
     const getEmailTemplate = () => {
+        const brand = brands.find((b) => b.id === formData.brand_profile_id);
+        const firstName = firstNameFromFullName(formData.seller_name);
+        const closingDate = formData.closing_date
+            ? new Date(formData.closing_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+            : '';
+        const variables = {
+            seller_name: formData.seller_name,
+            seller_first_name_with_space: firstName ? ` ${firstName}` : '',
+            agent_name: brand?.contact_name || '',
+            property_address: formData.property_address,
+            closing_date: closingDate,
+            link: getShareLink(),
+        };
+
+        const subjectTemplate =
+            brand?.message_templates?.seller_request?.mailto?.subject?.trim()
+                ? brand.message_templates.seller_request!.mailto!.subject!
+                : (DEFAULT_MESSAGE_TEMPLATES.seller_request?.mailto?.subject || '');
+
+        const bodyTemplate =
+            brand?.message_templates?.seller_request?.mailto?.body?.trim()
+                ? brand.message_templates.seller_request!.mailto!.body!
+                : (DEFAULT_MESSAGE_TEMPLATES.seller_request?.mailto?.body || '');
+
         return {
-            subject: `Utility Information Request for ${formData.property_address}`,
-            body: `Hi${formData.seller_name ? ` ${formData.seller_name.split(' ')[0]}` : ''},
-
-As part of the home sale process, we need to collect utility provider information for ${formData.property_address}.
-
-Please complete this quick form (takes under 2 minutes):
-${getShareLink()}
-
-This information will be compiled into a Utility Info Sheet for the buyers.
-
-Thank you!`,
+            subject: renderTemplate(subjectTemplate, variables),
+            body: renderTemplate(bodyTemplate, variables),
         };
     };
 

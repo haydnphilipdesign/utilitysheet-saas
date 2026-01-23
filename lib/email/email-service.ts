@@ -1,4 +1,6 @@
 import { getResend } from '@/lib/resend';
+import type { BrandProfile } from '@/types';
+import { DEFAULT_MESSAGE_TEMPLATES, escapeHtml, firstNameFromFullName, plainTextToHtml, renderTemplate } from '@/lib/message-templates';
 
 function getAppBaseUrl(): string {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -19,7 +21,146 @@ interface SendSellerNotificationEmailParams {
     propertyAddress: string;
     closingDate?: string;
     agentName?: string;
+    brandProfile?: Pick<
+        BrandProfile,
+        | 'name'
+        | 'logo_url'
+        | 'primary_color'
+        | 'secondary_color'
+        | 'contact_name'
+        | 'contact_email'
+        | 'contact_phone'
+        | 'message_templates'
+    >;
     sellerToken: string;
+}
+
+function safeHexColor(value: string | null | undefined, fallback: string): string {
+    if (!value) return fallback;
+    const trimmed = value.trim();
+    if (/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(trimmed)) return trimmed;
+    return fallback;
+}
+
+function safeExternalUrl(value: string | null | undefined): string | null {
+    if (!value) return null;
+    try {
+        const parsed = new URL(value);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+        return parsed.toString();
+    } catch {
+        return null;
+    }
+}
+
+function generateSellerRequestEmailHtml(params: {
+    brandName: string;
+    brandLogoUrl: string | null;
+    primaryColor: string;
+    secondaryColor: string;
+    title: string;
+    badgeText: string;
+    greeting: string;
+    bodyText: string;
+    propertyAddress: string;
+    formattedClosingDate: string | null;
+    ctaUrl: string;
+    ctaLabel: string;
+    agentName?: string;
+    agentEmail?: string | null;
+    agentPhone?: string | null;
+}): string {
+    const safeBrandName = escapeHtml(params.brandName);
+    const safeBrandLogoUrl = params.brandLogoUrl ? escapeHtml(params.brandLogoUrl) : null;
+    const safeTitle = escapeHtml(params.title);
+    const safeBadgeText = escapeHtml(params.badgeText);
+    const safeGreeting = escapeHtml(params.greeting);
+    const safePropertyAddress = escapeHtml(params.propertyAddress);
+    const safeClosingDate = params.formattedClosingDate ? escapeHtml(params.formattedClosingDate) : null;
+    const safeCtaUrl = escapeHtml(params.ctaUrl);
+    const safeCtaLabel = escapeHtml(params.ctaLabel);
+    const safeAgentName = params.agentName ? escapeHtml(params.agentName) : null;
+    const safeAgentEmail = params.agentEmail ? escapeHtml(params.agentEmail) : null;
+    const safeAgentPhone = params.agentPhone ? escapeHtml(params.agentPhone) : null;
+
+    const headerLogoHtml = params.brandLogoUrl
+        ? `<img src="${safeBrandLogoUrl}" alt="${safeBrandName}" style="height: 40px; width: auto;" />`
+        : `<div style="font-size: 20px; font-weight: 700; color: #ffffff;">${safeBrandName}</div>`;
+
+    const agentContactParts: string[] = [];
+    if (safeAgentEmail) agentContactParts.push(`<a href="mailto:${safeAgentEmail}" style="color: ${params.primaryColor}; text-decoration: none;">${safeAgentEmail}</a>`);
+    if (safeAgentPhone) agentContactParts.push(`${safeAgentPhone}`);
+
+    const agentContactLine =
+        safeAgentName && agentContactParts.length > 0
+            ? `<p style="margin: 12px 0 0; color: #6b7280; font-size: 12px; line-height: 1.6;">Questions? Contact ${safeAgentName}${agentContactParts.length > 0 ? ` — ${agentContactParts.join(' · ')}` : ''}.</p>`
+            : '';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${safeTitle}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, ${params.primaryColor} 0%, ${params.secondaryColor} 100%); padding: 28px 32px; text-align: center;">
+                            ${headerLogoHtml}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 24px 32px 0; text-align: center;">
+                            <div style="display: inline-block; background-color: #f3f4f6; color: #111827; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;">
+                                ${safeBadgeText}
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 24px 32px 32px;">
+                            <p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">${safeGreeting}</p>
+
+                            <div style="background-color: #f9fafb; border-radius: 10px; padding: 18px; margin: 16px 0 20px; border-left: 4px solid ${params.primaryColor};">
+                                <p style="margin: 0; color: #111827; font-size: 16px; font-weight: 700;">${safePropertyAddress}</p>
+                                ${safeClosingDate ? `<p style="margin: 8px 0 0; color: #6b7280; font-size: 13px;"><strong>Closing:</strong> ${safeClosingDate}</p>` : ''}
+                            </div>
+
+                            ${plainTextToHtml(params.bodyText)}
+
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 8px;">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <a href="${safeCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, ${params.primaryColor} 0%, ${params.secondaryColor} 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 16px; font-weight: 700;">
+                                            ${safeCtaLabel}
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 20px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                                If the button doesn’t work, copy and paste this link into your browser:<br>
+                                <a href="${safeCtaUrl}" style="color: ${params.primaryColor}; word-break: break-all;">${safeCtaUrl}</a>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 18px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">Sent via UtilitySheet.</p>
+                            ${agentContactLine}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    `.trim();
 }
 
 /**
@@ -32,6 +173,7 @@ export async function sendSellerNotificationEmail({
     propertyAddress,
     closingDate,
     agentName,
+    brandProfile,
     sellerToken,
 }: SendSellerNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
     // Construct the seller form URL
@@ -48,19 +190,71 @@ export async function sendSellerNotificationEmail({
         })
         : null;
 
-    const emailHtml = generateSellerNotificationHtml({
-        sellerName,
+    const brandName = brandProfile?.name || 'UtilitySheet';
+    const primaryColor = safeHexColor(brandProfile?.primary_color, '#10b981');
+    const secondaryColor = safeHexColor(brandProfile?.secondary_color, '#059669');
+    const brandLogoUrl = safeExternalUrl(brandProfile?.logo_url);
+
+    const effectiveAgentName = agentName || brandProfile?.contact_name || 'Your agent';
+    const variables = {
+        seller_name: sellerName || '',
+        seller_first_name_with_space: (() => {
+            const first = firstNameFromFullName(sellerName);
+            return first ? ` ${first}` : '';
+        })(),
+        agent_name: effectiveAgentName,
+        property_address: propertyAddress,
+        closing_date: formattedClosingDate || '',
+        link: sellerFormUrl,
+    };
+
+    const subjectTemplate =
+        brandProfile?.message_templates?.seller_request?.email?.subject?.trim()
+            ? brandProfile.message_templates.seller_request!.email!.subject!
+            : (DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.subject || '');
+
+    const bodyTemplate =
+        brandProfile?.message_templates?.seller_request?.email?.body?.trim()
+            ? brandProfile.message_templates.seller_request!.email!.body!
+            : (DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.body || '');
+
+    const buttonTextTemplate =
+        brandProfile?.message_templates?.seller_request?.email?.button_text?.trim()
+            ? brandProfile.message_templates.seller_request!.email!.button_text!
+            : (DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.button_text || 'Complete');
+
+    const subject = renderTemplate(subjectTemplate, variables);
+    const bodyText = renderTemplate(bodyTemplate, variables);
+    const ctaLabel = renderTemplate(buttonTextTemplate, variables);
+
+    const greeting = (() => {
+        const first = firstNameFromFullName(sellerName);
+        return first ? `Hi ${first},` : 'Hello,';
+    })();
+
+    const emailHtml = generateSellerRequestEmailHtml({
+        brandName,
+        brandLogoUrl,
+        primaryColor,
+        secondaryColor,
+        title: 'Utility Information Needed',
+        badgeText: 'Action required',
+        greeting,
+        bodyText,
         propertyAddress,
         formattedClosingDate,
-        agentName,
-        sellerFormUrl,
+        ctaUrl: sellerFormUrl,
+        ctaLabel,
+        agentName: effectiveAgentName,
+        agentEmail: brandProfile?.contact_email || null,
+        agentPhone: brandProfile?.contact_phone || null,
     });
 
     try {
         const { data, error } = await getResend().emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: sellerEmail,
-            subject: `Action Required: Utility Information Needed for ${propertyAddress}`,
+            subject,
             html: emailHtml,
         });
 
@@ -89,6 +283,7 @@ export async function sendSellerReminderEmail({
     propertyAddress,
     closingDate,
     agentName,
+    brandProfile,
     sellerToken,
 }: SendSellerNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
     const baseUrl = getAppBaseUrl();
@@ -103,19 +298,71 @@ export async function sendSellerReminderEmail({
         })
         : null;
 
-    const emailHtml = generateSellerReminderHtml({
-        sellerName,
+    const brandName = brandProfile?.name || 'UtilitySheet';
+    const primaryColor = safeHexColor(brandProfile?.primary_color, '#10b981');
+    const secondaryColor = safeHexColor(brandProfile?.secondary_color, '#059669');
+    const brandLogoUrl = safeExternalUrl(brandProfile?.logo_url);
+
+    const effectiveAgentName = agentName || brandProfile?.contact_name || 'Your agent';
+    const variables = {
+        seller_name: sellerName || '',
+        seller_first_name_with_space: (() => {
+            const first = firstNameFromFullName(sellerName);
+            return first ? ` ${first}` : '';
+        })(),
+        agent_name: effectiveAgentName,
+        property_address: propertyAddress,
+        closing_date: formattedClosingDate || '',
+        link: sellerFormUrl,
+    };
+
+    const subjectTemplate =
+        brandProfile?.message_templates?.seller_reminder?.email?.subject?.trim()
+            ? brandProfile.message_templates.seller_reminder!.email!.subject!
+            : (DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.subject || '');
+
+    const bodyTemplate =
+        brandProfile?.message_templates?.seller_reminder?.email?.body?.trim()
+            ? brandProfile.message_templates.seller_reminder!.email!.body!
+            : (DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.body || '');
+
+    const buttonTextTemplate =
+        brandProfile?.message_templates?.seller_reminder?.email?.button_text?.trim()
+            ? brandProfile.message_templates.seller_reminder!.email!.button_text!
+            : (DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.button_text || 'Continue');
+
+    const subject = renderTemplate(subjectTemplate, variables);
+    const bodyText = renderTemplate(bodyTemplate, variables);
+    const ctaLabel = renderTemplate(buttonTextTemplate, variables);
+
+    const greeting = (() => {
+        const first = firstNameFromFullName(sellerName);
+        return first ? `Hi ${first},` : 'Hello,';
+    })();
+
+    const emailHtml = generateSellerRequestEmailHtml({
+        brandName,
+        brandLogoUrl,
+        primaryColor,
+        secondaryColor,
+        title: 'Utility Information Reminder',
+        badgeText: 'Reminder',
+        greeting,
+        bodyText,
         propertyAddress,
         formattedClosingDate,
-        agentName,
-        sellerFormUrl,
+        ctaUrl: sellerFormUrl,
+        ctaLabel,
+        agentName: effectiveAgentName,
+        agentEmail: brandProfile?.contact_email || null,
+        agentPhone: brandProfile?.contact_phone || null,
     });
 
     try {
         const { data, error } = await getResend().emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: sellerEmail,
-            subject: `Reminder: Utility Information Needed for ${propertyAddress}`,
+            subject,
             html: emailHtml,
         });
 

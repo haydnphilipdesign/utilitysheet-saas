@@ -36,8 +36,9 @@ export async function POST(
 
         // Get agent name for the email
         let agentName: string | undefined;
+        let brandProfile = null;
         if (requestData.brand_profile_id) {
-            const brandProfile = await getBrandProfile(requestData.brand_profile_id);
+            brandProfile = await getBrandProfile(requestData.brand_profile_id);
             agentName = brandProfile?.contact_name || undefined;
         }
 
@@ -51,6 +52,7 @@ export async function POST(
             propertyAddress: requestData.property_address,
             closingDate: requestData.closing_date || undefined,
             agentName,
+            brandProfile: brandProfile || undefined,
             sellerToken: requestData.seller_token || requestData.public_token,
         });
 

@@ -43,11 +43,57 @@ const hexColorSchema = z.string().trim().regex(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})
 const optionalLimitedString = (maxLength: number) =>
     z.preprocess(nullToUndefined, z.string().trim().max(maxLength).optional());
 
+const optionalMultilineString = (maxLength: number) =>
+    z.preprocess(nullToUndefined, z.string().max(maxLength).optional());
+
 const buyerNextStepsSchema = z.preprocess(
     nullToUndefined,
     z
         .array(z.string().trim().min(1).max(BRAND_PROFILE_LIMITS.buyerNextStepMax))
         .max(BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems)
+        .optional()
+);
+
+const messageTemplatesSchema = z.preprocess(
+    nullToUndefined,
+    z
+        .object({
+            seller_request: z
+                .object({
+                    sms: optionalMultilineString(500),
+                    mailto: z
+                        .object({
+                            subject: optionalLimitedString(200),
+                            body: optionalMultilineString(6000),
+                        })
+                        .partial()
+                        .optional(),
+                    email: z
+                        .object({
+                            subject: optionalLimitedString(200),
+                            body: optionalMultilineString(12000),
+                            button_text: optionalLimitedString(80),
+                        })
+                        .partial()
+                        .optional(),
+                })
+                .partial()
+                .optional(),
+            seller_reminder: z
+                .object({
+                    email: z
+                        .object({
+                            subject: optionalLimitedString(200),
+                            body: optionalMultilineString(12000),
+                            button_text: optionalLimitedString(80),
+                        })
+                        .partial()
+                        .optional(),
+                })
+                .partial()
+                .optional(),
+        })
+        .partial()
         .optional()
 );
 
@@ -62,6 +108,7 @@ export const brandProfileCreateBodySchema = z
         contact_email: optionalLimitedString(BRAND_PROFILE_LIMITS.contactEmailMax),
         contact_website: optionalLimitedString(BRAND_PROFILE_LIMITS.contactWebsiteMax),
         disclaimer_text: optionalLimitedString(BRAND_PROFILE_LIMITS.disclaimerTextMax),
+        message_templates: messageTemplatesSchema,
         is_default: z.preprocess(nullToUndefined, z.boolean().optional()),
         // Advanced customization
         buyer_next_steps: buyerNextStepsSchema,

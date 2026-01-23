@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getBrandProfiles, createBrandProfile, getOrCreateAccount, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileCreateBodySchema } from '@/lib/validation/schemas';
+import { normalizeMessageTemplates } from '@/lib/message-templates';
 
 // GET /api/branding - Get all brand profiles
 export async function GET() {
@@ -92,6 +93,7 @@ export async function POST(request: Request) {
             contactEmail: payload.contact_email,
             contactWebsite: payload.contact_website,
             disclaimerText: payload.disclaimer_text,
+            messageTemplates: normalizeMessageTemplates(payload.message_templates),
             isDefault: payload.is_default,
             // Advanced customization
             buyerNextSteps: payload.buyer_next_steps,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getBrandProfile, updateBrandProfile, deleteBrandProfile, getOrCreateAccount, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileUpdateBodySchema } from '@/lib/validation/schemas';
+import { normalizeMessageTemplates } from '@/lib/message-templates';
 
 type AccountWithOrgContext = {
     subscription_status?: string | null;
@@ -115,6 +116,7 @@ export async function PUT(
             contact_email: payload.contact_email,
             contact_website: payload.contact_website,
             disclaimer_text: payload.disclaimer_text,
+            ...(payload.message_templates !== undefined ? { message_templates: normalizeMessageTemplates(payload.message_templates) } : {}),
             ...(isPro ? { is_default: payload.is_default } : {}),
             // Advanced customization (Pro only)
             ...(isPro ? {

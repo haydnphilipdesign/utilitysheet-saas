@@ -45,6 +45,28 @@ export type OrganizationPlan = 'free' | 'team' | 'canceled';
 
 export type UpdateCategory = 'bugfix' | 'feature' | 'announcement';
 
+export type MessageTemplates = {
+    seller_request?: {
+        sms?: string;
+        mailto?: {
+            subject?: string;
+            body?: string;
+        };
+        email?: {
+            subject?: string;
+            body?: string;
+            button_text?: string;
+        };
+    };
+    seller_reminder?: {
+        email?: {
+            subject?: string;
+            body?: string;
+            button_text?: string;
+        };
+    };
+};
+
 // Admin audit action types
 export type AdminAction =
     | 'user_banned'
@@ -117,6 +139,7 @@ export interface BrandProfile {
     contact_email: string | null;
     contact_website: string | null;
     disclaimer_text: string | null;
+    message_templates: MessageTemplates | null;
     is_default: boolean;
     // Advanced customization fields
     buyer_next_steps: string[] | null;
@@ -277,6 +300,7 @@ export interface BrandProfileFormData {
     contact_email?: string;
     contact_website?: string;
     disclaimer_text?: string;
+    message_templates?: MessageTemplates;
     is_default: boolean;
     // Advanced customization fields
     buyer_next_steps?: string[];

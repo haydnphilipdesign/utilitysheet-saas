@@ -2,7 +2,7 @@
  * Brand profile-related database queries
  */
 import { sql } from '@/lib/neon/db';
-import type { BrandProfile } from '@/types';
+import type { BrandProfile, MessageTemplates } from '@/types';
 
 /**
  * Get all brand profiles for an account or organization
@@ -97,6 +97,7 @@ export async function createBrandProfile(data: {
     contactEmail?: string;
     contactWebsite?: string;
     disclaimerText?: string;
+    messageTemplates?: MessageTemplates;
     isDefault?: boolean;
     // Advanced customization
     buyerNextSteps?: string[];
@@ -106,6 +107,8 @@ export async function createBrandProfile(data: {
     welcomeMessage?: string;
 }): Promise<BrandProfile | null> {
     if (!sql) return null;
+
+    const messageTemplatesJson = JSON.stringify(data.messageTemplates || {});
 
     // If this is default, unset other defaults first (within account or organization)
     if (data.isDefault) {
@@ -137,6 +140,7 @@ export async function createBrandProfile(data: {
             contact_email,
             contact_website,
             disclaimer_text,
+            message_templates,
             is_default,
             buyer_next_steps,
             next_steps_title,
@@ -155,6 +159,7 @@ export async function createBrandProfile(data: {
             ${data.contactEmail || null},
             ${data.contactWebsite || null},
             ${data.disclaimerText || null},
+            ${messageTemplatesJson}::jsonb,
             ${data.isDefault || false},
             ${data.buyerNextSteps ? JSON.stringify(data.buyerNextSteps) : null},
             ${data.nextStepsTitle || null},
@@ -220,6 +225,10 @@ export async function updateBrandProfile(
         ? (data.buyer_next_steps ? JSON.stringify(data.buyer_next_steps) : null)
         : undefined;
 
+    const messageTemplatesJson = data.message_templates !== undefined
+        ? JSON.stringify(data.message_templates || {})
+        : undefined;
+
     const result = await sql`
         UPDATE brand_profiles
         SET
@@ -232,6 +241,7 @@ export async function updateBrandProfile(
             contact_email = COALESCE(${data.contact_email}, contact_email),
             contact_website = COALESCE(${data.contact_website}, contact_website),
             disclaimer_text = COALESCE(${data.disclaimer_text}, disclaimer_text),
+            message_templates = COALESCE(${messageTemplatesJson}::jsonb, message_templates),
             is_default = COALESCE(${data.is_default}, is_default),
             buyer_next_steps = COALESCE(${buyerNextStepsJson}::jsonb, buyer_next_steps),
             next_steps_title = COALESCE(${data.next_steps_title}, next_steps_title),
