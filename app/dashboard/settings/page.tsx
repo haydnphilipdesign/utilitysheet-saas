@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { User, Bell, Check, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
+import { Link as LinkIcon, User, Bell, Check, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SettingsPage() {
@@ -41,6 +41,11 @@ export default function SettingsPage() {
     const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
     const [teamSeats, setTeamSeats] = useState(3);
     const [teamBillingLoading, setTeamBillingLoading] = useState(false);
+
+    const [intakeLink, setIntakeLink] = useState<{ slug: string; url: string; is_active: boolean } | null>(null);
+    const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
+    const [intakeSlugDraft, setIntakeSlugDraft] = useState('');
+    const [intakeSaving, setIntakeSaving] = useState(false);
 
     const TEAM_MIN_SEATS = 3;
     const TEAM_PRICE_PER_SEAT_USD = 7;
@@ -95,6 +100,28 @@ export default function SettingsPage() {
 
         if (stackUser) {
             fetchProfile();
+        }
+    }, [stackUser]);
+
+    useEffect(() => {
+        const fetchIntakeLink = async () => {
+            try {
+                const response = await fetch('/api/intake-link');
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) return;
+
+                if (data.intakeLink) {
+                    setIntakeLink(data.intakeLink);
+                    setIntakeSlugDraft(data.intakeLink.slug || '');
+                }
+                setIntakeCanCustomize(Boolean(data.canCustomize));
+            } catch (error) {
+                console.error('Error fetching intake link:', error);
+            }
+        };
+
+        if (stackUser) {
+            fetchIntakeLink();
         }
     }, [stackUser]);
 
@@ -170,6 +197,45 @@ export default function SettingsPage() {
     const handleSignOut = async () => {
         if (stackUser) {
             await stackUser.signOut();
+        }
+    };
+
+    const handleCopyIntakeLink = async () => {
+        if (!intakeLink?.url) return;
+        try {
+            await navigator.clipboard.writeText(intakeLink.url);
+            toast.success('Link copied');
+        } catch {
+            toast.error('Failed to copy link');
+        }
+    };
+
+    const handleSaveIntakeSlug = async () => {
+        const slug = intakeSlugDraft.trim();
+        if (!slug) return;
+
+        setIntakeSaving(true);
+        try {
+            const response = await fetch('/api/intake-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slug }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.message || data?.error || 'Failed to update link');
+            }
+            if (data.intakeLink) {
+                setIntakeLink(data.intakeLink);
+                setIntakeSlugDraft(data.intakeLink.slug || slug);
+            }
+            toast.success('Intake link updated');
+        } catch (error: unknown) {
+            console.error(error);
+            const message = error instanceof Error ? error.message : 'Failed to update link';
+            toast.error(message);
+        } finally {
+            setIntakeSaving(false);
         }
     };
 
@@ -388,6 +454,82 @@ export default function SettingsPage() {
                             />
                         </div>
                         */}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Reusable Link Section */}
+            <Card className="border-border bg-card/50">
+                <CardHeader>
+                    <CardTitle className="text-foreground flex items-center gap-2">
+                        <LinkIcon className="h-5 w-5 text-emerald-400" />
+                        Reusable Seller Link
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground">
+                        Share one fixed link; sellers enter the property address at the start.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {intakeLink?.url ? (
+                        <div className="space-y-2">
+                            <Label className="text-foreground">Your link</Label>
+                            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                <Input
+                                    value={intakeLink.url}
+                                    readOnly
+                                    className="bg-muted border-input text-muted-foreground"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="border-input text-foreground hover:bg-muted"
+                                    onClick={handleCopyIntakeLink}
+                                >
+                                    Copy
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Loading…</p>
+                    )}
+
+                    <Separator className="bg-border" />
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                            <Label htmlFor="intakeSlug" className="text-foreground">Custom URL slug</Label>
+                            {!intakeCanCustomize && (
+                                <Badge variant="outline">Pro / Teams</Badge>
+                            )}
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div className="flex-1 space-y-1">
+                                <Input
+                                    id="intakeSlug"
+                                    value={intakeSlugDraft}
+                                    onChange={(e) => setIntakeSlugDraft(e.target.value)}
+                                    placeholder="your-name"
+                                    className="bg-background/50 border-input text-foreground"
+                                    disabled={!intakeCanCustomize || intakeSaving}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Lowercase letters, numbers, and dashes only.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                onClick={handleSaveIntakeSlug}
+                                disabled={!intakeCanCustomize || intakeSaving || intakeSlugDraft.trim().length < 3}
+                            >
+                                {intakeSaving ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Save className="mr-2 h-4 w-4" />
+                                )}
+                                Save
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>

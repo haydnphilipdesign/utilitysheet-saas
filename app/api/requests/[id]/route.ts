@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
-import { getRequestById, updateRequestStatus, getOrCreateAccount, deleteRequest } from '@/lib/neon/queries';
+import { getRequestById, updateRequestStatus, getOrCreateAccount, deleteRequest, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
+
+function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
+    return {
+        ...r,
+        is_locked: true,
+        property_address: 'Locked — upgrade to view',
+        property_address_structured: null,
+        seller_name: null,
+        seller_email: null,
+        seller_phone: null,
+        public_token: '',
+        seller_token: null,
+        utility_entries: undefined,
+    };
+}
 
 // GET /api/requests/[id] - Get a single request
 export async function GET(
@@ -30,7 +45,17 @@ export async function GET(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        return NextResponse.json(requestData);
+        const organizationId = account.active_organization_id;
+        const organization = organizationId ? await getOrganizationById(organizationId) : null;
+        const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
+
+        const row = requestData as unknown as Record<string, unknown> & { is_locked?: unknown };
+        const accessLocked = Boolean(row.is_locked) && !isPaid;
+        if (!accessLocked) {
+            return NextResponse.json({ ...row, is_locked: false });
+        }
+
+        return NextResponse.json(sanitizeLockedRequest(row));
     } catch (error) {
         console.error('Error fetching request:', error);
         return NextResponse.json({ error: 'Failed to fetch request' }, { status: 500 });

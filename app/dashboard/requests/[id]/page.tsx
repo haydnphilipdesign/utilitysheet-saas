@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Copy, ExternalLink, Loader2, Mail, Download } from 'lucide-react';
+import { ArrowLeft, Copy, ExternalLink, Loader2, Mail, Download, Lock } from 'lucide-react';
 import type { Request } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -136,8 +136,56 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     }
 
     const status = statusConfig[request.status] || statusConfig.draft;
-    const canRemind = (request.status === 'sent' || request.status === 'in_progress') && !!request.seller_email;
-    const canViewPacket = request.status === 'submitted';
+    const isLocked = Boolean(request.is_locked);
+    const canRemind = !isLocked && (request.status === 'sent' || request.status === 'in_progress') && !!request.seller_email;
+    const canViewPacket = !isLocked && request.status === 'submitted';
+
+    if (isLocked) {
+        return (
+            <div className="max-w-4xl mx-auto space-y-8">
+                <div className="space-y-2">
+                    <Button
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-foreground px-0"
+                        onClick={() => router.push('/dashboard/requests')}
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Requests
+                    </Button>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-3xl font-bold text-foreground">Locked request</h1>
+                        <Badge variant="outline" className="border-border text-muted-foreground">
+                            <Lock className="mr-1 h-3.5 w-3.5" />
+                            Locked
+                        </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        This submission was received after your free plan limit. Upgrade to view the details and generate the utility info sheet.
+                    </p>
+                </div>
+
+                <Card className="border-border bg-card/50">
+                    <CardHeader>
+                        <CardTitle className="text-foreground">Upgrade to unlock</CardTitle>
+                        <CardDescription className="text-muted-foreground">
+                            Upgrade to Pro or Teams to unlock over-limit requests.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                        <div className="text-sm text-muted-foreground">
+                            Created {format(new Date(request.created_at), 'MMMM d, yyyy')}
+                        </div>
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => router.push('/dashboard/settings')}
+                        >
+                            Go to Billing
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
@@ -320,4 +368,3 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
         </div>
     );
 }
-

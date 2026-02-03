@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, createEventLog } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, getOrganizationById, createEventLog } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import { hasValidContact, resolveContact } from '@/lib/providers/contact-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
@@ -152,6 +152,11 @@ export async function POST(
             null;
         const userAgent = request.headers.get('user-agent') || null;
 
+        const account = await getAccountById(requestData.account_id);
+        const organization = requestData.organization_id ? await getOrganizationById(requestData.organization_id) : null;
+        const isPaid = account?.subscription_status === 'pro' || organization?.subscription_status === 'team';
+        const accessLocked = Boolean((requestData as unknown as { is_locked?: unknown }).is_locked) && !isPaid;
+
         const requestedCategories = new Set<string>(
             (requestData as any).utility_categories || UTILITY_CATEGORY_KEYS
         );
@@ -229,29 +234,31 @@ export async function POST(
         const unresolvedEntries: { category: string; displayName?: string }[] = [];
         const seenContactTargets = new Set<string>();
 
-        for (const target of contactResolutionTargets) {
-            const dedupeKey = `${target.category}:${target.providerName.toLowerCase()}`;
-            if (seenContactTargets.has(dedupeKey)) continue;
-            seenContactTargets.add(dedupeKey);
+        if (!accessLocked) {
+            for (const target of contactResolutionTargets) {
+                const dedupeKey = `${target.category}:${target.providerName.toLowerCase()}`;
+                if (seenContactTargets.has(dedupeKey)) continue;
+                seenContactTargets.add(dedupeKey);
 
-            const contact = await resolveContact(target.providerName);
-            if (hasValidContact(contact)) {
-                const resolvedPhone = contact?.customer_service_phone || null;
-                const resolvedUrl = contact?.start_stop_service_url || contact?.main_website || null;
+                const contact = await resolveContact(target.providerName);
+                if (hasValidContact(contact)) {
+                    const resolvedPhone = contact?.customer_service_phone || null;
+                    const resolvedUrl = contact?.start_stop_service_url || contact?.main_website || null;
 
-                await sql`
-                    UPDATE utility_entries
-                    SET
-                        contact_phone = COALESCE(contact_phone, ${resolvedPhone}),
-                        contact_url = COALESCE(contact_url, ${resolvedUrl})
-                    WHERE request_id = ${requestData.id}
-                    AND category = ${target.category}
-                `;
-            } else {
-                unresolvedEntries.push({
-                    category: target.category,
-                    displayName: target.providerName,
-                });
+                    await sql`
+                        UPDATE utility_entries
+                        SET
+                            contact_phone = COALESCE(contact_phone, ${resolvedPhone}),
+                            contact_url = COALESCE(contact_url, ${resolvedUrl})
+                        WHERE request_id = ${requestData.id}
+                        AND category = ${target.category}
+                    `;
+                } else {
+                    unresolvedEntries.push({
+                        category: target.category,
+                        displayName: target.providerName,
+                    });
+                }
             }
         }
 
@@ -264,8 +271,6 @@ export async function POST(
             userAgent,
         });
 
-        // Get account and notification preferences
-        const account = await getAccountById(requestData.account_id);
         const notificationPrefs = (account?.notification_preferences || {}) as {
             seller_submissions?: boolean;
             contact_resolution?: boolean;
@@ -279,8 +284,8 @@ export async function POST(
                     await sendTCCompletionNotificationEmail({
                         tcEmail: account.email,
                         tcName: account.full_name || undefined,
-                        propertyAddress: requestData.property_address,
-                        sellerName: requestData.seller_name || undefined,
+                        propertyAddress: accessLocked ? 'Locked — upgrade to view' : requestData.property_address,
+                        sellerName: accessLocked ? undefined : requestData.seller_name || undefined,
                         requestId: requestData.id,
                     });
                 } catch (emailError) {
@@ -289,7 +294,7 @@ export async function POST(
             }
 
             // Send contact resolution alert (if enabled and there are unresolved entries)
-            if (notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
+            if (!accessLocked && notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
                 try {
                     await sendContactResolutionAlertEmail({
                         tcEmail: account.email,

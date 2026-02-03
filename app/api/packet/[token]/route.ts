@@ -57,6 +57,19 @@ export async function GET(
         const account = await getAccountById(requestData.account_id);
         const organization = requestData.organization_id ? await getOrganizationById(requestData.organization_id) : null;
         const isPro = account?.subscription_status === 'pro' || organization?.subscription_status === 'team';
+
+        // If this request was created as a free-plan overage, keep the info sheet locked until upgrade.
+        const isLocked = Boolean((requestData as unknown as { is_locked?: unknown }).is_locked);
+        if (isLocked && !isPro) {
+            return NextResponse.json(
+                {
+                    error: 'Upgrade required',
+                    message: 'This utility info sheet is locked. Ask the agent to upgrade to view it.',
+                },
+                { status: 402 }
+            );
+        }
+
         const forceShowPoweredBy = !isPro;
 
         const buyerNextSteps = isPro ? normalizeSteps(brandProfile?.buyer_next_steps) : null;

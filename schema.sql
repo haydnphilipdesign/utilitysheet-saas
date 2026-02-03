@@ -105,7 +105,20 @@ CREATE TABLE IF NOT EXISTS requests (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     last_activity_at TIMESTAMPTZ DEFAULT NOW(),
     metered_at TIMESTAMPTZ,
+    is_locked BOOLEAN NOT NULL DEFAULT FALSE,
+    locked_reason TEXT,
+    locked_at TIMESTAMPTZ,
     deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS intake_links (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    slug TEXT UNIQUE NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(account_id)
 );
 
 -- Utility Entries table (seller responses)
@@ -165,6 +178,7 @@ CREATE INDEX IF NOT EXISTS idx_requests_public_token ON requests(public_token);
 CREATE INDEX IF NOT EXISTS idx_requests_seller_token ON requests(seller_token);
 CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
 CREATE INDEX IF NOT EXISTS idx_requests_metered_at ON requests(metered_at);
+CREATE INDEX IF NOT EXISTS idx_requests_is_locked ON requests(is_locked);
 CREATE INDEX IF NOT EXISTS idx_requests_deleted_at ON requests(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_utility_entries_request_id ON utility_entries(request_id);
 CREATE INDEX IF NOT EXISTS idx_brand_profiles_account_id ON brand_profiles(account_id);
@@ -205,6 +219,12 @@ CREATE TRIGGER update_brand_profiles_updated_at
 DROP TRIGGER IF EXISTS update_requests_updated_at ON requests;
 CREATE TRIGGER update_requests_updated_at
     BEFORE UPDATE ON requests
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_intake_links_updated_at ON intake_links;
+CREATE TRIGGER update_intake_links_updated_at
+    BEFORE UPDATE ON intake_links
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 

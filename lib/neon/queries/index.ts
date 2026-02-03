@@ -87,3 +87,12 @@ export {
     createProductUpdate,
     deleteProductUpdate,
 } from './updates';
+
+// Intake link queries
+export {
+    getOrCreateIntakeLink,
+    getIntakeLinkBySlug,
+    updateIntakeLinkSlug,
+    slugifyIntakeSlug,
+    validateIntakeSlug,
+} from './intake-links';

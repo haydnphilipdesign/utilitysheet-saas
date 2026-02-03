@@ -41,6 +41,7 @@ import {
     Clock,
     CheckCircle2,
     Loader2,
+    Lock,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Request } from '@/types';
@@ -90,6 +91,7 @@ export default function RequestsPage() {
     });
 
     const copyLink = (token: string) => {
+        if (!token) return;
         const link = `${window.location.origin}/s/${token}`;
         navigator.clipboard.writeText(link);
         toast.success('Link copied to clipboard');
@@ -197,6 +199,7 @@ export default function RequestsPage() {
                                 ) : (
                                     filteredRequests.map((request) => {
                                         const status = statusConfig[request.status];
+                                        const isLocked = Boolean(request.is_locked);
                                         return (
                                             <TableRow key={request.id} className="border-border hover:bg-muted/30">
                                                 <TableCell className="py-3 sm:py-4">
@@ -226,9 +229,13 @@ export default function RequestsPage() {
                                                         variant="outline"
                                                         className={`${status.color} border text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5`}
                                                     >
-                                                        <status.icon className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                                        <span className="hidden sm:inline">{status.label}</span>
-                                                        <span className="sm:hidden">{status.label.split(' ')[0]}</span>
+                                                        {isLocked ? (
+                                                            <Lock className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                                        ) : (
+                                                            <status.icon className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                                        )}
+                                                        <span className="hidden sm:inline">{isLocked ? 'Locked' : status.label}</span>
+                                                        <span className="sm:hidden">{isLocked ? 'Locked' : status.label.split(' ')[0]}</span>
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right py-3 sm:py-4">
@@ -237,13 +244,15 @@ export default function RequestsPage() {
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="bg-popover border-border">
-                                                            <DropdownMenuItem
-                                                                className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                onClick={() => copyLink(request.seller_token || request.public_token)}
-                                                            >
-                                                                <Copy className="mr-2 h-4 w-4" />
-                                                                Copy seller link
-                                                            </DropdownMenuItem>
+                                                            {!isLocked && (
+                                                                <DropdownMenuItem
+                                                                    className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
+                                                                    onClick={() => copyLink(request.seller_token || request.public_token || '')}
+                                                                >
+                                                                    <Copy className="mr-2 h-4 w-4" />
+                                                                    Copy seller link
+                                                                </DropdownMenuItem>
+                                                            )}
                                                             <DropdownMenuItem
                                                                 className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
                                                                 onClick={() => window.open(`/dashboard/requests/${request.id}`, '_self')}
@@ -251,7 +260,7 @@ export default function RequestsPage() {
                                                                 <Eye className="mr-2 h-4 w-4" />
                                                                 View details
                                                             </DropdownMenuItem>
-                                                            {request.status === 'submitted' && (
+                                                            {!isLocked && request.status === 'submitted' && (
                                                                 <>
                                                                     <DropdownMenuItem
                                                                         className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
@@ -274,7 +283,7 @@ export default function RequestsPage() {
                                                                     </DropdownMenuItem>
                                                                 </>
                                                             )}
-                                                            {['sent', 'in_progress'].includes(request.status) && (
+                                                            {!isLocked && ['sent', 'in_progress'].includes(request.status) && (
                                                                 <DropdownMenuItem
                                                                     className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
                                                                     onClick={() => handleSendReminder(request.id)}

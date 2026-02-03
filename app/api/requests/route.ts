@@ -1,10 +1,25 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog, getRequestCountForAccount } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog, getRequestCountForAccount, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { createRequestBodySchema } from '@/lib/validation/schemas';
+
+function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
+    return {
+        ...r,
+        is_locked: true,
+        property_address: 'Locked — upgrade to view',
+        property_address_structured: null,
+        seller_name: null,
+        seller_email: null,
+        seller_phone: null,
+        public_token: '',
+        seller_token: null,
+        utility_entries: undefined,
+    };
+}
 
 // GET /api/requests - Get all requests for the current user
 export async function GET(request: Request) {
@@ -20,6 +35,8 @@ export async function GET(request: Request) {
         }
         const accountId = account.id;
         const organizationId = account.active_organization_id;
+        const organization = organizationId ? await getOrganizationById(organizationId) : null;
+        const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
         const url = new URL(request.url);
         const stats = url.searchParams.get('stats');
@@ -34,7 +51,17 @@ export async function GET(request: Request) {
         const limit = parseInt(url.searchParams.get('limit') || '10', 10);
 
         const result = await getRequests(accountId, organizationId, { page, limit });
-        return NextResponse.json(result);
+        const data = result.data.map((requestRow) => {
+            const r = requestRow as unknown as Record<string, unknown> & { is_locked?: unknown };
+            const accessLocked = Boolean(r.is_locked) && !isPaid;
+            if (!accessLocked) return { ...r, is_locked: false };
+            return sanitizeLockedRequest(r);
+        });
+
+        return NextResponse.json({
+            ...result,
+            data,
+        });
     } catch (error) {
         console.error('Error fetching requests:', error);
         return NextResponse.json({ error: 'Failed to fetch requests' }, { status: 500 });

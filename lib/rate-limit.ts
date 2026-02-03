@@ -56,6 +56,19 @@ export const requestCreationRatelimit = redis
     : null;
 
 /**
+ * Rate limiter for public intake link starts
+ * Limit: 10 starts per minute per identifier (typically IP+slug)
+ */
+export const intakeStartRatelimit = redis
+    ? new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(10, "60 s"),
+        analytics: true,
+        prefix: "ratelimit:intake",
+    })
+    : null;
+
+/**
  * Result type for rate limit checks
  */
 export interface RateLimitResult {

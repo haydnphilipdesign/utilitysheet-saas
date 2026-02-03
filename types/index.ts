@@ -177,6 +177,9 @@ export interface Request {
     sewer_type?: SewerType | null;
     heating_type?: HeatingType | null;
     metered_at?: string | null;
+    is_locked?: boolean | null;
+    locked_reason?: string | null;
+    locked_at?: string | null;
     deleted_at?: string | null;
     created_at: string;
     updated_at: string;

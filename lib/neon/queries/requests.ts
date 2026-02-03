@@ -118,6 +118,8 @@ export async function createRequest(data: {
     closingDate?: string;
     utilityCategories: string[];
     isDemo?: boolean;
+    isLocked?: boolean;
+    lockedReason?: string;
 }): Promise<Request | null> {
     if (!sql) return null;
 
@@ -139,7 +141,10 @@ export async function createRequest(data: {
             seller_token,
             is_demo,
             status,
-            metered_at
+            metered_at,
+            is_locked,
+            locked_reason,
+            locked_at
         ) VALUES (
             ${data.accountId},
             ${data.organizationId || null},
@@ -154,7 +159,10 @@ export async function createRequest(data: {
             ${sellerToken},
             ${data.isDemo === true},
             'sent',
-            NOW()
+            NOW(),
+            ${data.isLocked === true},
+            ${data.lockedReason || null},
+            ${data.isLocked === true ? new Date().toISOString() : null}
         )
         RETURNING *
     `;

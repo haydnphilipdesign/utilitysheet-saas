@@ -15,7 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, ArrowRight, Check, Copy, MessageSquare, Mail, Loader2, MapPin, Sparkles, AlertTriangle, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Copy, Link as LinkIcon, MessageSquare, Mail, Loader2, MapPin, Sparkles, AlertTriangle, Plus } from 'lucide-react';
 import type { BrandProfile, UtilityCategory } from '@/types';
 import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import Link from 'next/link';
@@ -61,6 +61,8 @@ export default function NewRequestPage() {
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [isPro, setIsPro] = useState(false);
+    const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string } | null>(null);
+    const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
 
     useEffect(() => {
         if (!isOnboarding) return;
@@ -77,9 +79,10 @@ export default function NewRequestPage() {
         async function fetchData() {
             try {
                 // Fetch brands and account data in parallel
-                const [brandsResponse, accountResponse] = await Promise.all([
+                const [brandsResponse, accountResponse, intakeResponse] = await Promise.all([
                     fetch('/api/branding'),
-                    fetch('/api/account')
+                    fetch('/api/account'),
+                    fetch('/api/intake-link'),
                 ]);
 
                 if (brandsResponse.ok) {
@@ -96,12 +99,30 @@ export default function NewRequestPage() {
                     const accountData = await accountResponse.json();
                     setIsPro(accountData.account?.subscription_status === 'pro' || accountData.activeOrganization?.subscription_status === 'team');
                 }
+
+                if (intakeResponse.ok) {
+                    const data = await intakeResponse.json().catch(() => ({}));
+                    if (data.intakeLink?.url && data.intakeLink?.slug) {
+                        setIntakeLink({ url: data.intakeLink.url, slug: data.intakeLink.slug });
+                    }
+                    setIntakeCanCustomize(Boolean(data.canCustomize));
+                }
             } catch (error) {
                 console.error('Error fetching data:', error);
             }
         }
         fetchData();
     }, []);
+
+    const handleCopyReusableLink = async () => {
+        if (!intakeLink?.url) return;
+        try {
+            await navigator.clipboard.writeText(intakeLink.url);
+            toast.success('Reusable link copied');
+        } catch {
+            toast.error('Failed to copy link');
+        }
+    };
 
     const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -276,6 +297,47 @@ export default function NewRequestPage() {
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground">New Utility Sheet Request</h1>
                 <p className="text-muted-foreground mt-1">Create a request link to send to your seller</p>
             </div>
+
+            {/* Reusable Seller Link */}
+            {intakeLink?.url && (
+                <Card className="border-border bg-card/50 mb-6">
+                    <CardHeader>
+                        <CardTitle className="text-foreground flex items-center gap-2">
+                            <LinkIcon className="h-5 w-5 text-emerald-400" />
+                            Reusable Seller Link
+                        </CardTitle>
+                        <CardDescription className="text-muted-foreground">
+                            Optional: share one fixed link. The seller will enter the property address first.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                            <Input
+                                value={intakeLink.url}
+                                readOnly
+                                className="bg-muted border-input text-muted-foreground"
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="border-input text-foreground hover:bg-muted"
+                                onClick={handleCopyReusableLink}
+                            >
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copy
+                            </Button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs text-muted-foreground">
+                                Want a custom slug? {intakeCanCustomize ? 'Update it in Settings.' : 'Upgrade to Pro/Teams.'}
+                            </p>
+                            <Link href="/dashboard/settings" className="text-xs text-emerald-400 hover:text-emerald-300">
+                                Open Settings
+                            </Link>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Progress Steps */}
             <div className="flex items-center gap-1.5 sm:gap-2 mb-8">
