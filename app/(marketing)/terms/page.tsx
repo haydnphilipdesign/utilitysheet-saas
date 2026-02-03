@@ -58,7 +58,11 @@ export default function TermsPage() {
 
                 <h2 className="text-2xl font-semibold tracking-tight text-foreground">8. Contact</h2>
                 <p>
-                    Questions about these Terms? Email <a href="mailto:feedback@utilitysheet.com" className="underline underline-offset-4 hover:text-foreground">feedback@utilitysheet.com</a>.
+                    Questions about these Terms? Email{' '}
+                    <a href="mailto:haydn@multimedium.dev" className="underline underline-offset-4 hover:text-foreground">
+                        haydn@multimedium.dev
+                    </a>
+                    .
                 </p>
             </div>
         </div>

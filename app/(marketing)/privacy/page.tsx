@@ -69,8 +69,8 @@ export default function PrivacyPage() {
                 <h2 className="text-2xl font-semibold tracking-tight text-foreground">Contact</h2>
                 <p>
                     Questions about this Privacy Policy? Email{' '}
-                    <a href="mailto:feedback@utilitysheet.com" className="underline underline-offset-4 hover:text-foreground">
-                        feedback@utilitysheet.com
+                    <a href="mailto:haydn@multimedium.dev" className="underline underline-offset-4 hover:text-foreground">
+                        haydn@multimedium.dev
                     </a>
                     .
                 </p>
