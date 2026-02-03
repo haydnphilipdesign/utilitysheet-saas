@@ -22,18 +22,18 @@ export function WelcomeStep({ address, onNext }: WelcomeStepProps) {
 
             <div className="space-y-3 sm:space-y-4 max-w-md">
                 <h2 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground">
-                    Let's set up the utilities
+                    Tell us about the home's utilities
                 </h2>
                 <div className="space-y-2 sm:space-y-1">
                     <p className="text-sm sm:text-base text-muted-foreground">
-                        We're gathering utility info for:
+                        We're gathering utility details for:
                     </p>
                     <p className="text-sm sm:text-lg font-medium text-foreground px-3 sm:px-4 py-2 bg-muted/50 rounded-lg border border-border inline-block max-w-full break-words">
                         {address}
                     </p>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                    This will only take about 2 minutes. We'll ask about your services, then you can confirm the providers.
+                    This will only take about 2 minutes. We'll ask which services the home uses, then you can confirm the providers.
                 </p>
             </div>
 
