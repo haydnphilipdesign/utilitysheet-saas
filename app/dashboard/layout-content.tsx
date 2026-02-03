@@ -17,7 +17,7 @@ import {
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { EmailVerificationBanner } from '@/components/email-verification-banner';
-import { Zap, LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X, Megaphone } from 'lucide-react';
+import { Zap, LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X, Megaphone, Plus } from 'lucide-react';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -78,7 +78,7 @@ export function DashboardLayoutContent({
                 <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
                     <div className="flex h-14 sm:h-16 items-center justify-between">
                         {/* Logo */}
-                        <div className="flex flex-1 min-w-0 items-center gap-4 sm:gap-8">
+                        <div className="flex flex-1 min-w-0 items-center gap-4 sm:gap-8 overflow-hidden">
                             <Link href="/dashboard" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                                 <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20">
                                     <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -97,7 +97,7 @@ export function DashboardLayoutContent({
                             </Link>
 
                             {/* Desktop Navigation */}
-                            <nav className="hidden md:flex items-center gap-1">
+                            <nav className="hidden lg:flex min-w-0 items-center gap-1">
                                 {navigation.map((item) => {
                                     const isActive = pathname === item.href ||
                                         (item.href !== '/dashboard' && pathname.startsWith(item.href));
@@ -122,9 +122,18 @@ export function DashboardLayoutContent({
                         <div className="flex items-center gap-1 sm:gap-2">
                             <FeedbackDialog />
                             <ThemeToggle />
-                            <Link href="/dashboard/requests/new">
-                                <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20 hidden sm:flex text-sm h-9 px-3">
+                            <Link href="/dashboard/requests/new" className="hidden lg:flex">
+                                <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20 text-sm h-9 px-3">
                                     New Request
+                                </Button>
+                            </Link>
+                            <Link href="/dashboard/requests/new" className="hidden sm:flex lg:hidden">
+                                <Button
+                                    size="icon-lg"
+                                    aria-label="New Request"
+                                    className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20"
+                                >
+                                    <Plus className="h-4 w-4" />
                                 </Button>
                             </Link>
 
@@ -171,7 +180,7 @@ export function DashboardLayoutContent({
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="md:hidden text-muted-foreground hover:text-foreground"
+                                className="lg:hidden text-muted-foreground hover:text-foreground"
                                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             >
                                 {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -182,7 +191,7 @@ export function DashboardLayoutContent({
 
                 {/* Mobile Navigation */}
                 {mobileMenuOpen && (
-                    <div className="md:hidden border-t border-border bg-card/95 backdrop-blur-xl">
+                    <div className="lg:hidden border-t border-border bg-card/95 backdrop-blur-xl">
                         <nav className="mx-auto max-w-7xl px-4 py-4 space-y-2">
                             {navigation.map((item) => {
                                 const isActive = pathname === item.href ||
