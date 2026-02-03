@@ -7,6 +7,7 @@ const features = [
     {
         icon: Link2,
         title: "Guided Seller Links",
+        tag: "New",
         description: "Use a one-off request link or share a reusable link. Sellers don’t need an account and can finish on their phone in minutes."
     },
     {
@@ -58,7 +59,16 @@ export function FeatureSection() {
                             <div className="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center mb-6 group-hover:bg-slate-500/20 transition-colors">
                                 <feature.icon className="h-6 w-6 text-slate-600" />
                             </div>
-                            <h4 className="text-xl font-bold text-foreground mb-3">{feature.title}</h4>
+                            <h4 className="text-xl font-bold text-foreground mb-3">
+                                <span className="inline-flex items-center gap-2">
+                                    {feature.title}
+                                    {feature.tag && (
+                                        <span className="inline-flex items-center rounded-full bg-slate-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase shadow-sm shadow-slate-500/20">
+                                            {feature.tag}
+                                        </span>
+                                    )}
+                                </span>
+                            </h4>
                             <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
                         </motion.div>
                     ))}
