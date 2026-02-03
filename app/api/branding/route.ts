@@ -18,6 +18,7 @@ export async function GET() {
         }
         const accountId = account.id;
         const organizationId = account.active_organization_id;
+        const organization = organizationId ? await getOrganizationById(organizationId) : null;
 
         let profiles = await getBrandProfiles(accountId, organizationId);
 
@@ -26,7 +27,7 @@ export async function GET() {
             const defaultProfile = await createBrandProfile({
                 accountId,
                 organizationId,
-                name: account.company_name || account.full_name || 'UtilitySheet',
+                name: organization?.name || account.company_name || account.full_name || 'UtilitySheet',
                 primaryColor: '#475569', // Slate-600
                 secondaryColor: '#0ea5e9', // Sky-500
                 contactName: account.full_name || undefined,

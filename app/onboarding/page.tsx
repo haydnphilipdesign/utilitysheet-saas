@@ -84,6 +84,15 @@ export default function OnboardingPage() {
     const [contactWebsite, setContactWebsite] = useState('');
     const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
 
+    const fetchDefaultBrandProfile = async (): Promise<BrandProfile | null> => {
+        const response = await fetch('/api/branding');
+        if (!response.ok) return null;
+
+        const brandData = await response.json().catch(() => []);
+        const profiles = Array.isArray(brandData) ? (brandData as BrandProfile[]) : [];
+        return profiles.find((p) => p.is_default) || profiles[0] || null;
+    };
+
     useEffect(() => {
         let cancelled = false;
 
@@ -120,33 +129,27 @@ export default function OnboardingPage() {
                     }
 
                     // Load existing (or auto-created) default brand profile so onboarding edits it instead of creating duplicates
-                    const brandRes = await fetch('/api/branding');
-                    if (brandRes.ok) {
-                        const brandData = await brandRes.json().catch(() => []);
-                        const profiles = Array.isArray(brandData) ? (brandData as BrandProfile[]) : [];
-                        const defaultProfile = profiles.find((p) => p.is_default) || profiles[0];
+                    const defaultProfile = await fetchDefaultBrandProfile();
+                    if (defaultProfile) {
+                        setBrandProfileId(defaultProfile.id);
+                        setBrandProfileCreated(true);
+                        setBrandName(defaultProfile.name);
+                        if (defaultProfile.primary_color) setPrimaryColor(defaultProfile.primary_color);
+                        if (defaultProfile.logo_url) setLogoUrl(defaultProfile.logo_url);
 
-                        if (defaultProfile) {
-                            setBrandProfileId(defaultProfile.id);
-                            setBrandProfileCreated(true);
-                            setBrandName(defaultProfile.name);
-                            if (defaultProfile.primary_color) setPrimaryColor(defaultProfile.primary_color);
-                            if (defaultProfile.logo_url) setLogoUrl(defaultProfile.logo_url);
+                        // Prefer saved brand profile contact info (if present)
+                        if (defaultProfile.contact_name) setContactName(defaultProfile.contact_name);
+                        if (defaultProfile.contact_email) setContactEmail(defaultProfile.contact_email);
+                        if (defaultProfile.contact_phone) setContactPhone(defaultProfile.contact_phone);
+                        if (defaultProfile.contact_website) setContactWebsite(defaultProfile.contact_website);
 
-                            // Prefer saved brand profile contact info (if present)
-                            if (defaultProfile.contact_name) setContactName(defaultProfile.contact_name);
-                            if (defaultProfile.contact_email) setContactEmail(defaultProfile.contact_email);
-                            if (defaultProfile.contact_phone) setContactPhone(defaultProfile.contact_phone);
-                            if (defaultProfile.contact_website) setContactWebsite(defaultProfile.contact_website);
-
-                            if (
-                                defaultProfile.contact_name ||
-                                defaultProfile.contact_email ||
-                                defaultProfile.contact_phone ||
-                                defaultProfile.contact_website
-                            ) {
-                                setContactInfoSaved(true);
-                            }
+                        if (
+                            defaultProfile.contact_name ||
+                            defaultProfile.contact_email ||
+                            defaultProfile.contact_phone ||
+                            defaultProfile.contact_website
+                        ) {
+                            setContactInfoSaved(true);
                         }
                     }
 
@@ -200,15 +203,10 @@ export default function OnboardingPage() {
         }
     };
 
-    const ensureBrandProfile = async () => {
+    const ensureBrandProfileId = async (): Promise<string | null> => {
         if (brandProfileId) return brandProfileId;
 
-        const response = await fetch('/api/branding');
-        if (!response.ok) return null;
-
-        const brandData = await response.json().catch(() => []);
-        const profiles = Array.isArray(brandData) ? (brandData as BrandProfile[]) : [];
-        const defaultProfile = profiles.find((p) => p.is_default) || profiles[0];
+        const defaultProfile = await fetchDefaultBrandProfile();
         if (!defaultProfile) return null;
 
         setBrandProfileId(defaultProfile.id);
@@ -230,41 +228,27 @@ export default function OnboardingPage() {
 
         setLoading(true);
         try {
-            if (brandProfileId) {
-                const response = await fetch(`/api/branding/${brandProfileId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: resolvedBrandName,
-                        primary_color: primaryColor,
-                        secondary_color: secondaryColor,
-                    }),
-                });
-
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    throw new Error(data?.error || 'Failed to update brand profile');
-                }
-
-                setBrandProfileId((data as BrandProfile).id);
-            } else {
-                const response = await fetch('/api/onboarding/brand-profile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: resolvedBrandName,
-                        primaryColor,
-                        secondaryColor,
-                    }),
-                });
-
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    throw new Error(data?.error || 'Failed to create brand profile');
-                }
-
-                setBrandProfileId((data.profile as BrandProfile).id);
+            const profileId = await ensureBrandProfileId();
+            if (!profileId) {
+                throw new Error('Unable to save branding details. Please try again.');
             }
+
+            const response = await fetch(`/api/branding/${profileId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: resolvedBrandName,
+                    primary_color: primaryColor,
+                    secondary_color: secondaryColor,
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to update brand profile');
+            }
+
+            setBrandProfileId((data as BrandProfile).id);
 
             setBrandProfileCreated(true);
             setStep(3);
@@ -277,12 +261,33 @@ export default function OnboardingPage() {
     };
 
     const handleSkipBranding = async () => {
-        if (brandProfileCreated) {
-            setStep(3);
-            return;
-        }
+        setLoading(true);
+        try {
+            const defaultProfile = await fetchDefaultBrandProfile();
+            if (!defaultProfile) {
+                throw new Error('Unable to continue. Please try again.');
+            }
 
-        await handleCreateBrand();
+            // "Skip" means: keep whatever default profile exists (or was auto-created),
+            // and sync the UI back to it so we don't accidentally save customizations later.
+            setBrandProfileId(defaultProfile.id);
+            setBrandProfileCreated(true);
+            setBrandName(defaultProfile.name || '');
+            if (defaultProfile.primary_color) setPrimaryColor(defaultProfile.primary_color);
+            if (defaultProfile.logo_url) setLogoUrl(defaultProfile.logo_url);
+
+            if (defaultProfile.contact_name) setContactName(defaultProfile.contact_name);
+            if (defaultProfile.contact_email) setContactEmail(defaultProfile.contact_email);
+            if (defaultProfile.contact_phone) setContactPhone(defaultProfile.contact_phone);
+            if (defaultProfile.contact_website) setContactWebsite(defaultProfile.contact_website);
+
+            setStep(3);
+        } catch (error) {
+            console.error(error);
+            toast.error(error instanceof Error ? error.message : 'Failed to continue');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSaveContactInfo = async () => {
@@ -293,7 +298,7 @@ export default function OnboardingPage() {
 
         setLoading(true);
         try {
-            const profileId = brandProfileId || (await ensureBrandProfile());
+            const profileId = brandProfileId || (await ensureBrandProfileId());
             if (!profileId) {
                 throw new Error('Unable to save branding details. Please try again.');
             }
@@ -513,23 +518,33 @@ export default function OnboardingPage() {
                                     </div>
                                 </CardContent>
                                 <CardFooter className="px-4 sm:px-6 pb-4 sm:pb-6">
-                                    <Button
-                                        onClick={handleCreateOrg}
-                                        disabled={!orgName || loading}
-                                        className="w-full bg-slate-600 hover:bg-slate-700 text-white h-11 sm:h-12 text-sm sm:text-base active:scale-[0.98]"
-                                    >
-                                        {loading ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                                                <span className="ml-2">Saving...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                {organizationCreated ? 'Save & Continue' : 'Continue'}
-                                                <ArrowRight className="ml-2 h-4 w-4" />
-                                            </>
-                                        )}
-                                    </Button>
+                                    <div className="w-full flex flex-col gap-3">
+                                        <Button
+                                            onClick={handleCreateOrg}
+                                            disabled={!orgName || loading}
+                                            className="w-full bg-slate-600 hover:bg-slate-700 text-white h-11 sm:h-12 text-sm sm:text-base active:scale-[0.98]"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                                                    <span className="ml-2">Saving...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {organizationCreated ? 'Save & Continue' : 'Continue'}
+                                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                                </>
+                                            )}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            onClick={handleFinish}
+                                            className="w-full text-muted-foreground hover:text-foreground"
+                                            disabled={loading}
+                                        >
+                                            Skip onboarding and go to dashboard
+                                        </Button>
+                                    </div>
                                 </CardFooter>
                             </Card>
                         </motion.div>
@@ -656,7 +671,15 @@ export default function OnboardingPage() {
                                         className="w-full text-muted-foreground hover:text-foreground"
                                         disabled={loading}
                                     >
-                                        Skip for now
+                                        Skip branding for now
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        onClick={handleFinish}
+                                        className="w-full text-muted-foreground hover:text-foreground"
+                                        disabled={loading}
+                                    >
+                                        Skip onboarding and go to dashboard
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -756,27 +779,37 @@ export default function OnboardingPage() {
                                         />
                                     </div>
                                 </CardContent>
-                                <CardFooter className="flex flex-col sm:flex-row gap-3">
+                                <CardFooter className="flex flex-col gap-3">
+                                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleBack}
+                                            className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
+                                        >
+                                            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                                        </Button>
+                                        <Button
+                                            onClick={handleSaveContactInfo}
+                                            disabled={loading}
+                                            className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                    <span className="ml-2">Saving...</span>
+                                                </>
+                                            ) : (
+                                                <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
+                                            )}
+                                        </Button>
+                                    </div>
                                     <Button
-                                        variant="outline"
-                                        onClick={handleBack}
-                                        className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
-                                    >
-                                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                                    </Button>
-                                    <Button
-                                        onClick={handleSaveContactInfo}
+                                        variant="ghost"
+                                        onClick={handleFinish}
+                                        className="w-full text-muted-foreground hover:text-foreground"
                                         disabled={loading}
-                                        className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
                                     >
-                                        {loading ? (
-                                            <>
-                                                <Loader2 className="h-5 w-5 animate-spin" />
-                                                <span className="ml-2">Saving...</span>
-                                            </>
-                                        ) : (
-                                            <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
-                                        )}
+                                        Skip onboarding and go to dashboard
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -822,19 +855,29 @@ export default function OnboardingPage() {
                                         }}
                                     />
                                 </CardContent>
-                                <CardFooter className="flex flex-col sm:flex-row gap-3">
+                                <CardFooter className="flex flex-col gap-3">
+                                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleBack}
+                                            className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
+                                        >
+                                            <ArrowLeft className="mr-2 h-4 w-4" /> Edit
+                                        </Button>
+                                        <Button
+                                            onClick={() => setStep(5)}
+                                            className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
+                                        >
+                                            Looks Great! <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </div>
                                     <Button
-                                        variant="outline"
-                                        onClick={handleBack}
-                                        className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
+                                        variant="ghost"
+                                        onClick={handleFinish}
+                                        className="w-full text-muted-foreground hover:text-foreground"
+                                        disabled={loading}
                                     >
-                                        <ArrowLeft className="mr-2 h-4 w-4" /> Edit
-                                    </Button>
-                                    <Button
-                                        onClick={() => setStep(5)}
-                                        className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
-                                    >
-                                        Looks Great! <ArrowRight className="ml-2 h-4 w-4" />
+                                        Skip onboarding and go to dashboard
                                     </Button>
                                 </CardFooter>
                             </Card>
