@@ -161,6 +161,7 @@ export async function getMonthlyUsage(
     startOfMonth.setHours(0, 0, 0, 0);
 
     // Usage is tracked per account (subscription lives on accounts), regardless of organization context.
+    // Free plan limits apply to *unlocked* requests; over-limit submissions are stored as locked.
     const query = sql`
         SELECT COUNT(*) as count
         FROM requests
@@ -168,6 +169,7 @@ export async function getMonthlyUsage(
             AND metered_at IS NOT NULL
             AND metered_at >= ${startOfMonth.toISOString()}
             AND (is_demo = FALSE OR is_demo IS NULL)
+            AND is_locked = FALSE
     `;
 
     const result = await query;

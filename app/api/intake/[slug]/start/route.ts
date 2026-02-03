@@ -1,10 +1,46 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getIntakeLinkBySlug, getAccountById, getAccountOrganizations, getDefaultBrandProfile, getMonthlyUsage, createRequest, createEventLog } from '@/lib/neon/queries';
+import { getIntakeLinkBySlug, getAccountById, getAccountOrganizations, getDefaultBrandProfile, getRequestBySellerToken, createRequest, createEventLog } from '@/lib/neon/queries';
 import { intakeStartRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
+
+function parseCookies(header: string | null): Record<string, string> {
+    if (!header) return {};
+    const out: Record<string, string> = {};
+    header.split(';').forEach((part) => {
+        const idx = part.indexOf('=');
+        if (idx === -1) return;
+        const key = part.slice(0, idx).trim();
+        const value = part.slice(idx + 1).trim();
+        if (!key) return;
+        out[key] = value;
+    });
+    return out;
+}
+
+function normalizeAddress(input: string) {
+    return input
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ');
+}
+
+function base64UrlEncode(input: string) {
+    return Buffer.from(input, 'utf8')
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/g, '');
+}
+
+function base64UrlDecode(input: string) {
+    const padded = input.replace(/-/g, '+').replace(/_/g, '/');
+    const padLength = (4 - (padded.length % 4)) % 4;
+    const withPadding = padded + '='.repeat(padLength);
+    return Buffer.from(withPadding, 'base64').toString('utf8');
+}
 
 const intakeStartBodySchema = z.object({
     propertyAddress: z.string().trim().min(5).max(200),
@@ -52,9 +88,37 @@ export async function POST(
         const organizations = await getAccountOrganizations(account.id);
         const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
 
-        const usage = await getMonthlyUsage(account.id, activeOrg?.id);
-        const isOverLimit = usage.used >= usage.limit;
-        const shouldLock = usage.plan === 'free' && isOverLimit;
+        const normalizedAddress = normalizeAddress(parsed.data.propertyAddress);
+        const cookieName = `us_intake_${slug}`;
+        const cookies = parseCookies(request.headers.get('cookie'));
+        const existingCookie = cookies[cookieName];
+
+        if (existingCookie) {
+            try {
+                const decoded = base64UrlDecode(existingCookie);
+                const payload = JSON.parse(decoded) as { a?: unknown; t?: unknown };
+                const a = typeof payload.a === 'string' ? payload.a : null;
+                const t = typeof payload.t === 'string' ? payload.t : null;
+                if (a && t && a === normalizedAddress) {
+                    const existingRequest = await getRequestBySellerToken(t);
+                    if (
+                        existingRequest &&
+                        existingRequest.account_id === account.id &&
+                        normalizeAddress(existingRequest.property_address) === normalizedAddress &&
+                        existingRequest.status !== 'submitted'
+                    ) {
+                        const res = NextResponse.json({ sellerToken: t }, { headers: getRateLimitHeaders(rateLimitResult) });
+                        res.headers.append(
+                            'Set-Cookie',
+                            `${cookieName}=${existingCookie}; Path=/; Max-Age=${60 * 60 * 24 * 14}; SameSite=Lax; HttpOnly`
+                        );
+                        return res;
+                    }
+                }
+            } catch {
+                // ignore malformed cookie
+            }
+        }
 
         const defaultBrand = await getDefaultBrandProfile(account.id, activeOrg?.id);
 
@@ -64,8 +128,8 @@ export async function POST(
             brandProfileId: defaultBrand?.id,
             propertyAddress: parsed.data.propertyAddress,
             utilityCategories: UTILITY_CATEGORY_KEYS,
-            isLocked: shouldLock,
-            lockedReason: shouldLock ? 'monthly_limit' : undefined,
+            status: 'draft',
+            meteredAt: null,
         });
 
         if (!newRequest) {
@@ -86,7 +150,13 @@ export async function POST(
             userAgent,
         });
 
-        return NextResponse.json({ sellerToken: newRequest.seller_token });
+        const cookiePayload = base64UrlEncode(JSON.stringify({ a: normalizedAddress, t: newRequest.seller_token }));
+        const response = NextResponse.json({ sellerToken: newRequest.seller_token }, { headers: getRateLimitHeaders(rateLimitResult) });
+        response.headers.append(
+            'Set-Cookie',
+            `${cookieName}=${cookiePayload}; Path=/; Max-Age=${60 * 60 * 24 * 14}; SameSite=Lax; HttpOnly`
+        );
+        return response;
     } catch (error) {
         console.error('Error starting intake link:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

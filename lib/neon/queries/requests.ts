@@ -120,11 +120,19 @@ export async function createRequest(data: {
     isDemo?: boolean;
     isLocked?: boolean;
     lockedReason?: string;
+    status?: 'draft' | 'sent' | 'in_progress' | 'submitted';
+    meteredAt?: string | null;
 }): Promise<Request | null> {
     if (!sql) return null;
 
     const publicToken = generateToken();
     const sellerToken = generateToken();
+    const status = data.status ?? 'sent';
+    const meteredAt = data.meteredAt !== undefined
+        ? data.meteredAt
+        : status === 'draft'
+            ? null
+            : new Date().toISOString();
 
     const result = await sql`
         INSERT INTO requests (
@@ -158,8 +166,8 @@ export async function createRequest(data: {
             ${publicToken},
             ${sellerToken},
             ${data.isDemo === true},
-            'sent',
-            NOW(),
+            ${status},
+            ${meteredAt},
             ${data.isLocked === true},
             ${data.lockedReason || null},
             ${data.isLocked === true ? new Date().toISOString() : null}

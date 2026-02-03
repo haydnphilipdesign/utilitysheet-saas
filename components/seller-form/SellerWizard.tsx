@@ -85,6 +85,57 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     const [visibleUtilities, setVisibleUtilities] = useState<UtilityCategory[]>([]);
 
+    // Persist draft progress locally so refresh/back doesn't lose work.
+    // (This is client-side only; no PII is sent anywhere.)
+    const draftStorageKey = `us_seller_draft:${token}`;
+
+    useEffect(() => {
+        if (isDemo) return;
+        try {
+            const raw = localStorage.getItem(draftStorageKey);
+            if (!raw) return;
+            const parsed = JSON.parse(raw) as {
+                v?: number;
+                state?: WizardState;
+                currentStep?: number;
+                utilityIndex?: number;
+            };
+            if (parsed?.v !== 1 || !parsed.state) return;
+
+            setState(parsed.state);
+            if (typeof parsed.currentStep === 'number') {
+                setCurrentStep(Math.max(0, Math.min(Step.SUCCESS, parsed.currentStep)) as Step);
+            }
+            if (typeof parsed.utilityIndex === 'number') {
+                setUtilityIndex(Math.max(0, parsed.utilityIndex));
+            }
+        } catch {
+            // ignore
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token, isDemo]);
+
+    useEffect(() => {
+        if (isDemo) return;
+        const timeout = setTimeout(() => {
+            try {
+                localStorage.setItem(
+                    draftStorageKey,
+                    JSON.stringify({
+                        v: 1,
+                        state,
+                        currentStep,
+                        utilityIndex,
+                    })
+                );
+            } catch {
+                // ignore
+            }
+        }, 250);
+
+        return () => clearTimeout(timeout);
+    }, [draftStorageKey, state, currentStep, utilityIndex, isDemo]);
+
     // Lazy-load suggestions as needed (prefetch current + next)
     useEffect(() => {
         if (isDemo) return;
@@ -219,6 +270,13 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     }, [state.water_source, state.sewer_type, state.fuels_present, state.optional_utilities, initialRequestData.utility_categories]);
 
+    useEffect(() => {
+        if (currentStep !== Step.UTILITIES) return;
+        if (visibleUtilities.length === 0) return;
+        if (utilityIndex <= visibleUtilities.length - 1) return;
+        setUtilityIndex(visibleUtilities.length - 1);
+    }, [currentStep, utilityIndex, visibleUtilities]);
+
     const totalUtilities = visibleUtilities.length;
     // Simplify progress: Welcome(0.5) + Basics(1) + Each Util(1) + Review(1)
     const totalStepsWeight = 1.5 + totalUtilities + 1;
@@ -297,6 +355,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             });
 
             if (response.ok) {
+                try {
+                    localStorage.removeItem(draftStorageKey);
+                } catch {
+                    // ignore
+                }
                 setCurrentStep(Step.SUCCESS);
             } else {
                 const errorBody = await response.json().catch(() => null);

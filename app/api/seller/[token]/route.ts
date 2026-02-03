@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, getOrganizationById, createEventLog } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, getOrganizationById, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import { hasValidContact, resolveContact } from '@/lib/providers/contact-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
@@ -48,10 +48,9 @@ export async function GET(
                 UPDATE requests
                 SET
                     status = 'in_progress',
-                    last_activity_at = NOW(),
-                    metered_at = COALESCE(metered_at, NOW())
+                    last_activity_at = NOW()
                 WHERE id = ${requestData.id}
-                AND status = 'sent'
+                AND status IN ('sent', 'draft')
             `;
         }
 
@@ -155,7 +154,19 @@ export async function POST(
         const account = await getAccountById(requestData.account_id);
         const organization = requestData.organization_id ? await getOrganizationById(requestData.organization_id) : null;
         const isPaid = account?.subscription_status === 'pro' || organization?.subscription_status === 'team';
-        const accessLocked = Boolean((requestData as unknown as { is_locked?: unknown }).is_locked) && !isPaid;
+
+        // Only apply free-plan overage locking for requests that have not yet been metered.
+        // (Agent-created requests are metered on creation and quota-checked on creation.)
+        const isUnmetered = (requestData as unknown as { metered_at?: unknown }).metered_at == null;
+        let shouldLock = false;
+        if (!isPaid && isUnmetered) {
+            const usage = await getMonthlyUsage(requestData.account_id, requestData.organization_id ?? undefined);
+            if (usage.plan === 'free' && usage.used >= usage.limit) {
+                shouldLock = true;
+            }
+        }
+
+        const accessLocked = (Boolean((requestData as unknown as { is_locked?: unknown }).is_locked) || shouldLock) && !isPaid;
 
         const requestedCategories = new Set<string>(
             (requestData as any).utility_categories || UTILITY_CATEGORY_KEYS
@@ -169,7 +180,10 @@ export async function POST(
             heating_type = ${parsedBody.data.primary_heating_type || null},
             status = 'submitted',
             last_activity_at = NOW(),
-            metered_at = COALESCE(metered_at, NOW())
+            metered_at = COALESCE(metered_at, NOW()),
+            is_locked = CASE WHEN ${shouldLock} THEN TRUE ELSE is_locked END,
+            locked_reason = CASE WHEN ${shouldLock} THEN 'monthly_limit' ELSE locked_reason END,
+            locked_at = CASE WHEN ${shouldLock} THEN COALESCE(locked_at, NOW()) ELSE locked_at END
             WHERE id = ${requestData.id}
         `;
 
