@@ -1,7 +1,7 @@
 /**
  * Intake link queries (reusable seller URL per account)
  */
-import { sql } from '@/lib/neon/db';
+import { sql, generateToken } from '@/lib/neon/db';
 
 export interface IntakeLink {
     id: string;
@@ -91,20 +91,11 @@ export async function getOrCreateIntakeLink(accountId: string): Promise<IntakeLi
     `;
     if (existing.length > 0) return existing[0] as IntakeLink;
 
-    const accountResult = await sql`
-        SELECT full_name, email FROM accounts
-        WHERE id = ${accountId}
-        LIMIT 1
-    `;
-
-    const fullName = String(accountResult[0]?.full_name || '').trim();
-    const email = String(accountResult[0]?.email || '').trim();
-    const fallbackBase = email.split('@')[0] || 'link';
-
-    const baseSlug = slugifyIntakeSlug(fullName || fallbackBase) || 'link';
-    let slug = baseSlug;
+    // Default slug is intentionally random (so Pro/Teams can upgrade for a custom slug).
+    // Use a short, URL-safe, lowercase token.
+    let slug = generateToken().slice(0, 10);
     if (RESERVED_SLUGS.has(slug)) {
-        slug = `${slug}-link`;
+        slug = `link-${generateToken().slice(0, 8)}`;
     }
 
     const uniqueSlug = await getUniqueIntakeSlug(slug);
@@ -143,4 +134,3 @@ export async function updateIntakeLinkSlug(accountId: string, slug: string): Pro
 
     return (created[0] as IntakeLink) || null;
 }
-
