@@ -271,6 +271,10 @@ export function HeroSection() {
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
                                 <span className="text-sm sm:text-base"><strong>Professional output:</strong> Branded PDF + shareable link, instantly</span>
                             </li>
+                            <li className="flex items-start gap-2 sm:gap-3">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                                <span className="text-sm sm:text-base"><strong>Reusable link option:</strong> Share one URL every time—seller enters the address up front</span>
+                            </li>
                         </motion.ul>
 
                         {/* CTAs */}
@@ -303,7 +307,7 @@ export function HeroSection() {
                         >
                             <span className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                Free plan: 3 requests/month
+                                Free plan: 3 unlocked requests/month
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />

@@ -6,8 +6,8 @@ import { Bell, FileText, Link2, Palette, ShieldCheck, Sparkles } from 'lucide-re
 const features = [
     {
         icon: Link2,
-        title: "Guided Seller Link",
-        description: "Send a secure link to your seller—no login. They confirm utilities on their phone in minutes."
+        title: "Guided Seller Links",
+        description: "Use a one-off request link or share a reusable link. Sellers don’t need an account and can finish on their phone in minutes."
     },
     {
         icon: Sparkles,

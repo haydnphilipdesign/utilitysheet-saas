@@ -17,6 +17,10 @@ const faqs = [
         answer: 'No. Sellers open a secure link and complete the guided form on their phone—no login and no app install.',
     },
     {
+        question: 'Can I use one link for every property?',
+        answer: 'Yes. You can share your reusable seller link over and over—sellers enter the property address at the start, then complete the same guided utility form.',
+    },
+    {
         question: 'Do sellers need to upload bills or share account numbers?',
         answer: 'No. UtilitySheet is designed to be quick and low-friction—no bill uploads and no account numbers.',
     },
@@ -30,7 +34,11 @@ const faqs = [
     },
     {
         question: 'What utilities can I collect?',
-        answer: 'Common categories like electric, gas, water, sewer, trash, internet, cable, and propane—based on what you select when creating the request.',
+        answer: 'Common categories like electric, gas, water, sewer, trash, internet, cable, and propane. One-off requests let you choose categories; the reusable link uses a standard set.',
+    },
+    {
+        question: 'What happens if I hit the free plan limit?',
+        answer: 'Sellers can still submit. New submissions beyond your free limit are saved as “Locked” in your dashboard until you upgrade (then they unlock automatically).',
     },
     {
         question: 'Can I remove UtilitySheet branding?',

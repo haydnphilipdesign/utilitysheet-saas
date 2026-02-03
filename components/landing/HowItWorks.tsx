@@ -25,7 +25,7 @@ export function HowItWorks() {
                                 Generate a Link
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Enter the property address and select needed utilities. We generate a secure, unique link in seconds to send to your seller.
+                                Create a one-off request (choose utilities) or share your reusable seller link. Either way, sellers start by entering the property address.
                             </p>
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">

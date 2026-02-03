@@ -10,11 +10,12 @@ const tiers = [
         price: 'Free',
         description: 'Perfect for solo transaction coordinators and agents getting started.',
         features: [
-            '3 requests per month',
-            'Shareable seller intake link',
+            '3 unlocked requests per month',
+            'Reusable seller intake link (seller enters address)',
             'Buyer-ready PDF + share link',
             'Email reminders',
-            'UtilitySheet footer on share links'
+            'Over-limit submissions saved as locked',
+            'UtilitySheet footer on share links',
         ],
         cta: 'Start for Free',
         href: '/auth/signup',
@@ -27,7 +28,9 @@ const tiers = [
         description: 'For high-volume TCs and agents who want white-label branding.',
         features: [
             'Unlimited requests',
+            'Custom reusable link slug',
             'Custom branding (logo + colors)',
+            'Unlock locked submissions',
             'Remove "Powered by UtilitySheet"',
             'Priority support',
             'Single-seat (1 user)'
