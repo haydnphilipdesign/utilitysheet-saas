@@ -54,6 +54,62 @@ function safeExternalUrl(value: string | null | undefined): string | null {
     }
 }
 
+function renderBulletproofButton(params: {
+    href: string;
+    label: string;
+    backgroundColor: string;
+    borderRadius?: number;
+    fontSize?: number;
+    fontWeight?: number;
+    paddingX?: number;
+    paddingY?: number;
+    minWidth?: number;
+    maxWidth?: number;
+}): string {
+    const borderRadius = params.borderRadius ?? 8;
+    const fontSize = params.fontSize ?? 16;
+    const fontWeight = params.fontWeight ?? 600;
+    const paddingX = params.paddingX ?? 32;
+    const paddingY = params.paddingY ?? 14;
+    const lineHeight = Math.round(fontSize * 1.25);
+    const buttonHeight = Math.round((paddingY * 2) + lineHeight);
+    const minWidth = params.minWidth ?? 200;
+    const maxWidth = params.maxWidth ?? 420;
+    const estimatedWidth = Math.round((params.label.length * (fontSize * 0.62)) + (paddingX * 2));
+    const buttonWidth = Math.max(minWidth, Math.min(maxWidth, estimatedWidth));
+    const arcsize = `${Math.max(0, Math.min(50, Math.round((borderRadius / buttonHeight) * 100)))}%`;
+
+    return `
+                                        <!--[if mso]>
+                                        <v:roundrect
+                                            xmlns:v="urn:schemas-microsoft-com:vml"
+                                            xmlns:w="urn:schemas-microsoft-com:office:word"
+                                            href="${params.href}"
+                                            style="height:${buttonHeight}px;v-text-anchor:middle;width:${buttonWidth}px;"
+                                            arcsize="${arcsize}"
+                                            stroke="f"
+                                            fillcolor="${params.backgroundColor}"
+                                        >
+                                            <w:anchorlock/>
+                                            <center style="color:#ffffff;font-family:Arial, sans-serif;font-size:${fontSize}px;font-weight:${fontWeight};">
+                                                ${params.label}
+                                            </center>
+                                        </v:roundrect>
+                                        <![endif]-->
+                                        <!--[if !mso]><!-- -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td bgcolor="${params.backgroundColor}" style="background-color: ${params.backgroundColor}; border-radius: ${borderRadius}px; text-align: center;">
+                                                    <a href="${params.href}" style="display: inline-block; padding: ${paddingY}px ${paddingX}px; border-radius: ${borderRadius}px; color: #ffffff !important; text-decoration: none; font-size: ${fontSize}px; font-weight: ${fontWeight}; line-height: ${lineHeight}px; font-family: Arial, sans-serif; background-color: ${params.backgroundColor}; mso-line-height-rule: exactly;">
+                                                        ${params.label}
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <!--<![endif]-->
+    `.trim();
+}
+
 function generateSellerRequestEmailHtml(params: {
     brandName: string;
     brandLogoUrl: string | null;
@@ -136,9 +192,16 @@ function generateSellerRequestEmailHtml(params: {
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 8px;">
                                 <tr>
                                     <td style="text-align: center;">
-                                        <a href="${safeCtaUrl}" style="display: inline-block; background: linear-gradient(135deg, ${params.primaryColor} 0%, ${params.secondaryColor} 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 16px; font-weight: 700;">
-                                            ${safeCtaLabel}
-                                        </a>
+                                        ${renderBulletproofButton({
+        href: safeCtaUrl,
+        label: safeCtaLabel,
+        backgroundColor: params.secondaryColor,
+        borderRadius: 10,
+        fontWeight: 700,
+        paddingX: 28,
+        paddingY: 14,
+        minWidth: 220,
+    })}
                                     </td>
                                 </tr>
                             </table>
@@ -426,9 +489,16 @@ export async function sendOrganizationInviteEmail({
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                 <tr>
                                     <td style="text-align: center;">
-                                        <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #0f172a 0%, #334155 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 16px; font-weight: 700;">
-                                            Accept Invite
-                                        </a>
+                                        ${renderBulletproofButton({
+            href: inviteUrl,
+            label: 'Accept Invite',
+            backgroundColor: '#334155',
+            borderRadius: 10,
+            fontWeight: 700,
+            paddingX: 28,
+            paddingY: 14,
+            minWidth: 220,
+        })}
                                     </td>
                                 </tr>
                             </table>
@@ -546,9 +616,16 @@ function generateSellerNotificationHtml({
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                 <tr>
                                     <td style="text-align: center;">
-                                        <a href="${sellerFormUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);">
-                                            Provide Utility Information
-                                        </a>
+                                        ${renderBulletproofButton({
+        href: sellerFormUrl,
+        label: 'Provide Utility Information',
+        backgroundColor: '#059669',
+        borderRadius: 8,
+        fontWeight: 600,
+        paddingX: 32,
+        paddingY: 14,
+        minWidth: 240,
+    })}
                                     </td>
                                 </tr>
                             </table>
@@ -638,9 +715,16 @@ function generateSellerReminderHtml({
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                 <tr>
                                     <td style="text-align: center;">
-                                        <a href="${sellerFormUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);">
-                                            Complete Utility Info
-                                        </a>
+                                        ${renderBulletproofButton({
+        href: sellerFormUrl,
+        label: 'Complete Utility Info',
+        backgroundColor: '#059669',
+        borderRadius: 8,
+        fontWeight: 600,
+        paddingX: 32,
+        paddingY: 14,
+        minWidth: 240,
+    })}
                                     </td>
                                 </tr>
                             </table>
@@ -893,9 +977,16 @@ function generateTCCompletionNotificationHtml({
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                 <tr>
                                     <td style="text-align: center;">
-                                        <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);">
-                                            View Utility Details
-                                        </a>
+                                        ${renderBulletproofButton({
+        href: dashboardUrl,
+        label: 'View Utility Details',
+        backgroundColor: '#059669',
+        borderRadius: 8,
+        fontWeight: 600,
+        paddingX: 32,
+        paddingY: 14,
+        minWidth: 240,
+    })}
                                     </td>
                                 </tr>
                             </table>
@@ -1059,9 +1150,16 @@ function generateContactResolutionAlertHtml({
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                 <tr>
                                     <td style="text-align: center;">
-                                        <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);">
-                                            Review Utility Details
-                                        </a>
+                                        ${renderBulletproofButton({
+        href: dashboardUrl,
+        label: 'Review Utility Details',
+        backgroundColor: '#d97706',
+        borderRadius: 8,
+        fontWeight: 600,
+        paddingX: 32,
+        paddingY: 14,
+        minWidth: 240,
+    })}
                                     </td>
                                 </tr>
                             </table>
@@ -1228,9 +1326,16 @@ function generateWeeklySummaryHtml({
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                 <tr>
                                     <td style="text-align: center; padding-top: 16px;">
-                                        <a href="${dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);">
-                                            Go to Dashboard
-                                        </a>
+                                        ${renderBulletproofButton({
+        href: dashboardUrl,
+        label: 'Go to Dashboard',
+        backgroundColor: '#059669',
+        borderRadius: 8,
+        fontWeight: 600,
+        paddingX: 32,
+        paddingY: 14,
+        minWidth: 220,
+    })}
                                     </td>
                                 </tr>
                             </table>
