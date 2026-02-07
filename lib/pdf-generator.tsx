@@ -1,113 +1,35 @@
 'use client';
 
-import { UTILITY_CATEGORIES, DEFAULT_BUYER_STEPS } from '@/lib/constants';
-import { format } from 'date-fns';
 import { fitRectWithin } from '@/lib/pdf-fit';
-import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
-import { clampBrandingText } from '@/lib/branding/text';
-
-interface PacketData {
-    request: {
-        id: string;
-        property_address: string;
-        created_at: string;
-        // Home Basics fields
-        water_source?: string | null;
-        sewer_type?: string | null;
-        heating_type?: string | null;
-    };
-    brand: {
-        name?: string;
-        logo_url?: string;
-        primary_color?: string;
-        contact_name?: string;
-        contact_email?: string;
-        contact_phone?: string;
-        contact_website?: string;
-        disclaimer_text?: string | null;
-        // Advanced customization
-        buyer_next_steps?: string[] | null;
-        next_steps_title?: string | null;
-        show_powered_by?: boolean;
-        show_generation_date?: boolean;
-        welcome_message?: string | null;
-    } | null;
-    utilities: Array<{
-        category: string;
-        provider_name: string;
-        provider_phone?: string;
-        provider_website?: string;
-    }>;
-    meta?: {
-        show_powered_by?: boolean;
-    };
-}
+import { buildPacketPdfHtml, type PacketPdfData } from '@/lib/pdf/packet-html';
 
 /**
- * Fetches info sheet data and generates a PDF download
+ * Fetches info sheet data and generates a PDF download.
  */
 export async function generatePacketPdf(token: string): Promise<void> {
-    const escapeHtml = (value: string) =>
-        value
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#39;');
-
-    const safeExternalUrl = (value: string | null | undefined): string | null => {
-        if (!value) return null;
-        try {
-            const parsed = new URL(value);
-            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-                return null;
-            }
-            return parsed.toString();
-        } catch {
-            return null;
-        }
-    };
-
-    const safeHexColor = (value: string | null | undefined, fallback: string): string => {
-        if (!value) return fallback;
-        const candidate = value.trim();
-        if (/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(candidate)) {
-            return candidate;
-        }
-        return fallback;
-    };
-
-    const sanitizeFilenamePart = (value: string): string => {
-        const cleaned = value
-            .trim()
-            .replaceAll(/[^\p{L}\p{N}]+/gu, '-')
-            .replaceAll(/-+/g, '-')
-            .replaceAll(/^-|-$/g, '');
-        return cleaned.slice(0, 60) || 'utility-info-sheet';
-    };
-
-    // 1. Fetch info sheet data
+    // 1. Fetch packet data
     const response = await fetch(`/api/packet/${token}`);
     if (!response.ok) {
         throw new Error('Failed to fetch info sheet data');
     }
-    const data: PacketData = await response.json();
 
-    // 2. Dynamic import for PDF generation
+    const data: PacketPdfData = await response.json();
+    const render = buildPacketPdfHtml(data);
+
+    // 2. Dynamic imports for rendering
     const html2canvas = (await import('html2canvas')).default;
     const jsPDF = (await import('jspdf')).default;
 
-    // 3. Create a temporary iframe for isolation
+    // 3. Create hidden iframe for HTML rendering
     const iframe = document.createElement('iframe');
     iframe.style.position = 'absolute';
     iframe.style.left = '-9999px';
     iframe.style.top = '0';
-    iframe.style.width = '800px';
-    iframe.style.height = '1200px'; // Set sufficient height
+    iframe.style.width = '900px';
+    iframe.style.height = '1400px';
     iframe.style.border = 'none';
     document.body.appendChild(iframe);
 
-    // Get the iframe document
     const iframeDoc = iframe.contentWindow?.document;
     const iframeBody = iframeDoc?.body;
 
@@ -116,252 +38,48 @@ export async function generatePacketPdf(token: string): Promise<void> {
         throw new Error('Failed to create iframe for PDF generation');
     }
 
-    const { request, brand, utilities } = data;
-    // Always respect forced "powered by" for non-Pro, but allow Pro profiles to opt in/out.
-    const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
-    const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
-    const showGenerationDate = brand?.show_generation_date ?? true;
-    const safePrimaryColor = safeHexColor(brand?.primary_color, '#10b981');
-    const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
-    const safeBrandName = escapeHtml(clampBrandingText(brand?.name || 'UtilitySheet', BRAND_PROFILE_LIMITS.brandNameMax) || 'UtilitySheet');
-    const safeBrandContactName = escapeHtml(clampBrandingText(brand?.contact_name || '', BRAND_PROFILE_LIMITS.contactNameMax));
-    const safeBrandContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
-    const safeBrandContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
-    const safeBrandContactWebsite = escapeHtml(clampBrandingText(brand?.contact_website || '', BRAND_PROFILE_LIMITS.contactWebsiteMax));
-    const safePropertyAddress = escapeHtml(clampBrandingText(request.property_address, 140));
-
-    // Advanced customization
-    const rawBuyerNextSteps = brand?.buyer_next_steps && brand.buyer_next_steps.length > 0
-        ? brand.buyer_next_steps
-        : DEFAULT_BUYER_STEPS;
-
-    const buyerNextSteps = rawBuyerNextSteps
-        .map((step: string) => clampBrandingText(step, BRAND_PROFILE_LIMITS.buyerNextStepMax))
-        .filter(Boolean)
-        .slice(0, BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems);
-
-    const nextStepsTitle = escapeHtml(clampBrandingText(brand?.next_steps_title || 'Buyer Next Steps', BRAND_PROFILE_LIMITS.nextStepsTitleMax) || 'Buyer Next Steps');
-    const welcomeMessage = brand?.welcome_message
-        ? escapeHtml(clampBrandingText(brand.welcome_message, BRAND_PROFILE_LIMITS.welcomeMessageMax))
-        : '';
-    const disclaimerText = brand?.disclaimer_text
-        ? escapeHtml(clampBrandingText(brand.disclaimer_text, BRAND_PROFILE_LIMITS.disclaimerTextMax))
-        : '';
-
-    const footerText = showPoweredBy
-        ? `Powered by utilitysheet.com${safeBrandContactEmail ? ` &bull; ${safeBrandContactEmail}` : ''}`
-        : (safeBrandContactEmail ? safeBrandContactEmail : '');
-
-    const footerHtml = footerText || disclaimerText
-        ? `
-            <!-- Footer -->
-            <div style="text-align: center; padding-top: 24px; border-top: 1px solid #e4e4e7;">
-                ${disclaimerText ? `
-                <p style="font-size: 11px; color: #71717a; margin: 0 0 8px 0; line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">
-                    ${disclaimerText}
-                </p>
-                ` : ''}
-                ${footerText ? `
-                <p style="font-size: 13px; color: #71717a; margin: 0;">
-                    ${footerText}
-                </p>
-                ` : ''}
-            </div>
-        `
-        : '';
-
-    // 4. Render the info sheet content into the iframe
-    // We add base styles directly to the iframe body to ensure clean slate
-    iframeBody.style.margin = '0';
-    iframeBody.style.padding = '0';
-    iframeBody.style.backgroundColor = '#ffffff';
-
-    iframeBody.innerHTML = `
-        <div style="padding: 48px; background: #ffffff; color: #09090b; font-family: Arial, sans-serif, system-ui; min-height: 100%; box-sizing: border-box;">
-            <!-- Branding Header -->
-            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 2px solid #e4e4e7; margin-bottom: 32px;">
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    ${safeBrandLogoUrl
-            ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" style="height: 48px; width: auto;" crossorigin="anonymous" />`
-            : `<div style="height: 48px; width: 48px; border-radius: 8px; background: ${safePrimaryColor}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">
-                            ${escapeHtml(brand?.name ? brand.name.split(' ').map((w: string) => w[0] || '').join('').slice(0, 2) : 'US')}
-                        </div>`
-        }
-                    <div>
-                        <h2 style="font-weight: 700; color: #09090b; margin: 0; font-size: 20px;">${safeBrandName}</h2>
-                        ${safeBrandContactName ? `<p style="font-size: 14px; color: #3f3f46; margin: 4px 0 0 0; font-weight: 500;">${safeBrandContactName}</p>` : ''}
-                        ${safeBrandContactPhone ? `<p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${safeBrandContactPhone}</p>` : ''}
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <p style="font-size: 14px; color: #71717a; margin: 0;">${safeBrandContactEmail}</p>
-                    <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${safeBrandContactWebsite}</p>
-                </div>
-            </div>
-
-            <!-- Title Section -->
-            <div style="text-align: center; padding: 24px 0 48px 0;">
-                <h1 style="font-size: 32px; font-weight: 800; color: #09090b; margin: 0 0 16px 0; letter-spacing: -0.02em;">
-                    Utility Info Sheet
-                </h1>
-                <div style="background: #f4f4f5; padding: 12px 24px; border-radius: 12px; border: 1px solid #e4e4e7; display: inline-block; margin: 0 auto;">
-                    <span style="color: #059669; margin-right: 8px; font-size: 18px; vertical-align: middle;">📍</span>
-                    <span style="color: #09090b; font-weight: 600; font-size: 18px; vertical-align: middle;">${safePropertyAddress}</span>
-                </div>
-                ${showGenerationDate ? `
-                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; font-size: 14px; color: #52525b;">
-                    <span>📅</span>
-                    <span>Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</span>
-                </div>
-                ` : ''}
-            </div>
-
-            ${welcomeMessage ? `
-            <!-- Welcome Message -->
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px;">
-                <p style="font-size: 14px; color: #1e40af; margin: 0; line-height: 1.6; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">${welcomeMessage}</p>
-            </div>
-            ` : ''}
-
-            ${(request as any).water_source || (request as any).sewer_type || (request as any).heating_type ? `
-            <!-- Home Basics -->
-            <div style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
-                <div style="background: #f9fafb; padding: 16px 24px; border-bottom: 1px solid #e4e4e7;">
-                    <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Home Basics</h3>
-                </div>
-                <div style="padding: 20px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                    ${(request as any).water_source ? `
-                    <div>
-                        <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">Water Source</p>
-                        <p style="font-size: 16px; font-weight: 500; color: #09090b; margin: 0; text-transform: capitalize;">${escapeHtml(String((request as any).water_source).replace('_', ' '))}</p>
-                    </div>
-                    ` : ''}
-                    ${(request as any).sewer_type ? `
-                    <div>
-                        <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">Sewer Type</p>
-                        <p style="font-size: 16px; font-weight: 500; color: #09090b; margin: 0; text-transform: capitalize;">${escapeHtml(String((request as any).sewer_type).replace('_', ' '))}</p>
-                    </div>
-                    ` : ''}
-                    ${(request as any).heating_type ? `
-                    <div>
-                        <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">Heating Type</p>
-                        <p style="font-size: 16px; font-weight: 500; color: #09090b; margin: 0; text-transform: capitalize;">${escapeHtml(String((request as any).heating_type).replace('_', ' '))}</p>
-                    </div>
-                    ` : ''}
-                </div>
-            </div>
-            ` : ''}
-
-            <!-- Utility Table -->
-            <div style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
-                <div style="background: #f9fafb; padding: 16px 24px; border-bottom: 1px solid #e4e4e7;">
-                    <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Utility Providers</h3>
-                </div>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom: 1px solid #e4e4e7; background: #ffffff;">
-                            <th style="text-align: left; padding: 16px 24px; color: #52525b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Utility</th>
-                            <th style="text-align: left; padding: 16px 24px; color: #52525b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Provider</th>
-                            <th style="text-align: left; padding: 16px 24px; color: #52525b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Contact</th>
-                        </tr>
-                    </thead>
-                    <tbody style="background: #ffffff;">
-                        ${utilities.length === 0
-            ? `<tr><td colspan="3" style="text-align: center; padding: 48px; color: #71717a;">No utility information provided yet.</td></tr>`
-            : utilities.map((utility) => {
-                const safeCategory = escapeHtml(String(utility.category || ''));
-                const safeProviderName = escapeHtml(String(utility.provider_name || 'Not sure'));
-                const safeProviderPhone = utility.provider_phone ? escapeHtml(String(utility.provider_phone)) : '';
-
-                // Safely extract hostname from URL
-                let websiteDisplay = '';
-                if (utility.provider_website) {
-                    const safeWebsiteUrl = safeExternalUrl(utility.provider_website);
-                    if (safeWebsiteUrl) {
-                        try {
-                            websiteDisplay = new URL(safeWebsiteUrl).hostname;
-                        } catch {
-                            websiteDisplay = safeWebsiteUrl;
-                        }
-                    }
-                }
-                const safeWebsiteDisplay = websiteDisplay ? escapeHtml(websiteDisplay) : '';
-                return `
-                                <tr style="border-bottom: 1px solid #e4e4e7;">
-                                    <td style="padding: 16px 24px;">
-                                        <div style="display: flex; align-items: center; gap: 12px;">
-                                            <span style="font-size: 20px; color: #09090b;">${UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}</span>
-                                            <span style="font-weight: 600; color: #09090b; text-transform: capitalize;">${safeCategory}</span>
-                                        </div>
-                                    </td>
-                                    <td style="padding: 16px 24px; color: #3f3f46; font-weight: 500;">${safeProviderName}</td>
-                                    <td style="padding: 16px 24px;">
-                                        ${safeProviderPhone ? `<span style="color: #059669; font-size: 14px; font-weight: 500;">${safeProviderPhone}</span>` : ''}
-                                        ${safeProviderPhone && safeWebsiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
-                                        ${safeWebsiteDisplay ? `<span style="color: #2563eb; font-size: 14px;">${safeWebsiteDisplay}</span>` : ''}
-                                    </td>
-                                </tr>
-                            `;
-            }).join('')
-        }
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Next Steps -->
-            <div style="background: #f9fafb; border: 1px solid #e4e4e7; border-radius: 12px; padding: 32px; margin-bottom: 32px;">
-                <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0 0 20px 0;">${nextStepsTitle}</h3>
-                <ol style="margin: 0; padding: 0; list-style: none;">
-                    ${buyerNextSteps.filter((step: string) => step.trim()).map((step: string, i: number) => `
-                        <li style="display: flex; gap: 16px; margin-bottom: 16px; color: #3f3f46; align-items: flex-start; line-height: 1.6;">
-                            <span style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">${i + 1}</span>
-                            <span style="flex: 1; min-width: 0; word-break: break-word; overflow-wrap: anywhere;">${escapeHtml(step)}</span>
-                        </li>
-                    `).join('')}
-                </ol>
-            </div>
-
-            ${footerHtml}
-        </div>
-    `;
-
     try {
-        console.log('PDF Gen: Waiting for images...');
-        // 5. Wait for images to load
+        iframeDoc.open();
+        iframeDoc.write(render.html);
+        iframeDoc.close();
+
+        // 4. Wait for images to load
         const images = iframeBody.getElementsByTagName('img');
         await Promise.all(
             Array.from(images).map(
                 (img) =>
                     new Promise((resolve) => {
-                        if (img.complete) resolve(true);
-                        else {
-                            img.onload = () => resolve(true);
-                            img.onerror = () => {
-                                console.warn('PDF Gen: Image failed to load', img.src);
-                                resolve(true);
-                            };
+                        if (img.complete) {
+                            resolve(true);
+                            return;
                         }
+
+                        img.onload = () => resolve(true);
+                        img.onerror = () => resolve(true);
                     })
             )
         );
 
-        console.log('PDF Gen: Starting html2canvas...');
-        // 6. Generate canvas from the iframe body (specifically the wrapper div)
-        const canvas = await html2canvas(iframeBody.firstElementChild as HTMLElement, {
+        const rootElement = iframeDoc.querySelector(render.rootSelector) as HTMLElement | null;
+        if (!rootElement) {
+            throw new Error('Failed to locate packet render root');
+        }
+
+        // 5. Convert HTML to canvas
+        const canvas = await html2canvas(rootElement, {
             scale: 2,
             useCORS: true,
             backgroundColor: '#ffffff',
-            logging: false, // Disable logging for html2canvas
-            allowTaint: true, // Allow tainted images (might help if CORS fails)
+            logging: false,
+            allowTaint: true,
         });
 
-        console.log('PDF Gen: Canvas created, generating PDF...');
-        // 7. Create PDF with standard US Letter size (8.5" x 11") on a single page.
+        // 6. Fit onto one US Letter PDF page
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'in',
-            format: 'letter', // 8.5" x 11"
+            format: 'letter',
         });
 
         const pageWidth = pdf.internal.pageSize.getWidth();
@@ -381,16 +99,8 @@ export async function generatePacketPdf(token: string): Promise<void> {
         const yOffset = margin + (contentHeight - imgHeight) / 2;
 
         pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
-
-        // 8. Download PDF
-        const filename = `utility-info-sheet-${sanitizeFilenamePart(request.property_address.split(',')[0] || '')}.pdf`;
-        pdf.save(filename);
-        console.log('PDF Gen: PDF saved');
-    } catch (err) {
-        console.error('PDF Gen Error:', err);
-        throw err;
+        pdf.save(render.filename);
     } finally {
-        // 9. Clean up
         document.body.removeChild(iframe);
     }
 }
