@@ -287,6 +287,7 @@ export async function POST(
 
         const notificationPrefs = (account?.notification_preferences || {}) as {
             seller_submissions?: boolean;
+            seller_submission_pdf_attachment?: boolean;
             contact_resolution?: boolean;
             weekly_summary?: boolean;
         };
@@ -294,6 +295,7 @@ export async function POST(
         if (account?.email) {
             // Send TC completion notification (if enabled, defaults to true)
             if (notificationPrefs.seller_submissions !== false) {
+                const shouldAttachPdf = !accessLocked && notificationPrefs.seller_submission_pdf_attachment !== false;
                 try {
                     await sendTCCompletionNotificationEmail({
                         tcEmail: account.email,
@@ -301,6 +303,7 @@ export async function POST(
                         propertyAddress: accessLocked ? 'Locked — upgrade to view' : requestData.property_address,
                         sellerName: accessLocked ? undefined : requestData.seller_name || undefined,
                         requestId: requestData.id,
+                        attachPdf: shouldAttachPdf,
                     });
                 } catch (emailError) {
                     console.error('Failed to send TC completion notification email:', emailError);

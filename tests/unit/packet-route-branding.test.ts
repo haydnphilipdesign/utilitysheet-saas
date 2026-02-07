@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
     getRequestByToken: vi.fn(),
+    getRequestById: vi.fn(),
     getBrandProfile: vi.fn(),
     getUtilityEntriesByRequestId: vi.fn(),
     getDefaultBrandProfile: vi.fn(),
     getAccountById: vi.fn(),
+    getOrganizationById: vi.fn(),
 }));
 
 import { GET } from '@/app/api/packet/[token]/route';

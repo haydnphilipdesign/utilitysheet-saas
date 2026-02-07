@@ -34,6 +34,7 @@ export interface SendTCCompletionNotificationEmailParams {
     propertyAddress: string;
     sellerName?: string;
     requestId: string;
+    attachPdf?: boolean;
 }
 
 export interface GenerateTCCompletionHtmlParams {

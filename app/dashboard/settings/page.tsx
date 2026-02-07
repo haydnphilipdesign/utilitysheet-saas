@@ -23,6 +23,7 @@ export default function SettingsPage() {
     });
     const [notifications, setNotifications] = useState({
         seller_submissions: true,
+        seller_submission_pdf_attachment: true,
         contact_resolution: true,
         weekly_summary: false,
     });
@@ -423,6 +424,19 @@ export default function SettingsPage() {
                                 type="checkbox"
                                 checked={notifications.seller_submissions}
                                 onChange={(e) => setNotifications({ ...notifications, seller_submissions: e.target.checked })}
+                                className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
+                            />
+                        </div>
+                        <Separator className="bg-border" />
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-foreground">Attach PDF to seller submission emails</p>
+                                <p className="text-sm text-muted-foreground">Automatically include a branded utility sheet PDF attachment</p>
+                            </div>
+                            <input
+                                type="checkbox"
+                                checked={notifications.seller_submission_pdf_attachment}
+                                onChange={(e) => setNotifications({ ...notifications, seller_submission_pdf_attachment: e.target.checked })}
                                 className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
                             />
                         </div>

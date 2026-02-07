@@ -1,6 +1,7 @@
 import { getResend } from '@/lib/resend';
 import type { BrandProfile } from '@/types';
 import { DEFAULT_MESSAGE_TEMPLATES, escapeHtml, firstNameFromFullName, plainTextToHtml, renderTemplate } from '@/lib/message-templates';
+import { createPacketPdfAttachmentForRequest } from '@/lib/pdf/packet-attachment';
 
 function getAppBaseUrl(): string {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -729,6 +730,7 @@ interface SendTCCompletionNotificationEmailParams {
     propertyAddress: string;
     sellerName?: string;
     requestId: string;
+    attachPdf?: boolean;
 }
 
 /**
@@ -740,6 +742,7 @@ export async function sendTCCompletionNotificationEmail({
     propertyAddress,
     sellerName,
     requestId,
+    attachPdf = false,
 }: SendTCCompletionNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
     // Construct the dashboard URL to view the completed request
     const baseUrl = getAppBaseUrl();
@@ -755,6 +758,44 @@ export async function sendTCCompletionNotificationEmail({
     });
 
     try {
+        let attachments:
+            | Array<{ filename: string; content: Buffer; contentType?: string }>
+            | undefined;
+
+        if (attachPdf) {
+            console.log('[email][submission_attachment] attempted', { requestId });
+            const attachmentResult = await createPacketPdfAttachmentForRequest(requestId);
+
+            if (attachmentResult.status === 'attached') {
+                const { attachment } = attachmentResult;
+                attachments = [{
+                    filename: attachment.filename,
+                    content: attachment.content,
+                    contentType: attachment.contentType,
+                }];
+                console.log('[email][submission_attachment] generated', {
+                    requestId,
+                    filename: attachment.filename,
+                    bytes: attachment.content.byteLength,
+                });
+            } else if (attachmentResult.status === 'skipped') {
+                console.log('[email][submission_attachment] skipped', {
+                    requestId,
+                    reason: attachmentResult.reason,
+                });
+            } else {
+                console.warn('[email][submission_attachment] failed', {
+                    requestId,
+                    error: attachmentResult.error,
+                });
+            }
+        } else {
+            console.log('[email][submission_attachment] skipped', {
+                requestId,
+                reason: 'disabled',
+            });
+        }
+
         console.log('Calling Resend API for TC notification...');
         const resend = getResend();
         const { data, error } = await resend.emails.send({
@@ -762,6 +803,7 @@ export async function sendTCCompletionNotificationEmail({
             to: tcEmail,
             subject: `Utility Info Submitted for ${propertyAddress}`,
             html: emailHtml,
+            attachments,
         });
 
         if (error) {
