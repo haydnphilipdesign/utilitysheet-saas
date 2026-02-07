@@ -95,6 +95,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                     </p>
                     <button
                         onClick={handleRetry}
+                        data-testid="seller-retry"
                         className="px-6 py-2 bg-white text-black font-medium rounded-full text-sm hover:bg-zinc-200 transition-colors"
                     >
                         Try Again

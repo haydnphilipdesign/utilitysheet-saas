@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle2 } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics/events';
 
 export default function SignupPage() {
     const router = useRouter();
@@ -75,6 +76,7 @@ export default function SignupPage() {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        trackEvent('signup_started', { method: 'email', source: 'signup_form' });
 
         try {
             const result = await stackClientApp.signUpWithCredential({
@@ -119,6 +121,7 @@ export default function SignupPage() {
     const handleGoogleSignIn = async () => {
         setGoogleLoading(true);
         setError(null);
+        trackEvent('signup_started', { method: 'google', source: 'signup_google' });
         try {
             await stackClientApp.signInWithOAuth('google', {
                 returnTo: getSafeNext() || '/dashboard',
@@ -190,7 +193,7 @@ export default function SignupPage() {
                             Start creating utility info sheets in minutes
                         </CardDescription>
                     </CardHeader>
-                    <form onSubmit={handleSignup}>
+                    <form onSubmit={handleSignup} data-testid="signup-form">
                         <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
                             {error && (
                                 <div className="p-2.5 sm:p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
@@ -243,6 +246,7 @@ export default function SignupPage() {
                         <CardFooter className="flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 pb-4 sm:pb-6">
                             <Button
                                 type="submit"
+                                data-testid="signup-submit"
                                 className="w-full h-10 sm:h-11 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
                                 disabled={loading || googleLoading}
                             >
@@ -269,6 +273,7 @@ export default function SignupPage() {
                             {/* Google OAuth Button */}
                             <Button
                                 type="button"
+                                data-testid="signup-google"
                                 variant="outline"
                                 className="w-full h-10 sm:h-11 border-input bg-background/50 hover:bg-accent text-foreground transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
                                 onClick={handleGoogleSignIn}

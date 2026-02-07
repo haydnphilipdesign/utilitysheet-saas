@@ -46,6 +46,7 @@ import { format } from 'date-fns';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
 import type { ProductUpdate } from '@/types';
+import { trackEvent } from '@/lib/analytics/events';
 
 const statusConfig = {
     draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
@@ -262,7 +263,16 @@ export default function DashboardPage() {
                             <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">Manage your utility sheet requests</p>
                         </div>
                         <Link href="/dashboard/requests/new" className="w-full sm:w-auto">
-                            <Button className="w-full sm:w-auto bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 active:scale-[0.98]">
+                            <Button
+                                data-testid="dashboard-new-request"
+                                className="w-full sm:w-auto bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 active:scale-[0.98]"
+                                onClick={() =>
+                                    trackEvent('new_request_started', {
+                                        source: 'dashboard_header_button',
+                                        location: 'dashboard',
+                                    })
+                                }
+                            >
                                 <Plus className="mr-2 h-4 w-4" />
                                 New Request
                             </Button>
@@ -363,13 +373,55 @@ export default function DashboardPage() {
                                         inputMode="search"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
+                                        data-testid="dashboard-request-search"
                                         className="pl-10 bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 text-sm"
                                     />
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="px-4 sm:px-6">
-                            <div className="rounded-lg border border-border overflow-x-auto">
+                            {filteredRequests.length > 0 && (
+                                <div className="space-y-3 md:hidden mb-4">
+                                    {filteredRequests.map((request) => {
+                                        const status = statusConfig[request.status];
+                                        const isLocked = Boolean(request.is_locked);
+
+                                        return (
+                                            <div key={request.id} className="rounded-lg border border-border bg-background/30 p-4 space-y-3">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <p className="font-medium text-foreground text-base truncate">{request.property_address}</p>
+                                                        <p className="text-sm text-muted-foreground truncate">{request.seller_name || 'No seller info'}</p>
+                                                    </div>
+                                                    <Badge variant="outline" className={`${status.color} border text-xs px-2 py-0.5 shrink-0`}>
+                                                        {isLocked ? (
+                                                            <Lock className="mr-1 h-3.5 w-3.5" />
+                                                        ) : (
+                                                            <status.icon className="mr-1 h-3.5 w-3.5" />
+                                                        )}
+                                                        {isLocked ? 'Locked' : status.label}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Closing: {request.closing_date ? format(new Date(request.closing_date), 'MMM d, yyyy') : '—'}
+                                                    </p>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => window.open(`/dashboard/requests/${request.id}`, '_self')}
+                                                    >
+                                                        <Eye className="mr-1.5 h-4 w-4" />
+                                                        View
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            <div className={`${filteredRequests.length > 0 ? 'hidden md:block' : ''} rounded-lg border border-border overflow-x-auto`}>
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="border-border hover:bg-transparent">

@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Star, Quote } from 'lucide-react';
 
 const testimonials = [
@@ -19,24 +19,26 @@ const stats = [
 ];
 
 export function SocialProofBar() {
+    const shouldReduceMotion = useReducedMotion();
+
     return (
         <section className="py-12 sm:py-16 bg-slate-600 text-white px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-7xl">
                 {/* Stats Row */}
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5 }}
+                    transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.5 }}
                     className="grid grid-cols-3 gap-4 sm:gap-8 mb-12"
                 >
                     {stats.map((stat, idx) => (
                         <motion.div
                             key={idx}
-                            initial={{ opacity: 0, y: 20 }}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
-                            transition={{ delay: idx * 0.1 }}
+                            transition={shouldReduceMotion ? { duration: 0.01 } : { delay: idx * 0.1 }}
                             className="text-center"
                         >
                             <div className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-1">
@@ -51,10 +53,10 @@ export function SocialProofBar() {
 
                 {/* Testimonial */}
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: 0.3 }}
+                    transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.3 }}
                     className="relative max-w-3xl mx-auto"
                 >
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2">
@@ -84,10 +86,10 @@ export function SocialProofBar() {
 
                 {/* Trust Badges */}
                 <motion.div
-                    initial={{ opacity: 0 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0 }}
                     whileInView={{ opacity: 1 }}
                     viewport={{ once: true }}
-                    transition={{ delay: 0.5 }}
+                    transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.5 }}
                     className="mt-12 pt-8 border-t border-slate-500/50"
                 >
                     <p className="text-center text-sm text-slate-300 mb-4">

@@ -143,6 +143,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                 value={address}
                                 onChange={(e) => setAddress(e.target.value)}
                                 placeholder="123 Main St, City, State"
+                                data-testid="intake-address-input"
                                 className="bg-background/50 border-input text-foreground"
                                 autoComplete="street-address"
                                 disabled={submitting}
@@ -163,6 +164,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                 onClick={handleStart}
                                 disabled={!canStart}
+                                data-testid="intake-continue"
                             >
                                 {submitting ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -178,4 +180,3 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
         </SellerLayout>
     );
 }
-

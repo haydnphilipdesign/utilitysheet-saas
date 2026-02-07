@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, useReducedMotion } from 'framer-motion';
 import { SellerLayout } from './SellerLayout';
 import { UtilityCategory, ProviderSuggestion, WaterSource, SewerType, HeatingType } from '@/types';
 import { WelcomeStep } from './steps/WelcomeStep';
@@ -10,6 +10,7 @@ import { UtilityStep } from './steps/UtilityStep';
 
 import { ReviewStep } from './steps/ReviewStep';
 import { SuccessStep } from './steps/SuccessStep';
+import { trackEvent } from '@/lib/analytics/events';
 
 // Define the full form state structure locally for the wizard
 export interface WizardState {
@@ -68,6 +69,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [submitting, setSubmitting] = useState(false);
     const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
+    const shouldReduceMotion = useReducedMotion();
 
     // Initialize state
     const [state, setState] = useState<WizardState>(() => {
@@ -277,6 +279,25 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         setUtilityIndex(visibleUtilities.length - 1);
     }, [currentStep, utilityIndex, visibleUtilities]);
 
+    useEffect(() => {
+        let stepLabel = 'welcome';
+        if (currentStep === Step.HOME_BASICS) {
+            stepLabel = 'home_basics';
+        } else if (currentStep === Step.UTILITIES) {
+            const currentCategory = visibleUtilities[utilityIndex];
+            stepLabel = currentCategory ? `utility_${currentCategory}` : 'utilities';
+        } else if (currentStep === Step.REVIEW) {
+            stepLabel = 'review';
+        } else if (currentStep === Step.SUCCESS) {
+            stepLabel = 'success';
+        }
+
+        trackEvent('seller_step_viewed', {
+            step: stepLabel,
+            location: isDemo ? 'demo_seller_flow' : 'seller_flow',
+        });
+    }, [currentStep, isDemo, utilityIndex, visibleUtilities]);
+
     const totalUtilities = visibleUtilities.length;
     // Simplify progress: Welcome(0.5) + Basics(1) + Each Util(1) + Review(1)
     const totalStepsWeight = 1.5 + totalUtilities + 1;
@@ -343,6 +364,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         if (isDemo) {
             // Small delay to simulate submission
             await new Promise(resolve => setTimeout(resolve, 500));
+            trackEvent('seller_submitted', {
+                source: 'seller_flow',
+                utility_count: visibleUtilities.length,
+                location: 'demo_seller_flow',
+            });
             setCurrentStep(Step.SUCCESS);
             return;
         }
@@ -360,6 +386,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 } catch {
                     // ignore
                 }
+                trackEvent('seller_submitted', {
+                    source: 'seller_flow',
+                    utility_count: visibleUtilities.length,
+                    location: 'seller_flow',
+                });
                 setCurrentStep(Step.SUCCESS);
             } else {
                 const errorBody = await response.json().catch(() => null);
@@ -395,7 +426,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             totalCount={visibleUtilities.length}
             brandProfile={brandProfile}
         >
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode={shouldReduceMotion ? 'sync' : 'wait'} initial={!shouldReduceMotion}>
                 {currentStep === Step.WELCOME && (
                     <WelcomeStep
                         key="welcome"

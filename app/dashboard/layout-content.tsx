@@ -18,6 +18,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { EmailVerificationBanner } from '@/components/email-verification-banner';
 import { Zap, LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X, Megaphone, Plus } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics/events';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -50,6 +51,19 @@ export function DashboardLayoutContent({
             }
         });
     }, []);
+
+    useEffect(() => {
+        if (!mobileMenuOpen) {
+            return;
+        }
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [mobileMenuOpen]);
 
     const handleSignOut = async () => {
         await stackClientApp.signOut();
@@ -123,7 +137,16 @@ export function DashboardLayoutContent({
                             <FeedbackDialog />
                             <ThemeToggle />
                             <Link href="/dashboard/requests/new" className="hidden lg:flex">
-                                <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20 text-sm h-9 px-3">
+                                <Button
+                                    data-testid="dashboard-shell-new-request"
+                                    className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20 text-sm h-9 px-3"
+                                    onClick={() =>
+                                        trackEvent('new_request_started', {
+                                            source: 'dashboard_shell_desktop_button',
+                                            location: 'dashboard_shell',
+                                        })
+                                    }
+                                >
                                     New Request
                                 </Button>
                             </Link>
@@ -131,7 +154,14 @@ export function DashboardLayoutContent({
                                 <Button
                                     size="icon-lg"
                                     aria-label="New Request"
+                                    data-testid="dashboard-shell-new-request-icon"
                                     className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20"
+                                    onClick={() =>
+                                        trackEvent('new_request_started', {
+                                            source: 'dashboard_shell_tablet_button',
+                                            location: 'dashboard_shell',
+                                        })
+                                    }
                                 >
                                     <Plus className="h-4 w-4" />
                                 </Button>
@@ -181,6 +211,7 @@ export function DashboardLayoutContent({
                                 variant="ghost"
                                 size="icon"
                                 className="lg:hidden text-muted-foreground hover:text-foreground"
+                                data-testid="dashboard-mobile-menu-toggle"
                                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             >
                                 {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -213,8 +244,15 @@ export function DashboardLayoutContent({
                             })}
                             <Link
                                 href="/dashboard/requests/new"
-                                onClick={() => setMobileMenuOpen(false)}
+                                onClick={() => {
+                                    trackEvent('new_request_started', {
+                                        source: 'dashboard_shell_mobile_menu',
+                                        location: 'dashboard_shell',
+                                    });
+                                    setMobileMenuOpen(false);
+                                }}
                                 className="flex items-center justify-center gap-2 px-4 py-3 mt-4 text-sm font-medium rounded-lg bg-gradient-to-r from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 text-white"
+                                data-testid="dashboard-shell-mobile-new-request"
                             >
                                 New Request
                             </Link>

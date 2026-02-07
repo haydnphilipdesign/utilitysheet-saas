@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Search, Check, Zap, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowRight, Sparkles, Search, Check, Zap, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { UtilitySheetPreview } from './UtilitySheetPreview';
+import { trackEvent } from '@/lib/analytics/events';
 
 const AnimationState = {
     INPUT: 0,
@@ -24,8 +25,13 @@ function HeroFeatureAnimation() {
     const [step, setStep] = useState<number>(AnimationState.INPUT);
     const [text, setText] = useState("");
     const targetText = "123 Main St, Springfield";
+    const shouldReduceMotion = useReducedMotion();
 
     useEffect(() => {
+        if (shouldReduceMotion) {
+            return;
+        }
+
         let timeout: NodeJS.Timeout;
 
         const runAnimation = async () => {
@@ -58,7 +64,24 @@ function HeroFeatureAnimation() {
 
         runAnimation();
         return () => clearTimeout(timeout);
-    }, [step, text]);
+    }, [shouldReduceMotion, step, targetText, text]);
+
+    if (shouldReduceMotion) {
+        return (
+            <div className="w-full h-full flex flex-col font-sans">
+                <div className="h-12 border-b border-border flex items-center justify-between px-6 bg-secondary/50">
+                    <div className="w-24 h-4 bg-secondary rounded-full" />
+                    <div className="flex gap-2">
+                        <div className="w-6 h-6 rounded-full bg-secondary" />
+                        <div className="w-6 h-6 rounded-full bg-secondary" />
+                    </div>
+                </div>
+                <div className="flex-1 p-8 relative overflow-hidden bg-white/50 dark:bg-black/20">
+                    <UtilitySheetPreview />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full h-full flex flex-col font-sans">
@@ -195,6 +218,8 @@ function Hero3DCard() {
 }
 
 export function HeroSection() {
+    const shouldReduceMotion = useReducedMotion();
+
     return (
         <section className="relative overflow-hidden pt-24 pb-16 sm:pt-32 sm:pb-24 lg:pt-40 lg:pb-32 px-4 lg:px-8">
             {/* Background Effects */}
@@ -206,16 +231,16 @@ export function HeroSection() {
             <div className="mx-auto max-w-7xl px-6 lg:px-8 z-10 relative">
                 <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
                     <motion.div
-                        initial={{ opacity: 0, x: -30 }}
+                        initial={shouldReduceMotion ? false : { opacity: 0, x: -30 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, ease: "easeOut" }}
                         className="text-center lg:text-left"
                     >
                         {/* Badge */}
                         <motion.div
-                            initial={{ opacity: 0, y: -10 }}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
+                            transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.2 }}
                             className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-slate-600 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6 shadow-lg shadow-slate-500/20"
                         >
                             <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -236,9 +261,9 @@ export function HeroSection() {
 
                         {/* Pain Points (The Problem) */}
                         <motion.div
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 }}
+                            transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.4 }}
                             className="mx-auto lg:mx-0 max-w-xl mb-6 sm:mb-8"
                         >
                             <p className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">The old way wastes your time:</p>
@@ -254,9 +279,9 @@ export function HeroSection() {
 
                         {/* Solution Bullets */}
                         <motion.ul
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5 }}
+                            transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.5 }}
                             className="mx-auto lg:mx-0 max-w-2xl space-y-2 sm:space-y-3 text-muted-foreground mb-6 sm:mb-8 text-left"
                         >
                             <li className="flex items-start gap-2 sm:gap-3">
@@ -279,13 +304,24 @@ export function HeroSection() {
 
                         {/* CTAs */}
                         <motion.div
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.6 }}
+                            transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.6 }}
                             className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4 mb-4"
                         >
                             <Link href="/auth/signup" className="w-full sm:w-auto">
-                                <Button size="lg" className="w-full sm:w-auto h-14 px-8 sm:px-10 text-base sm:text-lg bg-slate-600 text-white hover:bg-slate-500 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(71,85,105,0.5)] active:scale-[0.98]">
+                                <Button
+                                    size="lg"
+                                    data-testid="hero-signup-cta"
+                                    className="w-full sm:w-auto h-14 px-8 sm:px-10 text-base sm:text-lg bg-slate-600 text-white hover:bg-slate-500 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(71,85,105,0.5)] active:scale-[0.98]"
+                                    onClick={() =>
+                                        trackEvent('landing_cta_clicked', {
+                                            cta_id: 'hero_get_started_free',
+                                            destination: '/auth/signup',
+                                            location: 'hero',
+                                        })
+                                    }
+                                >
                                     Get Started Free
                                     <ArrowRight className="ml-2 h-5 w-5" />
                                 </Button>
@@ -300,9 +336,9 @@ export function HeroSection() {
 
                         {/* Trust Indicators */}
                         <motion.div
-                            initial={{ opacity: 0 }}
+                            initial={shouldReduceMotion ? false : { opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            transition={{ delay: 0.7 }}
+                            transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.7 }}
                             className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs sm:text-sm text-muted-foreground"
                         >
                             <span className="flex items-center gap-1.5">
@@ -322,9 +358,9 @@ export function HeroSection() {
 
                     {/* Hero Visual */}
                     <motion.div
-                        initial={{ opacity: 0, x: 30 }}
+                        initial={shouldReduceMotion ? false : { opacity: 0, x: 30 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+                        transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.8, ease: "easeOut", delay: 0.2 }}
                         className="w-full flex justify-center"
                     >
                         <Hero3DCard />

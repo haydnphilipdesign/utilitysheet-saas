@@ -48,6 +48,7 @@ import type { Request } from '@/types';
 import { useEffect, useState } from 'react';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
+import { trackEvent } from '@/lib/analytics/events';
 
 const statusConfig = {
     draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
@@ -139,7 +140,16 @@ export default function RequestsPage() {
                     <p className="text-muted-foreground mt-1">All utility sheet requests</p>
                 </div>
                 <Link href="/dashboard/requests/new">
-                    <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20">
+                    <Button
+                        data-testid="requests-new-request"
+                        className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20"
+                        onClick={() =>
+                            trackEvent('new_request_started', {
+                                source: 'requests_header_button',
+                                location: 'requests_page',
+                            })
+                        }
+                    >
                         <Plus className="mr-2 h-4 w-4" />
                         New Request
                     </Button>
@@ -162,7 +172,7 @@ export default function RequestsPage() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full sm:w-[180px] h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-sky-500"
+                            className="w-full sm:w-[180px] h-11 sm:h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-sky-500"
                         >
                             <option value="all">All Statuses</option>
                             <option value="draft">Draft</option>
@@ -178,6 +188,48 @@ export default function RequestsPage() {
             <Card className="border-border bg-card/50">
                 <CardContent className="pt-6">
                     <div className="rounded-lg border border-border overflow-x-auto">
+                        {filteredRequests.length > 0 && (
+                            <div className="space-y-3 p-3 md:hidden">
+                                {filteredRequests.map((request) => {
+                                    const status = statusConfig[request.status];
+                                    const isLocked = Boolean(request.is_locked);
+
+                                    return (
+                                        <div key={request.id} className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-foreground truncate">{request.property_address}</p>
+                                                    <p className="text-sm text-muted-foreground truncate">{request.seller_name || '—'}</p>
+                                                </div>
+                                                <Badge variant="outline" className={`${status.color} border text-xs px-2 py-0.5 shrink-0`}>
+                                                    {isLocked ? (
+                                                        <Lock className="mr-1 h-3.5 w-3.5" />
+                                                    ) : (
+                                                        <status.icon className="mr-1 h-3.5 w-3.5" />
+                                                    )}
+                                                    {isLocked ? 'Locked' : status.label}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-xs text-muted-foreground">
+                                                    Closing: {request.closing_date ? format(new Date(request.closing_date), 'MMM d, yyyy') : '—'}
+                                                </p>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => window.open(`/dashboard/requests/${request.id}`, '_self')}
+                                                >
+                                                    <Eye className="mr-1.5 h-4 w-4" />
+                                                    View
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className={filteredRequests.length > 0 ? 'hidden md:block' : ''}>
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-transparent">
@@ -306,6 +358,7 @@ export default function RequestsPage() {
                                 )}
                             </TableBody>
                         </Table>
+                        </div>
                     </div>
                 </CardContent>
             </Card>

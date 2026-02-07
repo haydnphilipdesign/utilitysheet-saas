@@ -1,14 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@stackframe/stack';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics/events';
 
 export function MarketingHeader() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const user = useUser();
+
+    useEffect(() => {
+        if (!mobileMenuOpen) {
+            return;
+        }
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [mobileMenuOpen]);
 
     return (
         <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -61,7 +75,17 @@ export function MarketingHeader() {
                                 </Button>
                             </Link>
                             <Link href="/auth/signup" className="hidden sm:block">
-                                <Button className="bg-slate-600 text-white hover:bg-slate-700 shadow-lg shadow-slate-500/20">
+                                <Button
+                                    className="bg-slate-600 text-white hover:bg-slate-700 shadow-lg shadow-slate-500/20"
+                                    data-testid="marketing-header-signup-cta"
+                                    onClick={() =>
+                                        trackEvent('landing_cta_clicked', {
+                                            cta_id: 'marketing_header_get_started',
+                                            destination: '/auth/signup',
+                                            location: 'marketing_header',
+                                        })
+                                    }
+                                >
                                     Get Started
                                 </Button>
                             </Link>
@@ -73,6 +97,7 @@ export function MarketingHeader() {
                         variant="ghost"
                         size="icon"
                         className="md:hidden text-muted-foreground hover:text-foreground"
+                        data-testid="marketing-mobile-menu-toggle"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                     >
                         {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -160,8 +185,16 @@ export function MarketingHeader() {
                                     </Link>
                                     <Link
                                         href="/auth/signup"
-                                        onClick={() => setMobileMenuOpen(false)}
+                                        onClick={() => {
+                                            trackEvent('landing_cta_clicked', {
+                                                cta_id: 'marketing_mobile_menu_get_started',
+                                                destination: '/auth/signup',
+                                                location: 'marketing_mobile_menu',
+                                            });
+                                            setMobileMenuOpen(false);
+                                        }}
                                         className="block px-4 py-3 text-sm font-medium text-center bg-slate-600 text-white hover:bg-slate-700 rounded-lg transition-colors"
+                                        data-testid="marketing-mobile-signup-cta"
                                     >
                                         Get Started
                                     </Link>

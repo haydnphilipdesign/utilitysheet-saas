@@ -265,7 +265,8 @@ export function UtilityStep({
                             placeholder={`Search ${categoryLabel} providers...`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-muted/50 border border-border rounded-xl py-3 sm:py-4 pl-10 sm:pl-12 pr-10 sm:pr-12 text-sm sm:text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
+                            className="w-full bg-muted/50 border border-border rounded-xl py-3 sm:py-4 pl-10 sm:pl-12 pr-10 sm:pr-12 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
+                            data-testid="seller-provider-search-input"
                         />
                         {searchQuery && (
                             <button

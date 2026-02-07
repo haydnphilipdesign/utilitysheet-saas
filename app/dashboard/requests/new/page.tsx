@@ -21,6 +21,7 @@ import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { DEFAULT_MESSAGE_TEMPLATES, firstNameFromFullName, renderTemplate } from '@/lib/message-templates';
+import { trackEvent } from '@/lib/analytics/events';
 
 interface FormData {
     property_address: string;
@@ -114,6 +115,12 @@ export default function NewRequestPage() {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        trackEvent('new_request_started', {
+            source: isOnboarding ? 'onboarding_new_request_page' : 'new_request_page',
+        });
+    }, [isOnboarding]);
+
     const handleCopyReusableLink = async () => {
         if (!intakeLink?.url) return;
         try {
@@ -188,6 +195,10 @@ export default function NewRequestPage() {
 
             const newRequest = await response.json();
 
+            trackEvent('new_request_created', {
+                source: isOnboarding ? 'onboarding_new_request_page' : 'new_request_page',
+                utility_count: formData.utility_categories.length,
+            });
             setGeneratedToken(newRequest.seller_token || newRequest.public_token);
             setShowShareDialog(true);
         } catch (error) {
@@ -382,6 +393,7 @@ export default function NewRequestPage() {
                                 placeholder="123 Main Street, City, State, ZIP"
                                 value={formData.property_address}
                                 onChange={(e) => updateField('property_address', e.target.value)}
+                                data-testid="new-request-address-input"
                                 className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
                             />
                         </div>
@@ -389,6 +401,7 @@ export default function NewRequestPage() {
                             <Button
                                 onClick={() => setStep(2)}
                                 disabled={!isStep1Valid}
+                                data-testid="new-request-step-1-continue"
                                 className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                             >
                                 Continue
@@ -637,6 +650,7 @@ export default function NewRequestPage() {
                             <Button
                                 onClick={handleCreate}
                                 disabled={!isStep3Valid || loading}
+                                data-testid="new-request-create"
                                 className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                             >
                                 {loading ? (

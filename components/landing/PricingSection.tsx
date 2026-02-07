@@ -3,6 +3,7 @@
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { trackEvent } from '@/lib/analytics/events';
 
 const tiers = [
     {
@@ -108,10 +109,18 @@ export function PricingSection() {
 
                             <Link href={tier.href} className="block mt-auto">
                                 <Button
+                                    data-testid={`pricing-${tier.name.toLowerCase()}-cta`}
                                     className={`w-full h-11 sm:h-12 text-sm sm:text-base font-semibold active:scale-[0.98] ${tier.popular
                                         ? 'bg-slate-600 text-white hover:bg-slate-700'
                                         : 'bg-foreground text-background hover:bg-foreground/90'
                                         }`}
+                                    onClick={() => {
+                                        trackEvent('landing_cta_clicked', {
+                                            cta_id: `pricing_${tier.name.toLowerCase()}_cta`,
+                                            destination: tier.href,
+                                            location: 'pricing',
+                                        });
+                                    }}
                                 >
                                     {tier.cta}
                                 </Button>

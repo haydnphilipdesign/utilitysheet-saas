@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { X, Check, Clock, MessageSquare, FileSpreadsheet, Zap } from 'lucide-react';
 
 const oldWaySteps = [
@@ -18,14 +18,16 @@ const newWaySteps = [
 ];
 
 export function BeforeAfterSection() {
+    const shouldReduceMotion = useReducedMotion();
+
     return (
         <section className="py-16 sm:py-24 lg:py-32 bg-muted/30 px-4 sm:px-6 lg:px-8 border-y border-border/50">
             <div className="mx-auto max-w-7xl">
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5 }}
+                    transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.5 }}
                     className="text-center mb-12 sm:mb-16"
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-600 text-sm font-medium mb-4">
@@ -44,10 +46,10 @@ export function BeforeAfterSection() {
                 <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
                     {/* Old Way */}
                     <motion.div
-                        initial={{ opacity: 0, x: -30 }}
+                        initial={shouldReduceMotion ? false : { opacity: 0, x: -30 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: 0.1 }}
+                        transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.5, delay: 0.1 }}
                         className="relative rounded-2xl sm:rounded-3xl border border-red-200 bg-red-50/50 dark:bg-red-950/10 dark:border-red-900/30 p-6 sm:p-8"
                     >
                         <div className="absolute -top-3 left-6 sm:left-8">
@@ -61,10 +63,10 @@ export function BeforeAfterSection() {
                             {oldWaySteps.map((step, idx) => (
                                 <motion.div
                                     key={idx}
-                                    initial={{ opacity: 0, y: 10 }}
+                                    initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
-                                    transition={{ delay: 0.2 + idx * 0.1 }}
+                                    transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.2 + idx * 0.1 }}
                                     className="flex items-start gap-3 sm:gap-4 p-4 rounded-xl bg-white/60 dark:bg-black/20 border border-red-100 dark:border-red-900/20"
                                 >
                                     <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
@@ -84,10 +86,10 @@ export function BeforeAfterSection() {
 
                     {/* New Way */}
                     <motion.div
-                        initial={{ opacity: 0, x: 30 }}
+                        initial={shouldReduceMotion ? false : { opacity: 0, x: 30 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: 0.2 }}
+                        transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.5, delay: 0.2 }}
                         className="relative rounded-2xl sm:rounded-3xl border border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/10 dark:border-emerald-900/30 p-6 sm:p-8"
                     >
                         <div className="absolute -top-3 left-6 sm:left-8">
@@ -101,10 +103,10 @@ export function BeforeAfterSection() {
                             {newWaySteps.map((step, idx) => (
                                 <motion.div
                                     key={idx}
-                                    initial={{ opacity: 0, y: 10 }}
+                                    initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
-                                    transition={{ delay: 0.3 + idx * 0.1 }}
+                                    transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.3 + idx * 0.1 }}
                                     className="flex items-start gap-3 sm:gap-4 p-4 rounded-xl bg-white/60 dark:bg-black/20 border border-emerald-100 dark:border-emerald-900/20"
                                 >
                                     <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
@@ -125,10 +127,10 @@ export function BeforeAfterSection() {
 
                 {/* Time Savings Highlight */}
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: 0.5 }}
+                    transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.5 }}
                     className="mt-12 text-center"
                 >
                     <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-6 px-6 py-4 rounded-2xl bg-slate-600 text-white shadow-xl shadow-slate-500/20">

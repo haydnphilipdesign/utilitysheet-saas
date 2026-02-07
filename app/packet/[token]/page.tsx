@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
+import { trackEvent } from '@/lib/analytics/events';
 
 type PacketBrand = {
     name?: string;
@@ -67,6 +68,10 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     }, [resolvedParams.token]);
 
     const copyLink = () => {
+        trackEvent('packet_action_clicked', {
+            action: 'copy_link',
+            location: 'packet_header',
+        });
         navigator.clipboard.writeText(window.location.href);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -75,6 +80,10 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     const downloadPdf = async () => {
         if (!data) return;
         setDownloading(true);
+        trackEvent('packet_action_clicked', {
+            action: 'download_pdf',
+            location: 'packet_header',
+        });
 
         try {
             await generatePacketPdf(resolvedParams.token);
@@ -143,6 +152,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                         <Button
                             variant="outline"
                             size="sm"
+                            data-testid="packet-copy-link"
                             className="border-input text-foreground hover:bg-muted h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm active:scale-[0.98]"
                             onClick={copyLink}
                         >
@@ -151,6 +161,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                         </Button>
                         <Button
                             size="sm"
+                            data-testid="packet-download-pdf"
                             className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm active:scale-[0.98]"
                             onClick={downloadPdf}
                             disabled={downloading}
@@ -216,7 +227,52 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                             <h3 className="text-base sm:text-lg font-semibold text-foreground">Utility Providers</h3>
                         </CardHeader>
                         <CardContent className="px-4 sm:px-6">
-                            <div className="rounded-lg border border-border overflow-x-auto">
+                            <div className="space-y-3 sm:hidden">
+                                {utilities.length === 0 ? (
+                                    <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+                                        No utility information provided yet.
+                                    </div>
+                                ) : (
+                                    utilities.map((utility: any, index: number) => (
+                                        <div key={index} className="rounded-lg border border-border p-4 space-y-3 bg-background/50">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xl">
+                                                    {UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-foreground capitalize text-sm">{utility.category}</p>
+                                                    <p className="text-sm text-muted-foreground truncate">{utility.provider_name}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {utility.provider_phone && (
+                                                    <a
+                                                        href={`tel:${utility.provider_phone}`}
+                                                        className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-2 text-sm text-foreground hover:bg-muted"
+                                                        onClick={() => trackEvent('packet_action_clicked', { action: 'phone_tap', location: 'packet_mobile_card' })}
+                                                    >
+                                                        <Phone className="h-4 w-4" />
+                                                        Call
+                                                    </a>
+                                                )}
+                                                {utility.provider_website && (
+                                                    <a
+                                                        href={utility.provider_website}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-2 text-sm text-foreground hover:bg-muted"
+                                                        onClick={() => trackEvent('packet_action_clicked', { action: 'website_tap', location: 'packet_mobile_card' })}
+                                                    >
+                                                        <ExternalLink className="h-4 w-4" />
+                                                        Website
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <div className="hidden sm:block rounded-lg border border-border overflow-x-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="border-border hover:bg-transparent">
@@ -252,6 +308,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                                 <a
                                                                     href={`tel:${utility.provider_phone}`}
                                                                     className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-400 dark:text-sky-400 dark:hover:text-sky-300"
+                                                                    onClick={() => trackEvent('packet_action_clicked', { action: 'phone_tap', location: 'packet_table' })}
                                                                 >
                                                                     <Phone className="h-3 w-3" />
                                                                     {utility.provider_phone}
@@ -263,6 +320,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+                                                                    onClick={() => trackEvent('packet_action_clicked', { action: 'website_tap', location: 'packet_table' })}
                                                                 >
                                                                     <ExternalLink className="h-3 w-3" />
                                                                     Website

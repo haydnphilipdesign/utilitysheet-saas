@@ -131,7 +131,7 @@ export default function LoginPage() {
                             Sign in to your account to continue
                         </CardDescription>
                     </CardHeader>
-                    <form onSubmit={handleLogin}>
+                    <form onSubmit={handleLogin} data-testid="login-form">
                         <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
                             {error && (
                                 <div className="p-2.5 sm:p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
@@ -177,6 +177,7 @@ export default function LoginPage() {
                         <CardFooter className="flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 pb-4 sm:pb-6">
                             <Button
                                 type="submit"
+                                data-testid="login-submit"
                                 className="w-full h-10 sm:h-11 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
                                 disabled={loading || googleLoading}
                             >
@@ -203,6 +204,7 @@ export default function LoginPage() {
                             {/* Google OAuth Button */}
                             <Button
                                 type="button"
+                                data-testid="login-google"
                                 variant="outline"
                                 className="w-full h-10 sm:h-11 border-input bg-background/50 hover:bg-accent text-foreground transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
                                 onClick={handleGoogleSignIn}
