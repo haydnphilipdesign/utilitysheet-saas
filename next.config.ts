@@ -26,6 +26,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    '/api/seller/**': ['node_modules/@sparticuz/chromium/bin/**/*'],
+    '/api/packet/**/pdf': ['node_modules/@sparticuz/chromium/bin/**/*'],
+  },
   images: {
     remotePatterns: [
       {

@@ -16,10 +16,13 @@ export type PacketPdfAttachmentResult =
     | { status: 'skipped'; reason: 'not_found' | 'not_submitted' | 'locked' }
     | { status: 'failed'; error: string };
 
+type LaunchStrategy = 'env_executable' | 'bin_path' | 'pack_url' | 'default';
+
 async function resolveLaunchOptions(): Promise<{
     executablePath: string;
     args: string[];
     headless: boolean | 'shell';
+    strategy: LaunchStrategy;
 }> {
     const configuredPath = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_EXECUTABLE_PATH;
     if (configuredPath) {
@@ -27,6 +30,29 @@ async function resolveLaunchOptions(): Promise<{
             executablePath: configuredPath,
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
             headless: true,
+            strategy: 'env_executable',
+        };
+    }
+
+    const chromiumBinPath = process.env.CHROMIUM_BIN_PATH?.trim();
+    if (chromiumBinPath) {
+        const executablePath = await chromium.executablePath(chromiumBinPath);
+        return {
+            executablePath,
+            args: puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' }),
+            headless: 'shell',
+            strategy: 'bin_path',
+        };
+    }
+
+    const chromiumPackUrl = process.env.CHROMIUM_PACK_URL?.trim();
+    if (chromiumPackUrl) {
+        const executablePath = await chromium.executablePath(chromiumPackUrl);
+        return {
+            executablePath,
+            args: puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' }),
+            headless: 'shell',
+            strategy: 'pack_url',
         };
     }
 
@@ -35,12 +61,17 @@ async function resolveLaunchOptions(): Promise<{
         executablePath,
         args: puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' }),
         headless: 'shell',
+        strategy: 'default',
     };
 }
 
 async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: string; content: Buffer }> {
     const render = buildPacketPdfHtml(data);
     const launchOptions = await resolveLaunchOptions();
+    console.log('[pdf][packet_attachment] launch_options', {
+        strategy: launchOptions.strategy,
+        headless: launchOptions.headless,
+    });
 
     const browser = await puppeteer.launch({
         executablePath: launchOptions.executablePath,
@@ -141,9 +172,11 @@ export async function createPacketPdfAttachmentForRequest(requestId: string): Pr
         const attachment = await createPacketPdfAttachment(packetResult.data);
         return { status: 'attached', attachment };
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown PDF generation error';
+        console.warn('[pdf][packet_attachment] failed', { requestId, error: errorMessage });
         return {
             status: 'failed',
-            error: error instanceof Error ? error.message : 'Unknown PDF generation error',
+            error: errorMessage,
         };
     }
 }
@@ -167,9 +200,15 @@ export async function createPacketPdfAttachmentForPublicToken(token: string): Pr
         const attachment = await createPacketPdfAttachment(packetResult.data);
         return { status: 'attached', attachment };
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown PDF generation error';
+        console.warn('[pdf][packet_attachment] failed', { token, error: errorMessage });
         return {
             status: 'failed',
-            error: error instanceof Error ? error.message : 'Unknown PDF generation error',
+            error: errorMessage,
         };
     }
 }
+
+export const __testing = {
+    resolveLaunchOptions,
+};

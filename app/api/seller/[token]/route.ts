@@ -7,6 +7,8 @@ import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
 
+export const runtime = 'nodejs';
+
 // GET /api/seller/[token] - Get request data for seller form
 export async function GET(
     request: Request,
