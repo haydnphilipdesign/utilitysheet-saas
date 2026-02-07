@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -10,18 +10,20 @@ import { trackEvent } from '@/lib/analytics/events';
 export function StickyCTA() {
     const [isVisible, setIsVisible] = useState(false);
     const [isDismissed, setIsDismissed] = useState(false);
+    const hasTrackedViewRef = useRef(false);
     const shouldReduceMotion = useReducedMotion();
 
     useEffect(() => {
         const handleScroll = () => {
-            // Show after scrolling past hero section (roughly 600px)
-            if (window.scrollY > 600 && !isDismissed) {
+            const mobileThreshold = window.innerWidth < 768 ? 420 : 600;
+            if (window.scrollY > mobileThreshold && !isDismissed) {
                 setIsVisible(true);
             } else {
                 setIsVisible(false);
             }
         };
 
+        handleScroll();
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, [isDismissed]);
@@ -30,6 +32,16 @@ export function StickyCTA() {
         setIsDismissed(true);
         setIsVisible(false);
     };
+
+    useEffect(() => {
+        if (!isVisible || hasTrackedViewRef.current) return;
+        trackEvent('landing_primary_cta_viewed', {
+            cta_id: 'primary_sticky_start_free',
+            page: 'landing',
+            location: 'sticky_cta',
+        });
+        hasTrackedViewRef.current = true;
+    }, [isVisible]);
 
     return (
         <AnimatePresence>
@@ -57,14 +69,14 @@ export function StickyCTA() {
                                         className="bg-white text-slate-700 hover:bg-slate-100 font-semibold h-10 px-4"
                                         data-testid="sticky-cta-signup"
                                         onClick={() =>
-                                            trackEvent('landing_cta_clicked', {
-                                                cta_id: 'sticky_cta_get_started',
+                                            trackEvent('landing_primary_cta_clicked', {
+                                                cta_id: 'primary_sticky_start_free',
                                                 destination: '/auth/signup',
                                                 location: 'sticky_cta',
                                             })
                                         }
                                     >
-                                        Get Started
+                                        Start Free
                                         <ArrowRight className="w-4 h-4 ml-1" />
                                     </Button>
                                 </Link>

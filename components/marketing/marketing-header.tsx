@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@stackframe/stack';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { trackEvent } from '@/lib/analytics/events';
 
 export function MarketingHeader() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const hasTrackedPrimaryViewRef = useRef(false);
     const user = useUser();
 
     useEffect(() => {
@@ -24,6 +25,19 @@ export function MarketingHeader() {
         };
     }, [mobileMenuOpen]);
 
+    useEffect(() => {
+        if (user || hasTrackedPrimaryViewRef.current) {
+            return;
+        }
+
+        trackEvent('landing_primary_cta_viewed', {
+            cta_id: 'primary_header_start_free',
+            page: 'landing',
+            location: 'marketing_header',
+        });
+        hasTrackedPrimaryViewRef.current = true;
+    }, [user]);
+
     return (
         <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
             <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -37,14 +51,11 @@ export function MarketingHeader() {
                 </div>
 
                 <nav className="hidden items-center gap-6 lg:gap-8 md:flex">
-                    <Link href="/#for-tcs" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        For TCs
+                    <Link href="/#how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                        Workflow
                     </Link>
                     <Link href="/#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                         Features
-                    </Link>
-                    <Link href="/#how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        How it Works
                     </Link>
                     <Link href="/#pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                         Pricing
@@ -79,14 +90,31 @@ export function MarketingHeader() {
                                     className="bg-slate-600 text-white hover:bg-slate-700 shadow-lg shadow-slate-500/20"
                                     data-testid="marketing-header-signup-cta"
                                     onClick={() =>
-                                        trackEvent('landing_cta_clicked', {
-                                            cta_id: 'marketing_header_get_started',
+                                        trackEvent('landing_primary_cta_clicked', {
+                                            cta_id: 'primary_header_start_free',
                                             destination: '/auth/signup',
                                             location: 'marketing_header',
                                         })
                                     }
                                 >
-                                    Get Started
+                                    Start Free
+                                </Button>
+                            </Link>
+
+                            <Link href="/auth/signup" className="md:hidden">
+                                <Button
+                                    size="sm"
+                                    className="h-9 bg-slate-600 text-white hover:bg-slate-700 px-3"
+                                    data-testid="marketing-header-mobile-signup-cta"
+                                    onClick={() =>
+                                        trackEvent('landing_primary_cta_clicked', {
+                                            cta_id: 'primary_header_mobile_start_free',
+                                            destination: '/auth/signup',
+                                            location: 'marketing_header_mobile',
+                                        })
+                                    }
+                                >
+                                    Start Free
                                 </Button>
                             </Link>
                         </>
@@ -110,11 +138,11 @@ export function MarketingHeader() {
                 <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
                     <nav className="mx-auto max-w-7xl px-4 py-4 space-y-2">
                         <Link
-                            href="/#for-tcs"
+                            href="/#how-it-works"
                             onClick={() => setMobileMenuOpen(false)}
                             className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                         >
-                            For TCs
+                            Workflow
                         </Link>
                         <Link
                             href="/#features"
@@ -122,13 +150,6 @@ export function MarketingHeader() {
                             className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                         >
                             Features
-                        </Link>
-                        <Link
-                            href="/#how-it-works"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                        >
-                            How it Works
                         </Link>
                         <Link
                             href="/#pricing"
@@ -186,8 +207,8 @@ export function MarketingHeader() {
                                     <Link
                                         href="/auth/signup"
                                         onClick={() => {
-                                            trackEvent('landing_cta_clicked', {
-                                                cta_id: 'marketing_mobile_menu_get_started',
+                                            trackEvent('landing_primary_cta_clicked', {
+                                                cta_id: 'primary_mobile_menu_start_free',
                                                 destination: '/auth/signup',
                                                 location: 'marketing_mobile_menu',
                                             });
@@ -196,7 +217,7 @@ export function MarketingHeader() {
                                         className="block px-4 py-3 text-sm font-medium text-center bg-slate-600 text-white hover:bg-slate-700 rounded-lg transition-colors"
                                         data-testid="marketing-mobile-signup-cta"
                                     >
-                                        Get Started
+                                        Start Free
                                     </Link>
                                 </>
                             )}

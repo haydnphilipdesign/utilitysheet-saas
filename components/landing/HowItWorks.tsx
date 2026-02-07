@@ -1,12 +1,32 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useInView } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 import { MousePointer2, FileCheck, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { trackEvent } from '@/lib/analytics/events';
 
 export function HowItWorks() {
+    const sectionRef = useRef<HTMLElement | null>(null);
+    const isInView = useInView(sectionRef, { once: true, margin: '-20% 0px -20% 0px' });
+
+    useEffect(() => {
+        if (!isInView) return;
+
+        trackEvent('landing_section_viewed', {
+            section_id: 'how_it_works',
+            page: 'landing',
+            location: 'how_it_works',
+        });
+        trackEvent('pdf_attachment_value_prop_viewed', {
+            section_id: 'how_it_works',
+            page: 'landing',
+            location: 'how_it_works',
+        });
+    }, [isInView]);
+
     return (
-        <section id="how-it-works" className="scroll-mt-24 py-16 sm:py-24 lg:py-32 bg-background relative overflow-hidden">
+        <section ref={sectionRef} id="how-it-works" className="scroll-mt-24 py-16 sm:py-24 lg:py-32 bg-background relative overflow-hidden">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="text-center mb-12 sm:mb-16 lg:mb-24">
                     <h2 className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">Workflow</h2>
@@ -80,10 +100,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">03.</span>
-                                Share the Utility Sheet
+                                Share + Deliver the Utility Sheet
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Download a clean PDF and share the web link with buyers, agents, title, or your team.
+                                Download the PDF, share the web sheet link, and optionally auto-attach the PDF to seller-submission completion emails.
                             </p>
                         </div>
                         <motion.div

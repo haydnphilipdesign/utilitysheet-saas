@@ -1,21 +1,21 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
-import { Star, Quote } from 'lucide-react';
+import { Quote } from 'lucide-react';
 
 const testimonials = [
     {
-        quote: "I used to spend 30-45 minutes per file chasing down utility info. Now it's literally 2 minutes. Game changer for my TC business.",
-        author: "Sarah M.",
-        role: "Transaction Coordinator",
-        location: "Pennsylvania",
+        quote: "UtilitySheet standardizes utility handoff with one seller link, clear provider details, and a buyer-ready sheet.",
+        author: "UtilitySheet",
+        role: "Product summary",
+        location: "Real estate operations",
     },
 ];
 
 const stats = [
-    { value: '2 min', label: 'Average completion time' },
-    { value: '30+', label: 'Minutes saved per file' },
-    { value: '70%', label: 'Completion rate in 48hrs' },
+    { value: 'No login', label: 'Seller-friendly form experience' },
+    { value: 'PDF + link', label: 'Buyer-ready output formats' },
+    { value: 'Settings', label: 'Reminder + attachment controls' },
 ];
 
 export function SocialProofBar() {
@@ -59,15 +59,7 @@ export function SocialProofBar() {
                     transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.3 }}
                     className="relative max-w-3xl mx-auto"
                 >
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                        <div className="flex gap-1">
-                            {[...Array(5)].map((_, i) => (
-                                <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="pt-6 text-center">
+                    <div className="pt-2 text-center">
                         <Quote className="w-8 h-8 text-slate-400 mx-auto mb-4 opacity-50" />
                         <blockquote className="text-lg sm:text-xl lg:text-2xl font-medium leading-relaxed mb-6">
                             &ldquo;{testimonials[0].quote}&rdquo;

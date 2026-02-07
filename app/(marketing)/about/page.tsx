@@ -21,14 +21,53 @@ export default function AboutPage() {
                             Built from <span className="text-slate-500">Real Experience</span>
                         </h1>
                         <p className="text-xl text-muted-foreground leading-relaxed">
-                            UtilitySheet wasn’t born in a boardroom. It was built by watching a transaction coordinator handle hundreds of closings—and seeing the same frustrating problem over and over.
+                            UtilitySheet helps transaction coordinators collect utility providers with one seller link, then deliver a clean utility handoff (web + PDF). It wasn’t born in a boardroom; it came from real closing workflow pain.
                         </p>
                     </div>
                 </div>
             </section>
 
+            {/* What It Does + 3-Step Summary */}
+            <section className="py-10 bg-background">
+                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div className="rounded-2xl border border-border/60 bg-card/40 p-6 sm:p-8">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">What UtilitySheet does</h2>
+                        <p className="text-muted-foreground text-base sm:text-lg max-w-3xl">
+                            UtilitySheet helps transaction coordinators collect utility provider details from sellers and deliver a clean utility handoff without repeated follow-ups.
+                        </p>
+
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="rounded-xl border border-border/60 bg-background/70 p-4">
+                                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Step 1</p>
+                                <p className="font-semibold text-foreground">Send one guided seller link</p>
+                                <p className="text-sm text-muted-foreground mt-1">No login required for the seller.</p>
+                            </div>
+                            <div className="rounded-xl border border-border/60 bg-background/70 p-4">
+                                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Step 2</p>
+                                <p className="font-semibold text-foreground">Seller confirms providers</p>
+                                <p className="text-sm text-muted-foreground mt-1">Address-based suggestions plus manual overrides.</p>
+                            </div>
+                            <div className="rounded-xl border border-border/60 bg-background/70 p-4">
+                                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Step 3</p>
+                                <p className="font-semibold text-foreground">Share web sheet + PDF output</p>
+                                <p className="text-sm text-muted-foreground mt-1">Completion emails can optionally include the PDF attachment.</p>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                            <Link href="/auth/signup">
+                                <Button className="w-full sm:w-auto bg-slate-600 text-white hover:bg-slate-700">Start Free</Button>
+                            </Link>
+                            <Link href="/demo">
+                                <Button variant="outline" className="w-full sm:w-auto">Try Demo</Button>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Origin Story Section */}
-            <section className="py-16 bg-muted/30">
+            <section className="py-12 bg-muted/30">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
                         {/* Story Content */}
@@ -119,7 +158,7 @@ export default function AboutPage() {
             </section>
 
             {/* The Problem Section */}
-            <section className="py-16">
+            <section className="py-12">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="max-w-3xl mx-auto text-center mb-12">
                         <h2 className="text-3xl font-bold text-foreground mb-4">The Problem We Saw</h2>
@@ -148,7 +187,7 @@ export default function AboutPage() {
             </section>
 
             {/* What We Built Section */}
-            <section className="py-16 bg-muted/30">
+            <section className="py-12 bg-muted/30">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                         <div>
@@ -161,7 +200,7 @@ export default function AboutPage() {
                                 UtilitySheet is a lightweight, transaction-friendly way to collect utility provider information and output it in a clean, professional format that can travel with the deal.
                             </p>
                             <p className="text-lg text-muted-foreground">
-                                No databases to maintain. No crazy setup. The seller completes a guided form in minutes, and you get a branded utility sheet instantly—ready to share with agents, buyers, title, whoever needs it.
+                                No heavy setup. Sellers complete a guided form, and you get a utility sheet ready to share as a web view or PDF. You can also choose to auto-attach that PDF to seller-submission completion emails.
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-6">
@@ -191,7 +230,7 @@ export default function AboutPage() {
             </section>
 
             {/* Who It's For */}
-            <section className="py-16">
+            <section className="py-12">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
                     <h2 className="text-3xl font-bold text-foreground mb-4">Built for TCs. Useful for Everyone.</h2>
                     <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto">

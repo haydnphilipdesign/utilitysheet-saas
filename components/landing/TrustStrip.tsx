@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { Building2, Users, Award, MapPin } from 'lucide-react';
 
 export function TrustStrip() {

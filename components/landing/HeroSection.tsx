@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Search, Check, Zap, CheckCircle2, Clock, XCircle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UtilitySheetPreview } from './UtilitySheetPreview';
 import { trackEvent } from '@/lib/analytics/events';
 
@@ -16,9 +16,8 @@ const AnimationState = {
 } as const;
 
 const painPoints = [
-    'Texting sellers 2-3 times for utility info',
-    'Waiting days for a response (if they reply)',
-    'Manually typing into spreadsheets',
+    'Multiple follow-up texts/emails just to get utility info',
+    'Last-minute scrambling when utility details are missing',
 ];
 
 function HeroFeatureAnimation() {
@@ -206,7 +205,7 @@ function HeroFeatureAnimation() {
 function Hero3DCard() {
     return (
         <div
-            className="relative w-full max-w-4xl mx-auto h-[350px] sm:h-[450px] lg:h-[580px] rounded-xl bg-card/50 border border-border backdrop-blur-sm shadow-2xl shadow-slate-500/10 flex items-center justify-center p-2"
+            className="relative w-full max-w-4xl mx-auto h-[280px] sm:h-[420px] lg:h-[560px] rounded-xl bg-card/50 border border-border backdrop-blur-sm shadow-2xl shadow-slate-500/10 flex items-center justify-center p-2"
         >
             <div
                 className="w-full h-full bg-background rounded-lg border border-border overflow-hidden flex flex-col shadow-inner"
@@ -219,9 +218,27 @@ function Hero3DCard() {
 
 export function HeroSection() {
     const shouldReduceMotion = useReducedMotion();
+    const sectionRef = useRef<HTMLElement | null>(null);
+    const isInView = useInView(sectionRef, { once: true, margin: '-20% 0px -20% 0px' });
+
+    useEffect(() => {
+        if (!isInView) return;
+
+        trackEvent('landing_section_viewed', {
+            section_id: 'hero',
+            page: 'landing',
+            location: 'hero',
+        });
+
+        trackEvent('landing_primary_cta_viewed', {
+            cta_id: 'primary_hero_start_free',
+            page: 'landing',
+            location: 'hero',
+        });
+    }, [isInView]);
 
     return (
-        <section className="relative overflow-hidden pt-24 pb-16 sm:pt-32 sm:pb-24 lg:pt-40 lg:pb-32 px-4 lg:px-8">
+        <section ref={sectionRef} className="relative overflow-hidden pt-24 pb-14 sm:pt-32 sm:pb-24 lg:pt-40 lg:pb-32 px-4 lg:px-8">
             {/* Background Effects */}
             <div className="absolute inset-0 -z-10">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-slate-500/20 blur-[120px] rounded-full opacity-30 pointer-events-none" />
@@ -244,19 +261,19 @@ export function HeroSection() {
                             className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-slate-600 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6 shadow-lg shadow-slate-500/20"
                         >
                             <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            <span>Save 30+ minutes per listing</span>
+                            <span>Standardize utility handoff workflow</span>
                         </motion.div>
 
                         {/* Main Headline with Pain Hook */}
                         <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-6xl font-black tracking-tight text-foreground mb-4 sm:mb-6">
-                            Still texting sellers
-                            <span className="text-red-500 block mt-1">for utility info?</span>
+                            Stop chasing sellers
+                            <span className="text-red-500 block mt-1">for utility providers.</span>
                         </h1>
 
                         {/* Value Proposition */}
-                        <p className="mx-auto lg:mx-0 max-w-2xl text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-8 leading-relaxed">
-                            Stop the back-and-forth. Send one link, get a buyer-ready utility sheet in 2 minutes. 
-                            No spreadsheets. No chasing. No follow-ups.
+                        <p className="mx-auto lg:mx-0 max-w-2xl text-base sm:text-lg md:text-xl text-muted-foreground mb-5 sm:mb-7 leading-relaxed">
+                            UtilitySheet gives you a guided seller link workflow that turns messy follow-up into one clean handoff:
+                            a buyer-ready utility sheet (web + PDF), plus optional completion emails with the PDF attached.
                         </p>
 
                         {/* Pain Points (The Problem) */}
@@ -264,7 +281,7 @@ export function HeroSection() {
                             initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.4 }}
-                            className="mx-auto lg:mx-0 max-w-xl mb-6 sm:mb-8"
+                            className="mx-auto lg:mx-0 max-w-xl mb-5 sm:mb-7"
                         >
                             <p className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">The old way wastes your time:</p>
                             <div className="space-y-2">
@@ -286,19 +303,15 @@ export function HeroSection() {
                         >
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>Seller-friendly:</strong> No login, no account numbers, no bills to upload</span>
+                                <span className="text-sm sm:text-base"><strong>Seller-friendly intake:</strong> one secure link, no login, no app install</span>
                             </li>
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>Lightning fast:</strong> AI suggests providers, sellers confirm in 2 minutes</span>
+                                <span className="text-sm sm:text-base"><strong>Professional output:</strong> shareable utility sheet + downloadable PDF</span>
                             </li>
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>Professional output:</strong> Branded PDF + shareable link, instantly</span>
-                            </li>
-                            <li className="flex items-start gap-2 sm:gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>Reusable link option:</strong> Share one URL every time—seller enters the address up front</span>
+                                <span className="text-sm sm:text-base"><strong>Completion email option:</strong> auto-attach the utility sheet PDF when sellers submit</span>
                             </li>
                         </motion.ul>
 
@@ -315,19 +328,30 @@ export function HeroSection() {
                                     data-testid="hero-signup-cta"
                                     className="w-full sm:w-auto h-14 px-8 sm:px-10 text-base sm:text-lg bg-slate-600 text-white hover:bg-slate-500 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(71,85,105,0.5)] active:scale-[0.98]"
                                     onClick={() =>
-                                        trackEvent('landing_cta_clicked', {
-                                            cta_id: 'hero_get_started_free',
+                                        trackEvent('landing_primary_cta_clicked', {
+                                            cta_id: 'primary_hero_start_free',
                                             destination: '/auth/signup',
                                             location: 'hero',
                                         })
                                     }
                                 >
-                                    Get Started Free
+                                    Start Free
                                     <ArrowRight className="ml-2 h-5 w-5" />
                                 </Button>
                             </Link>
                             <Link href="/demo" className="w-full sm:w-auto">
-                                <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-6 sm:px-8 text-base sm:text-lg border-slate-500/50 text-slate-600 hover:text-slate-700 hover:bg-slate-500/10 hover:border-slate-600 bg-card/50 backdrop-blur-sm active:scale-[0.98]">
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    className="w-full sm:w-auto h-14 px-6 sm:px-8 text-base sm:text-lg border-slate-500/50 text-slate-600 hover:text-slate-700 hover:bg-slate-500/10 hover:border-slate-600 bg-card/50 backdrop-blur-sm active:scale-[0.98]"
+                                    onClick={() =>
+                                        trackEvent('landing_cta_clicked', {
+                                            cta_id: 'secondary_hero_demo',
+                                            destination: '/demo',
+                                            location: 'hero',
+                                        })
+                                    }
+                                >
                                     <Sparkles className="mr-2 h-4 w-5" />
                                     See How It Works
                                 </Button>

@@ -4,24 +4,23 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { X, Check, Clock, MessageSquare, FileSpreadsheet, Zap } from 'lucide-react';
 
 const oldWaySteps = [
-    { icon: MessageSquare, text: 'Text/email seller 2-3 times for utility info' },
-    { icon: Clock, text: 'Wait 1-3 days for a response (if they reply at all)' },
-    { icon: FileSpreadsheet, text: 'Manually type into spreadsheet or buyer packet' },
-    { icon: X, text: 'Hope you got the right provider (often wrong or incomplete)' },
+    { icon: MessageSquare, text: 'Multiple texts/emails to collect provider details' },
+    { icon: Clock, text: 'Delays and follow-ups when sellers miss info' },
+    { icon: X, text: 'Inconsistent utility handoff quality across files' },
 ];
 
 const newWaySteps = [
     { icon: MessageSquare, text: 'Send one secure link (takes 30 seconds)' },
-    { icon: Zap, text: 'Seller confirms in ~2 minutes on their phone' },
-    { icon: FileSpreadsheet, text: 'Professional PDF auto-generates instantly' },
-    { icon: Check, text: 'AI-verified providers with contact info included' },
+    { icon: Zap, text: 'Seller confirms providers on their phone with guidance' },
+    { icon: FileSpreadsheet, text: 'Web sheet + PDF generated for clean sharing' },
+    { icon: Check, text: 'Optional completion email can include PDF attachment' },
 ];
 
 export function BeforeAfterSection() {
     const shouldReduceMotion = useReducedMotion();
 
     return (
-        <section className="py-16 sm:py-24 lg:py-32 bg-muted/30 px-4 sm:px-6 lg:px-8 border-y border-border/50">
+            <section className="py-14 sm:py-20 lg:py-24 bg-muted/30 px-4 sm:px-6 lg:px-8 border-y border-border/50">
             <div className="mx-auto max-w-7xl">
                 <motion.div
                     initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
@@ -32,7 +31,7 @@ export function BeforeAfterSection() {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-600 text-sm font-medium mb-4">
                         <Clock className="w-4 h-4" />
-                        <span>The old way costs you 30+ minutes per file</span>
+                        <span>The old way creates avoidable utility busywork</span>
                     </div>
                     <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground tracking-tight mb-4">
                         Still doing this the old way?
@@ -79,7 +78,7 @@ export function BeforeAfterSection() {
 
                         <div className="mt-6 p-4 rounded-xl bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30">
                             <p className="text-red-800 dark:text-red-300 text-sm font-medium text-center">
-                                Result: Wasted time, frustrated sellers, incomplete buyer packets
+                                Result: fragmented process, delayed handoffs, inconsistent output
                             </p>
                         </div>
                     </motion.div>
@@ -119,13 +118,13 @@ export function BeforeAfterSection() {
 
                         <div className="mt-6 p-4 rounded-xl bg-emerald-100/50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/30">
                             <p className="text-emerald-800 dark:text-emerald-300 text-sm font-medium text-center">
-                                Result: Save 30+ min/file, happier sellers, professional handoffs
+                                Result: consistent workflow, faster handoffs, professional delivery
                             </p>
                         </div>
                     </motion.div>
                 </div>
 
-                {/* Time Savings Highlight */}
+                {/* Workflow Highlight */}
                 <motion.div
                     initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -136,12 +135,9 @@ export function BeforeAfterSection() {
                     <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-6 px-6 py-4 rounded-2xl bg-slate-600 text-white shadow-xl shadow-slate-500/20">
                         <div className="flex items-center gap-3">
                             <Clock className="w-6 h-6" />
-                            <span className="text-lg font-semibold">Average time savings:</span>
+                            <span className="text-lg font-semibold">Standardized handoff:</span>
                         </div>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-3xl sm:text-4xl font-bold">30+</span>
-                            <span className="text-lg">minutes per listing</span>
-                        </div>
+                        <span className="text-lg">one guided seller link, one clean output</span>
                     </div>
                 </motion.div>
             </div>

@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+import { useInView } from 'framer-motion';
 import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -14,8 +16,9 @@ const tiers = [
             '3 unlocked requests per month',
             'Reusable seller intake link (seller enters address)',
             'Buyer-ready PDF + share link',
-            'Email reminders',
-            'Over-limit submissions saved as locked',
+            'Seller submission completion email notifications',
+            'Optional completion-email PDF attachment (on by default)',
+            'Over-limit submissions saved as locked (attachment resumes when unlocked)',
             'UtilitySheet footer on share links',
         ],
         cta: 'Start for Free',
@@ -31,6 +34,7 @@ const tiers = [
             'Unlimited requests',
             'Custom reusable link slug',
             'Custom branding (logo + colors)',
+            'Branded completion-email PDF attachments',
             'Unlock locked submissions',
             'Remove "Powered by UtilitySheet"',
             'Priority support',
@@ -50,6 +54,7 @@ const tiers = [
             'Shared organization workspace',
             'Invite members (admin + member roles)',
             'Seat-based billing (3 seat minimum)',
+            'Branded completion-email PDF attachments across the org',
             'Priority support'
         ],
         cta: 'Start Teams',
@@ -59,8 +64,25 @@ const tiers = [
 ];
 
 export function PricingSection() {
+    const sectionRef = useRef<HTMLElement | null>(null);
+    const isInView = useInView(sectionRef, { once: true, margin: '-20% 0px -20% 0px' });
+
+    useEffect(() => {
+        if (!isInView) return;
+        trackEvent('landing_section_viewed', {
+            section_id: 'pricing',
+            page: 'landing',
+            location: 'pricing',
+        });
+        trackEvent('pdf_attachment_value_prop_viewed', {
+            section_id: 'pricing',
+            page: 'landing',
+            location: 'pricing',
+        });
+    }, [isInView]);
+
     return (
-        <section id="pricing" className="scroll-mt-24 py-16 sm:py-24 lg:py-32 bg-background border-t border-border/50">
+        <section ref={sectionRef} id="pricing" className="scroll-mt-24 py-16 sm:py-24 lg:py-32 bg-background border-t border-border/50">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-10 sm:mb-16 lg:mb-20">
                     <h2 className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">Pricing</h2>
@@ -116,7 +138,7 @@ export function PricingSection() {
                                         }`}
                                     onClick={() => {
                                         trackEvent('landing_cta_clicked', {
-                                            cta_id: `pricing_${tier.name.toLowerCase()}_cta`,
+                                            cta_id: `secondary_pricing_${tier.name.toLowerCase()}_cta`,
                                             destination: tier.href,
                                             location: 'pricing',
                                         });

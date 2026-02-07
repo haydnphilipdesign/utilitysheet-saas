@@ -1,14 +1,22 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Bell, FileText, Link2, Palette, ShieldCheck, Sparkles } from 'lucide-react';
+import { useInView } from 'framer-motion';
+import { useEffect, useRef } from 'react';
+import { Bell, FileText, Link2, MailCheck, Palette, ShieldCheck, Sparkles } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics/events';
 
 const features = [
     {
         icon: Link2,
         title: "Guided Seller Links",
+        description: "Use a one-off request link or share a reusable link. Sellers don’t need an account and can finish on their phone."
+    },
+    {
+        icon: MailCheck,
+        title: "Completion Email + PDF Attachment",
         tag: "New",
-        description: "Use a one-off request link or share a reusable link. Sellers don’t need an account and can finish on their phone in minutes."
+        description: "When a seller submits, you can auto-attach the utility sheet PDF to the completion email. This setting is on by default and can be changed in Settings."
     },
     {
         icon: Sparkles,
@@ -38,8 +46,26 @@ const features = [
 ];
 
 export function FeatureSection() {
+    const sectionRef = useRef<HTMLElement | null>(null);
+    const isInView = useInView(sectionRef, { once: true, margin: '-20% 0px -20% 0px' });
+
+    useEffect(() => {
+        if (!isInView) return;
+
+        trackEvent('landing_section_viewed', {
+            section_id: 'features',
+            page: 'landing',
+            location: 'features',
+        });
+        trackEvent('pdf_attachment_value_prop_viewed', {
+            section_id: 'features',
+            page: 'landing',
+            location: 'features',
+        });
+    }, [isInView]);
+
     return (
-        <section id="features" className="scroll-mt-24 py-24 bg-background px-4 sm:px-6 lg:px-8">
+        <section ref={sectionRef} id="features" className="scroll-mt-24 py-24 bg-background px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-7xl">
                 <div className="text-center mb-20">
                     <h2 className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Features</h2>

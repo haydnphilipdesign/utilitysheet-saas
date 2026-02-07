@@ -6,31 +6,31 @@ import { TrendingUp, Clock, CheckCircle, Users } from 'lucide-react';
 const impactStats = [
     {
         icon: Clock,
-        value: '30+',
-        unit: 'min',
-        label: 'Saved per listing',
-        description: 'What used to take 45 min now takes 2',
+        value: 'Fast',
+        unit: '',
+        label: 'Seller completion flow',
+        description: 'Designed for quick phone-friendly submission',
     },
     {
         icon: CheckCircle,
-        value: '70%',
+        value: 'Clean',
         unit: '',
-        label: 'Seller completion',
-        description: 'Within 48 hours of sending the link',
+        label: 'Utility handoff output',
+        description: 'Web sheet and PDF for buyer-ready sharing',
     },
     {
         icon: TrendingUp,
-        value: '2',
-        unit: 'min',
-        label: 'Average time to complete',
-        description: 'When suggestions are correct (60%+ of the time)',
+        value: 'AI',
+        unit: '',
+        label: 'Suggestion assist',
+        description: 'Sellers can confirm, search, or manually enter providers',
     },
     {
         icon: Users,
-        value: '0',
+        value: 'Config',
         unit: '',
-        label: 'Follow-ups needed',
-        description: 'No more chasing sellers for utility info',
+        label: 'Notification controls',
+        description: 'Reminders and attachment behavior managed in Settings',
     },
 ];
 
@@ -47,13 +47,13 @@ export function StatsSection() {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-sm font-medium mb-4">
                         <TrendingUp className="w-4 h-4" />
-                        <span>Proven results from real TCs</span>
+                        <span>Workflow capabilities at a glance</span>
                     </div>
                     <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight mb-4">
-                        Numbers that matter
+                        Why teams use UtilitySheet
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                        Stop wasting time on utility busywork. Here&apos;s what TCs achieve with UtilitySheet.
+                        Built to remove repetitive utility handoff work while keeping output consistent.
                     </p>
                 </motion.div>
 

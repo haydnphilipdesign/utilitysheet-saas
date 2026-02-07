@@ -6,12 +6,26 @@ import { getDeviceType } from "@/lib/analytics/device";
 type BasePayload = {
   device?: "mobile_phone" | "desktop";
   location?: string;
+  page?: "landing" | "about" | "demo";
 };
 
 type AnalyticsEventMap = {
   landing_cta_clicked: BasePayload & {
     cta_id: string;
     destination: string;
+  };
+  landing_primary_cta_viewed: BasePayload & {
+    cta_id: string;
+  };
+  landing_primary_cta_clicked: BasePayload & {
+    cta_id: string;
+    destination: string;
+  };
+  landing_section_viewed: BasePayload & {
+    section_id: string;
+  };
+  pdf_attachment_value_prop_viewed: BasePayload & {
+    section_id: string;
   };
   signup_started: BasePayload & {
     method: "email" | "google";
@@ -51,4 +65,3 @@ export function trackEvent<E extends AnalyticsEventName>(
     device: payload.device ?? getDeviceType(),
   });
 }
-

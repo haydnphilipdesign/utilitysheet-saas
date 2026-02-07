@@ -54,9 +54,8 @@ export default function MarketingLayout({
                         <div>
                             <h3 className="text-sm font-semibold text-foreground">Product</h3>
                             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                                <li><Link href="/#for-tcs" className="hover:text-foreground">For TCs</Link></li>
+                                <li><Link href="/#how-it-works" className="hover:text-foreground">Workflow</Link></li>
                                 <li><Link href="/#features" className="hover:text-foreground">Features</Link></li>
-                                <li><Link href="/#how-it-works" className="hover:text-foreground">How it Works</Link></li>
                                 <li><Link href="/#templates" className="hover:text-foreground">Templates</Link></li>
                                 <li><Link href="/demo" className="hover:text-foreground">Demo</Link></li>
                                 <li><Link href="/#pricing" className="hover:text-foreground">Pricing</Link></li>

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { MapPin, ArrowRight, Loader2, Sparkles, Search } from 'lucide-react';
 import { SellerWizard } from '@/components/seller-form/SellerWizard';
 import { WizardLoader } from '@/components/ui/wizard-loader';
 import type { UtilityCategory, ProviderSuggestion } from '@/types';
 import Link from 'next/link';
+import { trackEvent } from '@/lib/analytics/events';
 
 // UtilitySheet branding for demo
 const DEMO_BRAND = {
@@ -43,6 +44,14 @@ export default function DemoPage() {
     const [error, setError] = useState<string | null>(null);
     const [wizardReady, setWizardReady] = useState(false);
     const [suggestions, setSuggestions] = useState<Record<UtilityCategory, ProviderSuggestion[]>>({} as Record<UtilityCategory, ProviderSuggestion[]>);
+
+    useEffect(() => {
+        trackEvent('landing_section_viewed', {
+            section_id: 'demo_entry',
+            page: 'demo',
+            location: 'demo',
+        });
+    }, []);
 
     const handleStartDemo = async () => {
         if (!address.trim() || address.length < 10) {
@@ -128,6 +137,10 @@ export default function DemoPage() {
                     </div>
 
                     <div className="bg-card/50 border border-border rounded-2xl p-6 space-y-4">
+                        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-900">
+                            After seller submission, TCs can receive a completion email and share/download the utility sheet output.
+                        </div>
+
                         <div>
                             <label htmlFor="address" className="block text-sm font-medium text-muted-foreground mb-2">
                                 Property Address
@@ -184,9 +197,17 @@ export default function DemoPage() {
                     <div className="mt-6 text-center">
                         <Link
                             href="/auth/signup"
-                            className="text-muted-foreground hover:text-foreground text-sm underline underline-offset-2"
+                            className="inline-flex items-center text-sm font-semibold text-slate-700 hover:text-slate-900 underline underline-offset-2"
+                            onClick={() =>
+                                trackEvent('landing_primary_cta_clicked', {
+                                    cta_id: 'primary_demo_start_free',
+                                    destination: '/auth/signup',
+                                    location: 'demo',
+                                    page: 'demo',
+                                })
+                            }
                         >
-                            Ready to sign up instead?
+                            Start Free instead
                         </Link>
                     </div>
                 </motion.div>
