@@ -3,13 +3,12 @@ import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import { UtilityCategory } from '@/types';
 import { aiRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import { getClientIp } from '@/lib/network/client-ip';
 
 // Public API endpoint for demo - fetches AI suggestions for any address
 export async function POST(request: Request) {
     try {
-        const ip = request.headers.get('x-forwarded-for') ||
-            request.headers.get('x-real-ip') ||
-            'anonymous';
+        const ip = getClientIp(request);
 
         const rateLimitResult = await checkRateLimit(aiRatelimit, ip);
         if (!rateLimitResult.success) {

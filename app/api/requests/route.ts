@@ -5,6 +5,7 @@ import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { createRequestBodySchema } from '@/lib/validation/schemas';
+import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 
 function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
@@ -149,11 +150,14 @@ export async function POST(request: Request) {
         }
 
 
+        const structuredPropertyAddress = await buildStructuredPropertyAddress(parsedBody.data.propertyAddress);
+
         const newRequest = await createRequest({
             accountId,
             organizationId,
             brandProfileId: brandProfileId,
             propertyAddress: parsedBody.data.propertyAddress,
+            propertyAddressStructured: structuredPropertyAddress,
             sellerName: parsedBody.data.sellerName,
             sellerEmail: parsedBody.data.sellerEmail,
             sellerPhone: parsedBody.data.sellerPhone,

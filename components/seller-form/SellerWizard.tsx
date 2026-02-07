@@ -454,7 +454,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         updateState={updateUtilityState}
                         suggestions={suggestionsByCategory[visibleUtilities[utilityIndex]] || []}
                         loadingSuggestions={!!loadingSuggestions[visibleUtilities[utilityIndex]] && !Object.prototype.hasOwnProperty.call(suggestionsByCategory, visibleUtilities[utilityIndex])}
-                        propertyAddress={initialRequestData.property_address}
+                        token={token}
                         onNext={handleNext}
                         onBack={handleBack}
                     />

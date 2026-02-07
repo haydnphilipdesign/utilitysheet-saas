@@ -27,7 +27,7 @@ interface UtilityStepProps {
     updateState: (category: UtilityCategory, updates: any) => void;
     suggestions: ProviderSuggestion[];
     loadingSuggestions?: boolean;
-    propertyAddress: string;
+    token: string;
     onNext: () => void;
     onBack: () => void;
 }
@@ -39,7 +39,7 @@ export function UtilityStep({
     updateState,
     suggestions,
     loadingSuggestions = false,
-    propertyAddress,
+    token,
     onNext,
     onBack
 }: UtilityStepProps) {
@@ -65,19 +65,32 @@ export function UtilityStep({
             return;
         }
 
+        const controller = new AbortController();
         const timer = setTimeout(async () => {
             setIsSearching(true);
             try {
-                const res = await fetch(`/api/suggestions/search?query=${encodeURIComponent(searchQuery)}&category=${category}&address=${encodeURIComponent(propertyAddress)}`);
-                if (res.ok) setSearchResults(await res.json());
+                const res = await fetch(`/api/seller/${encodeURIComponent(token)}/suggestions/search?query=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(category)}`, {
+                    signal: controller.signal,
+                });
+                if (res.ok) {
+                    setSearchResults(await res.json());
+                } else {
+                    setSearchResults([]);
+                }
             } catch (e) {
-                console.error(e);
+                if (!(e instanceof DOMException && e.name === 'AbortError')) {
+                    console.error(e);
+                }
             } finally {
                 setIsSearching(false);
             }
         }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery, category, propertyAddress]);
+
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
+    }, [searchQuery, category, token]);
 
     const currentUtilityState = state.utilities[category];
     const isCompleted = currentUtilityState?.entry_mode !== null;

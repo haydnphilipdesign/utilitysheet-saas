@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
-import { getAllSuggestions } from '@/lib/providers/suggestion-service';
+import { searchProviders } from '@/lib/providers/suggestion-service';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { aiRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -48,38 +48,27 @@ export async function GET(
         });
 
         const { searchParams } = new URL(request.url);
-        const categoriesParam = searchParams.get('categories');
-        const categoryParam = searchParams.get('category');
-        const rawCategories = (categoriesParam || categoryParam || '')
-            .split(',')
-            .map((c) => c.trim())
-            .filter(Boolean);
+        const query = (searchParams.get('query') || '').trim();
+        const categoryRaw = searchParams.get('category');
 
-        if (rawCategories.length === 0) {
-            return NextResponse.json({ error: 'Category is required' }, { status: 400 });
+        if (query.length < 2) {
+            return NextResponse.json([], {
+                headers: getRateLimitHeaders(rateLimitResult),
+            });
         }
 
-        const allowedCategories = new Set<string>(UTILITY_CATEGORY_KEYS);
-        const requestedCategories = new Set<string>(
-            (requestData as any).utility_categories || UTILITY_CATEGORY_KEYS
-        );
-
-        const uniqueCategories = Array.from(new Set(rawCategories));
-        const categories = uniqueCategories
-            .filter((c) => allowedCategories.has(c) && requestedCategories.has(c))
-            .slice(0, UTILITY_CATEGORY_KEYS.length) as UtilityCategory[];
-
-        if (categories.length === 0) {
-            return NextResponse.json({ suggestions: {} }, { headers: getRateLimitHeaders(rateLimitResult) });
+        if (!categoryRaw || !UTILITY_CATEGORY_KEYS.includes(categoryRaw as UtilityCategory)) {
+            return NextResponse.json({ error: 'Invalid utility category' }, { status: 400 });
         }
 
-        const suggestions = await getAllSuggestions(requestData.property_address, categories);
-        return NextResponse.json(
-            { suggestions },
-            { headers: getRateLimitHeaders(rateLimitResult) }
-        );
+        const category = categoryRaw as UtilityCategory;
+        const results = await searchProviders(query, category, requestData.property_address);
+
+        return NextResponse.json(results, {
+            headers: getRateLimitHeaders(rateLimitResult),
+        });
     } catch (error) {
-        console.error('Error fetching suggestions:', error);
-        return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 });
+        console.error('Error searching seller providers:', error);
+        return NextResponse.json({ error: 'Failed to search providers' }, { status: 500 });
     }
 }

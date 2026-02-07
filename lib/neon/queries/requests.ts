@@ -2,7 +2,7 @@
  * Request-related database queries
  */
 import { sql, generateToken } from '@/lib/neon/db';
-import type { Request } from '@/types';
+import type { PropertyAddressStructured, Request } from '@/types';
 
 /**
  * Pagination result interface
@@ -112,6 +112,7 @@ export async function createRequest(data: {
     organizationId?: string;
     brandProfileId?: string;
     propertyAddress: string;
+    propertyAddressStructured?: PropertyAddressStructured | null;
     sellerName?: string;
     sellerEmail?: string;
     sellerPhone?: string;
@@ -140,6 +141,7 @@ export async function createRequest(data: {
             organization_id,
             brand_profile_id,
             property_address,
+            property_address_structured,
             seller_name,
             seller_email,
             seller_phone,
@@ -158,6 +160,7 @@ export async function createRequest(data: {
             ${data.organizationId || null},
             ${data.brandProfileId || null},
             ${data.propertyAddress},
+            ${data.propertyAddressStructured ? JSON.stringify(data.propertyAddressStructured) : null}::jsonb,
             ${data.sellerName || null},
             ${data.sellerEmail || null},
             ${data.sellerPhone || null},

@@ -156,6 +156,9 @@ export interface PropertyAddressStructured {
     state: string;
     zip: string;
     full: string;
+    confidence: 'high' | 'medium' | 'low';
+    issues: string[];
+    source: 'local' | 'verified';
 }
 
 export interface Request {

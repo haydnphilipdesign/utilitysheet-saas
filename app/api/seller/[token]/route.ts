@@ -6,6 +6,7 @@ import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } fr
 import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
+import { getClientIpOrNull } from '@/lib/network/client-ip';
 
 export const runtime = 'nodejs';
 
@@ -32,9 +33,7 @@ export async function GET(
         }
 
         // Log seller opened + transition status to in_progress on first open
-        const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-            request.headers.get('x-real-ip') ||
-            null;
+        const ipAddress = getClientIpOrNull(request);
         const userAgent = request.headers.get('user-agent') || null;
 
         await createEventLog({
@@ -148,9 +147,7 @@ export async function POST(
             return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
         }
 
-        const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-            request.headers.get('x-real-ip') ||
-            null;
+        const ipAddress = getClientIpOrNull(request);
         const userAgent = request.headers.get('user-agent') || null;
 
         const account = await getAccountById(requestData.account_id);

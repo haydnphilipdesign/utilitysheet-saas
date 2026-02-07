@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getIntakeLinkBySlug, getAccountById, getAccountOrganizations, getDefaultBrandProfile, getRequestBySellerToken, createRequest, createEventLog } from '@/lib/neon/queries';
 import { intakeStartRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
+import { getClientIp } from '@/lib/network/client-ip';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -24,6 +26,7 @@ function normalizeAddress(input: string) {
     return input
         .toLowerCase()
         .trim()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
         .replace(/\s+/g, ' ');
 }
 
@@ -53,10 +56,7 @@ export async function POST(
     try {
         const { slug } = await params;
 
-        const ipAddress =
-            request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-            request.headers.get('x-real-ip') ||
-            'unknown';
+        const ipAddress = getClientIp(request, 'unknown');
 
         const rateLimitResult = await checkRateLimit(intakeStartRatelimit, `${slug}:${ipAddress}`);
         if (!rateLimitResult.success) {
@@ -121,12 +121,14 @@ export async function POST(
         }
 
         const defaultBrand = await getDefaultBrandProfile(account.id, activeOrg?.id);
+        const structuredPropertyAddress = await buildStructuredPropertyAddress(parsed.data.propertyAddress);
 
         const newRequest = await createRequest({
             accountId: account.id,
             organizationId: account.active_organization_id || undefined,
             brandProfileId: defaultBrand?.id,
             propertyAddress: parsed.data.propertyAddress,
+            propertyAddressStructured: structuredPropertyAddress,
             utilityCategories: UTILITY_CATEGORY_KEYS,
             status: 'draft',
             meteredAt: null,
