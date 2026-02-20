@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import {
     Palette,
     CheckCircle2,
@@ -19,9 +20,14 @@ import {
     Phone,
     Mail,
     Globe,
-    Eye,
     Send,
-    FileText
+    FileText,
+    Link as LinkIcon,
+    Copy,
+    Check,
+    Building2,
+    Zap,
+    ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import UtilitySheetPdfPreview from '@/components/branding/UtilitySheetPdfPreview';
@@ -29,14 +35,14 @@ import type { Account, BrandProfile, Organization } from '@/types';
 
 // Steps configuration
 const STEPS = [
-    { id: 1, title: 'Welcome', icon: Sparkles },
-    { id: 2, title: 'Branding', icon: Palette },
-    { id: 3, title: 'Contact Info', icon: User },
-    { id: 4, title: 'Preview', icon: Eye },
-    { id: 5, title: 'Get Started', icon: Send },
+    { id: 1, title: 'Welcome', description: 'Set up your workspace' },
+    { id: 2, title: 'Branding', description: 'Your brand identity' },
+    { id: 3, title: 'Contact', description: 'Your contact info' },
+    { id: 4, title: 'Preview', description: 'See it in action' },
+    { id: 5, title: 'Launch', description: "You're ready!" },
 ];
 
-// Pre-defined colors for brand selection
+// Pre-defined brand colors with labels
 const BRAND_COLORS = [
     { name: 'Emerald', value: '#10b981' },
     { name: 'Blue', value: '#3b82f6' },
@@ -84,6 +90,36 @@ export default function OnboardingPage() {
     const [contactWebsite, setContactWebsite] = useState('');
     const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
 
+    // Intake link state
+    const [intakeLink, setIntakeLink] = useState<{ slug: string; url: string; is_active: boolean } | null>(null);
+    const [intakeLinkLoading, setIntakeLinkLoading] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    // Fetch intake link when reaching step 5
+    useEffect(() => {
+        if (step !== 5 || intakeLink || intakeLinkLoading) return;
+
+        setIntakeLinkLoading(true);
+        fetch('/api/intake-link')
+            .then((r) => r.json())
+            .then((data) => {
+                if (data.intakeLink) setIntakeLink(data.intakeLink);
+            })
+            .catch(console.error)
+            .finally(() => setIntakeLinkLoading(false));
+    }, [step, intakeLink, intakeLinkLoading]);
+
+    const handleCopyLink = async () => {
+        if (!intakeLink?.url) return;
+        try {
+            await navigator.clipboard.writeText(intakeLink.url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+        } catch {
+            toast.error('Failed to copy link');
+        }
+    };
+
     const fetchDefaultBrandProfile = async (): Promise<BrandProfile | null> => {
         const response = await fetch('/api/branding');
         if (!response.ok) return null;
@@ -128,7 +164,6 @@ export default function OnboardingPage() {
                         setBrandName(nextActiveOrg.name);
                     }
 
-                    // Load existing (or auto-created) default brand profile so onboarding edits it instead of creating duplicates
                     const defaultProfile = await fetchDefaultBrandProfile();
                     if (defaultProfile) {
                         setBrandProfileId(defaultProfile.id);
@@ -137,7 +172,6 @@ export default function OnboardingPage() {
                         if (defaultProfile.primary_color) setPrimaryColor(defaultProfile.primary_color);
                         if (defaultProfile.logo_url) setLogoUrl(defaultProfile.logo_url);
 
-                        // Prefer saved brand profile contact info (if present)
                         if (defaultProfile.contact_name) setContactName(defaultProfile.contact_name);
                         if (defaultProfile.contact_email) setContactEmail(defaultProfile.contact_email);
                         if (defaultProfile.contact_phone) setContactPhone(defaultProfile.contact_phone);
@@ -153,7 +187,6 @@ export default function OnboardingPage() {
                         }
                     }
 
-                    // Start at step 2 when an org already exists
                     setStep(2);
                 }
             } catch (error) {
@@ -192,7 +225,7 @@ export default function OnboardingPage() {
             setActiveOrganization(data.organization as Organization);
             setOrganizationCreated(true);
             if (!brandNameTouched || brandName.trim().length === 0) {
-                setBrandName(name); // Default brand name to org name
+                setBrandName(name);
             }
             setStep(2);
         } catch (error) {
@@ -249,7 +282,6 @@ export default function OnboardingPage() {
             }
 
             setBrandProfileId((data as BrandProfile).id);
-
             setBrandProfileCreated(true);
             setStep(3);
         } catch (error) {
@@ -268,8 +300,6 @@ export default function OnboardingPage() {
                 throw new Error('Unable to continue. Please try again.');
             }
 
-            // "Skip" means: keep whatever default profile exists (or was auto-created),
-            // and sync the UI back to it so we don't accidentally save customizations later.
             setBrandProfileId(defaultProfile.id);
             setBrandProfileCreated(true);
             setBrandName(defaultProfile.name || '');
@@ -304,9 +334,9 @@ export default function OnboardingPage() {
             }
 
             const normalizedWebsite = contactWebsite.trim()
-                ? (contactWebsite.trim().startsWith('http://') || contactWebsite.trim().startsWith('https://')
+                ? contactWebsite.trim().startsWith('http://') || contactWebsite.trim().startsWith('https://')
                     ? contactWebsite.trim()
-                    : `https://${contactWebsite.trim()}`)
+                    : `https://${contactWebsite.trim()}`
                 : undefined;
 
             const response = await fetch(`/api/branding/${profileId}`, {
@@ -375,205 +405,225 @@ export default function OnboardingPage() {
     };
 
     const handleBack = () => {
-        if (step > 1) {
-            setStep(step - 1);
-        }
-    };
-
-    const variants = {
-        enter: (direction: number) => ({
-            x: direction > 0 ? 50 : -50,
-            opacity: 0
-        }),
-        center: {
-            zIndex: 1,
-            x: 0,
-            opacity: 1
-        },
-        exit: (direction: number) => ({
-            zIndex: 0,
-            x: direction < 0 ? 50 : -50,
-            opacity: 0
-        })
+        if (step > 1) setStep(step - 1);
     };
 
     const isStepComplete = (id: number) => {
         switch (id) {
-            case 1:
-                return organizationCreated;
-            case 2:
-                return brandProfileCreated;
-            case 3:
-                return contactInfoSaved;
-            case 4:
-                return step > 4;
-            default:
-                return false;
+            case 1: return organizationCreated;
+            case 2: return brandProfileCreated;
+            case 3: return contactInfoSaved;
+            case 4: return step > 4;
+            default: return false;
         }
     };
 
+    const stepVariants = {
+        enter: { x: 40, opacity: 0 },
+        center: { x: 0, opacity: 1 },
+        exit: { x: -40, opacity: 0 },
+    };
+
+    const displayName = account?.full_name?.split(' ')[0] || '';
+
     if (!account && step !== 1) {
         return (
-            <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-slate-600" />
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 relative overflow-hidden">
-            {/* Background decoration */}
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 sm:p-6 relative overflow-hidden">
+            {/* Ambient background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-slate-500/5 rounded-full blur-[150px]" />
-                <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-emerald-500/5 rounded-full blur-[120px]" />
+                <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-slate-500/4 rounded-full blur-[120px]" />
+                <div className="absolute bottom-1/3 right-1/4 w-[400px] h-[400px] bg-emerald-500/4 rounded-full blur-[100px]" />
             </div>
 
-            <div className="relative z-10 w-full max-w-2xl">
-                {/* Header */}
-                <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-4 sm:mb-6">
-                    <Image src="/logo-sm.png" alt="UtilitySheet Logo" width={24} height={24} className="h-5 w-5 sm:h-6 sm:w-6" />
-                    <span className="text-lg sm:text-xl font-bold text-foreground">UtilitySheet</span>
+            <div className="relative z-10 w-full max-w-lg">
+                {/* Logo header */}
+                <div className="flex items-center justify-center gap-2 mb-8">
+                    <Image src="/logo-sm.png" alt="UtilitySheet" width={28} height={28} className="h-7 w-7" />
+                    <span className="text-xl font-bold text-foreground tracking-tight">UtilitySheet</span>
                 </div>
 
-                {/* Progress Steps */}
-                <div className="flex items-center justify-center gap-1 sm:gap-2 mb-6 sm:mb-8 px-2">
-                    {STEPS.map((s, index) => (
-                        <div key={s.id} className="flex items-center">
-                            <button
-                                type="button"
-                                onClick={() => setStep(s.id)}
-                                disabled={s.id > step}
-                                aria-label={`Go to ${s.title}`}
-                                aria-current={step === s.id ? 'step' : undefined}
-                                className={`
-                                    flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-300
-                                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background
-                                    ${isStepComplete(s.id) || step === s.id
-                                        ? 'bg-slate-600 text-white'
-                                        : 'bg-muted text-muted-foreground'
-                                    }
-                                    ${step === s.id ? 'ring-2 ring-slate-400 ring-offset-2 ring-offset-background' : ''}
-                                    ${s.id > step ? 'cursor-not-allowed' : 'cursor-pointer'}
-                                `}
-                            >
-                                {isStepComplete(s.id) && step !== s.id ? (
-                                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
-                                ) : (
-                                    <s.icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+                {/* Step progress */}
+                <div className="mb-8">
+                    <div className="flex items-center justify-center gap-0 mb-4">
+                        {STEPS.map((s, index) => (
+                            <div key={s.id} className="flex items-center">
+                                <button
+                                    type="button"
+                                    onClick={() => s.id <= step && setStep(s.id)}
+                                    disabled={s.id > step}
+                                    aria-label={`Go to ${s.title}`}
+                                    aria-current={step === s.id ? 'step' : undefined}
+                                    className={cn(
+                                        'relative flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold transition-all duration-300',
+                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                                        step === s.id
+                                            ? 'bg-slate-700 text-white shadow-lg shadow-slate-500/25 scale-110'
+                                            : isStepComplete(s.id)
+                                            ? 'bg-slate-600 text-white'
+                                            : 'bg-muted text-muted-foreground',
+                                        s.id > step ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-90',
+                                    )}
+                                >
+                                    {isStepComplete(s.id) && step !== s.id ? (
+                                        <Check className="h-4 w-4" />
+                                    ) : (
+                                        s.id
+                                    )}
+                                </button>
+                                {index < STEPS.length - 1 && (
+                                    <div
+                                        className={cn(
+                                            'w-10 h-px transition-all duration-500',
+                                            isStepComplete(s.id) ? 'bg-slate-600' : 'bg-border',
+                                        )}
+                                    />
                                 )}
-                            </button>
-                            {index < STEPS.length - 1 && (
-                                <div
-                                    className={`w-4 sm:w-8 h-0.5 mx-0.5 sm:mx-1 transition-all duration-300 ${isStepComplete(s.id) ? 'bg-slate-600' : 'bg-muted'
-                                        }`}
-                                />
-                            )}
-                        </div>
-                    ))}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="text-center">
+                        <p className="text-sm font-semibold text-foreground">{STEPS[step - 1].title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Step {step} of {STEPS.length} — {STEPS[step - 1].description}
+                        </p>
+                    </div>
                 </div>
 
-                <AnimatePresence mode="wait" custom={step}>
-                    {/* Step 1: Welcome & Organization */}
+                {/* Step content */}
+                <AnimatePresence mode="wait">
+
+                    {/* ─── STEP 1: Welcome & Workspace Setup ─── */}
                     {step === 1 && (
                         <motion.div
                             key="step1"
-                            custom={1}
-                            variants={variants}
+                            variants={stepVariants}
                             initial="enter"
                             animate="center"
                             exit="exit"
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
                         >
-                            <Card className="border-border bg-card/80 backdrop-blur-xl">
-                                <CardHeader className="text-center px-4 sm:px-6 pt-4 sm:pt-6">
-                                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                                        <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-slate-500" />
+                            <Card className="border-border bg-card/90 backdrop-blur-xl shadow-xl">
+                                <CardHeader className="text-center pb-4 pt-6 px-6">
+                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                        <Sparkles className="h-7 w-7 text-slate-500" />
                                     </div>
-                                    <CardTitle className="text-xl sm:text-2xl text-foreground">
-                                        {organizationCreated ? 'Organization Details' : 'Welcome to UtilitySheet!'}
-                                    </CardTitle>
-                                    <CardDescription className="text-muted-foreground text-sm sm:text-base">
-                                        {organizationCreated
-                                            ? "Update your organization name. You can change this later in settings, too."
-                                            : "Let's get you set up in just a few minutes. First, tell us about your business."
-                                        }
-                                    </CardDescription>
+                                    <h1 className="text-2xl font-bold text-foreground leading-tight">
+                                        {displayName ? `Welcome, ${displayName}!` : 'Welcome to UtilitySheet!'}
+                                    </h1>
+                                    <p className="text-sm text-muted-foreground mt-1.5 max-w-xs mx-auto">
+                                        Let&apos;s get your workspace set up. Here&apos;s how the whole thing works:
+                                    </p>
                                 </CardHeader>
-                                <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
-                                    <div className="space-y-1.5 sm:space-y-2">
-                                        <Label htmlFor="orgName" className="text-foreground text-sm">Organization or Team Name</Label>
+
+                                <CardContent className="px-6 pb-4 space-y-5">
+                                    {/* How it works */}
+                                    <div className="rounded-xl border border-border bg-muted/30 overflow-hidden">
+                                        <div className="px-4 py-2.5 border-b border-border">
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">How It Works</p>
+                                        </div>
+                                        <div className="divide-y divide-border/60">
+                                            <div className="flex items-start gap-3 px-4 py-3">
+                                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">You create a request</p>
+                                                    <p className="text-xs text-muted-foreground mt-0.5">Enter an address and select which utilities to include.</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-3 px-4 py-3">
+                                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">Seller fills it in — no account needed</p>
+                                                    <p className="text-xs text-muted-foreground mt-0.5">Share a link; they answer questions on any device in minutes.</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-3 px-4 py-3">
+                                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">Your branded PDF is ready to share</p>
+                                                    <p className="text-xs text-muted-foreground mt-0.5">A professional utility info sheet for buyers — with your name on it.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Org name */}
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="orgName" className="text-sm font-medium text-foreground">
+                                            {organizationCreated ? 'Organization Name' : 'What\'s your organization or team name?'}
+                                        </Label>
                                         <Input
                                             id="orgName"
-                                            placeholder="e.g. The Evergreen Group, Smith Realty"
+                                            placeholder="e.g. Smith Realty, The Evergreen Group"
                                             value={orgName}
                                             onChange={(e) => setOrgName(e.target.value)}
                                             autoComplete="organization"
                                             autoFocus
-                                            className="bg-background border-input text-foreground placeholder:text-muted-foreground h-11 sm:h-12 text-base"
-                                            onKeyDown={(e) => e.key === 'Enter' && orgName && handleCreateOrg()}
+                                            className="h-11 text-base bg-background border-input"
+                                            onKeyDown={(e) => e.key === 'Enter' && orgName.trim() && handleCreateOrg()}
                                         />
-                                        <p className="text-xs sm:text-sm text-muted-foreground">
-                                            This is how your team will be identified in the system.
+                                        <p className="text-xs text-muted-foreground">
+                                            This is how your team is identified in the system. You can change it later.
                                         </p>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="px-4 sm:px-6 pb-4 sm:pb-6">
-                                    <div className="w-full flex flex-col gap-3">
-                                        <Button
-                                            onClick={handleCreateOrg}
-                                            disabled={!orgName || loading}
-                                            className="w-full bg-slate-600 hover:bg-slate-700 text-white h-11 sm:h-12 text-sm sm:text-base active:scale-[0.98]"
-                                        >
-                                            {loading ? (
-                                                <>
-                                                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                                                    <span className="ml-2">Saving...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {organizationCreated ? 'Save & Continue' : 'Continue'}
-                                                    <ArrowRight className="ml-2 h-4 w-4" />
-                                                </>
-                                            )}
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            onClick={handleFinish}
-                                            className="w-full text-muted-foreground hover:text-foreground"
-                                            disabled={loading}
-                                        >
-                                            Skip onboarding and go to dashboard
-                                        </Button>
-                                    </div>
+
+                                <CardFooter className="px-6 pb-6 flex flex-col gap-3">
+                                    <Button
+                                        onClick={handleCreateOrg}
+                                        disabled={!orgName.trim() || loading}
+                                        className="w-full h-11 bg-slate-700 hover:bg-slate-800 text-white font-medium text-sm active:scale-[0.98] transition-transform"
+                                    >
+                                        {loading ? (
+                                            <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</>
+                                        ) : (
+                                            <>{organizationCreated ? 'Save & Continue' : 'Get Started'} <ArrowRight className="ml-2 h-4 w-4" /></>
+                                        )}
+                                    </Button>
+                                    <button
+                                        type="button"
+                                        onClick={handleFinish}
+                                        disabled={loading}
+                                        className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-50"
+                                    >
+                                        Skip setup and go straight to dashboard
+                                    </button>
                                 </CardFooter>
                             </Card>
                         </motion.div>
                     )}
 
-                    {/* Step 2: Branding Basics */}
+                    {/* ─── STEP 2: Branding ─── */}
                     {step === 2 && (
                         <motion.div
                             key="step2"
-                            custom={1}
-                            variants={variants}
+                            variants={stepVariants}
                             initial="enter"
                             animate="center"
                             exit="exit"
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
                         >
-                            <Card className="border-border bg-card/80 backdrop-blur-xl">
-                                <CardHeader>
-                                    <div className="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center mb-4">
-                                        <Palette className="h-6 w-6 text-slate-600" />
+                            <Card className="border-border bg-card/90 backdrop-blur-xl shadow-xl">
+                                <CardHeader className="pb-4 pt-6 px-6">
+                                    <div className="w-11 h-11 rounded-xl bg-slate-500/10 flex items-center justify-center mb-3">
+                                        <Palette className="h-5 w-5 text-slate-500" />
                                     </div>
-                                    <CardTitle className="text-2xl text-foreground">Brand Your Utility Sheets</CardTitle>
-                                    <CardDescription className="text-muted-foreground">
-                                        Your clients will see this branding when they receive utility info sheets.
-                                    </CardDescription>
+                                    <h2 className="text-xl font-bold text-foreground">Make It Yours</h2>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        Your brand appears on every utility sheet you send to clients. A consistent look builds trust.
+                                    </p>
                                 </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="brandName" className="text-foreground">Brand Display Name</Label>
+
+                                <CardContent className="px-6 pb-4 space-y-5">
+                                    {/* Brand name */}
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="brandName" className="text-sm font-medium text-foreground">Brand Display Name</Label>
                                         <Input
                                             id="brandName"
                                             value={brandName}
@@ -584,134 +634,174 @@ export default function OnboardingPage() {
                                             placeholder="e.g. The Evergreen Group"
                                             autoComplete="organization"
                                             autoFocus
-                                            className="bg-background border-input text-foreground h-12"
+                                            className="h-11 bg-background border-input text-foreground"
                                         />
+                                        <p className="text-xs text-muted-foreground">This name appears on your PDF sheets and correspondence.</p>
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <Label className="text-foreground">Primary Brand Color</Label>
-                                        <div className="flex flex-wrap gap-3">
+                                    {/* Color picker */}
+                                    <div className="space-y-2.5">
+                                        <Label className="text-sm font-medium text-foreground">Primary Brand Color</Label>
+                                        <div className="flex flex-wrap gap-2.5">
                                             {BRAND_COLORS.map((color) => (
                                                 <button
                                                     key={color.value}
                                                     type="button"
                                                     onClick={() => setPrimaryColor(color.value)}
-                                                    aria-label={`Select ${color.name} as your brand color`}
+                                                    aria-label={`Select ${color.name}`}
                                                     aria-pressed={primaryColor === color.value}
-                                                    className={`
-                                                        w-12 h-12 rounded-xl border-2 transition-all duration-200
-                                                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background
-                                                        ${primaryColor === color.value
-                                                            ? 'border-foreground scale-110 shadow-lg'
-                                                            : 'border-transparent hover:scale-105'
-                                                        }
-                                                    `}
-                                                    style={{ backgroundColor: color.value }}
-                                                    title={color.name}
-                                                />
-                                            ))}
-                                            <div className="relative">
-                                                <input
-                                                    type="color"
-                                                    value={primaryColor}
-                                                    onChange={(e) => setPrimaryColor(e.target.value)}
-                                                    aria-label="Choose a custom brand color"
-                                                    className="peer absolute inset-0 w-12 h-12 opacity-0 cursor-pointer"
-                                                />
-                                                <div
-                                                    className="w-12 h-12 rounded-xl border-2 border-dashed border-muted-foreground flex items-center justify-center cursor-pointer hover:border-foreground transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-slate-400/50 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background"
-                                                    style={!BRAND_COLORS.find(c => c.value === primaryColor) ? { backgroundColor: primaryColor } : {}}
-                                                >
-                                                    {BRAND_COLORS.find(c => c.value === primaryColor) && (
-                                                        <span className="text-muted-foreground text-xs">+</span>
+                                                    className={cn(
+                                                        'flex flex-col items-center gap-1 group focus-visible:outline-none',
+                                                        'focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md',
                                                     )}
+                                                >
+                                                    <div
+                                                        className={cn(
+                                                            'w-10 h-10 rounded-lg border-2 transition-all duration-200',
+                                                            primaryColor === color.value
+                                                                ? 'border-foreground scale-110 shadow-md'
+                                                                : 'border-transparent hover:scale-105 hover:border-border',
+                                                        )}
+                                                        style={{ backgroundColor: color.value }}
+                                                    />
+                                                    <span className={cn(
+                                                        'text-[10px] font-medium transition-colors',
+                                                        primaryColor === color.value ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground',
+                                                    )}>
+                                                        {color.name}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                            {/* Custom color */}
+                                            <div className="flex flex-col items-center gap-1">
+                                                <div className="relative">
+                                                    <input
+                                                        type="color"
+                                                        value={primaryColor}
+                                                        onChange={(e) => setPrimaryColor(e.target.value)}
+                                                        aria-label="Custom brand color"
+                                                        className="peer absolute inset-0 w-10 h-10 opacity-0 cursor-pointer"
+                                                    />
+                                                    <div
+                                                        className={cn(
+                                                            'w-10 h-10 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer transition-all duration-200',
+                                                            !BRAND_COLORS.find((c) => c.value === primaryColor)
+                                                                ? 'border-foreground scale-110 shadow-md'
+                                                                : 'border-muted-foreground hover:border-foreground',
+                                                        )}
+                                                        style={
+                                                            !BRAND_COLORS.find((c) => c.value === primaryColor)
+                                                                ? { backgroundColor: primaryColor }
+                                                                : {}
+                                                        }
+                                                    >
+                                                        {BRAND_COLORS.find((c) => c.value === primaryColor) && (
+                                                            <span className="text-muted-foreground text-sm font-medium">+</span>
+                                                        )}
+                                                    </div>
                                                 </div>
+                                                <span className="text-[10px] font-medium text-muted-foreground">Custom</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Preview Card */}
-                                    <div className="p-4 rounded-xl border border-border bg-muted/30">
-                                        <p className="text-xs text-muted-foreground mb-2">Preview</p>
-                                        <div
-                                            className="h-2 w-full rounded-full mb-3"
-                                            style={{ backgroundColor: primaryColor }}
-                                        />
-                                        <p className="font-semibold text-foreground">{brandName || 'Your Brand Name'}</p>
-                                        <p className="text-sm text-muted-foreground">Utility Information Sheet</p>
+                                    {/* Live preview */}
+                                    <div className="rounded-xl border border-border bg-muted/20 overflow-hidden">
+                                        <div className="px-3 py-2 border-b border-border/60">
+                                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Live Preview</p>
+                                        </div>
+                                        <div className="p-4">
+                                            <div className="h-1.5 w-full rounded-full mb-3" style={{ backgroundColor: primaryColor }} />
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-semibold text-foreground text-sm">{brandName || 'Your Brand Name'}</p>
+                                                    <p className="text-xs text-muted-foreground">Utility Information Sheet</p>
+                                                </div>
+                                                <div
+                                                    className="w-8 h-8 rounded-lg opacity-20"
+                                                    style={{ backgroundColor: primaryColor }}
+                                                />
+                                            </div>
+                                            <div className="mt-3 grid grid-cols-3 gap-1.5">
+                                                {[40, 65, 55].map((w, i) => (
+                                                    <div key={i} className="h-1.5 rounded-full bg-muted" style={{ width: `${w}%` }} />
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="flex flex-col gap-3">
-                                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+
+                                <CardFooter className="px-6 pb-6 flex flex-col gap-2.5">
+                                    <div className="flex gap-2.5 w-full">
                                         <Button
                                             variant="outline"
                                             onClick={handleBack}
-                                            className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
+                                            className="border-border text-foreground hover:bg-muted h-11 px-4"
                                         >
-                                            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                                            <ArrowLeft className="h-4 w-4" />
                                         </Button>
                                         <Button
                                             onClick={handleCreateBrand}
                                             disabled={loading}
-                                            className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
+                                            className="flex-1 bg-slate-700 hover:bg-slate-800 text-white h-11 font-medium active:scale-[0.98] transition-transform"
                                         >
                                             {loading ? (
-                                                <>
-                                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                                    <span className="ml-2">Saving...</span>
-                                                </>
+                                                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</>
                                             ) : (
-                                                <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
+                                                <>Save & Continue <ArrowRight className="ml-2 h-4 w-4" /></>
                                             )}
                                         </Button>
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        onClick={handleSkipBranding}
-                                        className="w-full text-muted-foreground hover:text-foreground"
-                                        disabled={loading}
-                                    >
-                                        Skip branding for now
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        onClick={handleFinish}
-                                        className="w-full text-muted-foreground hover:text-foreground"
-                                        disabled={loading}
-                                    >
-                                        Skip onboarding and go to dashboard
-                                    </Button>
+                                    <div className="flex gap-2 justify-center">
+                                        <button
+                                            type="button"
+                                            onClick={handleSkipBranding}
+                                            disabled={loading}
+                                            className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-50"
+                                        >
+                                            Skip for now
+                                        </button>
+                                        <span className="text-xs text-muted-foreground">·</span>
+                                        <button
+                                            type="button"
+                                            onClick={handleFinish}
+                                            disabled={loading}
+                                            className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-50"
+                                        >
+                                            Exit setup
+                                        </button>
+                                    </div>
                                 </CardFooter>
                             </Card>
                         </motion.div>
                     )}
 
-                    {/* Step 3: Contact Info */}
+                    {/* ─── STEP 3: Contact Info ─── */}
                     {step === 3 && (
                         <motion.div
                             key="step3"
-                            custom={1}
-                            variants={variants}
+                            variants={stepVariants}
                             initial="enter"
                             animate="center"
                             exit="exit"
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
                         >
-                            <Card className="border-border bg-card/80 backdrop-blur-xl">
-                                <CardHeader>
-                                    <div className="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center mb-4">
-                                        <User className="h-6 w-6 text-slate-600" />
+                            <Card className="border-border bg-card/90 backdrop-blur-xl shadow-xl">
+                                <CardHeader className="pb-4 pt-6 px-6">
+                                    <div className="w-11 h-11 rounded-xl bg-slate-500/10 flex items-center justify-center mb-3">
+                                        <User className="h-5 w-5 text-slate-500" />
                                     </div>
-                                    <CardTitle className="text-2xl text-foreground">Contact Information</CardTitle>
-                                    <CardDescription className="text-muted-foreground">
-                                        This info appears on your utility sheets so buyers know how to reach you.
-                                    </CardDescription>
+                                    <h2 className="text-xl font-bold text-foreground">Your Contact Details</h2>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        This information appears on every utility sheet so buyers and sellers can reach you directly.
+                                    </p>
                                 </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="contactName" className="text-foreground flex items-center gap-2">
-                                                <User className="h-4 w-4" /> Name
+
+                                <CardContent className="px-6 pb-4 space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="contactName" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                                                <User className="h-3.5 w-3.5 text-muted-foreground" /> Your Name
                                             </Label>
                                             <Input
                                                 id="contactName"
@@ -722,13 +812,13 @@ export default function OnboardingPage() {
                                                 }}
                                                 autoComplete="name"
                                                 autoFocus
-                                                placeholder="John Smith"
-                                                className="bg-background border-input text-foreground"
+                                                placeholder="Jane Smith"
+                                                className="h-11 bg-background border-input text-foreground"
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="contactPhone" className="text-foreground flex items-center gap-2">
-                                                <Phone className="h-4 w-4" /> Phone
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="contactPhone" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                                                <Phone className="h-3.5 w-3.5 text-muted-foreground" /> Phone
                                             </Label>
                                             <Input
                                                 id="contactPhone"
@@ -740,13 +830,14 @@ export default function OnboardingPage() {
                                                 }}
                                                 autoComplete="tel"
                                                 placeholder="(555) 123-4567"
-                                                className="bg-background border-input text-foreground"
+                                                className="h-11 bg-background border-input text-foreground"
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="contactEmail" className="text-foreground flex items-center gap-2">
-                                            <Mail className="h-4 w-4" /> Email
+
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="contactEmail" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                                            <Mail className="h-3.5 w-3.5 text-muted-foreground" /> Email
                                         </Label>
                                         <Input
                                             id="contactEmail"
@@ -757,13 +848,15 @@ export default function OnboardingPage() {
                                                 setContactEmail(e.target.value);
                                             }}
                                             autoComplete="email"
-                                            placeholder="john@example.com"
-                                            className="bg-background border-input text-foreground"
+                                            placeholder="jane@yourrealty.com"
+                                            className="h-11 bg-background border-input text-foreground"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="contactWebsite" className="text-foreground flex items-center gap-2">
-                                            <Globe className="h-4 w-4" /> Website (optional)
+
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="contactWebsite" className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                                            <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                                            Website <span className="text-muted-foreground font-normal">(optional)</span>
                                         </Label>
                                         <Input
                                             id="contactWebsite"
@@ -774,70 +867,76 @@ export default function OnboardingPage() {
                                                 setContactWebsite(e.target.value);
                                             }}
                                             autoComplete="url"
-                                            placeholder="www.yoursite.com"
-                                            className="bg-background border-input text-foreground"
+                                            placeholder="www.yourrealty.com"
+                                            className="h-11 bg-background border-input text-foreground"
                                         />
                                     </div>
+
+                                    {/* Tip */}
+                                    <div className="flex items-start gap-2.5 rounded-lg bg-muted/40 border border-border/60 px-3.5 py-3">
+                                        <FileText className="h-4 w-4 text-slate-500 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            <strong className="text-foreground">All of this can be changed anytime</strong> from your Settings page. You can also create multiple brand profiles for different teams or use cases.
+                                        </p>
+                                    </div>
                                 </CardContent>
-                                <CardFooter className="flex flex-col gap-3">
-                                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+
+                                <CardFooter className="px-6 pb-6 flex flex-col gap-2.5">
+                                    <div className="flex gap-2.5 w-full">
                                         <Button
                                             variant="outline"
                                             onClick={handleBack}
-                                            className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
+                                            className="border-border text-foreground hover:bg-muted h-11 px-4"
                                         >
-                                            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                                            <ArrowLeft className="h-4 w-4" />
                                         </Button>
                                         <Button
                                             onClick={handleSaveContactInfo}
                                             disabled={loading}
-                                            className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
+                                            className="flex-1 bg-slate-700 hover:bg-slate-800 text-white h-11 font-medium active:scale-[0.98] transition-transform"
                                         >
                                             {loading ? (
-                                                <>
-                                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                                    <span className="ml-2">Saving...</span>
-                                                </>
+                                                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</>
                                             ) : (
-                                                <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
+                                                <>Save & Continue <ArrowRight className="ml-2 h-4 w-4" /></>
                                             )}
                                         </Button>
                                     </div>
-                                    <Button
-                                        variant="ghost"
+                                    <button
+                                        type="button"
                                         onClick={handleFinish}
-                                        className="w-full text-muted-foreground hover:text-foreground"
                                         disabled={loading}
+                                        className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-50"
                                     >
-                                        Skip onboarding and go to dashboard
-                                    </Button>
+                                        Exit setup and go to dashboard
+                                    </button>
                                 </CardFooter>
                             </Card>
                         </motion.div>
                     )}
 
-                    {/* Step 4: Preview */}
+                    {/* ─── STEP 4: Preview ─── */}
                     {step === 4 && (
                         <motion.div
                             key="step4"
-                            custom={1}
-                            variants={variants}
+                            variants={stepVariants}
                             initial="enter"
                             animate="center"
                             exit="exit"
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
                         >
-                            <Card className="border-border bg-card/80 backdrop-blur-xl">
-                                <CardHeader>
-                                    <div className="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center mb-4">
-                                        <Eye className="h-6 w-6 text-slate-600" />
+                            <Card className="border-border bg-card/90 backdrop-blur-xl shadow-xl">
+                                <CardHeader className="pb-4 pt-6 px-6">
+                                    <div className="w-11 h-11 rounded-xl bg-slate-500/10 flex items-center justify-center mb-3">
+                                        <FileText className="h-5 w-5 text-slate-500" />
                                     </div>
-                                    <CardTitle className="text-2xl text-foreground">Here's What Buyers Will See</CardTitle>
-                                    <CardDescription className="text-muted-foreground">
-                                        This is a preview of your branded utility info sheet.
-                                    </CardDescription>
+                                    <h2 className="text-xl font-bold text-foreground">Here&apos;s What Buyers Will See</h2>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        This is a preview of your branded utility sheet — the document buyers receive after a seller submits their utility info.
+                                    </p>
                                 </CardHeader>
-                                <CardContent>
+
+                                <CardContent className="px-6 pb-4">
                                     <UtilitySheetPdfPreview
                                         branding={{
                                             name: brandName || orgName || 'Your Brand',
@@ -854,107 +953,225 @@ export default function OnboardingPage() {
                                             show_generation_date: true,
                                         }}
                                     />
+                                    <div className="mt-3 flex items-start gap-2.5 rounded-lg bg-muted/40 border border-border/60 px-3.5 py-3">
+                                        <Zap className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            <strong className="text-foreground">Looking good?</strong> You can refine your branding anytime from Settings. Upgrades to Pro unlock logo uploads and custom colors.
+                                        </p>
+                                    </div>
                                 </CardContent>
-                                <CardFooter className="flex flex-col gap-3">
-                                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+
+                                <CardFooter className="px-6 pb-6 flex flex-col gap-2.5">
+                                    <div className="flex gap-2.5 w-full">
                                         <Button
                                             variant="outline"
                                             onClick={handleBack}
-                                            className="w-full sm:w-auto border-border text-foreground hover:bg-muted"
+                                            className="border-border text-foreground hover:bg-muted h-11 px-4"
                                         >
-                                            <ArrowLeft className="mr-2 h-4 w-4" /> Edit
+                                            <ArrowLeft className="h-4 w-4" />
                                         </Button>
                                         <Button
                                             onClick={() => setStep(5)}
-                                            className="w-full sm:flex-1 bg-slate-600 hover:bg-slate-700 text-white h-12"
+                                            className="flex-1 bg-slate-700 hover:bg-slate-800 text-white h-11 font-medium active:scale-[0.98] transition-transform"
                                         >
-                                            Looks Great! <ArrowRight className="ml-2 h-4 w-4" />
+                                            Looks great! <ArrowRight className="ml-2 h-4 w-4" />
                                         </Button>
                                     </div>
-                                    <Button
-                                        variant="ghost"
+                                    <button
+                                        type="button"
                                         onClick={handleFinish}
-                                        className="w-full text-muted-foreground hover:text-foreground"
                                         disabled={loading}
+                                        className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-50"
                                     >
-                                        Skip onboarding and go to dashboard
-                                    </Button>
+                                        Exit setup and go to dashboard
+                                    </button>
                                 </CardFooter>
                             </Card>
                         </motion.div>
                     )}
 
-                    {/* Step 5: First Request + Finish */}
+                    {/* ─── STEP 5: Launch ─── */}
                     {step === 5 && (
                         <motion.div
                             key="step5"
-                            variants={variants}
+                            variants={stepVariants}
                             initial="enter"
                             animate="center"
                             exit="exit"
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
                         >
-                            <Card className="border-border bg-card/80 backdrop-blur-xl">
-                                <CardHeader className="text-center">
-                                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                                        <Send className="h-10 w-10 text-slate-600" />
+                            <Card className="border-border bg-card/90 backdrop-blur-xl shadow-xl">
+                                <CardHeader className="text-center pb-4 pt-6 px-6">
+                                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500/20 to-slate-500/20 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                        <motion.div
+                                            initial={{ scale: 0.5, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+                                        >
+                                            <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                                        </motion.div>
                                     </div>
-                                    <CardTitle className="text-3xl text-foreground">Create Your First Request</CardTitle>
-                                    <CardDescription className="text-muted-foreground text-base">
-                                        Walk through the exact &quot;New Request&quot; flow once. Your first request won&apos;t count against your monthly limit.
-                                    </CardDescription>
+                                    <h2 className="text-2xl font-bold text-foreground">You&apos;re all set!</h2>
+                                    <p className="text-sm text-muted-foreground mt-1.5 max-w-xs mx-auto">
+                                        Your workspace is ready. Here&apos;s a quick look at what you&apos;ve got and how to make the most of it.
+                                    </p>
                                 </CardHeader>
-                                <CardContent>
-                                    <div className="p-4 rounded-xl border border-border bg-muted/30 mb-2">
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2 rounded-lg bg-emerald-500/10">
-                                                <FileText className="h-5 w-5 text-emerald-500" />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-foreground">Guided &quot;New Request&quot;</p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    You&apos;ll enter an address, pick utilities, optionally add seller info, and get a shareable link.
-                                                </p>
-                                            </div>
+
+                                <CardContent className="px-6 pb-4 space-y-4">
+                                    {/* Setup summary */}
+                                    <div className="rounded-xl border border-border bg-muted/20 overflow-hidden">
+                                        <div className="px-4 py-2.5 border-b border-border">
+                                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Setup Complete</p>
+                                        </div>
+                                        <div className="divide-y divide-border/60">
+                                            <motion.div
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: 0.15 }}
+                                                className="flex items-center gap-3 px-4 py-2.5"
+                                            >
+                                                <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <span className="text-sm text-foreground flex-1">{orgName || 'Organization'}</span>
+                                                <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                                            </motion.div>
+                                            <motion.div
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: 0.25 }}
+                                                className="flex items-center gap-3 px-4 py-2.5"
+                                            >
+                                                <Palette className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <span className="text-sm text-foreground flex-1">Brand profile</span>
+                                                <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                                            </motion.div>
+                                            <motion.div
+                                                initial={{ opacity: 0, x: -10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: 0.35 }}
+                                                className="flex items-center gap-3 px-4 py-2.5"
+                                            >
+                                                <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                                                <span className="text-sm text-foreground flex-1">Contact information</span>
+                                                <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                                            </motion.div>
                                         </div>
                                     </div>
+
+                                    {/* Reusable intake link — the star feature */}
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.4 }}
+                                        className="rounded-xl border border-border bg-muted/20 overflow-hidden"
+                                    >
+                                        <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
+                                            <LinkIcon className="h-3.5 w-3.5 text-slate-500" />
+                                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Your Reusable Intake Link</p>
+                                        </div>
+                                        <div className="px-4 py-3.5 space-y-3">
+                                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                                This is a <strong className="text-foreground">permanent link</strong> you can share anywhere — email signatures, websites, listing descriptions. Sellers use it to submit utility info for any property, at any time, without you needing to create a request first.
+                                            </p>
+
+                                            {intakeLinkLoading ? (
+                                                <div className="flex items-center gap-2 h-10">
+                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                    <span className="text-sm text-muted-foreground">Loading your link...</span>
+                                                </div>
+                                            ) : intakeLink?.url ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 min-w-0 rounded-lg border border-border bg-background px-3 py-2">
+                                                        <p className="text-xs font-mono text-foreground truncate">{intakeLink.url}</p>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={handleCopyLink}
+                                                        className={cn(
+                                                            'shrink-0 border-border h-9 px-3 transition-colors',
+                                                            copied && 'border-emerald-500/50 text-emerald-500',
+                                                        )}
+                                                    >
+                                                        {copied ? (
+                                                            <><Check className="h-3.5 w-3.5 mr-1.5" />Copied!</>
+                                                        ) : (
+                                                            <><Copy className="h-3.5 w-3.5 mr-1.5" />Copy</>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-muted-foreground">Your intake link will be available in Settings once your account is fully activated.</p>
+                                            )}
+
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {[
+                                                    { label: 'Email signature', icon: Mail },
+                                                    { label: 'Listing sheets', icon: FileText },
+                                                    { label: 'Your website', icon: Globe },
+                                                ].map(({ label, icon: Icon }) => (
+                                                    <div key={label} className="flex flex-col items-center gap-1.5 rounded-lg bg-muted/40 px-2 py-2.5 text-center">
+                                                        <Icon className="h-4 w-4 text-slate-500" />
+                                                        <span className="text-[10px] text-muted-foreground leading-tight">{label}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </motion.div>
                                 </CardContent>
-                                <CardFooter className="flex flex-col gap-3">
-                                    <Button
-                                        onClick={handleStartFirstRequest}
-                                        disabled={loading}
-                                        className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white h-14 text-lg font-semibold shadow-lg shadow-slate-500/20"
+
+                                <CardFooter className="px-6 pb-6 flex flex-col gap-2.5">
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.5 }}
+                                        className="w-full flex flex-col gap-2.5"
                                     >
-                                        {loading ? (
-                                            <>
-                                                <Loader2 className="h-5 w-5 animate-spin" />
-                                                <span className="ml-2">Loading...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Send className="mr-2 h-5 w-5" />
-                                                Walk Through New Request
-                                            </>
-                                        )}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        onClick={handleFinish}
-                                        disabled={loading}
-                                        className="w-full text-muted-foreground hover:text-foreground"
-                                    >
-                                        Skip and go to dashboard
-                                    </Button>
+                                        <Button
+                                            onClick={handleStartFirstRequest}
+                                            disabled={loading}
+                                            className="w-full h-12 bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white font-semibold text-sm shadow-lg shadow-slate-500/20 active:scale-[0.98] transition-transform"
+                                        >
+                                            {loading ? (
+                                                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Loading...</>
+                                            ) : (
+                                                <><Send className="mr-2 h-4 w-4" />Create My First Request</>
+                                            )}
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleFinish}
+                                            disabled={loading}
+                                            className="w-full h-10 border-border text-foreground hover:bg-muted font-medium"
+                                        >
+                                            <ExternalLink className="mr-2 h-4 w-4" />
+                                            Go to Dashboard
+                                        </Button>
+                                    </motion.div>
+                                    <p className="text-center text-xs text-muted-foreground pt-1">
+                                        Your first request won&apos;t count against your monthly limit.
+                                    </p>
                                 </CardFooter>
                             </Card>
                         </motion.div>
                     )}
+
                 </AnimatePresence>
 
-                {/* Step indicator text */}
-                <p className="text-center text-xs sm:text-sm text-muted-foreground mt-4 sm:mt-6">
-                    Step {step} of {STEPS.length}: {STEPS[step - 1].title}
-                </p>
+                {/* Bottom escape hatch (steps 2–4 only, very subtle) */}
+                {step >= 2 && step <= 4 && (
+                    <p className="text-center text-xs text-muted-foreground/60 mt-5">
+                        All settings can be changed later from your{' '}
+                        <button
+                            type="button"
+                            onClick={handleFinish}
+                            className="underline underline-offset-2 hover:text-muted-foreground transition-colors"
+                        >
+                            dashboard
+                        </button>
+                        .
+                    </p>
+                )}
             </div>
         </div>
     );
