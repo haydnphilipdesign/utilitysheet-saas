@@ -20,7 +20,7 @@ export function BeforeAfterSection() {
     const shouldReduceMotion = useReducedMotion();
 
     return (
-            <section className="py-14 sm:py-20 lg:py-24 bg-muted/30 px-4 sm:px-6 lg:px-8 border-y border-border/50">
+            <section className="py-14 sm:py-20 lg:py-24 bg-muted/30 px-4 sm:px-6 lg:px-8 border-b border-border/50">
             <div className="mx-auto max-w-7xl">
                 <motion.div
                     initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}

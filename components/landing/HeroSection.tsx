@@ -261,7 +261,7 @@ export function HeroSection() {
                             className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-slate-600 text-white text-xs sm:text-sm font-medium mb-4 sm:mb-6 shadow-lg shadow-slate-500/20"
                         >
                             <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            <span>Standardize utility handoff workflow</span>
+                            <span>Save 30+ minutes per file on utility follow-up</span>
                         </motion.div>
 
                         {/* Main Headline with Pain Hook */}
@@ -272,8 +272,8 @@ export function HeroSection() {
 
                         {/* Value Proposition */}
                         <p className="mx-auto lg:mx-0 max-w-2xl text-base sm:text-lg md:text-xl text-muted-foreground mb-5 sm:mb-7 leading-relaxed">
-                            UtilitySheet gives you a guided seller link workflow that turns messy follow-up into one clean handoff:
-                            a buyer-ready utility sheet (web + PDF), plus optional completion emails with the PDF attached.
+                            Send sellers one guided link. They confirm their utility providers in about 2 minutes—no login, no app.
+                            You get a buyer-ready utility sheet (web + PDF), and the PDF can auto-attach to your completion notification email.
                         </p>
 
                         {/* Pain Points (The Problem) */}
@@ -303,15 +303,15 @@ export function HeroSection() {
                         >
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>Seller-friendly intake:</strong> one secure link, no login, no app install</span>
+                                <span className="text-sm sm:text-base"><strong>One link to the seller</strong> — no login, no app install, done in ~2 minutes on their phone</span>
                             </li>
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>Professional output:</strong> shareable utility sheet + downloadable PDF</span>
+                                <span className="text-sm sm:text-base"><strong>Buyer-ready output</strong> — shareable web sheet + downloadable PDF, ready to drop in the file</span>
                             </li>
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>Completion email option:</strong> auto-attach the utility sheet PDF when sellers submit</span>
+                                <span className="text-sm sm:text-base"><strong>PDF auto-attaches to your completion email</strong> — on by default, change it anytime in Settings</span>
                             </li>
                         </motion.ul>
 

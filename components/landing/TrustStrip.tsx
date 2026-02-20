@@ -1,4 +1,4 @@
-import { Building2, Users, Award, MapPin } from 'lucide-react';
+import { Clock, Smartphone, FileCheck, Plug } from 'lucide-react';
 
 export function TrustStrip() {
     return (
@@ -6,23 +6,27 @@ export function TrustStrip() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                     {/* Value Props */}
-                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6">
+                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Building2 className="w-4 h-4 text-slate-500" />
-                            <span>Built for real estate TCs</span>
+                            <Clock className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                            <span>Sellers finish in ~2 minutes</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Users className="w-4 h-4 text-slate-500" />
-                            <span>By transaction coordinators</span>
+                            <Smartphone className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                            <span>No seller login or app required</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Award className="w-4 h-4 text-slate-500" />
-                            <span>Free plan available</span>
+                            <FileCheck className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                            <span>Web sheet + PDF output, ready to share</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Plug className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                            <span>Works alongside Dotloop, Skyslope &amp; Brokermint</span>
                         </div>
                     </div>
 
-                    {/* Company Info */}
-                    <div className="flex items-center justify-center lg:justify-end gap-4">
+                    {/* Company Credibility */}
+                    <div className="flex items-center justify-center lg:justify-end gap-4 flex-shrink-0">
                         <img
                             src="/pa-real-estate-support.png"
                             alt="PA Real Estate Support Services, LLC"
@@ -30,9 +34,8 @@ export function TrustStrip() {
                         />
                         <div className="text-sm">
                             <div className="font-semibold text-foreground leading-tight">PA Real Estate Support Services, LLC</div>
-                            <div className="text-muted-foreground leading-tight flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                The TC business that inspired UtilitySheet
+                            <div className="text-muted-foreground leading-tight text-xs mt-0.5">
+                                The TC business that inspired and uses UtilitySheet
                             </div>
                         </div>
                     </div>

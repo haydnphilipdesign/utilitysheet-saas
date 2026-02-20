@@ -36,28 +36,28 @@ export function FinalCtaSection() {
                     <div className="relative z-10">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-sm font-medium mb-6">
                             <Sparkles className="w-4 h-4" />
-                            <span>Built for transaction coordinators</span>
+                            <span>Used by PA Real Estate Support Services, LLC</span>
                         </div>
 
                         <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:text-5xl tracking-tight">
                             Ready to stop the utility back-and-forth?
                         </h2>
                         <p className="text-slate-100/90 text-base sm:text-lg mb-6 max-w-2xl mx-auto font-medium">
-                            Start free today. No credit card required. Cancel anytime.
+                            Start free — no credit card, no time limit. Be up and running in minutes.
                         </p>
 
                         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-8 sm:mb-10 text-sm text-slate-200">
                             <span className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                Guided seller link workflow
+                                One guided link to the seller
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                Utility sheet web + PDF output
+                                Buyer-ready web sheet + PDF
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                Optional PDF email attachment on submission
+                                PDF auto-attaches to your completion email
                             </span>
                         </div>
 

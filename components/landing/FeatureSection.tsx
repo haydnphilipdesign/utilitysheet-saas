@@ -31,17 +31,18 @@ const features = [
     {
         icon: Bell,
         title: "Tracking + Reminders",
-        description: "See Sent/In progress/Submitted at a glance and nudge sellers when they forget."
+        description: "See each request's status at a glance — Sent, In Progress, or Submitted — and nudge sellers with one click when they go quiet."
     },
     {
         icon: ShieldCheck,
         title: "Secure by Design",
-        description: "Seller intake links are separate from share links, and packets only unlock after submission."
+        description: "Seller intake links are separate from share links. Utility sheet packets only become accessible after submission — never before."
     },
     {
         icon: Palette,
-        title: "White-Label Branding (Pro + Teams)",
-        description: "Add your logo/colors and remove the UtilitySheet footer from share links and PDFs."
+        title: "White-Label Branding",
+        tag: "Pro + Teams",
+        description: "Add your logo and brand colors. Remove the UtilitySheet footer from share links and PDFs for a fully branded client experience."
     }
 ];
 

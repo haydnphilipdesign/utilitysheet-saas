@@ -1,8 +1,9 @@
 import { HeroSection } from '@/components/landing/HeroSection';
 import { TrustStrip } from '@/components/landing/TrustStrip';
+import { BeforeAfterSection } from '@/components/landing/BeforeAfterSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
 import { FeatureSection } from '@/components/landing/FeatureSection';
-import { BeforeAfterSection } from '@/components/landing/BeforeAfterSection';
+import { SocialProofBar } from '@/components/landing/SocialProofBar';
 import { PricingSection } from '@/components/landing/PricingSection';
 import { CopyTemplatesSection } from '@/components/landing/CopyTemplatesSection';
 import { FaqSection } from '@/components/landing/FaqSection';
@@ -21,14 +22,17 @@ export default function LandingPage() {
             {/* Trust Strip - Credibility indicators */}
             <TrustStrip />
 
+            {/* Before/After - Establish the pain before explaining the solution */}
+            <BeforeAfterSection />
+
             {/* How It Works - Process visualization */}
             <HowItWorks />
 
             {/* Feature Section - Product capabilities */}
             <FeatureSection />
 
-            {/* Before/After Comparison - Old way vs New way */}
-            <BeforeAfterSection />
+            {/* Social Proof - Real quote from founding customer + key metrics */}
+            <SocialProofBar />
 
             {/* Pricing Section - Clear pricing tiers */}
             <PricingSection />

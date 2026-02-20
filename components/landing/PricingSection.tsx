@@ -11,7 +11,7 @@ const tiers = [
     {
         name: 'Starter',
         price: 'Free',
-        description: 'Perfect for solo transaction coordinators and agents getting started.',
+        description: 'Try it on real transactions — no credit card, no time limit.',
         features: [
             '3 unlocked requests per month',
             'Reusable seller intake link (seller enters address)',
@@ -29,7 +29,7 @@ const tiers = [
         name: 'Pro',
         price: '$9',
         period: '/month',
-        description: 'For high-volume TCs and agents who want white-label branding.',
+        description: 'Unlimited requests, your branding. The full experience for solo TCs and agents.',
         features: [
             'Unlimited requests',
             'Custom reusable link slug',
@@ -48,7 +48,7 @@ const tiers = [
         name: 'Teams',
         price: '$7',
         period: '/seat/mo',
-        description: 'For brokerages and teams who need multiple users under one organization.',
+        description: 'For brokerages and teams. 3-seat minimum — starts at $21/month.',
         features: [
             'Everything in Pro',
             'Shared organization workspace',
