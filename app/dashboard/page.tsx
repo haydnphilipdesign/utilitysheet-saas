@@ -41,6 +41,8 @@ import {
     Lock,
     X,
     Zap,
+    Link2,
+    Check,
 } from 'lucide-react';
 import type { Request, DashboardStats } from '@/types';
 import { format } from 'date-fns';
@@ -84,6 +86,8 @@ export default function DashboardPage() {
     const [updatesLoading, setUpdatesLoading] = useState(true);
     const [dismissedUpdateId, setDismissedUpdateId] = useState<string | null>(null);
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
+    const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string } | null>(null);
+    const [copiedDashboardLink, setCopiedDashboardLink] = useState(false);
 
     useEffect(() => {
         async function fetchRequests() {
@@ -113,9 +117,10 @@ export default function DashboardPage() {
     useEffect(() => {
         async function fetchStats() {
             try {
-                const [statsRes, accountRes] = await Promise.all([
+                const [statsRes, accountRes, intakeLinkRes] = await Promise.all([
                     fetch('/api/requests?stats=true'),
                     fetch('/api/account'),
+                    fetch('/api/intake-link'),
                 ]);
                 if (statsRes.ok) {
                     const data = await statsRes.json();
@@ -125,6 +130,12 @@ export default function DashboardPage() {
                     const accountData = await accountRes.json();
                     if (accountData.usage) {
                         setUsageInfo(accountData.usage);
+                    }
+                }
+                if (intakeLinkRes.ok) {
+                    const intakeData = await intakeLinkRes.json();
+                    if (intakeData.intakeLink?.url) {
+                        setIntakeLink(intakeData.intakeLink);
                     }
                 }
             } catch (error) {
@@ -273,21 +284,41 @@ export default function DashboardPage() {
                             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
                             <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">Send seller links, track responses, and download utility info sheets</p>
                         </div>
-                        <Link href="/dashboard/requests/new" className="w-full sm:w-auto">
-                            <Button
-                                data-testid="dashboard-new-request"
-                                className="w-full sm:w-auto bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 active:scale-[0.98]"
-                                onClick={() =>
-                                    trackEvent('new_request_started', {
-                                        source: 'dashboard_header_button',
-                                        location: 'dashboard',
-                                    })
-                                }
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                New Request
-                            </Button>
-                        </Link>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                            {intakeLink && (
+                                <Button
+                                    variant="outline"
+                                    className="w-full sm:w-auto border-border text-foreground hover:bg-muted active:scale-[0.98]"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(intakeLink.url);
+                                        setCopiedDashboardLink(true);
+                                        setTimeout(() => setCopiedDashboardLink(false), 2000);
+                                    }}
+                                >
+                                    {copiedDashboardLink ? (
+                                        <Check className="mr-2 h-4 w-4 text-emerald-500" />
+                                    ) : (
+                                        <Link2 className="mr-2 h-4 w-4" />
+                                    )}
+                                    {copiedDashboardLink ? 'Copied!' : 'Copy Link'}
+                                </Button>
+                            )}
+                            <Link href="/dashboard/requests/new" className="w-full sm:w-auto">
+                                <Button
+                                    data-testid="dashboard-new-request"
+                                    className="w-full sm:w-auto bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 active:scale-[0.98]"
+                                    onClick={() =>
+                                        trackEvent('new_request_started', {
+                                            source: 'dashboard_header_button',
+                                            location: 'dashboard',
+                                        })
+                                    }
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    New Request
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
 
                     {/* Stats Cards */}
