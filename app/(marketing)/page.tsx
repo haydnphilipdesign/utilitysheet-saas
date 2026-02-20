@@ -5,7 +5,6 @@ import { HowItWorks } from '@/components/landing/HowItWorks';
 import { FeatureSection } from '@/components/landing/FeatureSection';
 import { SocialProofBar } from '@/components/landing/SocialProofBar';
 import { PricingSection } from '@/components/landing/PricingSection';
-import { CopyTemplatesSection } from '@/components/landing/CopyTemplatesSection';
 import { FaqSection } from '@/components/landing/FaqSection';
 import { StickyCTA } from '@/components/landing/StickyCTA';
 import { FinalCtaSection } from '@/components/landing/FinalCtaSection';
@@ -36,9 +35,6 @@ export default function LandingPage() {
 
             {/* Pricing Section - Clear pricing tiers */}
             <PricingSection />
-
-            {/* Copy Templates Section - Ready-to-use content */}
-            <CopyTemplatesSection />
 
             {/* FAQ Section - Common questions */}
             <FaqSection />

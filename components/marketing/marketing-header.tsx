@@ -159,13 +159,6 @@ export function MarketingHeader() {
                             Pricing
                         </Link>
                         <Link
-                            href="/#templates"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                        >
-                            Templates
-                        </Link>
-                        <Link
                             href="/#faq"
                             onClick={() => setMobileMenuOpen(false)}
                             className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"

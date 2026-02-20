@@ -68,7 +68,6 @@ export default function MarketingLayout({
                             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                                 <li><Link href="/#how-it-works" className="hover:text-foreground transition-colors">Workflow</Link></li>
                                 <li><Link href="/#features" className="hover:text-foreground transition-colors">Features</Link></li>
-                                <li><Link href="/#templates" className="hover:text-foreground transition-colors">Templates</Link></li>
                                 <li><Link href="/demo" className="hover:text-foreground transition-colors">Demo</Link></li>
                                 <li><Link href="/#pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
                                 <li><Link href="/#faq" className="hover:text-foreground transition-colors">FAQ</Link></li>
