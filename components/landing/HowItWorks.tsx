@@ -42,10 +42,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">01.</span>
-                                Generate a Link
+                                Share Your Link
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Create a one-off request (choose utilities) or share your reusable seller link. Either way, sellers start by entering the property address.
+                                Share your reusable intake link — the same link works for every property. Drop it in a text, email, or your signature and you&apos;re done. Sellers tap it, enter the property address, and start right away. Prefer to pick specific utilities per file? Create a one-off request instead.
                             </p>
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
@@ -100,10 +100,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">03.</span>
-                                Share + Deliver the Utility Sheet
+                                PDF Delivered — No Login Required
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Download the PDF, share the web sheet link, and optionally auto-attach the PDF to seller-submission completion emails.
+                                The moment the seller submits, the completed utility sheet PDF automatically attaches to your notification email. You get the result in your inbox — no logging in, no downloading, no follow-up. Download the PDF, share the web link with buyers, or drop it straight into your buyer packet.
                             </p>
                         </div>
                         <motion.div

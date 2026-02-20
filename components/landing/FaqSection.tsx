@@ -13,27 +13,31 @@ import { trackEvent } from '@/lib/analytics/events';
 const faqs = [
     {
         question: 'Who is UtilitySheet for?',
-        answer: 'UtilitySheet is built for transaction coordinators and real estate agents who want a standardized, buyer-ready utility handoff—without chasing sellers.',
-    },
-    {
-        question: 'Does the seller need an account?',
-        answer: 'No. Sellers open a secure link and complete the guided form on their phone—no login and no app install.',
+        answer: 'UtilitySheet is built for transaction coordinators and real estate agents who want a standardized, buyer-ready utility handoff\u2014without chasing sellers.',
     },
     {
         question: 'Can I use one link for every property?',
-        answer: 'Yes. You can share your reusable seller link over and over—sellers enter the property address at the start, then complete the same guided utility form.',
+        answer: 'Yes \u2014 and this is one of the most powerful things about UtilitySheet. Your reusable intake link works for any property. Add it to your email signature, include it in your standard seller texts, or paste it into your TC checklist. Sellers tap the link, enter the property address themselves, and complete the guided utility form. You never have to create a new request or log in to send a new link. If you do want to choose specific utility categories for a particular file, you can still create a one-off request \u2014 but the reusable link is the fastest way to work.',
+    },
+    {
+        question: 'Do I need to log in every time to get the utility sheet?',
+        answer: 'No. When a seller submits, the completed utility sheet PDF automatically attaches to your notification email. It shows up in your inbox without you doing anything \u2014 no logging in, no downloading, no follow-up. You can log in anytime to view submissions, track status, share the web link with buyers, or download the PDF again, but the email delivery means you always have the result the moment it\'s ready.',
+    },
+    {
+        question: 'Does the seller need an account?',
+        answer: 'No. Sellers open a secure link and complete the guided form on their phone\u2014no login and no app install.',
     },
     {
         question: 'Do sellers need to upload bills or share account numbers?',
-        answer: 'No. UtilitySheet is designed to be quick and low-friction—no bill uploads and no account numbers.',
+        answer: 'No. UtilitySheet is designed to be quick and low-friction\u2014no bill uploads and no account numbers.',
     },
     {
-        question: 'What if the seller doesn’t know a provider?',
-        answer: 'They can tap “Not sure” and keep moving, or search/type the provider name if they do know it. You’ll still get a clean sheet with whatever they provided.',
+        question: 'What if the seller doesn\'t know a provider?',
+        answer: 'They can tap "Not sure" and keep moving, or search/type the provider name if they do know it. You\'ll still get a clean sheet with whatever they provided.',
     },
     {
         question: 'Can UtilitySheet auto-attach the PDF to completion emails?',
-        answer: 'Yes. When a seller submits, your completion notification email can include the utility sheet PDF as an attachment. This is enabled by default and can be changed in Settings > Notifications.',
+        answer: 'Yes, and it\'s on by default. When a seller submits, your completion notification email automatically includes the utility sheet PDF as an attachment. You don\'t have to configure anything \u2014 it works out of the box. You can turn it off or change the behavior in Settings > Notifications.',
     },
     {
         question: 'Will every completion email always include a PDF attachment?',
@@ -41,23 +45,23 @@ const faqs = [
     },
     {
         question: 'How do provider suggestions work?',
-        answer: 'We suggest likely providers based on the address and utility type. Sellers can confirm with a tap or enter a provider manually if the suggestion isn’t correct.',
+        answer: 'We suggest likely providers based on the address and utility type. Sellers can confirm with a tap or enter a provider manually if the suggestion isn\'t correct.',
     },
     {
         question: 'What utilities can I collect?',
-        answer: 'Common categories like electric, gas, water, sewer, trash, internet, cable, and propane. One-off requests let you choose categories; the reusable link uses a standard set.',
+        answer: 'Common categories like electric, gas, water, sewer, trash, internet, cable, and propane. One-off requests let you choose categories per file; the reusable link uses a standard set that covers the most common utilities.',
     },
     {
         question: 'What happens if I hit the free plan limit?',
-        answer: 'Sellers can still submit. New submissions beyond your free limit are saved as “Locked” in your dashboard until you upgrade (then they unlock automatically).',
+        answer: 'Sellers can still submit. New submissions beyond your free limit are saved as "Locked" in your dashboard until you upgrade (then they unlock automatically).',
     },
     {
         question: 'Can I remove UtilitySheet branding?',
-        answer: 'Yes. Pro and Teams accounts can remove the “Powered by UtilitySheet” footer from share links and PDFs (white-label).',
+        answer: 'Yes. Pro and Teams accounts can remove the "Powered by UtilitySheet" footer from share links and PDFs (white-label).',
     },
     {
         question: 'Do you offer Teams (multi-seat)?',
-        answer: 'Yes. Teams lets you invite multiple users under one organization. It’s $7 per seat per month with a 3 seat minimum.',
+        answer: 'Yes. Teams lets you invite multiple users under one organization. It\'s $7 per seat per month with a 3 seat minimum.',
     }
 ];
 

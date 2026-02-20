@@ -9,14 +9,14 @@ import { trackEvent } from '@/lib/analytics/events';
 const features = [
     {
         icon: Link2,
-        title: "Guided Seller Links",
-        description: "Use a one-off request link or share a reusable link. Sellers don’t need an account and can finish on their phone."
+        title: "Reusable Intake Link",
+        description: "One permanent link that works for every property. Share it in a text, your email signature, or a listing — sellers tap it, enter the address, and go. No new link to create each time. One-off requests are still available if you want to choose specific utilities per file."
     },
     {
         icon: MailCheck,
-        title: "Completion Email + PDF Attachment",
+        title: "PDF Delivered to Your Inbox",
         tag: "New",
-        description: "When a seller submits, you can auto-attach the utility sheet PDF to the completion email. This setting is on by default and can be changed in Settings."
+        description: "When a seller submits, the completed utility sheet PDF automatically attaches to your notification email. You get the result without logging in — it’s just there in your inbox. On by default; manage the setting anytime."
     },
     {
         icon: Sparkles,

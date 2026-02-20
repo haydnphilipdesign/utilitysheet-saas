@@ -49,7 +49,7 @@ export function FinalCtaSection() {
                         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-8 sm:mb-10 text-sm text-slate-200">
                             <span className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                One guided link to the seller
+                                One permanent link, reused on every file
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -57,7 +57,7 @@ export function FinalCtaSection() {
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                PDF auto-attaches to your completion email
+                                PDF arrives in your inbox — no login needed
                             </span>
                         </div>
 

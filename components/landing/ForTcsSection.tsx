@@ -9,28 +9,28 @@ import { Bell, CheckCircle2, FileText, Link2, Clock, AlertTriangle, XCircle, Arr
 const painToOutcome = [
     {
         icon: Link2,
-        title: 'One link to the seller',
-        description: 'Send a guided intake link—no login, no back-and-forth, no "who\'s your gas company?" texts.',
+        title: 'One permanent link, reused on every file',
+        description: 'Share your reusable intake link in texts, emails, or your signature. Sellers enter the address — no back-and-forth, no "who\'s your gas company?" texts.',
         timeSaved: 'Saves 15 min',
     },
     {
         icon: Bell,
-        title: 'Track + remind',
-        description: 'See which listings are still pending and send a reminder when sellers forget.',
+        title: 'PDF lands in your inbox automatically',
+        description: 'When a seller submits, the completed PDF attaches to your notification email. You get the result without logging in — no manual step needed.',
         timeSaved: 'Saves 10 min',
     },
     {
         icon: FileText,
-        title: 'Buyer-ready utility sheet',
-        description: 'Get a clean web sheet + PDF you can drop into your buyer packet or share to anyone.',
+        title: 'Buyer-ready utility sheet, instantly',
+        description: 'A clean web sheet + downloadable PDF ready to share with buyers or drop into your packet the moment the seller is done.',
         timeSaved: 'Saves 15 min',
     },
 ] as const;
 
 const tcWorkflow = [
-    'Create the request when the file opens (takes ~30 seconds).',
-    'Paste the seller link into your normal text/email (templates below).',
-    'When submitted, download the PDF or share the sheet link to buyers/title.',
+    'Add your reusable intake link to your email signature or text template — once, and it\'s there forever.',
+    'When a new file opens, text or email the seller your link. They enter the address, confirm utilities in ~2 minutes. No new request to create.',
+    'The PDF attaches to your notification email automatically. Share the web link with buyers or drop the PDF in the packet — done.',
 ] as const;
 
 const painPoints = [
@@ -178,7 +178,7 @@ export function ForTcsSection() {
                                         <div>
                                             <div className="font-semibold text-foreground">Works with your process</div>
                                             <div className="text-muted-foreground mt-1 text-sm">
-                                                Copy/paste the link into email, text, Dotloop, Skyslope, Brokermint, or your TC checklist—no integrations required.
+                                                Paste your reusable link into email, text, Dotloop, Skyslope, Brokermint, or your TC checklist — no integrations, no new logins, no extra steps.
                                             </div>
                                         </div>
                                     </div>

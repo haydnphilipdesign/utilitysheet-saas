@@ -272,8 +272,8 @@ export function HeroSection() {
 
                         {/* Value Proposition */}
                         <p className="mx-auto lg:mx-0 max-w-2xl text-base sm:text-lg md:text-xl text-muted-foreground mb-5 sm:mb-7 leading-relaxed">
-                            Send sellers one guided link. They confirm their utility providers in about 2 minutes—no login, no app.
-                            You get a buyer-ready utility sheet (web + PDF), and the PDF can auto-attach to your completion notification email.
+                            Share your reusable link once — sellers confirm their utility providers in about 2 minutes, no login, no app.
+                            When they submit, the PDF lands in your inbox automatically. No logging in, no manual steps, no chasing.
                         </p>
 
                         {/* Pain Points (The Problem) */}
@@ -303,15 +303,15 @@ export function HeroSection() {
                         >
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>One link to the seller</strong> — no login, no app install, done in ~2 minutes on their phone</span>
+                                <span className="text-sm sm:text-base"><strong>One permanent link, reused on every file</strong> — sellers enter the property address themselves, confirm utilities in ~2 minutes. No new link to create each time.</span>
+                            </li>
+                            <li className="flex items-start gap-2 sm:gap-3">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
+                                <span className="text-sm sm:text-base"><strong>PDF delivered to your inbox automatically</strong> — attaches to your completion email the moment the seller submits. You don&apos;t have to log in to get the result.</span>
                             </li>
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
                                 <span className="text-sm sm:text-base"><strong>Buyer-ready output</strong> — shareable web sheet + downloadable PDF, ready to drop in the file</span>
-                            </li>
-                            <li className="flex items-start gap-2 sm:gap-3">
-                                <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>PDF auto-attaches to your completion email</strong> — on by default, change it anytime in Settings</span>
                             </li>
                         </motion.ul>
 
