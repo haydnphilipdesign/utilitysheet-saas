@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Copy, ExternalLink, Loader2, Mail, Download, Lock } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Loader2, Mail, Download, Lock } from 'lucide-react';
 import type { Request } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -17,7 +17,7 @@ const statusConfig = {
     draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border' },
     sent: { label: 'Sent', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
     in_progress: { label: 'In Progress', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-    submitted: { label: 'Submitted', color: 'bg-slate-600/20 text-slate-500 border-emerald-500/30' },
+    submitted: { label: 'Submitted', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
 } as const;
 
 export default function RequestDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -142,7 +142,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
 
     if (isLocked) {
         return (
-            <div className="max-w-4xl mx-auto space-y-8">
+            <div className="max-w-4xl mx-auto space-y-6">
                 <div className="space-y-2">
                     <Button
                         variant="ghost"
@@ -153,33 +153,46 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         Back to Requests
                     </Button>
                     <div className="flex items-center gap-2">
-                        <h1 className="text-3xl font-bold text-foreground">Locked request</h1>
-                        <Badge variant="outline" className="border-border text-muted-foreground">
-                            <Lock className="mr-1 h-3.5 w-3.5" />
-                            Locked
-                        </Badge>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Seller submitted — upgrade to view</h1>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        This submission was received after your free plan limit. Upgrade to view the details and generate the utility info sheet.
+                        Your seller filled out this form, but it arrived after your free plan limit for the month. Upgrade to Pro to view their answers and generate the utility info sheet.
                     </p>
                 </div>
 
-                <Card className="border-border bg-card/50">
-                    <CardHeader>
-                        <CardTitle className="text-foreground">Upgrade to unlock</CardTitle>
-                        <CardDescription className="text-muted-foreground">
-                            Upgrade to Pro or Teams to unlock over-limit requests.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                        <div className="text-sm text-muted-foreground">
-                            Created {format(new Date(request.created_at), 'MMMM d, yyyy')}
+                <Card className="border-amber-500/30 bg-amber-500/5">
+                    <CardContent className="pt-6 space-y-4">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-amber-500/15 shrink-0">
+                                <Lock className="h-5 w-5 text-amber-500" />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="font-semibold text-foreground">This submission is locked</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Created {format(new Date(request.created_at), 'MMMM d, yyyy')}. Your seller&apos;s utility information is saved — upgrade any time to unlock it.
+                                </p>
+                            </div>
+                        </div>
+                        <Separator className="bg-border" />
+                        <div className="space-y-2.5">
+                            {[
+                                'View your seller\'s submitted utility providers',
+                                'Generate and download the branded PDF',
+                                'Unlimited requests going forward — no monthly cap',
+                            ].map((item) => (
+                                <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <div className="h-4 w-4 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                                    </div>
+                                    {item}
+                                </div>
+                            ))}
                         </div>
                         <Button
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-11 px-8"
                             onClick={() => router.push('/dashboard/settings')}
                         >
-                            Go to Billing
+                            Upgrade to Pro — $9/month
                         </Button>
                     </CardContent>
                 </Card>

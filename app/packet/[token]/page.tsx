@@ -240,7 +240,10 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                     {UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}
                                                 </span>
                                                 <div className="min-w-0">
-                                                    <p className="font-medium text-foreground capitalize text-sm">{utility.category}</p>
+                                                    <p className="font-medium text-foreground text-sm">
+                                                        {UTILITY_CATEGORIES.find(c => c.key === utility.category)?.label ||
+                                                            utility.category.charAt(0).toUpperCase() + utility.category.slice(1)}
+                                                    </p>
                                                     <p className="text-sm text-muted-foreground truncate">{utility.provider_name}</p>
                                                 </div>
                                             </div>
@@ -296,7 +299,10 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                             <span className="text-xl">
                                                                 {UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}
                                                             </span>
-                                                            <span className="font-medium text-foreground capitalize">{utility.category}</span>
+                                                            <span className="font-medium text-foreground">
+                                                                {UTILITY_CATEGORIES.find(c => c.key === utility.category)?.label ||
+                                                                    utility.category.charAt(0).toUpperCase() + utility.category.slice(1)}
+                                                            </span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground">

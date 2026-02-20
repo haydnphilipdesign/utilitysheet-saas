@@ -40,6 +40,7 @@ import {
     Megaphone,
     Lock,
     X,
+    Zap,
 } from 'lucide-react';
 import type { Request, DashboardStats } from '@/types';
 import { format } from 'date-fns';
@@ -52,7 +53,7 @@ const statusConfig = {
     draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
     sent: { label: 'Sent', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: Send },
     in_progress: { label: 'In Progress', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: Clock },
-    submitted: { label: 'Submitted', color: 'bg-slate-600/20 text-slate-500 border-emerald-500/30', icon: CheckCircle2 },
+    submitted: { label: 'Submitted', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30', icon: CheckCircle2 },
 };
 
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton';
@@ -82,6 +83,7 @@ export default function DashboardPage() {
     const [updates, setUpdates] = useState<ProductUpdate[]>([]);
     const [updatesLoading, setUpdatesLoading] = useState(true);
     const [dismissedUpdateId, setDismissedUpdateId] = useState<string | null>(null);
+    const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
 
     useEffect(() => {
         async function fetchRequests() {
@@ -111,10 +113,19 @@ export default function DashboardPage() {
     useEffect(() => {
         async function fetchStats() {
             try {
-                const statsRes = await fetch('/api/requests?stats=true');
+                const [statsRes, accountRes] = await Promise.all([
+                    fetch('/api/requests?stats=true'),
+                    fetch('/api/account'),
+                ]);
                 if (statsRes.ok) {
                     const data = await statsRes.json();
                     setStats(data);
+                }
+                if (accountRes.ok) {
+                    const accountData = await accountRes.json();
+                    if (accountData.usage) {
+                        setUsageInfo(accountData.usage);
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching dashboard stats:', error);
@@ -260,7 +271,7 @@ export default function DashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                         <div>
                             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
-                            <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">Manage your utility sheet requests</p>
+                            <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">Send seller links, track responses, and download utility info sheets</p>
                         </div>
                         <Link href="/dashboard/requests/new" className="w-full sm:w-auto">
                             <Button
@@ -297,6 +308,39 @@ export default function DashboardPage() {
                             </Card>
                         ))}
                     </div>
+
+                    {/* Free-tier usage nudge */}
+                    {usageInfo && usageInfo.plan === 'free' && usageInfo.used >= Math.max(1, usageInfo.limit - 1) && (
+                        <div className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-xl border px-4 py-3.5 ${
+                            usageInfo.used >= usageInfo.limit
+                                ? 'border-red-500/30 bg-red-500/8'
+                                : 'border-amber-500/30 bg-amber-500/8'
+                        }`}>
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className={`p-1.5 rounded-lg shrink-0 ${usageInfo.used >= usageInfo.limit ? 'bg-red-500/15' : 'bg-amber-500/15'}`}>
+                                    <Zap className={`h-4 w-4 ${usageInfo.used >= usageInfo.limit ? 'text-red-400' : 'text-amber-400'}`} />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium text-foreground">
+                                        {usageInfo.used >= usageInfo.limit
+                                            ? `You've used all ${usageInfo.limit} free requests this month`
+                                            : `${usageInfo.limit - usageInfo.used} free request${usageInfo.limit - usageInfo.used === 1 ? '' : 's'} remaining this month`}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Upgrade to Pro for unlimited requests at $9/month
+                                    </p>
+                                </div>
+                            </div>
+                            <Link href="/dashboard/settings" className="shrink-0">
+                                <Button
+                                    size="sm"
+                                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 px-3 font-medium"
+                                >
+                                    Upgrade to Pro
+                                </Button>
+                            </Link>
+                        </div>
+                    )}
 
                     {/* Updates */}
                     {hasNewUpdates && (

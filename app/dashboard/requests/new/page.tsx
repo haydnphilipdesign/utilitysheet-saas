@@ -425,57 +425,86 @@ export default function NewRequestPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {brands.map((brand) => (
-                                <button
-                                    key={brand.id}
-                                    onClick={() => updateField('brand_profile_id', brand.id)}
-                                    className={`text-left p-4 rounded-xl border transition-all ${formData.brand_profile_id === brand.id
-                                        ? 'bg-emerald-500/10 border-emerald-500/50 shadow-lg shadow-slate-500/5'
-                                        : 'bg-muted/50 border-border hover:border-input'
-                                        }`}
-                                >
-                                    <div className="flex items-center justify-between mb-2">
-                                        <p className="font-semibold text-foreground">{brand.name}</p>
-                                        {formData.brand_profile_id === brand.id && (
-                                            <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center">
-                                                <Check className="h-3 w-3 text-white" />
-                                            </div>
-                                        )}
+                        {brands.length === 0 ? (
+                            <div className="rounded-xl border border-border bg-muted/30 p-4 sm:p-5">
+                                {isPro ? (
+                                    <div className="text-center space-y-3">
+                                        <p className="text-sm text-muted-foreground">You don&apos;t have any brand profiles yet.</p>
+                                        <Link href="/dashboard/branding/new?returnTo=/dashboard/requests/new">
+                                            <Button variant="outline" className="border-dashed border-2 border-emerald-500/40 hover:border-emerald-500/70 hover:bg-emerald-500/5 text-emerald-400">
+                                                <Plus className="mr-2 h-4 w-4" />
+                                                Create a brand profile
+                                            </Button>
+                                        </Link>
+                                        <p className="text-xs text-muted-foreground">or continue without one — you can add branding later.</p>
                                     </div>
-                                    <p className="text-sm text-muted-foreground line-clamp-1">{brand.contact_name || 'No contact name'}</p>
-                                    <div className="flex gap-1.5 mt-3">
-                                        <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: brand.primary_color }} />
-                                        <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: brand.secondary_color }} />
-                                    </div>
-                                </button>
-                            ))}
-
-                            {isPro ? (
-                                <Link href="/dashboard/branding/new?returnTo=/dashboard/requests/new">
-                                    <Button variant="outline" className="w-full h-full min-h-[100px] border-dashed border-2 border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-400 group">
-                                        <div className="flex flex-col items-center">
-                                            <Plus className="h-5 w-5 mb-1 group-hover:scale-110 transition-transform" />
-                                            <span>New Profile</span>
+                                ) : (
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-2 rounded-lg bg-muted shrink-0">
+                                            <Sparkles className="h-4 w-4 text-muted-foreground" />
                                         </div>
-                                    </Button>
-                                </Link>
-                            ) : (
-                                <div className="relative">
-                                    <Button
-                                        variant="outline"
-                                        disabled
-                                        className="w-full h-full min-h-[100px] border-dashed border-2 border-border text-muted-foreground/50 cursor-not-allowed"
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground">No brand profiles yet</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                This request will use default UtilitySheet branding. Upgrade to Pro to add your own logo and contact info.
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {brands.map((brand) => (
+                                    <button
+                                        key={brand.id}
+                                        onClick={() => updateField('brand_profile_id', brand.id)}
+                                        className={`text-left p-4 rounded-xl border transition-all ${formData.brand_profile_id === brand.id
+                                            ? 'bg-emerald-500/10 border-emerald-500/50 shadow-lg shadow-slate-500/5'
+                                            : 'bg-muted/50 border-border hover:border-input'
+                                            }`}
                                     >
-                                        <div className="flex flex-col items-center">
-                                            <Plus className="h-5 w-5 mb-1" />
-                                            <span>New Profile</span>
-                                            <span className="text-xs text-muted-foreground/50 mt-1">Pro Plan</span>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="font-semibold text-foreground">{brand.name}</p>
+                                            {formData.brand_profile_id === brand.id && (
+                                                <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                                                    <Check className="h-3 w-3 text-white" />
+                                                </div>
+                                            )}
                                         </div>
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
+                                        <p className="text-sm text-muted-foreground line-clamp-1">{brand.contact_name || 'No contact name'}</p>
+                                        <div className="flex gap-1.5 mt-3">
+                                            <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: brand.primary_color }} />
+                                            <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: brand.secondary_color }} />
+                                        </div>
+                                    </button>
+                                ))}
+
+                                {isPro ? (
+                                    <Link href="/dashboard/branding/new?returnTo=/dashboard/requests/new">
+                                        <Button variant="outline" className="w-full h-full min-h-[100px] border-dashed border-2 border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-400 group">
+                                            <div className="flex flex-col items-center">
+                                                <Plus className="h-5 w-5 mb-1 group-hover:scale-110 transition-transform" />
+                                                <span>New Profile</span>
+                                            </div>
+                                        </Button>
+                                    </Link>
+                                ) : (
+                                    <div className="relative">
+                                        <Button
+                                            variant="outline"
+                                            disabled
+                                            className="w-full h-full min-h-[100px] border-dashed border-2 border-border text-muted-foreground/50 cursor-not-allowed"
+                                        >
+                                            <div className="flex flex-col items-center">
+                                                <Plus className="h-5 w-5 mb-1" />
+                                                <span>New Profile</span>
+                                                <span className="text-xs text-muted-foreground/50 mt-1">Pro Plan</span>
+                                            </div>
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="flex justify-between pt-2">
                             <Button
@@ -488,7 +517,7 @@ export default function NewRequestPage() {
                             </Button>
                             <Button
                                 onClick={() => setStep(3)}
-                                disabled={!formData.brand_profile_id}
+                                disabled={brands.length > 0 && !formData.brand_profile_id}
                                 className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                             >
                                 Continue
@@ -763,65 +792,68 @@ export default function NewRequestPage() {
 
             {/* Upgrade Dialog */}
             <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-                <DialogContent className="bg-zinc-900 border-zinc-800 !max-w-[calc(100vw-2rem)] sm:!max-w-md">
+                <DialogContent className="bg-popover border-border !max-w-[calc(100vw-2rem)] sm:!max-w-md">
                     <DialogHeader>
                         <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-2">
                             <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500" />
                         </div>
-                        <DialogTitle className="text-white text-lg sm:text-xl text-center">Monthly Limit Reached</DialogTitle>
-                        <DialogDescription className="text-zinc-400 text-center text-sm">
-                            You&apos;ve used all your requests for this month
+                        <DialogTitle className="text-foreground text-lg sm:text-xl text-center">Monthly limit reached</DialogTitle>
+                        <DialogDescription className="text-muted-foreground text-center text-sm">
+                            You&apos;ve used all {usageInfo?.limit ?? 3} free requests this month
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 pt-4">
+                    <div className="space-y-5 pt-4">
                         {/* Usage Display */}
                         {usageInfo && (
-                            <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                            <div className="bg-muted/50 rounded-lg p-4 border border-border">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-zinc-400 text-sm">Monthly Usage</span>
-                                    <span className="text-white font-medium">
-                                        {usageInfo.used} of {usageInfo.limit} requests
+                                    <span className="text-muted-foreground text-sm">Monthly usage</span>
+                                    <span className="text-foreground font-medium">
+                                        {usageInfo.used} / {usageInfo.limit} requests
                                     </span>
                                 </div>
-                                <div className="w-full bg-zinc-700 rounded-full h-2">
+                                <div className="w-full bg-muted rounded-full h-2">
                                     <div
                                         className="bg-red-500 h-2 rounded-full"
                                         style={{ width: '100%' }}
                                     />
                                 </div>
-                                <p className="text-zinc-500 text-xs mt-2 capitalize">
-                                    Current plan: {usageInfo.plan}
+                                <p className="text-muted-foreground text-xs mt-2">
+                                    Resets the 1st of each month
                                 </p>
                             </div>
                         )}
 
                         {/* Upgrade Benefits */}
-                        <div className="space-y-3">
-                            <div className="flex items-start gap-3">
-                                <div className="w-5 h-5 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                    <Sparkles className="h-3 w-3 text-emerald-400" />
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2.5">
+                            <p className="text-sm font-semibold text-foreground">Pro plan — $9/month</p>
+                            {[
+                                'Unlimited requests, no monthly cap',
+                                'Custom logo, colors & contact info on every sheet',
+                                'Reusable intake link with custom slug',
+                            ].map((benefit) => (
+                                <div key={benefit} className="flex items-start gap-2">
+                                    <div className="mt-0.5 h-4 w-4 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                                        <Sparkles className="h-2.5 w-2.5 text-emerald-400" />
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{benefit}</p>
                                 </div>
-                                <div>
-                                    <p className="text-white text-sm font-medium">Upgrade to Pro</p>
-                                    <p className="text-zinc-400 text-sm">Unlimited requests, custom branding, and priority support</p>
-                                </div>
-                            </div>
+                            ))}
                         </div>
 
                         {/* Actions */}
                         <div className="flex flex-col gap-2">
                             <Link href="/dashboard/settings" className="w-full">
                                 <Button
-                                    className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-11"
                                     onClick={() => setShowUpgradeDialog(false)}
                                 >
-                                    <Sparkles className="mr-2 h-4 w-4" />
-                                    Upgrade Now
+                                    Upgrade to Pro
                                 </Button>
                             </Link>
                             <Button
                                 variant="outline"
-                                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                                className="border-border text-muted-foreground hover:bg-muted"
                                 onClick={() => {
                                     setShowUpgradeDialog(false);
                                     router.push('/dashboard');

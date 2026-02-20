@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
 import { Link as LinkIcon, User, Bell, Check, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -415,42 +416,36 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-4">
                             <div>
-                                <p className="text-foreground">Seller submissions</p>
+                                <p className="text-foreground text-sm font-medium">Seller submissions</p>
                                 <p className="text-sm text-muted-foreground">Get notified when a seller completes a form</p>
                             </div>
-                            <input
-                                type="checkbox"
+                            <Switch
                                 checked={notifications.seller_submissions}
-                                onChange={(e) => setNotifications({ ...notifications, seller_submissions: e.target.checked })}
-                                className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
+                                onCheckedChange={(checked) => setNotifications({ ...notifications, seller_submissions: checked })}
                             />
                         </div>
                         <Separator className="bg-border" />
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-4">
                             <div>
-                                <p className="text-foreground">Attach PDF to seller submission emails</p>
+                                <p className="text-foreground text-sm font-medium">Attach PDF to submission emails</p>
                                 <p className="text-sm text-muted-foreground">Automatically include a branded utility sheet PDF attachment</p>
                             </div>
-                            <input
-                                type="checkbox"
+                            <Switch
                                 checked={notifications.seller_submission_pdf_attachment}
-                                onChange={(e) => setNotifications({ ...notifications, seller_submission_pdf_attachment: e.target.checked })}
-                                className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
+                                onCheckedChange={(checked) => setNotifications({ ...notifications, seller_submission_pdf_attachment: checked })}
                             />
                         </div>
                         <Separator className="bg-border" />
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-4">
                             <div>
-                                <p className="text-foreground">Contact resolution alerts</p>
+                                <p className="text-foreground text-sm font-medium">Contact resolution alerts</p>
                                 <p className="text-sm text-muted-foreground">Get notified about unresolved provider contacts</p>
                             </div>
-                            <input
-                                type="checkbox"
+                            <Switch
                                 checked={notifications.contact_resolution}
-                                onChange={(e) => setNotifications({ ...notifications, contact_resolution: e.target.checked })}
-                                className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
+                                onCheckedChange={(checked) => setNotifications({ ...notifications, contact_resolution: checked })}
                             />
                         </div>
                         {/* Weekly summary disabled - requires Vercel cron upgrade

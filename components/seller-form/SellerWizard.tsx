@@ -11,6 +11,7 @@ import { UtilityStep } from './steps/UtilityStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { SuccessStep } from './steps/SuccessStep';
 import { trackEvent } from '@/lib/analytics/events';
+import { toast } from 'sonner';
 
 // Define the full form state structure locally for the wizard
 export interface WizardState {
@@ -398,10 +399,12 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     status: response.status,
                     error: errorBody,
                 });
+                toast.error('Something went wrong. Please check your connection and try again.');
                 setSubmitting(false);
             }
         } catch (err) {
             console.error('Failed to submit form:', err);
+            toast.error('Could not submit. Please check your connection and try again.');
             setSubmitting(false);
         }
     };

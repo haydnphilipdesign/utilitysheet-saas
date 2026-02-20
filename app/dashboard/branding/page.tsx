@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Palette, Star, MoreHorizontal, Pencil, Trash2, Loader2, RefreshCcw, Lock } from 'lucide-react';
+import { Plus, Palette, Star, MoreHorizontal, Pencil, Trash2, Loader2, Lock } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
