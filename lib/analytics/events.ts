@@ -60,6 +60,19 @@ type AnalyticsEventMap = {
   dashboard_reusable_upgrade_clicked: BasePayload & {
     location: string;
   };
+  intake_address_continue_clicked: BasePayload & {
+    location: string;
+    input_mode: "single" | "confirm";
+  };
+  intake_address_validation_failed: BasePayload & {
+    location: string;
+    stage: "client" | "server";
+    missing_fields: ("street" | "city" | "state" | "zip")[];
+  };
+  intake_address_confirmed: BasePayload & {
+    location: string;
+    source: "confirm_step";
+  };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

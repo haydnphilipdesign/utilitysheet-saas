@@ -5,6 +5,7 @@ import { intakeStartRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { getClientIp } from '@/lib/network/client-ip';
+import { validateIntakeAddress } from '@/lib/address/intake-validation';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -71,6 +72,26 @@ export async function POST(
         if (!parsed.success) {
             return NextResponse.json(
                 { error: 'Invalid request', details: parsed.error.flatten() },
+                { status: 400 }
+            );
+        }
+        const intakeValidation = validateIntakeAddress(parsed.data.propertyAddress);
+        if (!intakeValidation.isComplete) {
+            const missingFieldCounts = intakeValidation.missingFields.reduce<Record<string, number>>((acc, field) => {
+                acc[field] = (acc[field] || 0) + 1;
+                return acc;
+            }, {});
+            console.warn('[Intake start] Incomplete property address rejected', {
+                slug,
+                missingFields: intakeValidation.missingFields,
+                missingFieldCounts,
+            });
+            return NextResponse.json(
+                {
+                    error: 'Incomplete address',
+                    message: 'Please include street address, city, state, and ZIP code.',
+                    missingFields: intakeValidation.missingFields,
+                },
                 { status: 400 }
             );
         }
