@@ -77,6 +77,40 @@ type AnalyticsEventMap = {
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
 
+type TrackPrimitive = string | number | boolean | null | undefined;
+
+function toTrackPrimitive(value: unknown): TrackPrimitive {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.join(",");
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function toTrackProperties(
+  payload: Record<string, unknown>
+): Record<string, TrackPrimitive> {
+  const out: Record<string, TrackPrimitive> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    out[key] = toTrackPrimitive(value);
+  }
+  return out;
+}
+
 export function trackEvent<E extends AnalyticsEventName>(
   eventName: E,
   payload: AnalyticsEventMap[E]
@@ -85,8 +119,10 @@ export function trackEvent<E extends AnalyticsEventName>(
     return;
   }
 
-  track(eventName, {
+  const enrichedPayload: Record<string, unknown> = {
     ...payload,
     device: payload.device ?? getDeviceType(),
-  });
+  };
+
+  track(eventName, toTrackProperties(enrichedPayload));
 }
