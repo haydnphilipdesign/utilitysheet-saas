@@ -6,7 +6,7 @@ import { getDeviceType } from "@/lib/analytics/device";
 type BasePayload = {
   device?: "mobile_phone" | "desktop";
   location?: string;
-  page?: "landing" | "about" | "demo";
+  page?: string;
 };
 
 type AnalyticsEventMap = {
@@ -47,6 +47,18 @@ type AnalyticsEventMap = {
   };
   packet_action_clicked: BasePayload & {
     action: "copy_link" | "download_pdf" | "phone_tap" | "website_tap";
+  };
+  dashboard_reusable_link_copied: BasePayload & {
+    location: string;
+  };
+  dashboard_reusable_slug_save_attempted: BasePayload & {
+    location: string;
+  };
+  dashboard_reusable_slug_save_succeeded: BasePayload & {
+    location: string;
+  };
+  dashboard_reusable_upgrade_clicked: BasePayload & {
+    location: string;
   };
 };
 

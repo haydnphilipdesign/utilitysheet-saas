@@ -87,6 +87,11 @@ export default function DashboardPage() {
     const [dismissedUpdateId, setDismissedUpdateId] = useState<string | null>(null);
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string } | null>(null);
+    const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
+    const [intakeSlugDraft, setIntakeSlugDraft] = useState('');
+    const [intakeSaving, setIntakeSaving] = useState(false);
+    const [checkoutLoading, setCheckoutLoading] = useState(false);
+    const [intakeLinkLoading, setIntakeLinkLoading] = useState(true);
     const [copiedDashboardLink, setCopiedDashboardLink] = useState(false);
 
     useEffect(() => {
@@ -133,13 +138,17 @@ export default function DashboardPage() {
                     }
                 }
                 if (intakeLinkRes.ok) {
-                    const intakeData = await intakeLinkRes.json();
+                    const intakeData = await intakeLinkRes.json().catch(() => ({}));
                     if (intakeData.intakeLink?.url) {
                         setIntakeLink(intakeData.intakeLink);
+                        setIntakeSlugDraft(intakeData.intakeLink.slug || '');
                     }
+                    setIntakeCanCustomize(Boolean(intakeData.canCustomize));
                 }
             } catch (error) {
                 console.error('Error fetching dashboard stats:', error);
+            } finally {
+                setIntakeLinkLoading(false);
             }
         }
 
@@ -262,8 +271,96 @@ export default function DashboardPage() {
         }
     };
 
+    const handleCopyDashboardIntakeLink = async () => {
+        if (!intakeLink?.url) return;
+        try {
+            await navigator.clipboard.writeText(intakeLink.url);
+            setCopiedDashboardLink(true);
+            setTimeout(() => setCopiedDashboardLink(false), 2000);
+            trackEvent('dashboard_reusable_link_copied', {
+                location: 'dashboard_reusable_link_card',
+            });
+        } catch {
+            toast.error('Failed to copy link');
+        }
+    };
+
+    const handleSaveDashboardSlug = async () => {
+        if (!intakeCanCustomize) return;
+
+        const slug = intakeSlugDraft.trim();
+        if (slug.length < 3) {
+            toast.error('Slug must be at least 3 characters.');
+            return;
+        }
+        if (slug === intakeLink?.slug) {
+            return;
+        }
+
+        setIntakeSaving(true);
+        trackEvent('dashboard_reusable_slug_save_attempted', {
+            location: 'dashboard_reusable_link_card',
+        });
+        try {
+            const response = await fetch('/api/intake-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ slug }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.message || data?.error || 'Failed to update link');
+            }
+            if (data.intakeLink?.url) {
+                setIntakeLink(data.intakeLink);
+                setIntakeSlugDraft(data.intakeLink.slug || slug);
+            }
+            toast.success('Reusable link updated');
+            trackEvent('dashboard_reusable_slug_save_succeeded', {
+                location: 'dashboard_reusable_link_card',
+            });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to update link';
+            toast.error(message);
+        } finally {
+            setIntakeSaving(false);
+        }
+    };
+
+    const handleStartProCheckout = async () => {
+        setCheckoutLoading(true);
+        trackEvent('dashboard_reusable_upgrade_clicked', {
+            location: 'dashboard_reusable_link_card',
+        });
+        try {
+            const response = await fetch('/api/billing/checkout', { method: 'POST' });
+            const data = await response.json().catch(() => ({}));
+            if (data.url) {
+                window.location.href = data.url;
+                return;
+            }
+            toast.error(data.error || 'Failed to start checkout');
+        } catch (error) {
+            console.error('Error starting checkout:', error);
+            toast.error('Failed to start checkout');
+        } finally {
+            setCheckoutLoading(false);
+        }
+    };
+
     // Check if there are new updates to show (updates not yet dismissed)
     const hasNewUpdates = updates.length > 0 && updates[0].id !== dismissedUpdateId;
+    const intakeUrlPrefix = intakeLink?.url
+        ? (() => {
+            try {
+                const parsed = new URL(intakeLink.url);
+                return `${parsed.origin}/i/`;
+            } catch {
+                return '/i/';
+            }
+        })()
+        : '/i/';
+    const intakeSlugUnchanged = intakeLink ? intakeSlugDraft.trim() === intakeLink.slug : true;
 
     const statCards = [
         { label: 'Total Requests', value: stats.total_requests, icon: FileText, color: 'text-muted-foreground' },
@@ -285,28 +382,11 @@ export default function DashboardPage() {
                             <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">Send seller links, track responses, and download utility info sheets</p>
                         </div>
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-                            {intakeLink && (
-                                <Button
-                                    variant="outline"
-                                    className="w-full sm:w-auto border-border text-foreground hover:bg-muted active:scale-[0.98]"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(intakeLink.url);
-                                        setCopiedDashboardLink(true);
-                                        setTimeout(() => setCopiedDashboardLink(false), 2000);
-                                    }}
-                                >
-                                    {copiedDashboardLink ? (
-                                        <Check className="mr-2 h-4 w-4 text-emerald-500" />
-                                    ) : (
-                                        <Link2 className="mr-2 h-4 w-4" />
-                                    )}
-                                    {copiedDashboardLink ? 'Copied!' : 'Copy Link'}
-                                </Button>
-                            )}
                             <Link href="/dashboard/requests/new" className="w-full sm:w-auto">
                                 <Button
+                                    variant="outline"
                                     data-testid="dashboard-new-request"
-                                    className="w-full sm:w-auto bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 active:scale-[0.98]"
+                                    className="w-full sm:w-auto border-border text-foreground hover:bg-muted active:scale-[0.98]"
                                     onClick={() =>
                                         trackEvent('new_request_started', {
                                             source: 'dashboard_header_button',
@@ -320,6 +400,165 @@ export default function DashboardPage() {
                             </Link>
                         </div>
                     </div>
+
+                    {/* Reusable link hero */}
+                    <Card className="relative overflow-hidden border-emerald-500/30 bg-card/60 backdrop-blur-sm">
+                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
+                        <CardHeader className="relative px-4 sm:px-6 pb-4">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                <div>
+                                    <CardTitle className="text-foreground text-lg sm:text-xl flex items-center gap-2">
+                                        <Link2 className="h-5 w-5 text-emerald-500" />
+                                        Reusable Seller Link
+                                    </CardTitle>
+                                    <CardDescription className="text-muted-foreground text-sm mt-1">
+                                        This is your primary workflow: share one fixed link and sellers enter the property address themselves.
+                                    </CardDescription>
+                                </div>
+                                <Badge className="w-fit bg-emerald-600 hover:bg-emerald-600 text-white">
+                                    Primary Workflow
+                                </Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="relative px-4 sm:px-6 pb-6 space-y-4">
+                            {intakeLinkLoading ? (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading your reusable link...
+                                </div>
+                            ) : intakeLink?.url ? (
+                                <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
+                                    <Input
+                                        value={intakeLink.url}
+                                        readOnly
+                                        className="font-mono text-xs sm:text-sm bg-background/70 border-input text-foreground"
+                                    />
+                                    <div className="flex flex-col sm:flex-row gap-2 lg:shrink-0">
+                                        <Button
+                                            type="button"
+                                            onClick={handleCopyDashboardIntakeLink}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.98]"
+                                        >
+                                            {copiedDashboardLink ? (
+                                                <Check className="mr-2 h-4 w-4" />
+                                            ) : (
+                                                <Copy className="mr-2 h-4 w-4" />
+                                            )}
+                                            {copiedDashboardLink ? 'Copied!' : 'Copy Link'}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="border-input text-foreground hover:bg-muted active:scale-[0.98]"
+                                            onClick={() => window.open(intakeLink.url, '_blank', 'noopener,noreferrer')}
+                                        >
+                                            <ExternalLink className="mr-2 h-4 w-4" />
+                                            Open Link
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">
+                                    Unable to load your reusable link right now. Refresh and try again.
+                                </p>
+                            )}
+
+                            <div className="rounded-lg border border-border bg-background/40 p-4 space-y-2.5">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-foreground">What happens next</p>
+                                {[
+                                    'Seller opens your link and enters the property address.',
+                                    'They complete utility details in about 2 minutes.',
+                                    'You receive the submission by email, with PDF attachment support.',
+                                ].map((step) => (
+                                    <div key={step} className="flex items-start gap-2">
+                                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                        <p className="text-xs sm:text-sm text-muted-foreground">{step}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <Separator className="bg-border" />
+
+                            {intakeCanCustomize ? (
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-sm font-medium text-foreground">Custom URL slug</p>
+                                        <Badge variant="outline">Pro / Teams</Badge>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                                        <div className="flex-1 space-y-1">
+                                            <div className="flex items-center rounded-md border border-input bg-background/60">
+                                                <span className="px-3 text-xs text-muted-foreground whitespace-nowrap">{intakeUrlPrefix}</span>
+                                                <Input
+                                                    id="dashboard-intake-slug"
+                                                    value={intakeSlugDraft}
+                                                    onChange={(e) => setIntakeSlugDraft(e.target.value)}
+                                                    placeholder="your-name"
+                                                    className="border-0 bg-transparent text-foreground rounded-l-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                    disabled={intakeSaving}
+                                                />
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                Lowercase letters, numbers, and dashes only.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            onClick={handleSaveDashboardSlug}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.98]"
+                                            disabled={intakeSaving || intakeSlugDraft.trim().length < 3 || intakeSlugUnchanged}
+                                        >
+                                            {intakeSaving ? (
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            ) : null}
+                                            Save Slug
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                                                <Lock className="h-4 w-4 text-amber-500" />
+                                                Custom URL slug
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Upgrade to Pro or Teams to use a branded slug in your reusable seller link.
+                                            </p>
+                                        </div>
+                                        <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400">
+                                            Pro / Teams
+                                        </Badge>
+                                    </div>
+                                    <div className="rounded-md border border-border bg-background/60 px-3 py-2">
+                                        <p className="text-xs text-muted-foreground">Current link</p>
+                                        <p className="text-xs sm:text-sm font-mono text-foreground break-all">
+                                            {intakeLink?.url || 'Loading your link...'}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        <p className="text-xs text-muted-foreground max-w-lg">
+                                            A custom slug looks cleaner in email templates, signatures, and SMS scripts.
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            onClick={handleStartProCheckout}
+                                            disabled={checkoutLoading}
+                                            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+                                        >
+                                            {checkoutLoading ? (
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Zap className="mr-2 h-4 w-4" />
+                                            )}
+                                            Upgrade to Pro
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -381,7 +620,7 @@ export default function DashboardPage() {
                                     <div>
                                         <CardTitle className="text-foreground text-lg sm:text-xl flex items-center gap-2">
                                             <Megaphone className="h-5 w-5 text-muted-foreground" />
-                                            What's new
+                                            What&apos;s new
                                         </CardTitle>
                                         <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                                             Recent product updates and bugfixes
