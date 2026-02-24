@@ -1,5 +1,6 @@
-import { ReactNode } from 'react';
-import { Zap } from 'lucide-react';
+'use client';
+
+import { ReactNode, useEffect, useRef, useState } from 'react';
 
 interface BrandProfile {
     name?: string;
@@ -20,19 +21,47 @@ interface SellerLayoutProps {
     brandProfile?: BrandProfile | null;
 }
 
-export function SellerLayout({
-    children,
-    progress,
-    address,
-    stepName,
-    completedCount,
-    totalCount,
-    brandProfile
-}: SellerLayoutProps) {
+export function SellerLayout(props: SellerLayoutProps) {
+    const {
+        children,
+        progress,
+        address,
+        stepName,
+        brandProfile
+    } = props;
+    const headerRef = useRef<HTMLElement | null>(null);
+    const [headerHeight, setHeaderHeight] = useState<number | null>(null);
+
+    useEffect(() => {
+        const headerEl = headerRef.current;
+        if (!headerEl) return;
+
+        const measure = () => {
+            const nextHeight = Math.ceil(headerEl.getBoundingClientRect().height);
+            setHeaderHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+        };
+
+        measure();
+
+        let observer: ResizeObserver | null = null;
+        if (typeof ResizeObserver !== 'undefined') {
+            observer = new ResizeObserver(() => measure());
+            observer.observe(headerEl);
+        }
+
+        window.addEventListener('resize', measure);
+        return () => {
+            observer?.disconnect();
+            window.removeEventListener('resize', measure);
+        };
+    }, []);
+
     // Use brand primary color or fallback to slate blue
     const primaryColor = brandProfile?.primary_color || '#475569';
     // Ensure color is safe (not oklch or lab format)
     const safePrimaryColor = primaryColor.startsWith('oklch') || primaryColor.startsWith('lab') ? '#475569' : primaryColor;
+    const fallbackHeaderHeight = 144;
+    const mainTopPadding = (headerHeight ?? fallbackHeaderHeight) + 16;
 
     return (
         <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
@@ -43,7 +72,7 @@ export function SellerLayout({
             </div>
 
             {/* Header */}
-            <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/50 backdrop-blur-xl">
+            <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/50 backdrop-blur-xl">
                 <div className="max-w-2xl mx-auto px-4 py-3 sm:py-4">
                     {/* Top row: Brand + Property */}
                     <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -113,7 +142,10 @@ export function SellerLayout({
             </header>
 
             {/* Main Content Area - adjusted padding for mobile */}
-            <main className="relative z-10 pt-36 sm:pt-32 pb-16 sm:pb-20 px-4 min-h-screen flex flex-col max-w-2xl mx-auto">
+            <main
+                className="relative z-10 pb-16 sm:pb-20 px-4 min-h-screen flex flex-col max-w-2xl mx-auto"
+                style={{ paddingTop: `${mainTopPadding}px` }}
+            >
                 {children}
             </main>
         </div>

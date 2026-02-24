@@ -24,7 +24,10 @@ interface UtilityStepProps {
     category: UtilityCategory;
     categoryLabel: string;
     state: WizardState;
-    updateState: (category: UtilityCategory, updates: any) => void;
+    updateState: (
+        category: UtilityCategory,
+        updates: Partial<WizardState['utilities'][UtilityCategory]>
+    ) => void;
     suggestions: ProviderSuggestion[];
     loadingSuggestions?: boolean;
     token: string;
@@ -45,7 +48,7 @@ export function UtilityStep({
     onNext,
     onBack
 }: UtilityStepProps) {
-    const [mode, setMode] = useState<'view' | 'search'>('view');
+    const [mode, setMode] = useState<'view' | 'search' | 'meter'>('view');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<ProviderSuggestion[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -95,8 +98,15 @@ export function UtilityStep({
     }, [searchQuery, category, token]);
 
     const currentUtilityState = state.utilities[category];
-    const isCompleted = currentUtilityState?.entry_mode !== null;
-    const showMeterNumberField = collectElectricMeterNumber && category === 'electric';
+    const shouldGateElectricMeter = collectElectricMeterNumber && category === 'electric';
+
+    const advanceOrShowMeterStep = () => {
+        if (shouldGateElectricMeter) {
+            setMode('meter');
+            return;
+        }
+        onNext();
+    };
 
     const handleConfirmSuggestion = (s: ProviderSuggestion) => {
         updateState(category, {
@@ -106,7 +116,7 @@ export function UtilityStep({
             contact_phone: s.contact_phone || null,
             contact_url: s.contact_website || null
         });
-        onNext();
+        advanceOrShowMeterStep();
     };
 
     const handleSelectResult = (result: ProviderSuggestion) => {
@@ -117,7 +127,7 @@ export function UtilityStep({
             contact_phone: result.contact_phone || null,
             contact_url: result.contact_website || null
         });
-        onNext();
+        advanceOrShowMeterStep();
     };
 
     const handleManualEntry = () => {
@@ -126,7 +136,7 @@ export function UtilityStep({
             display_name: searchQuery,
             raw_text: searchQuery
         });
-        onNext();
+        advanceOrShowMeterStep();
     };
 
     const handleSkip = () => {
@@ -138,26 +148,22 @@ export function UtilityStep({
         onNext();
     };
 
-    const meterNumberField = showMeterNumberField ? (
-        <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
-            <label htmlFor="electric-meter-number" className="block text-xs sm:text-sm font-medium text-foreground mb-1.5">
-                Meter Number (optional)
-            </label>
-            <input
-                id="electric-meter-number"
-                type="text"
-                value={currentUtilityState?.meter_number || ''}
-                onChange={(e) => updateState(category, { meter_number: e.target.value })}
-                placeholder="Enter the electric meter number"
-                maxLength={64}
-                className="w-full bg-background/70 border border-border rounded-lg py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
-                data-testid="seller-electric-meter-number"
-            />
-            <p className="text-[11px] sm:text-xs text-muted-foreground mt-1.5">
-                This will be added to the final PDF if provided.
-            </p>
-        </div>
-    ) : null;
+    const handleBackPress = () => {
+        if (mode === 'meter' || mode === 'search') {
+            setMode('view');
+            return;
+        }
+        onBack();
+    };
+
+    const handleContinueWithMeter = () => {
+        onNext();
+    };
+
+    const handleContinueWithoutMeter = () => {
+        updateState(category, { meter_number: null });
+        onNext();
+    };
 
     // Get category icon
     const iconConfig = categoryIcons[category];
@@ -175,7 +181,8 @@ export function UtilityStep({
             {/* Header */}
             <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8">
                 <button
-                    onClick={onBack}
+                    onClick={handleBackPress}
+                    aria-label={mode === 'meter' || mode === 'search' ? 'Back to providers' : 'Back'}
                     className="p-2 -ml-2 rounded-full hover:bg-muted text-muted-foreground transition-colors active:scale-95"
                 >
                     <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -193,7 +200,6 @@ export function UtilityStep({
 
             {mode === 'view' && (
                 <div className="space-y-4 sm:space-y-6">
-                    {meterNumberField}
                     {loadingSuggestions ? (
                         <div className="bg-muted/50 border border-border rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center space-y-4 sm:space-y-6">
                             <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted flex items-center justify-center">
@@ -214,7 +220,7 @@ export function UtilityStep({
                                     onClick={handleSkip}
                                     className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
-                                    I don't know
+                                    I don&apos;t know
                                 </button>
                             </div>
                         </div>
@@ -260,7 +266,7 @@ export function UtilityStep({
                                     onClick={handleSkip}
                                     className="py-2.5 sm:py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-xs sm:text-sm active:scale-[0.98]"
                                 >
-                                    I don't know
+                                    I don&apos;t know
                                 </button>
                             </div>
                         </div>
@@ -271,7 +277,7 @@ export function UtilityStep({
                             </div>
                             <div>
                                 <h4 className="text-base sm:text-lg font-medium text-foreground">Search for your provider</h4>
-                                <p className="text-muted-foreground text-xs sm:text-sm mt-1">We couldn't auto-detect this one.</p>
+                                <p className="text-muted-foreground text-xs sm:text-sm mt-1">We couldn&apos;t auto-detect this one.</p>
                             </div>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3">
                                 <button
@@ -284,7 +290,7 @@ export function UtilityStep({
                                     onClick={handleSkip}
                                     className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
-                                    I don't know
+                                    I don&apos;t know
                                 </button>
                             </div>
                         </div>
@@ -315,8 +321,6 @@ export function UtilityStep({
                             </button>
                         )}
                     </div>
-                    {meterNumberField}
-
                     <div className="space-y-2 max-h-[280px] sm:max-h-[350px] overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
                         {isSearching && (
                             <div className="p-4 text-center text-muted-foreground text-xs sm:text-sm">Searching...</div>
@@ -371,7 +375,7 @@ export function UtilityStep({
                                     onClick={handleManualEntry}
                                     className="text-slate-500 hover:text-slate-400 text-xs sm:text-sm font-medium underline underline-offset-4"
                                 >
-                                    Use "{searchQuery}" anyway
+                                    {`Use "${searchQuery}" anyway`}
                                 </button>
                             </div>
                         )}
@@ -382,6 +386,60 @@ export function UtilityStep({
                         className="w-full py-2.5 sm:py-3 text-muted-foreground hover:text-foreground transition-colors text-xs sm:text-sm active:scale-[0.98]"
                     >
                         Cancel Search
+                    </button>
+                </div>
+            )}
+
+            {mode === 'meter' && (
+                <div className="space-y-4 sm:space-y-5">
+                    <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
+                        <p className="text-[11px] sm:text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-1">
+                            Selected Provider
+                        </p>
+                        <p className="text-sm sm:text-base font-semibold text-foreground truncate">
+                            {currentUtilityState?.display_name || 'Electric provider selected'}
+                        </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
+                        <label htmlFor="electric-meter-number" className="block text-xs sm:text-sm font-medium text-foreground mb-1.5">
+                            Meter Number (optional)
+                        </label>
+                        <input
+                            id="electric-meter-number"
+                            type="text"
+                            value={currentUtilityState?.meter_number || ''}
+                            onChange={(e) => updateState(category, { meter_number: e.target.value })}
+                            placeholder="Enter the electric meter number"
+                            maxLength={64}
+                            className="w-full bg-background/70 border border-border rounded-lg py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
+                            data-testid="seller-electric-meter-number"
+                        />
+                        <p className="text-[11px] sm:text-xs text-muted-foreground mt-1.5">
+                            If available, this will be added to the final PDF.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 sm:gap-3">
+                        <button
+                            onClick={handleContinueWithMeter}
+                            className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                        >
+                            Continue
+                        </button>
+                        <button
+                            onClick={handleContinueWithoutMeter}
+                            className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                        >
+                            Continue without meter number
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={() => setMode('view')}
+                        className="w-full py-2.5 sm:py-3 text-muted-foreground hover:text-foreground transition-colors text-xs sm:text-sm active:scale-[0.98]"
+                    >
+                        Change provider
                     </button>
                 </div>
             )}
