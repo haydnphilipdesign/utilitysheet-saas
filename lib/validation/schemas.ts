@@ -153,6 +153,7 @@ const utilityWizardStateSchema = z.object({
     entry_mode: z.preprocess(nullToUndefined, providerEntryModeEnum.nullable().default(null)),
     display_name: z.preprocess(nullToUndefined, z.string().trim().max(200).nullable().default(null)),
     raw_text: z.preprocess(nullToUndefined, z.string().trim().max(500).nullable().default(null)),
+    meter_number: z.preprocess(nullToUndefined, z.string().trim().max(64).nullable().default(null)),
     hidden: z.boolean().optional().default(false),
     contact_phone: z.string().trim().max(50).nullable().optional(),
     contact_url: httpUrlSchemaFlexible.optional(),

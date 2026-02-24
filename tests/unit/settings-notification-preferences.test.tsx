@@ -53,6 +53,7 @@ describe('settings notification preferences', () => {
                         notification_preferences: {
                             seller_submissions: true,
                             seller_submission_pdf_attachment: false,
+                            collect_electric_meter_number: false,
                             contact_resolution: true,
                         },
                     },
@@ -84,7 +85,7 @@ describe('settings notification preferences', () => {
 
         render(<SettingsPage />);
 
-        const toggleLabel = await screen.findByText('Attach PDF to seller submission emails');
+        const toggleLabel = await screen.findByText('Attach PDF to submission emails');
         const toggleRow = toggleLabel.closest('div')?.parentElement;
         expect(toggleRow).not.toBeNull();
 
@@ -94,6 +95,17 @@ describe('settings notification preferences', () => {
 
         fireEvent.click(checkbox);
         expect(checkbox.checked).toBe(true);
+
+        const meterToggleLabel = await screen.findByText('Collect electric meter number');
+        const meterToggleRow = meterToggleLabel.closest('div')?.parentElement;
+        expect(meterToggleRow).not.toBeNull();
+
+        const meterCheckbox = meterToggleRow?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+        expect(meterCheckbox).toBeTruthy();
+        expect(meterCheckbox.checked).toBe(false);
+
+        fireEvent.click(meterCheckbox);
+        expect(meterCheckbox.checked).toBe(true);
 
         fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
@@ -106,5 +118,6 @@ describe('settings notification preferences', () => {
 
         const postBody = JSON.parse(String((postCall?.[1] as RequestInit).body));
         expect(postBody.notification_preferences.seller_submission_pdf_attachment).toBe(true);
+        expect(postBody.notification_preferences.collect_electric_meter_number).toBe(true);
     });
 });

@@ -41,6 +41,7 @@ export interface PacketUtilityData {
     provider_name: string;
     provider_phone: string | null;
     provider_website: string | null;
+    meter_number?: string | null;
 }
 
 export interface PacketDataPayload {
@@ -75,6 +76,7 @@ type RawUtilityRow = {
     contact_phone?: string | null;
     provider_website?: string | null;
     contact_url?: string | null;
+    meter_number?: string | null;
 };
 
 function normalizeSteps(value: unknown): string[] | null {
@@ -156,6 +158,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
         provider_name: utility.provider_name || utility.display_name || utility.provider_display_name || utility.raw_text || 'Not sure',
         provider_phone: utility.provider_phone || utility.contact_phone || null,
         provider_website: utility.provider_website || utility.contact_url || null,
+        meter_number: utility.meter_number || null,
     }));
 
     return {

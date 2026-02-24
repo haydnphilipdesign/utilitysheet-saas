@@ -77,6 +77,11 @@ export async function GET(
             contact_phone: brandProfile.contact_phone,
             contact_website: brandProfile.contact_website,
         } : null;
+        const account = await getAccountById(requestData.account_id);
+        const notificationPrefs = (account?.notification_preferences || {}) as {
+            collect_electric_meter_number?: boolean;
+        };
+        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number === true;
 
         // Get AI suggestions for each category
         const utilityCategories =
@@ -87,6 +92,7 @@ export async function GET(
             request: {
                 property_address: requestData.property_address,
                 utility_categories: utilityCategories,
+                collect_electric_meter_number: collectElectricMeterNumber,
                 status: requestData.status,
             },
             brandProfile: publicBrandProfile,
@@ -153,6 +159,14 @@ export async function POST(
         const account = await getAccountById(requestData.account_id);
         const organization = requestData.organization_id ? await getOrganizationById(requestData.organization_id) : null;
         const isPaid = account?.subscription_status === 'pro' || organization?.subscription_status === 'team';
+        const notificationPrefs = (account?.notification_preferences || {}) as {
+            seller_submissions?: boolean;
+            seller_submission_pdf_attachment?: boolean;
+            contact_resolution?: boolean;
+            weekly_summary?: boolean;
+            collect_electric_meter_number?: boolean;
+        };
+        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number === true;
 
         // Only apply free-plan overage locking for requests that have not yet been metered.
         // (Agent-created requests are metered on creation and quota-checked on creation.)
@@ -205,12 +219,18 @@ export async function POST(
                 hidden?: boolean;
                 contact_phone?: string;
                 contact_url?: string;
+                meter_number?: string | null;
                 extra?: any
             };
             // Persist entry if not hidden - use 'unknown' if entry_mode is null
             if (!e.hidden) {
                 const finalEntryMode = e.entry_mode || 'unknown';
                 let finalRawText = e.raw_text || '';
+                const meterNumberCandidate =
+                    category === 'electric' && collectElectricMeterNumber
+                        ? (typeof e.meter_number === 'string' ? e.meter_number.trim() : '')
+                        : '';
+                const finalMeterNumber = meterNumberCandidate || null;
                 if (e.extra) {
                     const extraParts = [];
                     if (e.extra.tank) extraParts.push(`Tank: ${e.extra.tank}`);
@@ -224,7 +244,7 @@ export async function POST(
 
                 await sql`
                     INSERT INTO utility_entries (
-                        request_id, category, entry_mode, display_name, raw_text, contact_phone, contact_url
+                        request_id, category, entry_mode, display_name, raw_text, contact_phone, contact_url, meter_number
                     ) VALUES (
                         ${requestData.id},
                         ${category},
@@ -232,7 +252,8 @@ export async function POST(
                         ${e.display_name || null},
                         ${finalRawText || null},
                         ${e.contact_phone || null},
-                        ${e.contact_url || null}
+                        ${e.contact_url || null},
+                        ${finalMeterNumber}
                     )
                 `;
 
@@ -283,13 +304,6 @@ export async function POST(
             ipAddress,
             userAgent,
         });
-
-        const notificationPrefs = (account?.notification_preferences || {}) as {
-            seller_submissions?: boolean;
-            seller_submission_pdf_attachment?: boolean;
-            contact_resolution?: boolean;
-            weekly_summary?: boolean;
-        };
 
         if (account?.email) {
             // Send TC completion notification (if enabled, defaults to true)

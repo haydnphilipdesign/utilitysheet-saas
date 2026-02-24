@@ -10,6 +10,7 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 interface RequestData {
     property_address: string;
     utility_categories: UtilityCategory[];
+    collect_electric_meter_number?: boolean;
 }
 
 interface BrandProfile {
@@ -60,6 +61,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
             const reqData: RequestData = {
                 property_address: request.property_address,
                 utility_categories: request.utility_categories || UTILITY_CATEGORY_KEYS,
+                collect_electric_meter_number: request.collect_electric_meter_number === true,
             };
 
             setRequestData(reqData);

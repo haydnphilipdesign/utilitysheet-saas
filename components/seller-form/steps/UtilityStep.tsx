@@ -28,6 +28,7 @@ interface UtilityStepProps {
     suggestions: ProviderSuggestion[];
     loadingSuggestions?: boolean;
     token: string;
+    collectElectricMeterNumber?: boolean;
     onNext: () => void;
     onBack: () => void;
 }
@@ -40,6 +41,7 @@ export function UtilityStep({
     suggestions,
     loadingSuggestions = false,
     token,
+    collectElectricMeterNumber = false,
     onNext,
     onBack
 }: UtilityStepProps) {
@@ -94,6 +96,7 @@ export function UtilityStep({
 
     const currentUtilityState = state.utilities[category];
     const isCompleted = currentUtilityState?.entry_mode !== null;
+    const showMeterNumberField = collectElectricMeterNumber && category === 'electric';
 
     const handleConfirmSuggestion = (s: ProviderSuggestion) => {
         updateState(category, {
@@ -135,6 +138,27 @@ export function UtilityStep({
         onNext();
     };
 
+    const meterNumberField = showMeterNumberField ? (
+        <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
+            <label htmlFor="electric-meter-number" className="block text-xs sm:text-sm font-medium text-foreground mb-1.5">
+                Meter Number (optional)
+            </label>
+            <input
+                id="electric-meter-number"
+                type="text"
+                value={currentUtilityState?.meter_number || ''}
+                onChange={(e) => updateState(category, { meter_number: e.target.value })}
+                placeholder="Enter the electric meter number"
+                maxLength={64}
+                className="w-full bg-background/70 border border-border rounded-lg py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
+                data-testid="seller-electric-meter-number"
+            />
+            <p className="text-[11px] sm:text-xs text-muted-foreground mt-1.5">
+                This will be added to the final PDF if provided.
+            </p>
+        </div>
+    ) : null;
+
     // Get category icon
     const iconConfig = categoryIcons[category];
     const CategoryIcon = iconConfig?.icon || Zap;
@@ -169,6 +193,7 @@ export function UtilityStep({
 
             {mode === 'view' && (
                 <div className="space-y-4 sm:space-y-6">
+                    {meterNumberField}
                     {loadingSuggestions ? (
                         <div className="bg-muted/50 border border-border rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center space-y-4 sm:space-y-6">
                             <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted flex items-center justify-center">
@@ -290,6 +315,7 @@ export function UtilityStep({
                             </button>
                         )}
                     </div>
+                    {meterNumberField}
 
                     <div className="space-y-2 max-h-[280px] sm:max-h-[350px] overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
                         {isSearching && (

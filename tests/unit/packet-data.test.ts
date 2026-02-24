@@ -156,4 +156,45 @@ describe('packet-data builder', () => {
         const result = await getPacketDataByPublicToken('token_3');
         expect(result).toEqual({ status: 'not_submitted' });
     });
+
+    it('maps meter_number for electric utility entries', async () => {
+        (getRequestByToken as Mock).mockResolvedValue({
+            id: 'req_4',
+            account_id: 'acct_4',
+            organization_id: null,
+            brand_profile_id: null,
+            property_address: '222 Cedar St, Town, ST 00000',
+            created_at: '2026-01-01T00:00:00.000Z',
+            status: 'submitted',
+        });
+
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+        (getUtilityEntriesByRequestId as Mock).mockResolvedValue([
+            {
+                category: 'electric',
+                display_name: 'Grid Power',
+                contact_phone: '555-111-2222',
+                contact_url: 'https://grid.example.com',
+                meter_number: 'MTR-9988',
+            },
+            {
+                category: 'water',
+                display_name: 'City Water',
+                contact_phone: null,
+                contact_url: null,
+                meter_number: null,
+            },
+        ]);
+
+        const result = await getPacketDataByPublicToken('token_4');
+
+        expect(result.status).toBe('ok');
+        if (result.status !== 'ok') return;
+
+        const electric = result.data.utilities.find((utility) => utility.category === 'electric');
+        const water = result.data.utilities.find((utility) => utility.category === 'water');
+
+        expect(electric?.meter_number).toBe('MTR-9988');
+        expect(water?.meter_number).toBeNull();
+    });
 });

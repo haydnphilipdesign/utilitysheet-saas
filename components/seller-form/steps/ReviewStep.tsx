@@ -25,6 +25,8 @@ interface ReviewStepProps {
     onBack: () => void;
     onEditBasics: () => void;
     onEditUtility?: (index: number) => void;
+    updateUtility?: (category: UtilityCategory, updates: { meter_number?: string | null }) => void;
+    collectElectricMeterNumber?: boolean;
     onSubmit: () => Promise<void>;
     submitting: boolean;
 }
@@ -35,6 +37,8 @@ export function ReviewStep({
     onBack,
     onEditBasics,
     onEditUtility,
+    updateUtility,
+    collectElectricMeterNumber = false,
     onSubmit,
     submitting
 }: ReviewStepProps) {
@@ -124,36 +128,56 @@ export function ReviewStep({
                             const iconConfig = categoryIcons[cat];
                             const Icon = iconConfig?.icon || Zap;
                             const colorClass = iconConfig?.color || 'text-slate-500';
+                            const showMeterInput = collectElectricMeterNumber && cat === 'electric';
 
                             return (
-                                <div key={cat} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0 last:pb-0">
-                                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                                        <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                                            <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${colorClass}`} />
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-xs sm:text-sm font-medium text-muted-foreground">{label}</p>
-                                            <p className="text-sm sm:text-base text-foreground font-medium truncate">
-                                                {utilState?.display_name || <span className="italic text-muted-foreground">Not sure</span>}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {utilState?.entry_mode !== null && (
-                                            <div className="p-1 rounded-full bg-emerald-500/10">
-                                                <Check className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500" />
+                                <div key={cat} className="py-2 border-b border-border/50 last:border-0 last:pb-0">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                                <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${colorClass}`} />
                                             </div>
-                                        )}
-                                        {onEditUtility && (
-                                            <button
-                                                onClick={() => onEditUtility(index)}
-                                                className="p-1.5 sm:p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                                                title={`Edit ${label}`}
-                                            >
-                                                <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                                            </button>
-                                        )}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs sm:text-sm font-medium text-muted-foreground">{label}</p>
+                                                <p className="text-sm sm:text-base text-foreground font-medium truncate">
+                                                    {utilState?.display_name || <span className="italic text-muted-foreground">Not sure</span>}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {utilState?.entry_mode !== null && (
+                                                <div className="p-1 rounded-full bg-emerald-500/10">
+                                                    <Check className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500" />
+                                                </div>
+                                            )}
+                                            {onEditUtility && (
+                                                <button
+                                                    onClick={() => onEditUtility(index)}
+                                                    className="p-1.5 sm:p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                                    title={`Edit ${label}`}
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
+                                    {showMeterInput && (
+                                        <div className="mt-3 pl-10 sm:pl-12 space-y-1">
+                                            <label className="text-xs sm:text-sm font-medium text-muted-foreground" htmlFor="review-electric-meter-number">
+                                                Meter Number (optional)
+                                            </label>
+                                            <input
+                                                id="review-electric-meter-number"
+                                                type="text"
+                                                value={utilState?.meter_number || ''}
+                                                maxLength={64}
+                                                onChange={(e) => updateUtility?.(cat, { meter_number: e.target.value })}
+                                                placeholder="Enter electric meter number"
+                                                className="w-full bg-muted/40 border border-border rounded-lg py-2 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
+                                                data-testid="review-electric-meter-number"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}

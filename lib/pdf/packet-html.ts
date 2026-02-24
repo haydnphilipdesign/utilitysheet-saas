@@ -32,6 +32,7 @@ export interface PacketPdfData {
         provider_name: string;
         provider_phone?: string | null;
         provider_website?: string | null;
+        meter_number?: string | null;
     }>;
     meta?: {
         show_powered_by?: boolean;
@@ -192,6 +193,9 @@ export function buildPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             const safeProviderName = escapeHtml(String(utility.provider_name || 'Not sure'));
             const safeProviderPhone = utility.provider_phone ? escapeHtml(String(utility.provider_phone)) : '';
             const safeWebsiteDisplay = escapeHtml(normalizeWebsiteHostname(utility.provider_website));
+            const safeMeterNumber = utility.category === 'electric' && utility.meter_number
+                ? escapeHtml(String(utility.meter_number).trim())
+                : '';
 
             return `
                 <tr style="border-bottom: 1px solid #e4e4e7;">
@@ -203,9 +207,16 @@ export function buildPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
                     </td>
                     <td style="padding: 16px 24px; color: #3f3f46; font-weight: 500;">${safeProviderName}</td>
                     <td style="padding: 16px 24px;">
-                        ${safeProviderPhone ? `<span style="color: #059669; font-size: 14px; font-weight: 500;">${safeProviderPhone}</span>` : ''}
-                        ${safeProviderPhone && safeWebsiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
-                        ${safeWebsiteDisplay ? `<span style="color: #2563eb; font-size: 14px;">${safeWebsiteDisplay}</span>` : ''}
+                        <div>
+                            <div>
+                                ${safeProviderPhone ? `<span style="color: #059669; font-size: 14px; font-weight: 500;">${safeProviderPhone}</span>` : ''}
+                                ${safeProviderPhone && safeWebsiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
+                                ${safeWebsiteDisplay ? `<span style="color: #2563eb; font-size: 14px;">${safeWebsiteDisplay}</span>` : ''}
+                            </div>
+                            ${safeMeterNumber
+                    ? `<div style="margin-top: 6px; font-size: 13px; color: #3f3f46; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;"><span style="color: #52525b; font-weight: 600;">Meter #:</span> ${safeMeterNumber}</div>`
+                    : ''}
+                        </div>
                     </td>
                 </tr>
             `;

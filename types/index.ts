@@ -199,6 +199,7 @@ export interface UtilityEntry {
     entry_mode: ProviderEntryMode | null;
     display_name: string | null;
     raw_text: string | null;
+    meter_number?: string | null;
     canonical_id: string | null;
     confidence_score: number | null;
     contact_phone: string | null;
@@ -282,6 +283,7 @@ export interface UtilityFormEntry {
     entry_mode: ProviderEntryMode;
     display_name: string | null;
     raw_text: string | null;
+    meter_number?: string | null;
 }
 
 // Request Creation Form

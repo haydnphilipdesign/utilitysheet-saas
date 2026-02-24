@@ -29,6 +29,7 @@ export interface UtilityWizardState {
     entry_mode: 'suggested_confirmed' | 'search_selected' | 'free_text' | 'unknown' | null;
     display_name: string | null;
     raw_text: string | null;
+    meter_number?: string | null;
     hidden: boolean;
     contact_phone?: string | null;
     contact_url?: string | null;
@@ -48,6 +49,7 @@ interface SellerWizardProps {
     initialRequestData: {
         property_address: string;
         utility_categories: UtilityCategory[];
+        collect_electric_meter_number?: boolean;
     };
     initialSuggestions: Record<UtilityCategory, ProviderSuggestion[]>;
     token: string;
@@ -71,6 +73,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
     const shouldReduceMotion = useReducedMotion();
+    const collectElectricMeterNumber = initialRequestData.collect_electric_meter_number === true;
 
     // Initialize state
     const [state, setState] = useState<WizardState>(() => {
@@ -251,6 +254,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         entry_mode: null,
                         display_name: null,
                         raw_text: null,
+                        meter_number: null,
                         hidden: false
                     };
                     hasChanges = true;
@@ -458,6 +462,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         suggestions={suggestionsByCategory[visibleUtilities[utilityIndex]] || []}
                         loadingSuggestions={!!loadingSuggestions[visibleUtilities[utilityIndex]] && !Object.prototype.hasOwnProperty.call(suggestionsByCategory, visibleUtilities[utilityIndex])}
                         token={token}
+                        collectElectricMeterNumber={collectElectricMeterNumber}
                         onNext={handleNext}
                         onBack={handleBack}
                     />
@@ -474,6 +479,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                             setCurrentStep(Step.UTILITIES);
                             setUtilityIndex(index);
                         }}
+                        updateUtility={updateUtilityState}
+                        collectElectricMeterNumber={collectElectricMeterNumber}
                         onSubmit={handleSubmit}
                         submitting={submitting}
                     />

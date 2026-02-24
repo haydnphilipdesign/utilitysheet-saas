@@ -25,6 +25,7 @@ export default function SettingsPage() {
     const [notifications, setNotifications] = useState({
         seller_submissions: true,
         seller_submission_pdf_attachment: true,
+        collect_electric_meter_number: false,
         contact_resolution: true,
         weekly_summary: false,
     });
@@ -435,6 +436,17 @@ export default function SettingsPage() {
                             <Switch
                                 checked={notifications.seller_submission_pdf_attachment}
                                 onCheckedChange={(checked) => setNotifications({ ...notifications, seller_submission_pdf_attachment: checked })}
+                            />
+                        </div>
+                        <Separator className="bg-border" />
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <p className="text-foreground text-sm font-medium">Collect electric meter number</p>
+                                <p className="text-sm text-muted-foreground">Show an optional meter number field for electric utility entries</p>
+                            </div>
+                            <Switch
+                                checked={notifications.collect_electric_meter_number}
+                                onCheckedChange={(checked) => setNotifications({ ...notifications, collect_electric_meter_number: checked })}
                             />
                         </div>
                         <Separator className="bg-border" />
