@@ -61,7 +61,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
             const reqData: RequestData = {
                 property_address: request.property_address,
                 utility_categories: request.utility_categories || UTILITY_CATEGORY_KEYS,
-                collect_electric_meter_number: request.collect_electric_meter_number === true,
+                collect_electric_meter_number: request.collect_electric_meter_number !== false,
             };
 
             setRequestData(reqData);

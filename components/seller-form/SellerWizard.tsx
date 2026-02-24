@@ -73,7 +73,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
     const shouldReduceMotion = useReducedMotion();
-    const collectElectricMeterNumber = initialRequestData.collect_electric_meter_number === true;
+    const collectElectricMeterNumber = initialRequestData.collect_electric_meter_number !== false;
 
     // Initialize state
     const [state, setState] = useState<WizardState>(() => {

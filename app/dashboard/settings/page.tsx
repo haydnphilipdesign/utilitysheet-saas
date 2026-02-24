@@ -33,7 +33,7 @@ export default function SettingsPage() {
     const [notifications, setNotifications] = useState<NotificationPreferences>({
         seller_submissions: true,
         seller_submission_pdf_attachment: true,
-        collect_electric_meter_number: false,
+        collect_electric_meter_number: true,
         contact_resolution: true,
         weekly_summary: false,
     });

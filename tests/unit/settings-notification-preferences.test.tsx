@@ -124,4 +124,54 @@ describe('settings notification preferences', () => {
         expect(postBody.notification_preferences.seller_submission_pdf_attachment).toBe(true);
         expect(postBody.notification_preferences.collect_electric_meter_number).toBe(true);
     });
+
+    it('defaults collect_electric_meter_number to ON when not set in account preferences', async () => {
+        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = typeof input === 'string' ? input : String(input);
+            const method = (init?.method || 'GET').toUpperCase();
+
+            if (url === '/api/account' && method === 'GET') {
+                return jsonResponse({
+                    account: {
+                        id: 'acc_1',
+                        full_name: 'Test User',
+                        email: 'test@example.com',
+                        notification_preferences: {},
+                    },
+                    activeOrganization: null,
+                    organizations: [],
+                    usage: { used: 0, limit: 3, plan: 'free' },
+                });
+            }
+
+            if (url === '/api/intake-link' && method === 'GET') {
+                return jsonResponse({
+                    intakeLink: {
+                        slug: 'test-link',
+                        url: 'https://example.com/i/test-link',
+                        is_active: true,
+                    },
+                    canCustomize: false,
+                });
+            }
+
+            if (url === '/api/account' && method === 'POST') {
+                return jsonResponse({ account: { id: 'acc_1' } });
+            }
+
+            return jsonResponse({ error: 'Not found' }, 404);
+        });
+
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<SettingsPage />);
+
+        const meterToggleLabel = await screen.findByText('Collect electric meter number');
+        const meterToggleRow = meterToggleLabel.closest('div')?.parentElement;
+        expect(meterToggleRow).not.toBeNull();
+
+        const meterCheckbox = meterToggleRow?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+        expect(meterCheckbox).toBeTruthy();
+        expect(meterCheckbox.checked).toBe(true);
+    });
 });

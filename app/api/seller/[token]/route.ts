@@ -81,7 +81,7 @@ export async function GET(
         const notificationPrefs = (account?.notification_preferences || {}) as {
             collect_electric_meter_number?: boolean;
         };
-        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number === true;
+        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number !== false;
 
         // Get AI suggestions for each category
         const utilityCategories =
@@ -166,7 +166,7 @@ export async function POST(
             weekly_summary?: boolean;
             collect_electric_meter_number?: boolean;
         };
-        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number === true;
+        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number !== false;
 
         // Only apply free-plan overage locking for requests that have not yet been metered.
         // (Agent-created requests are metered on creation and quota-checked on creation.)
