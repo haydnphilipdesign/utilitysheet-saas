@@ -35,8 +35,9 @@ async function getUserData(userId: string) {
     };
 }
 
-export default async function UserDetailPage({ params }: { params: { id: string } }) {
-    const data = await getUserData(params.id);
+export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const data = await getUserData(id);
 
     if (!data) {
         notFound();

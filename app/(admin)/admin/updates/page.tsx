@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { getProductUpdates } from '@/lib/neon/queries/updates';
 import { createProductUpdateAdminAction, deleteProductUpdateAdminAction } from './actions';
+import { AdminPageHeader } from '@/components/admin/primitives';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,17 +30,17 @@ export default async function AdminUpdatesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Product Updates</h2>
-                    <p className="text-muted-foreground">Post changelog entries that show on the user dashboard.</p>
-                </div>
-                <Link href="/dashboard">
-                    <Button variant="secondary">Back to App</Button>
-                </Link>
-            </div>
+            <AdminPageHeader
+                title="Product Updates"
+                description="Publish changelog entries that appear in the user dashboard."
+                action={
+                    <Link href="/dashboard">
+                        <Button variant="secondary">Back to App</Button>
+                    </Link>
+                }
+            />
 
-            <Card className="border-border bg-card/50">
+            <Card className="border-border/70 bg-card/70 shadow-sm backdrop-blur">
                 <CardHeader>
                     <CardTitle>New update</CardTitle>
                     <CardDescription>Write a short note. Plain text is fine (new lines are preserved).</CardDescription>
@@ -96,7 +97,7 @@ export default async function AdminUpdatesPage() {
                 </CardContent>
             </Card>
 
-            <Card className="border-border bg-card/50">
+            <Card className="border-border/70 bg-card/70 shadow-sm backdrop-blur">
                 <CardHeader>
                     <CardTitle>Recent updates</CardTitle>
                     <CardDescription>{updates.length} total</CardDescription>
@@ -141,4 +142,3 @@ export default async function AdminUpdatesPage() {
         </div>
     );
 }
-

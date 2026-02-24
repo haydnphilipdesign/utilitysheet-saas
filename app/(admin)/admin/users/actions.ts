@@ -1,11 +1,32 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { requireAdmin, createAuditLogWithContext, banUser, unbanUser, updateUserRole, getUserById, updateUserPlan, assertAdminActionReason, assertAdminWritesEnabled } from '@/lib/admin';
+import {
+    requireAdmin,
+    createAuditLogWithContext,
+    banUser,
+    unbanUser,
+    updateUserRole,
+    getUserById,
+    updateUserPlan,
+    assertAdminActionReason,
+    assertAdminWritesEnabled,
+    countAdmins,
+} from '@/lib/admin';
 import type { UserRole, Plan } from '@/types';
+import {
+    evaluateBanPolicy,
+    evaluatePlanPolicy,
+    evaluateRoleChangePolicy,
+    evaluateUnbanPolicy,
+} from '@/lib/admin/policies';
 
 const IMPERSONATION_COOKIE = 'impersonator_id';
 const IMPERSONATED_USER_COOKIE = 'impersonated_user_id';
+
+type AdminActionResult =
+    | { success: true }
+    | { success: false; error: string; code?: string };
 
 /**
  * Start impersonating a user
@@ -112,6 +133,32 @@ export async function updateUserRoleAction(userId: string, role: UserRole, reaso
         }
 
         const previousRole = targetUser.role;
+        const adminCount = await countAdmins();
+        const policy = evaluateRoleChangePolicy({
+            actorId: account.id,
+            targetId: targetUser.id,
+            currentRole: previousRole,
+            nextRole: role,
+            adminCount,
+        });
+
+        if (!policy.allowed) {
+            await createAuditLogWithContext({
+                adminId: account.id,
+                targetUserId: userId,
+                action: 'role_changed',
+                metadata: {
+                    reason,
+                    blocked: true,
+                    policy: policy.policy,
+                    code: policy.code,
+                    previousRole,
+                    attemptedRole: role,
+                },
+            });
+            return { success: false, error: policy.message, code: policy.code } satisfies AdminActionResult;
+        }
+
         const result = await updateUserRole(userId, role);
 
         if (result) {
@@ -127,9 +174,10 @@ export async function updateUserRoleAction(userId: string, role: UserRole, reaso
             });
         }
 
-        return { success: !!result };
+        if (!result) return { success: false, error: 'Failed to update role', code: 'UNKNOWN' } satisfies AdminActionResult;
+        return { success: true } satisfies AdminActionResult;
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error', code: 'UNKNOWN' } satisfies AdminActionResult;
     }
 }
 
@@ -147,6 +195,31 @@ export async function banUserAction(userId: string, reason: string) {
             return { success: false, error: 'User not found' };
         }
 
+        const adminCount = await countAdmins();
+        const policy = evaluateBanPolicy({
+            actorId: account.id,
+            targetId: targetUser.id,
+            currentRole: targetUser.role,
+            adminCount,
+        });
+
+        if (!policy.allowed) {
+            await createAuditLogWithContext({
+                adminId: account.id,
+                targetUserId: userId,
+                action: 'user_banned',
+                metadata: {
+                    reason,
+                    blocked: true,
+                    policy: policy.policy,
+                    code: policy.code,
+                    previousRole: targetUser.role,
+                    attemptedRole: 'banned',
+                },
+            });
+            return { success: false, error: policy.message, code: policy.code } satisfies AdminActionResult;
+        }
+
         const result = await banUser(userId);
 
         if (result) {
@@ -162,9 +235,10 @@ export async function banUserAction(userId: string, reason: string) {
             });
         }
 
-        return { success: !!result };
+        if (!result) return { success: false, error: 'Failed to ban user', code: 'UNKNOWN' } satisfies AdminActionResult;
+        return { success: true } satisfies AdminActionResult;
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error', code: 'UNKNOWN' } satisfies AdminActionResult;
     }
 }
 
@@ -182,6 +256,24 @@ export async function unbanUserAction(userId: string, reason: string) {
             return { success: false, error: 'User not found' };
         }
 
+        const policy = evaluateUnbanPolicy(targetUser.role);
+        if (!policy.allowed) {
+            await createAuditLogWithContext({
+                adminId: account.id,
+                targetUserId: userId,
+                action: 'user_unbanned',
+                metadata: {
+                    reason,
+                    blocked: true,
+                    policy: policy.policy,
+                    code: policy.code,
+                    previousRole: targetUser.role,
+                    attemptedRole: 'user',
+                },
+            });
+            return { success: false, error: policy.message, code: policy.code } satisfies AdminActionResult;
+        }
+
         const result = await unbanUser(userId);
 
         if (result) {
@@ -197,9 +289,10 @@ export async function unbanUserAction(userId: string, reason: string) {
             });
         }
 
-        return { success: !!result };
+        if (!result) return { success: false, error: 'Failed to unban user', code: 'UNKNOWN' } satisfies AdminActionResult;
+        return { success: true } satisfies AdminActionResult;
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error', code: 'UNKNOWN' } satisfies AdminActionResult;
     }
 }
 
@@ -218,6 +311,24 @@ export async function updateUserPlanAction(userId: string, plan: Plan, reason: s
         }
 
         const previousPlan = targetUser.subscription_status;
+        const policy = evaluatePlanPolicy(previousPlan, plan);
+        if (!policy.allowed) {
+            await createAuditLogWithContext({
+                adminId: account.id,
+                targetUserId: userId,
+                action: 'plan_changed',
+                metadata: {
+                    reason,
+                    blocked: true,
+                    policy: policy.policy,
+                    code: policy.code,
+                    previousPlan,
+                    attemptedPlan: plan,
+                },
+            });
+            return { success: false, error: policy.message, code: policy.code } satisfies AdminActionResult;
+        }
+
         const result = await updateUserPlan(userId, plan);
 
         if (result) {
@@ -233,8 +344,9 @@ export async function updateUserPlanAction(userId: string, plan: Plan, reason: s
             });
         }
 
-        return { success: !!result };
+        if (!result) return { success: false, error: 'Failed to update plan', code: 'UNKNOWN' } satisfies AdminActionResult;
+        return { success: true } satisfies AdminActionResult;
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error', code: 'UNKNOWN' } satisfies AdminActionResult;
     }
 }

@@ -17,6 +17,26 @@ export type AdminAuditLogRow = AdminAuditLog & {
     target_name: string | null;
 };
 
+export type UserSortField = 'created' | 'email' | 'name';
+export type SortDirection = 'asc' | 'desc';
+
+export type UserSearchStats = {
+    total: number;
+    admins: number;
+    banned: number;
+    pro: number;
+    canceled: number;
+};
+
+export type UserLatestAdminAction = {
+    userId: string;
+    action: AdminAction;
+    createdAt: string;
+    adminEmail: string | null;
+    adminName: string | null;
+    metadata: Record<string, unknown> | null;
+};
+
 // Custom error for admin authorization failures
 export class AdminAuthorizationError extends Error {
     constructor(message = 'Admin access required') {
@@ -140,8 +160,16 @@ export async function searchUsers(params: {
     query?: string;
     role?: UserRole;
     plan?: Plan;
-}): Promise<{ users: Account[]; total: number }> {
-    if (!sql) return { users: [], total: 0 };
+    sortBy?: UserSortField;
+    sortDir?: SortDirection;
+}): Promise<{ users: Account[]; total: number; stats: UserSearchStats }> {
+    if (!sql) {
+        return {
+            users: [],
+            total: 0,
+            stats: { total: 0, admins: 0, banned: 0, pro: 0, canceled: 0 },
+        };
+    }
 
     const limit = Math.min(200, Math.max(1, params.limit ?? 50));
     const offset = Math.max(0, params.offset ?? 0);
@@ -171,22 +199,107 @@ export async function searchUsers(params: {
         whereClause = sql`${whereClause} AND subscription_status = ${params.plan}`;
     }
 
-    const [users, countResult] = await Promise.all([
+    const sortBy = params.sortBy ?? 'created';
+    const sortDir = params.sortDir ?? 'desc';
+
+    let orderClause = sql`created_at DESC, id DESC`;
+    if (sortBy === 'created' && sortDir === 'asc') {
+        orderClause = sql`created_at ASC, id ASC`;
+    }
+    if (sortBy === 'email' && sortDir === 'asc') {
+        orderClause = sql`email ASC, id ASC`;
+    }
+    if (sortBy === 'email' && sortDir === 'desc') {
+        orderClause = sql`email DESC, id DESC`;
+    }
+    if (sortBy === 'name' && sortDir === 'asc') {
+        orderClause = sql`COALESCE(full_name, email) ASC, id ASC`;
+    }
+    if (sortBy === 'name' && sortDir === 'desc') {
+        orderClause = sql`COALESCE(full_name, email) DESC, id DESC`;
+    }
+
+    const [users, countResult, statsResult] = await Promise.all([
         sql`
             SELECT id, auth_user_id, email, full_name, company_name, phone,
                    active_organization_id, role, subscription_status, created_at, updated_at
             FROM accounts
             WHERE ${whereClause}
-            ORDER BY created_at DESC
+            ORDER BY ${orderClause}
             LIMIT ${limit} OFFSET ${offset}
         `,
         sql`SELECT COUNT(*) as count FROM accounts WHERE ${whereClause}`,
+        sql`
+            SELECT
+                COUNT(*)::int as total,
+                COUNT(*) FILTER (WHERE role = 'admin')::int as admins,
+                COUNT(*) FILTER (WHERE role = 'banned')::int as banned,
+                COUNT(*) FILTER (WHERE subscription_status = 'pro')::int as pro,
+                COUNT(*) FILTER (WHERE subscription_status = 'canceled')::int as canceled
+            FROM accounts
+            WHERE ${whereClause}
+        `,
     ]);
+
+    const statsRow = statsResult[0];
 
     return {
         users: users as Account[],
         total: Number(countResult[0]?.count || 0),
+        stats: {
+            total: Number(statsRow?.total || 0),
+            admins: Number(statsRow?.admins || 0),
+            banned: Number(statsRow?.banned || 0),
+            pro: Number(statsRow?.pro || 0),
+            canceled: Number(statsRow?.canceled || 0),
+        },
     };
+}
+
+export async function countAdmins(): Promise<number> {
+    if (!sql) return 0;
+    const result = await sql`SELECT COUNT(*) as count FROM accounts WHERE role = 'admin'`;
+    return Number(result[0]?.count || 0);
+}
+
+export async function getLatestAdminActionsForUsers(userIds: string[]): Promise<Record<string, UserLatestAdminAction>> {
+    if (!sql || userIds.length === 0) return {};
+
+    const result = await sql`
+        SELECT DISTINCT ON (al.target_user_id)
+            al.target_user_id as user_id,
+            al.action,
+            al.created_at,
+            al.metadata,
+            a.email as admin_email,
+            a.full_name as admin_name
+        FROM admin_audit_logs al
+        LEFT JOIN accounts a ON al.admin_id = a.id
+        WHERE al.target_user_id = ANY(${userIds}::uuid[])
+        ORDER BY al.target_user_id, al.created_at DESC
+    `;
+
+    const map: Record<string, UserLatestAdminAction> = {};
+    for (const row of result as Array<{
+        user_id: string;
+        action: AdminAction;
+        created_at: string;
+        admin_email: string | null;
+        admin_name: string | null;
+        metadata: Record<string, unknown> | null;
+    }>) {
+        if (!row.user_id) continue;
+        map[row.user_id] = {
+            userId: row.user_id,
+            action: row.action,
+            createdAt: row.created_at,
+            adminEmail: row.admin_email,
+            adminName: row.admin_name,
+            metadata: row.metadata || null,
+        };
+    }
+
+    return map;
 }
 
 /**

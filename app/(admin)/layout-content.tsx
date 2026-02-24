@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { Users, Shield, FileText, ArrowLeft, Zap, LayoutDashboard, Inbox, Building2, Megaphone } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { ArrowLeft, Building2, FileText, Inbox, LayoutDashboard, Megaphone, Shield, Users, Zap } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { cn } from '@/lib/utils';
 
 const adminNavigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -16,65 +17,73 @@ const adminNavigation = [
 
 export function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const router = useRouter();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-red-950/20 via-background to-background">
-            {/* Admin Header */}
-            <header className="sticky top-0 z-50 border-b border-red-500/20 bg-card/80 backdrop-blur-xl">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => router.push('/dashboard')}
-                                className="text-muted-foreground hover:text-foreground transition-colors"
+        <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.12),transparent_40%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.08),transparent_35%)]">
+            <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur">
+                <div className="mx-auto max-w-[96rem] px-4 sm:px-6 lg:px-8">
+                    <div className="flex h-16 items-center justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <Link
+                                href="/dashboard"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 text-muted-foreground transition-colors hover:text-foreground"
                             >
-                                <ArrowLeft className="h-5 w-5" />
-                            </button>
+                                <ArrowLeft className="h-4 w-4" />
+                                <span className="sr-only">Back to app</span>
+                            </Link>
                             <div className="flex items-center gap-2">
-                                <div className="p-1.5 rounded-lg bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/20">
-                                    <Shield className="h-5 w-5 text-white" />
+                                <div className="rounded-md bg-red-500 p-1.5 text-white shadow-sm">
+                                    <Shield className="h-4 w-4" />
                                 </div>
-                                <span className="text-xl font-bold text-foreground">Admin Panel</span>
-                                <span className="px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-500 rounded-full border border-red-500/20">
-                                    GOD MODE
-                                </span>
+                                <div className="min-w-0">
+                                    <div className="truncate text-sm font-semibold text-foreground">Admin Control</div>
+                                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Production operations</div>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <nav className="flex items-center gap-1">
-                                {adminNavigation.map((item) => {
-                                    const isActive = item.href === '/admin'
-                                        ? pathname === '/admin'
-                                        : pathname.startsWith(item.href);
-                                    return (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${isActive
-                                                ? 'bg-red-500/10 text-red-500'
-                                                : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                                                }`}
-                                        >
-                                            <item.icon className="h-4 w-4" />
-                                            {item.name}
-                                        </Link>
-                                    );
-                                })}
-                            </nav>
+
+                        <div className="flex items-center gap-2">
                             <ThemeToggle />
                             <Link
                                 href="/dashboard"
-                                className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm"
+                                className="inline-flex items-center gap-1 rounded-md border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                             >
-                                <Zap className="h-4 w-4" />
-                                <span className="hidden sm:inline">Back to App</span>
+                                <Zap className="h-3.5 w-3.5" />
+                                Back to App
                             </Link>
                         </div>
                     </div>
                 </div>
+
+                <div className="border-t border-border/60 bg-background/80">
+                    <div className="mx-auto max-w-[96rem] overflow-x-auto px-4 sm:px-6 lg:px-8">
+                        <nav className="flex min-w-max items-center gap-1 py-2">
+                            {adminNavigation.map((item) => {
+                                const isActive = item.href === '/admin'
+                                    ? pathname === '/admin'
+                                    : pathname.startsWith(item.href);
+                                return (
+                                    <Link
+                                        key={item.name}
+                                        href={item.href}
+                                        className={cn(
+                                            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                                            isActive
+                                                ? 'bg-red-500/15 text-red-600 dark:text-red-300'
+                                                : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
+                                        )}
+                                    >
+                                        <item.icon className="h-3.5 w-3.5" />
+                                        {item.name}
+                                    </Link>
+                                );
+                            })}
+                        </nav>
+                    </div>
+                </div>
             </header>
-            <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+
+            <main className="mx-auto max-w-[96rem] px-4 py-6 sm:px-6 lg:px-8">
                 {children}
             </main>
         </div>

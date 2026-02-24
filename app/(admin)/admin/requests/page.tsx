@@ -1,25 +1,26 @@
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { Search } from 'lucide-react';
 import { sql } from '@/lib/neon/db';
 import { RequestsTable } from '@/components/admin/RequestsTable';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
+import { AdminDataTableShell, AdminFilterBar, AdminPageHeader, AdminPagination } from '@/components/admin/primitives';
+import {
+    DEFAULT_PAGE_SIZE,
+    buildAdminHref,
+    clampPage,
+    getParam,
+    parsePage,
+    parsePageSize,
+    resolveSearchParams,
+    shouldCanonicalizePage,
+} from '@/lib/admin/list-query';
 import type { RequestStatus } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
-type RequestsSearchParams = {
-    q?: string;
-    status?: string;
-    page?: string;
-};
-
-function parseIntParam(value: string | undefined, fallback: number) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) return fallback;
-    return parsed;
-}
+type RequestsSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function isRequestStatus(value: string): value is RequestStatus {
     return value === 'draft' || value === 'sent' || value === 'in_progress' || value === 'submitted';
@@ -41,7 +42,6 @@ async function getRequests(params: { query?: string; status?: RequestStatus; lim
     if (!sql) return [];
 
     const q = params.query?.trim() ? `%${params.query.trim()}%` : null;
-
     let whereClause = sql`TRUE`;
 
     if (params.status) {
@@ -70,7 +70,7 @@ async function getRequests(params: { query?: string; status?: RequestStatus; lim
         FROM requests r
         LEFT JOIN accounts a ON r.account_id = a.id
         WHERE ${whereClause}
-        ORDER BY r.created_at DESC
+        ORDER BY r.created_at DESC, r.id DESC
         LIMIT ${params.limit} OFFSET ${params.offset}
     `;
 
@@ -81,7 +81,6 @@ async function getRequestsCount(params: { query?: string; status?: RequestStatus
     if (!sql) return 0;
 
     const q = params.query?.trim() ? `%${params.query.trim()}%` : null;
-
     let whereClause = sql`TRUE`;
 
     if (params.status) {
@@ -113,113 +112,109 @@ async function getRequestsCount(params: { query?: string; status?: RequestStatus
 }
 
 export default async function RequestsPage({ searchParams }: { searchParams: RequestsSearchParams }) {
-    const page = Math.max(1, parseIntParam(searchParams.page, 1));
-    const limit = 50;
-    const offset = (page - 1) * limit;
+    const sp = await resolveSearchParams(searchParams);
+    const rawPage = getParam(sp, 'page');
+    const rawPageSize = getParam(sp, 'pageSize');
 
-    const query = searchParams.q?.trim() || '';
-    const status = searchParams.status && isRequestStatus(searchParams.status) ? searchParams.status : undefined;
+    const page = parsePage(rawPage, 1);
+    const pageSize = parsePageSize(rawPageSize, [25, 50, 100], DEFAULT_PAGE_SIZE);
+    const query = (getParam(sp, 'q') || '').trim();
+    const statusRaw = getParam(sp, 'status');
+    const status = statusRaw && isRequestStatus(statusRaw) ? statusRaw : undefined;
+    const offset = (page - 1) * pageSize;
 
     const [requests, total] = await Promise.all([
-        getRequests({ query, status, limit, offset }),
+        getRequests({ query, status, limit: pageSize, offset }),
         getRequestsCount({ query, status }),
     ]);
-    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const canonicalPage = clampPage(page, totalPages);
 
-    async function searchAction(formData: FormData) {
-        "use server";
-        const q = String(formData.get('q') || '').trim();
-        const status = String(formData.get('status') || '').trim();
+    const baseValues = {
+        q: query || undefined,
+        status,
+        pageSize,
+    };
 
-        const params = new URLSearchParams();
-        if (q) params.set('q', q);
-        if (status && status !== 'all') params.set('status', status);
+    const buildPageHref = (targetPage: number) =>
+        buildAdminHref('/admin/requests', {
+            ...baseValues,
+            page: targetPage,
+        });
 
-        const qs = params.toString();
-        redirect(qs ? `/admin/requests?${qs}` : '/admin/requests');
-    }
-
-    function buildPageHref(nextPage: number) {
-        const params = new URLSearchParams();
-        if (query) params.set('q', query);
-        if (status) params.set('status', status);
-        params.set('page', String(nextPage));
-        return `/admin/requests?${params.toString()}`;
+    if (shouldCanonicalizePage({ rawPage, rawPageSize, page, canonicalPage, pageSize })) {
+        redirect(buildPageHref(canonicalPage));
     }
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Request Inspector</h2>
-                    <p className="text-muted-foreground">
-                        View and manage all utility requests ({total}).
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-4">
+            <AdminPageHeader
+                title="Request Inspector"
+                description={`View and triage all utility requests (${total.toLocaleString()}).`}
+            />
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <form action={searchAction} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-2">
+            <AdminFilterBar>
+                <form method="GET" action="/admin/requests" className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <input type="hidden" name="page" value="1" />
+                    <input type="hidden" name="pageSize" value={pageSize} />
+
+                    <div className="flex flex-1 items-center gap-2">
                         <Input
                             type="search"
                             name="q"
                             placeholder="Search address, seller, user, id..."
                             defaultValue={query}
-                            className="w-full sm:w-96"
+                            className="w-full"
                         />
-                        <Button type="submit" size="icon" variant="outline" aria-label="Search">
-                            <Search className="h-4 w-4" />
+                        <Button type="submit" variant="outline" size="sm">
+                            <Search className="mr-1 h-4 w-4" />
+                            Search
                         </Button>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <select
                             name="status"
-                            defaultValue={status || 'all'}
-                            className="h-7 rounded-md border border-border bg-input/20 px-2 text-xs text-foreground"
+                            defaultValue={status || ''}
+                            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
                         >
-                            <option value="all">All statuses</option>
+                            <option value="">All statuses</option>
                             <option value="draft">Draft</option>
                             <option value="sent">Sent</option>
                             <option value="in_progress">In progress</option>
                             <option value="submitted">Submitted</option>
                         </select>
-                        {(query || status) && (
-                            <Link href="/admin/requests" className="text-xs text-muted-foreground hover:text-foreground">
+                        {(query || status) ? (
+                            <Link
+                                href={buildAdminHref('/admin/requests', { page: 1, pageSize })}
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                            >
                                 Reset
                             </Link>
-                        )}
+                        ) : null}
                     </div>
                 </form>
+            </AdminFilterBar>
 
-                <div className="flex items-center justify-between gap-3 sm:justify-end">
-                    <p className="text-xs text-muted-foreground">
-                        Page {page} of {totalPages}
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Link
-                            href={buildPageHref(Math.max(1, page - 1))}
-                            aria-disabled={page <= 1}
-                            className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
-                        >
-                            <Button variant="outline" size="sm" disabled={page <= 1}>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                        </Link>
-                        <Link
-                            href={buildPageHref(Math.min(totalPages, page + 1))}
-                            aria-disabled={page >= totalPages}
-                            className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
-                        >
-                            <Button variant="outline" size="sm" disabled={page >= totalPages}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </Link>
-                    </div>
+            <AdminDataTableShell>
+                <div className="p-4">
+                    <RequestsTable requests={requests} />
                 </div>
-            </div>
-
-            <RequestsTable requests={requests} />
+                <AdminPagination
+                    page={canonicalPage}
+                    pageSize={pageSize}
+                    total={total}
+                    totalPages={totalPages}
+                    prevHref={buildPageHref(Math.max(1, canonicalPage - 1))}
+                    nextHref={buildPageHref(Math.min(totalPages, canonicalPage + 1))}
+                    buildPageSizeHref={(size) =>
+                        buildAdminHref('/admin/requests', {
+                            ...baseValues,
+                            page: 1,
+                            pageSize: size,
+                        })
+                    }
+                />
+            </AdminDataTableShell>
         </div>
     );
 }

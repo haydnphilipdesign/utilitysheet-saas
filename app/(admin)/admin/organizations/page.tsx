@@ -1,23 +1,25 @@
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { Search } from 'lucide-react';
 import { sql } from '@/lib/neon/db';
 import { OrgTable } from '@/components/admin/OrgTable';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import { AdminDataTableShell, AdminFilterBar, AdminPageHeader, AdminPagination } from '@/components/admin/primitives';
+import {
+    DEFAULT_PAGE_SIZE,
+    buildAdminHref,
+    clampPage,
+    getParam,
+    parsePage,
+    parsePageSize,
+    resolveSearchParams,
+    shouldCanonicalizePage,
+} from '@/lib/admin/list-query';
 
 export const dynamic = 'force-dynamic';
 
-type OrgsSearchParams = {
-    q?: string;
-    page?: string;
-};
-
-function parseIntParam(value: string | undefined, fallback: number) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) return fallback;
-    return parsed;
-}
+type OrgsSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 type AdminOrgRow = {
     id: string;
@@ -32,7 +34,6 @@ async function getOrgs(params: { query?: string; limit: number; offset: number }
     if (!sql) return [];
 
     const q = params.query?.trim() ? `%${params.query.trim()}%` : null;
-
     let whereClause = sql`TRUE`;
     if (q) {
         whereClause = sql`
@@ -46,11 +47,11 @@ async function getOrgs(params: { query?: string; limit: number; offset: number }
     }
 
     const data = await sql`
-        SELECT o.*, 
-        (SELECT count(*) FROM organization_members WHERE organization_id = o.id) as member_count 
-        FROM organizations o 
+        SELECT o.*,
+        (SELECT count(*) FROM organization_members WHERE organization_id = o.id) as member_count
+        FROM organizations o
         WHERE ${whereClause}
-        ORDER BY o.created_at DESC
+        ORDER BY o.created_at DESC, o.id DESC
         LIMIT ${params.limit} OFFSET ${params.offset}
     `;
 
@@ -64,7 +65,6 @@ async function getOrgsCount(params: { query?: string }) {
     if (!sql) return 0;
 
     const q = params.query?.trim() ? `%${params.query.trim()}%` : null;
-
     let whereClause = sql`TRUE`;
     if (q) {
         whereClause = sql`
@@ -82,90 +82,91 @@ async function getOrgsCount(params: { query?: string }) {
 }
 
 export default async function OrgsPage({ searchParams }: { searchParams: OrgsSearchParams }) {
-    const page = Math.max(1, parseIntParam(searchParams.page, 1));
-    const limit = 50;
-    const offset = (page - 1) * limit;
+    const sp = await resolveSearchParams(searchParams);
+    const rawPage = getParam(sp, 'page');
+    const rawPageSize = getParam(sp, 'pageSize');
 
-    const query = searchParams.q?.trim() || '';
+    const page = parsePage(rawPage, 1);
+    const pageSize = parsePageSize(rawPageSize, [25, 50, 100], DEFAULT_PAGE_SIZE);
+    const query = (getParam(sp, 'q') || '').trim();
+    const offset = (page - 1) * pageSize;
 
     const [orgs, total] = await Promise.all([
-        getOrgs({ query, limit, offset }),
+        getOrgs({ query, limit: pageSize, offset }),
         getOrgsCount({ query }),
     ]);
-    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const canonicalPage = clampPage(page, totalPages);
 
-    async function searchAction(formData: FormData) {
-        'use server';
-        const q = String(formData.get('q') || '').trim();
-        const params = new URLSearchParams();
-        if (q) params.set('q', q);
-        const qs = params.toString();
-        redirect(qs ? `/admin/organizations?${qs}` : '/admin/organizations');
-    }
+    const baseValues = {
+        q: query || undefined,
+        pageSize,
+    };
 
-    function buildPageHref(nextPage: number) {
-        const params = new URLSearchParams();
-        if (query) params.set('q', query);
-        params.set('page', String(nextPage));
-        return `/admin/organizations?${params.toString()}`;
+    const buildPageHref = (targetPage: number) =>
+        buildAdminHref('/admin/organizations', {
+            ...baseValues,
+            page: targetPage,
+        });
+
+    if (shouldCanonicalizePage({ rawPage, rawPageSize, page, canonicalPage, pageSize })) {
+        redirect(buildPageHref(canonicalPage));
     }
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Organizations</h2>
-                    <p className="text-muted-foreground">
-                        Manage B2B accounts and teams ({total}).
-                    </p>
-                </div>
-            </div>
+        <div className="space-y-4">
+            <AdminPageHeader
+                title="Organizations"
+                description={`Manage B2B accounts and team workspaces (${total.toLocaleString()}).`}
+            />
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <form action={searchAction} className="flex items-center gap-2">
-                    <Input
-                        name="q"
-                        placeholder="Search name, slug, id..."
-                        defaultValue={query}
-                        className="w-full sm:w-96"
-                    />
-                    <Button type="submit" size="icon" variant="outline" aria-label="Search">
-                        <Search className="h-4 w-4" />
-                    </Button>
-                    {query && (
-                        <Link href="/admin/organizations" className="text-xs text-muted-foreground hover:text-foreground">
+            <AdminFilterBar>
+                <form method="GET" action="/admin/organizations" className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <input type="hidden" name="page" value="1" />
+                    <input type="hidden" name="pageSize" value={pageSize} />
+                    <div className="flex flex-1 items-center gap-2">
+                        <Input
+                            name="q"
+                            placeholder="Search name, slug, id..."
+                            defaultValue={query}
+                            className="w-full"
+                        />
+                        <Button type="submit" variant="outline" size="sm">
+                            <Search className="mr-1 h-4 w-4" />
+                            Search
+                        </Button>
+                    </div>
+                    {query ? (
+                        <Link
+                            href={buildAdminHref('/admin/organizations', { page: 1, pageSize })}
+                            className="text-xs text-muted-foreground hover:text-foreground"
+                        >
                             Reset
                         </Link>
-                    )}
+                    ) : null}
                 </form>
+            </AdminFilterBar>
 
-                <div className="flex items-center justify-between gap-3 sm:justify-end">
-                    <p className="text-xs text-muted-foreground">
-                        Page {page} of {totalPages}
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Link
-                            href={buildPageHref(Math.max(1, page - 1))}
-                            aria-disabled={page <= 1}
-                            className={page <= 1 ? 'pointer-events-none opacity-50' : ''}
-                        >
-                            <Button variant="outline" size="sm" disabled={page <= 1}>
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                        </Link>
-                        <Link
-                            href={buildPageHref(Math.min(totalPages, page + 1))}
-                            aria-disabled={page >= totalPages}
-                            className={page >= totalPages ? 'pointer-events-none opacity-50' : ''}
-                        >
-                            <Button variant="outline" size="sm" disabled={page >= totalPages}>
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </Link>
-                    </div>
+            <AdminDataTableShell>
+                <div className="p-4">
+                    <OrgTable orgs={orgs} />
                 </div>
-            </div>
-            <OrgTable orgs={orgs} />
+                <AdminPagination
+                    page={canonicalPage}
+                    pageSize={pageSize}
+                    total={total}
+                    totalPages={totalPages}
+                    prevHref={buildPageHref(Math.max(1, canonicalPage - 1))}
+                    nextHref={buildPageHref(Math.min(totalPages, canonicalPage + 1))}
+                    buildPageSizeHref={(size) =>
+                        buildAdminHref('/admin/organizations', {
+                            ...baseValues,
+                            page: 1,
+                            pageSize: size,
+                        })
+                    }
+                />
+            </AdminDataTableShell>
         </div>
     );
 }

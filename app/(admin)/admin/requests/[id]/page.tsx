@@ -31,8 +31,9 @@ async function getRequestData(requestId: string) {
     };
 }
 
-export default async function RequestDetailPage({ params }: { params: { id: string } }) {
-    const data = await getRequestData(params.id);
+export default async function RequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const data = await getRequestData(id);
 
     if (!data) {
         notFound();

@@ -3,6 +3,7 @@ import { StatsCard } from '@/components/admin/StatsCard';
 import { Overview } from '@/components/admin/Overview';
 import { RecentActivity } from '@/components/admin/RecentActivity';
 import { Users, FileText, Building2, Activity } from 'lucide-react';
+import { AdminPageHeader } from '@/components/admin/primitives';
 
 // Force dynamic rendering as this is an admin dashboard
 export const dynamic = 'force-dynamic';
@@ -62,10 +63,11 @@ export default async function AdminDashboardPage() {
     }
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center justify-between space-y-2">
-                <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-            </div>
+        <div className="space-y-6">
+            <AdminPageHeader
+                title="Admin Dashboard"
+                description="Live overview of user growth, requests, and organization activity."
+            />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatsCard
@@ -95,13 +97,13 @@ export default async function AdminDashboardPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <div className="col-span-4 bg-card rounded-xl border border-border shadow-sm p-6">
+                <div className="col-span-4 rounded-xl border border-border/70 bg-card/70 p-6 shadow-sm backdrop-blur">
                     <div className="mb-4">
                         <h3 className="text-lg font-medium">Request Status Distribution</h3>
                     </div>
                     <Overview data={stats.requestsByStatus} />
                 </div>
-                <div className="col-span-3 bg-card rounded-xl border border-border shadow-sm p-6">
+                <div className="col-span-3 rounded-xl border border-border/70 bg-card/70 p-6 shadow-sm backdrop-blur">
                     <div className="mb-4">
                         <h3 className="text-lg font-medium">Recent Activity</h3>
                         <p className="text-sm text-muted-foreground">

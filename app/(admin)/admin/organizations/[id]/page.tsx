@@ -46,8 +46,9 @@ async function getOrgData(orgId: string) {
     };
 }
 
-export default async function OrgDetailPage({ params }: { params: { id: string } }) {
-    const data = await getOrgData(params.id);
+export default async function OrgDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const data = await getOrgData(id);
 
     if (!data) {
         notFound();
