@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import { sql } from '@/lib/neon/db';
 import {
     requireAdmin,
     createAuditLogWithContext,
@@ -27,6 +28,18 @@ const IMPERSONATED_USER_COOKIE = 'impersonated_user_id';
 type AdminActionResult =
     | { success: true }
     | { success: false; error: string; code?: string };
+
+async function isTeamManagedUser(activeOrganizationId: string | null): Promise<boolean> {
+    if (!activeOrganizationId || !sql) return false;
+
+    const result = await sql`
+        SELECT subscription_status
+        FROM organizations
+        WHERE id = ${activeOrganizationId}
+        LIMIT 1
+    `;
+    return result[0]?.subscription_status === 'team';
+}
 
 /**
  * Start impersonating a user
@@ -308,6 +321,27 @@ export async function updateUserPlanAction(userId: string, plan: Plan, reason: s
         const targetUser = await getUserById(userId);
         if (!targetUser) {
             return { success: false, error: 'User not found' };
+        }
+
+        if (await isTeamManagedUser(targetUser.active_organization_id)) {
+            await createAuditLogWithContext({
+                adminId: account.id,
+                targetUserId: userId,
+                action: 'plan_changed',
+                metadata: {
+                    reason,
+                    blocked: true,
+                    policy: 'organization_team_managed',
+                    code: 'ORG_TEAM_MANAGED_PLAN',
+                    attemptedPlan: plan,
+                    activeOrganizationId: targetUser.active_organization_id,
+                },
+            });
+            return {
+                success: false,
+                error: 'Plan is managed by the active Teams organization.',
+                code: 'ORG_TEAM_MANAGED_PLAN',
+            } satisfies AdminActionResult;
         }
 
         const previousPlan = targetUser.subscription_status;

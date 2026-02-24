@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { ArrowDown, ArrowUp, Ban, ExternalLink, Shield, User, UserCheck } from 'lucide-react';
-import type { Account } from '@/types';
+import type { AdminUserRow, EffectivePlan } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,7 +32,7 @@ type LatestAction = {
 };
 
 interface UsersTableProps {
-    users: Account[];
+    users: AdminUserRow[];
     sortBy: UserSortField;
     sortDir: SortDirection;
     sortHrefs: Record<UserSortField, string>;
@@ -40,12 +40,12 @@ interface UsersTableProps {
 }
 
 type ConfirmableAction =
-    | { type: 'promote'; user: Account }
-    | { type: 'demote'; user: Account }
-    | { type: 'ban'; user: Account }
-    | { type: 'unban'; user: Account }
-    | { type: 'upgradePlan'; user: Account }
-    | { type: 'downgradePlan'; user: Account };
+    | { type: 'promote'; user: AdminUserRow }
+    | { type: 'demote'; user: AdminUserRow }
+    | { type: 'ban'; user: AdminUserRow }
+    | { type: 'unban'; user: AdminUserRow }
+    | { type: 'upgradePlan'; user: AdminUserRow }
+    | { type: 'downgradePlan'; user: AdminUserRow };
 
 function getActionCopy(action: ConfirmableAction['type']) {
     switch (action) {
@@ -69,19 +69,27 @@ function SortIndicator({ active, dir }: { active: boolean; dir: SortDirection })
     return dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
 }
 
-function planBadge(plan: Account['subscription_status']) {
+function getEffectivePlan(user: AdminUserRow): EffectivePlan {
+    if (user.effective_subscription_status) return user.effective_subscription_status;
+    if (user.active_organization_subscription_status === 'team') return 'team';
+    return user.subscription_status;
+}
+
+function planBadge(plan: EffectivePlan) {
+    if (plan === 'team') return <Badge className="bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-500/30">Team</Badge>;
     if (plan === 'pro') return <Badge className="bg-sky-500/20 text-sky-600 dark:text-sky-300 border-sky-500/30">Pro</Badge>;
     if (plan === 'canceled') return <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30">Canceled</Badge>;
     return <Badge variant="outline">Free</Badge>;
 }
 
-function roleBadge(role: Account['role']) {
+function roleBadge(role: AdminUserRow['role']) {
     if (role === 'admin') return <Badge className="bg-red-500/15 text-red-600 dark:text-red-300 border-red-500/25">Admin</Badge>;
     if (role === 'banned') return <Badge variant="destructive">Banned</Badge>;
     return <Badge variant="secondary">User</Badge>;
 }
 
-function actionGroups(user: Account): Array<{ label: string; actions: ConfirmableAction['type'][] }> {
+function actionGroups(user: AdminUserRow): Array<{ label: string; actions: ConfirmableAction['type'][]; note?: string }> {
+    const effectivePlan = getEffectivePlan(user);
     return [
         {
             label: 'Access',
@@ -89,7 +97,10 @@ function actionGroups(user: Account): Array<{ label: string; actions: Confirmabl
         },
         {
             label: 'Subscription',
-            actions: [user.subscription_status === 'pro' ? 'downgradePlan' : 'upgradePlan'],
+            actions: effectivePlan === 'team'
+                ? []
+                : [user.subscription_status === 'pro' ? 'downgradePlan' : 'upgradePlan'],
+            note: effectivePlan === 'team' ? 'Managed by active organization Teams billing.' : undefined,
         },
         {
             label: 'Enforcement',
@@ -112,7 +123,7 @@ export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }:
 
     const reasonOk = reason.trim().length >= 3;
 
-    const openAction = (type: ConfirmableAction['type'], user: Account) => {
+    const openAction = (type: ConfirmableAction['type'], user: AdminUserRow) => {
         setConfirmAction({ type, user });
         setReason('');
     };
@@ -225,7 +236,7 @@ export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }:
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
-                                    <td className="px-4 py-3">{planBadge(user.subscription_status)}</td>
+                                    <td className="px-4 py-3">{planBadge(getEffectivePlan(user))}</td>
                                     <td className="px-4 py-3">{roleBadge(user.role)}</td>
                                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(user.created_at), 'MMM d, yyyy')}</td>
                                     <td className="px-4 py-3 text-right">
@@ -259,7 +270,7 @@ export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }:
                                 </SheetDescription>
                                 <div className="flex items-center gap-2 pt-2">
                                     {roleBadge(selectedUser.role)}
-                                    {planBadge(selectedUser.subscription_status)}
+                                    {planBadge(getEffectivePlan(selectedUser))}
                                     <Link href={`/admin/users/${selectedUser.id}`} className="inline-flex">
                                         <Button variant="outline" size="sm">
                                             <ExternalLink className="mr-1 h-3.5 w-3.5" />
@@ -313,6 +324,9 @@ export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }:
                                                 );
                                             })}
                                         </div>
+                                        {group.note ? (
+                                            <p className="mt-2 text-xs text-muted-foreground">{group.note}</p>
+                                        ) : null}
                                     </section>
                                 ))}
 

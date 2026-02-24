@@ -31,6 +31,10 @@ function isPlan(value: string): value is Plan {
     return value === 'free' || value === 'pro' || value === 'canceled';
 }
 
+function isAdminPlanFilter(value: string): value is Plan | 'team' {
+    return value === 'team' || isPlan(value);
+}
+
 function isUserSortField(value: string): value is UserSortField {
     return value === 'created' || value === 'email' || value === 'name';
 }
@@ -54,7 +58,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
     const dirRaw = getParam(sp, 'dir');
 
     const role = roleRaw && isUserRole(roleRaw) ? roleRaw : undefined;
-    const plan = planRaw && isPlan(planRaw) ? planRaw : undefined;
+    const plan = planRaw && isAdminPlanFilter(planRaw) ? planRaw : undefined;
     const sortBy: UserSortField = sortRaw && isUserSortField(sortRaw) ? sortRaw : 'created';
     const sortDir = parseDirection(dirRaw, 'desc');
 
@@ -111,7 +115,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                     { label: 'Total Users', value: stats.total.toLocaleString(), icon: Users },
                     { label: 'Admins', value: stats.admins.toLocaleString(), icon: Shield },
                     { label: 'Banned', value: stats.banned.toLocaleString(), icon: Ban },
-                    { label: 'Pro / Canceled', value: `${stats.pro} / ${stats.canceled}`, icon: Sparkles },
+                    { label: 'Pro / Team', value: `${stats.pro} / ${stats.team}`, hint: `${stats.canceled} canceled`, icon: Sparkles },
                 ]}
             />
 
@@ -151,6 +155,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                                 <option value="">All plans</option>
                                 <option value="free">Free</option>
                                 <option value="pro">Pro</option>
+                                <option value="team">Team</option>
                                 <option value="canceled">Canceled</option>
                             </select>
                             {(query || role || plan) ? (

@@ -8,14 +8,22 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, Building } from 'lucide-react';
-import type { Request } from '@/types';
+import type { Request, EffectivePlan } from '@/types';
 import type { AdminAuditLog } from '@/types';
 
 async function getUserData(userId: string) {
     if (!sql) return null;
 
     const [userRes, requestsRes, logsRes] = await Promise.all([
-        sql`SELECT * FROM accounts WHERE id = ${userId}`,
+        sql`
+            SELECT
+                a.*,
+                o.name as active_organization_name,
+                o.subscription_status as active_organization_subscription_status
+            FROM accounts a
+            LEFT JOIN organizations o ON o.id = a.active_organization_id
+            WHERE a.id = ${userId}
+        `,
         sql`SELECT * FROM requests WHERE account_id = ${userId} ORDER BY created_at DESC`,
         sql`
             SELECT l.*, a.email as admin_email 
@@ -44,6 +52,10 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     }
 
     const { user, requests, logs } = data;
+    const effectivePlan: EffectivePlan =
+        user.active_organization_subscription_status === 'team'
+            ? 'team'
+            : (user.subscription_status || 'free');
     const initials = user.full_name
         ? user.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
         : user.email.slice(0, 2).toUpperCase();
@@ -62,9 +74,14 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                             <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="ml-2">
                                 {user.role}
                             </Badge>
-                            {user.subscription_status === 'pro' && (
+                            {effectivePlan === 'pro' && (
                                 <Badge className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white border-0">
                                     PRO
+                                </Badge>
+                            )}
+                            {effectivePlan === 'team' && (
+                                <Badge className="bg-gradient-to-r from-sky-500 to-indigo-500 text-white border-0">
+                                    TEAM
                                 </Badge>
                             )}
                         </h2>
@@ -111,12 +128,12 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                     <CardContent className="space-y-2">
                         <div className="flex justify-between py-1 border-b last:border-0 border-border/50">
                             <span className="text-muted-foreground text-sm">Plan</span>
-                            <span className="font-medium text-sm capitalize">{user.subscription_status || 'free'}</span>
+                            <span className="font-medium text-sm capitalize">{effectivePlan}</span>
                         </div>
                         <div className="flex justify-between py-1 border-b last:border-0 border-border/50">
                             <span className="text-muted-foreground text-sm">Status</span>
                             <span className="font-medium text-sm capitalize">
-                                {user.subscription_status === 'canceled' ? 'Canceled' : 'Active'}
+                                {effectivePlan === 'canceled' ? 'Canceled' : 'Active'}
                             </span>
                         </div>
                     </CardContent>
@@ -130,7 +147,9 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                         {user.active_organization_id ? (
                             <div className="flex items-center gap-2">
                                 <Building className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">In Org ({user.active_organization_id})</span>
+                                <span className="text-sm">
+                                    {user.active_organization_name || 'Organization'} ({user.active_organization_id})
+                                </span>
                             </div>
                         ) : (
                             <div className="text-sm text-muted-foreground">No active organization</div>

@@ -1,7 +1,7 @@
 import "server-only";
 import { stackServerApp } from '@/lib/stack/server';
 import { sql } from '@/lib/neon/db';
-import type { Account, UserRole, AdminAction, AdminAuditLog, Plan } from '@/types';
+import type { Account, UserRole, AdminAction, AdminAuditLog, Plan, AdminUserRow } from '@/types';
 import { headers } from 'next/headers';
 
 type StackUser = {
@@ -26,6 +26,7 @@ export type UserSearchStats = {
     banned: number;
     pro: number;
     canceled: number;
+    team: number;
 };
 
 export type UserLatestAdminAction = {
@@ -159,15 +160,15 @@ export async function searchUsers(params: {
     offset?: number;
     query?: string;
     role?: UserRole;
-    plan?: Plan;
+    plan?: Plan | 'team';
     sortBy?: UserSortField;
     sortDir?: SortDirection;
-}): Promise<{ users: Account[]; total: number; stats: UserSearchStats }> {
+}): Promise<{ users: AdminUserRow[]; total: number; stats: UserSearchStats }> {
     if (!sql) {
         return {
             users: [],
             total: 0,
-            stats: { total: 0, admins: 0, banned: 0, pro: 0, canceled: 0 },
+            stats: { total: 0, admins: 0, banned: 0, pro: 0, canceled: 0, team: 0 },
         };
     }
 
@@ -183,60 +184,88 @@ export async function searchUsers(params: {
         whereClause = sql`
             ${whereClause}
             AND (
-                email ILIKE ${q}
-                OR full_name ILIKE ${q}
-                OR company_name ILIKE ${q}
-                OR CAST(id AS TEXT) ILIKE ${q}
+                ac.email ILIKE ${q}
+                OR ac.full_name ILIKE ${q}
+                OR ac.company_name ILIKE ${q}
+                OR CAST(ac.id AS TEXT) ILIKE ${q}
             )
         `;
     }
 
     if (params.role) {
-        whereClause = sql`${whereClause} AND role = ${params.role}`;
+        whereClause = sql`${whereClause} AND ac.role = ${params.role}`;
     }
 
     if (params.plan) {
-        whereClause = sql`${whereClause} AND subscription_status = ${params.plan}`;
+        if (params.plan === 'team') {
+            whereClause = sql`${whereClause} AND o.subscription_status = 'team'`;
+        } else {
+            whereClause = sql`${whereClause} AND ac.subscription_status = ${params.plan}`;
+        }
     }
 
     const sortBy = params.sortBy ?? 'created';
     const sortDir = params.sortDir ?? 'desc';
 
-    let orderClause = sql`created_at DESC, id DESC`;
+    let orderClause = sql`ac.created_at DESC, ac.id DESC`;
     if (sortBy === 'created' && sortDir === 'asc') {
-        orderClause = sql`created_at ASC, id ASC`;
+        orderClause = sql`ac.created_at ASC, ac.id ASC`;
     }
     if (sortBy === 'email' && sortDir === 'asc') {
-        orderClause = sql`email ASC, id ASC`;
+        orderClause = sql`ac.email ASC, ac.id ASC`;
     }
     if (sortBy === 'email' && sortDir === 'desc') {
-        orderClause = sql`email DESC, id DESC`;
+        orderClause = sql`ac.email DESC, ac.id DESC`;
     }
     if (sortBy === 'name' && sortDir === 'asc') {
-        orderClause = sql`COALESCE(full_name, email) ASC, id ASC`;
+        orderClause = sql`COALESCE(ac.full_name, ac.email) ASC, ac.id ASC`;
     }
     if (sortBy === 'name' && sortDir === 'desc') {
-        orderClause = sql`COALESCE(full_name, email) DESC, id DESC`;
+        orderClause = sql`COALESCE(ac.full_name, ac.email) DESC, ac.id DESC`;
     }
 
     const [users, countResult, statsResult] = await Promise.all([
         sql`
-            SELECT id, auth_user_id, email, full_name, company_name, phone,
-                   active_organization_id, role, subscription_status, created_at, updated_at
-            FROM accounts
+            SELECT
+                ac.id,
+                ac.auth_user_id,
+                ac.email,
+                ac.full_name,
+                ac.company_name,
+                ac.phone,
+                ac.active_organization_id,
+                ac.role,
+                ac.subscription_status,
+                ac.created_at,
+                ac.updated_at,
+                o.subscription_status as active_organization_subscription_status,
+                o.name as active_organization_name,
+                CASE
+                    WHEN o.subscription_status = 'team' THEN 'team'
+                    ELSE ac.subscription_status
+                END as effective_subscription_status
+            FROM accounts ac
+            LEFT JOIN organizations o ON o.id = ac.active_organization_id
             WHERE ${whereClause}
             ORDER BY ${orderClause}
             LIMIT ${limit} OFFSET ${offset}
         `,
-        sql`SELECT COUNT(*) as count FROM accounts WHERE ${whereClause}`,
+        sql`
+            SELECT COUNT(*) as count
+            FROM accounts ac
+            LEFT JOIN organizations o ON o.id = ac.active_organization_id
+            WHERE ${whereClause}
+        `,
         sql`
             SELECT
                 COUNT(*)::int as total,
-                COUNT(*) FILTER (WHERE role = 'admin')::int as admins,
-                COUNT(*) FILTER (WHERE role = 'banned')::int as banned,
-                COUNT(*) FILTER (WHERE subscription_status = 'pro')::int as pro,
-                COUNT(*) FILTER (WHERE subscription_status = 'canceled')::int as canceled
-            FROM accounts
+                COUNT(*) FILTER (WHERE ac.role = 'admin')::int as admins,
+                COUNT(*) FILTER (WHERE ac.role = 'banned')::int as banned,
+                COUNT(*) FILTER (WHERE ac.subscription_status = 'pro')::int as pro,
+                COUNT(*) FILTER (WHERE ac.subscription_status = 'canceled')::int as canceled,
+                COUNT(*) FILTER (WHERE o.subscription_status = 'team')::int as team
+            FROM accounts ac
+            LEFT JOIN organizations o ON o.id = ac.active_organization_id
             WHERE ${whereClause}
         `,
     ]);
@@ -244,7 +273,7 @@ export async function searchUsers(params: {
     const statsRow = statsResult[0];
 
     return {
-        users: users as Account[],
+        users: users as AdminUserRow[],
         total: Number(countResult[0]?.count || 0),
         stats: {
             total: Number(statsRow?.total || 0),
@@ -252,6 +281,7 @@ export async function searchUsers(params: {
             banned: Number(statsRow?.banned || 0),
             pro: Number(statsRow?.pro || 0),
             canceled: Number(statsRow?.canceled || 0),
+            team: Number(statsRow?.team || 0),
         },
     };
 }

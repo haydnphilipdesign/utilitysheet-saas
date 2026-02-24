@@ -42,6 +42,7 @@ export type UserRole = 'user' | 'admin' | 'banned';
 
 export type Plan = 'free' | 'pro' | 'canceled';
 export type OrganizationPlan = 'free' | 'team' | 'canceled';
+export type EffectivePlan = Plan | 'team';
 
 export type UpdateCategory = 'bugfix' | 'feature' | 'announcement';
 
@@ -100,6 +101,12 @@ export interface Account {
     notification_preferences?: Record<string, unknown>;
     created_at: string;
     updated_at: string;
+}
+
+export interface AdminUserRow extends Account {
+    active_organization_subscription_status?: OrganizationPlan | null;
+    active_organization_name?: string | null;
+    effective_subscription_status?: EffectivePlan;
 }
 
 export interface Organization {
