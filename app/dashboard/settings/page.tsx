@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUser } from '@stackframe/stack';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,14 @@ import { Switch } from '@/components/ui/switch';
 import { Link as LinkIcon, User, Bell, Check, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
+type NotificationPreferences = {
+    seller_submissions: boolean;
+    seller_submission_pdf_attachment: boolean;
+    collect_electric_meter_number: boolean;
+    contact_resolution: boolean;
+    weekly_summary: boolean;
+};
+
 export default function SettingsPage() {
     const stackUser = useUser();
     const [accountId, setAccountId] = useState<string | null>(null);
@@ -22,13 +30,15 @@ export default function SettingsPage() {
         full_name: '',
         email: '',
     });
-    const [notifications, setNotifications] = useState({
+    const [notifications, setNotifications] = useState<NotificationPreferences>({
         seller_submissions: true,
         seller_submission_pdf_attachment: true,
         collect_electric_meter_number: false,
         contact_resolution: true,
         weekly_summary: false,
     });
+    const notificationsSaveInFlightRef = useRef(false);
+    const pendingNotificationsSaveRef = useRef<NotificationPreferences | null>(null);
     const [usage, setUsage] = useState({
         used: 0,
         limit: 3,
@@ -169,6 +179,52 @@ export default function SettingsPage() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeOrganization?.id]);
+
+    const saveNotificationPreferences = async (nextNotifications: NotificationPreferences) => {
+        if (notificationsSaveInFlightRef.current) {
+            pendingNotificationsSaveRef.current = nextNotifications;
+            return;
+        }
+
+        notificationsSaveInFlightRef.current = true;
+        let currentPreferences: NotificationPreferences | null = nextNotifications;
+
+        try {
+            while (currentPreferences) {
+                pendingNotificationsSaveRef.current = null;
+
+                const response = await fetch('/api/account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        notification_preferences: currentPreferences,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save notification settings');
+                }
+
+                currentPreferences = pendingNotificationsSaveRef.current;
+            }
+        } catch (error) {
+            console.error('Error auto-saving notification settings:', error);
+            toast.error('Failed to save notification settings');
+        } finally {
+            notificationsSaveInFlightRef.current = false;
+        }
+    };
+
+    const handleNotificationToggle = (key: keyof NotificationPreferences, checked: boolean) => {
+        setNotifications((prev) => {
+            if (prev[key] === checked) return prev;
+            const next = { ...prev, [key]: checked };
+            void saveNotificationPreferences(next);
+            return next;
+        });
+    };
 
     const handleSave = async () => {
         setLoading(true);
@@ -424,7 +480,7 @@ export default function SettingsPage() {
                             </div>
                             <Switch
                                 checked={notifications.seller_submissions}
-                                onCheckedChange={(checked) => setNotifications({ ...notifications, seller_submissions: checked })}
+                                onCheckedChange={(checked) => handleNotificationToggle('seller_submissions', checked)}
                             />
                         </div>
                         <Separator className="bg-border" />
@@ -435,7 +491,7 @@ export default function SettingsPage() {
                             </div>
                             <Switch
                                 checked={notifications.seller_submission_pdf_attachment}
-                                onCheckedChange={(checked) => setNotifications({ ...notifications, seller_submission_pdf_attachment: checked })}
+                                onCheckedChange={(checked) => handleNotificationToggle('seller_submission_pdf_attachment', checked)}
                             />
                         </div>
                         <Separator className="bg-border" />
@@ -446,7 +502,7 @@ export default function SettingsPage() {
                             </div>
                             <Switch
                                 checked={notifications.collect_electric_meter_number}
-                                onCheckedChange={(checked) => setNotifications({ ...notifications, collect_electric_meter_number: checked })}
+                                onCheckedChange={(checked) => handleNotificationToggle('collect_electric_meter_number', checked)}
                             />
                         </div>
                         <Separator className="bg-border" />
@@ -457,7 +513,7 @@ export default function SettingsPage() {
                             </div>
                             <Switch
                                 checked={notifications.contact_resolution}
-                                onCheckedChange={(checked) => setNotifications({ ...notifications, contact_resolution: checked })}
+                                onCheckedChange={(checked) => handleNotificationToggle('contact_resolution', checked)}
                             />
                         </div>
                         {/* Weekly summary disabled - requires Vercel cron upgrade

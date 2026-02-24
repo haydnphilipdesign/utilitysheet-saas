@@ -39,7 +39,7 @@ beforeEach(() => {
 });
 
 describe('settings notification preferences', () => {
-    it('merges seller_submission_pdf_attachment from API and persists it on save', async () => {
+    it('merges seller_submission_pdf_attachment from API and auto-saves after toggles', async () => {
         const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = typeof input === 'string' ? input : String(input);
             const method = (init?.method || 'GET').toUpperCase();
@@ -107,16 +107,20 @@ describe('settings notification preferences', () => {
         fireEvent.click(meterCheckbox);
         expect(meterCheckbox.checked).toBe(true);
 
-        fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
-
         await waitFor(() => {
-            expect(fetchMock).toHaveBeenCalledWith('/api/account', expect.objectContaining({ method: 'POST' }));
+            const postCalls = fetchMock.mock.calls.filter(
+                ([url, init]) => url === '/api/account' && (init as RequestInit)?.method === 'POST'
+            );
+            expect(postCalls.length).toBeGreaterThan(0);
         });
 
-        const postCall = fetchMock.mock.calls.find(([url, init]) => url === '/api/account' && (init as RequestInit)?.method === 'POST');
-        expect(postCall).toBeTruthy();
+        const postCalls = fetchMock.mock.calls.filter(
+            ([url, init]) => url === '/api/account' && (init as RequestInit)?.method === 'POST'
+        );
+        const lastPostCall = postCalls.at(-1);
+        expect(lastPostCall).toBeTruthy();
 
-        const postBody = JSON.parse(String((postCall?.[1] as RequestInit).body));
+        const postBody = JSON.parse(String((lastPostCall?.[1] as RequestInit).body));
         expect(postBody.notification_preferences.seller_submission_pdf_attachment).toBe(true);
         expect(postBody.notification_preferences.collect_electric_meter_number).toBe(true);
     });

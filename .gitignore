@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Generated files
 *.pdf
+
+# local tooling preferences
+.claude/settings.local.json
