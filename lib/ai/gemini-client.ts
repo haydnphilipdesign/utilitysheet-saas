@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, GenerationConfig } from '@google/generative-ai';
+import { DynamicRetrievalMode, GoogleGenerativeAI, GenerationConfig, Tool } from '@google/generative-ai';
 
 // Get API key from environment
 const apiKey = process.env.GOOGLE_AI_API_KEY;
@@ -8,6 +8,9 @@ const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 // Model configuration
 const MODEL_NAME = 'gemini-3-flash-preview';
+
+// Search grounding configuration
+const DEFAULT_GROUNDING_DYNAMIC_THRESHOLD = 0;
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -28,6 +31,41 @@ const circuitBreaker: CircuitBreakerState = {
 
 const CIRCUIT_FAILURE_THRESHOLD = 3;
 const CIRCUIT_RESET_TIMEOUT_MS = 60 * 1000; // 60 seconds
+
+function isSearchGroundingEnabled(): boolean {
+    return process.env.GEMINI_GOOGLE_SEARCH_GROUNDING !== 'false';
+}
+
+function getGroundingDynamicThreshold(): number {
+    const raw = process.env.GEMINI_GROUNDING_DYNAMIC_THRESHOLD;
+    if (!raw) {
+        return DEFAULT_GROUNDING_DYNAMIC_THRESHOLD;
+    }
+
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) {
+        return DEFAULT_GROUNDING_DYNAMIC_THRESHOLD;
+    }
+
+    return Math.max(0, Math.min(1, parsed));
+}
+
+function getGroundingTools(): Tool[] | undefined {
+    if (!isSearchGroundingEnabled()) {
+        return undefined;
+    }
+
+    return [
+        {
+            googleSearchRetrieval: {
+                dynamicRetrievalConfig: {
+                    mode: DynamicRetrievalMode.MODE_DYNAMIC,
+                    dynamicThreshold: getGroundingDynamicThreshold(),
+                },
+            },
+        },
+    ];
+}
 
 /**
  * Check if circuit breaker allows requests
@@ -138,7 +176,8 @@ export function getGeminiModel(jsonMode: boolean = false) {
 
     return genAI.getGenerativeModel({
         model: MODEL_NAME,
-        generationConfig
+        generationConfig,
+        tools: getGroundingTools(),
     });
 }
 
