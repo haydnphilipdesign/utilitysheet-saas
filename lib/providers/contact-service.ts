@@ -7,8 +7,13 @@ const CACHE_TTL_SECONDS = 90 * 24 * 60 * 60;
 
 type CachedContact = { v: ProviderContact | null };
 
+function shouldAllowUnverifiedAiContacts(): boolean {
+    return process.env.ALLOW_UNVERIFIED_AI_CONTACTS !== 'false';
+}
+
 function toCacheKey(providerNameOrId: string): string {
-    return `contact:${providerNameOrId.trim().toLowerCase()}`;
+    const mode = shouldAllowUnverifiedAiContacts() ? 'ai' : 'strict';
+    return `contact:${mode}:${providerNameOrId.trim().toLowerCase()}`;
 }
 
 function safeHttpUrl(value: string | undefined): string | undefined {
@@ -77,19 +82,16 @@ async function getAIContact(providerName: string): Promise<ProviderContact | nul
 }
 
 /**
- * Fallback removed
- */
-function getMockContact(providerNameOrId: string): ProviderContact | null {
-    return null;
-}
-
-/**
  * Resolve contact information for a provider
- * Uses Gemini AI when available, falls back to mock data
+ * Uses Gemini AI only when ALLOW_UNVERIFIED_AI_CONTACTS=true
  */
 export async function resolveContact(
     providerNameOrId: string
 ): Promise<ProviderContact | null> {
+    if (!shouldAllowUnverifiedAiContacts()) {
+        return null;
+    }
+
     const cacheKey = toCacheKey(providerNameOrId);
 
     // Check cache (Redis with in-memory fallback)

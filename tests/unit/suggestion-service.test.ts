@@ -21,6 +21,10 @@ const {
 } = __testing;
 
 describe('Suggestion Service', () => {
+    beforeEach(() => {
+        delete process.env.INCLUDE_AI_SUGGESTION_CONTACTS;
+    });
+
     describe('US_STATES', () => {
         it('contains all 50 states plus DC', () => {
             const uniqueStates = new Set(Object.values(US_STATES));
@@ -103,17 +107,17 @@ describe('Suggestion Service', () => {
     describe('getCacheKey', () => {
         it('generates versioned key with normalized state and ZIP prefix', () => {
             const key = getCacheKey('123 Main St, Philadelphia, PA 19103', 'electric');
-            expect(key).toBe('suggestions:v2:pa:191:electric');
+            expect(key).toBe('suggestions:v3:pa:191:electric');
         });
 
         it('uses normalized city when ZIP not available', () => {
             const key = getCacheKey('123 Main St, Philadelphia, PA', 'water');
-            expect(key).toBe('suggestions:v2:pa:philadelphia:water');
+            expect(key).toBe('suggestions:v3:pa:philadelphia:water');
         });
 
         it('uses default and unknown when location cannot be parsed', () => {
             const key = getCacheKey('Unknown location', 'gas');
-            expect(key).toBe('suggestions:v2:default:unknown:gas');
+            expect(key).toBe('suggestions:v3:default:unknown:gas');
         });
     });
 
@@ -150,7 +154,7 @@ describe('Suggestion Service', () => {
     });
 
     describe('validateSuggestion', () => {
-        it('preserves valid suggestion data', () => {
+        it('preserves valid suggestion data by default', () => {
             const input = {
                 display_name: 'Test Electric Co',
                 confidence: 0.9,
@@ -164,6 +168,21 @@ describe('Suggestion Service', () => {
             expect(result.rationale_short).toBe('Major provider');
             expect(result.contact_phone).toBe('(555) 123-4567');
             expect(result.contact_website).toBe('https://example.com');
+        });
+
+        it('strips AI contact fields when explicitly disabled', () => {
+            process.env.INCLUDE_AI_SUGGESTION_CONTACTS = 'false';
+            const input = {
+                display_name: 'Test Electric Co',
+                confidence: 0.9,
+                rationale_short: 'Major provider',
+                contact_phone: '(555) 123-4567',
+                contact_website: 'https://example.com',
+            };
+            const result = validateSuggestion(input, 'electric');
+            expect(result.contact_phone).toBeUndefined();
+            expect(result.contact_website).toBeUndefined();
+            delete process.env.INCLUDE_AI_SUGGESTION_CONTACTS;
         });
 
         it('clamps confidence to 0-1 range', () => {
@@ -194,7 +213,7 @@ describe('Suggestion Service', () => {
         it('returns matched providers for fallback search', () => {
             const result = getFallbackSearchResults('duke', 'electric');
             expect(result.length).toBeGreaterThan(0);
-            expect(result.some((item: any) => /duke/i.test(item.display_name))).toBe(true);
+            expect(result.some((item: { display_name: string }) => /duke/i.test(item.display_name))).toBe(true);
         });
 
         it('returns empty for completely unrelated query', () => {

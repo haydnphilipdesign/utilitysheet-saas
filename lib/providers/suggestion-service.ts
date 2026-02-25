@@ -61,7 +61,7 @@ function getCacheKey(address: string, category: UtilityCategory): string {
     const parsed = parseAddress(address);
     const state = sanitizeLocalityToken(parsed.state || 'default');
     const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `suggestions:v2:${state}:${locality}:${category}`;
+    return `suggestions:v3:${state}:${locality}:${category}`;
 }
 
 function hashCacheKeyPart(input: string): string {
@@ -78,13 +78,13 @@ function getSearchCacheKey(
     const queryHash = hashCacheKeyPart(normalizedQuery);
 
     if (!address) {
-        return `provider-search:v2:global:${categoryKey}:${queryHash}`;
+        return `provider-search:v3:global:${categoryKey}:${queryHash}`;
     }
 
     const parsed = parseAddress(address);
     const state = sanitizeLocalityToken(parsed.state || 'default');
     const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `provider-search:v2:${state}:${locality}:${categoryKey}:${queryHash}`;
+    return `provider-search:v3:${state}:${locality}:${categoryKey}:${queryHash}`;
 }
 
 // ============================================================================
@@ -180,17 +180,24 @@ function isValidUrl(url: string | undefined | null): boolean {
     }
 }
 
+function shouldIncludeAiSuggestionContacts(): boolean {
+    return process.env.INCLUDE_AI_SUGGESTION_CONTACTS !== 'false';
+}
+
 /**
  * Clean and validate provider suggestion
  * Filters out invalid contact info
  */
 function validateSuggestion(s: ProviderSuggestion, category: UtilityCategory): ProviderSuggestion {
+    const includeContacts = shouldIncludeAiSuggestionContacts();
     return {
         display_name: String(s.display_name || '').trim(),
         confidence: Math.max(0, Math.min(1, Number(s.confidence))),
         rationale_short: s.rationale_short || `${category} provider for this area`,
-        contact_phone: isValidPhone(s.contact_phone) ? s.contact_phone : undefined,
-        contact_website: isValidUrl(s.contact_website) ? s.contact_website : undefined,
+        // AI contact fields are enabled by default, but can be explicitly
+        // disabled in strict environments.
+        contact_phone: includeContacts && isValidPhone(s.contact_phone) ? s.contact_phone : undefined,
+        contact_website: includeContacts && isValidUrl(s.contact_website) ? s.contact_website : undefined,
     };
 }
 
@@ -406,7 +413,13 @@ function getFallbackSearchResults(query: string, category?: UtilityCategory): Pr
         .sort((a, b) => b.__score - a.__score || a.display_name.localeCompare(b.display_name));
 
     return normalizeAndRankSuggestions(
-        ranked.map(({ __score, ...rest }) => rest),
+        ranked.map((item) => ({
+            display_name: item.display_name,
+            confidence: item.confidence,
+            rationale_short: item.rationale_short,
+            contact_phone: item.contact_phone,
+            contact_website: item.contact_website,
+        })),
         category || 'electric',
         5
     );

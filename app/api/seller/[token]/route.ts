@@ -8,7 +8,7 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
 import { normalizeAdvancedModules } from '@/lib/packet/modules';
-import type { AdvancedModuleKey, PacketMode, Request as StoredRequest } from '@/types';
+import type { AdvancedModuleKey, PacketMode, Request as StoredRequest, UtilityCategory } from '@/types';
 
 export const runtime = 'nodejs';
 
@@ -38,6 +38,86 @@ type SellerUtilityEntryInput = {
     meter_number?: string | null;
     extra?: SellerUtilityExtra | null;
 };
+
+type ContactResolutionTarget = {
+    category: UtilityCategory;
+    providerName: string;
+    hadSubmittedContact: boolean;
+};
+
+type HistoricalContactMatch = {
+    phone: string | null;
+    url: string | null;
+    occurrences: number;
+};
+
+function normalizeProviderNameForLookup(name: string): string {
+    return name
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ');
+}
+
+function hasAnyContact(phone: string | null | undefined, url: string | null | undefined): boolean {
+    return Boolean((phone && phone.trim()) || (url && url.trim()));
+}
+
+async function findHistoricalContactMatch({
+    requestId,
+    accountId,
+    organizationId,
+    category,
+    providerName,
+}: {
+    requestId: string;
+    accountId: string;
+    organizationId: string | null;
+    category: UtilityCategory;
+    providerName: string;
+}): Promise<HistoricalContactMatch | null> {
+    if (!sql) return null;
+
+    const normalizedProviderName = normalizeProviderNameForLookup(providerName);
+    if (!normalizedProviderName) return null;
+
+    const result = await sql`
+        SELECT
+            NULLIF(TRIM(COALESCE(ue.contact_phone, '')), '') AS contact_phone,
+            NULLIF(TRIM(COALESCE(ue.contact_url, '')), '') AS contact_url,
+            COUNT(*) AS usage_count
+        FROM utility_entries ue
+        INNER JOIN requests r ON r.id = ue.request_id
+        WHERE ue.request_id <> ${requestId}
+        AND ue.category = ${category}
+        AND LOWER(REGEXP_REPLACE(TRIM(COALESCE(ue.display_name, ue.raw_text, '')), '[[:space:]]+', ' ', 'g')) = ${normalizedProviderName}
+        AND (
+            NULLIF(TRIM(COALESCE(ue.contact_phone, '')), '') IS NOT NULL
+            OR NULLIF(TRIM(COALESCE(ue.contact_url, '')), '') IS NOT NULL
+        )
+        AND r.account_id = ${accountId}
+        AND r.organization_id IS NOT DISTINCT FROM ${organizationId}
+        GROUP BY 1, 2
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
+    `;
+
+    const row = (result as Array<{
+        contact_phone: string | null;
+        contact_url: string | null;
+        usage_count: string | number;
+    }>)[0];
+    if (!row) return null;
+
+    const occurrences = Number(row.usage_count || 0);
+    // Require at least two historical matches before auto-filling.
+    if (occurrences < 2) return null;
+
+    return {
+        phone: row.contact_phone,
+        url: row.contact_url,
+        occurrences,
+    };
+}
 
 // GET /api/seller/[token] - Get request data for seller form
 export async function GET(
@@ -247,14 +327,15 @@ export async function POST(
         // Delete existing entries and insert new ones
         await sql`DELETE FROM utility_entries WHERE request_id = ${requestData.id}`;
 
-        // Track entries that need contact resolution
-        const contactResolutionTargets: { category: string; providerName: string }[] = [];
+        // Track entries that may need contact resolution
+        const contactResolutionTargets: ContactResolutionTarget[] = [];
 
         // Insert utility entries
         for (const [category, entry] of Object.entries(parsedBody.data.utilities || {})) {
             if (!requestedCategories.has(category)) {
                 continue;
             }
+            const typedCategory = category as UtilityCategory;
 
             const e = entry as SellerUtilityEntryInput;
             // Persist entry if not hidden - use 'unknown' if entry_mode is null
@@ -282,7 +363,7 @@ export async function POST(
                         request_id, category, entry_mode, display_name, raw_text, contact_phone, contact_url, meter_number
                     ) VALUES (
                         ${requestData.id},
-                        ${category},
+                        ${typedCategory},
                         ${finalEntryMode},
                         ${e.display_name || null},
                         ${finalRawText || null},
@@ -293,8 +374,13 @@ export async function POST(
                 `;
 
                 const providerName = String(e.display_name || e.raw_text || '').trim();
-                if (providerName && !e.contact_phone && !e.contact_url && finalEntryMode !== 'unknown') {
-                    contactResolutionTargets.push({ category, providerName });
+                const hadSubmittedContact = hasAnyContact(e.contact_phone, e.contact_url);
+                if (providerName && finalEntryMode !== 'unknown') {
+                    contactResolutionTargets.push({
+                        category: typedCategory,
+                        providerName,
+                        hadSubmittedContact,
+                    });
                 }
             }
         }
@@ -305,9 +391,38 @@ export async function POST(
 
         if (!accessLocked) {
             for (const target of contactResolutionTargets) {
-                const dedupeKey = `${target.category}:${target.providerName.toLowerCase()}`;
+                const normalizedProviderName = normalizeProviderNameForLookup(target.providerName);
+                if (!normalizedProviderName) continue;
+
+                const dedupeKey = `${target.category}:${normalizedProviderName}`;
                 if (seenContactTargets.has(dedupeKey)) continue;
                 seenContactTargets.add(dedupeKey);
+
+                const historicalMatch = await findHistoricalContactMatch({
+                    requestId: requestData.id,
+                    accountId: requestData.account_id,
+                    organizationId: requestData.organization_id ?? null,
+                    category: target.category,
+                    providerName: target.providerName,
+                });
+
+                if (historicalMatch && hasAnyContact(historicalMatch.phone, historicalMatch.url)) {
+                    await sql`
+                        UPDATE utility_entries
+                        SET
+                            contact_phone = COALESCE(${historicalMatch.phone}, contact_phone),
+                            contact_url = COALESCE(${historicalMatch.url}, contact_url)
+                        WHERE request_id = ${requestData.id}
+                        AND category = ${target.category}
+                        AND LOWER(REGEXP_REPLACE(TRIM(COALESCE(display_name, raw_text, '')), '[[:space:]]+', ' ', 'g')) = ${normalizedProviderName}
+                    `;
+                    continue;
+                }
+
+                // Preserve any contact the submitter explicitly provided.
+                if (target.hadSubmittedContact) {
+                    continue;
+                }
 
                 const contact = await resolveContact(target.providerName);
                 if (hasValidContact(contact)) {
@@ -321,6 +436,7 @@ export async function POST(
                             contact_url = COALESCE(contact_url, ${resolvedUrl})
                         WHERE request_id = ${requestData.id}
                         AND category = ${target.category}
+                        AND LOWER(REGEXP_REPLACE(TRIM(COALESCE(display_name, raw_text, '')), '[[:space:]]+', ' ', 'g')) = ${normalizedProviderName}
                     `;
                 } else {
                     unresolvedEntries.push({
