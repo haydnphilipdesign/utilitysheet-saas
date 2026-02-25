@@ -86,7 +86,7 @@ export function SuccessStep({ isDemo = false, demoData }: SuccessStepProps) {
                         </button>
                     )}
 
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                         {downloaded ? 'The PDF includes a demo watermark' : 'See what your buyers receive'}
                     </p>
 

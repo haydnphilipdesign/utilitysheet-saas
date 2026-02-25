@@ -7,7 +7,12 @@ import {
     getRequestByToken,
     getUtilityEntriesByRequestId,
 } from '@/lib/neon/queries';
-import type { AdvancedModuleKey, PacketMode, Request } from '@/types';
+import type {
+    AdvancedModuleKey,
+    PacketMode,
+    Request,
+    TrashPickupDay,
+} from '@/types';
 import { ADVANCED_MODULE_LABELS, normalizeAdvancedModules } from '@/lib/packet/modules';
 
 export const PACKET_LOCKED_MESSAGE = 'This seller packet is locked. Ask the agent to upgrade to view it.';
@@ -43,6 +48,11 @@ export interface PacketUtilityData {
     provider_phone: string | null;
     provider_website: string | null;
     meter_number?: string | null;
+    trash_details?: {
+        has_recycling?: 'yes' | 'no' | 'not_sure' | null;
+        trash_pickup_day?: TrashPickupDay | null;
+        recycling_pickup_day?: TrashPickupDay | null;
+    } | null;
 }
 
 export interface PacketDataPayload {
@@ -95,7 +105,20 @@ type RawUtilityRow = {
     provider_website?: string | null;
     contact_url?: string | null;
     meter_number?: string | null;
+    extra?: Record<string, unknown> | null;
 };
+
+const TRASH_PICKUP_DAYS = new Set<TrashPickupDay>([
+    'mon',
+    'tue',
+    'wed',
+    'thu',
+    'fri',
+    'sat',
+    'sun',
+    'varies',
+    'not_sure',
+]);
 
 function normalizeSteps(value: unknown): string[] | null {
     if (value === null || value === undefined) return null;
@@ -148,6 +171,56 @@ function toLabel(key: string): string {
         .split(' ')
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
+}
+
+function normalizeTrashPickupDay(value: unknown): TrashPickupDay | null | undefined {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === '') return null;
+    return TRASH_PICKUP_DAYS.has(normalized as TrashPickupDay)
+        ? (normalized as TrashPickupDay)
+        : undefined;
+}
+
+function normalizeTrashDetails(value: unknown): PacketUtilityData['trash_details'] {
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            return normalizeTrashDetails(parsed);
+        } catch {
+            return null;
+        }
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const input = value as Record<string, unknown>;
+    const normalized: NonNullable<PacketUtilityData['trash_details']> = {};
+
+    if (typeof input.has_recycling === 'string') {
+        const hasRecycling = input.has_recycling.trim().toLowerCase();
+        if (hasRecycling === 'yes' || hasRecycling === 'no' || hasRecycling === 'not_sure') {
+            normalized.has_recycling = hasRecycling;
+        }
+    } else if (input.has_recycling === null) {
+        normalized.has_recycling = null;
+    }
+
+    const trashPickupDay = normalizeTrashPickupDay(input.trash_pickup_day);
+    if (trashPickupDay !== undefined) {
+        normalized.trash_pickup_day = trashPickupDay;
+    }
+
+    const recyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);
+    if (recyclingPickupDay !== undefined) {
+        normalized.recycling_pickup_day = recyclingPickupDay;
+    }
+
+    if (normalized.has_recycling === 'no') {
+        normalized.recycling_pickup_day = null;
+    }
+
+    return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
 function normalizeAdvancedSections(
@@ -229,6 +302,9 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
         provider_phone: utility.provider_phone || utility.contact_phone || null,
         provider_website: utility.provider_website || utility.contact_url || null,
         meter_number: utility.meter_number || null,
+        trash_details: utility.category === 'trash'
+            ? normalizeTrashDetails(utility.extra)
+            : null,
     }));
 
     const mode: PacketMode = requestWithPacketFields.packet_mode === 'advanced' ? 'advanced' : 'simple';

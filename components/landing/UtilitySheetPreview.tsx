@@ -30,7 +30,7 @@ const previewRows = [
         color: 'bg-blue-100 text-blue-700',
     },
     {
-        label: 'Trash',
+        label: 'Trash & Recycling',
         provider: 'Waste Services',
         phone: '(800) 555-0103',
         website: 'wasteservices.com',

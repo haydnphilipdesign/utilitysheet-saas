@@ -197,4 +197,44 @@ describe('packet-data builder', () => {
         expect(electric?.meter_number).toBe('MTR-9988');
         expect(water?.meter_number).toBeNull();
     });
+
+    it('maps structured trash recycling schedule from utility entry extra', async () => {
+        (getRequestByToken as Mock).mockResolvedValue({
+            id: 'req_5',
+            account_id: 'acct_5',
+            organization_id: null,
+            brand_profile_id: null,
+            property_address: '333 Birch St, Town, ST 00000',
+            created_at: '2026-01-01T00:00:00.000Z',
+            status: 'submitted',
+        });
+
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+        (getUtilityEntriesByRequestId as Mock).mockResolvedValue([
+            {
+                category: 'trash',
+                display_name: 'City Waste',
+                contact_phone: '555-333-1111',
+                extra: {
+                    has_recycling: 'yes',
+                    trash_pickup_day: 'thu',
+                    recycling_pickup_day: 'fri',
+                },
+            },
+        ]);
+
+        const result = await getPacketDataByPublicToken('token_5');
+
+        expect(result.status).toBe('ok');
+        if (result.status !== 'ok') return;
+
+        expect(result.data.utilities[0]).toMatchObject({
+            category: 'trash',
+            trash_details: {
+                has_recycling: 'yes',
+                trash_pickup_day: 'thu',
+                recycling_pickup_day: 'fri',
+            },
+        });
+    });
 });

@@ -74,18 +74,25 @@ function StatefulUtilityStep({
     };
 
     return (
-        <UtilityStep
-            category={category}
-            categoryLabel={category.charAt(0).toUpperCase() + category.slice(1)}
-            state={state}
-            updateState={updateState}
-            suggestions={suggestions}
-            token="test-token"
-            collectElectricMeterNumber={collectElectricMeterNumber}
-            onNext={onNext}
-            onBack={onBack}
-        />
+        <>
+            <UtilityStep
+                category={category}
+                categoryLabel={category.charAt(0).toUpperCase() + category.slice(1)}
+                state={state}
+                updateState={updateState}
+                suggestions={suggestions}
+                token="test-token"
+                collectElectricMeterNumber={collectElectricMeterNumber}
+                onNext={onNext}
+                onBack={onBack}
+            />
+            <pre data-testid="utility-state-json">{JSON.stringify(state.utilities)}</pre>
+        </>
     );
+}
+
+function readUtilityState() {
+    return JSON.parse(screen.getByTestId('utility-state-json').textContent || '{}') as WizardState['utilities'];
 }
 
 describe('UtilityStep electric meter flow', () => {
@@ -168,5 +175,84 @@ describe('UtilityStep electric meter flow', () => {
         expect(onBack).not.toHaveBeenCalled();
         expect(screen.queryByText('Selected Provider')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: /met-ed/i })).toBeInTheDocument();
+    });
+
+    it('trash suggestion selection opens trash details step before advancing', () => {
+        const onNext = vi.fn();
+        render(
+            <StatefulUtilityStep
+                category="trash"
+                onNext={onNext}
+                suggestions={[{ display_name: 'City Waste Services', confidence: 0.9 }]}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /city waste services/i }));
+
+        expect(onNext).not.toHaveBeenCalled();
+        expect(screen.getByTestId('seller-trash-details-step')).toBeInTheDocument();
+    });
+
+    it('trash "I don\'t know" still opens trash details step', () => {
+        const onNext = vi.fn();
+        render(
+            <StatefulUtilityStep
+                category="trash"
+                onNext={onNext}
+                suggestions={[{ display_name: 'City Waste Services', confidence: 0.9 }]}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
+
+        expect(onNext).not.toHaveBeenCalled();
+        expect(screen.getByTestId('seller-trash-details-step')).toBeInTheDocument();
+    });
+
+    it('trash details persist and recycling day clears when recycling is set to no', () => {
+        const onNext = vi.fn();
+        render(
+            <StatefulUtilityStep
+                category="trash"
+                onNext={onNext}
+                suggestions={[{ display_name: 'City Waste Services', confidence: 0.9 }]}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /city waste services/i }));
+
+        fireEvent.click(screen.getByTestId('seller-trash-recycling-yes'));
+        fireEvent.change(screen.getByTestId('seller-trash-pickup-day'), { target: { value: 'thu' } });
+        fireEvent.change(screen.getByTestId('seller-recycling-pickup-day'), { target: { value: 'fri' } });
+        fireEvent.click(screen.getByTestId('seller-trash-recycling-no'));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        const utilityState = readUtilityState();
+        expect(utilityState.trash.extra).toMatchObject({
+            has_recycling: 'no',
+            trash_pickup_day: 'thu',
+            recycling_pickup_day: null,
+        });
+        expect(onNext).toHaveBeenCalledTimes(1);
+    });
+
+    it('back from trash details returns to provider list and does not call parent onBack', () => {
+        const onBack = vi.fn();
+        render(
+            <StatefulUtilityStep
+                category="trash"
+                onBack={onBack}
+                suggestions={[{ display_name: 'City Waste Services', confidence: 0.9 }]}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /city waste services/i }));
+        expect(screen.getByTestId('seller-trash-details-step')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText('Back to providers'));
+
+        expect(onBack).not.toHaveBeenCalled();
+        expect(screen.queryByTestId('seller-trash-details-step')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /city waste services/i })).toBeInTheDocument();
     });
 });

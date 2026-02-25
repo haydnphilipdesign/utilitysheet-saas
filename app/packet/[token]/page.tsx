@@ -47,6 +47,12 @@ type PacketResponse = {
         provider_name: string;
         provider_phone?: string | null;
         provider_website?: string | null;
+        meter_number?: string | null;
+        trash_details?: {
+            has_recycling?: 'yes' | 'no' | 'not_sure' | null;
+            trash_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
+            recycling_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
+        } | null;
     }>;
     advanced_sections?: Array<{
         key: string;
@@ -57,6 +63,45 @@ type PacketResponse = {
         show_powered_by?: boolean;
     };
 };
+
+function formatPickupDay(day: string | null | undefined): string {
+    if (!day) return 'Not sure';
+    const normalized = day.trim().toLowerCase();
+    const dayLabels: Record<string, string> = {
+        mon: 'Monday',
+        tue: 'Tuesday',
+        wed: 'Wednesday',
+        thu: 'Thursday',
+        fri: 'Friday',
+        sat: 'Saturday',
+        sun: 'Sunday',
+        varies: 'Varies',
+        not_sure: 'Not sure',
+    };
+    return dayLabels[normalized] || 'Not sure';
+}
+
+function getTrashScheduleLines(trashDetails: PacketResponse['utilities'][number]['trash_details']): string[] {
+    if (!trashDetails) return [];
+    const lines: string[] = [];
+
+    if (trashDetails.has_recycling !== undefined) {
+        const hasRecycling = trashDetails.has_recycling === 'yes'
+            ? 'Yes'
+            : trashDetails.has_recycling === 'no'
+                ? 'No'
+                : 'Not sure';
+        lines.push(`Recycling: ${hasRecycling}`);
+    }
+    if (trashDetails.trash_pickup_day !== undefined) {
+        lines.push(`Trash pickup: ${formatPickupDay(trashDetails.trash_pickup_day)}`);
+    }
+    if (trashDetails.recycling_pickup_day !== undefined && trashDetails.has_recycling !== 'no') {
+        lines.push(`Recycling pickup: ${formatPickupDay(trashDetails.recycling_pickup_day)}`);
+    }
+
+    return lines;
+}
 
 export default function PacketPage({ params }: { params: Promise<{ token: string }> }) {
     const resolvedParams = use(params);
@@ -262,6 +307,13 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                 ) : (
                                     utilities.map((utility, index) => (
                                         <div key={index} className="rounded-lg border border-border p-4 space-y-3 bg-background/50">
+                                            {(() => {
+                                                const trashScheduleLines = utility.category === 'trash'
+                                                    ? getTrashScheduleLines(utility.trash_details)
+                                                    : [];
+                                                const showMeter = utility.category === 'electric' && utility.meter_number?.trim();
+                                                return (
+                                                    <>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xl">
                                                     {UTILITY_CATEGORIES.find(c => c.key === utility.category)?.icon || '🏢'}
@@ -274,6 +326,16 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                     <p className="text-sm text-muted-foreground truncate">{utility.provider_name}</p>
                                                 </div>
                                             </div>
+                                            {(showMeter || trashScheduleLines.length > 0) && (
+                                                <div className="space-y-1 text-xs text-muted-foreground">
+                                                    {showMeter && (
+                                                        <p>Meter #: {utility.meter_number?.trim()}</p>
+                                                    )}
+                                                    {trashScheduleLines.map((line) => (
+                                                        <p key={`${utility.category}-${line}`}>{line}</p>
+                                                    ))}
+                                                </div>
+                                            )}
                                             <div className="flex flex-wrap gap-2">
                                                 {utility.provider_phone && (
                                                     <a
@@ -298,6 +360,9 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                     </a>
                                                 )}
                                             </div>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     ))
                                 )}
@@ -321,6 +386,13 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                         ) : (
                                             utilities.map((utility, index) => (
                                                 <TableRow key={index} className="border-border hover:bg-muted/50">
+                                                    {(() => {
+                                                        const trashScheduleLines = utility.category === 'trash'
+                                                            ? getTrashScheduleLines(utility.trash_details)
+                                                            : [];
+                                                        const showMeter = utility.category === 'electric' && utility.meter_number?.trim();
+                                                        return (
+                                                            <>
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-xl">
@@ -360,7 +432,20 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                                 </a>
                                                             )}
                                                         </div>
+                                                        {(showMeter || trashScheduleLines.length > 0) && (
+                                                            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                                                                {showMeter && (
+                                                                    <p>Meter #: {utility.meter_number?.trim()}</p>
+                                                                )}
+                                                                {trashScheduleLines.map((line) => (
+                                                                    <p key={`${utility.category}-table-${line}`}>{line}</p>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </TableCell>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </TableRow>
                                             ))
                                         )}
@@ -373,7 +458,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     {isAdvanced && advancedSections.length > 0 && (
                         <Card className="border-border bg-card/50">
                             <CardHeader className="pb-2 px-4 sm:px-6">
-                                <h3 className="text-base sm:text-lg font-semibold text-foreground">Seller Transition Details</h3>
+                                <h3 className="text-base sm:text-lg font-semibold text-foreground">Additional Home Details</h3>
                             </CardHeader>
                             <CardContent className="px-4 sm:px-6 space-y-3">
                                 {advancedSections.map((section) => (

@@ -75,6 +75,23 @@ export type AdvancedPacketData = {
 export type WaterSource = 'city' | 'well' | 'hoa' | 'not_sure';
 export type SewerType = 'public' | 'septic' | 'hoa' | 'not_sure';
 export type HeatingType = 'natural_gas' | 'propane' | 'oil' | 'electric' | 'not_sure';
+export type TrashPickupDay =
+    | 'mon'
+    | 'tue'
+    | 'wed'
+    | 'thu'
+    | 'fri'
+    | 'sat'
+    | 'sun'
+    | 'varies'
+    | 'not_sure';
+
+export interface TrashUtilityExtra {
+    [key: string]: unknown;
+    has_recycling?: 'yes' | 'no' | 'not_sure' | null;
+    trash_pickup_day?: TrashPickupDay | null;
+    recycling_pickup_day?: TrashPickupDay | null;
+}
 
 export type ActorType = 'agent' | 'seller' | 'system';
 
@@ -265,6 +282,7 @@ export interface UtilityEntry {
     confidence_score: number | null;
     contact_phone: string | null;
     contact_url: string | null;
+    extra?: Record<string, unknown> | null;
     created_at: string;
     updated_at: string;
 }
@@ -345,6 +363,7 @@ export interface UtilityFormEntry {
     display_name: string | null;
     raw_text: string | null;
     meter_number?: string | null;
+    extra?: Record<string, unknown> | null;
 }
 
 // Request Creation Form

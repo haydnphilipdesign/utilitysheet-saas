@@ -54,4 +54,30 @@ describe('buildPacketPdfHtml meter number rendering', () => {
 
         expect(result.html).not.toContain('Meter #:');
     });
+
+    it('renders trash and recycling schedule details for trash rows', () => {
+        const result = buildPacketPdfHtml({
+            request: {
+                id: 'req_3',
+                property_address: '789 Pine St, Town, ST 00000',
+                created_at: '2026-01-01T00:00:00.000Z',
+            },
+            brand: null,
+            utilities: [
+                {
+                    category: 'trash',
+                    provider_name: 'City Waste',
+                    trash_details: {
+                        has_recycling: 'yes',
+                        trash_pickup_day: 'thu',
+                        recycling_pickup_day: 'fri',
+                    },
+                },
+            ],
+        });
+
+        expect(result.html).toContain('Recycling: Yes');
+        expect(result.html).toContain('Trash pickup: Thursday');
+        expect(result.html).toContain('Recycling pickup: Friday');
+    });
 });

@@ -21,6 +21,7 @@ import { ReviewStep } from './steps/ReviewStep';
 import { SuccessStep } from './steps/SuccessStep';
 import { trackEvent } from '@/lib/analytics/events';
 import { ADVANCED_MODULE_KEYS, ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
+import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { toast } from 'sonner';
 
 export interface WizardState {
@@ -125,6 +126,10 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const hasAdvancedStep = orderedAdvancedModules.length > 0;
     const currentAdvancedModule = orderedAdvancedModules[advancedModuleIndex];
     const draftStorageKey = `us_seller_draft:${token}`;
+    const utilityLabels = useMemo(
+        () => Object.fromEntries(UTILITY_CATEGORIES.map((category) => [category.key, category.label])) as Record<UtilityCategory, string>,
+        []
+    );
 
     useEffect(() => {
         if (isDemo) return;
@@ -540,10 +545,10 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     case Step.HOME_BASICS: return 'Home Basics';
                     case Step.UTILITIES: {
                         const cat = visibleUtilities[utilityIndex];
-                        return cat ? `${cat.charAt(0).toUpperCase() + cat.slice(1)} Provider` : 'Utilities';
+                        return cat ? `${utilityLabels[cat]} Provider` : 'Utilities';
                     }
                     case Step.ADVANCED_DETAILS: {
-                        if (!currentAdvancedModule) return 'Transition Details';
+                        if (!currentAdvancedModule) return 'Additional Home Details';
                         return `${ADVANCED_MODULE_LABELS[currentAdvancedModule]} (${advancedModuleIndex + 1} of ${orderedAdvancedModules.length})`;
                     }
                     case Step.REVIEW: return 'Review';
@@ -576,12 +581,12 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 )}
 
                 {currentStep === Step.UTILITIES && visibleUtilities[utilityIndex] && (
-                    <UtilityStep
-                        key={`util-${visibleUtilities[utilityIndex]}`}
-                        category={visibleUtilities[utilityIndex]}
-                        categoryLabel={visibleUtilities[utilityIndex].charAt(0).toUpperCase() + visibleUtilities[utilityIndex].slice(1)}
-                        state={state}
-                        updateState={updateUtilityState}
+                        <UtilityStep
+                            key={`util-${visibleUtilities[utilityIndex]}`}
+                            category={visibleUtilities[utilityIndex]}
+                            categoryLabel={utilityLabels[visibleUtilities[utilityIndex]]}
+                            state={state}
+                            updateState={updateUtilityState}
                         suggestions={suggestionsByCategory[visibleUtilities[utilityIndex]] || []}
                         loadingSuggestions={!!loadingSuggestions[visibleUtilities[utilityIndex]] && !Object.prototype.hasOwnProperty.call(suggestionsByCategory, visibleUtilities[utilityIndex])}
                         token={token}

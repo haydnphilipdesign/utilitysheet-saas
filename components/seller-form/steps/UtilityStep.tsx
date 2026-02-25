@@ -2,10 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Check, Search, X, Loader2, Zap, Droplets, Flame, Fuel, FlameKindling, Trash2, Wifi, Tv, Waves } from 'lucide-react';
+import {
+    ArrowLeft,
+    Check,
+    Search,
+    X,
+    Loader2,
+    Zap,
+    Droplets,
+    Flame,
+    Fuel,
+    FlameKindling,
+    Trash2,
+    Wifi,
+    Tv,
+    Waves,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
-import { UtilityCategory, ProviderSuggestion } from '@/types';
+import { UtilityCategory, ProviderSuggestion, TrashPickupDay, TrashUtilityExtra } from '@/types';
 
 // Category-specific icons
 const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }> = {
@@ -19,6 +34,18 @@ const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }
     internet: { icon: Wifi, color: 'text-purple-500' },
     cable: { icon: Tv, color: 'text-indigo-500' },
 };
+
+const TRASH_PICKUP_DAY_OPTIONS: Array<{ value: TrashPickupDay; label: string }> = [
+    { value: 'not_sure', label: 'Not sure' },
+    { value: 'varies', label: 'Varies' },
+    { value: 'mon', label: 'Monday' },
+    { value: 'tue', label: 'Tuesday' },
+    { value: 'wed', label: 'Wednesday' },
+    { value: 'thu', label: 'Thursday' },
+    { value: 'fri', label: 'Friday' },
+    { value: 'sat', label: 'Saturday' },
+    { value: 'sun', label: 'Sunday' },
+];
 
 interface UtilityStepProps {
     category: UtilityCategory;
@@ -46,24 +73,21 @@ export function UtilityStep({
     token,
     collectElectricMeterNumber = false,
     onNext,
-    onBack
+    onBack,
 }: UtilityStepProps) {
-    const [mode, setMode] = useState<'view' | 'search' | 'meter'>('view');
+    const [mode, setMode] = useState<'view' | 'search' | 'meter' | 'trash_details'>('view');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<ProviderSuggestion[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
-    // All suggestions available for search
     const alternativeSuggestions = suggestions || [];
 
-    // Reset local state when category changes
     useEffect(() => {
         setMode('view');
         setSearchQuery('');
         setSearchResults([]);
     }, [category]);
 
-    // Search effect
     useEffect(() => {
         if (!searchQuery || searchQuery.length < 2) {
             setSearchResults([]);
@@ -99,24 +123,48 @@ export function UtilityStep({
 
     const currentUtilityState = state.utilities[category];
     const shouldGateElectricMeter = collectElectricMeterNumber && category === 'electric';
+    const shouldGateTrashDetails = category === 'trash';
 
-    const advanceOrShowMeterStep = () => {
+    const currentTrashExtra: TrashUtilityExtra =
+        currentUtilityState?.extra && typeof currentUtilityState.extra === 'object' && !Array.isArray(currentUtilityState.extra)
+            ? (currentUtilityState.extra as TrashUtilityExtra)
+            : {};
+
+    const updateTrashExtra = (updates: Partial<TrashUtilityExtra>) => {
+        const nextExtra: TrashUtilityExtra = {
+            ...currentTrashExtra,
+            ...updates,
+        };
+        if (nextExtra.has_recycling === 'no') {
+            nextExtra.recycling_pickup_day = null;
+        }
+
+        updateState(category, {
+            extra: nextExtra,
+        });
+    };
+
+    const advanceOrShowDetails = () => {
         if (shouldGateElectricMeter) {
             setMode('meter');
+            return;
+        }
+        if (shouldGateTrashDetails) {
+            setMode('trash_details');
             return;
         }
         onNext();
     };
 
-    const handleConfirmSuggestion = (s: ProviderSuggestion) => {
+    const handleConfirmSuggestion = (suggestion: ProviderSuggestion) => {
         updateState(category, {
             entry_mode: 'suggested_confirmed',
-            display_name: s.display_name,
+            display_name: suggestion.display_name,
             raw_text: null,
-            contact_phone: s.contact_phone || null,
-            contact_url: s.contact_website || null
+            contact_phone: suggestion.contact_phone || null,
+            contact_url: suggestion.contact_website || null,
         });
-        advanceOrShowMeterStep();
+        advanceOrShowDetails();
     };
 
     const handleSelectResult = (result: ProviderSuggestion) => {
@@ -125,31 +173,35 @@ export function UtilityStep({
             display_name: result.display_name,
             raw_text: result.display_name,
             contact_phone: result.contact_phone || null,
-            contact_url: result.contact_website || null
+            contact_url: result.contact_website || null,
         });
-        advanceOrShowMeterStep();
+        advanceOrShowDetails();
     };
 
     const handleManualEntry = () => {
         updateState(category, {
             entry_mode: 'free_text',
             display_name: searchQuery,
-            raw_text: searchQuery
+            raw_text: searchQuery,
         });
-        advanceOrShowMeterStep();
+        advanceOrShowDetails();
     };
 
     const handleSkip = () => {
         updateState(category, {
             entry_mode: 'unknown',
             display_name: null,
-            raw_text: null
+            raw_text: null,
         });
+        if (shouldGateTrashDetails) {
+            setMode('trash_details');
+            return;
+        }
         onNext();
     };
 
     const handleBackPress = () => {
-        if (mode === 'meter' || mode === 'search') {
+        if (mode === 'meter' || mode === 'search' || mode === 'trash_details') {
             setMode('view');
             return;
         }
@@ -165,10 +217,12 @@ export function UtilityStep({
         onNext();
     };
 
-    // Get category icon
     const iconConfig = categoryIcons[category];
     const CategoryIcon = iconConfig?.icon || Zap;
     const iconColorClass = iconConfig?.color || 'text-slate-500';
+    const providerPrompt = category === 'trash'
+        ? 'Who handles trash and recycling pickup?'
+        : `Who provides your ${categoryLabel.toLowerCase()}?`;
 
     return (
         <motion.div
@@ -178,22 +232,22 @@ export function UtilityStep({
             exit={{ opacity: 0, x: -20 }}
             className="space-y-4 sm:space-y-6"
         >
-            {/* Header */}
             <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8">
                 <button
+                    type="button"
                     onClick={handleBackPress}
-                    aria-label={mode === 'meter' || mode === 'search' ? 'Back to providers' : 'Back'}
+                    aria-label={mode === 'meter' || mode === 'search' || mode === 'trash_details' ? 'Back to providers' : 'Back'}
                     className="p-2 -ml-2 rounded-full hover:bg-muted text-muted-foreground transition-colors active:scale-95"
                 >
                     <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
                 <div className="flex items-center gap-3 min-w-0">
-                    <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center shrink-0`}>
+                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center shrink-0">
                         <CategoryIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${iconColorClass}`} />
                     </div>
                     <div className="min-w-0">
                         <h3 className="text-lg sm:text-xl font-bold text-foreground">{categoryLabel} Provider</h3>
-                        <p className="text-muted-foreground text-xs sm:text-sm truncate">Who provides your {categoryLabel.toLowerCase()}?</p>
+                        <p className="text-muted-foreground text-xs sm:text-sm truncate">{providerPrompt}</p>
                     </div>
                 </div>
             </div>
@@ -211,12 +265,14 @@ export function UtilityStep({
                             </div>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3">
                                 <button
+                                    type="button"
                                     onClick={() => setMode('search')}
                                     className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
                                     Search Providers
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleSkip}
                                     className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
@@ -229,23 +285,24 @@ export function UtilityStep({
                             <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider font-semibold">Suggested for your area</p>
 
                             <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                                {suggestions.slice(0, 3).map((s) => (
+                                {suggestions.slice(0, 3).map((suggestion) => (
                                     <button
-                                        key={s.display_name}
-                                        onClick={() => handleConfirmSuggestion(s)}
+                                        type="button"
+                                        key={suggestion.display_name}
+                                        onClick={() => handleConfirmSuggestion(suggestion)}
                                         className="w-full flex items-center justify-between p-3 sm:p-4 bg-muted/50 hover:bg-muted border border-border rounded-xl text-left transition-all group active:scale-[0.98]"
                                     >
                                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                                            <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center shrink-0`}>
+                                            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
                                                 <CategoryIcon className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColorClass}`} />
                                             </div>
                                             <div className="min-w-0">
                                                 <span className="font-medium text-foreground block text-sm sm:text-base truncate">
-                                                    {s.display_name}
+                                                    {suggestion.display_name}
                                                 </span>
-                                                {s.rationale_short && (
-                                                    <span className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 block truncate">
-                                                        {s.rationale_short}
+                                                {suggestion.rationale_short && (
+                                                    <span className="text-xs text-muted-foreground mt-0.5 block truncate">
+                                                        {suggestion.rationale_short}
                                                     </span>
                                                 )}
                                             </div>
@@ -257,12 +314,14 @@ export function UtilityStep({
 
                             <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-1 sm:pt-2">
                                 <button
+                                    type="button"
                                     onClick={() => setMode('search')}
                                     className="py-2.5 sm:py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-xs sm:text-sm active:scale-[0.98]"
                                 >
                                     Search for another
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleSkip}
                                     className="py-2.5 sm:py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-xs sm:text-sm active:scale-[0.98]"
                                 >
@@ -281,12 +340,14 @@ export function UtilityStep({
                             </div>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3">
                                 <button
+                                    type="button"
                                     onClick={() => setMode('search')}
                                     className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
                                     Search Providers
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleSkip}
                                     className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
@@ -314,6 +375,7 @@ export function UtilityStep({
                         />
                         {searchQuery && (
                             <button
+                                type="button"
                                 onClick={() => setSearchQuery('')}
                                 className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full text-muted-foreground"
                             >
@@ -326,9 +388,9 @@ export function UtilityStep({
                             <div className="p-4 text-center text-muted-foreground text-xs sm:text-sm">Searching...</div>
                         )}
 
-                        {/* Search Results */}
                         {!isSearching && searchQuery.length >= 2 && searchResults.map((result) => (
                             <button
+                                type="button"
                                 key={result.display_name}
                                 onClick={() => handleSelectResult(result)}
                                 className="w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left transition-all group active:scale-[0.98]"
@@ -338,14 +400,14 @@ export function UtilityStep({
                             </button>
                         ))}
 
-                        {/* Alternative Suggestions (when not searching or search is empty) */}
                         {!isSearching && (!searchQuery || searchQuery.length < 2) && alternativeSuggestions.length > 0 && (
                             <>
                                 <div className="px-1 pt-2 pb-1">
-                                    <p className="text-[10px] sm:text-xs text-muted-foreground font-semibold uppercase tracking-wider">Suggested for your area</p>
+                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Suggested for your area</p>
                                 </div>
                                 {alternativeSuggestions.map((suggestion) => (
                                     <button
+                                        type="button"
                                         key={suggestion.display_name}
                                         onClick={() => handleConfirmSuggestion(suggestion)}
                                         className="w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left transition-all group active:scale-[0.98]"
@@ -355,7 +417,7 @@ export function UtilityStep({
                                                 {suggestion.display_name}
                                             </span>
                                             {suggestion.rationale_short && (
-                                                <span className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 block truncate">
+                                                <span className="text-xs text-muted-foreground mt-0.5 block truncate">
                                                     {suggestion.rationale_short}
                                                 </span>
                                             )}
@@ -372,6 +434,7 @@ export function UtilityStep({
                             <div className="text-center pt-4 pb-2">
                                 <p className="text-muted-foreground text-xs sm:text-sm mb-3">No matching providers found.</p>
                                 <button
+                                    type="button"
                                     onClick={handleManualEntry}
                                     className="text-slate-500 hover:text-slate-400 text-xs sm:text-sm font-medium underline underline-offset-4"
                                 >
@@ -382,6 +445,7 @@ export function UtilityStep({
                     </div>
 
                     <button
+                        type="button"
                         onClick={() => setMode('view')}
                         className="w-full py-2.5 sm:py-3 text-muted-foreground hover:text-foreground transition-colors text-xs sm:text-sm active:scale-[0.98]"
                     >
@@ -422,12 +486,14 @@ export function UtilityStep({
 
                     <div className="grid grid-cols-1 gap-2 sm:gap-3">
                         <button
+                            type="button"
                             onClick={handleContinueWithMeter}
                             className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                         >
                             Continue
                         </button>
                         <button
+                            type="button"
                             onClick={handleContinueWithoutMeter}
                             className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                         >
@@ -436,6 +502,103 @@ export function UtilityStep({
                     </div>
 
                     <button
+                        type="button"
+                        onClick={() => setMode('view')}
+                        className="w-full py-2.5 sm:py-3 text-muted-foreground hover:text-foreground transition-colors text-xs sm:text-sm active:scale-[0.98]"
+                    >
+                        Change provider
+                    </button>
+                </div>
+            )}
+
+            {mode === 'trash_details' && (
+                <div className="space-y-4 sm:space-y-5" data-testid="seller-trash-details-step">
+                    <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
+                        <p className="text-[11px] sm:text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-1">
+                            Selected Provider
+                        </p>
+                        <p className="text-sm sm:text-base font-semibold text-foreground truncate">
+                            {currentUtilityState?.display_name || 'No provider selected'}
+                        </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-4">
+                        <div>
+                            <p className="text-xs sm:text-sm font-medium text-foreground">Recycling at this home (optional)</p>
+                            <p className="text-xs text-muted-foreground mt-1">Tell us if recycling pickup is available.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                { value: 'yes' as const, label: 'Yes' },
+                                { value: 'no' as const, label: 'No' },
+                                { value: 'not_sure' as const, label: 'Not sure' },
+                            ].map((option) => {
+                                const isSelected = currentTrashExtra.has_recycling === option.value;
+                                return (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        aria-pressed={isSelected}
+                                        onClick={() => updateTrashExtra({ has_recycling: option.value })}
+                                        className={`px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all ${isSelected
+                                            ? 'bg-slate-600 text-white border-slate-600'
+                                            : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
+                                            }`}
+                                        data-testid={`seller-trash-recycling-${option.value}`}
+                                    >
+                                        {option.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label className="space-y-1" htmlFor="seller-trash-pickup-day">
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Trash pickup day</span>
+                                <select
+                                    id="seller-trash-pickup-day"
+                                    data-testid="seller-trash-pickup-day"
+                                    value={currentTrashExtra.trash_pickup_day || 'not_sure'}
+                                    onChange={(e) => updateTrashExtra({ trash_pickup_day: e.target.value as TrashPickupDay })}
+                                    className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
+                                >
+                                    {TRASH_PICKUP_DAY_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            {(currentTrashExtra.has_recycling === 'yes' || currentTrashExtra.has_recycling === 'not_sure') && (
+                                <label className="space-y-1" htmlFor="seller-recycling-pickup-day">
+                                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Recycling pickup day</span>
+                                    <select
+                                        id="seller-recycling-pickup-day"
+                                        data-testid="seller-recycling-pickup-day"
+                                        value={currentTrashExtra.recycling_pickup_day || 'not_sure'}
+                                        onChange={(e) => updateTrashExtra({ recycling_pickup_day: e.target.value as TrashPickupDay })}
+                                        className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
+                                    >
+                                        {TRASH_PICKUP_DAY_OPTIONS.map((option) => (
+                                            <option key={option.value} value={option.value}>{option.label}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 sm:gap-3">
+                        <button
+                            type="button"
+                            onClick={onNext}
+                            className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                        >
+                            Continue
+                        </button>
+                    </div>
+
+                    <button
+                        type="button"
                         onClick={() => setMode('view')}
                         className="w-full py-2.5 sm:py-3 text-muted-foreground hover:text-foreground transition-colors text-xs sm:text-sm active:scale-[0.98]"
                     >

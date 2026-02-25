@@ -4,8 +4,9 @@ import { motion } from 'framer-motion';
 import { Check, Pencil, Loader2, ArrowRight, Zap, Droplets, Flame, Fuel, FlameKindling, Trash2, Wifi, Tv, Waves } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
-import { AdvancedModuleKey, AdvancedPacketData, UtilityCategory } from '@/types';
+import { AdvancedModuleKey, AdvancedPacketData, TrashUtilityExtra, UtilityCategory } from '@/types';
 import { ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
+import { UTILITY_CATEGORIES } from '@/lib/constants';
 
 // Category-specific icons (same as UtilityStep)
 const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }> = {
@@ -51,6 +52,9 @@ export function ReviewStep({
     advancedData = {},
     onEditAdvancedModule,
 }: ReviewStepProps) {
+    const utilityLabels = Object.fromEntries(
+        UTILITY_CATEGORIES.map((category) => [category.key, category.label])
+    ) as Record<UtilityCategory, string>;
 
     const waterSourceLabel: Record<WizardState['water_source'], string> = {
         city: 'Public water',
@@ -66,6 +70,42 @@ export function ReviewStep({
         not_sure: 'Not sure',
     };
 
+    const formatPickupDay = (value: string | null | undefined): string => {
+        if (!value) return 'Not sure';
+        const dayLabels: Record<string, string> = {
+            mon: 'Monday',
+            tue: 'Tuesday',
+            wed: 'Wednesday',
+            thu: 'Thursday',
+            fri: 'Friday',
+            sat: 'Saturday',
+            sun: 'Sunday',
+            varies: 'Varies',
+            not_sure: 'Not sure',
+        };
+        return dayLabels[value] || 'Not sure';
+    };
+
+    const getTrashScheduleLines = (extra: TrashUtilityExtra | null): string[] => {
+        if (!extra) return [];
+        const lines: string[] = [];
+        if (extra.has_recycling !== undefined && extra.has_recycling !== null) {
+            const hasRecycling = extra.has_recycling === 'yes'
+                ? 'Yes'
+                : extra.has_recycling === 'no'
+                    ? 'No'
+                    : 'Not sure';
+            lines.push(`Recycling: ${hasRecycling}`);
+        }
+        if (extra.trash_pickup_day !== undefined) {
+            lines.push(`Trash pickup: ${formatPickupDay(extra.trash_pickup_day)}`);
+        }
+        if (extra.recycling_pickup_day !== undefined && extra.has_recycling !== 'no') {
+            lines.push(`Recycling pickup: ${formatPickupDay(extra.recycling_pickup_day)}`);
+        }
+        return lines;
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -74,8 +114,8 @@ export function ReviewStep({
             className="space-y-6 sm:space-y-8"
         >
             <div className="space-y-2">
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Review & Submit</h3>
-                <p className="text-sm sm:text-base text-muted-foreground">Please verify your information below.</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Review and Submit</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">Please review your information below.</p>
             </div>
 
             <div className="space-y-4 sm:space-y-6">
@@ -84,6 +124,7 @@ export function ReviewStep({
                     <div className="flex items-center justify-between border-b border-border pb-2">
                         <h4 className="font-semibold text-foreground text-sm sm:text-base">Home Basics</h4>
                         <button
+                            type="button"
                             onClick={onEditBasics}
                             className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
                         >
@@ -133,11 +174,15 @@ export function ReviewStep({
                     <div className="space-y-3 sm:space-y-4">
                         {visibleUtilities.map((cat, index) => {
                             const utilState = state.utilities[cat];
-                            const label = cat.charAt(0).toUpperCase() + cat.slice(1);
+                            const label = utilityLabels[cat];
                             const iconConfig = categoryIcons[cat];
                             const Icon = iconConfig?.icon || Zap;
                             const colorClass = iconConfig?.color || 'text-slate-500';
                             const showMeterInput = collectElectricMeterNumber && cat === 'electric';
+                            const trashExtra = cat === 'trash' && utilState?.extra && typeof utilState.extra === 'object'
+                                ? (utilState.extra as TrashUtilityExtra)
+                                : null;
+                            const trashScheduleLines = cat === 'trash' ? getTrashScheduleLines(trashExtra) : [];
 
                             return (
                                 <div key={cat} className="py-2 border-b border-border/50 last:border-0 last:pb-0">
@@ -161,6 +206,7 @@ export function ReviewStep({
                                             )}
                                             {onEditUtility && (
                                                 <button
+                                                    type="button"
                                                     onClick={() => onEditUtility(index)}
                                                     className="p-1.5 sm:p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                                                     title={`Edit ${label}`}
@@ -187,6 +233,13 @@ export function ReviewStep({
                                             />
                                         </div>
                                     )}
+                                    {trashScheduleLines.length > 0 && (
+                                        <div className="mt-3 pl-10 sm:pl-12 space-y-1 text-xs text-muted-foreground">
+                                            {trashScheduleLines.map((line) => (
+                                                <p key={`${cat}-${line}`}>{line}</p>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -196,7 +249,7 @@ export function ReviewStep({
                 {packetMode === 'advanced' && advancedModules.length > 0 && (
                     <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
                         <div className="flex items-center justify-between border-b border-border pb-2">
-                            <h4 className="font-semibold text-foreground text-sm sm:text-base">Seller Transition Details</h4>
+                            <h4 className="font-semibold text-foreground text-sm sm:text-base">Additional Home Details</h4>
                         </div>
                         <div className="space-y-3">
                             {advancedModules.map((moduleKey) => {
@@ -216,6 +269,7 @@ export function ReviewStep({
                                             <p className="text-sm font-medium text-foreground">{ADVANCED_MODULE_LABELS[moduleKey]}</p>
                                             {onEditAdvancedModule && (
                                                 <button
+                                                    type="button"
                                                     onClick={() => onEditAdvancedModule(moduleKey)}
                                                     className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-emerald-400 hover:bg-muted hover:text-emerald-300 transition-colors"
                                                     title={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
@@ -247,6 +301,7 @@ export function ReviewStep({
 
             <div className="pt-2 sm:pt-4 flex gap-2 sm:gap-3">
                 <button
+                    type="button"
                     onClick={onBack}
                     className="flex-1 py-3 sm:py-4 text-center rounded-xl font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm sm:text-base"
                     disabled={submitting}
@@ -254,6 +309,7 @@ export function ReviewStep({
                     Back
                 </button>
                 <button
+                    type="button"
                     onClick={onSubmit}
                     disabled={submitting}
                     className="flex-[2] py-3 sm:py-4 text-center rounded-xl font-bold bg-slate-700 hover:bg-slate-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"

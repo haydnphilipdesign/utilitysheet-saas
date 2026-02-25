@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS utility_entries (
     display_name TEXT,
     raw_text TEXT,
     meter_number TEXT,
+    extra JSONB NOT NULL DEFAULT '{}'::jsonb,
     canonical_id TEXT,
     contact_phone TEXT,
     contact_url TEXT,

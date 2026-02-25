@@ -8,7 +8,13 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
 import { normalizeAdvancedModules } from '@/lib/packet/modules';
-import type { AdvancedModuleKey, PacketMode, Request as StoredRequest, UtilityCategory } from '@/types';
+import type {
+    AdvancedModuleKey,
+    PacketMode,
+    Request as StoredRequest,
+    TrashPickupDay,
+    UtilityCategory,
+} from '@/types';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +32,9 @@ type SellerUtilityExtra = {
     auto_delivery?: string | null;
     trash_type?: string | null;
     notes?: string | null;
+    has_recycling?: 'yes' | 'no' | 'not_sure' | null;
+    trash_pickup_day?: TrashPickupDay | null;
+    recycling_pickup_day?: TrashPickupDay | null;
 };
 
 type SellerUtilityEntryInput = {
@@ -44,6 +53,61 @@ type ContactResolutionTarget = {
     providerName: string;
     hadSubmittedContact: boolean;
 };
+
+const TRASH_PICKUP_DAYS = new Set<TrashPickupDay>([
+    'mon',
+    'tue',
+    'wed',
+    'thu',
+    'fri',
+    'sat',
+    'sun',
+    'varies',
+    'not_sure',
+]);
+
+function normalizeTrashPickupDay(value: unknown): TrashPickupDay | null | undefined {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === '') return null;
+    return TRASH_PICKUP_DAYS.has(normalized as TrashPickupDay)
+        ? (normalized as TrashPickupDay)
+        : undefined;
+}
+
+function normalizeTrashUtilityExtra(extra: unknown): Record<string, unknown> {
+    if (!extra || typeof extra !== 'object' || Array.isArray(extra)) return {};
+    const input = extra as Record<string, unknown>;
+    const normalized: Record<string, unknown> = {};
+
+    const hasRecycling = input.has_recycling;
+    if (typeof hasRecycling === 'string') {
+        const next = hasRecycling.trim().toLowerCase();
+        if (next === 'yes' || next === 'no' || next === 'not_sure') {
+            normalized.has_recycling = next;
+        }
+    } else if (hasRecycling === null) {
+        normalized.has_recycling = null;
+    }
+
+    const trashPickupDay = normalizeTrashPickupDay(input.trash_pickup_day);
+    if (trashPickupDay !== undefined) {
+        normalized.trash_pickup_day = trashPickupDay;
+    }
+
+    const recyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);
+    if (recyclingPickupDay !== undefined) {
+        normalized.recycling_pickup_day = recyclingPickupDay;
+    }
+
+    if (normalized.has_recycling === 'no') {
+        normalized.recycling_pickup_day = null;
+    }
+
+    return normalized;
+}
 
 type HistoricalContactMatch = {
     phone: string | null;
@@ -341,26 +405,22 @@ export async function POST(
             // Persist entry if not hidden - use 'unknown' if entry_mode is null
             if (!e.hidden) {
                 const finalEntryMode = e.entry_mode || 'unknown';
-                let finalRawText = e.raw_text || '';
+                const finalRawText = e.raw_text || '';
                 const meterNumberCandidate =
                     category === 'electric' && collectElectricMeterNumber
                         ? (typeof e.meter_number === 'string' ? e.meter_number.trim() : '')
                         : '';
                 const finalMeterNumber = meterNumberCandidate || null;
-                if (e.extra) {
-                    const extraParts = [];
-                    if (e.extra.tank) extraParts.push(`Tank: ${e.extra.tank}`);
-                    if (e.extra.auto_delivery) extraParts.push(`Auto-delivery: ${e.extra.auto_delivery}`);
-                    if (e.extra.trash_type) extraParts.push(`Type: ${e.extra.trash_type}`);
-                    if (e.extra.notes) extraParts.push(`Notes: ${e.extra.notes}`);
-                    if (extraParts.length > 0) {
-                        finalRawText = finalRawText ? `${finalRawText} (${extraParts.join(', ')})` : extraParts.join(', ');
-                    }
-                }
+                const baseExtra = (e.extra && typeof e.extra === 'object' && !Array.isArray(e.extra))
+                    ? (e.extra as Record<string, unknown>)
+                    : {};
+                const finalExtra = typedCategory === 'trash'
+                    ? normalizeTrashUtilityExtra(baseExtra)
+                    : baseExtra;
 
                 await sql`
                     INSERT INTO utility_entries (
-                        request_id, category, entry_mode, display_name, raw_text, contact_phone, contact_url, meter_number
+                        request_id, category, entry_mode, display_name, raw_text, contact_phone, contact_url, meter_number, extra
                     ) VALUES (
                         ${requestData.id},
                         ${typedCategory},
@@ -369,7 +429,8 @@ export async function POST(
                         ${finalRawText || null},
                         ${e.contact_phone || null},
                         ${e.contact_url || null},
-                        ${finalMeterNumber}
+                        ${finalMeterNumber},
+                        ${JSON.stringify(finalExtra)}::jsonb
                     )
                 `;
 

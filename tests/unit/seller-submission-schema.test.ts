@@ -87,6 +87,61 @@ describe('sellerSubmissionBodySchema', () => {
         expect(parsed.success).toBe(false);
     });
 
+    it('normalizes trash/recycling extra fields', () => {
+        const parsed = sellerSubmissionBodySchema.safeParse({
+            ...basePayload,
+            utilities: {
+                trash: {
+                    entry_mode: 'search_selected',
+                    display_name: 'City Waste',
+                    raw_text: null,
+                    extra: {
+                        has_recycling: 'YES',
+                        trash_pickup_day: 'THU',
+                        recycling_pickup_day: 'fri',
+                        ignored_field: 'drop me',
+                    },
+                },
+            },
+        });
+
+        expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.error.issues, null, 2)).toBe(true);
+        if (!parsed.success) return;
+
+        expect(parsed.data.utilities.trash.extra).toEqual({
+            has_recycling: 'yes',
+            trash_pickup_day: 'thu',
+            recycling_pickup_day: 'fri',
+        });
+    });
+
+    it('clears recycling pickup day when has_recycling is no', () => {
+        const parsed = sellerSubmissionBodySchema.safeParse({
+            ...basePayload,
+            utilities: {
+                trash: {
+                    entry_mode: 'search_selected',
+                    display_name: 'City Waste',
+                    raw_text: null,
+                    extra: {
+                        has_recycling: 'no',
+                        trash_pickup_day: 'wed',
+                        recycling_pickup_day: 'thu',
+                    },
+                },
+            },
+        });
+
+        expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.error.issues, null, 2)).toBe(true);
+        if (!parsed.success) return;
+
+        expect(parsed.data.utilities.trash.extra).toEqual({
+            has_recycling: 'no',
+            trash_pickup_day: 'wed',
+            recycling_pickup_day: null,
+        });
+    });
+
     it('accepts advanced packet payload fields when provided', () => {
         const parsed = sellerSubmissionBodySchema.safeParse({
             ...basePayload,

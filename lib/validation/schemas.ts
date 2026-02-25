@@ -186,6 +186,52 @@ const utilityWizardStateSchema = z.object({
 }).passthrough(); // Allow extra fields
 
 const wateringDayEnum = z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+const trashRecyclingEnum = z.enum(['yes', 'no', 'not_sure']);
+const trashPickupDayEnum = z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'varies', 'not_sure']);
+
+function normalizeTrashPickupDay(value: unknown): z.infer<typeof trashPickupDayEnum> | null | undefined {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === '') return null;
+    return trashPickupDayEnum.options.includes(normalized as z.infer<typeof trashPickupDayEnum>)
+        ? normalized as z.infer<typeof trashPickupDayEnum>
+        : undefined;
+}
+
+function normalizeTrashExtra(value: unknown): Record<string, unknown> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+
+    const input = value as Record<string, unknown>;
+    const normalized: Record<string, unknown> = {};
+    const hasRecycling = input.has_recycling;
+
+    if (typeof hasRecycling === 'string') {
+        const next = hasRecycling.trim().toLowerCase();
+        if (trashRecyclingEnum.options.includes(next as z.infer<typeof trashRecyclingEnum>)) {
+            normalized.has_recycling = next;
+        }
+    } else if (hasRecycling === null) {
+        normalized.has_recycling = null;
+    }
+
+    const trashPickupDay = normalizeTrashPickupDay(input.trash_pickup_day);
+    if (trashPickupDay !== undefined) {
+        normalized.trash_pickup_day = trashPickupDay;
+    }
+
+    const recyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);
+    if (recyclingPickupDay !== undefined) {
+        normalized.recycling_pickup_day = recyclingPickupDay;
+    }
+
+    if (normalized.has_recycling === 'no') {
+        normalized.recycling_pickup_day = null;
+    }
+
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
 
 const advancedModuleDataSchema = z.object({
     lawn_exterior: z.object({
@@ -257,6 +303,17 @@ export const sellerSubmissionBodySchema = z.object({
             const filtered: Record<string, unknown> = {};
             for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
                 if (allowedUtilityCategories.has(k)) {
+                    if (k === 'trash' && v && typeof v === 'object' && !Array.isArray(v)) {
+                        const trashEntry = { ...(v as Record<string, unknown>) };
+                        const normalizedExtra = normalizeTrashExtra(trashEntry.extra);
+                        if (normalizedExtra) {
+                            trashEntry.extra = normalizedExtra;
+                        } else {
+                            delete trashEntry.extra;
+                        }
+                        filtered[k] = trashEntry;
+                        continue;
+                    }
                     filtered[k] = v;
                 }
             }

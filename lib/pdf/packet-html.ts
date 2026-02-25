@@ -34,6 +34,11 @@ export interface PacketPdfData {
         provider_phone?: string | null;
         provider_website?: string | null;
         meter_number?: string | null;
+        trash_details?: {
+            has_recycling?: 'yes' | 'no' | 'not_sure' | null;
+            trash_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
+            recycling_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
+        } | null;
     }>;
     advanced_sections?: Array<{
         key: string;
@@ -113,6 +118,48 @@ function normalizeWebsiteHostname(value: string | null | undefined): string {
     } catch {
         return safeWebsiteUrl;
     }
+}
+
+function formatPickupDay(day: string | null | undefined): string {
+    if (!day) return 'Not sure';
+    const normalized = day.trim().toLowerCase();
+    const dayLabels: Record<string, string> = {
+        mon: 'Monday',
+        tue: 'Tuesday',
+        wed: 'Wednesday',
+        thu: 'Thursday',
+        fri: 'Friday',
+        sat: 'Saturday',
+        sun: 'Sunday',
+        varies: 'Varies',
+        not_sure: 'Not sure',
+    };
+    return dayLabels[normalized] || 'Not sure';
+}
+
+function formatRecyclingValue(value: string | null | undefined): string {
+    if (!value) return 'Not sure';
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'yes') return 'Yes';
+    if (normalized === 'no') return 'No';
+    return 'Not sure';
+}
+
+function getTrashScheduleDetailLines(trashDetails: PacketPdfData['utilities'][number]['trash_details']): string[] {
+    if (!trashDetails) return [];
+    const lines: string[] = [];
+
+    if (trashDetails.has_recycling !== undefined) {
+        lines.push(`Recycling: ${formatRecyclingValue(trashDetails.has_recycling)}`);
+    }
+    if (trashDetails.trash_pickup_day !== undefined) {
+        lines.push(`Trash pickup: ${formatPickupDay(trashDetails.trash_pickup_day)}`);
+    }
+    if (trashDetails.recycling_pickup_day !== undefined && trashDetails.has_recycling !== 'no') {
+        lines.push(`Recycling pickup: ${formatPickupDay(trashDetails.recycling_pickup_day)}`);
+    }
+
+    return lines;
 }
 
 function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
@@ -209,6 +256,9 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             const safeMeterNumber = utility.category === 'electric' && utility.meter_number
                 ? escapeHtml(String(utility.meter_number).trim())
                 : '';
+            const trashScheduleLines = utility.category === 'trash'
+                ? getTrashScheduleDetailLines(utility.trash_details)
+                : [];
 
             return `
                 <tr style="border-bottom: 1px solid #e4e4e7;">
@@ -229,6 +279,9 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
                             ${safeMeterNumber
                     ? `<div style="margin-top: 6px; font-size: 13px; color: #3f3f46; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;"><span style="color: #52525b; font-weight: 600;">Meter #:</span> ${safeMeterNumber}</div>`
                     : ''}
+                            ${trashScheduleLines
+                    .map((line) => `<div style="margin-top: 6px; font-size: 13px; color: #3f3f46; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;">${escapeHtml(line)}</div>`)
+                    .join('')}
                         </div>
                     </td>
                 </tr>
@@ -368,6 +421,9 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             const safeMeterNumber = utility.category === 'electric' && utility.meter_number
                 ? escapeHtml(String(utility.meter_number).trim())
                 : '';
+            const trashScheduleLines = utility.category === 'trash'
+                ? getTrashScheduleDetailLines(utility.trash_details)
+                : [];
 
             return `
                 <tr>
@@ -377,6 +433,9 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
                         ${safeProviderPhone ? `<div>${safeProviderPhone}</div>` : ''}
                         ${safeWebsiteDisplay ? `<div class="muted">${safeWebsiteDisplay}</div>` : ''}
                         ${safeMeterNumber ? `<div class="meter">Meter #: ${safeMeterNumber}</div>` : ''}
+                        ${trashScheduleLines
+                    .map((line) => `<div class="meter">${escapeHtml(line)}</div>`)
+                    .join('')}
                     </td>
                 </tr>
             `;

@@ -99,7 +99,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                 <h1 className="font-bold text-xs sm:text-sm text-foreground truncate">
                                     {brandProfile?.name || 'UtilitySheet'}
                                 </h1>
-                                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                                <p className="text-xs text-muted-foreground truncate">
                                     {brandProfile?.name ? 'Utility Information Request' : 'Simplify Utility Handoffs'}
                                 </p>
                             </div>
@@ -115,7 +115,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                     {/* Mobile address display */}
                     {address && (
                         <div className="sm:hidden mb-3 px-3 py-2 bg-muted/50 rounded-lg border border-border">
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Property</p>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Property</p>
                             <p className="text-xs text-foreground font-medium truncate">{address}</p>
                         </div>
                     )}

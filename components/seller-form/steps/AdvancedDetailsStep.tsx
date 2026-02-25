@@ -508,12 +508,12 @@ export function AdvancedDetailsStep({
             className="space-y-5"
         >
             <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Module {moduleIndex + 1} of {moduleCount}</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Seller Transition Details</h3>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Step {moduleIndex + 1} of {moduleCount}</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Additional Home Details</h3>
                 <p className="text-sm text-muted-foreground">
                     {isReviewEdit
-                        ? `Editing ${moduleTitle}. All fields are optional.`
-                        : `Now collecting ${moduleTitle.toLowerCase()} details. All fields are optional.`}
+                        ? `Editing ${moduleTitle}. You can skip any field.`
+                        : `Add any ${moduleTitle.toLowerCase()} details you want to share. You can skip any field.`}
                 </p>
             </div>
 
@@ -523,12 +523,14 @@ export function AdvancedDetailsStep({
 
             <div className="flex gap-2 sm:gap-3 pt-1">
                 <button
+                    type="button"
                     onClick={onBack}
                     className="flex-1 py-3 rounded-xl font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                     Back
                 </button>
                 <button
+                    type="button"
                     onClick={onNext}
                     className="flex-[2] py-3 rounded-xl font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
                 >

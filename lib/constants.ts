@@ -7,7 +7,7 @@ export const UTILITY_CATEGORIES: { key: UtilityCategory; label: string; icon: st
     { key: 'oil', label: 'Heating Oil', icon: '🛢️' },
     { key: 'water', label: 'Water', icon: '💧' },
     { key: 'sewer', label: 'Sewer', icon: '🚰' },
-    { key: 'trash', label: 'Trash', icon: '🗑️' },
+    { key: 'trash', label: 'Trash & Recycling', icon: '🗑️' },
     { key: 'internet', label: 'Internet', icon: '📶' },
     { key: 'cable', label: 'Cable/TV', icon: '📺' },
 ];

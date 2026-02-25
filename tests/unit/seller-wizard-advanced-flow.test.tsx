@@ -109,7 +109,7 @@ describe('SellerWizard advanced module step flow', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));
-        expect(screen.getByText('Review & Submit')).toBeInTheDocument();
+        expect(screen.getByText('Review and Submit')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
         expect(screen.getByText('Service Providers (2 of 2)')).toBeInTheDocument();
@@ -149,13 +149,13 @@ describe('SellerWizard advanced module step flow', () => {
         expect(screen.getByRole('button', { name: /save & return to review/i })).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /save & return to review/i }));
-        expect(screen.getByText('Review & Submit')).toBeInTheDocument();
+        expect(screen.getByText('Review and Submit')).toBeInTheDocument();
 
         fireEvent.click(screen.getByTitle('Edit Service Providers'));
         expect(screen.getByText('Service Providers (2 of 2)')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
-        expect(screen.getByText('Review & Submit')).toBeInTheDocument();
+        expect(screen.getByText('Review and Submit')).toBeInTheDocument();
     });
 
     it('skips advanced step when no advanced modules are enabled', () => {
@@ -165,7 +165,7 @@ describe('SellerWizard advanced module step flow', () => {
         fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
         fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
 
-        expect(screen.getByText('Review & Submit')).toBeInTheDocument();
+        expect(screen.getByText('Review and Submit')).toBeInTheDocument();
     });
 
     it('does not show advanced module selectors on Home Basics in simple mode', () => {
@@ -173,6 +173,6 @@ describe('SellerWizard advanced module step flow', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /get started/i }));
 
-        expect(screen.queryByText(/transition detail modules/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/additional home details/i)).not.toBeInTheDocument();
     });
 });

@@ -17,7 +17,7 @@ interface HomeBasicsStepProps {
 
 export function HomeBasicsStep({ state, updateState, requestedUtilityCategories, configuredAdvancedModules, onNext }: HomeBasicsStepProps) {
     const optionalUtilities = [
-        { id: 'trash' as const, label: 'Trash', icon: Trash2 },
+        { id: 'trash' as const, label: 'Trash & Recycling', icon: Trash2 },
         { id: 'internet' as const, label: 'Internet', icon: Wifi },
         { id: 'cable' as const, label: 'Cable/TV', icon: Tv },
     ] satisfies { id: UtilityCategory; label: string; icon: LucideIcon }[];
@@ -106,7 +106,9 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     ].map((opt) => (
                         <button
                             key={opt.id}
+                            type="button"
                             onClick={() => updateState({ water_source: opt.id as any })}
+                            aria-pressed={state.water_source === opt.id}
                             className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.water_source === opt.id
                                 ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
@@ -133,7 +135,9 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     ].map((opt) => (
                         <button
                             key={opt.id}
+                            type="button"
                             onClick={() => updateState({ sewer_type: opt.id as any })}
+                            aria-pressed={state.sewer_type === opt.id}
                             className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.sewer_type === opt.id
                                 ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
@@ -152,7 +156,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Fuel Sources
                     </label>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">Select all that apply to your home.</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Select all that apply to your home.</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     {[
@@ -165,6 +169,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         return (
                             <button
                                 key={fuel.id}
+                                type="button"
                                 onClick={() => {
                                     let next = [...state.fuels_present];
                                     if (isSelected) {
@@ -189,6 +194,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                         primary_heating_type: nextPrimary
                                     });
                                 }}
+                                aria-pressed={isSelected}
                                 className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${isSelected
                                     ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
                                     : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
@@ -222,7 +228,9 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             return (
                                 <button
                                     key={fuelId}
+                                    type="button"
                                     onClick={() => updateState({ primary_heating_type: fuelId })}
+                                    aria-pressed={state.primary_heating_type === fuelId}
                                     className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all active:scale-95 ${state.primary_heating_type === fuelId
                                         ? 'bg-slate-600 text-white border-slate-600'
                                         : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
@@ -252,8 +260,8 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         </span>
                         Do you have these utilities?
                     </label>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground -mt-1 sm:-mt-2">
-                        Tap to toggle. We'll only ask about utilities you have.
+                    <p className="text-xs text-muted-foreground -mt-1 sm:-mt-2">
+                        Choose any that apply. We&apos;ll only ask about utilities you have.
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                         {availableOptionalUtilities.map((util) => {
@@ -262,12 +270,14 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             return (
                                 <button
                                     key={util.id}
+                                    type="button"
                                     onClick={() => {
                                         const next = isSelected
                                             ? state.optional_utilities.filter((u) => u !== util.id)
                                             : [...state.optional_utilities, util.id];
                                         updateState({ optional_utilities: next });
                                     }}
+                                    aria-pressed={isSelected}
                                     className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${isSelected
                                         ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
@@ -305,10 +315,10 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                 <Wrench className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
                             </span>
                         </span>
-                        Transition detail modules
+                        Additional home details
                     </label>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground -mt-1 sm:-mt-2">
-                        Choose which advanced modules you want to fill out.
+                    <p className="text-xs text-muted-foreground -mt-1 sm:-mt-2">
+                        Choose any extra details you want to share.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                         {advancedGroups.map((group) => {
@@ -323,6 +333,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     key={group.id}
                                     type="button"
                                     onClick={() => toggleAdvancedModuleGroup(group.moduleKeys)}
+                                    aria-pressed={isSelected}
                                     className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${isSelected
                                         ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
@@ -333,7 +344,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                         <Icon className="h-4 w-4 shrink-0 mt-0.5" />
                                         <div className="min-w-0">
                                             <p className="font-medium text-sm sm:text-base">{group.label}</p>
-                                            <p className="text-[10px] sm:text-xs opacity-90 mt-0.5">{group.helper}</p>
+                                            <p className="text-xs opacity-90 mt-0.5">{group.helper}</p>
                                         </div>
                                     </div>
                                     <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all ${isSelected
@@ -351,6 +362,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             <div className="pt-4 sm:pt-6">
                 <button
+                    type="button"
                     onClick={onNext}
                     className="w-full py-3 sm:py-4 text-center rounded-xl font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors active:scale-[0.98] text-sm sm:text-base"
                 >
