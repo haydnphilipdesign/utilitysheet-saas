@@ -9,7 +9,7 @@ import { trackEvent } from '@/lib/analytics/events';
 const features = [
     {
         icon: Link2,
-        title: "Reusable Intake Link",
+        title: "Reusable Seller Link",
         description: "One permanent link that works for every property. Share it in a text, your email signature, or a listing — sellers tap it, enter the address, and go. No new link to create each time. One-off requests are still available if you want to choose specific utilities per file."
     },
     {
@@ -36,7 +36,7 @@ const features = [
     {
         icon: ShieldCheck,
         title: "Secure by Design",
-        description: "Seller intake links are separate from share links. Utility sheet packets only become accessible after submission — never before."
+        description: "Seller links are separate from share links. Utility sheet packets only become accessible after submission — never before."
     },
     {
         icon: Palette,

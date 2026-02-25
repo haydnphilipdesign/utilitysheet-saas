@@ -42,13 +42,13 @@ export function slugifyIntakeSlug(input: string) {
 export function validateIntakeSlug(slug: string) {
     const normalized = slugifyIntakeSlug(slug);
     if (normalized !== slug) {
-        throw new Error('Slug must be lowercase and contain only letters, numbers, and dashes.');
+        throw new Error('Link must be lowercase and contain only letters, numbers, and dashes.');
     }
     if (slug.length < 3 || slug.length > 60) {
-        throw new Error('Slug must be between 3 and 60 characters.');
+        throw new Error('Link must be between 3 and 60 characters.');
     }
     if (RESERVED_SLUGS.has(slug)) {
-        throw new Error('That slug is reserved. Please choose a different one.');
+        throw new Error('That link name is reserved. Please choose a different one.');
     }
 }
 

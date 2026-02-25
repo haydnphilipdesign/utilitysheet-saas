@@ -17,7 +17,7 @@ const faqs = [
     },
     {
         question: 'Can I use one link for every property?',
-        answer: 'Yes \u2014 and this is one of the most powerful things about UtilitySheet. Your reusable intake link works for any property. Add it to your email signature, include it in your standard seller texts, or paste it into your TC checklist. Sellers tap the link, enter the property address themselves, and complete the guided utility form. You never have to create a new request or log in to send a new link. If you do want to choose specific utility categories for a particular file, you can still create a one-off request \u2014 but the reusable link is the fastest way to work.',
+        answer: 'Yes \u2014 and this is one of the most powerful things about UtilitySheet. Your seller link works for any property. Add it to your email signature, include it in your standard seller texts, or paste it into your TC checklist. Sellers tap the link, enter the property address themselves, and complete the guided utility form. You never have to create a new request or log in to send a new link. If you do want to choose specific utility categories for a particular file, you can still create a one-off request \u2014 but the reusable link is the fastest way to work.',
     },
     {
         question: 'Do I need to log in every time to get the utility sheet?',

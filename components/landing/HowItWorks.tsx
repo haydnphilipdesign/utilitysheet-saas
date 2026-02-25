@@ -45,7 +45,7 @@ export function HowItWorks() {
                                 Share Your Link
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Share your reusable intake link — the same link works for every property. Drop it in a text, email, or your signature and you&apos;re done. Sellers tap it, enter the property address, and start right away. Prefer to pick specific utilities per file? Create a one-off request instead.
+                                Share your seller link — the same link works for every property. Drop it in a text, email, or your signature and you&apos;re done. Sellers tap it, enter the property address, and start right away. Prefer to pick specific utilities per file? Create a one-off request instead.
                             </p>
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">

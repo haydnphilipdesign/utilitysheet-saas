@@ -88,6 +88,7 @@ export default function DashboardPage() {
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string } | null>(null);
     const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
+    const [intakeCompanyName, setIntakeCompanyName] = useState('');
     const [intakeSlugDraft, setIntakeSlugDraft] = useState('');
     const [intakeSaving, setIntakeSaving] = useState(false);
     const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -144,6 +145,7 @@ export default function DashboardPage() {
                         setIntakeSlugDraft(intakeData.intakeLink.slug || '');
                     }
                     setIntakeCanCustomize(Boolean(intakeData.canCustomize));
+                    if (intakeData.companyName) setIntakeCompanyName(intakeData.companyName);
                 }
             } catch (error) {
                 console.error('Error fetching dashboard stats:', error);
@@ -290,7 +292,7 @@ export default function DashboardPage() {
 
         const slug = intakeSlugDraft.trim();
         if (slug.length < 3) {
-            toast.error('Slug must be at least 3 characters.');
+            toast.error('Link must be at least 3 characters.');
             return;
         }
         if (slug === intakeLink?.slug) {
@@ -315,7 +317,7 @@ export default function DashboardPage() {
                 setIntakeLink(data.intakeLink);
                 setIntakeSlugDraft(data.intakeLink.slug || slug);
             }
-            toast.success('Reusable link updated');
+            toast.success('Branded link updated');
             trackEvent('dashboard_reusable_slug_save_succeeded', {
                 location: 'dashboard_reusable_link_card',
             });
@@ -361,6 +363,9 @@ export default function DashboardPage() {
         })()
         : '/i/';
     const intakeSlugUnchanged = intakeLink ? intakeSlugDraft.trim() === intakeLink.slug : true;
+    const intakeExampleSlug = intakeCompanyName
+        ? intakeCompanyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'your-name'
+        : 'your-name';
 
     const statCards = [
         { label: 'Total Requests', value: stats.total_requests, icon: FileText, color: 'text-muted-foreground' },
@@ -482,7 +487,7 @@ export default function DashboardPage() {
                             {intakeCanCustomize ? (
                                 <div className="space-y-2.5">
                                     <div className="flex items-center justify-between gap-3">
-                                        <p className="text-sm font-medium text-foreground">Custom URL slug</p>
+                                        <p className="text-sm font-medium text-foreground">Branded link</p>
                                         <Badge variant="outline">Pro / Teams</Badge>
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
@@ -511,7 +516,7 @@ export default function DashboardPage() {
                                             {intakeSaving ? (
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                             ) : null}
-                                            Save Slug
+                                            Save
                                         </Button>
                                     </div>
                                 </div>
@@ -521,10 +526,10 @@ export default function DashboardPage() {
                                         <div>
                                             <p className="text-sm font-medium text-foreground flex items-center gap-2">
                                                 <Lock className="h-4 w-4 text-amber-500" />
-                                                Custom URL slug
+                                                Branded link
                                             </p>
                                             <p className="text-xs text-muted-foreground mt-1">
-                                                Upgrade to Pro or Teams to use a branded slug in your reusable seller link.
+                                                Make your link short and recognizable for sellers.
                                             </p>
                                         </div>
                                         <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400">
@@ -532,14 +537,23 @@ export default function DashboardPage() {
                                         </Badge>
                                     </div>
                                     <div className="rounded-md border border-border bg-background/60 px-3 py-2">
-                                        <p className="text-xs text-muted-foreground">Current link</p>
+                                        <p className="text-xs text-muted-foreground">Your current link</p>
                                         <p className="text-xs sm:text-sm font-mono text-foreground break-all">
                                             {intakeLink?.url || 'Loading your link...'}
                                         </p>
                                     </div>
+                                    <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
+                                        <p className="text-xs text-muted-foreground">Example branded link <span className="text-amber-500">(with Pro)</span></p>
+                                        <p className="text-xs sm:text-sm font-mono text-foreground break-all">
+                                            {intakeUrlPrefix}{intakeExampleSlug}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground mt-1 italic">
+                                            Example only — you&apos;ll choose the wording.
+                                        </p>
+                                    </div>
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                         <p className="text-xs text-muted-foreground max-w-lg">
-                                            A custom slug looks cleaner in email templates, signatures, and SMS scripts.
+                                            Branded links look more professional in emails and texts, and sellers are more likely to trust and click them.
                                         </p>
                                         <Button
                                             type="button"

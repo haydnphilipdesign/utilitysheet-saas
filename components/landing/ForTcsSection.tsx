@@ -10,7 +10,7 @@ const painToOutcome = [
     {
         icon: Link2,
         title: 'One permanent link, reused on every file',
-        description: 'Share your reusable intake link in texts, emails, or your signature. Sellers enter the address — no back-and-forth, no "who\'s your gas company?" texts.',
+        description: 'Share your seller link in texts, emails, or your signature. Sellers enter the address — no back-and-forth, no "who\'s your gas company?" texts.',
         timeSaved: 'Saves 15 min',
     },
     {
@@ -28,7 +28,7 @@ const painToOutcome = [
 ] as const;
 
 const tcWorkflow = [
-    'Add your reusable intake link to your email signature or text template — once, and it\'s there forever.',
+    'Add your seller link to your email signature or text template — once, and it\'s there forever.',
     'When a new file opens, text or email the seller your link. They enter the address, confirm utilities in ~2 minutes. No new request to create.',
     'The PDF attaches to your notification email automatically. Share the web link with buyers or drop the PDF in the packet — done.',
 ] as const;

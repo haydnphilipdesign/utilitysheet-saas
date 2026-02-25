@@ -14,7 +14,7 @@ const tiers = [
         description: 'Try it on real transactions — no credit card, no time limit.',
         features: [
             '3 unlocked requests per month',
-            'Reusable seller intake link (seller enters address)',
+            'Reusable seller link (seller enters address)',
             'Buyer-ready PDF + share link',
             'Seller submission completion email notifications',
             'Optional completion-email PDF attachment (on by default)',
@@ -32,7 +32,7 @@ const tiers = [
         description: 'Unlimited requests, your branding. The full experience for solo TCs and agents.',
         features: [
             'Unlimited requests',
-            'Custom reusable link slug',
+            'Custom branded link',
             'Custom branding (logo + colors)',
             'Branded completion-email PDF attachments',
             'Unlock locked submissions',

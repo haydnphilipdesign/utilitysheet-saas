@@ -130,7 +130,7 @@ export default function OpenGraphImage() {
                         maxWidth: 980,
                     }}
                 >
-                    Send a guided intake link. Get a buyer-ready utility info sheet (PDF + link) with provider contacts—without the back-and-forth.
+                    Send sellers a guided link. Get a buyer-ready utility info sheet (PDF + link) with provider contacts—without the back-and-forth.
                 </div>
 
                 <div style={{ marginTop: 30, display: 'flex', gap: 12, flexWrap: 'wrap' }}>

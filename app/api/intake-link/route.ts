@@ -49,6 +49,7 @@ export async function GET() {
                 is_active: intakeLink.is_active,
             },
             canCustomize,
+            companyName: account.company_name || '',
         });
     } catch (error) {
         console.error('Error fetching intake link:', error);
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
         const allowed = canCustomizeSlug(account.subscription_status, activeOrg?.subscription_status);
         if (!allowed) {
             return NextResponse.json(
-                { error: 'Upgrade required', message: 'Custom intake link slugs are available on Pro and Teams.' },
+                { error: 'Upgrade required', message: 'Custom branded links are available on Pro and Teams.' },
                 { status: 403 }
             );
         }

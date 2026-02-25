@@ -288,7 +288,7 @@ export default function SettingsPage() {
                 setIntakeLink(data.intakeLink);
                 setIntakeSlugDraft(data.intakeLink.slug || slug);
             }
-            toast.success('Intake link updated');
+            toast.success('Branded link updated');
         } catch (error: unknown) {
             console.error(error);
             const message = error instanceof Error ? error.message : 'Failed to update link';
@@ -574,7 +574,7 @@ export default function SettingsPage() {
 
                     <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
-                            <Label htmlFor="intakeSlug" className="text-foreground">Custom URL slug</Label>
+                            <Label htmlFor="intakeSlug" className="text-foreground">Branded link</Label>
                             {!intakeCanCustomize && (
                                 <Badge variant="outline">Pro / Teams</Badge>
                             )}

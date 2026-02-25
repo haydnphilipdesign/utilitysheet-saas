@@ -455,8 +455,8 @@ export default function NewRequestPage() {
                             <div className="flex items-center justify-between pt-0.5">
                                 <p className="text-xs text-muted-foreground">
                                     {intakeCanCustomize
-                                        ? 'Customize your link URL in Settings.'
-                                        : 'Upgrade to Pro/Teams for a custom URL slug.'}
+                                        ? 'Customize your link in Settings.'
+                                        : 'Upgrade to Pro/Teams for a custom branded link.'}
                                 </p>
                                 <Link href="/dashboard/settings" className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
                                     {intakeCanCustomize ? 'Open Settings' : 'Upgrade'}
@@ -965,7 +965,7 @@ export default function NewRequestPage() {
                             {[
                                 'Unlimited requests, no monthly cap',
                                 'Custom logo, colors & contact info on every sheet',
-                                'Reusable intake link with custom slug',
+                                'Custom branded link for your business',
                             ].map((benefit) => (
                                 <div key={benefit} className="flex items-start gap-2">
                                     <div className="mt-0.5 h-4 w-4 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">

@@ -1066,7 +1066,7 @@ export default function OnboardingPage() {
                                     >
                                         <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
                                             <LinkIcon className="h-3.5 w-3.5 text-slate-500" />
-                                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Your Reusable Intake Link</p>
+                                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Your Seller Link</p>
                                         </div>
                                         <div className="px-4 py-3.5 space-y-3">
                                             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -1101,7 +1101,7 @@ export default function OnboardingPage() {
                                                     </Button>
                                                 </div>
                                             ) : (
-                                                <p className="text-xs text-muted-foreground">Your intake link will be available in Settings once your account is fully activated.</p>
+                                                <p className="text-xs text-muted-foreground">Your seller link will be available in Settings once your account is fully activated.</p>
                                             )}
 
                                             <div className="grid grid-cols-3 gap-2">
