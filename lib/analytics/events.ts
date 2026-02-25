@@ -40,10 +40,34 @@ type AnalyticsEventMap = {
   };
   seller_step_viewed: BasePayload & {
     step: string;
+    packet_mode?: "simple" | "advanced";
   };
   seller_submitted: BasePayload & {
     source: "seller_flow";
     utility_count: number;
+    packet_mode?: "simple" | "advanced";
+  };
+  packet_mode_selected: BasePayload & {
+    mode: "simple" | "advanced";
+  };
+  advanced_module_toggled: BasePayload & {
+    module: string;
+    enabled: boolean;
+  };
+  mode_switch_attempted: BasePayload & {
+    from_mode: "simple" | "advanced";
+    to_mode: "simple" | "advanced";
+  };
+  mode_switch_blocked: BasePayload & {
+    from_mode: "simple" | "advanced";
+    to_mode: "simple" | "advanced";
+    reason: string;
+  };
+  advanced_packet_generated: BasePayload & {
+    request_id?: string;
+  };
+  advanced_packet_downloaded: BasePayload & {
+    token?: string;
   };
   packet_action_clicked: BasePayload & {
     action: "copy_link" | "download_pdf" | "phone_tap" | "website_tap";

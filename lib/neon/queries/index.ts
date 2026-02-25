@@ -32,6 +32,7 @@ export {
     getRequestByToken,
     getRequestBySellerToken,
     createRequest,
+    updateRequestConfiguration,
     getRequestCountForAccount,
     updateRequestStatus,
     deleteRequest,
@@ -93,6 +94,7 @@ export {
     getOrCreateIntakeLink,
     getIntakeLinkBySlug,
     updateIntakeLinkSlug,
+    updateIntakeLinkDefaultPacketMode,
     slugifyIntakeSlug,
     validateIntakeSlug,
 } from './intake-links';

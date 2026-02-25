@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { vi, beforeEach } from 'vitest';
+import { vi, beforeEach, describe, it, expect } from 'vitest';
 
 import OnboardingPage from '@/app/onboarding/page';
 

@@ -12,6 +12,14 @@ vi.mock('framer-motion', () => ({
 }));
 
 function createWizardState(): WizardState {
+    const emptyUtility = {
+        entry_mode: null,
+        display_name: null,
+        raw_text: null,
+        meter_number: null,
+        hidden: false,
+    };
+
     return {
         water_source: 'not_sure',
         sewer_type: 'not_sure',
@@ -20,21 +28,19 @@ function createWizardState(): WizardState {
         primary_heating_type: null,
         trash_handled_by: 'not_sure',
         optional_utilities: [],
+        packet_mode: 'simple',
+        advanced_modules: [],
+        advanced: {},
         utilities: {
-            electric: {
-                entry_mode: null,
-                display_name: null,
-                raw_text: null,
-                meter_number: null,
-                hidden: false,
-            },
-            water: {
-                entry_mode: null,
-                display_name: null,
-                raw_text: null,
-                meter_number: null,
-                hidden: false,
-            },
+            electric: { ...emptyUtility },
+            gas: { ...emptyUtility },
+            propane: { ...emptyUtility },
+            oil: { ...emptyUtility },
+            water: { ...emptyUtility },
+            sewer: { ...emptyUtility },
+            trash: { ...emptyUtility },
+            internet: { ...emptyUtility },
+            cable: { ...emptyUtility },
         },
     };
 }
@@ -48,8 +54,8 @@ function StatefulUtilityStep({
 }: {
     category?: UtilityCategory;
     collectElectricMeterNumber?: boolean;
-    onNext?: ReturnType<typeof vi.fn>;
-    onBack?: ReturnType<typeof vi.fn>;
+    onNext?: () => void;
+    onBack?: () => void;
     suggestions?: ProviderSuggestion[];
 }) {
     const [state, setState] = useState<WizardState>(createWizardState());

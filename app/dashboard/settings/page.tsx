@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Link as LinkIcon, User, Bell, Check, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import type { PacketMode } from '@/types';
 
 type NotificationPreferences = {
     seller_submissions: boolean;
@@ -20,6 +21,24 @@ type NotificationPreferences = {
     collect_electric_meter_number: boolean;
     contact_resolution: boolean;
     weekly_summary: boolean;
+};
+
+type ActiveOrganization = {
+    id: string;
+    name?: string;
+    slug?: string;
+    role?: 'admin' | 'member';
+    subscription_status?: 'free' | 'team' | 'canceled' | null;
+    subscription_id?: string | null;
+    subscription_ends_at?: string | null;
+    seat_quantity?: number | null;
+};
+
+type OrganizationMemberRow = {
+    account_id: string;
+    email: string;
+    full_name: string | null;
+    member_role: 'admin' | 'member';
 };
 
 export default function SettingsPage() {
@@ -45,8 +64,8 @@ export default function SettingsPage() {
         plan: 'free'
     });
     const [billingLoading, setBillingLoading] = useState(false);
-    const [activeOrganization, setActiveOrganization] = useState<any>(null);
-    const [orgMembers, setOrgMembers] = useState<any[]>([]);
+    const [activeOrganization, setActiveOrganization] = useState<ActiveOrganization | null>(null);
+    const [orgMembers, setOrgMembers] = useState<OrganizationMemberRow[]>([]);
     const [orgSeatUsage, setOrgSeatUsage] = useState<{ used: number; pendingInvites: number }>({ used: 0, pendingInvites: 0 });
     const [orgLoading, setOrgLoading] = useState(false);
     const [inviteEmail, setInviteEmail] = useState('');
@@ -55,9 +74,10 @@ export default function SettingsPage() {
     const [teamSeats, setTeamSeats] = useState(3);
     const [teamBillingLoading, setTeamBillingLoading] = useState(false);
 
-    const [intakeLink, setIntakeLink] = useState<{ slug: string; url: string; is_active: boolean } | null>(null);
+    const [intakeLink, setIntakeLink] = useState<{ slug: string; url: string; is_active: boolean; defaultPacketMode?: PacketMode } | null>(null);
     const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
     const [intakeSlugDraft, setIntakeSlugDraft] = useState('');
+    const [intakeDefaultPacketMode, setIntakeDefaultPacketMode] = useState<PacketMode>('simple');
     const [intakeSaving, setIntakeSaving] = useState(false);
 
     const TEAM_MIN_SEATS = 3;
@@ -126,6 +146,7 @@ export default function SettingsPage() {
                 if (data.intakeLink) {
                     setIntakeLink(data.intakeLink);
                     setIntakeSlugDraft(data.intakeLink.slug || '');
+                    setIntakeDefaultPacketMode(data.intakeLink.defaultPacketMode || 'simple');
                 }
                 setIntakeCanCustomize(Boolean(data.canCustomize));
             } catch (error) {
@@ -146,13 +167,23 @@ export default function SettingsPage() {
         setOrgLoading(true);
         try {
             const response = await fetch('/api/organization/members');
-            const data = await response.json().catch(() => ({}));
+            const data = await response.json().catch(() => ({})) as {
+                error?: string;
+                organization?: Partial<ActiveOrganization>;
+                role?: 'admin' | 'member';
+                members?: OrganizationMemberRow[];
+                seatUsage?: { used?: number; pendingInvites?: number };
+            };
             if (!response.ok) {
                 throw new Error(data?.error || 'Failed to load organization');
             }
 
             if (data.organization) {
-                setActiveOrganization((prev: any) => ({ ...prev, ...data.organization, role: data.role || prev?.role }));
+                setActiveOrganization((prev) => ({
+                    ...(prev || { id: data.organization?.id || '' }),
+                    ...data.organization,
+                    role: data.role || prev?.role,
+                }));
             }
             if (Array.isArray(data.members)) {
                 setOrgMembers(data.members);
@@ -298,6 +329,31 @@ export default function SettingsPage() {
         }
     };
 
+    const handleSaveDefaultPacketMode = async () => {
+        setIntakeSaving(true);
+        try {
+            const response = await fetch('/api/intake-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ defaultPacketMode: intakeDefaultPacketMode }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.message || data?.error || 'Failed to update default mode');
+            }
+            if (data.intakeLink) {
+                setIntakeLink(data.intakeLink);
+                setIntakeDefaultPacketMode(data.intakeLink.defaultPacketMode || intakeDefaultPacketMode);
+            }
+            toast.success('Reusable link default mode updated');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Failed to update default mode';
+            toast.error(message);
+        } finally {
+            setIntakeSaving(false);
+        }
+    };
+
     const handleTeamCheckout = async () => {
         setTeamBillingLoading(true);
         try {
@@ -369,9 +425,9 @@ export default function SettingsPage() {
 
             setInviteEmail('');
             await refreshOrganization();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            toast.error(error?.message || 'Failed to invite member');
+            toast.error(error instanceof Error ? error.message : 'Failed to invite member');
         } finally {
             setInviteLoading(false);
         }
@@ -388,9 +444,9 @@ export default function SettingsPage() {
             }
             toast.success('Member removed');
             await refreshOrganization();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            toast.error(error?.message || 'Failed to remove member');
+            toast.error(error instanceof Error ? error.message : 'Failed to remove member');
         }
     };
 
@@ -410,9 +466,9 @@ export default function SettingsPage() {
             }
             toast.success('Role updated');
             await refreshOrganization();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            toast.error(error?.message || 'Failed to update role');
+            toast.error(error instanceof Error ? error.message : 'Failed to update role');
         }
     };
 
@@ -574,6 +630,45 @@ export default function SettingsPage() {
 
                     <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
+                            <Label htmlFor="defaultPacketMode" className="text-foreground">Reusable link default mode</Label>
+                            {!intakeCanCustomize && <Badge variant="outline">Pro / Teams</Badge>}
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div className="flex-1 space-y-1">
+                                <select
+                                    id="defaultPacketMode"
+                                    value={intakeDefaultPacketMode}
+                                    onChange={(e) => setIntakeDefaultPacketMode(e.target.value as PacketMode)}
+                                    className="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm text-foreground"
+                                    disabled={intakeSaving}
+                                >
+                                    <option value="simple">Simple Utility Sheet</option>
+                                    <option value="advanced">Advanced Seller Packet</option>
+                                </select>
+                                <p className="text-xs text-muted-foreground">
+                                    Controls which mode sellers get when they start from your reusable link.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                onClick={handleSaveDefaultPacketMode}
+                                disabled={intakeSaving || (!intakeCanCustomize && intakeDefaultPacketMode === 'advanced')}
+                            >
+                                {intakeSaving ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Save className="mr-2 h-4 w-4" />
+                                )}
+                                Save Mode
+                            </Button>
+                        </div>
+                    </div>
+
+                    <Separator className="bg-border" />
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
                             <Label htmlFor="intakeSlug" className="text-foreground">Branded link</Label>
                             {!intakeCanCustomize && (
                                 <Badge variant="outline">Pro / Teams</Badge>
@@ -674,7 +769,7 @@ export default function SettingsPage() {
                                         } else {
                                             toast.error('Failed to open billing portal');
                                         }
-                                    } catch (error) {
+                                    } catch {
                                         toast.error('Failed to open billing portal');
                                     } finally {
                                         setBillingLoading(false);
@@ -702,7 +797,7 @@ export default function SettingsPage() {
                                         } else {
                                             toast.error(data.error || 'Failed to start checkout');
                                         }
-                                    } catch (error) {
+                                    } catch {
                                         toast.error('Failed to start checkout');
                                     } finally {
                                         setBillingLoading(false);
@@ -740,7 +835,7 @@ export default function SettingsPage() {
                             </div>
                             {usage.used >= usage.limit && (
                                 <p className="text-sm text-red-400 mt-2">
-                                    You've reached your monthly limit. Upgrade to continue creating requests.
+                                    You&apos;ve reached your monthly limit. Upgrade to continue creating requests.
                                 </p>
                             )}
                         </div>

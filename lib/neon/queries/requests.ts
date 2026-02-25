@@ -2,7 +2,13 @@
  * Request-related database queries
  */
 import { sql, generateToken } from '@/lib/neon/db';
-import type { PropertyAddressStructured, Request } from '@/types';
+import type {
+    AdvancedModuleKey,
+    PacketMode,
+    PropertyAddressStructured,
+    Request,
+    UtilityEntry,
+} from '@/types';
 
 /**
  * Pagination result interface
@@ -123,6 +129,9 @@ export async function createRequest(data: {
     lockedReason?: string;
     status?: 'draft' | 'sent' | 'in_progress' | 'submitted';
     meteredAt?: string | null;
+    packetMode?: PacketMode;
+    advancedModules?: AdvancedModuleKey[];
+    advancedPacketData?: Record<string, unknown>;
 }): Promise<Request | null> {
     if (!sql) return null;
 
@@ -134,6 +143,9 @@ export async function createRequest(data: {
         : status === 'draft'
             ? null
             : new Date().toISOString();
+    const packetMode = data.packetMode ?? 'simple';
+    const advancedModules = Array.isArray(data.advancedModules) ? data.advancedModules : [];
+    const advancedPacketData = data.advancedPacketData || {};
 
     const result = await sql`
         INSERT INTO requests (
@@ -147,6 +159,9 @@ export async function createRequest(data: {
             seller_phone,
             closing_date,
             utility_categories,
+            packet_mode,
+            advanced_modules,
+            advanced_packet_data,
             public_token,
             seller_token,
             is_demo,
@@ -166,6 +181,9 @@ export async function createRequest(data: {
             ${data.sellerPhone || null},
             ${data.closingDate || null},
             ${data.utilityCategories},
+            ${packetMode},
+            ${advancedModules},
+            ${JSON.stringify(advancedPacketData)}::jsonb,
             ${publicToken},
             ${sellerToken},
             ${data.isDemo === true},
@@ -175,6 +193,30 @@ export async function createRequest(data: {
             ${data.lockedReason || null},
             ${data.isLocked === true ? new Date().toISOString() : null}
         )
+        RETURNING *
+    `;
+
+    return (result[0] as Request) || null;
+}
+
+export async function updateRequestConfiguration(
+    id: string,
+    data: {
+        packetMode: PacketMode;
+        advancedModules: AdvancedModuleKey[];
+    }
+): Promise<Request | null> {
+    if (!sql) return null;
+
+    const result = await sql`
+        UPDATE requests
+        SET
+            packet_mode = ${data.packetMode},
+            advanced_modules = ${data.advancedModules},
+            updated_at = NOW()
+        WHERE id = ${id}
+            AND status IN ('draft', 'sent')
+            AND deleted_at IS NULL
         RETURNING *
     `;
 
@@ -338,7 +380,7 @@ export async function getWeeklyStats(
 /**
  * Get utility entries for a request
  */
-export async function getUtilityEntriesByRequestId(requestId: string): Promise<any[]> {
+export async function getUtilityEntriesByRequestId(requestId: string): Promise<UtilityEntry[]> {
     if (!sql) return [];
 
     try {
@@ -348,7 +390,7 @@ export async function getUtilityEntriesByRequestId(requestId: string): Promise<a
             ORDER BY category ASC
         `;
 
-        return result;
+        return result as UtilityEntry[];
     } catch (error) {
         console.error('Error fetching utility entries:', error);
         return [];

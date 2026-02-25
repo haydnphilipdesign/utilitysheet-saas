@@ -4,6 +4,7 @@ import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import { clampBrandingText } from '@/lib/branding/text';
 
 export interface PacketPdfData {
+    mode?: 'simple' | 'advanced';
     request: {
         id: string;
         property_address: string;
@@ -34,6 +35,15 @@ export interface PacketPdfData {
         provider_website?: string | null;
         meter_number?: string | null;
     }>;
+    advanced_sections?: Array<{
+        key: string;
+        title: string;
+        fields: Array<{
+            key: string;
+            label: string;
+            value: string;
+        }>;
+    }>;
     meta?: {
         show_powered_by?: boolean;
     };
@@ -43,6 +53,9 @@ export interface PacketPdfHtmlResult {
     html: string;
     filename: string;
     rootSelector: string;
+    renderStrategy?: 'screenshot' | 'print_pdf';
+    headerTemplate?: string;
+    footerTemplate?: string;
 }
 
 function escapeHtml(value: string): string {
@@ -102,7 +115,7 @@ function normalizeWebsiteHostname(value: string | null | undefined): string {
     }
 }
 
-export function buildPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
+function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const { request, brand, utilities } = data;
 
     const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
@@ -318,5 +331,226 @@ export function buildPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         html,
         filename,
         rootSelector: '#packet-pdf-root',
+        renderStrategy: 'screenshot',
     };
+}
+
+function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
+    const { request, brand, utilities } = data;
+    const sections = data.advanced_sections || [];
+    const safePrimaryColor = safeHexColor(brand?.primary_color, '#0f766e');
+    const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
+    const safeBrandName = escapeHtml(clampBrandingText(brand?.name || 'UtilitySheet', BRAND_PROFILE_LIMITS.brandNameMax) || 'UtilitySheet');
+    const safeAddress = escapeHtml(clampBrandingText(request.property_address, 160));
+    const safeContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
+    const safeContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
+    const showGenerationDate = brand?.show_generation_date ?? true;
+    const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
+    const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
+    const rawBuyerNextSteps = brand?.buyer_next_steps && brand.buyer_next_steps.length > 0
+        ? brand.buyer_next_steps
+        : DEFAULT_BUYER_STEPS;
+    const buyerNextSteps = rawBuyerNextSteps
+        .map((step) => clampBrandingText(step, BRAND_PROFILE_LIMITS.buyerNextStepMax))
+        .filter(Boolean)
+        .slice(0, BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems)
+        .map((step) => escapeHtml(step));
+    const nextStepsTitle = escapeHtml(clampBrandingText(brand?.next_steps_title || 'Buyer Next Steps', BRAND_PROFILE_LIMITS.nextStepsTitleMax) || 'Buyer Next Steps');
+
+    const utilityRows = utilities.length === 0
+        ? `<tr><td colspan="3" class="empty">No utility details provided.</td></tr>`
+        : utilities.map((utility) => {
+            const icon = UTILITY_CATEGORIES.find((category) => category.key === utility.category)?.icon || '🏢';
+            const safeCategory = escapeHtml(String(utility.category || '').replaceAll('_', ' '));
+            const safeProviderName = escapeHtml(String(utility.provider_name || 'Not sure'));
+            const safeProviderPhone = utility.provider_phone ? escapeHtml(String(utility.provider_phone)) : '';
+            const safeWebsiteDisplay = escapeHtml(normalizeWebsiteHostname(utility.provider_website));
+            const safeMeterNumber = utility.category === 'electric' && utility.meter_number
+                ? escapeHtml(String(utility.meter_number).trim())
+                : '';
+
+            return `
+                <tr>
+                    <td><span class="utility-icon">${icon}</span> <span class="utility-name">${safeCategory}</span></td>
+                    <td>${safeProviderName}</td>
+                    <td>
+                        ${safeProviderPhone ? `<div>${safeProviderPhone}</div>` : ''}
+                        ${safeWebsiteDisplay ? `<div class="muted">${safeWebsiteDisplay}</div>` : ''}
+                        ${safeMeterNumber ? `<div class="meter">Meter #: ${safeMeterNumber}</div>` : ''}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    const sectionHtml = sections.map((section) => {
+        const rows = section.fields.length === 0
+            ? '<p class="empty-note">No details provided.</p>'
+            : `<div class="detail-grid">${section.fields.map((field) => `
+                    <div class="detail-row">
+                        <div class="detail-label">${escapeHtml(field.label)}</div>
+                        <div class="detail-value">${escapeHtml(field.value)}</div>
+                    </div>
+                `).join('')}</div>`;
+
+        return `
+            <section class="packet-section keep-together">
+                <h3>${escapeHtml(section.title)}</h3>
+                ${rows}
+            </section>
+        `;
+    }).join('');
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Seller Transition Packet</title>
+    <style>
+        @page {
+            size: Letter;
+            margin: 0.65in 0.55in 0.8in 0.55in;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: #111827;
+            font-family: "Georgia", "Times New Roman", serif;
+            font-size: 11pt;
+        }
+        #packet-pdf-root { width: 100%; }
+        .packet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 12px;
+            margin-bottom: 18px;
+        }
+        .brand-left { display: flex; align-items: center; gap: 12px; }
+        .brand-mark {
+            width: 42px; height: 42px; border-radius: 8px;
+            background: ${safePrimaryColor}; color: #ffffff;
+            display: flex; align-items: center; justify-content: center; font-weight: 700;
+        }
+        .brand-name { margin: 0; font-size: 15pt; font-weight: 700; }
+        .brand-contact { margin: 0; color: #4b5563; font-size: 9.5pt; line-height: 1.3; text-align: right; }
+        .packet-title { margin: 0 0 6px; font-size: 22pt; letter-spacing: 0.02em; }
+        .address-chip {
+            background: #f3f4f6; border: 1px solid #e5e7eb;
+            border-radius: 999px; padding: 6px 12px; display: inline-block;
+            margin-bottom: 10px; font-size: 10pt;
+        }
+        .packet-section { border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+        .packet-section > h3 {
+            margin: 0; padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb; background: #f9fafb;
+            font-size: 11.5pt; font-weight: 700;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        th { text-align: left; font-size: 8.5pt; text-transform: uppercase; color: #64748b; letter-spacing: 0.04em; }
+        .utility-icon { margin-right: 8px; }
+        .utility-name { text-transform: capitalize; font-weight: 600; }
+        .muted { color: #64748b; font-size: 9pt; }
+        .meter { margin-top: 4px; font-size: 9pt; color: #1f2937; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; padding: 12px; }
+        .detail-row { border: 1px solid #eef2f7; border-radius: 8px; padding: 8px; background: #ffffff; }
+        .detail-label { color: #64748b; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px; }
+        .detail-value { font-size: 10pt; line-height: 1.35; }
+        .empty-note, .empty { color: #6b7280; text-align: center; padding: 14px; }
+        .next-steps { padding: 12px 14px 14px; margin: 0; }
+        .next-steps li { margin: 0 0 8px; }
+        .keep-together { page-break-inside: avoid; break-inside: avoid; }
+        .packet-footer {
+            margin-top: 14px; color: #6b7280; font-size: 8.5pt; text-align: center;
+            border-top: 1px solid #e5e7eb; padding-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="packet-pdf-root">
+        <header class="packet-header keep-together">
+            <div class="brand-left">
+                ${safeBrandLogoUrl
+                    ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" style="height: 42px; width: auto;" />`
+                    : `<div class="brand-mark">${escapeHtml(brand?.name ? String(brand.name).slice(0, 2).toUpperCase() : 'US')}</div>`
+                }
+                <div>
+                    <h2 class="brand-name">${safeBrandName}</h2>
+                    ${safeContactPhone ? `<p class="brand-contact" style="text-align:left;">${safeContactPhone}</p>` : ''}
+                </div>
+            </div>
+            <div>
+                ${safeContactEmail ? `<p class="brand-contact">${safeContactEmail}</p>` : ''}
+            </div>
+        </header>
+
+        <section class="keep-together" style="margin-bottom: 14px;">
+            <h1 class="packet-title">Seller Transition Packet</h1>
+            <div class="address-chip">${safeAddress}</div>
+            ${showGenerationDate ? `<div class="muted">Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</div>` : ''}
+        </section>
+
+        <section class="packet-section keep-together">
+            <h3>Utilities</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Utility</th>
+                        <th>Provider</th>
+                        <th>Contact</th>
+                    </tr>
+                </thead>
+                <tbody>${utilityRows}</tbody>
+            </table>
+        </section>
+
+        ${sectionHtml}
+
+        <section class="packet-section keep-together">
+            <h3>${nextStepsTitle}</h3>
+            <ol class="next-steps">
+                ${buyerNextSteps.map((step) => `<li>${step}</li>`).join('')}
+            </ol>
+        </section>
+
+        <footer class="packet-footer">
+            ${showPoweredBy ? 'Powered by utilitysheet.com' : ''}
+        </footer>
+    </div>
+</body>
+</html>
+    `.trim();
+
+    const filename = `seller-transition-packet-${sanitizeFilenamePart(request.property_address.split(',')[0] || '')}.pdf`;
+    const headerTemplate = `
+        <div style="width:100%; font-size:8px; color:#64748b; padding:0 0.5in; box-sizing:border-box; display:flex; justify-content:space-between;">
+            <span>${safeBrandName}</span>
+            <span>${safeAddress}</span>
+        </div>
+    `;
+    const footerTemplate = `
+        <div style="width:100%; font-size:8px; color:#64748b; padding:0 0.5in; box-sizing:border-box; display:flex; justify-content:space-between;">
+            <span>${showPoweredBy ? 'Powered by utilitysheet.com' : ''}</span>
+            <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+        </div>
+    `;
+
+    return {
+        html,
+        filename,
+        rootSelector: '#packet-pdf-root',
+        renderStrategy: 'print_pdf',
+        headerTemplate,
+        footerTemplate,
+    };
+}
+
+export function buildPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
+    if (data.mode === 'advanced') {
+        return buildAdvancedPacketPdfHtml(data);
+    }
+    return buildSimplePacketPdfHtml(data);
 }

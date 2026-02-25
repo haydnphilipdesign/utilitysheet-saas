@@ -6,6 +6,7 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { getClientIp } from '@/lib/network/client-ip';
 import { validateIntakeAddress } from '@/lib/address/intake-validation';
+import { normalizeAdvancedModules } from '@/lib/packet/modules';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -108,6 +109,7 @@ export async function POST(
 
         const organizations = await getAccountOrganizations(account.id);
         const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
+        const isPaid = account.subscription_status === 'pro' || activeOrg?.subscription_status === 'team';
 
         const normalizedAddress = normalizeAddress(parsed.data.propertyAddress);
         const cookieName = `us_intake_${slug}`;
@@ -143,6 +145,8 @@ export async function POST(
 
         const defaultBrand = await getDefaultBrandProfile(account.id, activeOrg?.id);
         const structuredPropertyAddress = await buildStructuredPropertyAddress(parsed.data.propertyAddress);
+        const packetMode = isPaid && intakeLink.default_packet_mode === 'advanced' ? 'advanced' : 'simple';
+        const advancedModules = packetMode === 'advanced' ? normalizeAdvancedModules() : [];
 
         const newRequest = await createRequest({
             accountId: account.id,
@@ -153,6 +157,8 @@ export async function POST(
             utilityCategories: UTILITY_CATEGORY_KEYS,
             status: 'draft',
             meteredAt: null,
+            packetMode,
+            advancedModules,
         });
 
         if (!newRequest) {
@@ -168,6 +174,8 @@ export async function POST(
                 source: 'intake_link',
                 slug,
                 utility_categories: UTILITY_CATEGORY_KEYS,
+                packet_mode: packetMode,
+                advanced_modules: advancedModules,
             },
             ipAddress: ipAddress === 'unknown' ? null : ipAddress,
             userAgent,

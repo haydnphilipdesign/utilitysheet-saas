@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getOrCreateAccount, getAccountOrganizations, getOrCreateIntakeLink, updateIntakeLinkSlug } from '@/lib/neon/queries';
+import {
+    getOrCreateAccount,
+    getAccountOrganizations,
+    getOrCreateIntakeLink,
+    updateIntakeLinkDefaultPacketMode,
+    updateIntakeLinkSlug,
+} from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
+import type { PacketMode } from '@/types';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -47,6 +54,7 @@ export async function GET() {
                 slug: intakeLink.slug,
                 url,
                 is_active: intakeLink.is_active,
+                defaultPacketMode: intakeLink.default_packet_mode || 'simple',
             },
             canCustomize,
             companyName: account.company_name || '',
@@ -73,22 +81,52 @@ export async function POST(request: Request) {
         const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
 
         const allowed = canCustomizeSlug(account.subscription_status, activeOrg?.subscription_status);
-        if (!allowed) {
+
+        const body = await request.json().catch(() => ({}));
+        const slug = typeof body?.slug === 'string' ? body.slug.trim() : '';
+        const defaultPacketMode = body?.defaultPacketMode as PacketMode | undefined;
+        const isModeUpdate = defaultPacketMode === 'simple' || defaultPacketMode === 'advanced';
+        const isSlugUpdate = slug.length > 0;
+
+        if (!isModeUpdate && !isSlugUpdate) {
             return NextResponse.json(
-                { error: 'Upgrade required', message: 'Custom branded links are available on Pro and Teams.' },
-                { status: 403 }
+                { error: 'Invalid request', message: 'Provide a slug and/or defaultPacketMode.' },
+                { status: 400 }
             );
         }
 
-        const body = await request.json().catch(() => ({}));
-        const slug = String(body?.slug || '').trim();
-        if (!slug) {
-            return NextResponse.json({ error: 'Invalid slug', message: 'Slug is required.' }, { status: 400 });
+        let updated = await getOrCreateIntakeLink(account.id);
+        if (!updated) {
+            return NextResponse.json({ error: 'Failed to load intake link' }, { status: 500 });
         }
 
-        const updated = await updateIntakeLinkSlug(account.id, slug);
-        if (!updated) {
-            return NextResponse.json({ error: 'Failed to update intake link' }, { status: 500 });
+        if (isSlugUpdate) {
+            if (!allowed) {
+                return NextResponse.json(
+                    { error: 'Upgrade required', message: 'Custom branded links are available on Pro and Teams.' },
+                    { status: 403 }
+                );
+            }
+            updated = await updateIntakeLinkSlug(account.id, slug);
+            if (!updated) {
+                return NextResponse.json({ error: 'Failed to update intake link slug' }, { status: 500 });
+            }
+        }
+
+        if (isModeUpdate) {
+            if (defaultPacketMode === 'advanced' && !allowed) {
+                return NextResponse.json(
+                    {
+                        error: 'Upgrade required',
+                        message: 'Advanced default mode is available on Pro and Teams.',
+                    },
+                    { status: 403 }
+                );
+            }
+            updated = await updateIntakeLinkDefaultPacketMode(account.id, defaultPacketMode);
+            if (!updated) {
+                return NextResponse.json({ error: 'Failed to update intake default mode' }, { status: 500 });
+            }
         }
 
         const baseUrl = getAppBaseUrl();
@@ -99,6 +137,7 @@ export async function POST(request: Request) {
                 slug: updated.slug,
                 url,
                 is_active: updated.is_active,
+                defaultPacketMode: updated.default_packet_mode || 'simple',
             },
         });
     } catch (error: unknown) {

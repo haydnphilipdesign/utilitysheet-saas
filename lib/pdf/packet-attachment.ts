@@ -67,10 +67,12 @@ async function resolveLaunchOptions(): Promise<{
 
 async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: string; content: Buffer }> {
     const render = buildPacketPdfHtml(data);
+    const renderer = render.renderStrategy === 'print_pdf' ? 'advanced_renderer' : 'simple_renderer';
     const launchOptions = await resolveLaunchOptions();
     console.log('[pdf][packet_attachment] launch_options', {
         strategy: launchOptions.strategy,
         headless: launchOptions.headless,
+        renderer,
     });
 
     const browser = await puppeteer.launch({
@@ -100,6 +102,27 @@ async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: s
                 });
             }));
         });
+
+        if (render.renderStrategy === 'print_pdf') {
+            const pdfBuffer = await page.pdf({
+                format: 'letter',
+                printBackground: true,
+                displayHeaderFooter: true,
+                headerTemplate: render.headerTemplate || '<div></div>',
+                footerTemplate: render.footerTemplate || '<div></div>',
+                margin: {
+                    top: '48px',
+                    bottom: '56px',
+                    left: '16px',
+                    right: '16px',
+                },
+            });
+
+            return {
+                filename: render.filename,
+                content: Buffer.from(pdfBuffer),
+            };
+        }
 
         const root = await page.$(render.rootSelector);
         if (!root) {

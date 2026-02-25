@@ -6,6 +6,7 @@ import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { createRequestBodySchema } from '@/lib/validation/schemas';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
+import { normalizeAdvancedModules } from '@/lib/packet/modules';
 
 function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
@@ -105,10 +106,26 @@ export async function POST(request: Request) {
         }
         const accountId = account.id;
         const organizationId = account.active_organization_id;
+        const organization = organizationId ? await getOrganizationById(organizationId) : null;
+        const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
         const selectedUtilityCategories = parsedBody.data.utilityCategories
             ? UTILITY_CATEGORY_KEYS.filter((c) => parsedBody.data.utilityCategories!.includes(c))
             : UTILITY_CATEGORY_KEYS;
+        const packetMode = parsedBody.data.packetMode || 'simple';
+        const advancedModules = packetMode === 'advanced'
+            ? normalizeAdvancedModules(parsedBody.data.advancedModules)
+            : [];
+
+        if (packetMode === 'advanced' && !isPaid) {
+            return NextResponse.json(
+                {
+                    error: 'Upgrade required',
+                    message: 'Advanced Seller Transition Packets are available on Pro and Teams.',
+                },
+                { status: 403 }
+            );
+        }
 
         const isDemoRequest = parsedBody.data.isDemo === true;
 
@@ -164,6 +181,8 @@ export async function POST(request: Request) {
             closingDate: parsedBody.data.closingDate,
             utilityCategories: selectedUtilityCategories,
             isDemo: isDemoRequest,
+            packetMode,
+            advancedModules,
         });
 
         if (!newRequest) {
@@ -188,6 +207,8 @@ export async function POST(request: Request) {
                 has_seller_email: !!parsedBody.data.sellerEmail,
                 send_seller_email: parsedBody.data.sendSellerEmail !== false,
                 is_demo: isDemoRequest,
+                packet_mode: packetMode,
+                advanced_modules: advancedModules,
             },
             ipAddress,
             userAgent,

@@ -3,25 +3,36 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, useReducedMotion } from 'framer-motion';
 import { SellerLayout } from './SellerLayout';
-import { UtilityCategory, ProviderSuggestion, WaterSource, SewerType, HeatingType } from '@/types';
+import type {
+    AdvancedModuleKey,
+    AdvancedPacketData,
+    HeatingType,
+    PacketMode,
+    ProviderSuggestion,
+    SewerType,
+    UtilityCategory,
+    WaterSource,
+} from '@/types';
 import { WelcomeStep } from './steps/WelcomeStep';
 import { HomeBasicsStep } from './steps/HomeBasicsStep';
 import { UtilityStep } from './steps/UtilityStep';
-
+import { AdvancedDetailsStep } from './steps/AdvancedDetailsStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { SuccessStep } from './steps/SuccessStep';
 import { trackEvent } from '@/lib/analytics/events';
 import { toast } from 'sonner';
 
-// Define the full form state structure locally for the wizard
 export interface WizardState {
     water_source: WaterSource;
     sewer_type: SewerType;
-    heating_type: HeatingType; // Kept for backward compat, but we'll focus on primary_heating_type
+    heating_type: HeatingType;
     fuels_present: string[];
     primary_heating_type: string | null;
     trash_handled_by: 'municipal' | 'private' | 'not_sure';
     optional_utilities: UtilityCategory[];
+    packet_mode: PacketMode;
+    advanced_modules: AdvancedModuleKey[];
+    advanced: AdvancedPacketData;
     utilities: Record<UtilityCategory, UtilityWizardState>;
 }
 
@@ -33,7 +44,7 @@ export interface UtilityWizardState {
     hidden: boolean;
     contact_phone?: string | null;
     contact_url?: string | null;
-    extra?: Record<string, any>;
+    extra?: Record<string, unknown>;
 }
 
 interface BrandProfile {
@@ -50,6 +61,9 @@ interface SellerWizardProps {
         property_address: string;
         utility_categories: UtilityCategory[];
         collect_electric_meter_number?: boolean;
+        packet_mode?: PacketMode;
+        advanced_modules?: AdvancedModuleKey[];
+        advanced_packet_data?: AdvancedPacketData;
     };
     initialSuggestions: Record<UtilityCategory, ProviderSuggestion[]>;
     token: string;
@@ -58,41 +72,42 @@ interface SellerWizardProps {
 }
 
 export function SellerWizard({ initialRequestData, initialSuggestions, token, brandProfile, isDemo = false }: SellerWizardProps) {
-    // Steps definition
     enum Step {
         WELCOME = 0,
         HOME_BASICS = 1,
         UTILITIES = 2,
-        REVIEW = 3,
-        SUCCESS = 4
+        ADVANCED_DETAILS = 3,
+        REVIEW = 4,
+        SUCCESS = 5,
     }
 
     const [currentStep, setCurrentStep] = useState<Step>(Step.WELCOME);
-    const [utilityIndex, setUtilityIndex] = useState(0); // For iterating through utility providers
+    const [utilityIndex, setUtilityIndex] = useState(0);
     const [submitting, setSubmitting] = useState(false);
     const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
     const shouldReduceMotion = useReducedMotion();
     const collectElectricMeterNumber = initialRequestData.collect_electric_meter_number !== false;
+    const requestPacketMode: PacketMode = initialRequestData.packet_mode || 'simple';
+    const requestAdvancedModules = initialRequestData.advanced_modules || [];
 
-    // Initialize state
-    const [state, setState] = useState<WizardState>(() => {
-        return {
-            water_source: 'not_sure',
-            sewer_type: 'not_sure',
-            heating_type: 'not_sure',
-            fuels_present: [],
-            primary_heating_type: null,
-            trash_handled_by: 'not_sure',
-            optional_utilities: [],
-            utilities: {} as Record<UtilityCategory, UtilityWizardState>
-        };
-    });
+    const [state, setState] = useState<WizardState>(() => ({
+        water_source: 'not_sure',
+        sewer_type: 'not_sure',
+        heating_type: 'not_sure',
+        fuels_present: [],
+        primary_heating_type: null,
+        trash_handled_by: 'not_sure',
+        optional_utilities: [],
+        packet_mode: requestPacketMode,
+        advanced_modules: requestAdvancedModules,
+        advanced: initialRequestData.advanced_packet_data || {},
+        utilities: {} as Record<UtilityCategory, UtilityWizardState>,
+    }));
 
     const [visibleUtilities, setVisibleUtilities] = useState<UtilityCategory[]>([]);
-
-    // Persist draft progress locally so refresh/back doesn't lose work.
-    // (This is client-side only; no PII is sent anywhere.)
+    const enabledAdvancedModules = state.packet_mode === 'advanced' ? state.advanced_modules : [];
+    const hasAdvancedStep = enabledAdvancedModules.length > 0;
     const draftStorageKey = `us_seller_draft:${token}`;
 
     useEffect(() => {
@@ -142,7 +157,6 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         return () => clearTimeout(timeout);
     }, [draftStorageKey, state, currentStep, utilityIndex, isDemo]);
 
-    // Lazy-load suggestions as needed (prefetch current + next)
     useEffect(() => {
         if (isDemo) return;
         if (currentStep !== Step.HOME_BASICS && currentStep !== Step.UTILITIES) return;
@@ -197,65 +211,53 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         })();
     }, [currentStep, utilityIndex, visibleUtilities, token, isDemo, suggestionsByCategory, loadingSuggestions]);
 
-    // Calculate visible utilities based on state
     useEffect(() => {
         const requestedCategories = new Set<UtilityCategory>(initialRequestData.utility_categories);
+        const nextUtilities: UtilityCategory[] = ['electric'];
 
-        const nextUtilities: UtilityCategory[] = ['electric']; // Always include electric
-
-        // Water - if public (city)
         if (requestedCategories.has('water') && state.water_source === 'city') {
             nextUtilities.push('water');
         }
-
-        // Sewer - if public
         if (requestedCategories.has('sewer') && state.sewer_type === 'public') {
             nextUtilities.push('sewer');
         }
 
-        // Fuels
         const fuelMap: Record<string, UtilityCategory> = {
-            'natural_gas': 'gas',
-            'propane': 'propane',
-            'oil': 'oil'
+            natural_gas: 'gas',
+            propane: 'propane',
+            oil: 'oil',
         };
 
-        state.fuels_present.forEach(fuel => {
+        state.fuels_present.forEach((fuel) => {
             const mapped = fuelMap[fuel];
             if (mapped && requestedCategories.has(mapped)) {
                 nextUtilities.push(mapped);
             }
         });
 
-        // Preserve utilities from initial request that aren't dynamically determined
-        // This includes: trash, internet, cable, and any other non-conditional utilities
         const preservedCategories: UtilityCategory[] = ['trash', 'internet', 'cable'];
-        preservedCategories.forEach(cat => {
+        preservedCategories.forEach((cat) => {
             if (requestedCategories.has(cat) && state.optional_utilities.includes(cat)) {
                 nextUtilities.push(cat);
             }
         });
 
-        // Remove duplicates and set
         const uniqueUtils = Array.from(new Set(nextUtilities));
-
-        // Update visible utilities
         setVisibleUtilities(uniqueUtils);
 
-        // Ensure state exists for all visible utilities
-        setState(prev => {
+        setState((prev) => {
             const nextUtilitiesState = { ...prev.utilities };
             const visibleSet = new Set(uniqueUtils);
             let hasChanges = false;
 
-            uniqueUtils.forEach(cat => {
+            uniqueUtils.forEach((cat) => {
                 if (!nextUtilitiesState[cat]) {
                     nextUtilitiesState[cat] = {
                         entry_mode: null,
                         display_name: null,
                         raw_text: null,
                         meter_number: null,
-                        hidden: false
+                        hidden: false,
                     };
                     hasChanges = true;
                 } else if (nextUtilitiesState[cat].hidden) {
@@ -274,7 +276,6 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
             return hasChanges ? { ...prev, utilities: nextUtilitiesState } : prev;
         });
-
     }, [state.water_source, state.sewer_type, state.fuels_present, state.optional_utilities, initialRequestData.utility_categories]);
 
     useEffect(() => {
@@ -291,6 +292,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         } else if (currentStep === Step.UTILITIES) {
             const currentCategory = visibleUtilities[utilityIndex];
             stepLabel = currentCategory ? `utility_${currentCategory}` : 'utilities';
+        } else if (currentStep === Step.ADVANCED_DETAILS) {
+            stepLabel = 'advanced_details';
         } else if (currentStep === Step.REVIEW) {
             stepLabel = 'review';
         } else if (currentStep === Step.SUCCESS) {
@@ -300,18 +303,18 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         trackEvent('seller_step_viewed', {
             step: stepLabel,
             location: isDemo ? 'demo_seller_flow' : 'seller_flow',
+            packet_mode: state.packet_mode,
         });
-    }, [currentStep, isDemo, utilityIndex, visibleUtilities]);
+    }, [currentStep, isDemo, utilityIndex, visibleUtilities, state.packet_mode]);
 
     const totalUtilities = visibleUtilities.length;
-    // Simplify progress: Welcome(0.5) + Basics(1) + Each Util(1) + Review(1)
-    const totalStepsWeight = 1.5 + totalUtilities + 1;
+    const totalStepsWeight = 1.5 + totalUtilities + (hasAdvancedStep ? 1 : 0) + 1;
     let currentProgressWeight = 0;
-
     if (currentStep > Step.WELCOME) currentProgressWeight += 0.5;
     if (currentStep > Step.HOME_BASICS) currentProgressWeight += 1;
     if (currentStep === Step.UTILITIES) currentProgressWeight += utilityIndex;
     if (currentStep > Step.UTILITIES) currentProgressWeight += totalUtilities;
+    if (hasAdvancedStep && currentStep > Step.ADVANCED_DETAILS) currentProgressWeight += 1;
     if (currentStep > Step.REVIEW) currentProgressWeight += 1;
 
     const progress = Math.min((currentProgressWeight / totalStepsWeight) * 100, 100);
@@ -324,12 +327,14 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             setUtilityIndex(0);
         } else if (currentStep === Step.UTILITIES) {
             if (utilityIndex < visibleUtilities.length - 1) {
-                setUtilityIndex(prev => prev + 1);
+                setUtilityIndex((prev) => prev + 1);
+            } else if (hasAdvancedStep) {
+                setCurrentStep(Step.ADVANCED_DETAILS);
             } else {
                 setCurrentStep(Step.REVIEW);
             }
-        } else if (currentStep === Step.REVIEW) {
-            // Wait for submit
+        } else if (currentStep === Step.ADVANCED_DETAILS) {
+            setCurrentStep(Step.REVIEW);
         }
     };
 
@@ -338,13 +343,20 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             setCurrentStep(Step.WELCOME);
         } else if (currentStep === Step.UTILITIES) {
             if (utilityIndex > 0) {
-                setUtilityIndex(prev => prev - 1);
+                setUtilityIndex((prev) => prev - 1);
             } else {
                 setCurrentStep(Step.HOME_BASICS);
             }
-        } else if (currentStep === Step.REVIEW) {
+        } else if (currentStep === Step.ADVANCED_DETAILS) {
             setCurrentStep(Step.UTILITIES);
-            setUtilityIndex(visibleUtilities.length - 1);
+            setUtilityIndex(Math.max(0, visibleUtilities.length - 1));
+        } else if (currentStep === Step.REVIEW) {
+            if (hasAdvancedStep) {
+                setCurrentStep(Step.ADVANCED_DETAILS);
+            } else {
+                setCurrentStep(Step.UTILITIES);
+                setUtilityIndex(Math.max(0, visibleUtilities.length - 1));
+            }
         }
     };
 
@@ -352,27 +364,36 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         setCurrentStep(Step.HOME_BASICS);
     };
 
-    const updateUtilityState = (cat: UtilityCategory, updates: any) => {
-        setState(prev => ({
+    const updateUtilityState = (cat: UtilityCategory, updates: Partial<UtilityWizardState>) => {
+        setState((prev) => ({
             ...prev,
             utilities: {
                 ...prev.utilities,
-                [cat]: { ...prev.utilities[cat], ...updates }
-            }
+                [cat]: { ...prev.utilities[cat], ...updates },
+            },
+        }));
+    };
+
+    const updateAdvanced = (updates: Partial<AdvancedPacketData>) => {
+        setState((prev) => ({
+            ...prev,
+            advanced: {
+                ...prev.advanced,
+                ...updates,
+            },
         }));
     };
 
     const handleSubmit = async () => {
         setSubmitting(true);
 
-        // In demo mode, skip the API call and go straight to success
         if (isDemo) {
-            // Small delay to simulate submission
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 500));
             trackEvent('seller_submitted', {
                 source: 'seller_flow',
                 utility_count: visibleUtilities.length,
                 location: 'demo_seller_flow',
+                packet_mode: state.packet_mode,
             });
             setCurrentStep(Step.SUCCESS);
             return;
@@ -395,6 +416,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     source: 'seller_flow',
                     utility_count: visibleUtilities.length,
                     location: 'seller_flow',
+                    packet_mode: state.packet_mode,
                 });
                 setCurrentStep(Step.SUCCESS);
             } else {
@@ -421,9 +443,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 switch (currentStep) {
                     case Step.WELCOME: return 'Welcome';
                     case Step.HOME_BASICS: return 'Home Basics';
-                    case Step.UTILITIES:
+                    case Step.UTILITIES: {
                         const cat = visibleUtilities[utilityIndex];
                         return cat ? `${cat.charAt(0).toUpperCase() + cat.slice(1)} Provider` : 'Utilities';
+                    }
+                    case Step.ADVANCED_DETAILS: return 'Transition Details';
                     case Step.REVIEW: return 'Review';
                     case Step.SUCCESS: return 'Done';
                     default: return 'Progress';
@@ -446,7 +470,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     <HomeBasicsStep
                         key="basics"
                         state={state}
-                        updateState={(updates) => setState(prev => ({ ...prev, ...updates }))}
+                        updateState={(updates) => setState((prev) => ({ ...prev, ...updates }))}
                         requestedUtilityCategories={initialRequestData.utility_categories}
                         onNext={handleNext}
                     />
@@ -468,6 +492,17 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     />
                 )}
 
+                {currentStep === Step.ADVANCED_DETAILS && (
+                    <AdvancedDetailsStep
+                        key="advanced-details"
+                        modules={enabledAdvancedModules}
+                        advanced={state.advanced}
+                        updateAdvanced={updateAdvanced}
+                        onBack={handleBack}
+                        onNext={handleNext}
+                    />
+                )}
+
                 {currentStep === Step.REVIEW && (
                     <ReviewStep
                         key="review"
@@ -483,6 +518,9 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         collectElectricMeterNumber={collectElectricMeterNumber}
                         onSubmit={handleSubmit}
                         submitting={submitting}
+                        packetMode={state.packet_mode}
+                        advancedModules={enabledAdvancedModules}
+                        advancedData={state.advanced}
                     />
                 )}
 
@@ -492,22 +530,9 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         isDemo={isDemo}
                         demoData={isDemo ? {
                             address: initialRequestData.property_address,
-                            state: state
+                            state,
                         } : undefined}
                     />
-                )}
-
-                {/* Fallback */}
-                {currentStep > Step.SUCCESS && (
-                    <div className="text-foreground text-center pt-20">
-                        <p>Something went wrong.</p>
-                        <button
-                            onClick={() => setCurrentStep(Step.WELCOME)}
-                            className="mt-4 px-4 py-2 bg-secondary rounded-lg text-sm"
-                        >
-                            Back to Start
-                        </button>
-                    </div>
                 )}
             </AnimatePresence>
         </SellerLayout>

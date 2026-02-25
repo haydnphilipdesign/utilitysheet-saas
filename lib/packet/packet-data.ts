@@ -7,9 +7,10 @@ import {
     getRequestByToken,
     getUtilityEntriesByRequestId,
 } from '@/lib/neon/queries';
-import type { Request } from '@/types';
+import type { AdvancedModuleKey, PacketMode, Request } from '@/types';
+import { ADVANCED_MODULE_LABELS, normalizeAdvancedModules } from '@/lib/packet/modules';
 
-export const PACKET_LOCKED_MESSAGE = 'This utility info sheet is locked. Ask the agent to upgrade to view it.';
+export const PACKET_LOCKED_MESSAGE = 'This seller packet is locked. Ask the agent to upgrade to view it.';
 
 export interface PacketRequestData {
     id: string;
@@ -45,12 +46,26 @@ export interface PacketUtilityData {
 }
 
 export interface PacketDataPayload {
+    mode: PacketMode;
     request: PacketRequestData;
     brand: PacketBrandData | null;
     utilities: PacketUtilityData[];
+    advanced_sections?: PacketAdvancedSection[];
     meta: {
         show_powered_by: boolean;
     };
+}
+
+export interface PacketAdvancedField {
+    key: string;
+    label: string;
+    value: string;
+}
+
+export interface PacketAdvancedSection {
+    key: AdvancedModuleKey;
+    title: string;
+    fields: PacketAdvancedField[];
 }
 
 export type PacketDataResult =
@@ -64,6 +79,9 @@ type RequestWithPacketFields = Request & {
     water_source?: string | null;
     sewer_type?: string | null;
     heating_type?: string | null;
+    packet_mode?: PacketMode | null;
+    advanced_modules?: AdvancedModuleKey[] | null;
+    advanced_packet_data?: Record<string, unknown> | null;
 };
 
 type RawUtilityRow = {
@@ -104,6 +122,58 @@ function normalizeSteps(value: unknown): string[] | null {
     }
 
     return null;
+}
+
+function normalizeObject(value: unknown): Record<string, unknown> {
+    if (!value) return {};
+    if (typeof value === 'object' && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                return parsed as Record<string, unknown>;
+            }
+        } catch {
+            // ignore
+        }
+    }
+    return {};
+}
+
+function toLabel(key: string): string {
+    return key
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+function normalizeAdvancedSections(
+    modules: AdvancedModuleKey[],
+    data: Record<string, unknown>
+): PacketAdvancedSection[] {
+    return modules.map((moduleKey) => {
+        const sectionData = normalizeObject(data[moduleKey]);
+        const fields: PacketAdvancedField[] = Object.entries(sectionData)
+            .flatMap(([key, raw]) => {
+                if (raw === null || raw === undefined) return [];
+                const value = Array.isArray(raw) ? raw.join(', ') : String(raw).trim();
+                if (!value) return [];
+                return [{
+                    key,
+                    label: toLabel(key),
+                    value,
+                }];
+            });
+
+        return {
+            key: moduleKey,
+            title: ADVANCED_MODULE_LABELS[moduleKey],
+            fields,
+        };
+    });
 }
 
 async function buildPacketDataFromRequest(requestData: Request): Promise<PacketDataResult> {
@@ -161,9 +231,19 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
         meter_number: utility.meter_number || null,
     }));
 
+    const mode: PacketMode = requestWithPacketFields.packet_mode === 'advanced' ? 'advanced' : 'simple';
+    const advancedModules = mode === 'advanced'
+        ? normalizeAdvancedModules(requestWithPacketFields.advanced_modules as string[] | undefined)
+        : [];
+    const advancedPacketData = normalizeObject(requestWithPacketFields.advanced_packet_data);
+    const advancedSections = mode === 'advanced'
+        ? normalizeAdvancedSections(advancedModules, advancedPacketData)
+        : [];
+
     return {
         status: 'ok',
         data: {
+            mode,
             request: {
                 id: requestData.id,
                 property_address: requestData.property_address,
@@ -174,6 +254,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
             },
             brand: publicBrandProfile,
             utilities,
+            advanced_sections: advancedSections,
             meta: {
                 show_powered_by: forceShowPoweredBy,
             },

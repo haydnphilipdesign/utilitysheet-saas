@@ -21,6 +21,57 @@ export type UtilityCategory =
     | 'propane'
     | 'oil';
 
+export type PacketMode = 'simple' | 'advanced';
+
+export type AdvancedModuleKey =
+    | 'lawn_exterior'
+    | 'irrigation_seasonal_controls'
+    | 'mailbox_access'
+    | 'smart_home_security'
+    | 'service_providers';
+
+export type AdvancedPacketData = {
+    lawn_exterior?: {
+        lawn_care_provider_name?: string | null;
+        lawn_care_provider_phone?: string | null;
+        lawn_care_provider_email?: string | null;
+        snow_removal_provider_name?: string | null;
+        snow_removal_provider_phone?: string | null;
+        lawn_exterior_notes?: string | null;
+    } | null;
+    irrigation_seasonal_controls?: {
+        has_irrigation_system?: 'yes' | 'no' | 'not_sure' | null;
+        irrigation_provider_name?: string | null;
+        irrigation_provider_phone?: string | null;
+        watering_days?: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'> | null;
+        irrigation_season_start_month?: string | null;
+        irrigation_season_end_month?: string | null;
+        irrigation_notes?: string | null;
+    } | null;
+    mailbox_access?: {
+        mailbox_number?: string | null;
+        mailbox_location?: string | null;
+        parking_instructions?: string | null;
+        breaker_box_location?: string | null;
+        main_water_shutoff_location?: string | null;
+    } | null;
+    smart_home_security?: {
+        security_system_brand?: string | null;
+        smart_thermostat_brand?: string | null;
+        smart_doorbell_brand?: string | null;
+        smart_home_notes?: string | null;
+    } | null;
+    service_providers?: {
+        hvac_provider_name?: string | null;
+        hvac_provider_phone?: string | null;
+        pest_control_provider_name?: string | null;
+        pest_control_provider_phone?: string | null;
+        plumber_provider_name?: string | null;
+        plumber_provider_phone?: string | null;
+        service_provider_notes?: string | null;
+    } | null;
+};
+
 export type WaterSource = 'city' | 'well' | 'hoa' | 'not_sure';
 export type SewerType = 'public' | 'septic' | 'hoa' | 'not_sure';
 export type HeatingType = 'natural_gas' | 'propane' | 'oil' | 'electric' | 'not_sure';
@@ -186,6 +237,9 @@ export interface Request {
     water_source?: WaterSource | null;
     sewer_type?: SewerType | null;
     heating_type?: HeatingType | null;
+    packet_mode?: PacketMode | null;
+    advanced_modules?: AdvancedModuleKey[] | null;
+    advanced_packet_data?: AdvancedPacketData | null;
     metered_at?: string | null;
     is_locked?: boolean | null;
     locked_reason?: string | null;
@@ -302,6 +356,8 @@ export interface CreateRequestFormData {
     closing_date?: string;
     brand_profile_id?: string;
     utility_categories: UtilityCategory[];
+    packet_mode?: PacketMode;
+    advanced_modules?: AdvancedModuleKey[];
 }
 
 // Brand Profile Form

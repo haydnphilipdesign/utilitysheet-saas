@@ -7,8 +7,37 @@ import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
+import { normalizeAdvancedModules } from '@/lib/packet/modules';
+import type { AdvancedModuleKey, PacketMode, Request as StoredRequest } from '@/types';
 
 export const runtime = 'nodejs';
+
+type SellerRequestRecord = StoredRequest & {
+    utility_categories?: string[] | null;
+    packet_mode?: PacketMode | null;
+    advanced_modules?: AdvancedModuleKey[] | null;
+    advanced_packet_data?: Record<string, unknown> | null;
+    metered_at?: string | null;
+    is_locked?: boolean | null;
+};
+
+type SellerUtilityExtra = {
+    tank?: string | null;
+    auto_delivery?: string | null;
+    trash_type?: string | null;
+    notes?: string | null;
+};
+
+type SellerUtilityEntryInput = {
+    entry_mode: string | null;
+    display_name?: string | null;
+    raw_text?: string | null;
+    hidden?: boolean | null;
+    contact_phone?: string | null;
+    contact_url?: string | null;
+    meter_number?: string | null;
+    extra?: SellerUtilityExtra | null;
+};
 
 // GET /api/seller/[token] - Get request data for seller form
 export async function GET(
@@ -24,6 +53,7 @@ export async function GET(
         if (!requestData) {
             return NextResponse.json({ error: 'Request not found' }, { status: 404 });
         }
+        const requestRecord = requestData as SellerRequestRecord;
 
         // Enforce seller-token access when available (prevents packet token from granting write-side access)
         if (requestData.seller_token && requestData.seller_token !== requestData.public_token) {
@@ -85,7 +115,7 @@ export async function GET(
 
         // Get AI suggestions for each category
         const utilityCategories =
-            (requestData as any).utility_categories ||
+            requestRecord.utility_categories ||
             UTILITY_CATEGORY_KEYS;
 
         return NextResponse.json({
@@ -94,6 +124,11 @@ export async function GET(
                 utility_categories: utilityCategories,
                 collect_electric_meter_number: collectElectricMeterNumber,
                 status: requestData.status,
+                packet_mode: requestRecord.packet_mode || 'simple',
+                advanced_modules: requestRecord.packet_mode === 'advanced'
+                    ? normalizeAdvancedModules(requestRecord.advanced_modules || [])
+                    : [],
+                advanced_packet_data: requestRecord.advanced_packet_data || {},
             },
             brandProfile: publicBrandProfile,
             suggestions: {},
@@ -141,6 +176,7 @@ export async function POST(
         if (!requestData) {
             return NextResponse.json({ error: 'Request not found' }, { status: 404 });
         }
+        const requestRecord = requestData as SellerRequestRecord;
 
         // Enforce seller-token access when available (prevents packet token from granting write-side access)
         if (requestData.seller_token && requestData.seller_token !== requestData.public_token) {
@@ -170,7 +206,7 @@ export async function POST(
 
         // Only apply free-plan overage locking for requests that have not yet been metered.
         // (Agent-created requests are metered on creation and quota-checked on creation.)
-        const isUnmetered = (requestData as unknown as { metered_at?: unknown }).metered_at == null;
+        const isUnmetered = requestRecord.metered_at == null;
         let shouldLock = false;
         if (!isPaid && isUnmetered) {
             const usage = await getMonthlyUsage(requestData.account_id, requestData.organization_id ?? undefined);
@@ -179,11 +215,18 @@ export async function POST(
             }
         }
 
-        const accessLocked = (Boolean((requestData as unknown as { is_locked?: unknown }).is_locked) || shouldLock) && !isPaid;
+        const accessLocked = (Boolean(requestRecord.is_locked) || shouldLock) && !isPaid;
 
         const requestedCategories = new Set<string>(
-            (requestData as any).utility_categories || UTILITY_CATEGORY_KEYS
+            requestRecord.utility_categories || UTILITY_CATEGORY_KEYS
         );
+        const packetMode = requestRecord.packet_mode === 'advanced' ? 'advanced' : 'simple';
+        const configuredAdvancedModules = packetMode === 'advanced'
+            ? normalizeAdvancedModules(requestRecord.advanced_modules || [])
+            : [];
+        const advancedPacketData = packetMode === 'advanced'
+            ? (parsedBody.data.advanced || {})
+            : {};
 
         // Update request with applicability info
         await sql`
@@ -191,6 +234,7 @@ export async function POST(
             water_source = ${parsedBody.data.water_source || null},
             sewer_type = ${parsedBody.data.sewer_type || null},
             heating_type = ${parsedBody.data.primary_heating_type || null},
+            advanced_packet_data = ${JSON.stringify(advancedPacketData)}::jsonb,
             status = 'submitted',
             last_activity_at = NOW(),
             metered_at = COALESCE(metered_at, NOW()),
@@ -212,16 +256,7 @@ export async function POST(
                 continue;
             }
 
-            const e = entry as {
-                entry_mode: string;
-                display_name?: string;
-                raw_text?: string;
-                hidden?: boolean;
-                contact_phone?: string;
-                contact_url?: string;
-                meter_number?: string | null;
-                extra?: any
-            };
+            const e = entry as SellerUtilityEntryInput;
             // Persist entry if not hidden - use 'unknown' if entry_mode is null
             if (!e.hidden) {
                 const finalEntryMode = e.entry_mode || 'unknown';
@@ -300,7 +335,11 @@ export async function POST(
         await createEventLog({
             requestId: requestData.id,
             eventType: 'seller_submitted',
-            eventData: parsedBody.data,
+            eventData: {
+                ...parsedBody.data,
+                packet_mode: packetMode,
+                advanced_modules: configuredAdvancedModules,
+            },
             ipAddress,
             userAgent,
         });

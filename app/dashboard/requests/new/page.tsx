@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,8 +30,9 @@ import {
     Plus,
     CheckCircle2,
 } from 'lucide-react';
-import type { BrandProfile, UtilityCategory } from '@/types';
+import type { AdvancedModuleKey, BrandProfile, PacketMode, UtilityCategory } from '@/types';
 import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import { ADVANCED_MODULE_DEFAULTS, ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { DEFAULT_MESSAGE_TEMPLATES, firstNameFromFullName, renderTemplate } from '@/lib/message-templates';
@@ -45,6 +45,8 @@ interface FormData {
     seller_phone: string;
     closing_date: string;
     utility_categories: UtilityCategory[];
+    packet_mode: PacketMode;
+    advanced_modules: AdvancedModuleKey[];
     brand_profile_id: string;
     send_seller_email: boolean;
 }
@@ -56,6 +58,8 @@ const initialFormData: FormData = {
     seller_phone: '',
     closing_date: '',
     utility_categories: UTILITY_CATEGORY_KEYS,
+    packet_mode: 'simple',
+    advanced_modules: [...ADVANCED_MODULE_DEFAULTS],
     brand_profile_id: '',
     send_seller_email: true,
 };
@@ -205,6 +209,15 @@ export default function NewRequestPage() {
         }));
     };
 
+    const toggleAdvancedModule = (moduleKey: AdvancedModuleKey) => {
+        setFormData((prev) => ({
+            ...prev,
+            advanced_modules: prev.advanced_modules.includes(moduleKey)
+                ? prev.advanced_modules.filter((m) => m !== moduleKey)
+                : [...prev.advanced_modules, moduleKey],
+        }));
+    };
+
     const handleCreate = async () => {
         setLoading(true);
         try {
@@ -215,6 +228,8 @@ export default function NewRequestPage() {
                 sellerPhone: formData.seller_phone || undefined,
                 closingDate: formData.closing_date || undefined,
                 utilityCategories: formData.utility_categories,
+                packetMode: formData.packet_mode,
+                advancedModules: formData.packet_mode === 'advanced' ? formData.advanced_modules : [],
                 brandProfileId: formData.brand_profile_id || undefined,
                 sendSellerEmail: formData.send_seller_email,
             };
@@ -315,7 +330,8 @@ export default function NewRequestPage() {
     };
 
     const isStep1Valid = formData.property_address.length >= 5;
-    const isStep3Valid = formData.utility_categories.length > 0;
+    const isStep3Valid = formData.utility_categories.length > 0
+        && (formData.packet_mode === 'simple' || formData.advanced_modules.length > 0);
 
     // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -795,6 +811,97 @@ export default function NewRequestPage() {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+                                    <Label className="text-foreground">Packet Mode</Label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                updateField('packet_mode', 'simple');
+                                                trackEvent('packet_mode_selected', {
+                                                    mode: 'simple',
+                                                    location: 'new_request',
+                                                });
+                                            }}
+                                            className={`text-left rounded-lg border p-3 transition-colors ${
+                                                formData.packet_mode === 'simple'
+                                                    ? 'border-emerald-500/60 bg-emerald-500/10'
+                                                    : 'border-border hover:border-input'
+                                            }`}
+                                        >
+                                            <p className="text-sm font-semibold text-foreground">Simple Utility Sheet</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Fast, single-page output</p>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (!isPro) {
+                                                    setShowUpgradeDialog(true);
+                                                    return;
+                                                }
+                                                updateField('packet_mode', 'advanced');
+                                                if (formData.advanced_modules.length === 0) {
+                                                    updateField('advanced_modules', [...ADVANCED_MODULE_DEFAULTS]);
+                                                }
+                                                trackEvent('packet_mode_selected', {
+                                                    mode: 'advanced',
+                                                    location: 'new_request',
+                                                });
+                                            }}
+                                            className={`text-left rounded-lg border p-3 transition-colors ${
+                                                formData.packet_mode === 'advanced'
+                                                    ? 'border-emerald-500/60 bg-emerald-500/10'
+                                                    : 'border-border hover:border-input'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="text-sm font-semibold text-foreground">Advanced Seller Packet</p>
+                                                {!isPro && <Badge variant="outline">Pro / Teams</Badge>}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-1">Modular multi-page transition packet</p>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {formData.packet_mode === 'advanced' && (
+                                    <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-foreground">Advanced Modules</Label>
+                                            <span className="text-xs text-muted-foreground">{formData.advanced_modules.length} enabled</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {Object.entries(ADVANCED_MODULE_LABELS).map(([moduleKey, moduleLabel]) => {
+                                                const typedModuleKey = moduleKey as AdvancedModuleKey;
+                                                const isEnabled = formData.advanced_modules.includes(typedModuleKey);
+                                                return (
+                                                    <button
+                                                        key={typedModuleKey}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            toggleAdvancedModule(typedModuleKey);
+                                                            trackEvent('advanced_module_toggled', {
+                                                                module: typedModuleKey,
+                                                                enabled: !isEnabled,
+                                                                location: 'new_request',
+                                                            });
+                                                        }}
+                                                        className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                                                            isEnabled
+                                                                ? 'border-emerald-500/60 bg-emerald-500/10'
+                                                                : 'border-border hover:border-input'
+                                                        }`}
+                                                    >
+                                                        <p className="text-sm text-foreground">{moduleLabel}</p>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {formData.advanced_modules.length === 0 && (
+                                            <p className="text-xs text-amber-500">Enable at least one module for Advanced mode.</p>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="flex items-center justify-between pb-2 border-b border-border">
                                     <span className="text-sm text-muted-foreground">
                                         {formData.utility_categories.length} of {UTILITY_CATEGORIES.length} selected

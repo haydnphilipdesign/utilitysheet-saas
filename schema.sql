@@ -78,6 +78,11 @@ CREATE TABLE IF NOT EXISTS brand_profiles (
     disclaimer_text TEXT,
     message_templates JSONB DEFAULT '{}'::jsonb,
     is_default BOOLEAN DEFAULT FALSE,
+    buyer_next_steps JSONB DEFAULT NULL,
+    next_steps_title TEXT DEFAULT NULL,
+    show_powered_by BOOLEAN DEFAULT TRUE,
+    show_generation_date BOOLEAN DEFAULT TRUE,
+    welcome_message TEXT DEFAULT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -94,6 +99,9 @@ CREATE TABLE IF NOT EXISTS requests (
     seller_phone TEXT,
     closing_date DATE,
     status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'in_progress', 'submitted')),
+    packet_mode TEXT NOT NULL DEFAULT 'simple' CHECK (packet_mode IN ('simple', 'advanced')),
+    advanced_modules TEXT[] NOT NULL DEFAULT '{}'::text[],
+    advanced_packet_data JSONB NOT NULL DEFAULT '{}'::jsonb,
     public_token TEXT UNIQUE NOT NULL,
     seller_token TEXT UNIQUE NOT NULL,
     utility_categories TEXT[] DEFAULT ARRAY['electric', 'gas', 'water', 'sewer', 'trash'],
@@ -116,6 +124,7 @@ CREATE TABLE IF NOT EXISTS intake_links (
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     slug TEXT UNIQUE NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    default_packet_mode TEXT NOT NULL DEFAULT 'simple' CHECK (default_packet_mode IN ('simple', 'advanced')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(account_id)

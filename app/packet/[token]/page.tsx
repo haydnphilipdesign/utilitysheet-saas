@@ -11,12 +11,13 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Download, Copy, Check, Phone, ExternalLink, Zap, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Download, Copy, Check, Phone, ExternalLink, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
 import { trackEvent } from '@/lib/analytics/events';
+import type { UtilityCategory } from '@/types';
 
 type PacketBrand = {
     name?: string;
@@ -35,9 +36,23 @@ type PacketBrand = {
 } | null;
 
 type PacketResponse = {
-    request: any;
+    mode?: 'simple' | 'advanced';
+    request: {
+        property_address: string;
+        created_at: string;
+    };
     brand: PacketBrand;
-    utilities: any[];
+    utilities: Array<{
+        category: UtilityCategory | string;
+        provider_name: string;
+        provider_phone?: string | null;
+        provider_website?: string | null;
+    }>;
+    advanced_sections?: Array<{
+        key: string;
+        title: string;
+        fields: Array<{ key: string; label: string; value: string }>;
+    }>;
     meta?: {
         show_powered_by?: boolean;
     };
@@ -87,6 +102,14 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
 
         try {
             await generatePacketPdf(resolvedParams.token);
+            if (data.mode === 'advanced') {
+                trackEvent('advanced_packet_generated', {
+                    location: 'packet_header',
+                });
+                trackEvent('advanced_packet_downloaded', {
+                    location: 'packet_header',
+                });
+            }
             toast.success('PDF downloaded successfully');
         } catch (error) {
             console.error('Error generating PDF:', error);
@@ -116,11 +139,15 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     }
 
     const { request, brand, utilities } = data;
+    const mode = data.mode || 'simple';
+    const isAdvanced = mode === 'advanced';
+    const advancedSections = data.advanced_sections || [];
     const primaryColor = brand?.primary_color || '#10b981';
     const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
     const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
     const showGenerationDate = brand?.show_generation_date ?? true;
-    const headerBrandName = showPoweredBy ? 'UtilitySheet' : (brand?.name || 'Utility Info Sheet');
+    const defaultTitle = isAdvanced ? 'Seller Transition Packet' : 'Utility Info Sheet';
+    const headerBrandName = showPoweredBy ? 'UtilitySheet' : (brand?.name || defaultTitle);
     const nextStepsTitle = brand?.next_steps_title || 'Buyer Next Steps';
     const buyerSteps = (brand?.buyer_next_steps && brand.buyer_next_steps.length > 0 ? brand.buyer_next_steps : DEFAULT_BUYER_STEPS)
         .map((step) => step.trim())
@@ -207,7 +234,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     {/* Title Section */}
                     <div className="text-center py-4 sm:py-6">
                         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-3 sm:mb-4">
-                            Utility Info Sheet
+                            {defaultTitle}
                         </h1>
                         <div className="inline-flex items-center gap-2 bg-muted px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg">
                             <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500 dark:text-sky-400 shrink-0" />
@@ -224,7 +251,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     {/* Utility Table */}
                     <Card className="border-border bg-card/50">
                         <CardHeader className="pb-2 px-4 sm:px-6">
-                            <h3 className="text-base sm:text-lg font-semibold text-foreground">Utility Providers</h3>
+                            <h3 className="text-base sm:text-lg font-semibold text-foreground">Utilities</h3>
                         </CardHeader>
                         <CardContent className="px-4 sm:px-6">
                             <div className="space-y-3 sm:hidden">
@@ -233,7 +260,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                         No utility information provided yet.
                                     </div>
                                 ) : (
-                                    utilities.map((utility: any, index: number) => (
+                                    utilities.map((utility, index) => (
                                         <div key={index} className="rounded-lg border border-border p-4 space-y-3 bg-background/50">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xl">
@@ -292,7 +319,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            utilities.map((utility: any, index: number) => (
+                                            utilities.map((utility, index) => (
                                                 <TableRow key={index} className="border-border hover:bg-muted/50">
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
@@ -342,6 +369,33 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                             </div>
                         </CardContent>
                     </Card>
+
+                    {isAdvanced && advancedSections.length > 0 && (
+                        <Card className="border-border bg-card/50">
+                            <CardHeader className="pb-2 px-4 sm:px-6">
+                                <h3 className="text-base sm:text-lg font-semibold text-foreground">Seller Transition Details</h3>
+                            </CardHeader>
+                            <CardContent className="px-4 sm:px-6 space-y-3">
+                                {advancedSections.map((section) => (
+                                    <div key={section.key} className="rounded-lg border border-border p-3 sm:p-4 space-y-2">
+                                        <h4 className="font-medium text-foreground text-sm sm:text-base">{section.title}</h4>
+                                        {section.fields.length === 0 ? (
+                                            <p className="text-xs sm:text-sm text-muted-foreground italic">No details provided</p>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {section.fields.map((field) => (
+                                                    <div key={`${section.key}-${field.key}`} className="text-xs sm:text-sm">
+                                                        <span className="text-muted-foreground">{field.label}: </span>
+                                                        <span className="text-foreground">{field.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Next Steps */}
                     <Card className="border-border bg-card/50">

@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { WizardLoader } from '@/components/ui/wizard-loader';
-import type { UtilityCategory, ProviderSuggestion } from '@/types';
+import type { UtilityCategory, ProviderSuggestion, PacketMode, AdvancedModuleKey, AdvancedPacketData } from '@/types';
 import { SellerWizard } from '@/components/seller-form/SellerWizard';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 
@@ -11,6 +11,9 @@ interface RequestData {
     property_address: string;
     utility_categories: UtilityCategory[];
     collect_electric_meter_number?: boolean;
+    packet_mode?: PacketMode;
+    advanced_modules?: AdvancedModuleKey[];
+    advanced_packet_data?: AdvancedPacketData;
 }
 
 interface BrandProfile {
@@ -62,6 +65,9 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 property_address: request.property_address,
                 utility_categories: request.utility_categories || UTILITY_CATEGORY_KEYS,
                 collect_electric_meter_number: request.collect_electric_meter_number !== false,
+                packet_mode: request.packet_mode || 'simple',
+                advanced_modules: request.advanced_modules || [],
+                advanced_packet_data: request.advanced_packet_data || {},
             };
 
             setRequestData(reqData);

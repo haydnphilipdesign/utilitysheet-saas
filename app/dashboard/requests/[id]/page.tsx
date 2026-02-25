@@ -12,6 +12,8 @@ import type { Request } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { generatePacketPdf } from '@/lib/pdf-generator';
+import { ADVANCED_MODULE_DEFAULTS } from '@/lib/packet/modules';
+import { trackEvent } from '@/lib/analytics/events';
 
 const statusConfig = {
     draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border' },
@@ -27,6 +29,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     const [loading, setLoading] = useState(true);
     const [sendingReminder, setSendingReminder] = useState(false);
     const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [updatingMode, setUpdatingMode] = useState(false);
 
     const sellerToken = request?.seller_token || request?.public_token || '';
     const sellerLink = useMemo(() => {
@@ -104,6 +107,50 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
         }
     };
 
+    const handleSwitchMode = async (nextMode: 'simple' | 'advanced') => {
+        if (!request) return;
+        setUpdatingMode(true);
+        trackEvent('mode_switch_attempted', {
+            location: 'request_details',
+            from_mode: (request.packet_mode || 'simple') as 'simple' | 'advanced',
+            to_mode: nextMode,
+        });
+        try {
+            const response = await fetch(`/api/requests/${request.id}/configuration`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    packetMode: nextMode,
+                    advancedModules: nextMode === 'advanced'
+                        ? ((request.advanced_modules && request.advanced_modules.length > 0)
+                            ? request.advanced_modules
+                            : ADVANCED_MODULE_DEFAULTS)
+                        : [],
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                trackEvent('mode_switch_blocked', {
+                    location: 'request_details',
+                    from_mode: (request.packet_mode || 'simple') as 'simple' | 'advanced',
+                    to_mode: nextMode,
+                    reason: data?.error || 'request_failed',
+                });
+                toast.error(data?.message || data?.error || 'Failed to switch mode');
+                return;
+            }
+            setRequest(data);
+            toast.success(nextMode === 'advanced'
+                ? 'Switched to Advanced Seller Packet'
+                : 'Switched to Simple Utility Sheet');
+        } catch (error) {
+            console.error('Error switching request mode:', error);
+            toast.error('Failed to switch mode');
+        } finally {
+            setUpdatingMode(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex h-96 items-center justify-center">
@@ -137,6 +184,8 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
 
     const status = statusConfig[request.status] || statusConfig.draft;
     const isLocked = Boolean(request.is_locked);
+    const packetMode = request.packet_mode || 'simple';
+    const modeSwitchAllowed = !isLocked && (request.status === 'draft' || request.status === 'sent');
     const canRemind = !isLocked && (request.status === 'sent' || request.status === 'in_progress') && !!request.seller_email;
     const canViewPacket = !isLocked && request.status === 'submitted';
 
@@ -215,6 +264,9 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     <h1 className="text-3xl font-bold text-foreground">{request.property_address}</h1>
                     <div className="flex items-center gap-3">
                         <Badge className={status.color}>{status.label}</Badge>
+                        <Badge variant="outline" className="border-border text-foreground">
+                            {packetMode === 'advanced' ? 'Advanced Seller Packet' : 'Simple Utility Sheet'}
+                        </Badge>
                         <span className="text-sm text-muted-foreground">
                             Created {format(new Date(request.created_at), 'MMMM d, yyyy')}
                         </span>
@@ -337,6 +389,41 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <Separator className="bg-border" />
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium text-foreground">Packet mode</p>
+                            {modeSwitchAllowed ? (
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant={packetMode === 'simple' ? 'default' : 'outline'}
+                                        className={packetMode === 'simple'
+                                            ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                                            : 'border-input text-foreground'}
+                                        disabled={updatingMode || packetMode === 'simple'}
+                                        onClick={() => handleSwitchMode('simple')}
+                                    >
+                                        Simple Utility Sheet
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant={packetMode === 'advanced' ? 'default' : 'outline'}
+                                        className={packetMode === 'advanced'
+                                            ? 'bg-slate-700 hover:bg-slate-600 text-white'
+                                            : 'border-input text-foreground'}
+                                        disabled={updatingMode || packetMode === 'advanced'}
+                                        onClick={() => handleSwitchMode('advanced')}
+                                    >
+                                        Advanced Seller Packet
+                                    </Button>
+                                </div>
+                            ) : (
+                                <p className="text-xs text-muted-foreground">
+                                    Mode is locked after seller opens the request.
+                                </p>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

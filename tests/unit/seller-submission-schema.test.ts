@@ -86,4 +86,33 @@ describe('sellerSubmissionBodySchema', () => {
 
         expect(parsed.success).toBe(false);
     });
+
+    it('accepts advanced packet payload fields when provided', () => {
+        const parsed = sellerSubmissionBodySchema.safeParse({
+            ...basePayload,
+            packet_mode: 'advanced',
+            advanced_modules: ['mailbox_access', 'service_providers'],
+            advanced: {
+                mailbox_access: {
+                    mailbox_number: 'A-12',
+                    parking_instructions: 'Use guest parking by Building B',
+                },
+                service_providers: {
+                    hvac_provider_name: 'Cool Air Co',
+                    plumber_provider_phone: '(555) 111-2222',
+                },
+            },
+            utilities: {
+                electric: {
+                    entry_mode: 'unknown',
+                },
+            },
+        });
+
+        expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.error.issues, null, 2)).toBe(true);
+        if (!parsed.success) return;
+        expect(parsed.data.packet_mode).toBe('advanced');
+        expect(parsed.data.advanced_modules).toEqual(['mailbox_access', 'service_providers']);
+        expect(parsed.data.advanced?.mailbox_access?.mailbox_number).toBe('A-12');
+    });
 });

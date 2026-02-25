@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { Check, Pencil, Loader2, ArrowRight, Zap, Droplets, Flame, Fuel, FlameKindling, Trash2, Wifi, Tv, Waves } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
-import { UtilityCategory } from '@/types';
+import { AdvancedModuleKey, AdvancedPacketData, UtilityCategory } from '@/types';
+import { ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
 
 // Category-specific icons (same as UtilityStep)
 const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }> = {
@@ -29,6 +30,9 @@ interface ReviewStepProps {
     collectElectricMeterNumber?: boolean;
     onSubmit: () => Promise<void>;
     submitting: boolean;
+    packetMode?: 'simple' | 'advanced';
+    advancedModules?: AdvancedModuleKey[];
+    advancedData?: AdvancedPacketData;
 }
 
 export function ReviewStep({
@@ -40,7 +44,10 @@ export function ReviewStep({
     updateUtility,
     collectElectricMeterNumber = false,
     onSubmit,
-    submitting
+    submitting,
+    packetMode = 'simple',
+    advancedModules = [],
+    advancedData = {},
 }: ReviewStepProps) {
 
     const waterSourceLabel: Record<WizardState['water_source'], string> = {
@@ -183,6 +190,45 @@ export function ReviewStep({
                         })}
                     </div>
                 </div>
+
+                {packetMode === 'advanced' && advancedModules.length > 0 && (
+                    <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
+                        <div className="flex items-center justify-between border-b border-border pb-2">
+                            <h4 className="font-semibold text-foreground text-sm sm:text-base">Seller Transition Details</h4>
+                        </div>
+                        <div className="space-y-3">
+                            {advancedModules.map((moduleKey) => {
+                                const moduleData = advancedData[moduleKey];
+                                const rowItems = moduleData
+                                    ? Object.entries(moduleData)
+                                        .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+                                        .map(([key, value]) => ({
+                                            key,
+                                            value: Array.isArray(value) ? value.join(', ') : String(value),
+                                        }))
+                                    : [];
+
+                                return (
+                                    <div key={moduleKey} className="rounded-lg border border-border/60 p-3">
+                                        <p className="text-sm font-medium text-foreground mb-2">{ADVANCED_MODULE_LABELS[moduleKey]}</p>
+                                        {rowItems.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground italic">No details provided</p>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {rowItems.map((row) => (
+                                                    <div key={row.key} className="text-xs sm:text-sm">
+                                                        <span className="text-muted-foreground">{row.key.replaceAll('_', ' ')}: </span>
+                                                        <span className="text-foreground">{row.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="pt-2 sm:pt-4 flex gap-2 sm:gap-3">
