@@ -43,7 +43,7 @@ export function FinalCtaSection() {
                             Ready to stop the utility back-and-forth?
                         </h2>
                         <p className="text-slate-100/90 text-base sm:text-lg mb-6 max-w-2xl mx-auto font-medium">
-                            Start free — no credit card, no time limit. Be up and running in minutes.
+                            Start free - no credit card, no time limit. Run simple handoffs now, then unlock Advanced Utility Packet mode on Pro/Teams.
                         </p>
 
                         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 mb-8 sm:mb-10 text-sm text-slate-200">
@@ -53,7 +53,7 @@ export function FinalCtaSection() {
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                Buyer-ready web sheet + PDF
+                                Simple Utility Sheet + Advanced Utility Packet modes
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />

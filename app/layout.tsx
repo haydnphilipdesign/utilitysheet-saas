@@ -27,7 +27,7 @@ const appBaseUrl = (() => {
 
 const defaultTitle = "UtilitySheet — Stop the utility back-and-forth";
 const defaultDescription =
-  "Send sellers a guided link. Generate a buyer-ready utility info sheet (PDF + link) with provider contacts—without chasing anyone.";
+  "Send sellers one guided link, then choose Simple Utility Sheet or Advanced Utility Packet output (web + PDF) without chasing anyone.";
 
 export const metadata: Metadata = {
   metadataBase: appBaseUrl,

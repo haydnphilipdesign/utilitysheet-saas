@@ -15,22 +15,22 @@ const painToOutcome = [
     },
     {
         icon: Bell,
-        title: 'PDF lands in your inbox automatically',
-        description: 'When a seller submits, the completed PDF attaches to your notification email. You get the result without logging in — no manual step needed.',
+        title: 'Choose simple or advanced packet output',
+        description: 'Keep simple handoffs fast, or collect deeper transition details with Advanced Utility Packet modules (Pro/Teams).',
         timeSaved: 'Saves 10 min',
     },
     {
         icon: FileText,
-        title: 'Buyer-ready utility sheet, instantly',
-        description: 'A clean web sheet + downloadable PDF ready to share with buyers or drop into your packet the moment the seller is done.',
+        title: 'Buyer-ready packet, instantly',
+        description: 'When a seller submits, the finished packet attaches to your notification email and is ready to share as web + PDF.',
         timeSaved: 'Saves 15 min',
     },
 ] as const;
 
 const tcWorkflow = [
     'Add your seller link to your email signature or text template — once, and it\'s there forever.',
-    'When a new file opens, text or email the seller your link. They enter the address, confirm utilities in ~2 minutes. No new request to create.',
-    'The PDF attaches to your notification email automatically. Share the web link with buyers or drop the PDF in the packet — done.',
+    'When a new file opens, text or email the seller your link. They enter the address, confirm utilities, and can complete advanced module groups when needed.',
+    'The packet PDF attaches to your notification email automatically. Share the web link with buyers or drop the PDF in the file — done.',
 ] as const;
 
 const painPoints = [

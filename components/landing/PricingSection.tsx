@@ -15,6 +15,7 @@ const tiers = [
         features: [
             '3 unlocked requests per month',
             'Reusable seller link (seller enters address)',
+            'Simple Utility Sheet mode',
             'Buyer-ready PDF + share link',
             'Seller submission completion email notifications',
             'Optional completion-email PDF attachment (on by default)',
@@ -33,6 +34,8 @@ const tiers = [
         features: [
             'Unlimited requests',
             'Custom branded link',
+            'Advanced Utility Packet mode',
+            'Choose advanced module defaults on your reusable link',
             'Custom branding (logo + colors)',
             'Branded completion-email PDF attachments',
             'Unlock locked submissions',
@@ -54,6 +57,7 @@ const tiers = [
             'Shared organization workspace',
             'Invite members (admin + member roles)',
             'Seat-based billing (3 seat minimum)',
+            'Org-wide Advanced Utility Packet defaults',
             'Branded completion-email PDF attachments across the org',
             'Priority support'
         ],

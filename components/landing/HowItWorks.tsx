@@ -45,7 +45,7 @@ export function HowItWorks() {
                                 Share Your Link
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Share your seller link — the same link works for every property. Drop it in a text, email, or your signature and you&apos;re done. Sellers tap it, enter the property address, and start right away. Prefer to pick specific utilities per file? Create a one-off request instead.
+                                Share your seller link - the same link works for every property. Keep the default in Simple Utility Sheet mode, or set it to Advanced Utility Packet mode on Pro/Teams. Sellers tap it, enter the property address, and start right away.
                             </p>
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
@@ -71,7 +71,7 @@ export function HowItWorks() {
                                 Seller Confirms
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Sellers tap to confirm providers suggested by our AI. If something’s wrong (or unknown), they can search, type, or mark “Not sure” and keep moving.
+                                Sellers tap to confirm providers suggested by our AI. In Advanced Utility Packet mode, they can also fill modular transition details like mailbox/access, service providers, lawn/irrigation, and smart home/security notes.
                             </p>
                         </div>
                         <motion.div
@@ -100,10 +100,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">03.</span>
-                                PDF Delivered — No Login Required
+                                Packet Delivered - No Login Required
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                The moment the seller submits, the completed utility sheet PDF automatically attaches to your notification email. You get the result in your inbox — no logging in, no downloading, no follow-up. Download the PDF, share the web link with buyers, or drop it straight into your buyer packet.
+                                The moment the seller submits, the completed packet PDF automatically attaches to your notification email. You get the result in your inbox - no logging in, no downloading, no follow-up. Share the web view, download the PDF, and drop it into the file.
                             </p>
                         </div>
                         <motion.div

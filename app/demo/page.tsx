@@ -132,13 +132,13 @@ export default function DemoPage() {
                             Try the Seller Experience
                         </h1>
                         <p className="text-muted-foreground text-sm sm:text-base">
-                            Enter an address to see suggested providers. Sellers can confirm, search, or type—no login required.
+                            Enter an address to see suggested providers. Sellers can confirm, search, or type with no login required.
                         </p>
                     </div>
 
                     <div className="bg-card/50 border border-border rounded-2xl p-6 space-y-4">
                         <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-900">
-                            After seller submission, TCs can receive a completion email and share/download the utility sheet output.
+                            This demo shows the core guided flow. Pro/Teams can also run Advanced Utility Packet mode with optional transition-detail modules.
                         </div>
 
                         <div>

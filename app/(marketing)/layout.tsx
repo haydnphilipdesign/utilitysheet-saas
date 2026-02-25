@@ -50,7 +50,7 @@ export default function MarketingLayout({
                                 <span className="text-xl font-bold">UtilitySheet</span>
                             </Link>
                             <p className="mt-4 max-w-xs text-sm text-muted-foreground leading-relaxed">
-                                The utility handoff tool for real estate transaction coordinators. One seller link. One clean sheet. Every time.
+                                The utility handoff tool for real estate transaction coordinators. One seller link. Simple or advanced packet output. Every time.
                             </p>
                             <div className="mt-5 flex flex-wrap gap-3">
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">

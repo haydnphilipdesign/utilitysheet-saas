@@ -272,8 +272,8 @@ export function HeroSection() {
 
                         {/* Value Proposition */}
                         <p className="mx-auto lg:mx-0 max-w-2xl text-base sm:text-lg md:text-xl text-muted-foreground mb-5 sm:mb-7 leading-relaxed">
-                            Share your reusable link once — sellers confirm their utility providers in about 2 minutes, no login, no app.
-                            When they submit, the PDF lands in your inbox automatically. No logging in, no manual steps, no chasing.
+                            Share your reusable link once - sellers confirm providers in about 2 minutes, no login, no app.
+                            Run each file in Simple Utility Sheet mode or Advanced Utility Packet mode, then get the finished packet in your inbox automatically.
                         </p>
 
                         {/* Pain Points (The Problem) */}
@@ -307,11 +307,11 @@ export function HeroSection() {
                             </li>
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>PDF delivered to your inbox automatically</strong> — attaches to your completion email the moment the seller submits. You don&apos;t have to log in to get the result.</span>
+                                <span className="text-sm sm:text-base"><strong>Simple + advanced packet modes</strong> — keep straightforward files fast or collect deeper transition details with optional advanced modules.</span>
                             </li>
                             <li className="flex items-start gap-2 sm:gap-3">
                                 <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                                <span className="text-sm sm:text-base"><strong>Buyer-ready output</strong> — shareable web sheet + downloadable PDF, ready to drop in the file</span>
+                                <span className="text-sm sm:text-base"><strong>PDF delivered to your inbox automatically</strong> — attaches to your completion email the moment the seller submits. You don&apos;t have to log in to get the result.</span>
                             </li>
                         </motion.ul>
 

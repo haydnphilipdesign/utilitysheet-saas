@@ -130,13 +130,13 @@ export default function OpenGraphImage() {
                         maxWidth: 980,
                     }}
                 >
-                    Send sellers a guided link. Get a buyer-ready utility info sheet (PDF + link) with provider contacts—without the back-and-forth.
+                    Send sellers one guided link. Choose Simple Utility Sheet or Advanced Utility Packet output (PDF + link) without the back-and-forth.
                 </div>
 
                 <div style={{ marginTop: 30, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     <Pill>For transaction coordinators</Pill>
                     <Pill>No login for sellers</Pill>
-                    <Pill>PDF + share link</Pill>
+                    <Pill>Simple + Advanced modes</Pill>
                 </div>
 
                 <div
@@ -156,4 +156,3 @@ export default function OpenGraphImage() {
         size
     );
 }
-

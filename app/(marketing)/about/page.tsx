@@ -6,7 +6,7 @@ import { Zap, Shield, Users, Clock, Heart, Code, Quote } from 'lucide-react';
 
 export const metadata: Metadata = {
     title: 'About',
-    description: 'How UtilitySheet was built from real transaction coordination workflows—and why it exists.',
+    description: 'How UtilitySheet was built from real transaction coordination workflows, including Simple Utility Sheet and Advanced Utility Packet modes.',
 };
 
 export default function AboutPage() {
@@ -21,7 +21,7 @@ export default function AboutPage() {
                             Built from <span className="text-slate-500">Real Experience</span>
                         </h1>
                         <p className="text-xl text-muted-foreground leading-relaxed">
-                            UtilitySheet helps transaction coordinators collect utility providers with one seller link, then deliver a clean utility handoff (web + PDF). It wasn’t born in a boardroom; it came from real closing workflow pain.
+                            UtilitySheet helps transaction coordinators collect utility providers with one seller link, then deliver a clean utility handoff as either a Simple Utility Sheet or an Advanced Utility Packet (web + PDF). It was built from real closing workflow pain.
                         </p>
                     </div>
                 </div>
@@ -33,7 +33,7 @@ export default function AboutPage() {
                     <div className="rounded-2xl border border-border/60 bg-card/40 p-6 sm:p-8">
                         <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">What UtilitySheet does</h2>
                         <p className="text-muted-foreground text-base sm:text-lg max-w-3xl">
-                            UtilitySheet helps transaction coordinators collect utility provider details from sellers and deliver a clean utility handoff without repeated follow-ups.
+                            UtilitySheet helps transaction coordinators collect utility provider details from sellers and deliver clean handoff output without repeated follow-ups - with both simple and advanced packet options.
                         </p>
 
                         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -45,12 +45,12 @@ export default function AboutPage() {
                             <div className="rounded-xl border border-border/60 bg-background/70 p-4">
                                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Step 2</p>
                                 <p className="font-semibold text-foreground">Seller confirms providers</p>
-                                <p className="text-sm text-muted-foreground mt-1">Address-based suggestions plus manual overrides.</p>
+                                <p className="text-sm text-muted-foreground mt-1">Address-based suggestions plus optional advanced transition modules.</p>
                             </div>
                             <div className="rounded-xl border border-border/60 bg-background/70 p-4">
                                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Step 3</p>
-                                <p className="font-semibold text-foreground">Share web sheet + PDF output</p>
-                                <p className="text-sm text-muted-foreground mt-1">Completion emails can optionally include the PDF attachment.</p>
+                                <p className="font-semibold text-foreground">Deliver simple or advanced packet output</p>
+                                <p className="text-sm text-muted-foreground mt-1">Completion emails can include the finished PDF attachment automatically.</p>
                             </div>
                         </div>
 
@@ -200,7 +200,7 @@ export default function AboutPage() {
                                 UtilitySheet is a lightweight, transaction-friendly way to collect utility provider information and output it in a clean, professional format that can travel with the deal.
                             </p>
                             <p className="text-lg text-muted-foreground">
-                                No heavy setup. Sellers complete a guided form, and you get a utility sheet ready to share as a web view or PDF. You can also choose to auto-attach that PDF to seller-submission completion emails.
+                                No heavy setup. Sellers complete a guided form, and you get either a Simple Utility Sheet or an Advanced Utility Packet ready to share as web view + PDF. You can also auto-attach that PDF to completion emails.
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-6">

@@ -17,7 +17,11 @@ const faqs = [
     },
     {
         question: 'Can I use one link for every property?',
-        answer: 'Yes \u2014 and this is one of the most powerful things about UtilitySheet. Your seller link works for any property. Add it to your email signature, include it in your standard seller texts, or paste it into your TC checklist. Sellers tap the link, enter the property address themselves, and complete the guided utility form. You never have to create a new request or log in to send a new link. If you do want to choose specific utility categories for a particular file, you can still create a one-off request \u2014 but the reusable link is the fastest way to work.',
+        answer: 'Yes \u2014 and this is one of the most powerful things about UtilitySheet. Your seller link works for any property. Add it to your email signature, include it in your standard seller texts, or paste it into your TC checklist. Sellers tap the link, enter the property address themselves, and complete the guided flow. On Pro/Teams, you can also set that reusable link to start in Advanced Utility Packet mode by default.',
+    },
+    {
+        question: 'What is the Advanced Utility Packet?',
+        answer: 'Advanced Utility Packet is a modular version of the workflow for deeper seller handoff details. Along with utility providers, you can collect modules like Lawn + Irrigation, Home Security, Service Providers, and Mailbox + Access. It is available on Pro and Teams.',
     },
     {
         question: 'Do I need to log in every time to get the utility sheet?',
@@ -49,7 +53,7 @@ const faqs = [
     },
     {
         question: 'What utilities can I collect?',
-        answer: 'Common categories like electric, gas, water, sewer, trash, internet, cable, and propane. One-off requests let you choose categories per file; the reusable link uses a standard set that covers the most common utilities.',
+        answer: 'Common categories like electric, gas, water, sewer, trash, internet, cable, and propane. One-off requests let you choose categories per file; the reusable link uses a standard set that covers the most common utilities. In Advanced Utility Packet mode, you can also collect optional transition-detail modules beyond utilities.',
     },
     {
         question: 'What happens if I hit the free plan limit?',

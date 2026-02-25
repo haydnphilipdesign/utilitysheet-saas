@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useEffect, useRef } from 'react';
-import { Bell, FileText, Link2, MailCheck, Palette, ShieldCheck, Sparkles } from 'lucide-react';
+import { Bell, FileText, Layers, Link2, MailCheck, Palette, ShieldCheck, Sparkles } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 
 const features = [
@@ -13,9 +13,14 @@ const features = [
         description: "One permanent link that works for every property. Share it in a text, your email signature, or a listing — sellers tap it, enter the address, and go. No new link to create each time. One-off requests are still available if you want to choose specific utilities per file."
     },
     {
+        icon: Layers,
+        title: "Simple + Advanced Packet Modes",
+        tag: "New",
+        description: "Use Simple Utility Sheet mode for fast utility handoffs, or switch to Advanced Utility Packet mode to collect deeper transition details in modular sections."
+    },
+    {
         icon: MailCheck,
         title: "PDF Delivered to Your Inbox",
-        tag: "New",
         description: "When a seller submits, the completed utility sheet PDF automatically attaches to your notification email. You get the result without logging in — it’s just there in your inbox. On by default; manage the setting anytime."
     },
     {

@@ -17,7 +17,7 @@ export function TrustStrip() {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <FileCheck className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                            <span>Web sheet + PDF output, ready to share</span>
+                            <span>Simple or advanced packet output, ready to share</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Plug className="w-4 h-4 text-slate-500 flex-shrink-0" />
