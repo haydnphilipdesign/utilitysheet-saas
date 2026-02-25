@@ -20,6 +20,7 @@ import { AdvancedDetailsStep } from './steps/AdvancedDetailsStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { SuccessStep } from './steps/SuccessStep';
 import { trackEvent } from '@/lib/analytics/events';
+import { ADVANCED_MODULE_KEYS, ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
 import { toast } from 'sonner';
 
 export interface WizardState {
@@ -71,6 +72,8 @@ interface SellerWizardProps {
     isDemo?: boolean;
 }
 
+type AdvancedNavigationMode = 'linear' | 'review_edit';
+
 export function SellerWizard({ initialRequestData, initialSuggestions, token, brandProfile, isDemo = false }: SellerWizardProps) {
     enum Step {
         WELCOME = 0,
@@ -83,6 +86,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     const [currentStep, setCurrentStep] = useState<Step>(Step.WELCOME);
     const [utilityIndex, setUtilityIndex] = useState(0);
+    const [advancedModuleIndex, setAdvancedModuleIndex] = useState(0);
+    const [advancedNavigationMode, setAdvancedNavigationMode] = useState<AdvancedNavigationMode>('linear');
     const [submitting, setSubmitting] = useState(false);
     const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
@@ -107,7 +112,9 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     const [visibleUtilities, setVisibleUtilities] = useState<UtilityCategory[]>([]);
     const enabledAdvancedModules = state.packet_mode === 'advanced' ? state.advanced_modules : [];
-    const hasAdvancedStep = enabledAdvancedModules.length > 0;
+    const orderedAdvancedModules = ADVANCED_MODULE_KEYS.filter((moduleKey) => enabledAdvancedModules.includes(moduleKey));
+    const hasAdvancedStep = orderedAdvancedModules.length > 0;
+    const currentAdvancedModule = orderedAdvancedModules[advancedModuleIndex];
     const draftStorageKey = `us_seller_draft:${token}`;
 
     useEffect(() => {
@@ -120,8 +127,10 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 state?: WizardState;
                 currentStep?: number;
                 utilityIndex?: number;
+                advancedModuleIndex?: number;
+                advancedNavigationMode?: AdvancedNavigationMode;
             };
-            if (parsed?.v !== 1 || !parsed.state) return;
+            if ((parsed?.v !== 1 && parsed?.v !== 2) || !parsed.state) return;
 
             setState(parsed.state);
             if (typeof parsed.currentStep === 'number') {
@@ -129,6 +138,12 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             }
             if (typeof parsed.utilityIndex === 'number') {
                 setUtilityIndex(Math.max(0, parsed.utilityIndex));
+            }
+            if (parsed.v === 2 && typeof parsed.advancedModuleIndex === 'number') {
+                setAdvancedModuleIndex(Math.max(0, parsed.advancedModuleIndex));
+            }
+            if (parsed.v === 2 && parsed.advancedNavigationMode) {
+                setAdvancedNavigationMode(parsed.advancedNavigationMode);
             }
         } catch {
             // ignore
@@ -143,10 +158,12 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 localStorage.setItem(
                     draftStorageKey,
                     JSON.stringify({
-                        v: 1,
+                        v: 2,
                         state,
                         currentStep,
                         utilityIndex,
+                        advancedModuleIndex,
+                        advancedNavigationMode,
                     })
                 );
             } catch {
@@ -155,7 +172,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         }, 250);
 
         return () => clearTimeout(timeout);
-    }, [draftStorageKey, state, currentStep, utilityIndex, isDemo]);
+    }, [draftStorageKey, state, currentStep, utilityIndex, advancedModuleIndex, advancedNavigationMode, isDemo]);
 
     useEffect(() => {
         if (isDemo) return;
@@ -286,6 +303,19 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     }, [currentStep, utilityIndex, visibleUtilities]);
 
     useEffect(() => {
+        if (orderedAdvancedModules.length === 0) {
+            setAdvancedModuleIndex(0);
+            if (currentStep === Step.ADVANCED_DETAILS) {
+                setCurrentStep(Step.REVIEW);
+                setAdvancedNavigationMode('linear');
+            }
+            return;
+        }
+
+        setAdvancedModuleIndex((prev) => Math.min(prev, orderedAdvancedModules.length - 1));
+    }, [orderedAdvancedModules, currentStep]);
+
+    useEffect(() => {
         let stepLabel = 'welcome';
         if (currentStep === Step.HOME_BASICS) {
             stepLabel = 'home_basics';
@@ -293,7 +323,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             const currentCategory = visibleUtilities[utilityIndex];
             stepLabel = currentCategory ? `utility_${currentCategory}` : 'utilities';
         } else if (currentStep === Step.ADVANCED_DETAILS) {
-            stepLabel = 'advanced_details';
+            stepLabel = currentAdvancedModule ? `advanced_${currentAdvancedModule}` : 'advanced_details';
         } else if (currentStep === Step.REVIEW) {
             stepLabel = 'review';
         } else if (currentStep === Step.SUCCESS) {
@@ -305,16 +335,18 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             location: isDemo ? 'demo_seller_flow' : 'seller_flow',
             packet_mode: state.packet_mode,
         });
-    }, [currentStep, isDemo, utilityIndex, visibleUtilities, state.packet_mode]);
+    }, [currentStep, isDemo, utilityIndex, visibleUtilities, state.packet_mode, currentAdvancedModule]);
 
     const totalUtilities = visibleUtilities.length;
-    const totalStepsWeight = 1.5 + totalUtilities + (hasAdvancedStep ? 1 : 0) + 1;
+    const totalAdvancedSteps = orderedAdvancedModules.length;
+    const totalStepsWeight = 1.5 + totalUtilities + totalAdvancedSteps + 1;
     let currentProgressWeight = 0;
     if (currentStep > Step.WELCOME) currentProgressWeight += 0.5;
     if (currentStep > Step.HOME_BASICS) currentProgressWeight += 1;
     if (currentStep === Step.UTILITIES) currentProgressWeight += utilityIndex;
     if (currentStep > Step.UTILITIES) currentProgressWeight += totalUtilities;
-    if (hasAdvancedStep && currentStep > Step.ADVANCED_DETAILS) currentProgressWeight += 1;
+    if (currentStep === Step.ADVANCED_DETAILS) currentProgressWeight += advancedModuleIndex;
+    if (currentStep > Step.ADVANCED_DETAILS) currentProgressWeight += totalAdvancedSteps;
     if (currentStep > Step.REVIEW) currentProgressWeight += 1;
 
     const progress = Math.min((currentProgressWeight / totalStepsWeight) * 100, 100);
@@ -329,12 +361,24 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             if (utilityIndex < visibleUtilities.length - 1) {
                 setUtilityIndex((prev) => prev + 1);
             } else if (hasAdvancedStep) {
+                setAdvancedModuleIndex(0);
+                setAdvancedNavigationMode('linear');
                 setCurrentStep(Step.ADVANCED_DETAILS);
             } else {
                 setCurrentStep(Step.REVIEW);
             }
         } else if (currentStep === Step.ADVANCED_DETAILS) {
-            setCurrentStep(Step.REVIEW);
+            if (advancedNavigationMode === 'review_edit') {
+                setCurrentStep(Step.REVIEW);
+                setAdvancedNavigationMode('linear');
+                return;
+            }
+
+            if (advancedModuleIndex < orderedAdvancedModules.length - 1) {
+                setAdvancedModuleIndex((prev) => prev + 1);
+            } else {
+                setCurrentStep(Step.REVIEW);
+            }
         }
     };
 
@@ -348,10 +392,22 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 setCurrentStep(Step.HOME_BASICS);
             }
         } else if (currentStep === Step.ADVANCED_DETAILS) {
-            setCurrentStep(Step.UTILITIES);
-            setUtilityIndex(Math.max(0, visibleUtilities.length - 1));
+            if (advancedNavigationMode === 'review_edit') {
+                setCurrentStep(Step.REVIEW);
+                setAdvancedNavigationMode('linear');
+                return;
+            }
+
+            if (advancedModuleIndex > 0) {
+                setAdvancedModuleIndex((prev) => prev - 1);
+            } else {
+                setCurrentStep(Step.UTILITIES);
+                setUtilityIndex(Math.max(0, visibleUtilities.length - 1));
+            }
         } else if (currentStep === Step.REVIEW) {
             if (hasAdvancedStep) {
+                setAdvancedNavigationMode('linear');
+                setAdvancedModuleIndex(Math.max(0, orderedAdvancedModules.length - 1));
                 setCurrentStep(Step.ADVANCED_DETAILS);
             } else {
                 setCurrentStep(Step.UTILITIES);
@@ -361,7 +417,17 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     };
 
     const handleEditBasics = () => {
+        setAdvancedNavigationMode('linear');
         setCurrentStep(Step.HOME_BASICS);
+    };
+
+    const handleEditAdvancedModule = (moduleKey: AdvancedModuleKey) => {
+        const targetIndex = orderedAdvancedModules.findIndex((m) => m === moduleKey);
+        if (targetIndex < 0) return;
+
+        setAdvancedModuleIndex(targetIndex);
+        setAdvancedNavigationMode('review_edit');
+        setCurrentStep(Step.ADVANCED_DETAILS);
     };
 
     const updateUtilityState = (cat: UtilityCategory, updates: Partial<UtilityWizardState>) => {
@@ -447,7 +513,10 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         const cat = visibleUtilities[utilityIndex];
                         return cat ? `${cat.charAt(0).toUpperCase() + cat.slice(1)} Provider` : 'Utilities';
                     }
-                    case Step.ADVANCED_DETAILS: return 'Transition Details';
+                    case Step.ADVANCED_DETAILS: {
+                        if (!currentAdvancedModule) return 'Transition Details';
+                        return `${ADVANCED_MODULE_LABELS[currentAdvancedModule]} (${advancedModuleIndex + 1} of ${orderedAdvancedModules.length})`;
+                    }
                     case Step.REVIEW: return 'Review';
                     case Step.SUCCESS: return 'Done';
                     default: return 'Progress';
@@ -492,10 +561,13 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     />
                 )}
 
-                {currentStep === Step.ADVANCED_DETAILS && (
+                {currentStep === Step.ADVANCED_DETAILS && currentAdvancedModule && (
                     <AdvancedDetailsStep
-                        key="advanced-details"
-                        modules={enabledAdvancedModules}
+                        key={`advanced-details-${currentAdvancedModule}-${advancedNavigationMode}`}
+                        moduleKey={currentAdvancedModule}
+                        moduleIndex={advancedModuleIndex}
+                        moduleCount={orderedAdvancedModules.length}
+                        isReviewEdit={advancedNavigationMode === 'review_edit'}
                         advanced={state.advanced}
                         updateAdvanced={updateAdvanced}
                         onBack={handleBack}
@@ -511,15 +583,17 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         onBack={handleBack}
                         onEditBasics={handleEditBasics}
                         onEditUtility={(index) => {
+                            setAdvancedNavigationMode('linear');
                             setCurrentStep(Step.UTILITIES);
                             setUtilityIndex(index);
                         }}
+                        onEditAdvancedModule={handleEditAdvancedModule}
                         updateUtility={updateUtilityState}
                         collectElectricMeterNumber={collectElectricMeterNumber}
                         onSubmit={handleSubmit}
                         submitting={submitting}
                         packetMode={state.packet_mode}
-                        advancedModules={enabledAdvancedModules}
+                        advancedModules={orderedAdvancedModules}
                         advancedData={state.advanced}
                     />
                 )}

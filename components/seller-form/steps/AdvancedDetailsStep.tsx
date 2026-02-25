@@ -1,17 +1,45 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import type { ReactNode } from 'react';
 import type { AdvancedModuleKey, AdvancedPacketData } from '@/types';
 import { ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
-import type { ReactNode } from 'react';
 
 interface AdvancedDetailsStepProps {
-    modules: AdvancedModuleKey[];
+    moduleKey: AdvancedModuleKey;
+    moduleIndex: number;
+    moduleCount: number;
+    isReviewEdit?: boolean;
     advanced: AdvancedPacketData;
     updateAdvanced: (updates: Partial<AdvancedPacketData>) => void;
     onBack: () => void;
     onNext: () => void;
 }
+
+const WATERING_DAY_OPTIONS: Array<{ value: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'; label: string }> = [
+    { value: 'mon', label: 'Mon' },
+    { value: 'tue', label: 'Tue' },
+    { value: 'wed', label: 'Wed' },
+    { value: 'thu', label: 'Thu' },
+    { value: 'fri', label: 'Fri' },
+    { value: 'sat', label: 'Sat' },
+    { value: 'sun', label: 'Sun' },
+];
+
+const MONTH_OPTIONS: Array<{ value: string; label: string }> = [
+    { value: 'jan', label: 'January' },
+    { value: 'feb', label: 'February' },
+    { value: 'mar', label: 'March' },
+    { value: 'apr', label: 'April' },
+    { value: 'may', label: 'May' },
+    { value: 'jun', label: 'June' },
+    { value: 'jul', label: 'July' },
+    { value: 'aug', label: 'August' },
+    { value: 'sep', label: 'September' },
+    { value: 'oct', label: 'October' },
+    { value: 'nov', label: 'November' },
+    { value: 'dec', label: 'December' },
+];
 
 function Section({
     title,
@@ -33,13 +61,19 @@ function Field({
     value,
     onChange,
     placeholder,
+    helperText,
     multiline = false,
+    type = 'text',
+    inputMode,
 }: {
     label: string;
     value?: string | null;
     onChange: (value: string) => void;
     placeholder?: string;
+    helperText?: string;
     multiline?: boolean;
+    type?: 'text' | 'tel' | 'email';
+    inputMode?: 'text' | 'tel' | 'email';
 }) {
     return (
         <label className={`space-y-1 ${multiline ? 'sm:col-span-2' : ''}`}>
@@ -54,45 +88,60 @@ function Field({
                 />
             ) : (
                 <input
+                    type={type}
+                    inputMode={inputMode}
                     value={value || ''}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
                     className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground"
                 />
             )}
+            {helperText && <p className="text-xs text-muted-foreground">{helperText}</p>}
         </label>
     );
 }
 
 export function AdvancedDetailsStep({
-    modules,
+    moduleKey,
+    moduleIndex,
+    moduleCount,
+    isReviewEdit = false,
     advanced,
     updateAdvanced,
     onBack,
     onNext,
 }: AdvancedDetailsStepProps) {
-    const hasModule = (moduleKey: AdvancedModuleKey) => modules.includes(moduleKey);
-    const validWateringDays = new Set(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+    const moduleTitle = ADVANCED_MODULE_LABELS[moduleKey];
 
-    return (
-        <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-5"
-        >
-            <div className="space-y-1">
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Seller Transition Details</h3>
-                <p className="text-sm text-muted-foreground">
-                    Fill any additional details you know. All fields are optional.
-                </p>
-            </div>
+    const toggleWateringDay = (dayValue: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun') => {
+        const currentDays = advanced.irrigation_seasonal_controls?.watering_days || [];
+        const daySet = new Set(currentDays);
+        if (daySet.has(dayValue)) {
+            daySet.delete(dayValue);
+        } else {
+            daySet.add(dayValue);
+        }
 
-            {hasModule('lawn_exterior') && (
-                <Section title={ADVANCED_MODULE_LABELS.lawn_exterior}>
+        const orderedDays = WATERING_DAY_OPTIONS
+            .map((day) => day.value)
+            .filter((day) => daySet.has(day));
+
+        updateAdvanced({
+            irrigation_seasonal_controls: {
+                ...advanced.irrigation_seasonal_controls,
+                watering_days: orderedDays,
+            },
+        });
+    };
+
+    const renderModuleFields = () => {
+        if (moduleKey === 'lawn_exterior') {
+            return (
+                <>
                     <Field
                         label="Lawn Care Provider"
                         value={advanced.lawn_exterior?.lawn_care_provider_name}
+                        placeholder="Name of company or person"
                         onChange={(value) => updateAdvanced({
                             lawn_exterior: {
                                 ...advanced.lawn_exterior,
@@ -102,7 +151,10 @@ export function AdvancedDetailsStep({
                     />
                     <Field
                         label="Lawn Care Phone"
+                        type="tel"
+                        inputMode="tel"
                         value={advanced.lawn_exterior?.lawn_care_provider_phone}
+                        placeholder="(555) 123-4567"
                         onChange={(value) => updateAdvanced({
                             lawn_exterior: {
                                 ...advanced.lawn_exterior,
@@ -112,7 +164,10 @@ export function AdvancedDetailsStep({
                     />
                     <Field
                         label="Lawn Care Email"
+                        type="email"
+                        inputMode="email"
                         value={advanced.lawn_exterior?.lawn_care_provider_email}
+                        placeholder="service@example.com"
                         onChange={(value) => updateAdvanced({
                             lawn_exterior: {
                                 ...advanced.lawn_exterior,
@@ -123,6 +178,7 @@ export function AdvancedDetailsStep({
                     <Field
                         label="Snow Removal Provider"
                         value={advanced.lawn_exterior?.snow_removal_provider_name}
+                        placeholder="Name of company or person"
                         onChange={(value) => updateAdvanced({
                             lawn_exterior: {
                                 ...advanced.lawn_exterior,
@@ -132,7 +188,10 @@ export function AdvancedDetailsStep({
                     />
                     <Field
                         label="Snow Removal Phone"
+                        type="tel"
+                        inputMode="tel"
                         value={advanced.lawn_exterior?.snow_removal_provider_phone}
+                        placeholder="(555) 123-4567"
                         onChange={(value) => updateAdvanced({
                             lawn_exterior: {
                                 ...advanced.lawn_exterior,
@@ -142,8 +201,9 @@ export function AdvancedDetailsStep({
                     />
                     <Field
                         label="Notes"
-                        value={advanced.lawn_exterior?.lawn_exterior_notes}
                         multiline
+                        value={advanced.lawn_exterior?.lawn_exterior_notes}
+                        placeholder="Seasonal notes, contracts, or special instructions"
                         onChange={(value) => updateAdvanced({
                             lawn_exterior: {
                                 ...advanced.lawn_exterior,
@@ -151,11 +211,14 @@ export function AdvancedDetailsStep({
                             },
                         })}
                     />
-                </Section>
-            )}
+                </>
+            );
+        }
 
-            {hasModule('irrigation_seasonal_controls') && (
-                <Section title={ADVANCED_MODULE_LABELS.irrigation_seasonal_controls}>
+        if (moduleKey === 'irrigation_seasonal_controls') {
+            const selectedDays = advanced.irrigation_seasonal_controls?.watering_days || [];
+            return (
+                <>
                     <label className="space-y-1">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Has Irrigation System</span>
                         <select
@@ -176,6 +239,7 @@ export function AdvancedDetailsStep({
                     <Field
                         label="Irrigation Provider"
                         value={advanced.irrigation_seasonal_controls?.irrigation_provider_name}
+                        placeholder="Name of company or person"
                         onChange={(value) => updateAdvanced({
                             irrigation_seasonal_controls: {
                                 ...advanced.irrigation_seasonal_controls,
@@ -185,7 +249,10 @@ export function AdvancedDetailsStep({
                     />
                     <Field
                         label="Irrigation Phone"
+                        type="tel"
+                        inputMode="tel"
                         value={advanced.irrigation_seasonal_controls?.irrigation_provider_phone}
+                        placeholder="(555) 123-4567"
                         onChange={(value) => updateAdvanced({
                             irrigation_seasonal_controls: {
                                 ...advanced.irrigation_seasonal_controls,
@@ -193,43 +260,78 @@ export function AdvancedDetailsStep({
                             },
                         })}
                     />
-                    <Field
-                        label="Watering Days (comma-separated)"
-                        value={(advanced.irrigation_seasonal_controls?.watering_days || []).join(', ')}
-                        onChange={(value) => updateAdvanced({
-                            irrigation_seasonal_controls: {
-                                ...advanced.irrigation_seasonal_controls,
-                                watering_days: value
-                                    .split(',')
-                                    .map((d) => d.trim().toLowerCase())
-                                    .filter((d) => validWateringDays.has(d)) as Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'>,
-                            },
-                        })}
-                    />
-                    <Field
-                        label="Season Start Month (e.g. apr)"
-                        value={advanced.irrigation_seasonal_controls?.irrigation_season_start_month}
-                        onChange={(value) => updateAdvanced({
-                            irrigation_seasonal_controls: {
-                                ...advanced.irrigation_seasonal_controls,
-                                irrigation_season_start_month: value,
-                            },
-                        })}
-                    />
-                    <Field
-                        label="Season End Month (e.g. oct)"
-                        value={advanced.irrigation_seasonal_controls?.irrigation_season_end_month}
-                        onChange={(value) => updateAdvanced({
-                            irrigation_seasonal_controls: {
-                                ...advanced.irrigation_seasonal_controls,
-                                irrigation_season_end_month: value,
-                            },
-                        })}
-                    />
+                    <div className="space-y-2 sm:col-span-2">
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Watering Days</span>
+                        <div className="flex flex-wrap gap-2">
+                            {WATERING_DAY_OPTIONS.map((day) => {
+                                const isSelected = selectedDays.includes(day.value);
+                                return (
+                                    <button
+                                        key={day.value}
+                                        type="button"
+                                        data-testid={`irrigation-day-${day.value}`}
+                                        aria-pressed={isSelected}
+                                        onClick={() => toggleWateringDay(day.value)}
+                                        className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                                            isSelected
+                                                ? 'border-slate-500/60 bg-slate-500/10 text-foreground'
+                                                : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                                        }`}
+                                    >
+                                        {day.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Select any regular watering days, if known.</p>
+                    </div>
+                    <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Season Start Month</span>
+                        <select
+                            data-testid="irrigation-season-start-month"
+                            value={advanced.irrigation_seasonal_controls?.irrigation_season_start_month || ''}
+                            onChange={(e) => updateAdvanced({
+                                irrigation_seasonal_controls: {
+                                    ...advanced.irrigation_seasonal_controls,
+                                    irrigation_season_start_month: e.target.value || null,
+                                },
+                            })}
+                            className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
+                        >
+                            <option value="">Not sure</option>
+                            {MONTH_OPTIONS.map((month) => (
+                                <option key={month.value} value={month.value}>
+                                    {month.label}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Season End Month</span>
+                        <select
+                            data-testid="irrigation-season-end-month"
+                            value={advanced.irrigation_seasonal_controls?.irrigation_season_end_month || ''}
+                            onChange={(e) => updateAdvanced({
+                                irrigation_seasonal_controls: {
+                                    ...advanced.irrigation_seasonal_controls,
+                                    irrigation_season_end_month: e.target.value || null,
+                                },
+                            })}
+                            className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
+                        >
+                            <option value="">Not sure</option>
+                            {MONTH_OPTIONS.map((month) => (
+                                <option key={month.value} value={month.value}>
+                                    {month.label}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
                     <Field
                         label="Notes"
-                        value={advanced.irrigation_seasonal_controls?.irrigation_notes}
                         multiline
+                        value={advanced.irrigation_seasonal_controls?.irrigation_notes}
+                        placeholder="Controller location, seasonal timing, or other handoff details"
                         onChange={(value) => updateAdvanced({
                             irrigation_seasonal_controls: {
                                 ...advanced.irrigation_seasonal_controls,
@@ -237,14 +339,17 @@ export function AdvancedDetailsStep({
                             },
                         })}
                     />
-                </Section>
-            )}
+                </>
+            );
+        }
 
-            {hasModule('mailbox_access') && (
-                <Section title={ADVANCED_MODULE_LABELS.mailbox_access}>
+        if (moduleKey === 'mailbox_access') {
+            return (
+                <>
                     <Field
                         label="Mailbox Number"
                         value={advanced.mailbox_access?.mailbox_number}
+                        placeholder="Example: Box 12B"
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, mailbox_number: value },
                         })}
@@ -252,14 +357,16 @@ export function AdvancedDetailsStep({
                     <Field
                         label="Mailbox Location"
                         value={advanced.mailbox_access?.mailbox_location}
+                        placeholder="Where to find the mailbox"
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, mailbox_location: value },
                         })}
                     />
                     <Field
                         label="Parking Instructions"
-                        value={advanced.mailbox_access?.parking_instructions}
                         multiline
+                        value={advanced.mailbox_access?.parking_instructions}
+                        placeholder="Best place to park for access"
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, parking_instructions: value },
                         })}
@@ -267,6 +374,7 @@ export function AdvancedDetailsStep({
                     <Field
                         label="Breaker Box Location"
                         value={advanced.mailbox_access?.breaker_box_location}
+                        placeholder="Garage, basement, exterior, etc."
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, breaker_box_location: value },
                         })}
@@ -274,18 +382,22 @@ export function AdvancedDetailsStep({
                     <Field
                         label="Main Water Shutoff Location"
                         value={advanced.mailbox_access?.main_water_shutoff_location}
+                        placeholder="Utility room, crawlspace, etc."
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, main_water_shutoff_location: value },
                         })}
                     />
-                </Section>
-            )}
+                </>
+            );
+        }
 
-            {hasModule('smart_home_security') && (
-                <Section title={ADVANCED_MODULE_LABELS.smart_home_security}>
+        if (moduleKey === 'smart_home_security') {
+            return (
+                <>
                     <Field
                         label="Security System Brand"
                         value={advanced.smart_home_security?.security_system_brand}
+                        placeholder="ADT, Ring, SimpliSafe, etc."
                         onChange={(value) => updateAdvanced({
                             smart_home_security: { ...advanced.smart_home_security, security_system_brand: value },
                         })}
@@ -293,6 +405,7 @@ export function AdvancedDetailsStep({
                     <Field
                         label="Smart Thermostat Brand"
                         value={advanced.smart_home_security?.smart_thermostat_brand}
+                        placeholder="Nest, Ecobee, etc."
                         onChange={(value) => updateAdvanced({
                             smart_home_security: { ...advanced.smart_home_security, smart_thermostat_brand: value },
                         })}
@@ -300,75 +413,113 @@ export function AdvancedDetailsStep({
                     <Field
                         label="Smart Doorbell Brand"
                         value={advanced.smart_home_security?.smart_doorbell_brand}
+                        placeholder="Ring, Arlo, etc."
                         onChange={(value) => updateAdvanced({
                             smart_home_security: { ...advanced.smart_home_security, smart_doorbell_brand: value },
                         })}
                     />
                     <Field
                         label="Notes"
-                        value={advanced.smart_home_security?.smart_home_notes}
                         multiline
+                        value={advanced.smart_home_security?.smart_home_notes}
+                        placeholder="Passcodes, app transfer notes, or setup tips"
                         onChange={(value) => updateAdvanced({
                             smart_home_security: { ...advanced.smart_home_security, smart_home_notes: value },
                         })}
                     />
-                </Section>
-            )}
+                </>
+            );
+        }
 
-            {hasModule('service_providers') && (
-                <Section title={ADVANCED_MODULE_LABELS.service_providers}>
-                    <Field
-                        label="HVAC Provider"
-                        value={advanced.service_providers?.hvac_provider_name}
-                        onChange={(value) => updateAdvanced({
-                            service_providers: { ...advanced.service_providers, hvac_provider_name: value },
-                        })}
-                    />
-                    <Field
-                        label="HVAC Phone"
-                        value={advanced.service_providers?.hvac_provider_phone}
-                        onChange={(value) => updateAdvanced({
-                            service_providers: { ...advanced.service_providers, hvac_provider_phone: value },
-                        })}
-                    />
-                    <Field
-                        label="Pest Control Provider"
-                        value={advanced.service_providers?.pest_control_provider_name}
-                        onChange={(value) => updateAdvanced({
-                            service_providers: { ...advanced.service_providers, pest_control_provider_name: value },
-                        })}
-                    />
-                    <Field
-                        label="Pest Control Phone"
-                        value={advanced.service_providers?.pest_control_provider_phone}
-                        onChange={(value) => updateAdvanced({
-                            service_providers: { ...advanced.service_providers, pest_control_provider_phone: value },
-                        })}
-                    />
-                    <Field
-                        label="Plumber"
-                        value={advanced.service_providers?.plumber_provider_name}
-                        onChange={(value) => updateAdvanced({
-                            service_providers: { ...advanced.service_providers, plumber_provider_name: value },
-                        })}
-                    />
-                    <Field
-                        label="Plumber Phone"
-                        value={advanced.service_providers?.plumber_provider_phone}
-                        onChange={(value) => updateAdvanced({
-                            service_providers: { ...advanced.service_providers, plumber_provider_phone: value },
-                        })}
-                    />
-                    <Field
-                        label="Notes"
-                        value={advanced.service_providers?.service_provider_notes}
-                        multiline
-                        onChange={(value) => updateAdvanced({
-                            service_providers: { ...advanced.service_providers, service_provider_notes: value },
-                        })}
-                    />
-                </Section>
-            )}
+        return (
+            <>
+                <Field
+                    label="HVAC Provider"
+                    value={advanced.service_providers?.hvac_provider_name}
+                    placeholder="Company name"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, hvac_provider_name: value },
+                    })}
+                />
+                <Field
+                    label="HVAC Phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={advanced.service_providers?.hvac_provider_phone}
+                    placeholder="(555) 123-4567"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, hvac_provider_phone: value },
+                    })}
+                />
+                <Field
+                    label="Pest Control Provider"
+                    value={advanced.service_providers?.pest_control_provider_name}
+                    placeholder="Company name"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, pest_control_provider_name: value },
+                    })}
+                />
+                <Field
+                    label="Pest Control Phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={advanced.service_providers?.pest_control_provider_phone}
+                    placeholder="(555) 123-4567"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, pest_control_provider_phone: value },
+                    })}
+                />
+                <Field
+                    label="Plumber"
+                    value={advanced.service_providers?.plumber_provider_name}
+                    placeholder="Company name"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, plumber_provider_name: value },
+                    })}
+                />
+                <Field
+                    label="Plumber Phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={advanced.service_providers?.plumber_provider_phone}
+                    placeholder="(555) 123-4567"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, plumber_provider_phone: value },
+                    })}
+                />
+                <Field
+                    label="Notes"
+                    multiline
+                    value={advanced.service_providers?.service_provider_notes}
+                    placeholder="Preferred vendors, contract details, or service notes"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, service_provider_notes: value },
+                    })}
+                />
+            </>
+        );
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-5"
+        >
+            <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Module {moduleIndex + 1} of {moduleCount}</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Seller Transition Details</h3>
+                <p className="text-sm text-muted-foreground">
+                    {isReviewEdit
+                        ? `Editing ${moduleTitle}. All fields are optional.`
+                        : `Now collecting ${moduleTitle.toLowerCase()} details. All fields are optional.`}
+                </p>
+            </div>
+
+            <Section title={moduleTitle}>
+                {renderModuleFields()}
+            </Section>
 
             <div className="flex gap-2 sm:gap-3 pt-1">
                 <button
@@ -381,7 +532,7 @@ export function AdvancedDetailsStep({
                     onClick={onNext}
                     className="flex-[2] py-3 rounded-xl font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
                 >
-                    Continue
+                    {isReviewEdit ? 'Save & Return to Review' : 'Continue'}
                 </button>
             </div>
         </motion.div>

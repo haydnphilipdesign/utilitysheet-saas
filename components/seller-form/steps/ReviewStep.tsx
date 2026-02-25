@@ -33,6 +33,7 @@ interface ReviewStepProps {
     packetMode?: 'simple' | 'advanced';
     advancedModules?: AdvancedModuleKey[];
     advancedData?: AdvancedPacketData;
+    onEditAdvancedModule?: (moduleKey: AdvancedModuleKey) => void;
 }
 
 export function ReviewStep({
@@ -48,6 +49,7 @@ export function ReviewStep({
     packetMode = 'simple',
     advancedModules = [],
     advancedData = {},
+    onEditAdvancedModule,
 }: ReviewStepProps) {
 
     const waterSourceLabel: Record<WizardState['water_source'], string> = {
@@ -210,7 +212,19 @@ export function ReviewStep({
 
                                 return (
                                     <div key={moduleKey} className="rounded-lg border border-border/60 p-3">
-                                        <p className="text-sm font-medium text-foreground mb-2">{ADVANCED_MODULE_LABELS[moduleKey]}</p>
+                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                            <p className="text-sm font-medium text-foreground">{ADVANCED_MODULE_LABELS[moduleKey]}</p>
+                                            {onEditAdvancedModule && (
+                                                <button
+                                                    onClick={() => onEditAdvancedModule(moduleKey)}
+                                                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-emerald-400 hover:bg-muted hover:text-emerald-300 transition-colors"
+                                                    title={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
+                                                >
+                                                    <Pencil className="h-3 w-3" />
+                                                    Edit
+                                                </button>
+                                            )}
+                                        </div>
                                         {rowItems.length === 0 ? (
                                             <p className="text-xs text-muted-foreground italic">No details provided</p>
                                         ) : (
