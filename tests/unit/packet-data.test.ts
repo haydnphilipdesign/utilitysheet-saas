@@ -237,4 +237,52 @@ describe('packet-data builder', () => {
             },
         });
     });
+
+    it('omits excluded advanced fields and drops advanced sections with zero included fields', async () => {
+        (getRequestByToken as Mock).mockResolvedValue({
+            id: 'req_6',
+            account_id: 'acct_6',
+            organization_id: null,
+            brand_profile_id: null,
+            property_address: '555 Elm St, Town, ST 00000',
+            created_at: '2026-01-01T00:00:00.000Z',
+            status: 'submitted',
+            packet_mode: 'advanced',
+            advanced_modules: ['mailbox_access', 'service_providers'],
+            advanced_module_exclusions: {
+                mailbox_access: [
+                    'mailbox_number',
+                    'mailbox_location',
+                    'parking_instructions',
+                    'breaker_box_location',
+                    'main_water_shutoff_location',
+                ],
+                service_providers: ['service_provider_notes'],
+            },
+            advanced_packet_data: {
+                mailbox_access: {
+                    mailbox_number: '12B',
+                },
+                service_providers: {
+                    hvac_provider_name: 'Comfort Air',
+                    hvac_provider_phone: '555-200-1000',
+                    service_provider_notes: 'Do not include this note',
+                },
+            },
+        });
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+
+        const result = await getPacketDataByPublicToken('token_6');
+
+        expect(result.status).toBe('ok');
+        if (result.status !== 'ok') return;
+
+        const sections = result.data.advanced_sections || [];
+        expect(sections).toHaveLength(1);
+        expect(sections[0].key).toBe('service_providers');
+        const fieldKeys = sections[0].fields.map((field) => field.key);
+        expect(fieldKeys).toContain('hvac_provider_name');
+        expect(fieldKeys).toContain('hvac_provider_phone');
+        expect(fieldKeys).not.toContain('service_provider_notes');
+    });
 });

@@ -6,7 +6,7 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { getClientIp } from '@/lib/network/client-ip';
 import { validateIntakeAddress } from '@/lib/address/intake-validation';
-import { normalizeAdvancedModules } from '@/lib/packet/modules';
+import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -149,6 +149,9 @@ export async function POST(
         const advancedModules = packetMode === 'advanced'
             ? normalizeAdvancedModules(intakeLink.advanced_modules)
             : [];
+        const advancedModuleExclusions = packetMode === 'advanced'
+            ? normalizeAdvancedModuleExclusions(intakeLink.advanced_module_exclusions, advancedModules)
+            : {};
 
         const newRequest = await createRequest({
             accountId: account.id,
@@ -161,6 +164,7 @@ export async function POST(
             meteredAt: null,
             packetMode,
             advancedModules,
+            advancedModuleExclusions,
         });
 
         if (!newRequest) {
@@ -178,6 +182,7 @@ export async function POST(
                 utility_categories: UTILITY_CATEGORY_KEYS,
                 packet_mode: packetMode,
                 advanced_modules: advancedModules,
+                advanced_module_exclusions: advancedModuleExclusions,
             },
             ipAddress: ipAddress === 'unknown' ? null : ipAddress,
             userAgent,

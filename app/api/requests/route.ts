@@ -6,7 +6,7 @@ import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { createRequestBodySchema } from '@/lib/validation/schemas';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
-import { normalizeAdvancedModules } from '@/lib/packet/modules';
+import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 
 function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
@@ -116,6 +116,9 @@ export async function POST(request: Request) {
         const advancedModules = packetMode === 'advanced'
             ? normalizeAdvancedModules(parsedBody.data.advancedModules)
             : [];
+        const advancedModuleExclusions = packetMode === 'advanced'
+            ? normalizeAdvancedModuleExclusions(parsedBody.data.advancedModuleExclusions, advancedModules)
+            : {};
 
         if (packetMode === 'advanced' && !isPaid) {
             return NextResponse.json(
@@ -183,6 +186,7 @@ export async function POST(request: Request) {
             isDemo: isDemoRequest,
             packetMode,
             advancedModules,
+            advancedModuleExclusions,
         });
 
         if (!newRequest) {
@@ -209,6 +213,7 @@ export async function POST(request: Request) {
                 is_demo: isDemoRequest,
                 packet_mode: packetMode,
                 advanced_modules: advancedModules,
+                advanced_module_exclusions: advancedModuleExclusions,
             },
             ipAddress,
             userAgent,

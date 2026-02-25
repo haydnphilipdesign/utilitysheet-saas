@@ -24,7 +24,7 @@ describe('contact-service', () => {
         vi.clearAllMocks();
         delete process.env.ALLOW_UNVERIFIED_AI_CONTACTS;
         getFromCacheMock.mockResolvedValue(null);
-        setInCacheMock.mockResolvedValue(undefined);
+        setInCacheMock.mockResolvedValue(true);
         isGeminiConfiguredMock.mockReturnValue(true);
     });
 

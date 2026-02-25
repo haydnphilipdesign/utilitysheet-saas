@@ -3,6 +3,7 @@
  */
 import { sql, generateToken } from '@/lib/neon/db';
 import type {
+    AdvancedModuleExclusions,
     AdvancedModuleKey,
     PacketMode,
     PropertyAddressStructured,
@@ -131,6 +132,7 @@ export async function createRequest(data: {
     meteredAt?: string | null;
     packetMode?: PacketMode;
     advancedModules?: AdvancedModuleKey[];
+    advancedModuleExclusions?: AdvancedModuleExclusions;
     advancedPacketData?: Record<string, unknown>;
 }): Promise<Request | null> {
     if (!sql) return null;
@@ -145,6 +147,7 @@ export async function createRequest(data: {
             : new Date().toISOString();
     const packetMode = data.packetMode ?? 'simple';
     const advancedModules = Array.isArray(data.advancedModules) ? data.advancedModules : [];
+    const advancedModuleExclusions = data.advancedModuleExclusions || {};
     const advancedPacketData = data.advancedPacketData || {};
 
     const result = await sql`
@@ -161,6 +164,7 @@ export async function createRequest(data: {
             utility_categories,
             packet_mode,
             advanced_modules,
+            advanced_module_exclusions,
             advanced_packet_data,
             public_token,
             seller_token,
@@ -183,6 +187,7 @@ export async function createRequest(data: {
             ${data.utilityCategories},
             ${packetMode},
             ${advancedModules},
+            ${JSON.stringify(advancedModuleExclusions)}::jsonb,
             ${JSON.stringify(advancedPacketData)}::jsonb,
             ${publicToken},
             ${sellerToken},
@@ -204,6 +209,7 @@ export async function updateRequestConfiguration(
     data: {
         packetMode: PacketMode;
         advancedModules: AdvancedModuleKey[];
+        advancedModuleExclusions: AdvancedModuleExclusions;
     }
 ): Promise<Request | null> {
     if (!sql) return null;
@@ -213,6 +219,7 @@ export async function updateRequestConfiguration(
         SET
             packet_mode = ${data.packetMode},
             advanced_modules = ${data.advancedModules},
+            advanced_module_exclusions = ${JSON.stringify(data.advancedModuleExclusions)}::jsonb,
             updated_at = NOW()
         WHERE id = ${id}
             AND status IN ('draft', 'sent')
@@ -221,6 +228,36 @@ export async function updateRequestConfiguration(
     `;
 
     return (result[0] as Request) || null;
+}
+
+export async function propagateAdvancedModuleDefaultsToOpenRequests(
+    accountId: string,
+    organizationId: string | null | undefined,
+    data: {
+        advancedModules: AdvancedModuleKey[];
+        advancedModuleExclusions: AdvancedModuleExclusions;
+    }
+): Promise<number> {
+    if (!sql) return 0;
+
+    const visibilityScope = organizationId
+        ? sql`(organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
+        : sql`(account_id = ${accountId} AND organization_id IS NULL)`;
+
+    const result = await sql`
+        UPDATE requests
+        SET
+            advanced_modules = ${data.advancedModules}::text[],
+            advanced_module_exclusions = ${JSON.stringify(data.advancedModuleExclusions)}::jsonb,
+            updated_at = NOW()
+        WHERE deleted_at IS NULL
+            AND status IN ('draft', 'sent')
+            AND packet_mode = 'advanced'
+            AND ${visibilityScope}
+        RETURNING id
+    `;
+
+    return result.length;
 }
 
 export async function getRequestCountForAccount(accountId: string): Promise<number> {

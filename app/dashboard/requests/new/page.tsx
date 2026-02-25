@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
 import {
     Dialog,
     DialogContent,
@@ -30,9 +31,21 @@ import {
     Plus,
     CheckCircle2,
 } from 'lucide-react';
-import type { AdvancedModuleKey, BrandProfile, PacketMode, UtilityCategory } from '@/types';
+import type {
+    AdvancedModuleExclusions,
+    AdvancedModuleKey,
+    BrandProfile,
+    PacketMode,
+    UtilityCategory,
+} from '@/types';
 import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
-import { ADVANCED_MODULE_DEFAULTS, ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
+import {
+    ADVANCED_MODULE_DEFAULTS,
+    ADVANCED_MODULE_KEYS,
+    getAdvancedModuleIncludedFieldCount,
+    normalizeAdvancedModuleExclusions,
+    normalizeAdvancedModules,
+} from '@/lib/packet/modules';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { DEFAULT_MESSAGE_TEMPLATES, firstNameFromFullName, renderTemplate } from '@/lib/message-templates';
@@ -47,6 +60,7 @@ interface FormData {
     utility_categories: UtilityCategory[];
     packet_mode: PacketMode;
     advanced_modules: AdvancedModuleKey[];
+    advanced_module_exclusions: AdvancedModuleExclusions;
     brand_profile_id: string;
     send_seller_email: boolean;
 }
@@ -60,6 +74,7 @@ const initialFormData: FormData = {
     utility_categories: UTILITY_CATEGORY_KEYS,
     packet_mode: 'simple',
     advanced_modules: [...ADVANCED_MODULE_DEFAULTS],
+    advanced_module_exclusions: {},
     brand_profile_id: '',
     send_seller_email: true,
 };
@@ -107,6 +122,7 @@ export default function NewRequestPage() {
                     fetch('/api/account'),
                     fetch('/api/intake-link'),
                 ]);
+                let paidAccount = false;
 
                 if (brandsResponse.ok) {
                     const data = await brandsResponse.json();
@@ -119,7 +135,8 @@ export default function NewRequestPage() {
 
                 if (accountResponse.ok) {
                     const accountData = await accountResponse.json();
-                    setIsPro(accountData.account?.subscription_status === 'pro' || accountData.activeOrganization?.subscription_status === 'team');
+                    paidAccount = accountData.account?.subscription_status === 'pro' || accountData.activeOrganization?.subscription_status === 'team';
+                    setIsPro(paidAccount);
                 }
 
                 if (intakeResponse.ok) {
@@ -128,6 +145,22 @@ export default function NewRequestPage() {
                         setIntakeLink({ url: data.intakeLink.url, slug: data.intakeLink.slug });
                     }
                     setIntakeCanCustomize(Boolean(data.canCustomize));
+                    const intakeDefaultModeRaw = data.intakeLink?.defaultPacketMode === 'advanced' ? 'advanced' : 'simple';
+                    const nextPacketMode: PacketMode = intakeDefaultModeRaw === 'advanced' && paidAccount ? 'advanced' : 'simple';
+                    const nextModules = nextPacketMode === 'advanced'
+                        ? (Array.isArray(data.intakeLink?.advancedModules) && data.intakeLink.advancedModules.length > 0
+                            ? normalizeAdvancedModules(data.intakeLink.advancedModules)
+                            : [...ADVANCED_MODULE_DEFAULTS])
+                        : [...ADVANCED_MODULE_DEFAULTS];
+                    const nextExclusions = nextPacketMode === 'advanced'
+                        ? normalizeAdvancedModuleExclusions(data.intakeLink?.advancedModuleExclusions || {}, nextModules)
+                        : {};
+                    setFormData((prev) => ({
+                        ...prev,
+                        packet_mode: nextPacketMode,
+                        advanced_modules: nextModules,
+                        advanced_module_exclusions: nextExclusions,
+                    }));
                 }
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -214,8 +247,37 @@ export default function NewRequestPage() {
             ...prev,
             advanced_modules: prev.advanced_modules.includes(moduleKey)
                 ? prev.advanced_modules.filter((m) => m !== moduleKey)
-                : [...prev.advanced_modules, moduleKey],
+                : ADVANCED_MODULE_KEYS.filter((candidate) => candidate === moduleKey || prev.advanced_modules.includes(candidate)),
+            advanced_module_exclusions: normalizeAdvancedModuleExclusions(
+                prev.advanced_module_exclusions,
+                prev.advanced_modules.includes(moduleKey)
+                    ? prev.advanced_modules.filter((m) => m !== moduleKey)
+                    : ADVANCED_MODULE_KEYS.filter((candidate) => candidate === moduleKey || prev.advanced_modules.includes(candidate))
+            ),
         }));
+    };
+
+    const toggleAdvancedModuleField = (moduleKey: AdvancedModuleKey, fieldKey: string) => {
+        setFormData((prev) => {
+            const currentExcluded = new Set(prev.advanced_module_exclusions[moduleKey] || []);
+            if (currentExcluded.has(fieldKey)) {
+                currentExcluded.delete(fieldKey);
+            } else {
+                currentExcluded.add(fieldKey);
+            }
+
+            const nextExclusions: AdvancedModuleExclusions = { ...prev.advanced_module_exclusions };
+            if (currentExcluded.size === 0) {
+                delete nextExclusions[moduleKey];
+            } else {
+                nextExclusions[moduleKey] = Array.from(currentExcluded);
+            }
+
+            return {
+                ...prev,
+                advanced_module_exclusions: normalizeAdvancedModuleExclusions(nextExclusions, prev.advanced_modules),
+            };
+        });
     };
 
     const handleCreate = async () => {
@@ -230,6 +292,9 @@ export default function NewRequestPage() {
                 utilityCategories: formData.utility_categories,
                 packetMode: formData.packet_mode,
                 advancedModules: formData.packet_mode === 'advanced' ? formData.advanced_modules : [],
+                advancedModuleExclusions: formData.packet_mode === 'advanced'
+                    ? normalizeAdvancedModuleExclusions(formData.advanced_module_exclusions, formData.advanced_modules)
+                    : {},
                 brandProfileId: formData.brand_profile_id || undefined,
                 sendSellerEmail: formData.send_seller_email,
             };
@@ -330,8 +395,12 @@ export default function NewRequestPage() {
     };
 
     const isStep1Valid = formData.property_address.length >= 5;
+    const hasAdvancedModuleWithNoFields = formData.packet_mode === 'advanced'
+        && formData.advanced_modules.some((moduleKey) => (
+            getAdvancedModuleIncludedFieldCount(moduleKey, formData.advanced_module_exclusions) === 0
+        ));
     const isStep3Valid = formData.utility_categories.length > 0
-        && (formData.packet_mode === 'simple' || formData.advanced_modules.length > 0);
+        && (formData.packet_mode === 'simple' || (formData.advanced_modules.length > 0 && !hasAdvancedModuleWithNoFields));
 
     // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -839,10 +908,15 @@ export default function NewRequestPage() {
                                                     setShowUpgradeDialog(true);
                                                     return;
                                                 }
+                                                const nextModules = formData.advanced_modules.length === 0
+                                                    ? [...ADVANCED_MODULE_DEFAULTS]
+                                                    : normalizeAdvancedModules(formData.advanced_modules);
                                                 updateField('packet_mode', 'advanced');
-                                                if (formData.advanced_modules.length === 0) {
-                                                    updateField('advanced_modules', [...ADVANCED_MODULE_DEFAULTS]);
-                                                }
+                                                updateField('advanced_modules', nextModules);
+                                                updateField(
+                                                    'advanced_module_exclusions',
+                                                    normalizeAdvancedModuleExclusions(formData.advanced_module_exclusions, nextModules)
+                                                );
                                                 trackEvent('packet_mode_selected', {
                                                     mode: 'advanced',
                                                     location: 'new_request',
@@ -869,35 +943,25 @@ export default function NewRequestPage() {
                                             <Label className="text-foreground">Advanced Modules</Label>
                                             <span className="text-xs text-muted-foreground">{formData.advanced_modules.length} enabled</span>
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                            {Object.entries(ADVANCED_MODULE_LABELS).map(([moduleKey, moduleLabel]) => {
-                                                const typedModuleKey = moduleKey as AdvancedModuleKey;
-                                                const isEnabled = formData.advanced_modules.includes(typedModuleKey);
-                                                return (
-                                                    <button
-                                                        key={typedModuleKey}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            toggleAdvancedModule(typedModuleKey);
-                                                            trackEvent('advanced_module_toggled', {
-                                                                module: typedModuleKey,
-                                                                enabled: !isEnabled,
-                                                                location: 'new_request',
-                                                            });
-                                                        }}
-                                                        className={`rounded-lg border px-3 py-2 text-left transition-colors ${
-                                                            isEnabled
-                                                                ? 'border-emerald-500/60 bg-emerald-500/10'
-                                                                : 'border-border hover:border-input'
-                                                        }`}
-                                                    >
-                                                        <p className="text-sm text-foreground">{moduleLabel}</p>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
+                                        <AdvancedModuleConfigurator
+                                            enabledModules={formData.advanced_modules}
+                                            exclusions={formData.advanced_module_exclusions}
+                                            onToggleModule={(moduleKey) => {
+                                                const isEnabled = formData.advanced_modules.includes(moduleKey);
+                                                toggleAdvancedModule(moduleKey);
+                                                trackEvent('advanced_module_toggled', {
+                                                    module: moduleKey,
+                                                    enabled: !isEnabled,
+                                                    location: 'new_request',
+                                                });
+                                            }}
+                                            onToggleField={toggleAdvancedModuleField}
+                                        />
                                         {formData.advanced_modules.length === 0 && (
                                             <p className="text-xs text-amber-500">Enable at least one module for Advanced mode.</p>
+                                        )}
+                                        {hasAdvancedModuleWithNoFields && formData.advanced_modules.length > 0 && (
+                                            <p className="text-xs text-amber-500">Each enabled module must include at least one question.</p>
                                         )}
                                     </div>
                                 )}

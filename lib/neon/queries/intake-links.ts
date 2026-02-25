@@ -2,7 +2,7 @@
  * Intake link queries (reusable seller URL per account)
  */
 import { sql, generateToken } from '@/lib/neon/db';
-import type { AdvancedModuleKey, PacketMode } from '@/types';
+import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode } from '@/types';
 
 export interface IntakeLink {
     id: string;
@@ -11,6 +11,7 @@ export interface IntakeLink {
     is_active: boolean;
     default_packet_mode: PacketMode;
     advanced_modules: AdvancedModuleKey[];
+    advanced_module_exclusions: AdvancedModuleExclusions;
     created_at: string;
     updated_at: string;
 }
@@ -104,8 +105,15 @@ export async function getOrCreateIntakeLink(accountId: string): Promise<IntakeLi
     const uniqueSlug = await getUniqueIntakeSlug(slug);
 
     const created = await sql`
-        INSERT INTO intake_links (account_id, slug, is_active, default_packet_mode, advanced_modules)
-        VALUES (${accountId}, ${uniqueSlug}, TRUE, 'simple', '{}'::text[])
+        INSERT INTO intake_links (
+            account_id,
+            slug,
+            is_active,
+            default_packet_mode,
+            advanced_modules,
+            advanced_module_exclusions
+        )
+        VALUES (${accountId}, ${uniqueSlug}, TRUE, 'simple', '{}'::text[], '{}'::jsonb)
         RETURNING *
     `;
 
@@ -130,8 +138,15 @@ export async function updateIntakeLinkSlug(accountId: string, slug: string): Pro
 
     // Link doesn't exist yet, create it with the requested slug.
     const created = await sql`
-        INSERT INTO intake_links (account_id, slug, is_active, default_packet_mode, advanced_modules)
-        VALUES (${accountId}, ${uniqueSlug}, TRUE, 'simple', '{}'::text[])
+        INSERT INTO intake_links (
+            account_id,
+            slug,
+            is_active,
+            default_packet_mode,
+            advanced_modules,
+            advanced_module_exclusions
+        )
+        VALUES (${accountId}, ${uniqueSlug}, TRUE, 'simple', '{}'::text[], '{}'::jsonb)
         RETURNING *
     `;
 
@@ -143,6 +158,7 @@ export async function updateIntakeLinkPacketDefaults(
     defaults: {
         defaultPacketMode: PacketMode;
         advancedModules: AdvancedModuleKey[];
+        advancedModuleExclusions: AdvancedModuleExclusions;
     }
 ): Promise<IntakeLink | null> {
     if (!sql) return null;
@@ -152,6 +168,7 @@ export async function updateIntakeLinkPacketDefaults(
         SET
             default_packet_mode = ${defaults.defaultPacketMode},
             advanced_modules = ${defaults.advancedModules}::text[],
+            advanced_module_exclusions = ${JSON.stringify(defaults.advancedModuleExclusions)}::jsonb,
             updated_at = NOW()
         WHERE account_id = ${accountId}
         RETURNING *
@@ -161,8 +178,22 @@ export async function updateIntakeLinkPacketDefaults(
 
     const seededSlug = await getUniqueIntakeSlug(generateToken().slice(0, 10));
     const created = await sql`
-        INSERT INTO intake_links (account_id, slug, is_active, default_packet_mode, advanced_modules)
-        VALUES (${accountId}, ${seededSlug}, TRUE, ${defaults.defaultPacketMode}, ${defaults.advancedModules}::text[])
+        INSERT INTO intake_links (
+            account_id,
+            slug,
+            is_active,
+            default_packet_mode,
+            advanced_modules,
+            advanced_module_exclusions
+        )
+        VALUES (
+            ${accountId},
+            ${seededSlug},
+            TRUE,
+            ${defaults.defaultPacketMode},
+            ${defaults.advancedModules}::text[],
+            ${JSON.stringify(defaults.advancedModuleExclusions)}::jsonb
+        )
         RETURNING *
     `;
     return (created[0] as IntakeLink) || null;

@@ -3,12 +3,13 @@ import {
     getOrCreateAccount,
     getAccountOrganizations,
     getOrCreateIntakeLink,
+    propagateAdvancedModuleDefaultsToOpenRequests,
     updateIntakeLinkPacketDefaults,
     updateIntakeLinkSlug,
 } from '@/lib/neon/queries';
-import { normalizeAdvancedModules } from '@/lib/packet/modules';
+import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { stackServerApp } from '@/lib/stack/server';
-import type { AdvancedModuleKey, PacketMode } from '@/types';
+import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode } from '@/types';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -50,6 +51,10 @@ export async function GET() {
         const url = `${baseUrl}/i/${intakeLink.slug}`;
         const canCustomize = canCustomizeSlug(account.subscription_status, activeOrg?.subscription_status);
         const advancedModules = normalizeAdvancedModules(intakeLink.advanced_modules);
+        const advancedModuleExclusions = normalizeAdvancedModuleExclusions(
+            intakeLink.advanced_module_exclusions,
+            advancedModules
+        );
 
         return NextResponse.json({
             intakeLink: {
@@ -58,6 +63,7 @@ export async function GET() {
                 is_active: intakeLink.is_active,
                 defaultPacketMode: intakeLink.default_packet_mode || 'simple',
                 advancedModules,
+                advancedModuleExclusions,
             },
             canCustomize,
             companyName: account.company_name || '',
@@ -89,16 +95,18 @@ export async function POST(request: Request) {
         const slug = typeof body?.slug === 'string' ? body.slug.trim() : '';
         const defaultPacketMode = body?.defaultPacketMode as PacketMode | undefined;
         const hasAdvancedModulesPayload = Object.prototype.hasOwnProperty.call(body || {}, 'advancedModules');
+        const hasAdvancedModuleExclusionsPayload = Object.prototype.hasOwnProperty.call(body || {}, 'advancedModuleExclusions');
         const advancedModulesInput = Array.isArray(body?.advancedModules)
             ? body.advancedModules.filter((candidate: unknown): candidate is string => typeof candidate === 'string')
             : undefined;
+        const advancedModuleExclusionsInput = body?.advancedModuleExclusions;
         const isModeUpdate = defaultPacketMode === 'simple' || defaultPacketMode === 'advanced';
         const isSlugUpdate = slug.length > 0;
-        const isPacketDefaultsUpdate = isModeUpdate || hasAdvancedModulesPayload;
+        const isPacketDefaultsUpdate = isModeUpdate || hasAdvancedModulesPayload || hasAdvancedModuleExclusionsPayload;
 
         if (!isPacketDefaultsUpdate && !isSlugUpdate) {
             return NextResponse.json(
-                { error: 'Invalid request', message: 'Provide a slug, defaultPacketMode, and/or advancedModules.' },
+                { error: 'Invalid request', message: 'Provide a slug, defaultPacketMode, advancedModules, and/or advancedModuleExclusions.' },
                 { status: 400 }
             );
         }
@@ -142,27 +150,55 @@ export async function POST(request: Request) {
                 { status: 403 }
             );
         }
+        if (hasAdvancedModuleExclusionsPayload && !allowed) {
+            return NextResponse.json(
+                {
+                    error: 'Upgrade required',
+                    message: 'Advanced module field exclusions are available on Pro and Teams.',
+                },
+                { status: 403 }
+            );
+        }
 
         if (isPacketDefaultsUpdate) {
             const nextDefaultPacketMode: PacketMode = isModeUpdate
                 ? (defaultPacketMode === 'advanced' ? 'advanced' : 'simple')
                 : (updated.default_packet_mode === 'advanced' ? 'advanced' : 'simple');
             const currentModules: AdvancedModuleKey[] = normalizeAdvancedModules(updated.advanced_modules);
+            const currentExclusions: AdvancedModuleExclusions = normalizeAdvancedModuleExclusions(
+                updated.advanced_module_exclusions,
+                currentModules
+            );
             const nextAdvancedModules: AdvancedModuleKey[] = hasAdvancedModulesPayload
                 ? normalizeAdvancedModules(advancedModulesInput)
                 : currentModules;
+            const nextAdvancedModuleExclusions: AdvancedModuleExclusions = hasAdvancedModuleExclusionsPayload
+                ? normalizeAdvancedModuleExclusions(advancedModuleExclusionsInput, nextAdvancedModules)
+                : normalizeAdvancedModuleExclusions(currentExclusions, nextAdvancedModules);
             updated = await updateIntakeLinkPacketDefaults(account.id, {
                 defaultPacketMode: nextDefaultPacketMode,
                 advancedModules: nextAdvancedModules,
+                advancedModuleExclusions: nextAdvancedModuleExclusions,
             });
             if (!updated) {
                 return NextResponse.json({ error: 'Failed to update intake packet defaults' }, { status: 500 });
+            }
+
+            if (hasAdvancedModulesPayload || hasAdvancedModuleExclusionsPayload) {
+                await propagateAdvancedModuleDefaultsToOpenRequests(account.id, activeOrg?.id, {
+                    advancedModules: nextAdvancedModules,
+                    advancedModuleExclusions: nextAdvancedModuleExclusions,
+                });
             }
         }
 
         const baseUrl = getAppBaseUrl();
         const url = `${baseUrl}/i/${updated.slug}`;
         const advancedModules = normalizeAdvancedModules(updated.advanced_modules);
+        const advancedModuleExclusions = normalizeAdvancedModuleExclusions(
+            updated.advanced_module_exclusions,
+            advancedModules
+        );
 
         return NextResponse.json({
             intakeLink: {
@@ -171,6 +207,7 @@ export async function POST(request: Request) {
                 is_active: updated.is_active,
                 defaultPacketMode: updated.default_packet_mode || 'simple',
                 advancedModules,
+                advancedModuleExclusions,
             },
         });
     } catch (error: unknown) {

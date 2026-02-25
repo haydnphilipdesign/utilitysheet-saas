@@ -66,6 +66,7 @@ describe('settings reusable link mode', () => {
                         is_active: true,
                         defaultPacketMode: 'advanced',
                         advancedModules: ['mailbox_access', 'service_providers'],
+                        advancedModuleExclusions: {},
                     },
                     canCustomize: true,
                 });
@@ -80,6 +81,7 @@ describe('settings reusable link mode', () => {
                         is_active: true,
                         defaultPacketMode: body.defaultPacketMode,
                         advancedModules: body.advancedModules,
+                        advancedModuleExclusions: body.advancedModuleExclusions || {},
                     },
                 });
             }
@@ -99,7 +101,7 @@ describe('settings reusable link mode', () => {
         expect(screen.getAllByText('Advanced Utility Packet').length).toBeGreaterThan(0);
         expect(screen.getByText(/Mailbox access, lawn care contacts/i)).toBeInTheDocument();
 
-        const mailboxButton = await screen.findByRole('button', { name: /Mailbox & Access/i });
+        const mailboxButton = await screen.findByTestId('module-toggle-mailbox_access');
         fireEvent.click(mailboxButton);
 
         fireEvent.click(screen.getByRole('button', { name: /Save Mode Settings/i }));
@@ -112,6 +114,7 @@ describe('settings reusable link mode', () => {
             const body = JSON.parse(String((saveCall?.[1] as RequestInit).body));
             expect(body.defaultPacketMode).toBe('advanced');
             expect(body.advancedModules).toEqual(['service_providers']);
+            expect(body.advancedModuleExclusions).toEqual({});
         });
     });
 
@@ -142,6 +145,7 @@ describe('settings reusable link mode', () => {
                         is_active: true,
                         defaultPacketMode: 'advanced',
                         advancedModules: ['mailbox_access', 'service_providers'],
+                        advancedModuleExclusions: {},
                     },
                     canCustomize: false,
                 });
@@ -160,7 +164,7 @@ describe('settings reusable link mode', () => {
         await screen.findByText(/read-only on Free/i);
         const modeSelect = screen.getByLabelText('Reusable link default mode') as HTMLSelectElement;
         expect(modeSelect.disabled).toBe(true);
-        expect(screen.getByRole('button', { name: /Mailbox & Access/i })).toBeDisabled();
+        expect(screen.getByTestId('module-toggle-mailbox_access')).toBeDisabled();
         expect(screen.getByRole('button', { name: /Save Mode Settings/i })).toBeDisabled();
     });
 });

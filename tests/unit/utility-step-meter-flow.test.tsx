@@ -30,6 +30,7 @@ function createWizardState(): WizardState {
         optional_utilities: [],
         packet_mode: 'simple',
         advanced_modules: [],
+        advanced_module_exclusions: {},
         advanced: {},
         utilities: {
             electric: { ...emptyUtility },

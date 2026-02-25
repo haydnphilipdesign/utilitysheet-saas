@@ -11,10 +11,17 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
+import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
 import { Link as LinkIcon, User, Bell, Check, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { ADVANCED_MODULE_DEFAULTS, ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
-import type { AdvancedModuleKey, PacketMode } from '@/types';
+import {
+    ADVANCED_MODULE_DEFAULTS,
+    ADVANCED_MODULE_KEYS,
+    getAdvancedModuleIncludedFieldCount,
+    normalizeAdvancedModuleExclusions,
+    normalizeAdvancedModules,
+} from '@/lib/packet/modules';
+import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode } from '@/types';
 
 type NotificationPreferences = {
     seller_submissions: boolean;
@@ -81,11 +88,13 @@ export default function SettingsPage() {
         is_active: boolean;
         defaultPacketMode?: PacketMode;
         advancedModules?: AdvancedModuleKey[];
+        advancedModuleExclusions?: AdvancedModuleExclusions;
     } | null>(null);
     const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
     const [intakeSlugDraft, setIntakeSlugDraft] = useState('');
     const [intakeDefaultPacketMode, setIntakeDefaultPacketMode] = useState<PacketMode>('simple');
     const [intakeAdvancedModules, setIntakeAdvancedModules] = useState<AdvancedModuleKey[]>([...ADVANCED_MODULE_DEFAULTS]);
+    const [intakeAdvancedModuleExclusions, setIntakeAdvancedModuleExclusions] = useState<AdvancedModuleExclusions>({});
     const [intakeSaving, setIntakeSaving] = useState(false);
 
     const TEAM_MIN_SEATS = 3;
@@ -152,13 +161,18 @@ export default function SettingsPage() {
                 if (!response.ok) return;
 
                 if (data.intakeLink) {
+                    const nextModules = Array.isArray(data.intakeLink.advancedModules) && data.intakeLink.advancedModules.length > 0
+                        ? normalizeAdvancedModules(data.intakeLink.advancedModules)
+                        : [...ADVANCED_MODULE_DEFAULTS];
                     setIntakeLink(data.intakeLink);
                     setIntakeSlugDraft(data.intakeLink.slug || '');
                     setIntakeDefaultPacketMode(data.intakeLink.defaultPacketMode || 'simple');
-                    setIntakeAdvancedModules(
-                        Array.isArray(data.intakeLink.advancedModules) && data.intakeLink.advancedModules.length > 0
-                            ? data.intakeLink.advancedModules
-                            : [...ADVANCED_MODULE_DEFAULTS]
+                    setIntakeAdvancedModules(nextModules);
+                    setIntakeAdvancedModuleExclusions(
+                        normalizeAdvancedModuleExclusions(
+                            data.intakeLink.advancedModuleExclusions || {},
+                            nextModules
+                        )
                     );
                 }
                 setIntakeCanCustomize(Boolean(data.canCustomize));
@@ -176,16 +190,39 @@ export default function SettingsPage() {
     const orgIsAdmin = useMemo(() => activeOrganization?.role === 'admin', [activeOrganization]);
     const intakeSavedAdvancedModules = useMemo(
         () => intakeLink?.advancedModules && intakeLink.advancedModules.length > 0
-            ? intakeLink.advancedModules
+            ? normalizeAdvancedModules(intakeLink.advancedModules)
             : ADVANCED_MODULE_DEFAULTS,
         [intakeLink?.advancedModules]
+    );
+    const intakeSavedAdvancedModuleExclusions = useMemo(
+        () => normalizeAdvancedModuleExclusions(
+            intakeLink?.advancedModuleExclusions || {},
+            intakeSavedAdvancedModules
+        ),
+        [intakeLink?.advancedModuleExclusions, intakeSavedAdvancedModules]
     );
     const intakeModeSettingsUnchanged = useMemo(() => {
         if (!intakeLink) return true;
         const currentKey = [...intakeAdvancedModules].sort().join('|');
         const savedKey = [...intakeSavedAdvancedModules].sort().join('|');
-        return intakeDefaultPacketMode === (intakeLink.defaultPacketMode || 'simple') && currentKey === savedKey;
-    }, [intakeAdvancedModules, intakeDefaultPacketMode, intakeLink, intakeSavedAdvancedModules]);
+        const currentExclusionKey = JSON.stringify(
+            normalizeAdvancedModuleExclusions(intakeAdvancedModuleExclusions, intakeAdvancedModules)
+        );
+        const savedExclusionKey = JSON.stringify(intakeSavedAdvancedModuleExclusions);
+        return intakeDefaultPacketMode === (intakeLink.defaultPacketMode || 'simple')
+            && currentKey === savedKey
+            && currentExclusionKey === savedExclusionKey;
+    }, [
+        intakeAdvancedModuleExclusions,
+        intakeAdvancedModules,
+        intakeDefaultPacketMode,
+        intakeLink,
+        intakeSavedAdvancedModuleExclusions,
+        intakeSavedAdvancedModules,
+    ]);
+    const intakeHasAdvancedModuleWithNoFields = useMemo(() => (
+        intakeAdvancedModules.some((moduleKey) => getAdvancedModuleIncludedFieldCount(moduleKey, intakeAdvancedModuleExclusions) === 0)
+    ), [intakeAdvancedModuleExclusions, intakeAdvancedModules]);
 
     const refreshOrganization = async () => {
         if (!activeOrganization?.id) return;
@@ -358,8 +395,28 @@ export default function SettingsPage() {
         setIntakeAdvancedModules((prev) => (
             prev.includes(moduleKey)
                 ? prev.filter((m) => m !== moduleKey)
-                : [...prev, moduleKey]
+                : ADVANCED_MODULE_KEYS.filter((candidate) => candidate === moduleKey || prev.includes(candidate))
         ));
+    };
+
+    const toggleIntakeAdvancedModuleField = (moduleKey: AdvancedModuleKey, fieldKey: string) => {
+        setIntakeAdvancedModuleExclusions((prev) => {
+            const current = new Set(prev[moduleKey] || []);
+            if (current.has(fieldKey)) {
+                current.delete(fieldKey);
+            } else {
+                current.add(fieldKey);
+            }
+
+            const next: AdvancedModuleExclusions = { ...prev };
+            if (current.size === 0) {
+                delete next[moduleKey];
+            } else {
+                next[moduleKey] = Array.from(current);
+            }
+
+            return normalizeAdvancedModuleExclusions(next, intakeAdvancedModules);
+        });
     };
 
     const handleSaveDefaultPacketMode = async () => {
@@ -367,14 +424,23 @@ export default function SettingsPage() {
             toast.error('Enable at least one module for Advanced Utility Packet mode.');
             return;
         }
+        if (intakeDefaultPacketMode === 'advanced' && intakeHasAdvancedModuleWithNoFields) {
+            toast.error('Each enabled module must include at least one question.');
+            return;
+        }
         setIntakeSaving(true);
         try {
+            const normalizedExclusions = normalizeAdvancedModuleExclusions(
+                intakeAdvancedModuleExclusions,
+                intakeAdvancedModules
+            );
             const response = await fetch('/api/intake-link', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     defaultPacketMode: intakeDefaultPacketMode,
                     advancedModules: intakeAdvancedModules,
+                    advancedModuleExclusions: normalizedExclusions,
                 }),
             });
             const data = await response.json().catch(() => ({}));
@@ -382,12 +448,17 @@ export default function SettingsPage() {
                 throw new Error(data?.message || data?.error || 'Failed to update default mode');
             }
             if (data.intakeLink) {
+                const nextModules = Array.isArray(data.intakeLink.advancedModules) && data.intakeLink.advancedModules.length > 0
+                    ? normalizeAdvancedModules(data.intakeLink.advancedModules)
+                    : [...ADVANCED_MODULE_DEFAULTS];
                 setIntakeLink(data.intakeLink);
                 setIntakeDefaultPacketMode(data.intakeLink.defaultPacketMode || intakeDefaultPacketMode);
-                setIntakeAdvancedModules(
-                    Array.isArray(data.intakeLink.advancedModules) && data.intakeLink.advancedModules.length > 0
-                        ? data.intakeLink.advancedModules
-                        : [...ADVANCED_MODULE_DEFAULTS]
+                setIntakeAdvancedModules(nextModules);
+                setIntakeAdvancedModuleExclusions(
+                    normalizeAdvancedModuleExclusions(
+                        data.intakeLink.advancedModuleExclusions || {},
+                        nextModules
+                    )
                 );
             }
             toast.success('Reusable link mode settings updated');
@@ -726,29 +797,18 @@ export default function SettingsPage() {
                                 <Label className="text-foreground">Advanced Modules</Label>
                                 <span className="text-xs text-muted-foreground">{intakeAdvancedModules.length} enabled</span>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {Object.entries(ADVANCED_MODULE_LABELS).map(([moduleKey, moduleLabel]) => {
-                                    const typedModuleKey = moduleKey as AdvancedModuleKey;
-                                    const isEnabled = intakeAdvancedModules.includes(typedModuleKey);
-                                    return (
-                                        <button
-                                            key={typedModuleKey}
-                                            type="button"
-                                            onClick={() => toggleIntakeAdvancedModule(typedModuleKey)}
-                                            disabled={!intakeCanCustomize || intakeSaving}
-                                            className={`rounded-lg border px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                                                isEnabled
-                                                    ? 'border-emerald-500/60 bg-emerald-500/10'
-                                                    : 'border-border hover:border-input'
-                                            }`}
-                                        >
-                                            <p className="text-sm text-foreground">{moduleLabel}</p>
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                            <AdvancedModuleConfigurator
+                                enabledModules={intakeAdvancedModules}
+                                exclusions={intakeAdvancedModuleExclusions}
+                                onToggleModule={toggleIntakeAdvancedModule}
+                                onToggleField={toggleIntakeAdvancedModuleField}
+                                disabled={!intakeCanCustomize || intakeSaving}
+                            />
                             {intakeAdvancedModules.length === 0 && (
                                 <p className="text-xs text-amber-500">Enable at least one module for Advanced Utility Packet mode.</p>
+                            )}
+                            {intakeHasAdvancedModuleWithNoFields && intakeAdvancedModules.length > 0 && (
+                                <p className="text-xs text-amber-500">Each enabled module must include at least one question.</p>
                             )}
                         </div>
                     )}
@@ -767,7 +827,9 @@ export default function SettingsPage() {
                                 intakeSaving ||
                                 !intakeCanCustomize ||
                                 intakeModeSettingsUnchanged ||
-                                (intakeDefaultPacketMode === 'advanced' && intakeAdvancedModules.length === 0)
+                                (intakeDefaultPacketMode === 'advanced' && (
+                                    intakeAdvancedModules.length === 0 || intakeHasAdvancedModuleWithNoFields
+                                ))
                             }
                         >
                             {intakeSaving ? (

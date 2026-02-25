@@ -30,6 +30,8 @@ export type AdvancedModuleKey =
     | 'smart_home_security'
     | 'service_providers';
 
+export type AdvancedModuleExclusions = Partial<Record<AdvancedModuleKey, string[]>>;
+
 export type AdvancedPacketData = {
     lawn_exterior?: {
         lawn_care_provider_name?: string | null;
@@ -256,6 +258,7 @@ export interface Request {
     heating_type?: HeatingType | null;
     packet_mode?: PacketMode | null;
     advanced_modules?: AdvancedModuleKey[] | null;
+    advanced_module_exclusions?: AdvancedModuleExclusions | null;
     advanced_packet_data?: AdvancedPacketData | null;
     metered_at?: string | null;
     is_locked?: boolean | null;
@@ -377,6 +380,7 @@ export interface CreateRequestFormData {
     utility_categories: UtilityCategory[];
     packet_mode?: PacketMode;
     advanced_modules?: AdvancedModuleKey[];
+    advanced_module_exclusions?: AdvancedModuleExclusions;
 }
 
 // Brand Profile Form

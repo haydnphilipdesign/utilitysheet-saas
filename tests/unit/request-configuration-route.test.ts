@@ -56,6 +56,7 @@ describe('PATCH /api/requests/[id]/configuration', () => {
                 body: JSON.stringify({
                     packetMode: 'advanced',
                     advancedModules: ['lawn_exterior'],
+                    advancedModuleExclusions: { lawn_exterior: ['lawn_exterior_notes'] },
                 }),
             }),
             { params: Promise.resolve({ id: 'req_1' }) }
@@ -64,7 +65,11 @@ describe('PATCH /api/requests/[id]/configuration', () => {
         expect(response.status).toBe(200);
         const body = await response.json();
         expect(body.packet_mode).toBe('advanced');
-        expect(mocks.updateRequestConfigurationMock).toHaveBeenCalled();
+        expect(mocks.updateRequestConfigurationMock).toHaveBeenCalledWith('req_1', {
+            packetMode: 'advanced',
+            advancedModules: ['lawn_exterior'],
+            advancedModuleExclusions: { lawn_exterior: ['lawn_exterior_notes'] },
+        });
     });
 
     it('blocks updates after seller opened request', async () => {

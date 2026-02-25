@@ -2,14 +2,15 @@
 
 import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
-import type { AdvancedModuleKey, AdvancedPacketData } from '@/types';
-import { ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
+import type { AdvancedModuleExclusions, AdvancedModuleKey, AdvancedPacketData } from '@/types';
+import { ADVANCED_MODULE_LABELS, getAdvancedModuleVisibleFieldKeys } from '@/lib/packet/modules';
 
 interface AdvancedDetailsStepProps {
     moduleKey: AdvancedModuleKey;
     moduleIndex: number;
     moduleCount: number;
     isReviewEdit?: boolean;
+    moduleExclusions?: AdvancedModuleExclusions;
     advanced: AdvancedPacketData;
     updateAdvanced: (updates: Partial<AdvancedPacketData>) => void;
     onBack: () => void;
@@ -106,12 +107,16 @@ export function AdvancedDetailsStep({
     moduleIndex,
     moduleCount,
     isReviewEdit = false,
+    moduleExclusions,
     advanced,
     updateAdvanced,
     onBack,
     onNext,
 }: AdvancedDetailsStepProps) {
     const moduleTitle = ADVANCED_MODULE_LABELS[moduleKey];
+    const visibleFieldSet = new Set(getAdvancedModuleVisibleFieldKeys(moduleKey, moduleExclusions));
+    const showField = (fieldKey: string) => visibleFieldSet.has(fieldKey);
+    const renderIfVisible = (fieldKey: string, node: ReactNode) => (showField(fieldKey) ? node : null);
 
     const toggleWateringDay = (dayValue: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun') => {
         const currentDays = advanced.irrigation_seasonal_controls?.watering_days || [];
@@ -138,7 +143,7 @@ export function AdvancedDetailsStep({
         if (moduleKey === 'lawn_exterior') {
             return (
                 <>
-                    <Field
+                    {renderIfVisible('lawn_care_provider_name', <Field
                         label="Lawn Care Provider"
                         value={advanced.lawn_exterior?.lawn_care_provider_name}
                         placeholder="Name of company or person"
@@ -148,8 +153,8 @@ export function AdvancedDetailsStep({
                                 lawn_care_provider_name: value,
                             },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('lawn_care_provider_phone', <Field
                         label="Lawn Care Phone"
                         type="tel"
                         inputMode="tel"
@@ -161,8 +166,8 @@ export function AdvancedDetailsStep({
                                 lawn_care_provider_phone: value,
                             },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('lawn_care_provider_email', <Field
                         label="Lawn Care Email"
                         type="email"
                         inputMode="email"
@@ -174,8 +179,8 @@ export function AdvancedDetailsStep({
                                 lawn_care_provider_email: value,
                             },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('snow_removal_provider_name', <Field
                         label="Snow Removal Provider"
                         value={advanced.lawn_exterior?.snow_removal_provider_name}
                         placeholder="Name of company or person"
@@ -185,8 +190,8 @@ export function AdvancedDetailsStep({
                                 snow_removal_provider_name: value,
                             },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('snow_removal_provider_phone', <Field
                         label="Snow Removal Phone"
                         type="tel"
                         inputMode="tel"
@@ -198,8 +203,8 @@ export function AdvancedDetailsStep({
                                 snow_removal_provider_phone: value,
                             },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('lawn_exterior_notes', <Field
                         label="Notes"
                         multiline
                         value={advanced.lawn_exterior?.lawn_exterior_notes}
@@ -210,7 +215,7 @@ export function AdvancedDetailsStep({
                                 lawn_exterior_notes: value,
                             },
                         })}
-                    />
+                    />)}
                 </>
             );
         }
@@ -219,7 +224,7 @@ export function AdvancedDetailsStep({
             const selectedDays = advanced.irrigation_seasonal_controls?.watering_days || [];
             return (
                 <>
-                    <label className="space-y-1">
+                    {renderIfVisible('has_irrigation_system', <label className="space-y-1">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Has Irrigation System</span>
                         <select
                             value={advanced.irrigation_seasonal_controls?.has_irrigation_system || 'not_sure'}
@@ -235,8 +240,8 @@ export function AdvancedDetailsStep({
                             <option value="yes">Yes</option>
                             <option value="no">No</option>
                         </select>
-                    </label>
-                    <Field
+                    </label>)}
+                    {renderIfVisible('irrigation_provider_name', <Field
                         label="Irrigation Provider"
                         value={advanced.irrigation_seasonal_controls?.irrigation_provider_name}
                         placeholder="Name of company or person"
@@ -246,8 +251,8 @@ export function AdvancedDetailsStep({
                                 irrigation_provider_name: value,
                             },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('irrigation_provider_phone', <Field
                         label="Irrigation Phone"
                         type="tel"
                         inputMode="tel"
@@ -259,8 +264,8 @@ export function AdvancedDetailsStep({
                                 irrigation_provider_phone: value,
                             },
                         })}
-                    />
-                    <div className="space-y-2 sm:col-span-2">
+                    />)}
+                    {renderIfVisible('watering_days', <div className="space-y-2 sm:col-span-2">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Watering Days</span>
                         <div className="flex flex-wrap gap-2">
                             {WATERING_DAY_OPTIONS.map((day) => {
@@ -284,8 +289,8 @@ export function AdvancedDetailsStep({
                             })}
                         </div>
                         <p className="text-xs text-muted-foreground">Select any regular watering days, if known.</p>
-                    </div>
-                    <label className="space-y-1">
+                    </div>)}
+                    {renderIfVisible('irrigation_season_start_month', <label className="space-y-1">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Season Start Month</span>
                         <select
                             data-testid="irrigation-season-start-month"
@@ -305,8 +310,8 @@ export function AdvancedDetailsStep({
                                 </option>
                             ))}
                         </select>
-                    </label>
-                    <label className="space-y-1">
+                    </label>)}
+                    {renderIfVisible('irrigation_season_end_month', <label className="space-y-1">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Season End Month</span>
                         <select
                             data-testid="irrigation-season-end-month"
@@ -326,8 +331,8 @@ export function AdvancedDetailsStep({
                                 </option>
                             ))}
                         </select>
-                    </label>
-                    <Field
+                    </label>)}
+                    {renderIfVisible('irrigation_notes', <Field
                         label="Notes"
                         multiline
                         value={advanced.irrigation_seasonal_controls?.irrigation_notes}
@@ -338,7 +343,7 @@ export function AdvancedDetailsStep({
                                 irrigation_notes: value,
                             },
                         })}
-                    />
+                    />)}
                 </>
             );
         }
@@ -346,23 +351,23 @@ export function AdvancedDetailsStep({
         if (moduleKey === 'mailbox_access') {
             return (
                 <>
-                    <Field
+                    {renderIfVisible('mailbox_number', <Field
                         label="Mailbox Number"
                         value={advanced.mailbox_access?.mailbox_number}
                         placeholder="Example: Box 12B"
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, mailbox_number: value },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('mailbox_location', <Field
                         label="Mailbox Location"
                         value={advanced.mailbox_access?.mailbox_location}
                         placeholder="Where to find the mailbox"
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, mailbox_location: value },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('parking_instructions', <Field
                         label="Parking Instructions"
                         multiline
                         value={advanced.mailbox_access?.parking_instructions}
@@ -370,23 +375,23 @@ export function AdvancedDetailsStep({
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, parking_instructions: value },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('breaker_box_location', <Field
                         label="Breaker Box Location"
                         value={advanced.mailbox_access?.breaker_box_location}
                         placeholder="Garage, basement, exterior, etc."
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, breaker_box_location: value },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('main_water_shutoff_location', <Field
                         label="Main Water Shutoff Location"
                         value={advanced.mailbox_access?.main_water_shutoff_location}
                         placeholder="Utility room, crawlspace, etc."
                         onChange={(value) => updateAdvanced({
                             mailbox_access: { ...advanced.mailbox_access, main_water_shutoff_location: value },
                         })}
-                    />
+                    />)}
                 </>
             );
         }
@@ -394,31 +399,31 @@ export function AdvancedDetailsStep({
         if (moduleKey === 'smart_home_security') {
             return (
                 <>
-                    <Field
+                    {renderIfVisible('security_system_brand', <Field
                         label="Security System Brand"
                         value={advanced.smart_home_security?.security_system_brand}
                         placeholder="ADT, Ring, SimpliSafe, etc."
                         onChange={(value) => updateAdvanced({
                             smart_home_security: { ...advanced.smart_home_security, security_system_brand: value },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('smart_thermostat_brand', <Field
                         label="Smart Thermostat Brand"
                         value={advanced.smart_home_security?.smart_thermostat_brand}
                         placeholder="Nest, Ecobee, etc."
                         onChange={(value) => updateAdvanced({
                             smart_home_security: { ...advanced.smart_home_security, smart_thermostat_brand: value },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('smart_doorbell_brand', <Field
                         label="Smart Doorbell Brand"
                         value={advanced.smart_home_security?.smart_doorbell_brand}
                         placeholder="Ring, Arlo, etc."
                         onChange={(value) => updateAdvanced({
                             smart_home_security: { ...advanced.smart_home_security, smart_doorbell_brand: value },
                         })}
-                    />
-                    <Field
+                    />)}
+                    {renderIfVisible('smart_home_notes', <Field
                         label="Notes"
                         multiline
                         value={advanced.smart_home_security?.smart_home_notes}
@@ -426,22 +431,22 @@ export function AdvancedDetailsStep({
                         onChange={(value) => updateAdvanced({
                             smart_home_security: { ...advanced.smart_home_security, smart_home_notes: value },
                         })}
-                    />
+                    />)}
                 </>
             );
         }
 
         return (
             <>
-                <Field
+                {renderIfVisible('hvac_provider_name', <Field
                     label="HVAC Provider"
                     value={advanced.service_providers?.hvac_provider_name}
                     placeholder="Company name"
                     onChange={(value) => updateAdvanced({
                         service_providers: { ...advanced.service_providers, hvac_provider_name: value },
                     })}
-                />
-                <Field
+                />)}
+                {renderIfVisible('hvac_provider_phone', <Field
                     label="HVAC Phone"
                     type="tel"
                     inputMode="tel"
@@ -450,16 +455,16 @@ export function AdvancedDetailsStep({
                     onChange={(value) => updateAdvanced({
                         service_providers: { ...advanced.service_providers, hvac_provider_phone: value },
                     })}
-                />
-                <Field
+                />)}
+                {renderIfVisible('pest_control_provider_name', <Field
                     label="Pest Control Provider"
                     value={advanced.service_providers?.pest_control_provider_name}
                     placeholder="Company name"
                     onChange={(value) => updateAdvanced({
                         service_providers: { ...advanced.service_providers, pest_control_provider_name: value },
                     })}
-                />
-                <Field
+                />)}
+                {renderIfVisible('pest_control_provider_phone', <Field
                     label="Pest Control Phone"
                     type="tel"
                     inputMode="tel"
@@ -468,16 +473,16 @@ export function AdvancedDetailsStep({
                     onChange={(value) => updateAdvanced({
                         service_providers: { ...advanced.service_providers, pest_control_provider_phone: value },
                     })}
-                />
-                <Field
+                />)}
+                {renderIfVisible('plumber_provider_name', <Field
                     label="Plumber"
                     value={advanced.service_providers?.plumber_provider_name}
                     placeholder="Company name"
                     onChange={(value) => updateAdvanced({
                         service_providers: { ...advanced.service_providers, plumber_provider_name: value },
                     })}
-                />
-                <Field
+                />)}
+                {renderIfVisible('plumber_provider_phone', <Field
                     label="Plumber Phone"
                     type="tel"
                     inputMode="tel"
@@ -486,8 +491,8 @@ export function AdvancedDetailsStep({
                     onChange={(value) => updateAdvanced({
                         service_providers: { ...advanced.service_providers, plumber_provider_phone: value },
                     })}
-                />
-                <Field
+                />)}
+                {renderIfVisible('service_provider_notes', <Field
                     label="Notes"
                     multiline
                     value={advanced.service_providers?.service_provider_notes}
@@ -495,7 +500,7 @@ export function AdvancedDetailsStep({
                     onChange={(value) => updateAdvanced({
                         service_providers: { ...advanced.service_providers, service_provider_notes: value },
                     })}
-                />
+                />)}
             </>
         );
     };

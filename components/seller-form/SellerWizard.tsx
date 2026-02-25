@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { AnimatePresence, useReducedMotion } from 'framer-motion';
 import { SellerLayout } from './SellerLayout';
 import type {
+    AdvancedModuleExclusions,
     AdvancedModuleKey,
     AdvancedPacketData,
     HeatingType,
@@ -20,7 +21,12 @@ import { AdvancedDetailsStep } from './steps/AdvancedDetailsStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { SuccessStep } from './steps/SuccessStep';
 import { trackEvent } from '@/lib/analytics/events';
-import { ADVANCED_MODULE_KEYS, ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
+import {
+    ADVANCED_MODULE_KEYS,
+    ADVANCED_MODULE_LABELS,
+    getEffectiveAdvancedModules,
+    normalizeAdvancedModuleExclusions,
+} from '@/lib/packet/modules';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { toast } from 'sonner';
 
@@ -34,6 +40,7 @@ export interface WizardState {
     optional_utilities: UtilityCategory[];
     packet_mode: PacketMode;
     advanced_modules: AdvancedModuleKey[];
+    advanced_module_exclusions: AdvancedModuleExclusions;
     advanced: AdvancedPacketData;
     utilities: Record<UtilityCategory, UtilityWizardState>;
 }
@@ -65,6 +72,7 @@ interface SellerWizardProps {
         collect_electric_meter_number?: boolean;
         packet_mode?: PacketMode;
         advanced_modules?: AdvancedModuleKey[];
+        advanced_module_exclusions?: AdvancedModuleExclusions;
         advanced_packet_data?: AdvancedPacketData;
     };
     initialSuggestions: Record<UtilityCategory, ProviderSuggestion[]>;
@@ -96,11 +104,18 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const collectElectricMeterNumber = initialRequestData.collect_electric_meter_number !== false;
     const requestPacketMode: PacketMode = initialRequestData.packet_mode || 'simple';
     const requestAdvancedModules = initialRequestData.advanced_modules || [];
+    const requestAdvancedModuleExclusions = normalizeAdvancedModuleExclusions(
+        initialRequestData.advanced_module_exclusions || {},
+        requestAdvancedModules
+    );
     const configuredAdvancedModules = useMemo(
         () => (requestPacketMode === 'advanced'
-            ? ADVANCED_MODULE_KEYS.filter((moduleKey) => requestAdvancedModules.includes(moduleKey))
+            ? getEffectiveAdvancedModules(
+                ADVANCED_MODULE_KEYS.filter((moduleKey) => requestAdvancedModules.includes(moduleKey)),
+                requestAdvancedModuleExclusions
+            )
             : []),
-        [requestPacketMode, requestAdvancedModules]
+        [requestPacketMode, requestAdvancedModuleExclusions, requestAdvancedModules]
     );
 
     const [state, setState] = useState<WizardState>(() => ({
@@ -113,6 +128,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         optional_utilities: [],
         packet_mode: requestPacketMode,
         advanced_modules: configuredAdvancedModules,
+        advanced_module_exclusions: requestAdvancedModuleExclusions,
         advanced: initialRequestData.advanced_packet_data || {},
         utilities: {} as Record<UtilityCategory, UtilityWizardState>,
     }));
@@ -120,8 +136,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [visibleUtilities, setVisibleUtilities] = useState<UtilityCategory[]>([]);
     const enabledAdvancedModules = state.packet_mode === 'advanced' ? state.advanced_modules : [];
     const orderedAdvancedModules = useMemo(
-        () => ADVANCED_MODULE_KEYS.filter((moduleKey) => enabledAdvancedModules.includes(moduleKey)),
-        [enabledAdvancedModules]
+        () => getEffectiveAdvancedModules(enabledAdvancedModules, state.advanced_module_exclusions),
+        [enabledAdvancedModules, state.advanced_module_exclusions]
     );
     const hasAdvancedStep = orderedAdvancedModules.length > 0;
     const currentAdvancedModule = orderedAdvancedModules[advancedModuleIndex];
@@ -603,6 +619,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         moduleIndex={advancedModuleIndex}
                         moduleCount={orderedAdvancedModules.length}
                         isReviewEdit={advancedNavigationMode === 'review_edit'}
+                        moduleExclusions={state.advanced_module_exclusions}
                         advanced={state.advanced}
                         updateAdvanced={updateAdvanced}
                         onBack={handleBack}

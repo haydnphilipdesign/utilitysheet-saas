@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AdvancedModuleExclusions } from '@/types';
 import type { ProviderSuggestion, UtilityCategory } from '@/types';
 import { SellerWizard } from '@/components/seller-form/SellerWizard';
 
@@ -42,6 +43,7 @@ function renderAdvancedWizard(overrides?: {
         | 'smart_home_security'
         | 'service_providers'
     >;
+    advanced_module_exclusions?: AdvancedModuleExclusions;
 }) {
     return render(
         <SellerWizard
@@ -52,6 +54,7 @@ function renderAdvancedWizard(overrides?: {
                 collect_electric_meter_number: false,
                 packet_mode: 'advanced',
                 advanced_modules: overrides?.advanced_modules ?? ['service_providers', 'mailbox_access'],
+                advanced_module_exclusions: overrides?.advanced_module_exclusions ?? {},
                 advanced_packet_data: {},
             }}
             initialSuggestions={emptySuggestions}
@@ -166,6 +169,41 @@ describe('SellerWizard advanced module step flow', () => {
         fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
 
         expect(screen.getByText('Review and Submit')).toBeInTheDocument();
+    });
+
+    it('omits modules where every field is excluded', () => {
+        renderAdvancedWizard({
+            advanced_modules: ['mailbox_access', 'service_providers'],
+            advanced_module_exclusions: {
+                mailbox_access: [
+                    'mailbox_number',
+                    'mailbox_location',
+                    'parking_instructions',
+                    'breaker_box_location',
+                    'main_water_shutoff_location',
+                ],
+            },
+        });
+
+        advanceToFirstAdvancedModule();
+
+        expect(screen.getByText('Service Providers (1 of 1)')).toBeInTheDocument();
+        expect(screen.queryByText('Mailbox & Access (1 of 2)')).not.toBeInTheDocument();
+    });
+
+    it('hides excluded fields inside an enabled module', () => {
+        renderAdvancedWizard({
+            advanced_modules: ['service_providers'],
+            advanced_module_exclusions: {
+                service_providers: ['hvac_provider_name'],
+            },
+        });
+
+        advanceToFirstAdvancedModule();
+
+        expect(screen.getByText('Service Providers (1 of 1)')).toBeInTheDocument();
+        expect(screen.queryByLabelText('HVAC Provider')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('HVAC Phone')).toBeInTheDocument();
     });
 
     it('does not show advanced module selectors on Home Basics in simple mode', () => {

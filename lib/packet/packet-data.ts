@@ -8,12 +8,19 @@ import {
     getUtilityEntriesByRequestId,
 } from '@/lib/neon/queries';
 import type {
+    AdvancedModuleExclusions,
     AdvancedModuleKey,
     PacketMode,
     Request,
     TrashPickupDay,
 } from '@/types';
-import { ADVANCED_MODULE_LABELS, normalizeAdvancedModules } from '@/lib/packet/modules';
+import {
+    ADVANCED_MODULE_LABELS,
+    filterAdvancedPacketDataByExclusions,
+    getEffectiveAdvancedModules,
+    normalizeAdvancedModuleExclusions,
+    normalizeAdvancedModules,
+} from '@/lib/packet/modules';
 
 export const PACKET_LOCKED_MESSAGE = 'This seller packet is locked. Ask the agent to upgrade to view it.';
 
@@ -91,6 +98,7 @@ type RequestWithPacketFields = Request & {
     heating_type?: string | null;
     packet_mode?: PacketMode | null;
     advanced_modules?: AdvancedModuleKey[] | null;
+    advanced_module_exclusions?: AdvancedModuleExclusions | null;
     advanced_packet_data?: Record<string, unknown> | null;
 };
 
@@ -246,7 +254,7 @@ function normalizeAdvancedSections(
             title: ADVANCED_MODULE_LABELS[moduleKey],
             fields,
         };
-    });
+    }).filter((section) => section.fields.length > 0);
 }
 
 async function buildPacketDataFromRequest(requestData: Request): Promise<PacketDataResult> {
@@ -311,9 +319,25 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
     const advancedModules = mode === 'advanced'
         ? normalizeAdvancedModules(requestWithPacketFields.advanced_modules as string[] | undefined)
         : [];
+    const advancedModuleExclusions = mode === 'advanced'
+        ? normalizeAdvancedModuleExclusions(
+            requestWithPacketFields.advanced_module_exclusions || {},
+            advancedModules
+        )
+        : {};
+    const effectiveAdvancedModules = mode === 'advanced'
+        ? getEffectiveAdvancedModules(advancedModules, advancedModuleExclusions)
+        : [];
     const advancedPacketData = normalizeObject(requestWithPacketFields.advanced_packet_data);
+    const filteredAdvancedPacketData = mode === 'advanced'
+        ? filterAdvancedPacketDataByExclusions(
+            advancedPacketData,
+            advancedModules,
+            advancedModuleExclusions
+        )
+        : {};
     const advancedSections = mode === 'advanced'
-        ? normalizeAdvancedSections(advancedModules, advancedPacketData)
+        ? normalizeAdvancedSections(effectiveAdvancedModules, filteredAdvancedPacketData)
         : [];
 
     return {

@@ -7,8 +7,14 @@ import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
-import { normalizeAdvancedModules } from '@/lib/packet/modules';
+import {
+    filterAdvancedPacketDataByExclusions,
+    getAdvancedModuleVisibleFieldKeys,
+    normalizeAdvancedModuleExclusions,
+    normalizeAdvancedModules,
+} from '@/lib/packet/modules';
 import type {
+    AdvancedModuleExclusions,
     AdvancedModuleKey,
     PacketMode,
     Request as StoredRequest,
@@ -22,6 +28,7 @@ type SellerRequestRecord = StoredRequest & {
     utility_categories?: string[] | null;
     packet_mode?: PacketMode | null;
     advanced_modules?: AdvancedModuleKey[] | null;
+    advanced_module_exclusions?: AdvancedModuleExclusions | null;
     advanced_packet_data?: Record<string, unknown> | null;
     metered_at?: string | null;
     is_locked?: boolean | null;
@@ -124,6 +131,51 @@ function normalizeProviderNameForLookup(name: string): string {
 
 function hasAnyContact(phone: string | null | undefined, url: string | null | undefined): boolean {
     return Boolean((phone && phone.trim()) || (url && url.trim()));
+}
+
+function normalizeUnknownRecord(value: unknown): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    return value as Record<string, unknown>;
+}
+
+function mergeAdvancedPacketDataPreservingExcluded({
+    existingData,
+    submittedVisibleData,
+    enabledModules,
+    exclusions,
+}: {
+    existingData: Record<string, unknown>;
+    submittedVisibleData: Record<string, unknown>;
+    enabledModules: AdvancedModuleKey[];
+    exclusions: AdvancedModuleExclusions;
+}): Record<string, unknown> {
+    const merged: Record<string, unknown> = {};
+
+    for (const moduleKey of enabledModules) {
+        const existingSection = normalizeUnknownRecord(existingData[moduleKey]);
+        const submittedSection = normalizeUnknownRecord(submittedVisibleData[moduleKey]);
+        const visibleKeys = new Set(getAdvancedModuleVisibleFieldKeys(moduleKey, exclusions));
+
+        const nextSection: Record<string, unknown> = {};
+
+        for (const [fieldKey, fieldValue] of Object.entries(submittedSection)) {
+            if (visibleKeys.has(fieldKey)) {
+                nextSection[fieldKey] = fieldValue;
+            }
+        }
+
+        for (const [fieldKey, fieldValue] of Object.entries(existingSection)) {
+            if (!visibleKeys.has(fieldKey)) {
+                nextSection[fieldKey] = fieldValue;
+            }
+        }
+
+        if (Object.keys(nextSection).length > 0) {
+            merged[moduleKey] = nextSection;
+        }
+    }
+
+    return merged;
 }
 
 async function findHistoricalContactMatch({
@@ -261,6 +313,22 @@ export async function GET(
         const utilityCategories =
             requestRecord.utility_categories ||
             UTILITY_CATEGORY_KEYS;
+        const configuredAdvancedModules = requestRecord.packet_mode === 'advanced'
+            ? normalizeAdvancedModules(requestRecord.advanced_modules || [])
+            : [];
+        const configuredAdvancedModuleExclusions = requestRecord.packet_mode === 'advanced'
+            ? normalizeAdvancedModuleExclusions(
+                requestRecord.advanced_module_exclusions || {},
+                configuredAdvancedModules
+            )
+            : {};
+        const filteredAdvancedPacketData = requestRecord.packet_mode === 'advanced'
+            ? filterAdvancedPacketDataByExclusions(
+                requestRecord.advanced_packet_data || {},
+                configuredAdvancedModules,
+                configuredAdvancedModuleExclusions
+            )
+            : {};
 
         return NextResponse.json({
             request: {
@@ -269,10 +337,9 @@ export async function GET(
                 collect_electric_meter_number: collectElectricMeterNumber,
                 status: requestData.status,
                 packet_mode: requestRecord.packet_mode || 'simple',
-                advanced_modules: requestRecord.packet_mode === 'advanced'
-                    ? normalizeAdvancedModules(requestRecord.advanced_modules || [])
-                    : [],
-                advanced_packet_data: requestRecord.advanced_packet_data || {},
+                advanced_modules: configuredAdvancedModules,
+                advanced_module_exclusions: configuredAdvancedModuleExclusions,
+                advanced_packet_data: filteredAdvancedPacketData,
             },
             brandProfile: publicBrandProfile,
             suggestions: {},
@@ -368,8 +435,26 @@ export async function POST(
         const configuredAdvancedModules = packetMode === 'advanced'
             ? normalizeAdvancedModules(requestRecord.advanced_modules || [])
             : [];
+        const configuredAdvancedModuleExclusions = packetMode === 'advanced'
+            ? normalizeAdvancedModuleExclusions(
+                requestRecord.advanced_module_exclusions || {},
+                configuredAdvancedModules
+            )
+            : {};
+        const submittedVisibleAdvancedData = packetMode === 'advanced'
+            ? filterAdvancedPacketDataByExclusions(
+                parsedBody.data.advanced || {},
+                configuredAdvancedModules,
+                configuredAdvancedModuleExclusions
+            )
+            : {};
         const advancedPacketData = packetMode === 'advanced'
-            ? (parsedBody.data.advanced || {})
+            ? mergeAdvancedPacketDataPreservingExcluded({
+                existingData: normalizeUnknownRecord(requestRecord.advanced_packet_data || {}),
+                submittedVisibleData: submittedVisibleAdvancedData,
+                enabledModules: configuredAdvancedModules,
+                exclusions: configuredAdvancedModuleExclusions,
+            })
             : {};
 
         // Update request with applicability info
@@ -516,6 +601,7 @@ export async function POST(
                 ...parsedBody.data,
                 packet_mode: packetMode,
                 advanced_modules: configuredAdvancedModules,
+                advanced_module_exclusions: configuredAdvancedModuleExclusions,
             },
             ipAddress,
             userAgent,

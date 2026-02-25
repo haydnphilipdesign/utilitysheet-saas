@@ -126,6 +126,9 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             ? request.advanced_modules
                             : ADVANCED_MODULE_DEFAULTS)
                         : [],
+                    advancedModuleExclusions: nextMode === 'advanced'
+                        ? (request.advanced_module_exclusions || {})
+                        : {},
                 }),
             });
             const data = await response.json().catch(() => ({}));

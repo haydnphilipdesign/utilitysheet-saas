@@ -33,6 +33,7 @@ export {
     getRequestBySellerToken,
     createRequest,
     updateRequestConfiguration,
+    propagateAdvancedModuleDefaultsToOpenRequests,
     getRequestCountForAccount,
     updateRequestStatus,
     deleteRequest,

@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS requests (
     status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'in_progress', 'submitted')),
     packet_mode TEXT NOT NULL DEFAULT 'simple' CHECK (packet_mode IN ('simple', 'advanced')),
     advanced_modules TEXT[] NOT NULL DEFAULT '{}'::text[],
+    advanced_module_exclusions JSONB NOT NULL DEFAULT '{}'::jsonb,
     advanced_packet_data JSONB NOT NULL DEFAULT '{}'::jsonb,
     public_token TEXT UNIQUE NOT NULL,
     seller_token TEXT UNIQUE NOT NULL,
@@ -126,6 +127,7 @@ CREATE TABLE IF NOT EXISTS intake_links (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     default_packet_mode TEXT NOT NULL DEFAULT 'simple' CHECK (default_packet_mode IN ('simple', 'advanced')),
     advanced_modules TEXT[] NOT NULL DEFAULT '{}'::text[],
+    advanced_module_exclusions JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(account_id)

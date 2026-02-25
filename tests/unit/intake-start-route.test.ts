@@ -52,6 +52,7 @@ describe('POST /api/intake/[slug]/start', () => {
             is_active: true,
             default_packet_mode: 'simple',
             advanced_modules: [],
+            advanced_module_exclusions: {},
         } as never);
         vi.mocked(getAccountById).mockResolvedValue({
             id: 'acct-1',
@@ -118,6 +119,7 @@ describe('POST /api/intake/[slug]/start', () => {
             is_active: true,
             default_packet_mode: 'advanced',
             advanced_modules: ['mailbox_access', 'service_providers'],
+            advanced_module_exclusions: { service_providers: ['service_provider_notes'] },
         } as never);
         vi.mocked(getAccountById).mockResolvedValue({
             id: 'acct-1',
@@ -138,6 +140,7 @@ describe('POST /api/intake/[slug]/start', () => {
         expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
             packetMode: 'advanced',
             advancedModules: ['mailbox_access', 'service_providers'],
+            advancedModuleExclusions: { service_providers: ['service_provider_notes'] },
         }));
     });
 
@@ -148,6 +151,7 @@ describe('POST /api/intake/[slug]/start', () => {
             is_active: true,
             default_packet_mode: 'advanced',
             advanced_modules: ['mailbox_access', 'service_providers'],
+            advanced_module_exclusions: { service_providers: ['service_provider_notes'] },
         } as never);
         vi.mocked(getAccountById).mockResolvedValue({
             id: 'acct-1',
@@ -168,6 +172,7 @@ describe('POST /api/intake/[slug]/start', () => {
         expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
             packetMode: 'simple',
             advancedModules: [],
+            advancedModuleExclusions: {},
         }));
     });
 });

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     getOrCreateIntakeLinkMock: vi.fn(),
     updateIntakeLinkPacketDefaultsMock: vi.fn(),
     updateIntakeLinkSlugMock: vi.fn(),
+    propagateAdvancedModuleDefaultsToOpenRequestsMock: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -25,6 +26,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getOrCreateIntakeLink: mocks.getOrCreateIntakeLinkMock,
     updateIntakeLinkPacketDefaults: mocks.updateIntakeLinkPacketDefaultsMock,
     updateIntakeLinkSlug: mocks.updateIntakeLinkSlugMock,
+    propagateAdvancedModuleDefaultsToOpenRequests: mocks.propagateAdvancedModuleDefaultsToOpenRequestsMock,
 }));
 
 import { GET, POST } from '@/app/api/intake-link/route';
@@ -41,6 +43,7 @@ describe('/api/intake-link', () => {
             is_active: true,
             default_packet_mode: 'simple',
             advanced_modules: [],
+            advanced_module_exclusions: {},
         });
     });
 
@@ -58,6 +61,7 @@ describe('/api/intake-link', () => {
             is_active: true,
             default_packet_mode: 'advanced',
             advanced_modules: [],
+            advanced_module_exclusions: {},
         });
 
         const response = await GET();
@@ -80,6 +84,7 @@ describe('/api/intake-link', () => {
             is_active: true,
             default_packet_mode: 'advanced',
             advanced_modules: ['mailbox_access', 'service_providers'],
+            advanced_module_exclusions: { service_providers: ['service_provider_notes'] },
         });
 
         const response = await POST(new Request('http://localhost/api/intake-link', {
@@ -88,6 +93,7 @@ describe('/api/intake-link', () => {
             body: JSON.stringify({
                 defaultPacketMode: 'advanced',
                 advancedModules: ['mailbox_access', 'service_providers'],
+                advancedModuleExclusions: { service_providers: ['service_provider_notes'] },
             }),
         }));
 
@@ -95,10 +101,20 @@ describe('/api/intake-link', () => {
         expect(mocks.updateIntakeLinkPacketDefaultsMock).toHaveBeenCalledWith('acct_1', {
             defaultPacketMode: 'advanced',
             advancedModules: ['mailbox_access', 'service_providers'],
+            advancedModuleExclusions: { service_providers: ['service_provider_notes'] },
         });
+        expect(mocks.propagateAdvancedModuleDefaultsToOpenRequestsMock).toHaveBeenCalledWith(
+            'acct_1',
+            undefined,
+            {
+                advancedModules: ['mailbox_access', 'service_providers'],
+                advancedModuleExclusions: { service_providers: ['service_provider_notes'] },
+            }
+        );
         const body = await response.json();
         expect(body.intakeLink.defaultPacketMode).toBe('advanced');
         expect(body.intakeLink.advancedModules).toEqual(['mailbox_access', 'service_providers']);
+        expect(body.intakeLink.advancedModuleExclusions).toEqual({ service_providers: ['service_provider_notes'] });
     });
 
     it('blocks free users from changing advanced mode or modules', async () => {
@@ -134,6 +150,7 @@ describe('/api/intake-link', () => {
             is_active: true,
             default_packet_mode: 'advanced',
             advanced_modules: ['mailbox_access'],
+            advanced_module_exclusions: { mailbox_access: ['parking_instructions'] },
         });
         mocks.updateIntakeLinkSlugMock.mockResolvedValue({
             id: 'link_1',
@@ -142,6 +159,7 @@ describe('/api/intake-link', () => {
             is_active: true,
             default_packet_mode: 'advanced',
             advanced_modules: ['mailbox_access'],
+            advanced_module_exclusions: { mailbox_access: ['parking_instructions'] },
         });
 
         const response = await POST(new Request('http://localhost/api/intake-link', {
@@ -156,5 +174,6 @@ describe('/api/intake-link', () => {
         const body = await response.json();
         expect(body.intakeLink.defaultPacketMode).toBe('advanced');
         expect(body.intakeLink.advancedModules).toEqual(['mailbox_access']);
+        expect(body.intakeLink.advancedModuleExclusions).toEqual({ mailbox_access: ['parking_instructions'] });
     });
 });

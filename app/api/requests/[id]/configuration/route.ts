@@ -7,7 +7,7 @@ import {
 } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { requestConfigurationBodySchema } from '@/lib/validation/schemas';
-import { normalizeAdvancedModules } from '@/lib/packet/modules';
+import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 
 export async function PATCH(
     request: Request,
@@ -68,10 +68,14 @@ export async function PATCH(
         const nextModules = parsedBody.data.packetMode === 'advanced'
             ? normalizeAdvancedModules(parsedBody.data.advancedModules)
             : [];
+        const nextAdvancedModuleExclusions = parsedBody.data.packetMode === 'advanced'
+            ? normalizeAdvancedModuleExclusions(parsedBody.data.advancedModuleExclusions, nextModules)
+            : {};
 
         const updated = await updateRequestConfiguration(id, {
             packetMode: parsedBody.data.packetMode,
             advancedModules: nextModules,
+            advancedModuleExclusions: nextAdvancedModuleExclusions,
         });
 
         if (!updated) {

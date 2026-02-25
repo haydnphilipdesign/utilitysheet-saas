@@ -4,6 +4,7 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import {
     ADVANCED_MODULE_KEYS,
+    normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
     PACKET_MODES,
 } from '@/lib/packet/modules';
@@ -24,6 +25,7 @@ export const createRequestBodySchema = z.object({
     utilityCategories: z.array(utilityCategoryEnum).min(1).max(UTILITY_CATEGORY_KEYS.length).optional(),
     packetMode: z.enum(PACKET_MODES as ['simple', 'advanced']).optional(),
     advancedModules: z.array(z.enum(ADVANCED_MODULE_KEYS as ['lawn_exterior', 'irrigation_seasonal_controls', 'mailbox_access', 'smart_home_security', 'service_providers'])).optional(),
+    advancedModuleExclusions: z.record(z.string(), z.array(z.string())).optional(),
     brandProfileId: z.string().uuid().optional(),
     sendSellerEmail: z.boolean().optional(),
     isDemo: z.boolean().optional(),
@@ -294,6 +296,13 @@ export const sellerSubmissionBodySchema = z.object({
         },
         z.array(advancedModuleEnum)
     ).optional(),
+    advanced_module_exclusions: z.preprocess(
+        (val) => {
+            if (val === undefined || val === null) return undefined;
+            return normalizeAdvancedModuleExclusions(val);
+        },
+        z.record(z.string(), z.array(z.string()))
+    ).optional(),
     advanced: advancedModuleDataSchema.optional(),
     utilities: z.preprocess(
         (val) => {
@@ -330,4 +339,11 @@ export const sellerSubmissionBodySchema = z.object({
 export const requestConfigurationBodySchema = z.object({
     packetMode: packetModeEnum,
     advancedModules: z.array(advancedModuleEnum).optional(),
+    advancedModuleExclusions: z.preprocess(
+        (val) => {
+            if (val === undefined || val === null) return undefined;
+            return normalizeAdvancedModuleExclusions(val);
+        },
+        z.record(z.string(), z.array(z.string())).optional()
+    ),
 }).strict();
