@@ -35,7 +35,13 @@ const emptySuggestions: Record<UtilityCategory, ProviderSuggestion[]> = {
 };
 
 function renderAdvancedWizard(overrides?: {
-    advanced_modules?: Array<'mailbox_access' | 'service_providers'>;
+    advanced_modules?: Array<
+        | 'lawn_exterior'
+        | 'irrigation_seasonal_controls'
+        | 'mailbox_access'
+        | 'smart_home_security'
+        | 'service_providers'
+    >;
 }) {
     return render(
         <SellerWizard
@@ -46,6 +52,23 @@ function renderAdvancedWizard(overrides?: {
                 collect_electric_meter_number: false,
                 packet_mode: 'advanced',
                 advanced_modules: overrides?.advanced_modules ?? ['service_providers', 'mailbox_access'],
+                advanced_packet_data: {},
+            }}
+            initialSuggestions={emptySuggestions}
+        />
+    );
+}
+
+function renderSimpleWizard() {
+    return render(
+        <SellerWizard
+            token="seller-wizard-simple-test-token"
+            initialRequestData={{
+                property_address: '123 Test Lane',
+                utility_categories: ['electric'],
+                collect_electric_meter_number: false,
+                packet_mode: 'simple',
+                advanced_modules: [],
                 advanced_packet_data: {},
             }}
             initialSuggestions={emptySuggestions}
@@ -92,6 +115,30 @@ describe('SellerWizard advanced module step flow', () => {
         expect(screen.getByText('Service Providers (2 of 2)')).toBeInTheDocument();
     });
 
+    it('applies Home Basics module group toggles including mailbox access', () => {
+        renderAdvancedWizard({
+            advanced_modules: [
+                'lawn_exterior',
+                'irrigation_seasonal_controls',
+                'mailbox_access',
+                'smart_home_security',
+                'service_providers',
+            ],
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /get started/i }));
+
+        fireEvent.click(screen.getByTestId('advanced-group-outdoor_irrigation'));
+        fireEvent.click(screen.getByTestId('advanced-group-smart_home_security'));
+        fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
+
+        fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+        fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
+
+        expect(screen.getByText('Service Providers (1 of 1)')).toBeInTheDocument();
+        expect(screen.queryByText('Mailbox & Access (1 of 2)')).not.toBeInTheDocument();
+    });
+
     it('supports per-module review edit flow and returns directly to review on continue/back', () => {
         renderAdvancedWizard();
 
@@ -119,5 +166,13 @@ describe('SellerWizard advanced module step flow', () => {
         fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
 
         expect(screen.getByText('Review & Submit')).toBeInTheDocument();
+    });
+
+    it('does not show advanced module selectors on Home Basics in simple mode', () => {
+        renderSimpleWizard();
+
+        fireEvent.click(screen.getByRole('button', { name: /get started/i }));
+
+        expect(screen.queryByText(/transition detail modules/i)).not.toBeInTheDocument();
     });
 });

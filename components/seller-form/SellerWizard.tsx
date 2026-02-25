@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AnimatePresence, useReducedMotion } from 'framer-motion';
 import { SellerLayout } from './SellerLayout';
 import type {
@@ -95,6 +95,12 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const collectElectricMeterNumber = initialRequestData.collect_electric_meter_number !== false;
     const requestPacketMode: PacketMode = initialRequestData.packet_mode || 'simple';
     const requestAdvancedModules = initialRequestData.advanced_modules || [];
+    const configuredAdvancedModules = useMemo(
+        () => (requestPacketMode === 'advanced'
+            ? ADVANCED_MODULE_KEYS.filter((moduleKey) => requestAdvancedModules.includes(moduleKey))
+            : []),
+        [requestPacketMode, requestAdvancedModules]
+    );
 
     const [state, setState] = useState<WizardState>(() => ({
         water_source: 'not_sure',
@@ -105,14 +111,17 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         trash_handled_by: 'not_sure',
         optional_utilities: [],
         packet_mode: requestPacketMode,
-        advanced_modules: requestAdvancedModules,
+        advanced_modules: configuredAdvancedModules,
         advanced: initialRequestData.advanced_packet_data || {},
         utilities: {} as Record<UtilityCategory, UtilityWizardState>,
     }));
 
     const [visibleUtilities, setVisibleUtilities] = useState<UtilityCategory[]>([]);
     const enabledAdvancedModules = state.packet_mode === 'advanced' ? state.advanced_modules : [];
-    const orderedAdvancedModules = ADVANCED_MODULE_KEYS.filter((moduleKey) => enabledAdvancedModules.includes(moduleKey));
+    const orderedAdvancedModules = useMemo(
+        () => ADVANCED_MODULE_KEYS.filter((moduleKey) => enabledAdvancedModules.includes(moduleKey)),
+        [enabledAdvancedModules]
+    );
     const hasAdvancedStep = orderedAdvancedModules.length > 0;
     const currentAdvancedModule = orderedAdvancedModules[advancedModuleIndex];
     const draftStorageKey = `us_seller_draft:${token}`;
@@ -173,6 +182,26 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
         return () => clearTimeout(timeout);
     }, [draftStorageKey, state, currentStep, utilityIndex, advancedModuleIndex, advancedNavigationMode, isDemo]);
+
+    useEffect(() => {
+        if (configuredAdvancedModules.length === 0) return;
+        if (state.packet_mode !== 'advanced') return;
+
+        const configuredSet = new Set(configuredAdvancedModules);
+        const nextSet = new Set(
+            state.advanced_modules.filter((moduleKey) => configuredSet.has(moduleKey))
+        );
+
+        const normalized = ADVANCED_MODULE_KEYS.filter((moduleKey) => nextSet.has(moduleKey));
+        const sameLength = normalized.length === state.advanced_modules.length;
+        const isSame = sameLength && normalized.every((moduleKey, index) => moduleKey === state.advanced_modules[index]);
+        if (isSame) return;
+
+        setState((prev) => ({
+            ...prev,
+            advanced_modules: normalized,
+        }));
+    }, [configuredAdvancedModules, state.packet_mode, state.advanced_modules]);
 
     useEffect(() => {
         if (isDemo) return;
@@ -541,6 +570,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         state={state}
                         updateState={(updates) => setState((prev) => ({ ...prev, ...updates }))}
                         requestedUtilityCategories={initialRequestData.utility_categories}
+                        configuredAdvancedModules={configuredAdvancedModules}
                         onNext={handleNext}
                     />
                 )}

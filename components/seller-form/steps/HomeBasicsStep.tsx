@@ -1,19 +1,21 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Droplets, Flame, Waves, Wifi, Tv, Trash2, Check } from 'lucide-react';
+import { Droplets, Flame, Waves, Wifi, Tv, Trash2, Check, Flower2, ShieldCheck, Wrench, KeyRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
-import type { UtilityCategory } from '@/types';
+import type { AdvancedModuleKey, UtilityCategory } from '@/types';
+import { ADVANCED_MODULE_KEYS } from '@/lib/packet/modules';
 
 interface HomeBasicsStepProps {
     state: WizardState;
     updateState: (updates: Partial<WizardState>) => void;
     requestedUtilityCategories: UtilityCategory[];
+    configuredAdvancedModules: AdvancedModuleKey[];
     onNext: () => void;
 }
 
-export function HomeBasicsStep({ state, updateState, requestedUtilityCategories, onNext }: HomeBasicsStepProps) {
+export function HomeBasicsStep({ state, updateState, requestedUtilityCategories, configuredAdvancedModules, onNext }: HomeBasicsStepProps) {
     const optionalUtilities = [
         { id: 'trash' as const, label: 'Trash', icon: Trash2 },
         { id: 'internet' as const, label: 'Internet', icon: Wifi },
@@ -23,6 +25,59 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
     const availableOptionalUtilities = optionalUtilities.filter((u) =>
         requestedUtilityCategories.includes(u.id)
     );
+    const configuredAdvancedModuleSet = new Set(configuredAdvancedModules);
+    const enabledAdvancedModuleSet = new Set(state.advanced_modules);
+    const showAdvancedModuleSelector = state.packet_mode === 'advanced' && configuredAdvancedModules.length > 0;
+
+    const advancedGroups = [
+        {
+            id: 'outdoor_irrigation',
+            label: 'Lawn + Irrigation',
+            helper: 'Lawn care, snow, and irrigation controls.',
+            icon: Flower2,
+            moduleKeys: ['lawn_exterior', 'irrigation_seasonal_controls'] as AdvancedModuleKey[],
+        },
+        {
+            id: 'smart_home_security',
+            label: 'Home Security',
+            helper: 'Alarm, thermostat, and smart devices.',
+            icon: ShieldCheck,
+            moduleKeys: ['smart_home_security'] as AdvancedModuleKey[],
+        },
+        {
+            id: 'service_providers',
+            label: 'Service Providers',
+            helper: 'HVAC, pest control, and plumber contacts.',
+            icon: Wrench,
+            moduleKeys: ['service_providers'] as AdvancedModuleKey[],
+        },
+        {
+            id: 'mailbox_access',
+            label: 'Mailbox + Access',
+            helper: 'Mailbox, breaker panel, and water shutoff info.',
+            icon: KeyRound,
+            moduleKeys: ['mailbox_access'] as AdvancedModuleKey[],
+        },
+    ] as const;
+
+    const toggleAdvancedModuleGroup = (moduleKeys: AdvancedModuleKey[]) => {
+        const availableKeys = moduleKeys.filter((moduleKey) => configuredAdvancedModuleSet.has(moduleKey));
+        if (availableKeys.length === 0) return;
+
+        const allEnabled = availableKeys.every((moduleKey) => enabledAdvancedModuleSet.has(moduleKey));
+        const nextSet = new Set(
+            state.advanced_modules.filter((moduleKey) => configuredAdvancedModuleSet.has(moduleKey))
+        );
+
+        if (allEnabled) {
+            availableKeys.forEach((moduleKey) => nextSet.delete(moduleKey));
+        } else {
+            availableKeys.forEach((moduleKey) => nextSet.add(moduleKey));
+        }
+
+        const nextModules = ADVANCED_MODULE_KEYS.filter((moduleKey) => nextSet.has(moduleKey));
+        updateState({ advanced_modules: nextModules });
+    };
 
     return (
         <motion.div
@@ -223,6 +278,64 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                         <span className="block font-medium text-sm sm:text-base">{util.label}</span>
                                     </div>
                                     {/* Checkmark indicator */}
+                                    <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all ${isSelected
+                                        ? 'bg-emerald-500 text-white'
+                                        : 'bg-muted/60 border border-border text-muted-foreground/50'
+                                        }`}>
+                                        <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {showAdvancedModuleSelector && (
+                <div className="space-y-3 sm:space-y-4">
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                        <span className="inline-flex -space-x-1">
+                            <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
+                                <Flower2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
+                            </span>
+                            <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
+                                <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
+                            </span>
+                            <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
+                                <Wrench className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
+                            </span>
+                        </span>
+                        Transition detail modules
+                    </label>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground -mt-1 sm:-mt-2">
+                        Choose which advanced modules you want to fill out.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        {advancedGroups.map((group) => {
+                            const availableKeys = group.moduleKeys.filter((moduleKey) => configuredAdvancedModuleSet.has(moduleKey));
+                            if (availableKeys.length === 0) return null;
+
+                            const Icon = group.icon;
+                            const isSelected = availableKeys.every((moduleKey) => enabledAdvancedModuleSet.has(moduleKey));
+
+                            return (
+                                <button
+                                    key={group.id}
+                                    type="button"
+                                    onClick={() => toggleAdvancedModuleGroup(group.moduleKeys)}
+                                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${isSelected
+                                        ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                        : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
+                                        }`}
+                                    data-testid={`advanced-group-${group.id}`}
+                                >
+                                    <div className="flex items-start gap-2.5">
+                                        <Icon className="h-4 w-4 shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-sm sm:text-base">{group.label}</p>
+                                            <p className="text-[10px] sm:text-xs opacity-90 mt-0.5">{group.helper}</p>
+                                        </div>
+                                    </div>
                                     <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all ${isSelected
                                         ? 'bg-emerald-500 text-white'
                                         : 'bg-muted/60 border border-border text-muted-foreground/50'
