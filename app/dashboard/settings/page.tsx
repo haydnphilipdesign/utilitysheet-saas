@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Link as LinkIcon, User, Bell, Check, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import type { PacketMode } from '@/types';
+import { ADVANCED_MODULE_DEFAULTS, ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
+import type { AdvancedModuleKey, PacketMode } from '@/types';
 
 type NotificationPreferences = {
     seller_submissions: boolean;
@@ -74,10 +75,17 @@ export default function SettingsPage() {
     const [teamSeats, setTeamSeats] = useState(3);
     const [teamBillingLoading, setTeamBillingLoading] = useState(false);
 
-    const [intakeLink, setIntakeLink] = useState<{ slug: string; url: string; is_active: boolean; defaultPacketMode?: PacketMode } | null>(null);
+    const [intakeLink, setIntakeLink] = useState<{
+        slug: string;
+        url: string;
+        is_active: boolean;
+        defaultPacketMode?: PacketMode;
+        advancedModules?: AdvancedModuleKey[];
+    } | null>(null);
     const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
     const [intakeSlugDraft, setIntakeSlugDraft] = useState('');
     const [intakeDefaultPacketMode, setIntakeDefaultPacketMode] = useState<PacketMode>('simple');
+    const [intakeAdvancedModules, setIntakeAdvancedModules] = useState<AdvancedModuleKey[]>([...ADVANCED_MODULE_DEFAULTS]);
     const [intakeSaving, setIntakeSaving] = useState(false);
 
     const TEAM_MIN_SEATS = 3;
@@ -147,6 +155,11 @@ export default function SettingsPage() {
                     setIntakeLink(data.intakeLink);
                     setIntakeSlugDraft(data.intakeLink.slug || '');
                     setIntakeDefaultPacketMode(data.intakeLink.defaultPacketMode || 'simple');
+                    setIntakeAdvancedModules(
+                        Array.isArray(data.intakeLink.advancedModules) && data.intakeLink.advancedModules.length > 0
+                            ? data.intakeLink.advancedModules
+                            : [...ADVANCED_MODULE_DEFAULTS]
+                    );
                 }
                 setIntakeCanCustomize(Boolean(data.canCustomize));
             } catch (error) {
@@ -161,6 +174,18 @@ export default function SettingsPage() {
 
     const orgIsTeam = useMemo(() => activeOrganization?.subscription_status === 'team', [activeOrganization]);
     const orgIsAdmin = useMemo(() => activeOrganization?.role === 'admin', [activeOrganization]);
+    const intakeSavedAdvancedModules = useMemo(
+        () => intakeLink?.advancedModules && intakeLink.advancedModules.length > 0
+            ? intakeLink.advancedModules
+            : ADVANCED_MODULE_DEFAULTS,
+        [intakeLink?.advancedModules]
+    );
+    const intakeModeSettingsUnchanged = useMemo(() => {
+        if (!intakeLink) return true;
+        const currentKey = [...intakeAdvancedModules].sort().join('|');
+        const savedKey = [...intakeSavedAdvancedModules].sort().join('|');
+        return intakeDefaultPacketMode === (intakeLink.defaultPacketMode || 'simple') && currentKey === savedKey;
+    }, [intakeAdvancedModules, intakeDefaultPacketMode, intakeLink, intakeSavedAdvancedModules]);
 
     const refreshOrganization = async () => {
         if (!activeOrganization?.id) return;
@@ -329,13 +354,28 @@ export default function SettingsPage() {
         }
     };
 
+    const toggleIntakeAdvancedModule = (moduleKey: AdvancedModuleKey) => {
+        setIntakeAdvancedModules((prev) => (
+            prev.includes(moduleKey)
+                ? prev.filter((m) => m !== moduleKey)
+                : [...prev, moduleKey]
+        ));
+    };
+
     const handleSaveDefaultPacketMode = async () => {
+        if (intakeDefaultPacketMode === 'advanced' && intakeAdvancedModules.length === 0) {
+            toast.error('Enable at least one module for Advanced Utility Packet mode.');
+            return;
+        }
         setIntakeSaving(true);
         try {
             const response = await fetch('/api/intake-link', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ defaultPacketMode: intakeDefaultPacketMode }),
+                body: JSON.stringify({
+                    defaultPacketMode: intakeDefaultPacketMode,
+                    advancedModules: intakeAdvancedModules,
+                }),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
@@ -344,8 +384,13 @@ export default function SettingsPage() {
             if (data.intakeLink) {
                 setIntakeLink(data.intakeLink);
                 setIntakeDefaultPacketMode(data.intakeLink.defaultPacketMode || intakeDefaultPacketMode);
+                setIntakeAdvancedModules(
+                    Array.isArray(data.intakeLink.advancedModules) && data.intakeLink.advancedModules.length > 0
+                        ? data.intakeLink.advancedModules
+                        : [...ADVANCED_MODULE_DEFAULTS]
+                );
             }
-            toast.success('Reusable link default mode updated');
+            toast.success('Reusable link mode settings updated');
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Failed to update default mode';
             toast.error(message);
@@ -633,36 +678,105 @@ export default function SettingsPage() {
                             <Label htmlFor="defaultPacketMode" className="text-foreground">Reusable link default mode</Label>
                             {!intakeCanCustomize && <Badge variant="outline">Pro / Teams</Badge>}
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                            <div className="flex-1 space-y-1">
-                                <select
-                                    id="defaultPacketMode"
-                                    value={intakeDefaultPacketMode}
-                                    onChange={(e) => setIntakeDefaultPacketMode(e.target.value as PacketMode)}
-                                    className="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm text-foreground"
-                                    disabled={intakeSaving}
-                                >
-                                    <option value="simple">Simple Utility Sheet</option>
-                                    <option value="advanced">Advanced Seller Packet</option>
-                                </select>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1">
+                                <p className="text-sm font-semibold text-foreground">Simple Utility Sheet</p>
+                                <p className="text-xs text-muted-foreground">Fast utility list only, ideal for straightforward handoffs.</p>
                                 <p className="text-xs text-muted-foreground">
-                                    Controls which mode sellers get when they start from your reusable link.
+                                    Example: Electric, gas, water, and internet provider contacts.
                                 </p>
                             </div>
-                            <Button
-                                type="button"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                onClick={handleSaveDefaultPacketMode}
-                                disabled={intakeSaving || (!intakeCanCustomize && intakeDefaultPacketMode === 'advanced')}
-                            >
-                                {intakeSaving ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Save className="mr-2 h-4 w-4" />
-                                )}
-                                Save Mode
-                            </Button>
+                            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1">
+                                <p className="text-sm font-semibold text-foreground">Advanced Utility Packet</p>
+                                <p className="text-xs text-muted-foreground">Adds modular seller transition details beyond utility providers.</p>
+                                <p className="text-xs text-muted-foreground">
+                                    Example: Mailbox access, lawn care contacts, and smart home notes.
+                                </p>
+                            </div>
                         </div>
+                        <div className="space-y-1">
+                            <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                                <div className="flex-1">
+                                    <select
+                                        id="defaultPacketMode"
+                                        value={intakeDefaultPacketMode}
+                                        onChange={(e) => setIntakeDefaultPacketMode(e.target.value as PacketMode)}
+                                        className="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm text-foreground"
+                                        disabled={!intakeCanCustomize || intakeSaving}
+                                    >
+                                        <option value="simple">Simple Utility Sheet</option>
+                                        <option value="advanced">Advanced Utility Packet</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Controls which mode sellers get when they start from your reusable link.
+                            </p>
+                            {!intakeCanCustomize && (
+                                <p className="text-xs text-amber-500">
+                                    Advanced mode defaults are read-only on Free. Upgrade to Pro or Teams to edit.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {intakeDefaultPacketMode === 'advanced' && (
+                        <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+                            <div className="flex items-center justify-between gap-2">
+                                <Label className="text-foreground">Advanced Modules</Label>
+                                <span className="text-xs text-muted-foreground">{intakeAdvancedModules.length} enabled</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {Object.entries(ADVANCED_MODULE_LABELS).map(([moduleKey, moduleLabel]) => {
+                                    const typedModuleKey = moduleKey as AdvancedModuleKey;
+                                    const isEnabled = intakeAdvancedModules.includes(typedModuleKey);
+                                    return (
+                                        <button
+                                            key={typedModuleKey}
+                                            type="button"
+                                            onClick={() => toggleIntakeAdvancedModule(typedModuleKey)}
+                                            disabled={!intakeCanCustomize || intakeSaving}
+                                            className={`rounded-lg border px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                                isEnabled
+                                                    ? 'border-emerald-500/60 bg-emerald-500/10'
+                                                    : 'border-border hover:border-input'
+                                            }`}
+                                        >
+                                            <p className="text-sm text-foreground">{moduleLabel}</p>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {intakeAdvancedModules.length === 0 && (
+                                <p className="text-xs text-amber-500">Enable at least one module for Advanced Utility Packet mode.</p>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                        <div className="flex-1 space-y-1">
+                            <p className="text-xs text-muted-foreground">
+                                Save both default mode and module settings together.
+                            </p>
+                        </div>
+                        <Button
+                            type="button"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={handleSaveDefaultPacketMode}
+                            disabled={
+                                intakeSaving ||
+                                !intakeCanCustomize ||
+                                intakeModeSettingsUnchanged ||
+                                (intakeDefaultPacketMode === 'advanced' && intakeAdvancedModules.length === 0)
+                            }
+                        >
+                            {intakeSaving ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Save className="mr-2 h-4 w-4" />
+                            )}
+                            Save Mode Settings
+                        </Button>
                     </div>
 
                     <Separator className="bg-border" />

@@ -50,10 +50,13 @@ describe('POST /api/intake/[slug]/start', () => {
             slug: 'test-slug',
             account_id: 'acct-1',
             is_active: true,
+            default_packet_mode: 'simple',
+            advanced_modules: [],
         } as never);
         vi.mocked(getAccountById).mockResolvedValue({
             id: 'acct-1',
             role: 'user',
+            subscription_status: 'free',
             active_organization_id: null,
         } as never);
         vi.mocked(getAccountOrganizations).mockResolvedValue([] as never);
@@ -106,5 +109,65 @@ describe('POST /api/intake/[slug]/start', () => {
         expect(await response.json()).toEqual({ sellerToken: 'seller-token-1' });
         expect(buildStructuredPropertyAddress).toHaveBeenCalledWith('123 Main St, Austin, TX 78701');
         expect(createRequest).toHaveBeenCalled();
+    });
+
+    it('uses reusable-link advanced module defaults for paid accounts', async () => {
+        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+            slug: 'test-slug',
+            account_id: 'acct-1',
+            is_active: true,
+            default_packet_mode: 'advanced',
+            advanced_modules: ['mailbox_access', 'service_providers'],
+        } as never);
+        vi.mocked(getAccountById).mockResolvedValue({
+            id: 'acct-1',
+            role: 'user',
+            subscription_status: 'pro',
+            active_organization_id: null,
+        } as never);
+
+        const request = new Request('http://localhost/api/intake/test-slug/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }),
+        });
+
+        const response = await POST(request, { params: Promise.resolve({ slug: 'test-slug' }) });
+
+        expect(response.status).toBe(200);
+        expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
+            packetMode: 'advanced',
+            advancedModules: ['mailbox_access', 'service_providers'],
+        }));
+    });
+
+    it('falls back to simple mode for free accounts even when reusable-link default is advanced', async () => {
+        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+            slug: 'test-slug',
+            account_id: 'acct-1',
+            is_active: true,
+            default_packet_mode: 'advanced',
+            advanced_modules: ['mailbox_access', 'service_providers'],
+        } as never);
+        vi.mocked(getAccountById).mockResolvedValue({
+            id: 'acct-1',
+            role: 'user',
+            subscription_status: 'free',
+            active_organization_id: null,
+        } as never);
+
+        const request = new Request('http://localhost/api/intake/test-slug/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }),
+        });
+
+        const response = await POST(request, { params: Promise.resolve({ slug: 'test-slug' }) });
+
+        expect(response.status).toBe(200);
+        expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
+            packetMode: 'simple',
+            advancedModules: [],
+        }));
     });
 });

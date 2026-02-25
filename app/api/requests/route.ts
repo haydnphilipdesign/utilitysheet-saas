@@ -121,7 +121,7 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     error: 'Upgrade required',
-                    message: 'Advanced Seller Transition Packets are available on Pro and Teams.',
+                    message: 'Advanced Utility Packets are available on Pro and Teams.',
                 },
                 { status: 403 }
             );

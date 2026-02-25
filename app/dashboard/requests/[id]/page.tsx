@@ -141,7 +141,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
             }
             setRequest(data);
             toast.success(nextMode === 'advanced'
-                ? 'Switched to Advanced Seller Packet'
+                ? 'Switched to Advanced Utility Packet'
                 : 'Switched to Simple Utility Sheet');
         } catch (error) {
             console.error('Error switching request mode:', error);
@@ -265,7 +265,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     <div className="flex items-center gap-3">
                         <Badge className={status.color}>{status.label}</Badge>
                         <Badge variant="outline" className="border-border text-foreground">
-                            {packetMode === 'advanced' ? 'Advanced Seller Packet' : 'Simple Utility Sheet'}
+                            {packetMode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
                             Created {format(new Date(request.created_at), 'MMMM d, yyyy')}
@@ -416,7 +416,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                         disabled={updatingMode || packetMode === 'advanced'}
                                         onClick={() => handleSwitchMode('advanced')}
                                     >
-                                        Advanced Seller Packet
+                                        Advanced Utility Packet
                                     </Button>
                                 </div>
                             ) : (

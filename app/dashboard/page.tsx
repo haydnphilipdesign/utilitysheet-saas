@@ -721,7 +721,7 @@ export default function DashboardPage() {
                                                         <p className="font-medium text-foreground text-base truncate">{request.property_address}</p>
                                                         <p className="text-sm text-muted-foreground truncate">{request.seller_name || 'No seller info'}</p>
                                                         <p className="text-xs text-muted-foreground mt-1">
-                                                            {request.packet_mode === 'advanced' ? 'Advanced Seller Packet' : 'Simple Utility Sheet'}
+                                                            {request.packet_mode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
                                                         </p>
                                                     </div>
                                                     <Badge variant="outline" className={`${status.color} border text-xs px-2 py-0.5 shrink-0`}>

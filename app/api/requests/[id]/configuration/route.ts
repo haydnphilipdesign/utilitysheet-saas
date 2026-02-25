@@ -59,7 +59,7 @@ export async function PATCH(
             return NextResponse.json(
                 {
                     error: 'Upgrade required',
-                    message: 'Advanced Seller Transition Packets are available on Pro and Teams.',
+                    message: 'Advanced Utility Packets are available on Pro and Teams.',
                 },
                 { status: 403 }
             );
@@ -87,4 +87,3 @@ export async function PATCH(
         return NextResponse.json({ error: 'Failed to update request configuration' }, { status: 500 });
     }
 }
-

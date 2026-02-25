@@ -94,7 +94,7 @@ export {
     getOrCreateIntakeLink,
     getIntakeLinkBySlug,
     updateIntakeLinkSlug,
-    updateIntakeLinkDefaultPacketMode,
+    updateIntakeLinkPacketDefaults,
     slugifyIntakeSlug,
     validateIntakeSlug,
 } from './intake-links';

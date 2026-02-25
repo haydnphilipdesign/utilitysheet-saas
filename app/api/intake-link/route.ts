@@ -3,11 +3,12 @@ import {
     getOrCreateAccount,
     getAccountOrganizations,
     getOrCreateIntakeLink,
-    updateIntakeLinkDefaultPacketMode,
+    updateIntakeLinkPacketDefaults,
     updateIntakeLinkSlug,
 } from '@/lib/neon/queries';
+import { normalizeAdvancedModules } from '@/lib/packet/modules';
 import { stackServerApp } from '@/lib/stack/server';
-import type { PacketMode } from '@/types';
+import type { AdvancedModuleKey, PacketMode } from '@/types';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -48,6 +49,7 @@ export async function GET() {
         const baseUrl = getAppBaseUrl();
         const url = `${baseUrl}/i/${intakeLink.slug}`;
         const canCustomize = canCustomizeSlug(account.subscription_status, activeOrg?.subscription_status);
+        const advancedModules = normalizeAdvancedModules(intakeLink.advanced_modules);
 
         return NextResponse.json({
             intakeLink: {
@@ -55,6 +57,7 @@ export async function GET() {
                 url,
                 is_active: intakeLink.is_active,
                 defaultPacketMode: intakeLink.default_packet_mode || 'simple',
+                advancedModules,
             },
             canCustomize,
             companyName: account.company_name || '',
@@ -85,12 +88,17 @@ export async function POST(request: Request) {
         const body = await request.json().catch(() => ({}));
         const slug = typeof body?.slug === 'string' ? body.slug.trim() : '';
         const defaultPacketMode = body?.defaultPacketMode as PacketMode | undefined;
+        const hasAdvancedModulesPayload = Object.prototype.hasOwnProperty.call(body || {}, 'advancedModules');
+        const advancedModulesInput = Array.isArray(body?.advancedModules)
+            ? body.advancedModules.filter((candidate: unknown): candidate is string => typeof candidate === 'string')
+            : undefined;
         const isModeUpdate = defaultPacketMode === 'simple' || defaultPacketMode === 'advanced';
         const isSlugUpdate = slug.length > 0;
+        const isPacketDefaultsUpdate = isModeUpdate || hasAdvancedModulesPayload;
 
-        if (!isModeUpdate && !isSlugUpdate) {
+        if (!isPacketDefaultsUpdate && !isSlugUpdate) {
             return NextResponse.json(
-                { error: 'Invalid request', message: 'Provide a slug and/or defaultPacketMode.' },
+                { error: 'Invalid request', message: 'Provide a slug, defaultPacketMode, and/or advancedModules.' },
                 { status: 400 }
             );
         }
@@ -118,19 +126,43 @@ export async function POST(request: Request) {
                 return NextResponse.json(
                     {
                         error: 'Upgrade required',
-                        message: 'Advanced default mode is available on Pro and Teams.',
+                        message: 'Advanced Utility Packet default mode is available on Pro and Teams.',
                     },
                     { status: 403 }
                 );
             }
-            updated = await updateIntakeLinkDefaultPacketMode(account.id, defaultPacketMode);
+        }
+
+        if (hasAdvancedModulesPayload && !allowed) {
+            return NextResponse.json(
+                {
+                    error: 'Upgrade required',
+                    message: 'Advanced module defaults are available on Pro and Teams.',
+                },
+                { status: 403 }
+            );
+        }
+
+        if (isPacketDefaultsUpdate) {
+            const nextDefaultPacketMode: PacketMode = isModeUpdate
+                ? (defaultPacketMode === 'advanced' ? 'advanced' : 'simple')
+                : (updated.default_packet_mode === 'advanced' ? 'advanced' : 'simple');
+            const currentModules: AdvancedModuleKey[] = normalizeAdvancedModules(updated.advanced_modules);
+            const nextAdvancedModules: AdvancedModuleKey[] = hasAdvancedModulesPayload
+                ? normalizeAdvancedModules(advancedModulesInput)
+                : currentModules;
+            updated = await updateIntakeLinkPacketDefaults(account.id, {
+                defaultPacketMode: nextDefaultPacketMode,
+                advancedModules: nextAdvancedModules,
+            });
             if (!updated) {
-                return NextResponse.json({ error: 'Failed to update intake default mode' }, { status: 500 });
+                return NextResponse.json({ error: 'Failed to update intake packet defaults' }, { status: 500 });
             }
         }
 
         const baseUrl = getAppBaseUrl();
         const url = `${baseUrl}/i/${updated.slug}`;
+        const advancedModules = normalizeAdvancedModules(updated.advanced_modules);
 
         return NextResponse.json({
             intakeLink: {
@@ -138,6 +170,7 @@ export async function POST(request: Request) {
                 url,
                 is_active: updated.is_active,
                 defaultPacketMode: updated.default_packet_mode || 'simple',
+                advancedModules,
             },
         });
     } catch (error: unknown) {

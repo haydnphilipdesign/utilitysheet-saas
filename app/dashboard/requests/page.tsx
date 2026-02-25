@@ -201,7 +201,7 @@ export default function RequestsPage() {
                                                     <p className="font-medium text-foreground truncate">{request.property_address}</p>
                                                     <p className="text-sm text-muted-foreground truncate">{request.seller_name || '—'}</p>
                                                     <p className="text-xs text-muted-foreground mt-1">
-                                                        {request.packet_mode === 'advanced' ? 'Advanced Seller Packet' : 'Simple Utility Sheet'}
+                                                        {request.packet_mode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
                                                     </p>
                                                 </div>
                                                 <Badge variant="outline" className={`${status.color} border text-xs px-2 py-0.5 shrink-0`}>

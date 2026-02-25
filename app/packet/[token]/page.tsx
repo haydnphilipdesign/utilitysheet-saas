@@ -146,7 +146,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
     const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
     const showGenerationDate = brand?.show_generation_date ?? true;
-    const defaultTitle = isAdvanced ? 'Seller Transition Packet' : 'Utility Info Sheet';
+    const defaultTitle = isAdvanced ? 'Advanced Utility Packet' : 'Utility Info Sheet';
     const headerBrandName = showPoweredBy ? 'UtilitySheet' : (brand?.name || defaultTitle);
     const nextStepsTitle = brand?.next_steps_title || 'Buyer Next Steps';
     const buyerSteps = (brand?.buyer_next_steps && brand.buyer_next_steps.length > 0 ? brand.buyer_next_steps : DEFAULT_BUYER_STEPS)

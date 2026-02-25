@@ -2,7 +2,7 @@
  * Intake link queries (reusable seller URL per account)
  */
 import { sql, generateToken } from '@/lib/neon/db';
-import type { PacketMode } from '@/types';
+import type { AdvancedModuleKey, PacketMode } from '@/types';
 
 export interface IntakeLink {
     id: string;
@@ -10,6 +10,7 @@ export interface IntakeLink {
     slug: string;
     is_active: boolean;
     default_packet_mode: PacketMode;
+    advanced_modules: AdvancedModuleKey[];
     created_at: string;
     updated_at: string;
 }
@@ -103,8 +104,8 @@ export async function getOrCreateIntakeLink(accountId: string): Promise<IntakeLi
     const uniqueSlug = await getUniqueIntakeSlug(slug);
 
     const created = await sql`
-        INSERT INTO intake_links (account_id, slug, is_active, default_packet_mode)
-        VALUES (${accountId}, ${uniqueSlug}, TRUE, 'simple')
+        INSERT INTO intake_links (account_id, slug, is_active, default_packet_mode, advanced_modules)
+        VALUES (${accountId}, ${uniqueSlug}, TRUE, 'simple', '{}'::text[])
         RETURNING *
     `;
 
@@ -129,23 +130,29 @@ export async function updateIntakeLinkSlug(accountId: string, slug: string): Pro
 
     // Link doesn't exist yet, create it with the requested slug.
     const created = await sql`
-        INSERT INTO intake_links (account_id, slug, is_active, default_packet_mode)
-        VALUES (${accountId}, ${uniqueSlug}, TRUE, 'simple')
+        INSERT INTO intake_links (account_id, slug, is_active, default_packet_mode, advanced_modules)
+        VALUES (${accountId}, ${uniqueSlug}, TRUE, 'simple', '{}'::text[])
         RETURNING *
     `;
 
     return (created[0] as IntakeLink) || null;
 }
 
-export async function updateIntakeLinkDefaultPacketMode(
+export async function updateIntakeLinkPacketDefaults(
     accountId: string,
-    defaultPacketMode: PacketMode
+    defaults: {
+        defaultPacketMode: PacketMode;
+        advancedModules: AdvancedModuleKey[];
+    }
 ): Promise<IntakeLink | null> {
     if (!sql) return null;
 
     const result = await sql`
         UPDATE intake_links
-        SET default_packet_mode = ${defaultPacketMode}, updated_at = NOW()
+        SET
+            default_packet_mode = ${defaults.defaultPacketMode},
+            advanced_modules = ${defaults.advancedModules}::text[],
+            updated_at = NOW()
         WHERE account_id = ${accountId}
         RETURNING *
     `;
@@ -154,8 +161,8 @@ export async function updateIntakeLinkDefaultPacketMode(
 
     const seededSlug = await getUniqueIntakeSlug(generateToken().slice(0, 10));
     const created = await sql`
-        INSERT INTO intake_links (account_id, slug, is_active, default_packet_mode)
-        VALUES (${accountId}, ${seededSlug}, TRUE, ${defaultPacketMode})
+        INSERT INTO intake_links (account_id, slug, is_active, default_packet_mode, advanced_modules)
+        VALUES (${accountId}, ${seededSlug}, TRUE, ${defaults.defaultPacketMode}, ${defaults.advancedModules}::text[])
         RETURNING *
     `;
     return (created[0] as IntakeLink) || null;

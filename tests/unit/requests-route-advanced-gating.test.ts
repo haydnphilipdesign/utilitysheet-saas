@@ -99,7 +99,7 @@ describe('POST /api/requests advanced gating', () => {
 
         expect(response.status).toBe(403);
         const body = await response.json();
-        expect(String(body.message || '')).toMatch(/Advanced Seller Transition Packets/i);
+        expect(String(body.message || '')).toMatch(/Advanced Utility Packets/i);
         expect(mocks.createRequestMock).not.toHaveBeenCalled();
     });
 });

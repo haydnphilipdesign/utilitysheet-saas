@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS intake_links (
     slug TEXT UNIQUE NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     default_packet_mode TEXT NOT NULL DEFAULT 'simple' CHECK (default_packet_mode IN ('simple', 'advanced')),
+    advanced_modules TEXT[] NOT NULL DEFAULT '{}'::text[],
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(account_id)

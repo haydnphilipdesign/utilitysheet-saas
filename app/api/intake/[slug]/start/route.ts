@@ -146,7 +146,9 @@ export async function POST(
         const defaultBrand = await getDefaultBrandProfile(account.id, activeOrg?.id);
         const structuredPropertyAddress = await buildStructuredPropertyAddress(parsed.data.propertyAddress);
         const packetMode = isPaid && intakeLink.default_packet_mode === 'advanced' ? 'advanced' : 'simple';
-        const advancedModules = packetMode === 'advanced' ? normalizeAdvancedModules() : [];
+        const advancedModules = packetMode === 'advanced'
+            ? normalizeAdvancedModules(intakeLink.advanced_modules)
+            : [];
 
         const newRequest = await createRequest({
             accountId: account.id,

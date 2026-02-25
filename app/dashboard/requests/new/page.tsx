@@ -855,10 +855,10 @@ export default function NewRequestPage() {
                                             }`}
                                         >
                                             <div className="flex items-center justify-between gap-2">
-                                                <p className="text-sm font-semibold text-foreground">Advanced Seller Packet</p>
+                                                <p className="text-sm font-semibold text-foreground">Advanced Utility Packet</p>
                                                 {!isPro && <Badge variant="outline">Pro / Teams</Badge>}
                                             </div>
-                                            <p className="text-xs text-muted-foreground mt-1">Modular multi-page transition packet</p>
+                                            <p className="text-xs text-muted-foreground mt-1">Modular multi-page packet with seller handoff details</p>
                                         </button>
                                     </div>
                                 </div>
