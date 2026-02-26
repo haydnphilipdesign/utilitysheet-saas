@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
+import { createEventLog } from '@/lib/neon/queries/event-logs';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
@@ -73,7 +74,22 @@ export async function GET(
             return NextResponse.json({ suggestions: {} }, { headers: getRateLimitHeaders(rateLimitResult) });
         }
 
-        const suggestions = await getAllSuggestions(requestData.property_address, categories);
+        const context = {
+            requestId: requestData.id,
+            accountId: requestData.account_id,
+            organizationId: requestData.organization_id ?? null,
+        };
+        const suggestions = await getAllSuggestions(requestData.property_address, categories, context);
+
+        void createEventLog({
+            requestId: requestData.id,
+            eventType: 'suggestions_fetched',
+            eventData: {
+                category_count: categories.length,
+                categories,
+            },
+        }).catch(() => undefined);
+
         return NextResponse.json(
             { suggestions },
             { headers: getRateLimitHeaders(rateLimitResult) }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
+import { createEventLog } from '@/lib/neon/queries/event-logs';
 import { searchProviders } from '@/lib/providers/suggestion-service';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
@@ -62,7 +63,22 @@ export async function GET(
         }
 
         const category = categoryRaw as UtilityCategory;
-        const results = await searchProviders(query, category, requestData.property_address);
+        const context = {
+            requestId: requestData.id,
+            accountId: requestData.account_id,
+            organizationId: requestData.organization_id ?? null,
+        };
+        const results = await searchProviders(query, category, requestData.property_address, context);
+
+        void createEventLog({
+            requestId: requestData.id,
+            eventType: 'suggestions_search',
+            eventData: {
+                category,
+                query_length: query.length,
+                result_count: results.length,
+            },
+        }).catch(() => undefined);
 
         return NextResponse.json(results, {
             headers: getRateLimitHeaders(rateLimitResult),

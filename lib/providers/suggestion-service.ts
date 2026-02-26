@@ -1,5 +1,6 @@
+import { z } from 'zod';
 import { ProviderSuggestion, UtilityCategory } from '@/types';
-import { generateJSON, isGeminiConfigured } from '@/lib/ai/gemini-client';
+import { generateJSONWithMeta, isGeminiConfigured } from '@/lib/ai/gemini-client';
 import { getFromCache, setInCache } from '@/lib/cache';
 import {
     US_STATES,
@@ -9,19 +10,90 @@ import {
 } from '@/lib/address/location-parser';
 import { resolveParsedLocation } from '@/lib/address/location-verifier';
 import { createHash } from 'crypto';
+import { getProviderMemoryCandidates, type ProviderMemoryCandidate } from '@/lib/neon/queries/provider-memory';
 
 // Cache TTL: 30 days in seconds
 const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 // Search cache TTL: 7 days in seconds (queries change more often)
 const SEARCH_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
-const SUGGESTION_CACHE_VERSION = 'v4';
-const SEARCH_CACHE_VERSION = 'v4';
+const PROVIDER_MEMORY_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const SUGGESTION_CACHE_VERSION = 'v5';
+const SEARCH_CACHE_VERSION = 'v5';
+const PROVIDER_MEMORY_CACHE_VERSION = 'v1';
+const DEFAULT_MAX_PIPELINE_MS = 6000;
+const DEFAULT_MIN_VALID_SUGGESTIONS = 2;
+const DEFAULT_MIN_TOP_CONFIDENCE = 0.45;
+
+export type SuggestionReasonCode =
+    | 'ai_unconfigured'
+    | 'ai_provider_error'
+    | 'ai_parse_error'
+    | 'ai_empty'
+    | 'quality_gate_failed'
+    | 'state_mismatch_rejected'
+    | 'fallback_used';
+
+export type SuggestionSource = 'ai_primary' | 'ai_verify' | 'ai_recovery' | 'history_blend' | 'fallback';
+
+export interface SuggestionContext {
+    requestId?: string;
+    accountId?: string;
+    organizationId?: string | null;
+}
+
+export interface SuggestionOutcome {
+    category: UtilityCategory;
+    source: SuggestionSource;
+    reasonCode: SuggestionReasonCode | null;
+    upstreamReasonCode: SuggestionReasonCode | null;
+    attemptCount: number;
+    latencyMs: number;
+    suggestionCount: number;
+    localityState: string | null;
+    localityZip3: string | null;
+    localityCity: string | null;
+    servedPipeline: 'new' | 'legacy';
+}
 
 interface ParsedAddress {
     state: string | null;
     city: string | null;
     zip: string | null;
+}
+
+interface FallbackProviderSuggestion extends ProviderSuggestion {
+    service_states?: string[];
+    is_generic?: boolean;
+}
+
+interface StateFilterResult {
+    suggestions: ProviderSuggestion[];
+    rejectedCount: number;
+}
+
+interface QualityGateResult {
+    accepted: boolean;
+    suggestions: ProviderSuggestion[];
+    reasonCode: SuggestionReasonCode | null;
+    rejectedCount: number;
+}
+
+interface PipelineResult {
+    suggestions: ProviderSuggestion[];
+    outcome: SuggestionOutcome;
+}
+
+interface AiPassResult {
+    suggestions: ProviderSuggestion[];
+    reasonCode: SuggestionReasonCode | null;
+}
+
+interface SearchPipelineParams {
+    query: string;
+    category: UtilityCategory;
+    resolvedAddress?: ParsedLocation;
+    context?: SuggestionContext;
 }
 
 const inFlightSuggestionRequests = new Map<string, Promise<ProviderSuggestion[]>>();
@@ -44,6 +116,81 @@ function getNonPiiLocationContext(address: string): { label: string; lines: stri
     return buildLocationContext(parsed);
 }
 
+const suggestionSchema = z.object({
+    display_name: z.string().min(1).max(200),
+    confidence: z.coerce.number().min(0).max(1),
+    rationale_short: z.string().max(280).optional().nullable(),
+    contact_phone: z.string().max(64).optional().nullable(),
+    contact_website: z.string().max(320).optional().nullable(),
+    canonical_id: z.string().max(120).optional(),
+}).strip();
+
+const suggestionArraySchema = z.array(suggestionSchema).min(0).max(12);
+
+function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
+    if (!value) return fallback;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') return true;
+    if (normalized === 'false') return false;
+    return fallback;
+}
+
+function parseIntEnv(value: string | undefined, fallback: number, min: number, max: number): number {
+    if (!value) return fallback;
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(min, Math.min(max, parsed));
+}
+
+function parseFloatEnv(value: string | undefined, fallback: number, min: number, max: number): number {
+    if (!value) return fallback;
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(min, Math.min(max, parsed));
+}
+
+function isTwoPassVerifyEnabled(): boolean {
+    return parseBooleanEnv(process.env.SUGGESTIONS_TWO_PASS_VERIFY, true);
+}
+
+function isRecoveryPassEnabled(): boolean {
+    return parseBooleanEnv(process.env.SUGGESTIONS_ENABLE_RECOVERY_PASS, true);
+}
+
+function getMaxPipelineMs(): number {
+    return parseIntEnv(process.env.SUGGESTIONS_MAX_TOTAL_MS, DEFAULT_MAX_PIPELINE_MS, 1500, 15000);
+}
+
+function getMinValidSuggestions(): number {
+    return parseIntEnv(process.env.SUGGESTIONS_MIN_VALID_RESULTS, DEFAULT_MIN_VALID_SUGGESTIONS, 1, 5);
+}
+
+function getTopConfidenceThreshold(): number {
+    return parseFloatEnv(process.env.SUGGESTIONS_MIN_TOP_CONFIDENCE, DEFAULT_MIN_TOP_CONFIDENCE, 0.05, 0.95);
+}
+
+function isShadowModeEnabled(): boolean {
+    return parseBooleanEnv(process.env.SUGGESTIONS_SHADOW_MODE, false);
+}
+
+function shouldServeNewPipeline(seed: string): boolean {
+    if (!isShadowModeEnabled()) {
+        return true;
+    }
+
+    const serveNew = parseBooleanEnv(process.env.SUGGESTIONS_SERVE_NEW_PIPELINE, false);
+    if (!serveNew) {
+        return false;
+    }
+
+    const canaryPercent = parseIntEnv(process.env.SUGGESTIONS_CANARY_PERCENT, 0, 0, 100);
+    if (canaryPercent >= 100) return true;
+    if (canaryPercent <= 0) return false;
+
+    const bucket = Number.parseInt(hashCacheKeyPart(seed).slice(0, 8), 16) % 100;
+    return bucket < canaryPercent;
+}
+
 function sanitizeLocalityToken(input: string | null | undefined): string {
     if (!input) return 'unknown';
     const token = input
@@ -55,15 +202,24 @@ function sanitizeLocalityToken(input: string | null | undefined): string {
     return token || 'unknown';
 }
 
+function getScopeToken(context?: SuggestionContext): string {
+    if (!context?.accountId) {
+        return 'public';
+    }
+    const scopeKey = `${context.accountId}:${context.organizationId || 'none'}`;
+    return `scope-${hashCacheKeyPart(scopeKey)}`;
+}
+
 /**
  * Generate cache key from address and category
- * Uses state + zip prefix for locality-specific caching
+ * Uses tenant scope + state + zip prefix for locality-specific caching
  */
-function getCacheKey(address: string, category: UtilityCategory): string {
+function getCacheKey(address: string, category: UtilityCategory, context?: SuggestionContext): string {
     const parsed = parseAddress(address);
+    const scope = getScopeToken(context);
     const state = sanitizeLocalityToken(parsed.state || 'default');
     const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `suggestions:${SUGGESTION_CACHE_VERSION}:${state}:${locality}:${category}`;
+    return `suggestions:${SUGGESTION_CACHE_VERSION}:${scope}:${state}:${locality}:${category}`;
 }
 
 function hashCacheKeyPart(input: string): string {
@@ -73,51 +229,71 @@ function hashCacheKeyPart(input: string): string {
 function getSearchCacheKey(
     query: string,
     category?: UtilityCategory,
-    address?: string
+    address?: string,
+    context?: SuggestionContext
 ): string {
     const normalizedQuery = query.trim().toLowerCase().slice(0, 200);
     const categoryKey = category || 'any';
     const queryHash = hashCacheKeyPart(normalizedQuery);
+    const scope = getScopeToken(context);
 
     if (!address) {
-        return `provider-search:${SEARCH_CACHE_VERSION}:global:${categoryKey}:${queryHash}`;
+        return `provider-search:${SEARCH_CACHE_VERSION}:${scope}:global:${categoryKey}:${queryHash}`;
     }
 
     const parsed = parseAddress(address);
     const state = sanitizeLocalityToken(parsed.state || 'default');
     const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `provider-search:${SEARCH_CACHE_VERSION}:${state}:${locality}:${categoryKey}:${queryHash}`;
+    return `provider-search:${SEARCH_CACHE_VERSION}:${scope}:${state}:${locality}:${categoryKey}:${queryHash}`;
+}
+
+function getPipelineCacheKey(baseKey: string, serveNew: boolean): string {
+    return `${baseKey}:${serveNew ? 'new' : 'legacy'}`;
+}
+
+function getProviderMemoryCacheKey(
+    parsed: ParsedLocation,
+    category: UtilityCategory,
+    context?: SuggestionContext
+): string | null {
+    if (!context?.accountId || !parsed.state) {
+        return null;
+    }
+    const scope = getScopeToken(context);
+    const state = sanitizeLocalityToken(parsed.state);
+    const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.slice(0, 3) : parsed.city || 'unknown');
+    return `provider-memory:${PROVIDER_MEMORY_CACHE_VERSION}:${scope}:${category}:${state}:${locality}`;
 }
 
 // ============================================================================
 // Fallback Provider Database
 // ============================================================================
 
-type FallbackProviders = Record<UtilityCategory, ProviderSuggestion[]>;
+type FallbackProviders = Record<UtilityCategory, FallbackProviderSuggestion[]>;
 
 const FALLBACK_PROVIDERS: FallbackProviders = {
     electric: [
-        { display_name: 'Duke Energy', confidence: 0.5, rationale_short: 'Major electric utility serving the Southeast and Midwest' },
-        { display_name: 'Pacific Gas & Electric (PG&E)', confidence: 0.5, rationale_short: 'Major California electric utility' },
-        { display_name: 'Florida Power & Light (FPL)', confidence: 0.5, rationale_short: 'Major Florida electric utility' },
+        { display_name: 'Duke Energy', confidence: 0.5, rationale_short: 'Major electric utility serving the Southeast and Midwest', service_states: ['NC', 'SC', 'FL', 'IN', 'KY', 'OH'] },
+        { display_name: 'Pacific Gas & Electric (PG&E)', confidence: 0.5, rationale_short: 'Major California electric utility', service_states: ['CA'] },
+        { display_name: 'Florida Power & Light (FPL)', confidence: 0.5, rationale_short: 'Major Florida electric utility', service_states: ['FL'] },
         { display_name: 'Xcel Energy', confidence: 0.5, rationale_short: 'Electric utility in 8 Western and Midwestern states' },
         { display_name: 'Dominion Energy', confidence: 0.5, rationale_short: 'Electric utility in Virginia and surrounding states' },
     ],
     gas: [
-        { display_name: 'Atmos Energy', confidence: 0.5, rationale_short: 'Large natural gas distributor in 8 states' },
+        { display_name: 'Atmos Energy', confidence: 0.5, rationale_short: 'Large natural gas distributor in multiple central and southern states' },
         { display_name: 'Dominion Energy', confidence: 0.5, rationale_short: 'Natural gas utility in multiple states' },
-        { display_name: 'Southern California Gas', confidence: 0.5, rationale_short: 'Major California natural gas utility' },
+        { display_name: 'Southern California Gas', confidence: 0.5, rationale_short: 'Major California natural gas utility', service_states: ['CA'] },
         { display_name: 'Piedmont Natural Gas', confidence: 0.5, rationale_short: 'Natural gas utility in NC, SC, and TN' },
         { display_name: 'National Fuel Gas', confidence: 0.5, rationale_short: 'Natural gas utility in NY and PA' },
     ],
     water: [
         { display_name: 'American Water', confidence: 0.5, rationale_short: 'Largest investor-owned water utility in the US' },
-        { display_name: 'Aqua America', confidence: 0.5, rationale_short: 'Water utility serving 8 states' },
-        { display_name: 'California Water Service', confidence: 0.5, rationale_short: 'Major water utility in California' },
-        { display_name: 'Municipal Water Authority', confidence: 0.4, rationale_short: 'Many areas have city/county-run water services' },
+        { display_name: 'Aqua America', confidence: 0.5, rationale_short: 'Water utility serving multiple states in the Northeast and Midwest' },
+        { display_name: 'California Water Service', confidence: 0.5, rationale_short: 'Major water utility in California', service_states: ['CA'] },
+        { display_name: 'Municipal Water Authority', confidence: 0.4, rationale_short: 'Many areas have city/county-run water services', is_generic: true },
     ],
     sewer: [
-        { display_name: 'Municipal Sewer Authority', confidence: 0.5, rationale_short: 'Most sewer services are city/county-run' },
+        { display_name: 'Municipal Sewer Authority', confidence: 0.5, rationale_short: 'Most sewer services are city/county-run', is_generic: true },
         { display_name: 'American Water (Wastewater)', confidence: 0.4, rationale_short: 'Some areas have private wastewater services' },
     ],
     trash: [
@@ -240,20 +416,39 @@ function detectStateMentions(text: string): Set<string> {
 function filterSuggestionsForState(
     suggestions: ProviderSuggestion[],
     location: ParsedLocation | undefined
-): ProviderSuggestion[] {
+): StateFilterResult {
     const targetState = location?.state?.toUpperCase();
     if (!targetState) {
-        return suggestions;
+        return {
+            suggestions,
+            rejectedCount: 0,
+        };
     }
 
-    const filtered = suggestions.filter((suggestion) => {
+    const filtered: ProviderSuggestion[] = [];
+    let rejectedCount = 0;
+
+    for (const suggestion of suggestions) {
+        const serviceStates = (suggestion as FallbackProviderSuggestion).service_states;
+        if (serviceStates && serviceStates.length > 0 && !serviceStates.includes(targetState)) {
+            rejectedCount++;
+            continue;
+        }
+
         const haystack = `${suggestion.display_name} ${suggestion.rationale_short || ''}`;
         const mentionedStates = detectStateMentions(haystack);
-        return mentionedStates.size === 0 || mentionedStates.has(targetState);
-    });
+        if (mentionedStates.size > 0 && !mentionedStates.has(targetState)) {
+            rejectedCount++;
+            continue;
+        }
 
-    // If filtering is too strict and removes everything, keep original results.
-    return filtered.length > 0 ? filtered : suggestions;
+        filtered.push(suggestion);
+    }
+
+    return {
+        suggestions: filtered,
+        rejectedCount,
+    };
 }
 
 function normalizeAndRankSuggestions(
@@ -279,6 +474,111 @@ function normalizeAndRankSuggestions(
     return Array.from(deduped.values())
         .sort((a, b) => b.confidence - a.confidence || a.display_name.localeCompare(b.display_name))
         .slice(0, maxItems);
+}
+
+function parseAiSuggestionsPayload(payload: unknown): ProviderSuggestion[] {
+    const parsed = suggestionArraySchema.safeParse(payload);
+    if (!parsed.success) {
+        return [];
+    }
+
+    return parsed.data.map((item) => ({
+        display_name: item.display_name,
+        confidence: item.confidence,
+        rationale_short: item.rationale_short || undefined,
+        contact_phone: item.contact_phone || undefined,
+        contact_website: item.contact_website || undefined,
+        canonical_id: item.canonical_id,
+    }));
+}
+
+function applyQualityGates(
+    suggestions: ProviderSuggestion[],
+    category: UtilityCategory,
+    location: ParsedLocation | undefined
+): QualityGateResult {
+    const normalized = normalizeAndRankSuggestions(suggestions, category, 8);
+    const stateFiltered = filterSuggestionsForState(normalized, location);
+    const ranked = normalizeAndRankSuggestions(stateFiltered.suggestions, category, 5);
+
+    if (normalized.length > 0 && stateFiltered.suggestions.length === 0 && stateFiltered.rejectedCount === normalized.length) {
+        return {
+            accepted: false,
+            suggestions: [],
+            reasonCode: 'state_mismatch_rejected',
+            rejectedCount: stateFiltered.rejectedCount,
+        };
+    }
+
+    if (ranked.length < getMinValidSuggestions()) {
+        return {
+            accepted: false,
+            suggestions: ranked,
+            reasonCode: 'quality_gate_failed',
+            rejectedCount: stateFiltered.rejectedCount,
+        };
+    }
+
+    if ((ranked[0]?.confidence ?? 0) < getTopConfidenceThreshold()) {
+        return {
+            accepted: false,
+            suggestions: ranked,
+            reasonCode: 'quality_gate_failed',
+            rejectedCount: stateFiltered.rejectedCount,
+        };
+    }
+
+    return {
+        accepted: true,
+        suggestions: ranked,
+        reasonCode: null,
+        rejectedCount: stateFiltered.rejectedCount,
+    };
+}
+
+function hasBudgetRemaining(startedAt: number, maxMs: number): boolean {
+    return Date.now() - startedAt < maxMs;
+}
+
+function buildOutcome(params: {
+    category: UtilityCategory;
+    source: SuggestionSource;
+    reasonCode: SuggestionReasonCode | null;
+    upstreamReasonCode: SuggestionReasonCode | null;
+    attemptCount: number;
+    startedAt: number;
+    suggestions: ProviderSuggestion[];
+    location: ParsedLocation | undefined;
+    servedPipeline: 'new' | 'legacy';
+}): SuggestionOutcome {
+    return {
+        category: params.category,
+        source: params.source,
+        reasonCode: params.reasonCode,
+        upstreamReasonCode: params.upstreamReasonCode,
+        attemptCount: params.attemptCount,
+        latencyMs: Date.now() - params.startedAt,
+        suggestionCount: params.suggestions.length,
+        localityState: params.location?.state || null,
+        localityZip3: params.location?.zip ? params.location.zip.slice(0, 3) : null,
+        localityCity: params.location?.city || null,
+        servedPipeline: params.servedPipeline,
+    };
+}
+
+function logSuggestionOutcome(outcome: SuggestionOutcome): void {
+    console.log('[Suggestions] outcome', outcome);
+}
+
+function logShadowComparison(params: {
+    category: UtilityCategory;
+    servedPipeline: 'new' | 'legacy';
+    servedCount: number;
+    shadowCount: number;
+    servedSource: SuggestionSource;
+    shadowSource: SuggestionSource;
+}): void {
+    console.log('[Suggestions] shadow_compare', params);
 }
 
 // ============================================================================
@@ -327,12 +627,13 @@ function buildSuggestionPrompt(address: string | ParsedLocation, category: Utili
     const location = buildLocationContext(parsed);
     const locationLines = location.lines.length > 0 ? location.lines.join('\n') : 'Location: Unknown';
 
-    return `You are an expert on utility providers in the United States.
+return `You are an expert on utility providers in the United States.
 
-Given the following property location context and utility category, identify the most likely utility providers that serve this area.
+Given the following property location context and utility category, identify likely utility providers that serve this area.
 
 Location Context (non-PII):
 ${locationLines}
+Location Confidence: ${parsed.confidence}
 Utility Category: ${category}
 
 IMPORTANT GUIDANCE FOR ${category.toUpperCase()}:
@@ -346,9 +647,9 @@ Return a JSON array of provider suggestions. Each object must have exactly these
 - "contact_website": string or null - Provider website URL starting with "https://"
 
 RULES:
-1. Return 3-5 likely providers, ordered by confidence (highest first).
-2. List the dominant provider first, then include 2-3 alternatives with slightly lower confidence.
-3. Only include providers you are reasonably confident serve this specific area.
+1. Return 5-8 candidate providers, ordered by confidence (highest first).
+2. Only include providers you are reasonably confident serve this specific area.
+3. Avoid obvious out-of-state providers when state context is known.
 4. If you are uncertain about providers for this area, return an empty array: []
 5. For phone numbers, only include numbers you are confident are correct. Use null if unsure.
 6. For websites, only include URLs you are confident are correct. Use null if unsure.`;
@@ -390,6 +691,144 @@ RULES:
 3. If no providers match the query, return an empty array: []
 4. ${address ? 'Prioritize providers that serve the location context provided.' : 'Include providers from various regions if the query is a common provider name.'}
 5. For phone/website, only include if you are confident they are correct. Use null if unsure.`;
+}
+
+function buildSuggestionVerificationPrompt(
+    address: string | ParsedLocation,
+    category: UtilityCategory,
+    candidates: ProviderSuggestion[]
+): string {
+    const parsed = typeof address === 'string' ? parseAddressWithConfidence(address) : address;
+    const location = buildLocationContext(parsed);
+    const locationLines = location.lines.length > 0 ? location.lines.join('\n') : 'Location: Unknown';
+    const serializedCandidates = JSON.stringify(
+        candidates.map((item) => ({
+            display_name: item.display_name,
+            confidence: item.confidence,
+            rationale_short: item.rationale_short || '',
+        }))
+    );
+
+    return `You are verifying utility provider candidates for a specific US property location.
+
+Location Context (non-PII):
+${locationLines}
+Location Confidence: ${parsed.confidence}
+Utility Category: ${category}
+
+Candidate Providers JSON:
+${serializedCandidates}
+
+Return a JSON array of 3 to 5 providers that are most likely correct for this location.
+Each object must contain exactly:
+- "display_name": string
+- "confidence": number between 0 and 1
+- "rationale_short": string
+- "contact_phone": string or null
+- "contact_website": string or null
+
+Rules:
+1. Remove candidates with likely state mismatch.
+2. Put best local match first.
+3. If candidates look unreliable, return [].`;
+}
+
+function buildSuggestionRecoveryPrompt(address: string | ParsedLocation, category: UtilityCategory): string {
+    const parsed = typeof address === 'string' ? parseAddressWithConfidence(address) : address;
+    const location = buildLocationContext(parsed);
+    const locationLines = location.lines.length > 0 ? location.lines.join('\n') : 'Location: Unknown';
+
+    return `You are performing a locality recovery lookup for utility providers.
+
+Location Context (non-PII):
+${locationLines}
+Location Confidence: ${parsed.confidence}
+Utility Category: ${category}
+
+Return a JSON array of 3 to 5 providers with strongest evidence for this exact area.
+Each object must contain exactly:
+- "display_name": string
+- "confidence": number between 0 and 1
+- "rationale_short": string
+- "contact_phone": string or null
+- "contact_website": string or null
+
+Rules:
+1. Prefer municipality/county providers for water/sewer where appropriate.
+2. Exclude out-of-state providers when state context is known.
+3. If unsure, return [].`;
+}
+
+function buildSearchVerificationPrompt(
+    query: string,
+    category: UtilityCategory,
+    candidates: ProviderSuggestion[],
+    address?: ParsedLocation
+): string {
+    const location = address ? buildLocationContext(address) : null;
+    const locationLines = location?.lines?.length ? location.lines.join('\n') : 'Location: Unknown';
+    const serializedCandidates = JSON.stringify(
+        candidates.map((item) => ({
+            display_name: item.display_name,
+            confidence: item.confidence,
+            rationale_short: item.rationale_short || '',
+        }))
+    );
+
+    return `You are validating search results for a US utility provider lookup.
+
+User Query:
+<<<
+${escapePromptLiteral(query)}
+>>>
+Expected Category: ${category}
+Location Context (non-PII):
+${locationLines}
+
+Candidate Providers JSON:
+${serializedCandidates}
+
+Return a JSON array of up to 5 best matches.
+Each object must contain exactly:
+- "display_name": string
+- "confidence": number between 0 and 1
+- "rationale_short": string
+- "contact_phone": string or null
+- "contact_website": string or null
+
+Rules:
+1. Keep only candidates relevant to the query text.
+2. Prefer providers that likely serve the location context.
+3. If uncertain, return [].`;
+}
+
+function buildSearchRecoveryPrompt(
+    query: string,
+    category: UtilityCategory,
+    address?: ParsedLocation
+): string {
+    const location = address ? buildLocationContext(address) : null;
+    const locationLines = location?.lines?.length ? location.lines.join('\n') : 'Location: Unknown';
+
+    return `You are doing a final recovery lookup for a US utility search.
+
+User Query:
+<<<
+${escapePromptLiteral(query)}
+>>>
+Expected Category: ${category}
+Location Context (non-PII):
+${locationLines}
+
+Return a JSON array of up to 5 providers that best match both the query and location.
+Each object must contain exactly:
+- "display_name": string
+- "confidence": number between 0 and 1
+- "rationale_short": string
+- "contact_phone": string or null
+- "contact_website": string or null
+
+If no good matches are found, return [].`;
 }
 
 function levenshteinDistance(a: string, b: string): number {
@@ -441,8 +880,36 @@ function getNameMatchScore(providerName: string, query: string): number {
     return 0;
 }
 
-function getFallbackSearchResults(query: string, category?: UtilityCategory): ProviderSuggestion[] {
-    const sourcePool = category
+function getFallbackSuggestions(
+    category: UtilityCategory,
+    location: ParsedLocation | undefined
+): ProviderSuggestion[] {
+    const source = FALLBACK_PROVIDERS[category] || [];
+    const targetState = location?.state?.toUpperCase();
+
+    let filteredSource = source;
+    if (targetState) {
+        filteredSource = source.filter((item) => !item.service_states || item.service_states.includes(targetState));
+    }
+
+    if (category === 'water' || category === 'sewer') {
+        const specific = filteredSource.filter((item) => !item.is_generic);
+        if (specific.length >= 2) {
+            filteredSource = specific;
+        } else if (specific.length === 1) {
+            filteredSource = [...specific, ...filteredSource.filter((item) => item.is_generic).slice(0, 1)];
+        }
+    }
+
+    return normalizeAndRankSuggestions(filterSuggestionsForState(filteredSource, location).suggestions, category, 5);
+}
+
+function getFallbackSearchResults(
+    query: string,
+    category?: UtilityCategory,
+    location?: ParsedLocation
+): ProviderSuggestion[] {
+    const sourcePool: FallbackProviderSuggestion[] = category
         ? FALLBACK_PROVIDERS[category]
         : Object.values(FALLBACK_PROVIDERS).flat();
 
@@ -460,7 +927,7 @@ function getFallbackSearchResults(query: string, category?: UtilityCategory): Pr
         .sort((a, b) => b.__score - a.__score || a.display_name.localeCompare(b.display_name));
 
     return normalizeAndRankSuggestions(
-        ranked.map((item) => ({
+        filterSuggestionsForState(ranked, location).suggestions.map((item) => ({
             display_name: item.display_name,
             confidence: item.confidence,
             rationale_short: item.rationale_short,
@@ -476,24 +943,525 @@ function getFallbackSearchResults(query: string, category?: UtilityCategory): Pr
 // AI Suggestions
 // ============================================================================
 
-async function getAISuggestions(
+async function runAiPass(
+    prompt: string,
+    category: UtilityCategory,
+    maxItems: number
+): Promise<AiPassResult> {
+    if (!isGeminiConfigured()) {
+        return {
+            suggestions: [],
+            reasonCode: 'ai_unconfigured',
+        };
+    }
+
+    const response = await generateJSONWithMeta<unknown>(prompt);
+    if (response.failure === 'provider_error') {
+        return {
+            suggestions: [],
+            reasonCode: 'ai_provider_error',
+        };
+    }
+    if (response.failure === 'parse_error') {
+        return {
+            suggestions: [],
+            reasonCode: 'ai_parse_error',
+        };
+    }
+
+    const parsed = parseAiSuggestionsPayload(response.data);
+    if (parsed.length === 0) {
+        return {
+            suggestions: [],
+            reasonCode: 'ai_empty',
+        };
+    }
+
+    return {
+        suggestions: normalizeAndRankSuggestions(parsed, category, maxItems),
+        reasonCode: null,
+    };
+}
+
+function toMemorySuggestion(candidate: ProviderMemoryCandidate): ProviderSuggestion {
+    const occurrenceBoost = Math.min(0.18, candidate.occurrences * 0.03);
+    const localityBoost = candidate.locality_score >= 3 ? 0.12 : candidate.locality_score >= 2 ? 0.08 : 0.04;
+    const confidence = Math.min(0.82, Math.max(0.45, occurrenceBoost + localityBoost + (candidate.avg_confidence || 0.4)));
+
+    return {
+        display_name: candidate.display_name,
+        confidence,
+        rationale_short: 'Frequent historical selection for similar properties in this account',
+    };
+}
+
+async function getScopedProviderMemory(
+    category: UtilityCategory,
+    parsed: ParsedLocation | undefined,
+    context?: SuggestionContext
+): Promise<ProviderMemoryCandidate[]> {
+    if (!parsed?.state || !context?.accountId) {
+        return [];
+    }
+
+    const cacheKey = getProviderMemoryCacheKey(parsed, category, context);
+    if (!cacheKey) {
+        return [];
+    }
+
+    const cached = await getFromCache<ProviderMemoryCandidate[]>(cacheKey);
+    if (cached) {
+        return cached;
+    }
+
+    const candidates = await getProviderMemoryCandidates({
+        accountId: context.accountId,
+        organizationId: context.organizationId ?? null,
+        category,
+        state: parsed.state,
+        zipPrefix: parsed.zip ? parsed.zip.slice(0, 3) : null,
+        city: parsed.city,
+        excludeRequestId: context.requestId,
+        limit: 10,
+    });
+
+    await setInCache(cacheKey, candidates, PROVIDER_MEMORY_CACHE_TTL_SECONDS);
+    return candidates;
+}
+
+function blendWithProviderMemory(
+    suggestions: ProviderSuggestion[],
+    memoryCandidates: ProviderMemoryCandidate[],
+    category: UtilityCategory
+): { suggestions: ProviderSuggestion[]; usedMemory: boolean } {
+    if (memoryCandidates.length === 0) {
+        return {
+            suggestions,
+            usedMemory: false,
+        };
+    }
+
+    const working = [...suggestions];
+    const byName = new Map<string, number>();
+    for (let i = 0; i < working.length; i++) {
+        byName.set(normalizeProviderName(working[i].display_name), i);
+    }
+
+    let usedMemory = false;
+    for (const candidate of memoryCandidates) {
+        const key = normalizeProviderName(candidate.display_name);
+        if (!key) continue;
+
+        const memorySuggestion = toMemorySuggestion(candidate);
+        const existingIndex = byName.get(key);
+
+        if (existingIndex !== undefined) {
+            const existing = working[existingIndex];
+            const boost = Math.min(0.12, (candidate.occurrences * 0.02) + (candidate.locality_score >= 2 ? 0.04 : 0.02));
+            working[existingIndex] = {
+                ...existing,
+                confidence: Math.min(0.95, existing.confidence + boost),
+                rationale_short: existing.rationale_short || memorySuggestion.rationale_short,
+            };
+            usedMemory = true;
+            continue;
+        }
+
+        if (working.length < 5 && candidate.locality_score >= 1 && candidate.occurrences >= 2) {
+            working.push(memorySuggestion);
+            byName.set(key, working.length - 1);
+            usedMemory = true;
+        }
+    }
+
+    return {
+        suggestions: normalizeAndRankSuggestions(working, category, 5),
+        usedMemory,
+    };
+}
+
+async function runLegacySuggestionPipeline(
     address: string,
     category: UtilityCategory
-): Promise<ProviderSuggestion[]> {
-    if (!isGeminiConfigured()) {
-        return [];
-    }
-
+): Promise<PipelineResult> {
+    const startedAt = Date.now();
     const parsed = await resolveParsedLocation(address);
-    const prompt = buildSuggestionPrompt(parsed, category);
-    const result = await generateJSON<ProviderSuggestion[]>(prompt);
+    const primary = await runAiPass(buildSuggestionPrompt(parsed, category), category, 5);
 
-    if (!result || !Array.isArray(result)) {
-        return [];
+    if (primary.suggestions.length > 0) {
+        const filtered = normalizeAndRankSuggestions(
+            filterSuggestionsForState(primary.suggestions, parsed).suggestions,
+            category,
+            5
+        );
+        if (filtered.length > 0) {
+            return {
+                suggestions: filtered,
+                outcome: buildOutcome({
+                    category,
+                    source: 'ai_primary',
+                    reasonCode: null,
+                    upstreamReasonCode: primary.reasonCode,
+                    attemptCount: 1,
+                    startedAt,
+                    suggestions: filtered,
+                    location: parsed,
+                    servedPipeline: 'legacy',
+                }),
+            };
+        }
     }
 
-    const ranked = normalizeAndRankSuggestions(result, category, 5);
-    return filterSuggestionsForState(ranked, parsed);
+    const fallback = getFallbackSuggestions(category, parsed);
+    return {
+        suggestions: fallback,
+        outcome: buildOutcome({
+            category,
+            source: 'fallback',
+            reasonCode: 'fallback_used',
+            upstreamReasonCode: primary.reasonCode || 'quality_gate_failed',
+            attemptCount: 1,
+            startedAt,
+            suggestions: fallback,
+            location: parsed,
+            servedPipeline: 'legacy',
+        }),
+    };
+}
+
+async function runTwoPassSuggestionPipeline(
+    address: string,
+    category: UtilityCategory,
+    context?: SuggestionContext
+): Promise<PipelineResult> {
+    const startedAt = Date.now();
+    const maxPipelineMs = getMaxPipelineMs();
+    const parsed = await resolveParsedLocation(address);
+    let attempts = 0;
+    let upstreamReason: SuggestionReasonCode | null = null;
+
+    if (!isGeminiConfigured()) {
+        const fallback = getFallbackSuggestions(category, parsed);
+        return {
+            suggestions: fallback,
+            outcome: buildOutcome({
+                category,
+                source: 'fallback',
+                reasonCode: 'fallback_used',
+                upstreamReasonCode: 'ai_unconfigured',
+                attemptCount: attempts,
+                startedAt,
+                suggestions: fallback,
+                location: parsed,
+                servedPipeline: 'new',
+            }),
+        };
+    }
+
+    const primaryPass = await runAiPass(buildSuggestionPrompt(parsed, category), category, 8);
+    attempts++;
+    if (primaryPass.reasonCode) upstreamReason = primaryPass.reasonCode;
+    const primaryGate = applyQualityGates(primaryPass.suggestions, category, parsed);
+    if (primaryGate.reasonCode) upstreamReason = primaryGate.reasonCode;
+
+    let chosenSource: SuggestionSource | null = null;
+    let chosenSuggestions: ProviderSuggestion[] = [];
+
+    if (isTwoPassVerifyEnabled() && primaryPass.suggestions.length > 0 && hasBudgetRemaining(startedAt, maxPipelineMs)) {
+        const verifyPass = await runAiPass(
+            buildSuggestionVerificationPrompt(parsed, category, primaryPass.suggestions),
+            category,
+            5
+        );
+        attempts++;
+        if (verifyPass.reasonCode) upstreamReason = verifyPass.reasonCode;
+        const verifyGate = applyQualityGates(verifyPass.suggestions, category, parsed);
+
+        if (verifyGate.accepted) {
+            chosenSource = 'ai_verify';
+            chosenSuggestions = verifyGate.suggestions;
+        } else if (primaryGate.accepted) {
+            chosenSource = 'ai_primary';
+            chosenSuggestions = primaryGate.suggestions;
+        } else if (verifyGate.reasonCode) {
+            upstreamReason = verifyGate.reasonCode;
+        }
+    } else if (primaryGate.accepted) {
+        chosenSource = 'ai_primary';
+        chosenSuggestions = primaryGate.suggestions;
+    }
+
+    if (!chosenSource && isRecoveryPassEnabled() && hasBudgetRemaining(startedAt, maxPipelineMs)) {
+        const recoveryPass = await runAiPass(buildSuggestionRecoveryPrompt(parsed, category), category, 5);
+        attempts++;
+        if (recoveryPass.reasonCode) upstreamReason = recoveryPass.reasonCode;
+        const recoveryGate = applyQualityGates(recoveryPass.suggestions, category, parsed);
+        if (recoveryGate.accepted) {
+            chosenSource = 'ai_recovery';
+            chosenSuggestions = recoveryGate.suggestions;
+        } else if (recoveryGate.reasonCode) {
+            upstreamReason = recoveryGate.reasonCode;
+        }
+    }
+
+    if (chosenSource && chosenSuggestions.length > 0) {
+        const memory = await getScopedProviderMemory(category, parsed, context);
+        const blended = blendWithProviderMemory(chosenSuggestions, memory, category);
+        const source = blended.usedMemory ? 'history_blend' : chosenSource;
+        return {
+            suggestions: blended.suggestions,
+            outcome: buildOutcome({
+                category,
+                source,
+                reasonCode: null,
+                upstreamReasonCode: upstreamReason,
+                attemptCount: attempts,
+                startedAt,
+                suggestions: blended.suggestions,
+                location: parsed,
+                servedPipeline: 'new',
+            }),
+        };
+    }
+
+    const fallback = getFallbackSuggestions(category, parsed);
+    return {
+        suggestions: fallback,
+        outcome: buildOutcome({
+            category,
+            source: 'fallback',
+            reasonCode: 'fallback_used',
+            upstreamReasonCode: upstreamReason,
+            attemptCount: attempts,
+            startedAt,
+            suggestions: fallback,
+            location: parsed,
+            servedPipeline: 'new',
+        }),
+    };
+}
+
+async function runLegacySearchPipeline(params: SearchPipelineParams): Promise<PipelineResult> {
+    const startedAt = Date.now();
+    const primary = await runAiPass(
+        buildSearchPrompt(params.query, params.category, params.resolvedAddress),
+        params.category,
+        5
+    );
+
+    if (primary.suggestions.length > 0) {
+        const gated = applyQualityGates(primary.suggestions, params.category, params.resolvedAddress);
+        if (gated.accepted) {
+            return {
+                suggestions: gated.suggestions,
+                outcome: buildOutcome({
+                    category: params.category,
+                    source: 'ai_primary',
+                    reasonCode: null,
+                    upstreamReasonCode: primary.reasonCode,
+                    attemptCount: 1,
+                    startedAt,
+                    suggestions: gated.suggestions,
+                    location: params.resolvedAddress,
+                    servedPipeline: 'legacy',
+                }),
+            };
+        }
+    }
+
+    const fallback = getFallbackSearchResults(params.query, params.category, params.resolvedAddress);
+    return {
+        suggestions: fallback,
+        outcome: buildOutcome({
+            category: params.category,
+            source: 'fallback',
+            reasonCode: 'fallback_used',
+            upstreamReasonCode: primary.reasonCode || 'quality_gate_failed',
+            attemptCount: 1,
+            startedAt,
+            suggestions: fallback,
+            location: params.resolvedAddress,
+            servedPipeline: 'legacy',
+        }),
+    };
+}
+
+async function runTwoPassSearchPipeline(params: SearchPipelineParams): Promise<PipelineResult> {
+    const startedAt = Date.now();
+    const maxPipelineMs = getMaxPipelineMs();
+    let attempts = 0;
+    let upstreamReason: SuggestionReasonCode | null = null;
+
+    if (!isGeminiConfigured()) {
+        const fallback = getFallbackSearchResults(params.query, params.category, params.resolvedAddress);
+        return {
+            suggestions: fallback,
+            outcome: buildOutcome({
+                category: params.category,
+                source: 'fallback',
+                reasonCode: 'fallback_used',
+                upstreamReasonCode: 'ai_unconfigured',
+                attemptCount: attempts,
+                startedAt,
+                suggestions: fallback,
+                location: params.resolvedAddress,
+                servedPipeline: 'new',
+            }),
+        };
+    }
+
+    const primaryPass = await runAiPass(
+        buildSearchPrompt(params.query, params.category, params.resolvedAddress),
+        params.category,
+        8
+    );
+    attempts++;
+    if (primaryPass.reasonCode) upstreamReason = primaryPass.reasonCode;
+    const primaryGate = applyQualityGates(primaryPass.suggestions, params.category, params.resolvedAddress);
+    if (primaryGate.reasonCode) upstreamReason = primaryGate.reasonCode;
+
+    let chosenSource: SuggestionSource | null = null;
+    let chosenSuggestions: ProviderSuggestion[] = [];
+
+    if (isTwoPassVerifyEnabled() && primaryPass.suggestions.length > 0 && hasBudgetRemaining(startedAt, maxPipelineMs)) {
+        const verifyPass = await runAiPass(
+            buildSearchVerificationPrompt(params.query, params.category, primaryPass.suggestions, params.resolvedAddress),
+            params.category,
+            5
+        );
+        attempts++;
+        if (verifyPass.reasonCode) upstreamReason = verifyPass.reasonCode;
+        const verifyGate = applyQualityGates(verifyPass.suggestions, params.category, params.resolvedAddress);
+
+        if (verifyGate.accepted) {
+            chosenSource = 'ai_verify';
+            chosenSuggestions = verifyGate.suggestions;
+        } else if (primaryGate.accepted) {
+            chosenSource = 'ai_primary';
+            chosenSuggestions = primaryGate.suggestions;
+        } else if (verifyGate.reasonCode) {
+            upstreamReason = verifyGate.reasonCode;
+        }
+    } else if (primaryGate.accepted) {
+        chosenSource = 'ai_primary';
+        chosenSuggestions = primaryGate.suggestions;
+    }
+
+    if (!chosenSource && isRecoveryPassEnabled() && hasBudgetRemaining(startedAt, maxPipelineMs)) {
+        const recoveryPass = await runAiPass(
+            buildSearchRecoveryPrompt(params.query, params.category, params.resolvedAddress),
+            params.category,
+            5
+        );
+        attempts++;
+        if (recoveryPass.reasonCode) upstreamReason = recoveryPass.reasonCode;
+        const recoveryGate = applyQualityGates(recoveryPass.suggestions, params.category, params.resolvedAddress);
+        if (recoveryGate.accepted) {
+            chosenSource = 'ai_recovery';
+            chosenSuggestions = recoveryGate.suggestions;
+        } else if (recoveryGate.reasonCode) {
+            upstreamReason = recoveryGate.reasonCode;
+        }
+    }
+
+    if (chosenSource && chosenSuggestions.length > 0) {
+        const memory = await getScopedProviderMemory(params.category, params.resolvedAddress, params.context);
+        const blended = blendWithProviderMemory(chosenSuggestions, memory, params.category);
+        const source = blended.usedMemory ? 'history_blend' : chosenSource;
+        return {
+            suggestions: blended.suggestions,
+            outcome: buildOutcome({
+                category: params.category,
+                source,
+                reasonCode: null,
+                upstreamReasonCode: upstreamReason,
+                attemptCount: attempts,
+                startedAt,
+                suggestions: blended.suggestions,
+                location: params.resolvedAddress,
+                servedPipeline: 'new',
+            }),
+        };
+    }
+
+    const fallback = getFallbackSearchResults(params.query, params.category, params.resolvedAddress);
+    return {
+        suggestions: fallback,
+        outcome: buildOutcome({
+            category: params.category,
+            source: 'fallback',
+            reasonCode: 'fallback_used',
+            upstreamReasonCode: upstreamReason,
+            attemptCount: attempts,
+            startedAt,
+            suggestions: fallback,
+            location: params.resolvedAddress,
+            servedPipeline: 'new',
+        }),
+    };
+}
+
+async function runSuggestionPipeline(
+    address: string,
+    category: UtilityCategory,
+    context?: SuggestionContext
+): Promise<PipelineResult> {
+    const seed = `${getCacheKey(address, category, context)}:${category}`;
+    const serveNew = shouldServeNewPipeline(seed);
+
+    if (!isShadowModeEnabled()) {
+        const result = await runTwoPassSuggestionPipeline(address, category, context);
+        logSuggestionOutcome(result.outcome);
+        return result;
+    }
+
+    const served = serveNew
+        ? runTwoPassSuggestionPipeline(address, category, context)
+        : runLegacySuggestionPipeline(address, category);
+    const shadow = serveNew
+        ? runLegacySuggestionPipeline(address, category)
+        : runTwoPassSuggestionPipeline(address, category, context);
+
+    const [servedResult, shadowResult] = await Promise.all([served, shadow]);
+    logSuggestionOutcome(servedResult.outcome);
+    logShadowComparison({
+        category,
+        servedPipeline: serveNew ? 'new' : 'legacy',
+        servedCount: servedResult.suggestions.length,
+        shadowCount: shadowResult.suggestions.length,
+        servedSource: servedResult.outcome.source,
+        shadowSource: shadowResult.outcome.source,
+    });
+    return servedResult;
+}
+
+async function runSearchPipeline(params: SearchPipelineParams): Promise<PipelineResult> {
+    const addressSeed = params.resolvedAddress
+        ? `${params.resolvedAddress.state || 'na'}:${params.resolvedAddress.zip || params.resolvedAddress.city || 'na'}`
+        : 'na';
+    const serveNew = shouldServeNewPipeline(
+        `${getScopeToken(params.context)}:${params.category}:${params.query.toLowerCase()}:${addressSeed}`
+    );
+
+    if (!isShadowModeEnabled()) {
+        const result = await runTwoPassSearchPipeline(params);
+        logSuggestionOutcome(result.outcome);
+        return result;
+    }
+
+    const served = serveNew ? runTwoPassSearchPipeline(params) : runLegacySearchPipeline(params);
+    const shadow = serveNew ? runLegacySearchPipeline(params) : runTwoPassSearchPipeline(params);
+    const [servedResult, shadowResult] = await Promise.all([served, shadow]);
+    logSuggestionOutcome(servedResult.outcome);
+    logShadowComparison({
+        category: params.category,
+        servedPipeline: serveNew ? 'new' : 'legacy',
+        servedCount: servedResult.suggestions.length,
+        shadowCount: shadowResult.suggestions.length,
+        servedSource: servedResult.outcome.source,
+        shadowSource: shadowResult.outcome.source,
+    });
+    return servedResult;
 }
 
 // ============================================================================
@@ -506,9 +1474,11 @@ async function getAISuggestions(
  */
 export async function getSuggestions(
     address: string,
-    category: UtilityCategory
+    category: UtilityCategory,
+    context?: SuggestionContext
 ): Promise<ProviderSuggestion[]> {
-    const cacheKey = getCacheKey(address, category);
+    const baseKey = getCacheKey(address, category, context);
+    const cacheKey = getPipelineCacheKey(baseKey, shouldServeNewPipeline(baseKey));
 
     const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
     if (cached) {
@@ -522,16 +1492,9 @@ export async function getSuggestions(
 
     const requestPromise = (async () => {
         const location = getNonPiiLocationContext(address);
-        let suggestions = await getAISuggestions(address, category);
-
-        if (suggestions.length > 0) {
-            console.log(`[Suggestions] Got ${suggestions.length} AI suggestions for ${category} near ${location.label}`);
-        } else {
-            console.log(`[Suggestions] AI returned no results for ${category}, using fallback providers`);
-            const parsed = parseAddressWithConfidence(address);
-            const fallbackRanked = normalizeAndRankSuggestions(FALLBACK_PROVIDERS[category] || [], category, 5);
-            suggestions = filterSuggestionsForState(fallbackRanked, parsed);
-        }
+        const result = await runSuggestionPipeline(address, category, context);
+        const suggestions = result.suggestions;
+        console.log(`[Suggestions] ${suggestions.length} suggestions for ${category} near ${location.label}`);
 
         await setInCache(cacheKey, suggestions, CACHE_TTL_SECONDS);
         return suggestions;
@@ -550,12 +1513,13 @@ export async function getSuggestions(
  */
 export async function getAllSuggestions(
     address: string,
-    categories: UtilityCategory[]
+    categories: UtilityCategory[],
+    context?: SuggestionContext
 ): Promise<Record<UtilityCategory, ProviderSuggestion[]>> {
     const results = await Promise.all(
         categories.map(async (category) => ({
             category,
-            suggestions: await getSuggestions(address, category),
+            suggestions: await getSuggestions(address, category, context),
         }))
     );
 
@@ -575,14 +1539,17 @@ export async function getAllSuggestions(
 export async function searchProviders(
     query: string,
     category?: UtilityCategory,
-    address?: string
+    address?: string,
+    context?: SuggestionContext
 ): Promise<ProviderSuggestion[]> {
     const trimmedQuery = query.trim();
     if (trimmedQuery.length < 2) {
         return [];
     }
 
-    const cacheKey = getSearchCacheKey(trimmedQuery, category, address);
+    const resolvedCategory = category || 'electric';
+    const baseKey = getSearchCacheKey(trimmedQuery, resolvedCategory, address, context);
+    const cacheKey = getPipelineCacheKey(baseKey, shouldServeNewPipeline(baseKey));
     const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
     if (cached) {
         return cached;
@@ -594,23 +1561,14 @@ export async function searchProviders(
     }
 
     const requestPromise = (async () => {
-        let suggestions: ProviderSuggestion[] = [];
         const resolvedAddress = address ? await resolveParsedLocation(address) : undefined;
-
-        if (isGeminiConfigured()) {
-            const prompt = buildSearchPrompt(trimmedQuery, category, resolvedAddress);
-            const result = await generateJSON<ProviderSuggestion[]>(prompt);
-
-            if (result && Array.isArray(result)) {
-                const ranked = normalizeAndRankSuggestions(result, category || 'electric', 5);
-                suggestions = filterSuggestionsForState(ranked, resolvedAddress);
-            }
-        }
-
-        if (suggestions.length === 0) {
-            const fallback = getFallbackSearchResults(trimmedQuery, category);
-            suggestions = filterSuggestionsForState(fallback, resolvedAddress);
-        }
+        const result = await runSearchPipeline({
+            query: trimmedQuery,
+            category: resolvedCategory,
+            resolvedAddress,
+            context,
+        });
+        const suggestions = result.suggestions;
 
         await setInCache(cacheKey, suggestions, SEARCH_CACHE_TTL_SECONDS);
         return suggestions;
@@ -638,4 +1596,7 @@ export const __testing = {
     buildSuggestionPrompt,
     buildSearchPrompt,
     getFallbackSearchResults,
+    parseAiSuggestionsPayload,
+    applyQualityGates,
+    getScopeToken,
 };

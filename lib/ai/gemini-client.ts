@@ -35,6 +35,13 @@ interface GeminiRequestConfig {
     config: GenerateContentConfig;
 }
 
+export type JSONFailureReason = 'provider_error' | 'parse_error';
+
+export interface JSONGenerationResult<T> {
+    data: T | null;
+    failure: JSONFailureReason | null;
+}
+
 interface GeminiErrorMetadata {
     status: number | null;
     code: string | number | null;
@@ -295,13 +302,24 @@ export async function generateContent(prompt: string): Promise<string | null> {
  * Returns null if not configured or on error after retries
  */
 export async function generateJSON<T>(prompt: string): Promise<T | null> {
+    const result = await generateJSONWithMeta<T>(prompt);
+    return result.data;
+}
+
+/**
+ * Generate JSON content with normalized failure metadata
+ */
+export async function generateJSONWithMeta<T>(prompt: string): Promise<JSONGenerationResult<T>> {
     const requestConfig = getGeminiModel(true); // Use JSON mode
     if (!requestConfig || !genAI) {
         console.log('[Gemini] Not configured, skipping AI generation');
-        return null;
+        return {
+            data: null,
+            failure: 'provider_error',
+        };
     }
 
-    const result = await withRetry(async () => {
+    const raw = await withRetry(async () => {
         const response = await genAI.models.generateContent({
             ...requestConfig,
             contents: prompt,
@@ -309,22 +327,32 @@ export async function generateJSON<T>(prompt: string): Promise<T | null> {
         return response.text ?? '';
     });
 
-    if (!result) {
-        return null;
+    if (!raw) {
+        return {
+            data: null,
+            failure: 'provider_error',
+        };
     }
 
     try {
         // With JSON mode, response should be clean JSON, but still handle edge cases
-        let jsonStr = result.trim();
+        let jsonStr = raw.trim();
         // Remove markdown code fences if present (fallback for edge cases)
         const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (jsonMatch) {
             jsonStr = jsonMatch[1].trim();
         }
-        return JSON.parse(jsonStr) as T;
+        return {
+            data: JSON.parse(jsonStr) as T,
+            failure: null,
+        };
     } catch (error) {
-        console.error('[Gemini] Error parsing JSON response:', error);
-        console.error('[Gemini] Raw response:', result);
-        return null;
+        console.error('[Gemini] Error parsing JSON response:', {
+            message: error instanceof Error ? error.message : 'Unknown parse error',
+        });
+        return {
+            data: null,
+            failure: 'parse_error',
+        };
     }
 }

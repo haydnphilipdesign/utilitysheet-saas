@@ -90,6 +90,11 @@ export {
     deleteProductUpdate,
 } from './updates';
 
+// Provider memory queries
+export {
+    getProviderMemoryCandidates,
+} from './provider-memory';
+
 // Intake link queries
 export {
     getOrCreateIntakeLink,

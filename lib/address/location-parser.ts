@@ -73,7 +73,8 @@ const STATE_FULL_NAMES = Object.keys(US_STATES)
     .filter((k) => k.length > 2)
     .sort((a, b) => b.length - a.length);
 
-const AMBIGUOUS_STATE_ABBREVIATIONS = new Set(['IN', 'OR', 'ME', 'HI', 'AR']);
+// Includes common address-token collisions, e.g. "Ct" (Court) should not map to CT without location context.
+const AMBIGUOUS_STATE_ABBREVIATIONS = new Set(['IN', 'OR', 'ME', 'HI', 'AR', 'CT']);
 const VALID_STATE_CODES = new Set(
     Object.values(US_STATES)
 );
