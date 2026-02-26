@@ -15,6 +15,8 @@ const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 // Search cache TTL: 7 days in seconds (queries change more often)
 const SEARCH_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+const SUGGESTION_CACHE_VERSION = 'v4';
+const SEARCH_CACHE_VERSION = 'v4';
 
 interface ParsedAddress {
     state: string | null;
@@ -61,7 +63,7 @@ function getCacheKey(address: string, category: UtilityCategory): string {
     const parsed = parseAddress(address);
     const state = sanitizeLocalityToken(parsed.state || 'default');
     const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `suggestions:v3:${state}:${locality}:${category}`;
+    return `suggestions:${SUGGESTION_CACHE_VERSION}:${state}:${locality}:${category}`;
 }
 
 function hashCacheKeyPart(input: string): string {
@@ -78,13 +80,13 @@ function getSearchCacheKey(
     const queryHash = hashCacheKeyPart(normalizedQuery);
 
     if (!address) {
-        return `provider-search:v3:global:${categoryKey}:${queryHash}`;
+        return `provider-search:${SEARCH_CACHE_VERSION}:global:${categoryKey}:${queryHash}`;
     }
 
     const parsed = parseAddress(address);
     const state = sanitizeLocalityToken(parsed.state || 'default');
     const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `provider-search:v3:${state}:${locality}:${categoryKey}:${queryHash}`;
+    return `provider-search:${SEARCH_CACHE_VERSION}:${state}:${locality}:${categoryKey}:${queryHash}`;
 }
 
 // ============================================================================
@@ -207,6 +209,51 @@ function normalizeProviderName(name: string): string {
         .replace(/[^a-z0-9]+/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+}
+
+function escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const STATE_NAME_ALIASES = Array.from(
+    new Map(
+        Object.entries(US_STATES)
+            .filter(([stateAlias]) => stateAlias.length > 2)
+            .map(([stateAlias, stateAbbr]) => [stateAlias.toLowerCase(), stateAbbr.toUpperCase()])
+    ).entries()
+).map(([alias, abbr]) => ({ alias, abbr }));
+
+function detectStateMentions(text: string): Set<string> {
+    const normalized = text.toLowerCase();
+    const detected = new Set<string>();
+
+    for (const state of STATE_NAME_ALIASES) {
+        const pattern = new RegExp(`\\b${escapeRegex(state.alias)}\\b`, 'i');
+        if (pattern.test(normalized)) {
+            detected.add(state.abbr);
+        }
+    }
+
+    return detected;
+}
+
+function filterSuggestionsForState(
+    suggestions: ProviderSuggestion[],
+    location: ParsedLocation | undefined
+): ProviderSuggestion[] {
+    const targetState = location?.state?.toUpperCase();
+    if (!targetState) {
+        return suggestions;
+    }
+
+    const filtered = suggestions.filter((suggestion) => {
+        const haystack = `${suggestion.display_name} ${suggestion.rationale_short || ''}`;
+        const mentionedStates = detectStateMentions(haystack);
+        return mentionedStates.size === 0 || mentionedStates.has(targetState);
+    });
+
+    // If filtering is too strict and removes everything, keep original results.
+    return filtered.length > 0 ? filtered : suggestions;
 }
 
 function normalizeAndRankSuggestions(
@@ -445,7 +492,8 @@ async function getAISuggestions(
         return [];
     }
 
-    return normalizeAndRankSuggestions(result, category, 5);
+    const ranked = normalizeAndRankSuggestions(result, category, 5);
+    return filterSuggestionsForState(ranked, parsed);
 }
 
 // ============================================================================
@@ -480,7 +528,9 @@ export async function getSuggestions(
             console.log(`[Suggestions] Got ${suggestions.length} AI suggestions for ${category} near ${location.label}`);
         } else {
             console.log(`[Suggestions] AI returned no results for ${category}, using fallback providers`);
-            suggestions = normalizeAndRankSuggestions(FALLBACK_PROVIDERS[category] || [], category, 5);
+            const parsed = parseAddressWithConfidence(address);
+            const fallbackRanked = normalizeAndRankSuggestions(FALLBACK_PROVIDERS[category] || [], category, 5);
+            suggestions = filterSuggestionsForState(fallbackRanked, parsed);
         }
 
         await setInCache(cacheKey, suggestions, CACHE_TTL_SECONDS);
@@ -545,19 +595,21 @@ export async function searchProviders(
 
     const requestPromise = (async () => {
         let suggestions: ProviderSuggestion[] = [];
+        const resolvedAddress = address ? await resolveParsedLocation(address) : undefined;
 
         if (isGeminiConfigured()) {
-            const resolvedAddress = address ? await resolveParsedLocation(address) : undefined;
             const prompt = buildSearchPrompt(trimmedQuery, category, resolvedAddress);
             const result = await generateJSON<ProviderSuggestion[]>(prompt);
 
             if (result && Array.isArray(result)) {
-                suggestions = normalizeAndRankSuggestions(result, category || 'electric', 5);
+                const ranked = normalizeAndRankSuggestions(result, category || 'electric', 5);
+                suggestions = filterSuggestionsForState(ranked, resolvedAddress);
             }
         }
 
         if (suggestions.length === 0) {
-            suggestions = getFallbackSearchResults(trimmedQuery, category);
+            const fallback = getFallbackSearchResults(trimmedQuery, category);
+            suggestions = filterSuggestionsForState(fallback, resolvedAddress);
         }
 
         await setInCache(cacheKey, suggestions, SEARCH_CACHE_TTL_SECONDS);

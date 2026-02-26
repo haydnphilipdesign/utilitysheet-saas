@@ -107,17 +107,17 @@ describe('Suggestion Service', () => {
     describe('getCacheKey', () => {
         it('generates versioned key with normalized state and ZIP prefix', () => {
             const key = getCacheKey('123 Main St, Philadelphia, PA 19103', 'electric');
-            expect(key).toBe('suggestions:v3:pa:191:electric');
+            expect(key).toBe('suggestions:v4:pa:191:electric');
         });
 
         it('uses normalized city when ZIP not available', () => {
             const key = getCacheKey('123 Main St, Philadelphia, PA', 'water');
-            expect(key).toBe('suggestions:v3:pa:philadelphia:water');
+            expect(key).toBe('suggestions:v4:pa:philadelphia:water');
         });
 
         it('uses default and unknown when location cannot be parsed', () => {
             const key = getCacheKey('Unknown location', 'gas');
-            expect(key).toBe('suggestions:v3:default:unknown:gas');
+            expect(key).toBe('suggestions:v4:default:unknown:gas');
         });
     });
 
@@ -242,6 +242,15 @@ describe('Suggestions API', () => {
         const result = await getSuggestions('123 Main St, Raleigh, NC 27601', 'electric');
         expect(result.length).toBeGreaterThan(0);
         expect(result[0].display_name).toBeTruthy();
+    });
+
+    it('filters explicitly out-of-state fallback providers when state is known', async () => {
+        const result = await getSuggestions('13 Nemesia Ct W, Homosassa, FL 34446', 'water');
+        expect(
+            result.some((item) =>
+                /california/i.test(`${item.display_name} ${item.rationale_short || ''}`)
+            )
+        ).toBe(false);
     });
 
     it('returns fallback matches in search when AI is not configured', async () => {
