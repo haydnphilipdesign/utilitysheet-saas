@@ -1,16 +1,13 @@
-import { DynamicRetrievalMode, GoogleGenerativeAI, GenerationConfig, Tool } from '@google/generative-ai';
+import { GenerateContentConfig, GoogleGenAI, Tool } from '@google/genai';
 
 // Get API key from environment
-const apiKey = process.env.GOOGLE_AI_API_KEY;
+const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
 
 // Initialize the Generative AI client (null if not configured)
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Model configuration
-const MODEL_NAME = 'gemini-3-flash-preview';
-
-// Search grounding configuration
-const DEFAULT_GROUNDING_DYNAMIC_THRESHOLD = 0;
+const MODEL_NAME = 'gemini-flash-latest';
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -31,23 +28,33 @@ const circuitBreaker: CircuitBreakerState = {
 
 const CIRCUIT_FAILURE_THRESHOLD = 3;
 const CIRCUIT_RESET_TIMEOUT_MS = 60 * 1000; // 60 seconds
+let hasLoggedGroundingThresholdDeprecation = false;
+
+interface GeminiRequestConfig {
+    model: string;
+    config: GenerateContentConfig;
+}
+
+interface GeminiErrorMetadata {
+    status: number | null;
+    code: string | number | null;
+    message: string;
+    retryable: boolean;
+}
 
 function isSearchGroundingEnabled(): boolean {
     return process.env.GEMINI_GOOGLE_SEARCH_GROUNDING !== 'false';
 }
 
-function getGroundingDynamicThreshold(): number {
+function warnGroundingThresholdDeprecationIfSet(): void {
     const raw = process.env.GEMINI_GROUNDING_DYNAMIC_THRESHOLD;
-    if (!raw) {
-        return DEFAULT_GROUNDING_DYNAMIC_THRESHOLD;
+    if (!raw || hasLoggedGroundingThresholdDeprecation) {
+        return;
     }
-
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed)) {
-        return DEFAULT_GROUNDING_DYNAMIC_THRESHOLD;
-    }
-
-    return Math.max(0, Math.min(1, parsed));
+    hasLoggedGroundingThresholdDeprecation = true;
+    console.warn(
+        '[Gemini] GEMINI_GROUNDING_DYNAMIC_THRESHOLD is deprecated and ignored when using googleSearch grounding.'
+    );
 }
 
 function getGroundingTools(): Tool[] | undefined {
@@ -55,16 +62,73 @@ function getGroundingTools(): Tool[] | undefined {
         return undefined;
     }
 
+    warnGroundingThresholdDeprecationIfSet();
+
     return [
         {
-            googleSearchRetrieval: {
-                dynamicRetrievalConfig: {
-                    mode: DynamicRetrievalMode.MODE_DYNAMIC,
-                    dynamicThreshold: getGroundingDynamicThreshold(),
-                },
-            },
+            googleSearch: {},
         },
     ];
+}
+
+function getRetryabilityFromStatus(status: number | null): boolean {
+    if (status === null) {
+        return true;
+    }
+    if (status === 429) {
+        return true;
+    }
+    if (status >= 500) {
+        return true;
+    }
+    if (status >= 400) {
+        return false;
+    }
+    return true;
+}
+
+function extractGeminiErrorMetadata(error: unknown): GeminiErrorMetadata {
+    const errorObject =
+        typeof error === 'object' && error !== null
+            ? (error as Record<string, unknown>)
+            : {};
+    const nestedError =
+        typeof errorObject.error === 'object' && errorObject.error !== null
+            ? (errorObject.error as Record<string, unknown>)
+            : null;
+
+    const statusCandidates = [
+        errorObject.status,
+        errorObject.statusCode,
+        nestedError?.status,
+        errorObject.code,
+        nestedError?.code,
+    ];
+    const statusCandidate = statusCandidates.find((value) => typeof value === 'number');
+    const status =
+        typeof statusCandidate === 'number' && statusCandidate >= 100 && statusCandidate <= 599
+            ? statusCandidate
+            : null;
+
+    const codeCandidates = [errorObject.code, nestedError?.code];
+    const codeCandidate = codeCandidates.find(
+        (value) => typeof value === 'string' || typeof value === 'number'
+    );
+
+    const messageCandidates = [errorObject.message, nestedError?.message];
+    const messageCandidate = messageCandidates.find(
+        (value) => typeof value === 'string' && value.trim().length > 0
+    ) as string | undefined;
+    const message =
+        messageCandidate ||
+        (error instanceof Error ? error.message : 'Unknown Gemini API error');
+
+    return {
+        status,
+        code: (codeCandidate as string | number | undefined) ?? null,
+        message,
+        retryable: getRetryabilityFromStatus(status),
+    };
 }
 
 /**
@@ -147,14 +211,24 @@ async function withRetry<T>(
             recordSuccess();
             return result;
         } catch (error) {
+            const metadata = extractGeminiErrorMetadata(error);
             const isLastAttempt = attempt === retries - 1;
-            if (isLastAttempt) {
-                console.error(`[Gemini] All ${retries} attempts failed:`, error);
+            if (!metadata.retryable) {
+                console.error('[Gemini] Non-retryable API error:', metadata);
                 recordFailure();
                 return null;
             }
+
+            if (isLastAttempt) {
+                console.error(`[Gemini] All ${retries} attempts failed:`, metadata);
+                recordFailure();
+                return null;
+            }
+
             const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-            console.warn(`[Gemini] Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+            console.warn(
+                `[Gemini] Attempt ${attempt + 1} failed (status=${metadata.status ?? 'unknown'}, code=${metadata.code ?? 'unknown'}, retryable=${metadata.retryable}), retrying in ${delay}ms...`
+            );
             await sleep(delay);
         }
     }
@@ -170,15 +244,22 @@ export function getGeminiModel(jsonMode: boolean = false) {
         return null;
     }
 
-    const generationConfig: GenerationConfig = jsonMode
-        ? { responseMimeType: 'application/json' }
-        : {};
+    const config: GenerateContentConfig = {};
+    if (jsonMode) {
+        config.responseMimeType = 'application/json';
+    }
 
-    return genAI.getGenerativeModel({
+    const tools = getGroundingTools();
+    if (tools) {
+        config.tools = tools;
+    }
+
+    const requestConfig: GeminiRequestConfig = {
         model: MODEL_NAME,
-        generationConfig,
-        tools: getGroundingTools(),
-    });
+        config,
+    };
+
+    return requestConfig;
 }
 
 /**
@@ -193,16 +274,18 @@ export function isGeminiConfigured(): boolean {
  * Returns null if not configured or on error after retries
  */
 export async function generateContent(prompt: string): Promise<string | null> {
-    const model = getGeminiModel();
-    if (!model) {
+    const requestConfig = getGeminiModel();
+    if (!requestConfig || !genAI) {
         console.log('[Gemini] Not configured, skipping AI generation');
         return null;
     }
 
     return withRetry(async () => {
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        return response.text();
+        const response = await genAI.models.generateContent({
+            ...requestConfig,
+            contents: prompt,
+        });
+        return response.text ?? '';
     });
 }
 
@@ -212,15 +295,18 @@ export async function generateContent(prompt: string): Promise<string | null> {
  * Returns null if not configured or on error after retries
  */
 export async function generateJSON<T>(prompt: string): Promise<T | null> {
-    const model = getGeminiModel(true); // Use JSON mode
-    if (!model) {
+    const requestConfig = getGeminiModel(true); // Use JSON mode
+    if (!requestConfig || !genAI) {
         console.log('[Gemini] Not configured, skipping AI generation');
         return null;
     }
 
     const result = await withRetry(async () => {
-        const response = await model.generateContent(prompt);
-        return response.response.text();
+        const response = await genAI.models.generateContent({
+            ...requestConfig,
+            contents: prompt,
+        });
+        return response.text ?? '';
     });
 
     if (!result) {
