@@ -16,6 +16,10 @@ interface RateLimitPolicy {
     prefix: string;
 }
 
+interface RateLimitOptions {
+    requirePersistent?: boolean;
+}
+
 /**
  * Check if rate limiting is configured
  */
@@ -95,6 +99,78 @@ export const intakeStartRatelimit: RateLimitPolicy = {
     prefix: 'ratelimit:intake',
 };
 
+/**
+ * Rate limiter for packet PDF generation (public token route)
+ * Limit: 5 requests per minute per identifier
+ */
+export const packetPdfRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(5, "60 s"),
+            analytics: true,
+            prefix: "ratelimit:packet-pdf",
+        })
+        : null,
+    limit: 5,
+    windowMs: 60 * 1000,
+    prefix: 'ratelimit:packet-pdf',
+};
+
+/**
+ * Rate limiter for reminder emails
+ * Limit: 3 reminders per 15 minutes per identifier
+ */
+export const reminderRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(3, "15 m"),
+            analytics: true,
+            prefix: "ratelimit:reminder",
+        })
+        : null,
+    limit: 3,
+    windowMs: 15 * 60 * 1000,
+    prefix: 'ratelimit:reminder',
+};
+
+/**
+ * Rate limiter for organization invite creation
+ * Limit: 10 invites per hour per identifier
+ */
+export const organizationInviteRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(10, "1 h"),
+            analytics: true,
+            prefix: "ratelimit:org-invite",
+        })
+        : null,
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+    prefix: 'ratelimit:org-invite',
+};
+
+/**
+ * Rate limiter for brand asset upload/delete APIs
+ * Limit: 20 requests per minute per user
+ */
+export const brandingUploadRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(20, "60 s"),
+            analytics: true,
+            prefix: "ratelimit:branding-upload",
+        })
+        : null,
+    limit: 20,
+    windowMs: 60 * 1000,
+    prefix: 'ratelimit:branding-upload',
+};
+
 const memoryRateLimit = new Map<string, { count: number; resetAt: number }>();
 
 /**
@@ -105,6 +181,7 @@ export interface RateLimitResult {
     limit: number;
     remaining: number;
     reset: number;
+    reason: 'ok' | 'limited' | 'unavailable';
 }
 
 /**
@@ -114,8 +191,19 @@ export interface RateLimitResult {
  */
 export async function checkRateLimit(
     policy: RateLimitPolicy,
-    identifier: string
+    identifier: string,
+    options: RateLimitOptions = {}
 ): Promise<RateLimitResult> {
+    if (!policy.limiter && options.requirePersistent) {
+        return {
+            success: false,
+            limit: policy.limit,
+            remaining: 0,
+            reset: Math.ceil((Date.now() + policy.windowMs) / 1000),
+            reason: 'unavailable',
+        };
+    }
+
     if (policy.limiter) {
         const result = await policy.limiter.limit(identifier);
         return {
@@ -123,6 +211,7 @@ export async function checkRateLimit(
             limit: result.limit,
             remaining: result.remaining,
             reset: result.reset,
+            reason: result.success ? 'ok' : 'limited',
         };
     }
 
@@ -154,7 +243,12 @@ export async function checkRateLimit(
         limit: policy.limit,
         remaining: Math.max(0, policy.limit - windowEntry.count),
         reset: Math.ceil(windowEntry.resetAt / 1000),
+        reason: windowEntry.count <= policy.limit ? 'ok' : 'limited',
     };
+}
+
+export function isRateLimitUnavailable(result: RateLimitResult): boolean {
+    return result.reason === 'unavailable';
 }
 
 /**

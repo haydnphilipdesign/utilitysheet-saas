@@ -4,6 +4,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getIntakeLinkBySlug: vi.fn(),
     getAccountById: vi.fn(),
     getAccountOrganizations: vi.fn(),
+    getMonthlyUsage: vi.fn(),
     getDefaultBrandProfile: vi.fn(),
     getRequestBySellerToken: vi.fn(),
     createRequest: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('@/lib/rate-limit', () => ({
     intakeStartRatelimit: {},
     checkRateLimit: vi.fn(),
     getRateLimitHeaders: vi.fn(() => ({})),
+    isRateLimitUnavailable: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/address/structured-address', () => ({
@@ -32,6 +34,7 @@ import {
     getAccountOrganizations,
     getDefaultBrandProfile,
     getIntakeLinkBySlug,
+    getMonthlyUsage,
     getRequestBySellerToken,
 } from '@/lib/neon/queries';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
@@ -61,6 +64,11 @@ describe('POST /api/intake/[slug]/start', () => {
             active_organization_id: null,
         } as never);
         vi.mocked(getAccountOrganizations).mockResolvedValue([] as never);
+        vi.mocked(getMonthlyUsage).mockResolvedValue({
+            used: 0,
+            limit: 3,
+            plan: 'free',
+        } as never);
         vi.mocked(getDefaultBrandProfile).mockResolvedValue(null);
         vi.mocked(getRequestBySellerToken).mockResolvedValue(null);
         vi.mocked(buildStructuredPropertyAddress).mockResolvedValue({

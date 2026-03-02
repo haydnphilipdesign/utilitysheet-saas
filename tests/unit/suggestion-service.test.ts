@@ -33,7 +33,7 @@ const {
 } = __testing;
 
 function ok<T>(data: T) {
-    return { data, failure: null as const };
+    return { data, failure: null } as const;
 }
 
 function providerError() {

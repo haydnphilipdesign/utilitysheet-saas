@@ -1,19 +1,19 @@
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/neon/db';
-import { getOrCreateAccount } from '@/lib/neon/queries';
-import { stackServerApp } from '@/lib/stack/server';
+import { AdminAuthorizationError, requireAdmin } from '@/lib/admin';
+
+function diagnosticsEnabled(): boolean {
+    if (process.env.NODE_ENV !== 'production') return true;
+    return process.env.ENABLE_REQUEST_DIAGNOSTICS === 'true';
+}
 
 export async function GET() {
     try {
-        const user = await stackServerApp.getUser();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (!diagnosticsEnabled()) {
+            return NextResponse.json({ error: 'Not found' }, { status: 404 });
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-        if (!account) {
-            return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
-        }
+        const { account } = await requireAdmin();
 
         if (!sql) {
             return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
@@ -43,8 +43,6 @@ export async function GET() {
         ]);
 
         return NextResponse.json({
-            accountId,
-            activeOrganizationId,
             counts: {
                 totalForAccount: Number(totalForAccount[0]?.count) || 0,
                 deletedForAccount: Number(deletedForAccount[0]?.count) || 0,
@@ -54,6 +52,9 @@ export async function GET() {
             },
         });
     } catch (error) {
+        if (error instanceof AdminAuthorizationError) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         console.error('Error fetching request diagnostics:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

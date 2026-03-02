@@ -4,7 +4,7 @@ import { createEventLog } from '@/lib/neon/queries/event-logs';
 import { searchProviders } from '@/lib/providers/suggestion-service';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
-import { aiRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
+import { aiRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/network/client-ip';
 import { lazyBackfillRequestStructuredAddress } from '@/lib/address/structured-address';
 
@@ -31,7 +31,13 @@ export async function GET(
         }
 
         const ip = getClientIp(request);
-        const rateLimitResult = await checkRateLimit(aiRatelimit, `${token}:${ip}`);
+        const rateLimitResult = await checkRateLimit(aiRatelimit, `${token}:${ip}`, { requirePersistent: process.env.NODE_ENV === 'production' });
+        if (isRateLimitUnavailable(rateLimitResult)) {
+            return NextResponse.json(
+                { error: 'Temporarily unavailable. Please try again shortly.' },
+                { status: 503 }
+            );
+        }
         if (!rateLimitResult.success) {
             return NextResponse.json(
                 { error: 'Rate limit exceeded. Please slow down.' },
@@ -88,3 +94,4 @@ export async function GET(
         return NextResponse.json({ error: 'Failed to search providers' }, { status: 500 });
     }
 }
+

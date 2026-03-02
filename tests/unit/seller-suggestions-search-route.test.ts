@@ -13,6 +13,7 @@ vi.mock('@/lib/rate-limit', () => ({
     aiRatelimit: {},
     checkRateLimit: vi.fn(),
     getRateLimitHeaders: vi.fn(() => ({})),
+    isRateLimitUnavailable: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/address/structured-address', () => ({
@@ -27,17 +28,17 @@ import { checkRateLimit } from '@/lib/rate-limit';
 describe('GET /api/seller/[token]/suggestions/search', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        (checkRateLimit as any).mockResolvedValue({
+        vi.mocked(checkRateLimit).mockResolvedValue({
             success: true,
             limit: 20,
             remaining: 19,
             reset: 999999,
-        });
+        } as never);
     });
 
     it('returns 404 for unknown token', async () => {
-        (getRequestBySellerToken as any).mockResolvedValue(null);
-        (getRequestByToken as any).mockResolvedValue(null);
+        vi.mocked(getRequestBySellerToken).mockResolvedValue(null);
+        vi.mocked(getRequestByToken).mockResolvedValue(null);
 
         const req = new Request('http://localhost/api/seller/missing/suggestions/search?query=duke&category=electric');
         const res = await GET(req, { params: Promise.resolve({ token: 'missing' }) });
@@ -46,15 +47,15 @@ describe('GET /api/seller/[token]/suggestions/search', () => {
     });
 
     it('rejects packet/public token when seller token is required', async () => {
-        (getRequestBySellerToken as any).mockResolvedValue(null);
-        (getRequestByToken as any).mockResolvedValue({
+        vi.mocked(getRequestBySellerToken).mockResolvedValue(null);
+        vi.mocked(getRequestByToken).mockResolvedValue({
             id: 'r1',
             seller_token: 'seller-token',
             public_token: 'public-token',
             account_id: 'acct-1',
             organization_id: 'org-1',
             property_address: '123 Main St, Raleigh, NC',
-        });
+        } as never);
 
         const req = new Request('http://localhost/api/seller/public-token/suggestions/search?query=duke&category=electric');
         const res = await GET(req, { params: Promise.resolve({ token: 'public-token' }) });
@@ -63,7 +64,7 @@ describe('GET /api/seller/[token]/suggestions/search', () => {
     });
 
     it('returns 400 for invalid category', async () => {
-        (getRequestBySellerToken as any).mockResolvedValue({
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({
             id: 'r1',
             seller_token: 'seller-token',
             public_token: 'public-token',
@@ -71,7 +72,7 @@ describe('GET /api/seller/[token]/suggestions/search', () => {
             organization_id: 'org-1',
             property_address: '123 Main St, Raleigh, NC',
             property_address_structured: null,
-        });
+        } as never);
 
         const req = new Request('http://localhost/api/seller/seller-token/suggestions/search?query=duke&category=invalid');
         const res = await GET(req, { params: Promise.resolve({ token: 'seller-token' }) });
@@ -80,7 +81,7 @@ describe('GET /api/seller/[token]/suggestions/search', () => {
     });
 
     it('uses server-side property address and token+ip rate-limit key', async () => {
-        (getRequestBySellerToken as any).mockResolvedValue({
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({
             id: 'r1',
             seller_token: 'seller-token',
             public_token: 'public-token',
@@ -88,19 +89,23 @@ describe('GET /api/seller/[token]/suggestions/search', () => {
             organization_id: 'org-1',
             property_address: '123 Main St, Raleigh, NC 27601',
             property_address_structured: null,
-        });
-        (searchProviders as any).mockResolvedValue([{ display_name: 'Duke Energy', confidence: 0.9 }]);
+        } as never);
+        vi.mocked(searchProviders).mockResolvedValue([{ display_name: 'Duke Energy', confidence: 0.9 }] as never);
 
         const req = new Request('http://localhost/api/seller/seller-token/suggestions/search?query=duke&category=electric&address=ignored', {
             headers: {
-                'x-forwarded-for': '1.2.3.4, 5.6.7.8',
+                'x-vercel-forwarded-for': '1.2.3.4',
             },
         });
 
         const res = await GET(req, { params: Promise.resolve({ token: 'seller-token' }) });
         expect(res.status).toBe(200);
 
-        expect(checkRateLimit).toHaveBeenCalledWith(expect.anything(), 'seller-token:1.2.3.4');
+        expect(checkRateLimit).toHaveBeenCalledWith(
+            expect.anything(),
+            'seller-token:1.2.3.4',
+            { requirePersistent: false }
+        );
         expect(searchProviders).toHaveBeenCalledWith(
             'duke',
             'electric',

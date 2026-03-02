@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getIntakeLinkBySlug, getAccountById, getAccountOrganizations, getDefaultBrandProfile, getRequestBySellerToken, createRequest, createEventLog } from '@/lib/neon/queries';
-import { intakeStartRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
+import { getIntakeLinkBySlug, getAccountById, getAccountOrganizations, getDefaultBrandProfile, getRequestBySellerToken, createRequest, createEventLog, getMonthlyUsage } from '@/lib/neon/queries';
+import { intakeStartRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { getClientIp } from '@/lib/network/client-ip';
 import { validateIntakeAddress } from '@/lib/address/intake-validation';
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
+import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -60,7 +61,14 @@ export async function POST(
 
         const ipAddress = getClientIp(request, 'unknown');
 
-        const rateLimitResult = await checkRateLimit(intakeStartRatelimit, `${slug}:${ipAddress}`);
+        const rateLimitResult = await checkRateLimit(intakeStartRatelimit, `${slug}:${ipAddress}`, { requirePersistent: process.env.NODE_ENV === 'production' });
+        if (isRateLimitUnavailable(rateLimitResult)) {
+            return NextResponse.json(
+                { error: 'Temporarily unavailable. Please try again shortly.' },
+                { status: 503 }
+            );
+        }
+
         if (!rateLimitResult.success) {
             return NextResponse.json(
                 { error: 'Too many attempts. Please wait a moment and try again.' },
@@ -71,10 +79,7 @@ export async function POST(
         const body = await request.json().catch(() => ({}));
         const parsed = intakeStartBodySchema.safeParse(body);
         if (!parsed.success) {
-            return NextResponse.json(
-                { error: 'Invalid request', details: parsed.error.flatten() },
-                { status: 400 }
-            );
+            return invalidRequestBodyResponse('INVALID_INTAKE_START_REQUEST', 'Invalid intake request body');
         }
         const intakeValidation = validateIntakeAddress(parsed.data.propertyAddress);
         if (!intakeValidation.isComplete) {
@@ -110,6 +115,19 @@ export async function POST(
         const organizations = await getAccountOrganizations(account.id);
         const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
         const isPaid = account.subscription_status === 'pro' || activeOrg?.subscription_status === 'team';
+        if (!isPaid) {
+            const usage = await getMonthlyUsage(account.id, activeOrg?.id);
+            if (usage.used >= usage.limit) {
+                return NextResponse.json(
+                    {
+                        error: 'Monthly limit reached',
+                        code: 'MONTHLY_LIMIT_REACHED',
+                        message: `This account has reached its ${usage.plan} plan limit of ${usage.limit} requests this month.`,
+                    },
+                    { status: 403 }
+                );
+            }
+        }
 
         const normalizedAddress = normalizeAddress(parsed.data.propertyAddress);
         const cookieName = `us_intake_${slug}`;
@@ -200,3 +218,4 @@ export async function POST(
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+

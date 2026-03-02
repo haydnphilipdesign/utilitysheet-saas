@@ -7,6 +7,8 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { createRequestBodySchema } from '@/lib/validation/schemas';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
+import { invalidRequestBodyResponse } from '@/lib/security/api-response';
+import { getClientIpOrNull } from '@/lib/network/client-ip';
 
 function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
@@ -94,10 +96,7 @@ export async function POST(request: Request) {
         const body = await request.json();
         const parsedBody = createRequestBodySchema.safeParse(body);
         if (!parsedBody.success) {
-            return NextResponse.json(
-                { error: 'Invalid request body', details: parsedBody.error.flatten() },
-                { status: 400 }
-            );
+            return invalidRequestBodyResponse();
         }
 
         const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
@@ -198,9 +197,7 @@ export async function POST(request: Request) {
         await updateRequestStatus(newRequest.id, 'sent');
 
         // Log request creation event
-        const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-            request.headers.get('x-real-ip') ||
-            null;
+        const ipAddress = getClientIpOrNull(request);
         const userAgent = request.headers.get('user-agent') || null;
         await createEventLog({
             requestId: newRequest.id,

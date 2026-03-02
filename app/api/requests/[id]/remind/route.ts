@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getRequestById, getOrCreateAccount, getBrandProfile, createEventLog } from '@/lib/neon/queries';
+import { sql } from '@/lib/neon/db';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerReminderEmail } from '@/lib/email/email-service';
+import { reminderRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
+import { getClientIpOrNull } from '@/lib/network/client-ip';
+
+const REMINDER_COOLDOWN_MS = 10 * 60 * 1000;
 
 export async function POST(
     request: Request,
@@ -34,6 +39,59 @@ export async function POST(
             return NextResponse.json({ error: 'Seller email is required to send a reminder' }, { status: 400 });
         }
 
+        const ipAddress = getClientIpOrNull(request);
+        const rateLimitResult = await checkRateLimit(
+            reminderRatelimit,
+            `${account.id}:${requestId}:${ipAddress || 'unknown'}`,
+            { requirePersistent: process.env.NODE_ENV === 'production' }
+        );
+
+        if (isRateLimitUnavailable(rateLimitResult)) {
+            return NextResponse.json(
+                { error: 'Temporarily unavailable. Please try again shortly.' },
+                { status: 503 }
+            );
+        }
+
+        if (!rateLimitResult.success) {
+            return NextResponse.json(
+                { error: 'Rate limit exceeded. Please wait before sending another reminder.' },
+                { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
+            );
+        }
+
+        if (sql) {
+            const latestReminder = await sql`
+                SELECT created_at
+                FROM event_logs
+                WHERE request_id = ${requestId}
+                  AND event_type = 'reminder_sent'
+                ORDER BY created_at DESC
+                LIMIT 1
+            `;
+            const mostRecent = latestReminder[0]?.created_at ? new Date(latestReminder[0].created_at as string) : null;
+            if (mostRecent && Number.isFinite(mostRecent.getTime())) {
+                const elapsedMs = Date.now() - mostRecent.getTime();
+                if (elapsedMs < REMINDER_COOLDOWN_MS) {
+                    const retryAfter = Math.ceil((REMINDER_COOLDOWN_MS - elapsedMs) / 1000);
+                    return NextResponse.json(
+                        {
+                            error: 'Reminder recently sent. Please wait before sending another reminder.',
+                            code: 'REMINDER_COOLDOWN_ACTIVE',
+                            retryAfterSeconds: retryAfter,
+                        },
+                        {
+                            status: 429,
+                            headers: {
+                                ...getRateLimitHeaders(rateLimitResult),
+                                'Retry-After': retryAfter.toString(),
+                            },
+                        }
+                    );
+                }
+            }
+        }
+
         // Get agent name for the email
         let agentName: string | undefined;
         let brandProfile = null;
@@ -60,9 +118,6 @@ export async function POST(
             return NextResponse.json({ error: result.error || 'Failed to send reminder' }, { status: 500 });
         }
 
-        const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-            request.headers.get('x-real-ip') ||
-            null;
         const userAgent = request.headers.get('user-agent') || null;
         await createEventLog({
             requestId: requestData.id,
@@ -75,9 +130,10 @@ export async function POST(
             userAgent,
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true }, { headers: getRateLimitHeaders(rateLimitResult) });
     } catch (error) {
         console.error('Error sending reminder:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+

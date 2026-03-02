@@ -214,7 +214,10 @@ export async function POST(request: Request) {
         const message = error instanceof Error ? error.message : 'Internal server error';
         const status = message.toLowerCase().includes('slug') ? 400 : 500;
         if (status === 400) {
-            return NextResponse.json({ error: 'Invalid slug', message }, { status });
+            return NextResponse.json(
+                { error: 'Invalid slug', code: 'INVALID_SLUG' },
+                { status }
+            );
         }
         console.error('Error updating intake link:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

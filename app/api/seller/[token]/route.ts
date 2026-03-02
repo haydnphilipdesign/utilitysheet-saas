@@ -3,10 +3,11 @@ import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, get
 import { sql } from '@/lib/neon/db';
 import { hasValidContact, resolveContact } from '@/lib/providers/contact-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
-import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
+import { formSubmissionRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
+import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import {
     filterAdvancedPacketDataByExclusions,
     getAdvancedModuleVisibleFieldKeys,
@@ -359,7 +360,13 @@ export async function POST(
         const { token } = await params;
 
         // Rate limit by token to prevent submission spam
-        const rateLimitResult = await checkRateLimit(formSubmissionRatelimit, token);
+        const rateLimitResult = await checkRateLimit(formSubmissionRatelimit, token, { requirePersistent: process.env.NODE_ENV === 'production' });
+        if (isRateLimitUnavailable(rateLimitResult)) {
+            return NextResponse.json(
+                { error: 'Temporarily unavailable. Please try again shortly.' },
+                { status: 503 }
+            );
+        }
 
         if (!rateLimitResult.success) {
             return NextResponse.json(
@@ -374,10 +381,7 @@ export async function POST(
         const body = await request.json();
         const parsedBody = sellerSubmissionBodySchema.safeParse(body);
         if (!parsedBody.success) {
-            return NextResponse.json(
-                { error: 'Invalid submission', details: parsedBody.error.flatten() },
-                { status: 400 }
-            );
+            return invalidRequestBodyResponse('INVALID_SELLER_SUBMISSION', 'Invalid submission');
         }
 
         const requestData =
@@ -640,7 +644,7 @@ export async function POST(
                 }
             }
         } else {
-            console.warn('TC notification skipped: No account email found for account_id:', requestData.account_id);
+            console.warn('TC notification skipped: no account email found');
         }
 
         return NextResponse.json({ success: true });
@@ -649,3 +653,4 @@ export async function POST(
         return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 });
     }
 }
+

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { stackServerApp } from '@/lib/stack/server';
 import { generateToken } from '@/lib/neon/db';
 import { sendOrganizationInviteEmail } from '@/lib/email/email-service';
+import { checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable, organizationInviteRatelimit } from '@/lib/rate-limit';
+import { getClientIpOrNull } from '@/lib/network/client-ip';
 import {
     createOrganizationInvite,
     getOrganizationById,
@@ -83,6 +85,26 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Only organization admins can invite members' }, { status: 403 });
         }
 
+        const ip = getClientIpOrNull(request) || 'unknown';
+        const rateLimitResult = await checkRateLimit(
+            organizationInviteRatelimit,
+            `${organizationId}:${account.id}:${ip}`,
+            { requirePersistent: process.env.NODE_ENV === 'production' }
+        );
+        if (isRateLimitUnavailable(rateLimitResult)) {
+            return NextResponse.json(
+                { error: 'Temporarily unavailable. Please try again shortly.' },
+                { status: 503 }
+            );
+        }
+
+        if (!rateLimitResult.success) {
+            return NextResponse.json(
+                { error: 'Rate limit exceeded. Please slow down before sending more invites.' },
+                { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
+            );
+        }
+
         const body = await request.json().catch(() => ({}));
         const emailRaw = typeof body?.email === 'string' ? body.email.trim() : '';
         const email = emailRaw.toLowerCase();
@@ -116,7 +138,7 @@ export async function POST(request: Request) {
                 invite: existingInvite,
                 inviteUrl: `${baseUrl}/invite/${existingInvite.token}`,
                 reused: true,
-            });
+            }, { headers: getRateLimitHeaders(rateLimitResult) });
         }
 
         const seatQuantity = Number(organization.seat_quantity) || 0;
@@ -170,7 +192,7 @@ export async function POST(request: Request) {
             invite,
             inviteUrl,
             emailSent,
-        });
+        }, { headers: getRateLimitHeaders(rateLimitResult) });
     } catch (error) {
         console.error('Error creating organization invite:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

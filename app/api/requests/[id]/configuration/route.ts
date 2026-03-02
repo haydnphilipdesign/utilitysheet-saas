@@ -8,6 +8,7 @@ import {
 import { stackServerApp } from '@/lib/stack/server';
 import { requestConfigurationBodySchema } from '@/lib/validation/schemas';
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
+import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 
 export async function PATCH(
     request: Request,
@@ -44,10 +45,7 @@ export async function PATCH(
         const body = await request.json().catch(() => ({}));
         const parsedBody = requestConfigurationBodySchema.safeParse(body);
         if (!parsedBody.success) {
-            return NextResponse.json(
-                { error: 'Invalid request body', details: parsedBody.error.flatten() },
-                { status: 400 }
-            );
+            return invalidRequestBodyResponse();
         }
 
         const organization = account.active_organization_id

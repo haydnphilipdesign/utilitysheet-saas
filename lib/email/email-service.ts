@@ -832,7 +832,7 @@ export async function sendTCCompletionNotificationEmail({
     const baseUrl = getAppBaseUrl();
     const dashboardUrl = `${baseUrl}/dashboard/requests/${requestId}`;
 
-    console.log('sendTCCompletionNotificationEmail called:', { tcEmail, requestId });
+    console.log('sendTCCompletionNotificationEmail called:', { requestId });
 
     const emailHtml = generateTCCompletionNotificationHtml({
         tcName,
@@ -891,7 +891,7 @@ export async function sendTCCompletionNotificationEmail({
         });
 
         if (error) {
-            console.error('Resend API returned error:', JSON.stringify(error));
+            console.error('Resend API returned error:', error.message);
             return { success: false, error: error.message };
         }
 

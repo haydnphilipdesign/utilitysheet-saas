@@ -14,6 +14,12 @@ interface HealthCheck {
     version: string;
 }
 
+function canAccessReadinessDetails(request: Request): boolean {
+    const token = process.env.HEALTH_READINESS_TOKEN;
+    if (!token) return false;
+    return request.headers.get('x-health-token') === token;
+}
+
 /**
  * Health check endpoint for monitoring
  * 
@@ -22,7 +28,7 @@ interface HealthCheck {
  * 
  * No authentication required
  */
-export async function GET() {
+export async function GET(request: Request) {
     const checks = {
         database: false,
         ai: false,
@@ -58,6 +64,20 @@ export async function GET() {
     };
 
     const httpStatus = isCriticalHealthy ? 200 : 503;
+    if (!canAccessReadinessDetails(request)) {
+        return NextResponse.json(
+            {
+                status: healthCheck.status,
+                timestamp: healthCheck.timestamp,
+            },
+            {
+                status: httpStatus,
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                },
+            }
+        );
+    }
 
     return NextResponse.json(healthCheck, {
         status: httpStatus,

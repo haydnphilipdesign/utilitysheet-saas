@@ -567,7 +567,14 @@ function buildOutcome(params: {
 }
 
 function logSuggestionOutcome(outcome: SuggestionOutcome): void {
-    console.log('[Suggestions] outcome', outcome);
+    const enableTelemetry = process.env.NODE_ENV !== 'production' || process.env.SUGGESTIONS_LOG_TELEMETRY === 'true';
+    if (!enableTelemetry) return;
+
+    const sanitized = {
+        ...outcome,
+        localityCity: null,
+    };
+    console.log('[Suggestions] outcome', sanitized);
 }
 
 function logShadowComparison(params: {
@@ -578,6 +585,8 @@ function logShadowComparison(params: {
     servedSource: SuggestionSource;
     shadowSource: SuggestionSource;
 }): void {
+    const enableTelemetry = process.env.NODE_ENV !== 'production' || process.env.SUGGESTIONS_LOG_TELEMETRY === 'true';
+    if (!enableTelemetry) return;
     console.log('[Suggestions] shadow_compare', params);
 }
 
@@ -1494,7 +1503,9 @@ export async function getSuggestions(
         const location = getNonPiiLocationContext(address);
         const result = await runSuggestionPipeline(address, category, context);
         const suggestions = result.suggestions;
-        console.log(`[Suggestions] ${suggestions.length} suggestions for ${category} near ${location.label}`);
+        if (process.env.NODE_ENV !== 'production' || process.env.SUGGESTIONS_LOG_TELEMETRY === 'true') {
+            console.log(`[Suggestions] ${suggestions.length} suggestions for ${category} (${location.lines.join(', ')})`);
+        }
 
         await setInCache(cacheKey, suggestions, CACHE_TTL_SECONDS);
         return suggestions;

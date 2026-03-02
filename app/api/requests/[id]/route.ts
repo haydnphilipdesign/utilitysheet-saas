@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getRequestById, updateRequestStatus, getOrCreateAccount, deleteRequest, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
+import { enforceMaxRequestBodyBytes, invalidRequestBodyResponse } from '@/lib/security/api-response';
+
+const REQUEST_UPDATE_MAX_BODY_BYTES = 8 * 1024;
+
+const requestUpdateBodySchema = z.object({
+    status: z.enum(['draft', 'sent', 'in_progress', 'submitted']),
+});
 
 function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
@@ -90,17 +98,22 @@ export async function PATCH(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const body = await request.json();
-
-        if (body.status) {
-            const updated = await updateRequestStatus(id, body.status);
-            if (!updated) {
-                return NextResponse.json({ error: 'Failed to update request' }, { status: 500 });
-            }
-            return NextResponse.json(updated);
+        const payloadTooLarge = enforceMaxRequestBodyBytes(request, REQUEST_UPDATE_MAX_BODY_BYTES);
+        if (payloadTooLarge) {
+            return payloadTooLarge;
         }
 
-        return NextResponse.json({ error: 'No updates provided' }, { status: 400 });
+        const body = await request.json().catch(() => ({}));
+        const parsedBody = requestUpdateBodySchema.safeParse(body);
+        if (!parsedBody.success) {
+            return invalidRequestBodyResponse('INVALID_REQUEST_UPDATE', 'Invalid request update payload');
+        }
+
+        const updated = await updateRequestStatus(id, parsedBody.data.status);
+        if (!updated) {
+            return NextResponse.json({ error: 'Failed to update request' }, { status: 500 });
+        }
+        return NextResponse.json(updated);
     } catch (error) {
         console.error('Error updating request:', error);
         return NextResponse.json({ error: 'Failed to update request' }, { status: 500 });

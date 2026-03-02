@@ -224,7 +224,7 @@ export async function createPacketPdfAttachmentForPublicToken(token: string): Pr
         return { status: 'attached', attachment };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown PDF generation error';
-        console.warn('[pdf][packet_attachment] failed', { token, error: errorMessage });
+        console.warn('[pdf][packet_attachment] failed', { error: errorMessage });
         return {
             status: 'failed',
             error: errorMessage,

@@ -42,6 +42,14 @@ next-env.d.ts
 
 # Generated files
 *.pdf
+logs_result.json
+logs_result*.json
+Screenshot_*.png
+Screenshot_*.jpg
+Screenshot_*.jpeg
+*.har
+*.trace.json
+*.ndjson
 
 # local tooling preferences
 .claude/settings.local.json

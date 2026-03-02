@@ -3,6 +3,7 @@ import { getBrandProfile, updateBrandProfile, deleteBrandProfile, getOrCreateAcc
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileUpdateBodySchema } from '@/lib/validation/schemas';
 import { normalizeMessageTemplates } from '@/lib/message-templates';
+import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 
 type AccountWithOrgContext = {
     subscription_status?: string | null;
@@ -70,10 +71,7 @@ export async function PUT(
         const body = await request.json();
         const parsedBody = brandProfileUpdateBodySchema.safeParse(body);
         if (!parsedBody.success) {
-            return NextResponse.json(
-                { error: 'Invalid request body', details: parsedBody.error.flatten() },
-                { status: 400 }
-            );
+            return invalidRequestBodyResponse();
         }
         const payload = parsedBody.data;
 

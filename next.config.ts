@@ -13,7 +13,7 @@ const securityHeaders = [
   },
   {
     key: 'Content-Security-Policy',
-    value: "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none';",
+    value: "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; img-src 'self' data: https:; font-src 'self' data:;",
   },
   ...(isProduction
     ? [
@@ -26,6 +26,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  productionBrowserSourceMaps: false,
   outputFileTracingIncludes: {
     '/api/seller/**': ['node_modules/@sparticuz/chromium/bin/**/*'],
     '/api/packet/**/pdf': ['node_modules/@sparticuz/chromium/bin/**/*'],
@@ -41,8 +42,24 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: '/_next/server/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
+      {
         source: '/(.*)',
         headers: securityHeaders,
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      {
+        source: '/_next/server/:path*',
+        destination: '/404',
+        permanent: false,
       },
     ];
   },

@@ -63,13 +63,23 @@ export default function DemoPage() {
         setError(null);
 
         try {
+            const challengeResponse = await fetch('/api/demo/suggestions', { method: 'GET' });
+            if (!challengeResponse.ok) {
+                throw new Error('Failed to prepare demo challenge');
+            }
+            const challengeData = await challengeResponse.json();
+            const challengeToken = typeof challengeData?.challengeToken === 'string' ? challengeData.challengeToken : '';
+            if (!challengeToken) {
+                throw new Error('Missing demo challenge token');
+            }
+
             // Artificial delay to show the "Verify address" step at least briefly if specific conditions are met,
             // but usually the API takes a moment.
             // We'll let the API control the timing mostly.
             const response = await fetch('/api/demo/suggestions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ address: address.trim() }),
+                body: JSON.stringify({ address: address.trim(), challengeToken }),
             });
 
             if (!response.ok) {

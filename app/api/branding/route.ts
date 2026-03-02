@@ -3,6 +3,7 @@ import { getBrandProfiles, createBrandProfile, getOrCreateAccount, getOrganizati
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileCreateBodySchema } from '@/lib/validation/schemas';
 import { normalizeMessageTemplates } from '@/lib/message-templates';
+import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 
 // GET /api/branding - Get all brand profiles
 export async function GET() {
@@ -59,10 +60,7 @@ export async function POST(request: Request) {
         const body = await request.json();
         const parsedBody = brandProfileCreateBodySchema.safeParse(body);
         if (!parsedBody.success) {
-            return NextResponse.json(
-                { error: 'Invalid request body', details: parsedBody.error.flatten() },
-                { status: 400 }
-            );
+            return invalidRequestBodyResponse();
         }
         const payload = parsedBody.data;
 

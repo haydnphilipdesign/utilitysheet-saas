@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendFeedbackEmail } from '@/lib/email/email-service';
+import { enforceMaxRequestBodyBytes, invalidRequestBodyResponse } from '@/lib/security/api-response';
+
+const FEEDBACK_MAX_BODY_BYTES = 8 * 1024;
+
+const feedbackBodySchema = z.object({
+    message: z.string().trim().min(1).max(2000),
+});
 
 export async function POST(request: Request) {
     try {
@@ -9,16 +17,20 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const body = await request.json();
-        const { message } = body;
+        const payloadTooLarge = enforceMaxRequestBodyBytes(request, FEEDBACK_MAX_BODY_BYTES);
+        if (payloadTooLarge) {
+            return payloadTooLarge;
+        }
 
-        if (!message || typeof message !== 'string' || !message.trim()) {
-            return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+        const body = await request.json().catch(() => ({}));
+        const parsed = feedbackBodySchema.safeParse(body);
+        if (!parsed.success) {
+            return invalidRequestBodyResponse('INVALID_FEEDBACK_BODY', 'Message is required');
         }
 
         const result = await sendFeedbackEmail({
             userEmail: user.primaryEmail || 'unknown@example.com',
-            message: message.trim(),
+            message: parsed.data.message,
             userId: user.id,
             userName: user.displayName || undefined,
         });

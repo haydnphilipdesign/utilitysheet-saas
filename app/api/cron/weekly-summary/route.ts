@@ -4,15 +4,21 @@ import { sendWeeklySummaryEmail } from '@/lib/email/email-service';
 
 // Concurrency limit to avoid overwhelming external services
 const BATCH_SIZE = 10;
+type WeeklySummaryAccount = {
+    id: string;
+    email: string | null;
+    full_name?: string | null;
+    active_organization_id?: string | null;
+};
 
 /**
  * Process a chunk of accounts in parallel
  */
-async function processAccountBatch(accounts: any[]): Promise<{ email: string; success: boolean; error?: string }[]> {
+async function processAccountBatch(accounts: WeeklySummaryAccount[]): Promise<{ success: boolean; error?: string }[]> {
     const results = await Promise.allSettled(
         accounts.map(async (account) => {
             if (!account.email) {
-                return { email: 'unknown', success: false, error: 'No email' };
+                return { success: false, error: 'No email configured' };
             }
 
             // Get weekly stats for this account
@@ -29,19 +35,17 @@ async function processAccountBatch(accounts: any[]): Promise<{ email: string; su
             });
 
             return {
-                email: account.email,
                 success: result.success,
                 error: result.error,
             };
         })
     );
 
-    return results.map((result, index) => {
+    return results.map((result) => {
         if (result.status === 'fulfilled') {
             return result.value;
         }
         return {
-            email: accounts[index]?.email || 'unknown',
             success: false,
             error: result.reason instanceof Error ? result.reason.message : 'Unknown error',
         };
@@ -82,7 +86,7 @@ export async function GET(request: Request) {
         console.log('Starting weekly summary cron job...');
 
         // Get all accounts with weekly summary enabled
-        const accounts = await getAccountsWithWeeklySummaryEnabled();
+        const accounts = await getAccountsWithWeeklySummaryEnabled() as WeeklySummaryAccount[];
         console.log(`Found ${accounts.length} accounts with weekly summary enabled`);
 
         if (accounts.length === 0) {
@@ -95,7 +99,7 @@ export async function GET(request: Request) {
         }
 
         // Process accounts in parallel batches
-        const allResults: { email: string; success: boolean; error?: string }[] = [];
+        const allResults: { success: boolean; error?: string }[] = [];
 
         for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
             const batch = accounts.slice(i, i + BATCH_SIZE);
@@ -116,7 +120,10 @@ export async function GET(request: Request) {
             sent: successCount,
             failed: failureCount,
             durationMs,
-            details: allResults,
+            sampleFailures: allResults
+                .filter((entry) => !entry.success && entry.error)
+                .slice(0, 5)
+                .map((entry) => entry.error),
         });
     } catch (error) {
         console.error('Weekly summary cron job failed:', error);
