@@ -314,6 +314,115 @@ export async function createOrganizationInvite(data: {
     return result[0] || null;
 }
 
+function parseJsonColumn<T extends Record<string, unknown>>(value: unknown): T | null {
+    if (!value) return null;
+    if (typeof value === 'string') {
+        try {
+            return JSON.parse(value) as T;
+        } catch {
+            return null;
+        }
+    }
+    if (typeof value === 'object') {
+        return value as T;
+    }
+    return null;
+}
+
+export type CreateOrganizationInviteSeatGuardResult =
+    | { status: 'created'; invite: Record<string, unknown> }
+    | { status: 'existing'; invite: Record<string, unknown> }
+    | { status: 'no_seat' };
+
+/**
+ * Atomically creates a new pending invite only when seats are available.
+ * Uses a row lock on the organization to serialize seat decisions.
+ */
+export async function createOrganizationInviteWithSeatGuard(data: {
+    organizationId: string;
+    email: string;
+    role?: 'admin' | 'member';
+    token: string;
+    invitedByAccountId: string;
+    expiresAt: Date;
+}): Promise<CreateOrganizationInviteSeatGuardResult> {
+    if (!sql) return { status: 'no_seat' };
+
+    const normalizedEmail = data.email.trim().toLowerCase();
+
+    const result = await sql`
+        WITH organization_row AS (
+            SELECT id, seat_quantity
+            FROM organizations
+            WHERE id = ${data.organizationId}
+            FOR UPDATE
+        ),
+        existing_pending AS (
+            SELECT *
+            FROM organization_invitations
+            WHERE organization_id = ${data.organizationId}
+                AND lower(email) = ${normalizedEmail}
+                AND accepted_at IS NULL
+                AND expires_at > NOW()
+            ORDER BY created_at DESC
+            LIMIT 1
+        ),
+        seat_usage AS (
+            SELECT
+                (
+                    SELECT COUNT(*)::int
+                    FROM organization_members
+                    WHERE organization_id = ${data.organizationId}
+                ) AS used,
+                (
+                    SELECT COUNT(*)::int
+                    FROM organization_invitations
+                    WHERE organization_id = ${data.organizationId}
+                        AND accepted_at IS NULL
+                        AND expires_at > NOW()
+                ) AS pending
+        ),
+        inserted_invite AS (
+            INSERT INTO organization_invitations (
+                organization_id,
+                email,
+                role,
+                token,
+                invited_by_account_id,
+                expires_at
+            )
+            SELECT
+                ${data.organizationId},
+                ${normalizedEmail},
+                ${data.role || 'member'},
+                ${data.token},
+                ${data.invitedByAccountId},
+                ${data.expiresAt.toISOString()}
+            FROM organization_row, seat_usage
+            WHERE NOT EXISTS (SELECT 1 FROM existing_pending)
+                AND organization_row.seat_quantity > 0
+                AND (seat_usage.used + seat_usage.pending) < organization_row.seat_quantity
+            RETURNING *
+        )
+        SELECT
+            (SELECT row_to_json(existing_pending) FROM existing_pending LIMIT 1) AS existing_invite,
+            (SELECT row_to_json(inserted_invite) FROM inserted_invite LIMIT 1) AS created_invite
+    `;
+
+    const row = result[0] as { existing_invite?: unknown; created_invite?: unknown } | undefined;
+    const existingInvite = parseJsonColumn(row?.existing_invite);
+    if (existingInvite) {
+        return { status: 'existing', invite: existingInvite };
+    }
+
+    const createdInvite = parseJsonColumn(row?.created_invite);
+    if (createdInvite) {
+        return { status: 'created', invite: createdInvite };
+    }
+
+    return { status: 'no_seat' };
+}
+
 export async function getOrganizationInviteByToken(token: string) {
     if (!sql) return null;
 
@@ -351,6 +460,110 @@ export async function acceptOrganizationInvite(inviteId: string) {
     `;
 
     return result[0] || null;
+}
+
+export type AcceptOrganizationInviteSeatGuardResult =
+    | { status: 'accepted'; memberInserted: boolean }
+    | { status: 'already_accepted' }
+    | { status: 'no_seat' };
+
+/**
+ * Atomically accepts an invite and adds membership if needed and seats allow.
+ * Uses a row lock on the organization to serialize seat decisions.
+ */
+export async function acceptOrganizationInviteWithSeatGuard(data: {
+    organizationId: string;
+    inviteId: string;
+    accountId: string;
+    role: 'admin' | 'member';
+}): Promise<AcceptOrganizationInviteSeatGuardResult> {
+    if (!sql) return { status: 'no_seat' };
+
+    const result = await sql`
+        WITH organization_row AS (
+            SELECT id, seat_quantity
+            FROM organizations
+            WHERE id = ${data.organizationId}
+            FOR UPDATE
+        ),
+        invite_state AS (
+            SELECT accepted_at
+            FROM organization_invitations
+            WHERE id = ${data.inviteId}
+            LIMIT 1
+        ),
+        existing_member AS (
+            SELECT 1 AS present
+            FROM organization_members
+            WHERE organization_id = ${data.organizationId}
+                AND account_id = ${data.accountId}
+            LIMIT 1
+        ),
+        seat_usage AS (
+            SELECT COUNT(*)::int AS used
+            FROM organization_members
+            WHERE organization_id = ${data.organizationId}
+        ),
+        inserted_member AS (
+            INSERT INTO organization_members (organization_id, account_id, role)
+            SELECT
+                ${data.organizationId},
+                ${data.accountId},
+                ${data.role}
+            FROM organization_row, seat_usage
+            WHERE NOT EXISTS (SELECT 1 FROM existing_member)
+                AND organization_row.seat_quantity > 0
+                AND seat_usage.used < organization_row.seat_quantity
+            ON CONFLICT (organization_id, account_id) DO NOTHING
+            RETURNING id
+        ),
+        updated_invite AS (
+            UPDATE organization_invitations
+            SET accepted_at = NOW(), updated_at = NOW()
+            WHERE id = ${data.inviteId}
+                AND accepted_at IS NULL
+                AND (
+                    EXISTS (SELECT 1 FROM existing_member)
+                    OR EXISTS (SELECT 1 FROM inserted_member)
+                )
+            RETURNING id
+        )
+        SELECT
+            EXISTS(SELECT 1 FROM updated_invite) AS invite_accepted,
+            EXISTS(SELECT 1 FROM invite_state WHERE accepted_at IS NOT NULL) AS invite_already_accepted,
+            (
+                EXISTS (SELECT 1 FROM existing_member)
+                OR EXISTS (
+                    SELECT 1
+                    FROM organization_row, seat_usage
+                    WHERE organization_row.seat_quantity > 0
+                        AND seat_usage.used < organization_row.seat_quantity
+                )
+                OR EXISTS (SELECT 1 FROM inserted_member)
+            ) AS seat_or_existing_member_ok,
+            EXISTS(SELECT 1 FROM inserted_member) AS member_inserted
+    `;
+
+    const row = result[0] as {
+        invite_accepted?: boolean;
+        invite_already_accepted?: boolean;
+        seat_or_existing_member_ok?: boolean;
+        member_inserted?: boolean;
+    } | undefined;
+
+    if (row?.invite_accepted) {
+        return { status: 'accepted', memberInserted: Boolean(row.member_inserted) };
+    }
+
+    if (row?.invite_already_accepted) {
+        return { status: 'already_accepted' };
+    }
+
+    if (!row?.seat_or_existing_member_ok) {
+        return { status: 'no_seat' };
+    }
+
+    return { status: 'already_accepted' };
 }
 
 export async function addOrganizationMember(data: {

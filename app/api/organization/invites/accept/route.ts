@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { stackServerApp } from '@/lib/stack/server';
 import {
-    acceptOrganizationInvite,
-    addOrganizationMember,
+    acceptOrganizationInviteWithSeatGuard,
     getOrganizationById,
     getOrganizationInviteByToken,
-    getOrganizationSeatUsage,
     getOrCreateAccount,
     setActiveOrganization,
 } from '@/lib/neon/queries';
@@ -64,23 +62,25 @@ export async function POST(request: Request) {
             );
         }
 
-        const seatQuantity = Number(organization.seat_quantity) || 0;
-        const seatUsage = await getOrganizationSeatUsage(organizationId);
-        if (seatQuantity <= 0 || seatUsage.used >= seatQuantity) {
+        const acceptanceResult = await acceptOrganizationInviteWithSeatGuard({
+            organizationId,
+            inviteId: invite.id as string,
+            accountId: account.id,
+            role: invite.role === 'admin' ? 'admin' : 'member',
+        });
+
+        if (acceptanceResult.status === 'no_seat') {
             return NextResponse.json(
                 { error: 'No seats available', message: 'This organization has no available seats.' },
                 { status: 409 }
             );
         }
 
-        await addOrganizationMember({
-            organizationId,
-            accountId: account.id,
-            role: invite.role === 'admin' ? 'admin' : 'member',
-        });
+        if (acceptanceResult.status === 'already_accepted') {
+            return NextResponse.json({ error: 'Invite already accepted' }, { status: 400 });
+        }
 
         await setActiveOrganization(account.id, organizationId);
-        await acceptOrganizationInvite(invite.id);
 
         return NextResponse.json({ success: true, organizationId });
     } catch (error) {
@@ -88,4 +88,3 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
-

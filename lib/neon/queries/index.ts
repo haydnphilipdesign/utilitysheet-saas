@@ -72,9 +72,11 @@ export {
     clearActiveOrganizationIfMatches,
     getPendingOrganizationInvite,
     createOrganizationInvite,
+    createOrganizationInviteWithSeatGuard,
     getOrganizationInviteByToken,
     getOrganizationInvites,
     acceptOrganizationInvite,
+    acceptOrganizationInviteWithSeatGuard,
     addOrganizationMember,
 } from './organizations';
 

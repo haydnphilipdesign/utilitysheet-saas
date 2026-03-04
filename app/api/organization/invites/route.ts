@@ -5,13 +5,12 @@ import { sendOrganizationInviteEmail } from '@/lib/email/email-service';
 import { checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable, organizationInviteRatelimit } from '@/lib/rate-limit';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
 import {
-    createOrganizationInvite,
+    createOrganizationInviteWithSeatGuard,
     getOrganizationById,
     getOrganizationInvites,
     getOrganizationMemberRole,
     getOrganizationSeatUsage,
     getOrCreateAccount,
-    getPendingOrganizationInvite,
     isOrganizationMemberByEmail,
 } from '@/lib/neon/queries';
 
@@ -131,19 +130,31 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'User is already a member of this organization' }, { status: 409 });
         }
 
-        const existingInvite = await getPendingOrganizationInvite(organizationId, email);
         const baseUrl = getAppBaseUrl();
-        if (existingInvite) {
+        const token = generateToken();
+        const expiresAt = new Date(Date.now() + getInviteExpiryDays() * 24 * 60 * 60 * 1000);
+
+        const inviteResult = await createOrganizationInviteWithSeatGuard({
+            organizationId,
+            email,
+            role,
+            token,
+            invitedByAccountId: account.id,
+            expiresAt,
+        });
+
+        if (inviteResult.status === 'existing') {
+            const existingToken = typeof inviteResult.invite.token === 'string' ? inviteResult.invite.token : token;
             return NextResponse.json({
-                invite: existingInvite,
-                inviteUrl: `${baseUrl}/invite/${existingInvite.token}`,
+                invite: inviteResult.invite,
+                inviteUrl: `${baseUrl}/invite/${existingToken}`,
                 reused: true,
             }, { headers: getRateLimitHeaders(rateLimitResult) });
         }
 
-        const seatQuantity = Number(organization.seat_quantity) || 0;
-        const seatUsage = await getOrganizationSeatUsage(organizationId);
-        if (seatQuantity <= 0 || seatUsage.used + seatUsage.pendingInvites >= seatQuantity) {
+        if (inviteResult.status === 'no_seat') {
+            const seatQuantity = Number(organization.seat_quantity) || 0;
+            const seatUsage = await getOrganizationSeatUsage(organizationId);
             return NextResponse.json(
                 {
                     error: 'No seats available',
@@ -155,23 +166,9 @@ export async function POST(request: Request) {
             );
         }
 
-        const token = generateToken();
-        const expiresAt = new Date(Date.now() + getInviteExpiryDays() * 24 * 60 * 60 * 1000);
-
-        const invite = await createOrganizationInvite({
-            organizationId,
-            email,
-            role,
-            token,
-            invitedByAccountId: account.id,
-            expiresAt,
-        });
-
-        if (!invite) {
-            return NextResponse.json({ error: 'Failed to create invite' }, { status: 500 });
-        }
-
-        const inviteUrl = `${baseUrl}/invite/${token}`;
+        const invite = inviteResult.invite;
+        const inviteToken = typeof invite.token === 'string' ? invite.token : token;
+        const inviteUrl = `${baseUrl}/invite/${inviteToken}`;
 
         let emailSent = false;
         try {

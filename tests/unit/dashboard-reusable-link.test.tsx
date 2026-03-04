@@ -157,7 +157,7 @@ describe('dashboard reusable seller link', () => {
         const slugInput = await screen.findByDisplayValue('pro-slug');
         fireEvent.change(slugInput, { target: { value: 'updated-pro-slug' } });
 
-        fireEvent.click(screen.getByRole('button', { name: /save slug/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith('/api/intake-link', expect.objectContaining({ method: 'POST' }));
@@ -171,4 +171,3 @@ describe('dashboard reusable seller link', () => {
         expect(body.slug).toBe('updated-pro-slug');
     });
 });
-
