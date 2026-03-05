@@ -32,29 +32,29 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
     const advancedGroups = [
         {
             id: 'outdoor_irrigation',
-            label: 'Lawn + Irrigation',
-            helper: 'Lawn care, snow, and irrigation controls.',
+            label: 'Outdoor Care & Irrigation',
+            helper: 'Lawn/snow contacts, irrigation schedule, and seasonal notes.',
             icon: Flower2,
             moduleKeys: ['lawn_exterior', 'irrigation_seasonal_controls'] as AdvancedModuleKey[],
         },
         {
             id: 'smart_home_security',
-            label: 'Home Security',
-            helper: 'Alarm, thermostat, and smart devices.',
+            label: 'Security & Smart Devices',
+            helper: 'Alarm, thermostat, and doorbell details.',
             icon: ShieldCheck,
             moduleKeys: ['smart_home_security'] as AdvancedModuleKey[],
         },
         {
             id: 'service_providers',
-            label: 'Service Providers',
+            label: 'Home Service Contacts',
             helper: 'HVAC, pest control, and plumber contacts.',
             icon: Wrench,
             moduleKeys: ['service_providers'] as AdvancedModuleKey[],
         },
         {
             id: 'mailbox_access',
-            label: 'Mailbox + Access',
-            helper: 'Mailbox, breaker panel, and water shutoff info.',
+            label: 'Mailbox & Home Access',
+            helper: 'Mailbox location, parking notes, breaker panel, and water shutoff.',
             icon: KeyRound,
             moduleKeys: ['mailbox_access'] as AdvancedModuleKey[],
         },
@@ -315,10 +315,10 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                 <Wrench className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
                             </span>
                         </span>
-                        Additional home details
+                        Optional handoff details
                     </label>
                     <p className="text-xs text-muted-foreground -mt-1 sm:-mt-2">
-                        Choose any extra details you want to share.
+                        Choose any optional sections you want to complete.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                         {advancedGroups.map((group) => {

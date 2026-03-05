@@ -101,21 +101,21 @@ describe('SellerWizard advanced module step flow', () => {
 
         advanceToFirstAdvancedModule();
 
-        expect(screen.getByText('Mailbox & Access (1 of 2)')).toBeInTheDocument();
-        expect(screen.getByText('Mailbox & Access')).toBeInTheDocument();
+        expect(screen.getByText('Mailbox & Home Access (1 of 2)')).toBeInTheDocument();
+        expect(screen.getByText('Mailbox & Home Access')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));
-        expect(screen.getByText('Service Providers (2 of 2)')).toBeInTheDocument();
+        expect(screen.getByText('Home Service Contacts (2 of 2)')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /back/i }));
-        expect(screen.getByText('Mailbox & Access (1 of 2)')).toBeInTheDocument();
+        expect(screen.getByText('Mailbox & Home Access (1 of 2)')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));
         expect(screen.getByText('Review and Submit')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
-        expect(screen.getByText('Service Providers (2 of 2)')).toBeInTheDocument();
+        expect(screen.getByText('Home Service Contacts (2 of 2)')).toBeInTheDocument();
     });
 
     it('applies Home Basics module group toggles including mailbox access', () => {
@@ -138,8 +138,8 @@ describe('SellerWizard advanced module step flow', () => {
         fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
         fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
 
-        expect(screen.getByText('Service Providers (1 of 1)')).toBeInTheDocument();
-        expect(screen.queryByText('Mailbox & Access (1 of 2)')).not.toBeInTheDocument();
+        expect(screen.getByText('Home Service Contacts (1 of 1)')).toBeInTheDocument();
+        expect(screen.queryByText('Mailbox & Home Access (1 of 2)')).not.toBeInTheDocument();
     });
 
     it('supports per-module review edit flow and returns directly to review on continue/back', () => {
@@ -147,15 +147,15 @@ describe('SellerWizard advanced module step flow', () => {
 
         advanceToReview();
 
-        fireEvent.click(screen.getByTitle('Edit Mailbox & Access'));
-        expect(screen.getByText('Mailbox & Access (1 of 2)')).toBeInTheDocument();
+        fireEvent.click(screen.getByTitle('Edit Mailbox & Home Access'));
+        expect(screen.getByText('Mailbox & Home Access (1 of 2)')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /save & return to review/i })).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /save & return to review/i }));
         expect(screen.getByText('Review and Submit')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByTitle('Edit Service Providers'));
-        expect(screen.getByText('Service Providers (2 of 2)')).toBeInTheDocument();
+        fireEvent.click(screen.getByTitle('Edit Home Service Contacts'));
+        expect(screen.getByText('Home Service Contacts (2 of 2)')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
         expect(screen.getByText('Review and Submit')).toBeInTheDocument();
@@ -187,8 +187,8 @@ describe('SellerWizard advanced module step flow', () => {
 
         advanceToFirstAdvancedModule();
 
-        expect(screen.getByText('Service Providers (1 of 1)')).toBeInTheDocument();
-        expect(screen.queryByText('Mailbox & Access (1 of 2)')).not.toBeInTheDocument();
+        expect(screen.getByText('Home Service Contacts (1 of 1)')).toBeInTheDocument();
+        expect(screen.queryByText('Mailbox & Home Access (1 of 2)')).not.toBeInTheDocument();
     });
 
     it('hides excluded fields inside an enabled module', () => {
@@ -201,7 +201,7 @@ describe('SellerWizard advanced module step flow', () => {
 
         advanceToFirstAdvancedModule();
 
-        expect(screen.getByText('Service Providers (1 of 1)')).toBeInTheDocument();
+        expect(screen.getByText('Home Service Contacts (1 of 1)')).toBeInTheDocument();
         expect(screen.queryByLabelText('HVAC Provider')).not.toBeInTheDocument();
         expect(screen.getByLabelText('HVAC Phone')).toBeInTheDocument();
     });
@@ -211,6 +211,6 @@ describe('SellerWizard advanced module step flow', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /get started/i }));
 
-        expect(screen.queryByText(/additional home details/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/optional handoff details/i)).not.toBeInTheDocument();
     });
 });

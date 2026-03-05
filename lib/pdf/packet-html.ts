@@ -465,7 +465,7 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Advanced Utility Packet</title>
+    <title>Seller Transition Packet</title>
     <style>
         @page {
             size: Letter;
@@ -547,7 +547,7 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         </header>
 
         <section class="keep-together" style="margin-bottom: 14px;">
-            <h1 class="packet-title">Advanced Utility Packet</h1>
+            <h1 class="packet-title">Seller Transition Packet</h1>
             <div class="address-chip">${safeAddress}</div>
             ${showGenerationDate ? `<div class="muted">Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</div>` : ''}
         </section>

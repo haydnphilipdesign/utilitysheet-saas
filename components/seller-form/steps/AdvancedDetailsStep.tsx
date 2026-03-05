@@ -167,19 +167,6 @@ export function AdvancedDetailsStep({
                             },
                         })}
                     />)}
-                    {renderIfVisible('lawn_care_provider_email', <Field
-                        label="Lawn Care Email"
-                        type="email"
-                        inputMode="email"
-                        value={advanced.lawn_exterior?.lawn_care_provider_email}
-                        placeholder="service@example.com"
-                        onChange={(value) => updateAdvanced({
-                            lawn_exterior: {
-                                ...advanced.lawn_exterior,
-                                lawn_care_provider_email: value,
-                            },
-                        })}
-                    />)}
                     {renderIfVisible('snow_removal_provider_name', <Field
                         label="Snow Removal Provider"
                         value={advanced.lawn_exterior?.snow_removal_provider_name}

@@ -239,7 +239,6 @@ const advancedModuleDataSchema = z.object({
     lawn_exterior: z.object({
         lawn_care_provider_name: optionalNullableText(120).optional(),
         lawn_care_provider_phone: optionalNullableText(40).optional(),
-        lawn_care_provider_email: z.preprocess(nullToUndefined, z.string().trim().email().max(200).optional()),
         snow_removal_provider_name: optionalNullableText(120).optional(),
         snow_removal_provider_phone: optionalNullableText(40).optional(),
         lawn_exterior_notes: optionalNullableText(600).optional(),

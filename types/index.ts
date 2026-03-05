@@ -36,7 +36,6 @@ export type AdvancedPacketData = {
     lawn_exterior?: {
         lawn_care_provider_name?: string | null;
         lawn_care_provider_phone?: string | null;
-        lawn_care_provider_email?: string | null;
         snow_removal_provider_name?: string | null;
         snow_removal_provider_phone?: string | null;
         lawn_exterior_notes?: string | null;

@@ -69,15 +69,14 @@ describe('AdvancedDetailsStep module UX', () => {
         expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.error.issues)).toBe(true);
     });
 
-    it('uses tel/email input types for contact fields', () => {
+    it('uses tel input types for provider contact fields', () => {
         render(<StatefulAdvancedStep moduleKey="lawn_exterior" />);
 
         const lawnPhone = screen.getByLabelText('Lawn Care Phone');
-        const lawnEmail = screen.getByLabelText('Lawn Care Email');
         const snowPhone = screen.getByLabelText('Snow Removal Phone');
 
         expect(lawnPhone).toHaveAttribute('type', 'tel');
-        expect(lawnEmail).toHaveAttribute('type', 'email');
+        expect(screen.queryByLabelText('Lawn Care Email')).not.toBeInTheDocument();
         expect(snowPhone).toHaveAttribute('type', 'tel');
     });
 });
