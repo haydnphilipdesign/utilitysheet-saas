@@ -45,7 +45,7 @@ export function HowItWorks() {
                                 Share Your Link
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Share your seller link - the same link works for every property. Keep the default in Simple Utility Sheet mode, or set it to Advanced Utility Packet mode on Pro/Teams. Sellers tap it, enter the property address, and start right away.
+                                Share your seller link — the same one works for every property. Sellers tap it, enter the address, and go. Default is Simple mode; switch to Advanced on Pro/Teams.
                             </p>
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
@@ -71,7 +71,7 @@ export function HowItWorks() {
                                 Seller Confirms
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Sellers tap to confirm providers suggested by our AI. In Advanced Utility Packet mode, they can also fill modular transition details like mailbox/access, service providers, lawn/irrigation, and smart home/security notes.
+                                Sellers tap to confirm providers suggested by our AI. In Advanced mode, they also fill transition details like lawn care, security, service providers, and access info.
                             </p>
                         </div>
                         <motion.div
@@ -103,7 +103,7 @@ export function HowItWorks() {
                                 Packet Delivered - No Login Required
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                The moment the seller submits, the completed packet PDF automatically attaches to your notification email. You get the result in your inbox - no logging in, no downloading, no follow-up. Share the web view, download the PDF, and drop it into the file.
+                                The completed PDF auto-attaches to your notification email the moment the seller submits. Share the web view, download the PDF, and drop it into the file.
                             </p>
                         </div>
                         <motion.div

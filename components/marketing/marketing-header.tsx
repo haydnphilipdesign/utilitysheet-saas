@@ -74,7 +74,7 @@ export function MarketingHeader() {
                 <div className="flex items-center gap-2 sm:gap-4">
                     {user ? (
                         <Link href="/dashboard" className="hidden sm:block">
-                            <Button className="bg-slate-600 text-white hover:bg-slate-700 shadow-lg shadow-slate-500/20">
+                            <Button className="bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20">
                                 Dashboard
                             </Button>
                         </Link>
@@ -87,7 +87,7 @@ export function MarketingHeader() {
                             </Link>
                             <Link href="/auth/signup" className="hidden sm:block">
                                 <Button
-                                    className="bg-slate-600 text-white hover:bg-slate-700 shadow-lg shadow-slate-500/20"
+                                    className="bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20"
                                     data-testid="marketing-header-signup-cta"
                                     onClick={() =>
                                         trackEvent('landing_primary_cta_clicked', {
@@ -104,7 +104,7 @@ export function MarketingHeader() {
                             <Link href="/auth/signup" className="md:hidden">
                                 <Button
                                     size="sm"
-                                    className="h-9 bg-slate-600 text-white hover:bg-slate-700 px-3"
+                                    className="h-9 bg-emerald-600 text-white hover:bg-emerald-500 px-3"
                                     data-testid="marketing-header-mobile-signup-cta"
                                     onClick={() =>
                                         trackEvent('landing_primary_cta_clicked', {
@@ -184,7 +184,7 @@ export function MarketingHeader() {
                                 <Link
                                     href="/dashboard"
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="block px-4 py-3 text-sm font-medium text-center bg-slate-600 text-white hover:bg-slate-700 rounded-lg transition-colors"
+                                    className="block px-4 py-3 text-sm font-medium text-center bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg transition-colors"
                                 >
                                     Dashboard
                                 </Link>
@@ -207,7 +207,7 @@ export function MarketingHeader() {
                                             });
                                             setMobileMenuOpen(false);
                                         }}
-                                        className="block px-4 py-3 text-sm font-medium text-center bg-slate-600 text-white hover:bg-slate-700 rounded-lg transition-colors"
+                                        className="block px-4 py-3 text-sm font-medium text-center bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg transition-colors"
                                         data-testid="marketing-mobile-signup-cta"
                                     >
                                         Start Free

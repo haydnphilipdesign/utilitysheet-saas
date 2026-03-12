@@ -39,7 +39,7 @@ export default function DemoLayout({
                             </Button>
                         </Link>
                         <Link href="/auth/signup">
-                            <Button className="bg-slate-600 text-white hover:bg-slate-500 shadow-lg shadow-slate-500/20">
+                            <Button className="bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20">
                                 Get Started
                             </Button>
                         </Link>

@@ -101,12 +101,12 @@ export function PricingSection() {
                         <div
                             key={tier.name}
                             className={`relative rounded-2xl sm:rounded-3xl p-5 sm:p-8 border ${tier.popular
-                                ? 'bg-card/40 border-slate-500/50 shadow-2xl shadow-slate-500/10'
+                                ? 'bg-card/40 border-emerald-500/30 shadow-2xl shadow-emerald-500/10'
                                 : 'bg-card/20 border-border'
                                 } flex flex-col`}
                         >
                             {tier.popular && (
-                                <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-0.5 sm:py-1 bg-slate-600 text-white text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wide">
+                                <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-0.5 sm:py-1 bg-emerald-600 text-white text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wide">
                                     Most Popular
                                 </div>
                             )}
@@ -137,7 +137,7 @@ export function PricingSection() {
                                 <Button
                                     data-testid={`pricing-${tier.name.toLowerCase()}-cta`}
                                     className={`w-full h-11 sm:h-12 text-sm sm:text-base font-semibold active:scale-[0.98] ${tier.popular
-                                        ? 'bg-slate-600 text-white hover:bg-slate-700'
+                                        ? 'bg-emerald-600 text-white hover:bg-emerald-500'
                                         : 'bg-foreground text-background hover:bg-foreground/90'
                                         }`}
                                     onClick={() => {

@@ -1,5 +1,4 @@
 import { HeroSection } from '@/components/landing/HeroSection';
-import { TrustStrip } from '@/components/landing/TrustStrip';
 import { BeforeAfterSection } from '@/components/landing/BeforeAfterSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
 import { FeatureSection } from '@/components/landing/FeatureSection';
@@ -12,34 +11,31 @@ import { FinalCtaSection } from '@/components/landing/FinalCtaSection';
 export default function LandingPage() {
     return (
         <div className="relative overflow-hidden bg-background min-h-screen">
-            {/* Sticky CTA Banner (appears on scroll) */}
+            {/* Sticky CTA Banner (appears after scrolling past social proof) */}
             <StickyCTA />
 
-            {/* Hero Section - Pain-focused headline + Value prop */}
+            {/* Hero — outcome-focused headline + animated visual */}
             <HeroSection />
 
-            {/* Trust Strip - Credibility indicators */}
-            <TrustStrip />
-
-            {/* Before/After - Establish the pain before explaining the solution */}
-            <BeforeAfterSection />
-
-            {/* How It Works - Process visualization */}
-            <HowItWorks />
-
-            {/* Feature Section - Product capabilities */}
-            <FeatureSection />
-
-            {/* Social Proof - Real quote from founding customer + key metrics */}
+            {/* Social Proof — stats + real customer quote (builds trust early) */}
             <SocialProofBar />
 
-            {/* Pricing Section - Clear pricing tiers */}
+            {/* Before/After — pain vs. solution contrast */}
+            <BeforeAfterSection />
+
+            {/* How It Works — 3-step process visualization */}
+            <HowItWorks />
+
+            {/* Features — product capabilities grid */}
+            <FeatureSection />
+
+            {/* Pricing — clear tiers */}
             <PricingSection />
 
-            {/* FAQ Section - Common questions */}
+            {/* FAQ — top questions */}
             <FaqSection />
 
-            {/* Final CTA Section - Strong closing */}
+            {/* Final CTA — strong closing */}
             <FinalCtaSection />
         </div>
     );

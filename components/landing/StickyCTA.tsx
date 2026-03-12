@@ -15,7 +15,7 @@ export function StickyCTA() {
 
     useEffect(() => {
         const handleScroll = () => {
-            const mobileThreshold = window.innerWidth < 768 ? 420 : 600;
+            const mobileThreshold = window.innerWidth < 768 ? 800 : 1200;
             if (window.scrollY > mobileThreshold && !isDismissed) {
                 setIsVisible(true);
             } else {
@@ -66,7 +66,7 @@ export function StickyCTA() {
                                 <Link href="/auth/signup">
                                     <Button
                                         size="sm"
-                                        className="bg-white text-slate-700 hover:bg-slate-100 font-semibold h-10 px-4"
+                                        className="bg-emerald-500 text-white hover:bg-emerald-400 font-semibold h-10 px-4 shadow-md"
                                         data-testid="sticky-cta-signup"
                                         onClick={() =>
                                             trackEvent('landing_primary_cta_clicked', {

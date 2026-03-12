@@ -10,44 +10,44 @@ const features = [
     {
         icon: Link2,
         title: "Reusable Seller Link",
-        description: "One permanent link that works for every property. Share it in a text, your email signature, or a listing — sellers tap it, enter the address, and go. No new link to create each time. One-off requests are still available if you want to choose specific utilities per file."
+        description: "One permanent link for every property. Share it anywhere — sellers tap, enter the address, and go."
     },
     {
         icon: Layers,
-        title: "Simple + Advanced Packet Modes",
+        title: "Simple + Advanced Modes",
         tag: "New",
-        description: "Use Simple Utility Sheet mode for fast utility handoffs, or switch to Advanced Utility Packet mode to collect deeper transition details in modular sections."
+        description: "Use Simple mode for fast handoffs, or Advanced mode to collect transition details like lawn care, security, and access info."
     },
     {
         icon: MailCheck,
         title: "PDF Delivered to Your Inbox",
-        description: "When a seller submits, the completed utility sheet PDF automatically attaches to your notification email. You get the result without logging in — it’s just there in your inbox. On by default; manage the setting anytime."
+        description: "The completed PDF auto-attaches to your notification email the moment the seller submits. No login needed."
     },
     {
         icon: Sparkles,
         title: "AI-Powered Suggestions",
-        description: "We suggest likely providers based on the address. Sellers can confirm, search, or type a provider anytime."
+        description: "We suggest likely providers based on the property address. Sellers confirm with one tap."
     },
     {
         icon: FileText,
-        title: "Buyer-Ready Utility Sheet",
-        description: "Generate a clean web sheet and a downloadable PDF with provider names and contact details."
+        title: "Buyer-Ready Output",
+        description: "Clean web view and downloadable PDF with provider names and contact details — ready to share."
     },
     {
         icon: Bell,
         title: "Tracking + Reminders",
-        description: "See each request's status at a glance — Sent, In Progress, or Submitted — and nudge sellers with one click when they go quiet."
+        description: "See each request’s status at a glance and nudge sellers with one click when they go quiet."
     },
     {
         icon: ShieldCheck,
         title: "Secure by Design",
-        description: "Seller links are separate from share links. Utility sheet packets only become accessible after submission — never before."
+        description: "Seller links are separate from share links. Utility sheets only become accessible after submission."
     },
     {
         icon: Palette,
         title: "White-Label Branding",
         tag: "Pro + Teams",
-        description: "Add your logo and brand colors. Remove the UtilitySheet footer from share links and PDFs for a fully branded client experience."
+        description: "Your logo, your colors, no UtilitySheet footer. A fully branded experience for your clients."
     }
 ];
 
@@ -77,7 +77,7 @@ export function FeatureSection() {
                     <h2 className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Features</h2>
                     <h3 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Everything you need to stop the back-and-forth</h3>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-4">
-                        Built around the real TC workflow: collect utility providers fast, standardize the handoff, and keep deals moving.
+                        Collect utility providers fast, standardize every handoff, and keep your deals moving.
                     </p>
                 </div>
 

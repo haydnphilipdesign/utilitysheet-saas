@@ -31,14 +31,13 @@ export function BeforeAfterSection() {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 text-red-600 text-sm font-medium mb-4">
                         <Clock className="w-4 h-4" />
-                        <span>The old way creates avoidable utility busywork</span>
+                        <span>Sound familiar?</span>
                     </div>
                     <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground tracking-tight mb-4">
                         Still doing this the old way?
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                        Transaction coordinators waste hours every week on utility busywork.
-                        Here&apos;s what changes with UtilitySheet.
+                        Here&apos;s what changes when you switch to UtilitySheet.
                     </p>
                 </motion.div>
 

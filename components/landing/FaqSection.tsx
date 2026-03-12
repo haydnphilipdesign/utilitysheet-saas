@@ -13,60 +13,36 @@ import { trackEvent } from '@/lib/analytics/events';
 const faqs = [
     {
         question: 'Who is UtilitySheet for?',
-        answer: 'UtilitySheet is built for transaction coordinators and real estate agents who want a standardized, buyer-ready utility handoff\u2014without chasing sellers.',
+        answer: 'Transaction coordinators and real estate agents who want a standardized, buyer-ready utility handoff\u2014without chasing sellers.',
     },
     {
         question: 'Can I use one link for every property?',
-        answer: 'Yes \u2014 and this is one of the most powerful things about UtilitySheet. Your seller link works for any property. Add it to your email signature, include it in your standard seller texts, or paste it into your TC checklist. Sellers tap the link, enter the property address themselves, and complete the guided flow. On Pro/Teams, you can also set that reusable link to start in Advanced Utility Packet mode by default.',
+        answer: 'Yes. Your seller link works for any property. Add it to your email signature, texts, or TC checklist. Sellers tap the link, enter the address, and complete the guided flow. On Pro/Teams, you can set it to start in Advanced Utility Packet mode by default.',
     },
     {
         question: 'What is the Advanced Utility Packet?',
-        answer: 'Advanced Utility Packet is a modular version of the workflow for deeper seller handoff details. Along with utility providers, you can collect modules like Lawn + Irrigation, Home Security, Service Providers, and Mailbox + Access. It is available on Pro and Teams.',
+        answer: 'A modular version of the workflow for deeper handoff details. Along with utility providers, you can collect Lawn + Irrigation, Home Security, Service Providers, and Mailbox + Access modules. Available on Pro and Teams.',
     },
     {
-        question: 'Do I need to log in every time to get the utility sheet?',
-        answer: 'No. When a seller submits, the completed utility sheet PDF automatically attaches to your notification email. It shows up in your inbox without you doing anything \u2014 no logging in, no downloading, no follow-up. You can log in anytime to view submissions, track status, share the web link with buyers, or download the PDF again, but the email delivery means you always have the result the moment it\'s ready.',
+        question: 'Does the seller need an account or app?',
+        answer: 'No. Sellers open a secure link and complete the guided form on their phone\u2014no login, no app install, no bill uploads.',
     },
     {
-        question: 'Does the seller need an account?',
-        answer: 'No. Sellers open a secure link and complete the guided form on their phone\u2014no login and no app install.',
-    },
-    {
-        question: 'Do sellers need to upload bills or share account numbers?',
-        answer: 'No. UtilitySheet is designed to be quick and low-friction\u2014no bill uploads and no account numbers.',
-    },
-    {
-        question: 'What if the seller doesn\'t know a provider?',
-        answer: 'They can tap "Not sure" and keep moving, or search/type the provider name if they do know it. You\'ll still get a clean sheet with whatever they provided.',
-    },
-    {
-        question: 'Can UtilitySheet auto-attach the PDF to completion emails?',
-        answer: 'Yes, and it\'s on by default. When a seller submits, your completion notification email automatically includes the utility sheet PDF as an attachment. You don\'t have to configure anything \u2014 it works out of the box. You can turn it off or change the behavior in Settings > Notifications.',
-    },
-    {
-        question: 'Will every completion email always include a PDF attachment?',
-        answer: 'Usually yes when the attachment setting is enabled. If a submission is locked due to free-plan overage, or if PDF generation fails, the email still sends without the attachment.',
+        question: 'How does the PDF delivery work?',
+        answer: 'When a seller submits, the completed PDF automatically attaches to your notification email. You don\'t have to log in or download anything\u2014it just shows up in your inbox. This is on by default and can be managed in Settings.',
     },
     {
         question: 'How do provider suggestions work?',
-        answer: 'We suggest likely providers based on the address and utility type. Sellers can confirm with a tap or enter a provider manually if the suggestion isn\'t correct.',
-    },
-    {
-        question: 'What utilities can I collect?',
-        answer: 'Common categories like electric, gas, water, sewer, trash, internet, cable, and propane. One-off requests let you choose categories per file; the reusable link uses a standard set that covers the most common utilities. In Advanced Utility Packet mode, you can also collect optional transition-detail modules beyond utilities.',
+        answer: 'We suggest likely providers based on the address and utility type. Sellers can confirm with a tap, search, or type a provider manually if the suggestion isn\'t right.',
     },
     {
         question: 'What happens if I hit the free plan limit?',
-        answer: 'Sellers can still submit. New submissions beyond your free limit are saved as "Locked" in your dashboard until you upgrade (then they unlock automatically).',
+        answer: 'Sellers can still submit. New submissions beyond your limit are saved as "Locked" until you upgrade, then they unlock automatically.',
     },
     {
-        question: 'Can I remove UtilitySheet branding?',
-        answer: 'Yes. Pro and Teams accounts can remove the "Powered by UtilitySheet" footer from share links and PDFs (white-label).',
+        question: 'How long does it take to get started?',
+        answer: 'About 30 seconds. Sign up, grab your seller link, and send it. There\'s nothing to configure\u2014your link works immediately.',
     },
-    {
-        question: 'Do you offer Teams (multi-seat)?',
-        answer: 'Yes. Teams lets you invite multiple users under one organization. It\'s $7 per seat per month with a 3 seat minimum.',
-    }
 ];
 
 export function FaqSection() {

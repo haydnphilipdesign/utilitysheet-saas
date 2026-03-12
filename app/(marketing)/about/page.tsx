@@ -56,7 +56,7 @@ export default function AboutPage() {
 
                         <div className="mt-6 flex flex-col sm:flex-row gap-3">
                             <Link href="/auth/signup">
-                                <Button className="w-full sm:w-auto bg-slate-600 text-white hover:bg-slate-700">Start Free</Button>
+                                <Button className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-500">Start Free</Button>
                             </Link>
                             <Link href="/demo">
                                 <Button variant="outline" className="w-full sm:w-auto">Try Demo</Button>
@@ -259,7 +259,7 @@ export default function AboutPage() {
                                 Try UtilitySheet free and standardize your utility handoff.
                             </p>
                             <Link href="/auth/signup">
-                                <Button size="lg" className="bg-white text-slate-700 hover:bg-slate-50 h-14 px-10 text-xl font-bold shadow-xl shadow-black/10 hover:shadow-black/20 transform hover:-translate-y-1 transition-all">
+                                <Button size="lg" className="bg-emerald-500 text-white hover:bg-emerald-400 h-14 px-10 text-xl font-bold shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 transform hover:-translate-y-1 transition-all">
                                     Get Started Free
                                 </Button>
                             </Link>

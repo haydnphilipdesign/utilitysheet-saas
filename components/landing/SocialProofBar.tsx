@@ -87,9 +87,6 @@ export function SocialProofBar() {
                             <div className="text-sm text-slate-300">
                                 Transaction Coordinator &middot; PA Real Estate Support Services, LLC
                             </div>
-                            <div className="text-xs text-slate-400 mt-1 italic">
-                                The TC business that inspired UtilitySheet
-                            </div>
                         </div>
                     </div>
                 </motion.div>
