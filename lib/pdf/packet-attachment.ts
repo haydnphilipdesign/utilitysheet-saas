@@ -111,10 +111,10 @@ async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: s
                 headerTemplate: render.headerTemplate || '<div></div>',
                 footerTemplate: render.footerTemplate || '<div></div>',
                 margin: {
-                    top: '48px',
-                    bottom: '56px',
-                    left: '16px',
-                    right: '16px',
+                    top: '0.65in',
+                    bottom: '0.7in',
+                    left: '0.55in',
+                    right: '0.55in',
                 },
             });
 

@@ -55,6 +55,39 @@ describe('buildPacketPdfHtml meter number rendering', () => {
         expect(result.html).not.toContain('Meter #:');
     });
 
+    it('advanced mode does not render inline footer element', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'advanced',
+            request: {
+                id: 'req_adv_1',
+                property_address: '100 Test St, Town, ST 00000',
+                created_at: '2026-01-01T00:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+        });
+
+        expect(result.html).not.toContain('class="packet-footer"');
+        expect(result.html).not.toContain('<footer');
+        expect(result.footerTemplate).toContain('Powered by utilitysheet.com');
+        expect(result.footerTemplate).toContain('pageNumber');
+    });
+
+    it('advanced mode does not include @page CSS rule', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'advanced',
+            request: {
+                id: 'req_adv_2',
+                property_address: '200 Test St, Town, ST 00000',
+                created_at: '2026-01-01T00:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+        });
+
+        expect(result.html).not.toContain('@page');
+    });
+
     it('renders trash and recycling schedule details for trash rows', () => {
         const result = buildPacketPdfHtml({
             request: {

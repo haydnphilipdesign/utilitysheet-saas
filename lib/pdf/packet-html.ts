@@ -97,6 +97,16 @@ function safeHexColor(value: string | null | undefined, fallback: string): strin
     return fallback;
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+    const normalized = hex.length === 4
+        ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+        : hex;
+    const r = parseInt(normalized.slice(1, 3), 16);
+    const g = parseInt(normalized.slice(3, 5), 16);
+    const b = parseInt(normalized.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function sanitizeFilenamePart(value: string): string {
     const cleaned = value
         .trim()
@@ -397,6 +407,8 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const safeAddress = escapeHtml(clampBrandingText(request.property_address, 160));
     const safeContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
     const safeContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
+    const safeContactWebsite = escapeHtml(normalizeWebsiteHostname(brand?.contact_website));
+    const safePrimaryColorLight = hexToRgba(safePrimaryColor, 0.08);
     const showGenerationDate = brand?.show_generation_date ?? true;
     const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
     const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
@@ -467,65 +479,124 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Seller Transition Packet</title>
     <style>
-        @page {
-            size: Letter;
-            margin: 0.65in 0.55in 0.8in 0.55in;
-        }
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            color: #111827;
+            color: #1e293b;
             font-family: "Georgia", "Times New Roman", serif;
-            font-size: 11pt;
+            font-size: 10.5pt;
+            line-height: 1.45;
+            -webkit-font-smoothing: antialiased;
         }
         #packet-pdf-root { width: 100%; }
         .packet-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 2px solid #e5e7eb;
-            padding-bottom: 12px;
-            margin-bottom: 18px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 14px;
+            margin-bottom: 22px;
         }
         .brand-left { display: flex; align-items: center; gap: 12px; }
         .brand-mark {
-            width: 42px; height: 42px; border-radius: 8px;
+            width: 40px; height: 40px; border-radius: 6px;
             background: ${safePrimaryColor}; color: #ffffff;
-            display: flex; align-items: center; justify-content: center; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 13pt;
+            font-family: Arial, Helvetica, sans-serif;
+            letter-spacing: -0.02em;
         }
-        .brand-name { margin: 0; font-size: 15pt; font-weight: 700; }
+        .brand-name { margin: 0; font-size: 15pt; font-weight: 700; color: #0f172a; }
         .brand-contact { margin: 0; color: #4b5563; font-size: 9.5pt; line-height: 1.3; text-align: right; }
-        .packet-title { margin: 0 0 6px; font-size: 22pt; letter-spacing: 0.02em; }
-        .address-chip {
-            background: #f3f4f6; border: 1px solid #e5e7eb;
-            border-radius: 999px; padding: 6px 12px; display: inline-block;
-            margin-bottom: 10px; font-size: 10pt;
+        .packet-title {
+            margin: 0 0 8px;
+            font-size: 20pt;
+            letter-spacing: -0.01em;
+            font-weight: 700;
+            color: #0f172a;
         }
-        .packet-section { border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+        .address-chip {
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            border-radius: 6px; padding: 8px 16px; display: inline-block;
+            margin-bottom: 10px; font-size: 10pt;
+            font-weight: 500; color: #1e293b; letter-spacing: 0.01em;
+        }
+        .packet-section {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+        }
         .packet-section > h3 {
-            margin: 0; padding: 10px 12px;
-            border-bottom: 1px solid #e5e7eb; background: #f9fafb;
-            font-size: 11.5pt; font-weight: 700;
+            margin: 0;
+            padding: 10px 14px 10px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 11pt;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            border-left: 3px solid ${safePrimaryColor};
         }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
-        th { text-align: left; font-size: 8.5pt; text-transform: uppercase; color: #64748b; letter-spacing: 0.04em; }
+        th, td { padding: 8px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        th { text-align: left; font-size: 8pt; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; font-family: Arial, Helvetica, sans-serif; }
+        tbody tr:nth-child(even) { background: #f8fafc; }
         .utility-icon { margin-right: 8px; }
         .utility-name { text-transform: capitalize; font-weight: 600; }
         .muted { color: #64748b; font-size: 9pt; }
         .meter { margin-top: 4px; font-size: 9pt; color: #1f2937; }
-        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; padding: 12px; }
-        .detail-row { border: 1px solid #eef2f7; border-radius: 8px; padding: 8px; background: #ffffff; }
-        .detail-label { color: #64748b; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px; }
-        .detail-value { font-size: 10pt; line-height: 1.35; }
-        .empty-note, .empty { color: #6b7280; text-align: center; padding: 14px; }
-        .next-steps { padding: 12px 14px 14px; margin: 0; }
-        .next-steps li { margin: 0 0 8px; }
-        .keep-together { page-break-inside: avoid; break-inside: avoid; }
-        .packet-footer {
-            margin-top: 14px; color: #6b7280; font-size: 8.5pt; text-align: center;
-            border-top: 1px solid #e5e7eb; padding-top: 8px;
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            padding: 0;
         }
+        .detail-row {
+            padding: 10px 14px;
+            background: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
+            border-right: 1px solid #f1f5f9;
+        }
+        .detail-row:nth-child(even) { border-right: none; }
+        .detail-row:nth-last-child(-n+2) { border-bottom: none; }
+        .detail-label {
+            color: #64748b;
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 2px;
+            font-weight: 600;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .detail-value { font-size: 10pt; line-height: 1.4; color: #1e293b; }
+        .empty-note, .empty { color: #6b7280; text-align: center; padding: 14px; }
+        .next-steps { padding: 14px 16px; margin: 0; }
+        .next-step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .next-step-item:last-child { margin-bottom: 0; }
+        .step-badge {
+            flex-shrink: 0;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: ${safePrimaryColorLight};
+            color: ${safePrimaryColor};
+            display: flex; align-items: center; justify-content: center;
+            font-size: 8.5pt; font-weight: 700;
+            font-family: Arial, Helvetica, sans-serif;
+            margin-top: 1px;
+        }
+        .step-text {
+            flex: 1; min-width: 0;
+            word-break: break-word; overflow-wrap: anywhere;
+            font-size: 10pt;
+        }
+        .keep-together { page-break-inside: avoid; break-inside: avoid; }
     </style>
 </head>
 <body>
@@ -533,7 +604,7 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         <header class="packet-header keep-together">
             <div class="brand-left">
                 ${safeBrandLogoUrl
-                    ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" style="height: 42px; width: auto;" />`
+                    ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" style="height: 40px; width: auto;" />`
                     : `<div class="brand-mark">${escapeHtml(brand?.name ? String(brand.name).slice(0, 2).toUpperCase() : 'US')}</div>`
                 }
                 <div>
@@ -543,10 +614,11 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             </div>
             <div>
                 ${safeContactEmail ? `<p class="brand-contact">${safeContactEmail}</p>` : ''}
+                ${safeContactWebsite ? `<p class="brand-contact">${safeContactWebsite}</p>` : ''}
             </div>
         </header>
 
-        <section class="keep-together" style="margin-bottom: 14px;">
+        <section class="keep-together" style="margin-bottom: 20px;">
             <h1 class="packet-title">Seller Transition Packet</h1>
             <div class="address-chip">${safeAddress}</div>
             ${showGenerationDate ? `<div class="muted">Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</div>` : ''}
@@ -570,14 +642,16 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 
         <section class="packet-section keep-together">
             <h3>${nextStepsTitle}</h3>
-            <ol class="next-steps">
-                ${buyerNextSteps.map((step) => `<li>${step}</li>`).join('')}
-            </ol>
+            <div class="next-steps">
+                ${buyerNextSteps.map((step, index) => `
+                    <div class="next-step-item">
+                        <span class="step-badge">${index + 1}</span>
+                        <span class="step-text">${step}</span>
+                    </div>
+                `).join('')}
+            </div>
         </section>
 
-        <footer class="packet-footer">
-            ${showPoweredBy ? 'Powered by utilitysheet.com' : ''}
-        </footer>
     </div>
 </body>
 </html>
@@ -585,15 +659,15 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 
     const filename = `seller-transition-packet-${sanitizeFilenamePart(request.property_address.split(',')[0] || '')}.pdf`;
     const headerTemplate = `
-        <div style="width:100%; font-size:8px; color:#64748b; padding:0 0.5in; box-sizing:border-box; display:flex; justify-content:space-between;">
+        <div style="width:100%; font-size:8.5px; color:#94a3b8; padding:0 0.55in; box-sizing:border-box; display:flex; justify-content:space-between; font-family:Arial, Helvetica, sans-serif;">
             <span>${safeBrandName}</span>
             <span>${safeAddress}</span>
         </div>
     `;
     const footerTemplate = `
-        <div style="width:100%; font-size:8px; color:#64748b; padding:0 0.5in; box-sizing:border-box; display:flex; justify-content:space-between;">
+        <div style="width:100%; font-size:8.5px; color:#94a3b8; padding:0 0.55in; box-sizing:border-box; display:flex; justify-content:space-between; font-family:Arial, Helvetica, sans-serif;">
             <span>${showPoweredBy ? 'Powered by utilitysheet.com' : ''}</span>
-            <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+            <span style="letter-spacing:0.02em;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
         </div>
     `;
 
