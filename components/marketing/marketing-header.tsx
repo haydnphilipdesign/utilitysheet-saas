@@ -47,6 +47,7 @@ export function MarketingHeader() {
                             <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
                         </div>
                         <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
+                        <span className="ml-1.5 text-xs font-normal text-norma-muted">by Norma</span>
                     </Link>
                 </div>
 

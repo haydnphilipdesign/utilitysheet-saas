@@ -18,6 +18,7 @@ const MarketingHeader = dynamic(
                                 <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
                             </div>
                             <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
+                            <span className="ml-1.5 text-xs font-normal text-norma-muted">by Norma</span>
                         </Link>
                     </div>
                 </div>
@@ -90,19 +91,32 @@ export default function MarketingLayout({
                             </ul>
                         </div>
                     </div>
-                    <div className="mt-12 border-t border-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-                        <p>&copy; {new Date().getFullYear()} UtilitySheet. All rights reserved.</p>
-                        <p className="text-xs">
-                            Built by{' '}
+                    <div className="mt-12 border-t border-border pt-8 flex flex-col items-center gap-4 text-sm text-muted-foreground">
+                        <p className="text-xs text-norma-muted">
+                            Part of the Norma ecosystem &middot;{' '}
                             <a
-                                href="https://www.multimedium.dev"
+                                href="https://normatc.com"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="hover:text-foreground underline-offset-4 hover:underline transition-colors"
                             >
-                                Multimedium
+                                normatc.com
                             </a>
                         </p>
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
+                            <p>&copy; {new Date().getFullYear()} UtilitySheet. All rights reserved.</p>
+                            <p className="text-xs">
+                                Built by{' '}
+                                <a
+                                    href="https://www.multimedium.dev"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:text-foreground underline-offset-4 hover:underline transition-colors"
+                                >
+                                    Multimedium
+                                </a>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </footer>
