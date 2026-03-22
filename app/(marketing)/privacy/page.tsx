@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { createPageMetadata } from '@/lib/seo/site';
 
 const LAST_UPDATED = 'January 14, 2026';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
     title: 'Privacy Policy',
     description: 'How UtilitySheet collects, uses, and shares information when you use the service.',
-};
+    path: '/privacy',
+});
 
 export default function PrivacyPage() {
     return (

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useEffect, useRef } from 'react';
@@ -29,8 +30,13 @@ export function HowItWorks() {
         <section ref={sectionRef} id="how-it-works" className="scroll-mt-24 py-16 sm:py-24 lg:py-32 bg-background relative overflow-hidden">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="text-center mb-12 sm:mb-16 lg:mb-24">
-                    <h2 className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">Workflow</h2>
-                    <h3 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">How it works</h3>
+                    <p className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">How it works</p>
+                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+                        From seller utility form to buyer-ready utility sheet
+                    </h2>
+                    <p className="mt-4 max-w-3xl mx-auto text-base sm:text-lg text-muted-foreground">
+                        UtilitySheet gives real estate teams a repeatable utility handoff workflow: send one link, collect cleaner seller data, and deliver a finished utility sheet without the usual chasing.
+                    </p>
                 </div>
 
                 <div className="space-y-16 sm:space-y-24 lg:space-y-32">
@@ -42,17 +48,19 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">01.</span>
-                                Share Your Link
+                                Send your reusable seller link
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Share your seller link — the same one works for every property. Sellers tap it, enter the address, and go. Default is Simple mode; switch to Advanced on Pro/Teams.
+                                Share the same seller utility form link on every file. Sellers open it, enter the property address, and start without downloading an app or creating an account.
                             </p>
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
                             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
-                                <img
+                                <Image
                                     src="/landing/new-request.png"
-                                    alt="New Request Dashboard - Creating a utility request"
+                                    alt="UtilitySheet dashboard showing how to send a reusable seller utility information request"
+                                    width={1600}
+                                    height={1040}
                                     className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />
@@ -68,10 +76,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">02.</span>
-                                Seller Confirms
+                                Seller confirms utility providers
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Sellers tap to confirm providers suggested by our AI. In Advanced mode, they also fill transition details like lawn care, security, service providers, and access info.
+                                Sellers review suggested providers, correct anything that looks off, and submit a cleaner utility handoff. Advanced mode can also capture access details, service vendors, and move-related notes.
                             </p>
                         </div>
                         <motion.div
@@ -82,9 +90,11 @@ export function HowItWorks() {
                             className="flex-1 w-full max-w-[500px] lg:max-w-none"
                         >
                             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
-                                <img
+                                <Image
                                     src="/landing/seller-wizard.png"
-                                    alt="Seller Wizard Interface - Confirming Utility Providers"
+                                    alt="Seller utility information form with guided provider suggestions inside UtilitySheet"
+                                    width={1600}
+                                    height={1040}
                                     className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />
@@ -100,10 +110,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">03.</span>
-                                Packet Delivered - No Login Required
+                                Receive a polished utility sheet PDF
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                The completed PDF auto-attaches to your notification email the moment the seller submits. Share the web view, download the PDF, and drop it into the file.
+                                As soon as the seller submits, your team gets a clean web view and downloadable PDF. Share it with buyers, add it to the file, or pass it to support staff without more formatting work.
                             </p>
                         </div>
                         <motion.div
@@ -114,9 +124,11 @@ export function HowItWorks() {
                             className="flex-1 w-full max-w-[500px] lg:max-w-none"
                         >
                             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
-                                <img
+                                <Image
                                     src="/landing/utility-info-sheet.png"
-                                    alt="Generated Utility Info Sheet PDF"
+                                    alt="Generated utility sheet PDF for a real estate transaction"
+                                    width={1600}
+                                    height={1040}
                                     className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />

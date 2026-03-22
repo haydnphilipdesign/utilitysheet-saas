@@ -1,7 +1,10 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin, AdminAuthorizationError } from '@/lib/admin';
+import { noIndexMetadata } from '@/lib/seo/site';
 import { AdminLayoutContent } from './layout-content';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
+
+export const metadata = noIndexMetadata;
 
 export default async function AdminLayout({
     children,

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useUser } from '@stackframe/stack';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
@@ -44,7 +45,7 @@ export function MarketingHeader() {
                 <div className="flex items-center gap-2">
                     <Link href="/" className="flex items-center gap-2">
                         <div className="rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 p-1.5 shadow-lg shadow-slate-500/20">
-                            <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
+                            <Image src="/logo-sm.png" alt="UtilitySheet logo" width={20} height={20} className="h-5 w-5" />
                         </div>
                         <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
                         <span className="ml-1.5 text-xs font-normal text-norma-muted">by Norma</span>
@@ -52,16 +53,19 @@ export function MarketingHeader() {
                 </div>
 
                 <nav className="hidden items-center gap-6 lg:gap-8 md:flex">
-                    <Link href="/#how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        Workflow
+                    <Link href="/" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                        Home
                     </Link>
-                    <Link href="/#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                    <Link href="/features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                         Features
                     </Link>
-                    <Link href="/#pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                    <Link href="/how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                        How It Works
+                    </Link>
+                    <Link href="/pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                         Pricing
                     </Link>
-                    <Link href="/#faq" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+                    <Link href="/faq" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                         FAQ
                     </Link>
                     <Link href="/demo" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
@@ -139,28 +143,35 @@ export function MarketingHeader() {
                 <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
                     <nav className="mx-auto max-w-7xl px-4 py-4 space-y-2">
                         <Link
-                            href="/#how-it-works"
+                            href="/"
                             onClick={() => setMobileMenuOpen(false)}
                             className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                         >
-                            Workflow
+                            Home
                         </Link>
                         <Link
-                            href="/#features"
+                            href="/features"
                             onClick={() => setMobileMenuOpen(false)}
                             className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                         >
                             Features
                         </Link>
                         <Link
-                            href="/#pricing"
+                            href="/how-it-works"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                        >
+                            How It Works
+                        </Link>
+                        <Link
+                            href="/pricing"
                             onClick={() => setMobileMenuOpen(false)}
                             className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                         >
                             Pricing
                         </Link>
                         <Link
-                            href="/#faq"
+                            href="/faq"
                             onClick={() => setMobileMenuOpen(false)}
                             className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                         >

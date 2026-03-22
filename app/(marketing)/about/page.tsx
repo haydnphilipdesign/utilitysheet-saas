@@ -2,12 +2,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { createPageMetadata } from '@/lib/seo/site';
 import { Zap, Shield, Users, Clock, Heart, Code, Quote } from 'lucide-react';
 
-export const metadata: Metadata = {
-    title: 'About',
-    description: 'How UtilitySheet was built from real transaction coordination workflows, including Simple Utility Sheet and Advanced Utility Packet modes.',
-};
+export const metadata: Metadata = createPageMetadata({
+    title: 'About UtilitySheet',
+    description:
+        'Learn how UtilitySheet was built from real transaction coordination workflows to make seller utility collection faster, cleaner, and easier to share.',
+    path: '/about',
+});
 
 export default function AboutPage() {
     return (

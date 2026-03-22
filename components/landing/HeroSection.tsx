@@ -252,18 +252,18 @@ export function HeroSection() {
                             className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm font-medium mb-4 sm:mb-6 border border-emerald-600/20"
                         >
                             <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            <span>Saves 30+ minutes per file</span>
+                            <span>Saves 30+ minutes per transaction</span>
                         </motion.div>
 
                         {/* Headline */}
                         <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-6xl font-black tracking-tight text-foreground mb-4 sm:mb-6">
-                            Collect every seller&apos;s utility info
-                            <span className="text-emerald-600 dark:text-emerald-400 block mt-1">in 2 minutes.</span>
+                            Utility sheet software for transaction coordinators and agents
+                            <span className="text-emerald-600 dark:text-emerald-400 block mt-1">that collects seller utility info fast.</span>
                         </h1>
 
                         {/* Value Proposition — one clean sentence */}
                         <p className="mx-auto lg:mx-0 max-w-xl text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-8 leading-relaxed">
-                            Share one reusable link — sellers confirm providers with AI-powered suggestions, and a clean PDF lands in your inbox automatically.
+                            Send one seller utility information form link, let sellers confirm providers with guided suggestions, and generate a polished utility sheet PDF for every real estate transaction.
                         </p>
 
                         {/* CTAs */}
@@ -322,7 +322,7 @@ export function HeroSection() {
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                3 free requests/month
+                                3 free requests per month
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />

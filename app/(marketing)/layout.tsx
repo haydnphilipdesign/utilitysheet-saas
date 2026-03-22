@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 
 // Dynamically import the header to avoid SSR issues with useUser
 const MarketingHeader = dynamic(
@@ -15,7 +16,7 @@ const MarketingHeader = dynamic(
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 p-1.5 shadow-lg shadow-slate-500/20">
-                                <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
+                                <Image src="/logo-sm.png" alt="UtilitySheet logo" width={20} height={20} className="h-5 w-5" />
                             </div>
                             <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
                             <span className="ml-1.5 text-xs font-normal text-norma-muted">by Norma</span>
@@ -42,16 +43,16 @@ export default function MarketingLayout({
 
             <footer className="border-t border-border bg-background py-12">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
+                    <div className="grid grid-cols-2 gap-8 md:grid-cols-6 lg:grid-cols-6">
                         <div className="col-span-2 lg:col-span-2">
                             <Link href="/" className="flex items-center gap-2">
                                 <div className="rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 p-1.5 shadow-lg shadow-slate-500/20">
-                                    <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-5 w-5" />
+                                    <Image src="/logo-sm.png" alt="UtilitySheet logo" width={20} height={20} className="h-5 w-5" />
                                 </div>
                                 <span className="text-xl font-bold">UtilitySheet</span>
                             </Link>
                             <p className="mt-4 max-w-xs text-sm text-muted-foreground leading-relaxed">
-                                The utility handoff tool for real estate transaction coordinators. One seller link. Simple or advanced packet output. Every time.
+                                Utility sheet software for transaction coordinators, agents, and support teams. One seller link, cleaner utility handoffs, and polished web plus PDF output.
                             </p>
                             <div className="mt-5 flex flex-wrap gap-3">
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
@@ -67,11 +68,20 @@ export default function MarketingLayout({
                         <div>
                             <h3 className="text-sm font-semibold text-foreground">Product</h3>
                             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                                <li><Link href="/#how-it-works" className="hover:text-foreground transition-colors">Workflow</Link></li>
-                                <li><Link href="/#features" className="hover:text-foreground transition-colors">Features</Link></li>
-                                <li><Link href="/demo" className="hover:text-foreground transition-colors">Demo</Link></li>
-                                <li><Link href="/#pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
-                                <li><Link href="/#faq" className="hover:text-foreground transition-colors">FAQ</Link></li>
+                                <li><Link href="/features" className="hover:text-foreground transition-colors">Features</Link></li>
+                                <li><Link href="/how-it-works" className="hover:text-foreground transition-colors">How It Works</Link></li>
+                                <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
+                                <li><Link href="/faq" className="hover:text-foreground transition-colors">FAQ</Link></li>
+                                <li><Link href="/demo" className="hover:text-foreground transition-colors">Interactive Demo</Link></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-foreground">Use Cases</h3>
+                            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                                <li><Link href="/utility-sheet-for-transaction-coordinators" className="hover:text-foreground transition-colors">For Transaction Coordinators</Link></li>
+                                <li><Link href="/utility-sheet-for-real-estate-agents" className="hover:text-foreground transition-colors">For Real Estate Agents</Link></li>
+                                <li><Link href="/seller-utility-information-form" className="hover:text-foreground transition-colors">Seller Utility Information Form</Link></li>
+                                <li><Link href="/real-estate-closing-utility-checklist" className="hover:text-foreground transition-colors">Closing Utility Checklist</Link></li>
                             </ul>
                         </div>
                         <div>

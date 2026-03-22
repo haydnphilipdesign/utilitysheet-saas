@@ -6,65 +6,59 @@ import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics/events';
+import { pricingTiers } from '@/lib/marketing-content';
 
 const tiers = [
     {
-        name: 'Starter',
-        price: 'Free',
-        description: 'Try it on real transactions — no credit card, no time limit.',
+        ...pricingTiers[0],
+        period: undefined,
+        cta: 'Start for Free',
+        popular: false,
         features: [
             '3 unlocked requests per month',
-            'Reusable seller link (seller enters address)',
+            'Reusable seller link',
             'Simple Utility Sheet mode',
-            'Buyer-ready PDF + share link',
-            'Seller submission completion email notifications',
-            'Optional completion-email PDF attachment (on by default)',
-            'Over-limit submissions saved as locked (attachment resumes when unlocked)',
-            'UtilitySheet footer on share links',
+            'Buyer-ready PDF and share link',
+            'Completion email notifications',
+            'Optional PDF attachment on completion emails',
+            'Saved over-limit submissions',
+            'UtilitySheet branding on shared links',
         ],
-        cta: 'Start for Free',
-        href: '/auth/signup',
-        popular: false
     },
     {
-        name: 'Pro',
+        ...pricingTiers[1],
         price: '$9',
         period: '/month',
-        description: 'Unlimited requests, your branding. The full experience for solo TCs and agents.',
+        cta: 'Get Started',
+        popular: true,
         features: [
             'Unlimited requests',
             'Custom branded link',
             'Advanced Utility Packet mode',
-            'Choose advanced module defaults on your reusable link',
-            'Custom branding (logo + colors)',
-            'Branded completion-email PDF attachments',
+            'Custom branding',
+            'Branded PDF attachments',
             'Unlock locked submissions',
-            'Remove "Powered by UtilitySheet"',
+            'Remove UtilitySheet footer',
             'Priority support',
-            'Single-seat (1 user)'
+            'Single-seat account',
         ],
-        cta: 'Get Started',
-        href: '/auth/signup?plan=pro',
-        popular: true
     },
     {
-        name: 'Teams',
+        ...pricingTiers[2],
         price: '$7',
         period: '/seat/mo',
-        description: 'For brokerages and teams. 3-seat minimum — starts at $21/month.',
+        cta: 'Start Teams',
+        popular: false,
         features: [
             'Everything in Pro',
             'Shared organization workspace',
-            'Invite members (admin + member roles)',
-            'Seat-based billing (3 seat minimum)',
-            'Org-wide Advanced Utility Packet defaults',
-            'Branded completion-email PDF attachments across the org',
-            'Priority support'
+            'Invite members and assign roles',
+            'Seat-based billing with 3-seat minimum',
+            'Org-wide packet defaults',
+            'Branded output across the team',
+            'Priority support',
         ],
-        cta: 'Start Teams',
-        href: '/auth/signup?plan=teams',
-        popular: false
-    }
+    },
 ];
 
 export function PricingSection() {
@@ -89,10 +83,12 @@ export function PricingSection() {
         <section ref={sectionRef} id="pricing" className="scroll-mt-24 py-16 sm:py-24 lg:py-32 bg-background border-t border-border/50">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-10 sm:mb-16 lg:mb-20">
-                    <h2 className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">Pricing</h2>
-                    <h3 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight mb-3 sm:mb-4">Simple, transparent pricing</h3>
+                    <p className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">Pricing</p>
+                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight mb-3 sm:mb-4">
+                        Transparent pricing for utility sheet workflows
+                    </h2>
                     <p className="text-muted-foreground text-sm sm:text-lg max-w-2xl mx-auto">
-                        Choose the plan that best fits your business needs. No hidden fees.
+                        Start free, upgrade when you need branded packets or team features, and keep every transaction moving with a consistent utility handoff process.
                     </p>
                 </div>
 

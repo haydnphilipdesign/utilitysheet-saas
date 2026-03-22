@@ -1,12 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { createPageMetadata } from '@/lib/seo/site';
 import { Sparkles } from 'lucide-react';
 
-export const metadata: Metadata = {
-    title: 'Demo',
-    description: 'Try the seller experience: see suggested utility providers and the guided confirmation flow.',
-};
+export const metadata: Metadata = createPageMetadata({
+    title: 'Interactive Demo',
+    description:
+        'Try the UtilitySheet seller experience with a guided utility information form, address-based provider suggestions, and no-login demo flow.',
+    path: '/demo',
+    keywords: [
+        'utility sheet demo',
+        'seller utility form demo',
+        'real estate utility software demo',
+    ],
+});
 
 export default function DemoLayout({
     children,

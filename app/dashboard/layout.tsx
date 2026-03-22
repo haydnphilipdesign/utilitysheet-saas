@@ -2,7 +2,10 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { stackServerApp } from '@/lib/stack/server';
 import { getOrCreateAccount } from '@/lib/neon/queries';
+import { noIndexMetadata } from '@/lib/seo/site';
 import { DashboardLayoutContent } from './layout-content';
+
+export const metadata = noIndexMetadata;
 
 function DashboardLoadingFallback() {
     return (

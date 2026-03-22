@@ -5,49 +5,50 @@ import { useInView } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 import { Bell, FileText, Layers, Link2, MailCheck, Palette, ShieldCheck, Sparkles } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
+import { featureHighlights } from '@/lib/marketing-content';
 
 const features = [
     {
         icon: Link2,
-        title: "Reusable Seller Link",
-        description: "One permanent link for every property. Share it anywhere — sellers tap, enter the address, and go."
+        title: featureHighlights[0].title,
+        description: featureHighlights[0].description,
     },
     {
         icon: Layers,
-        title: "Simple + Advanced Modes",
-        tag: "New",
-        description: "Use Simple mode for fast handoffs, or Advanced mode to collect transition details like lawn care, security, and access info."
+        title: featureHighlights[1].title,
+        tag: 'Advanced',
+        description: featureHighlights[1].description,
     },
     {
         icon: MailCheck,
-        title: "PDF Delivered to Your Inbox",
-        description: "The completed PDF auto-attaches to your notification email the moment the seller submits. No login needed."
+        title: 'PDF delivered to your inbox',
+        description: 'The completed PDF can auto-attach to the notification email the moment the seller submits, so nothing gets lost in the shuffle.',
     },
     {
         icon: Sparkles,
-        title: "AI-Powered Suggestions",
-        description: "We suggest likely providers based on the property address. Sellers confirm with one tap."
+        title: featureHighlights[2].title,
+        description: featureHighlights[2].description,
     },
     {
         icon: FileText,
-        title: "Buyer-Ready Output",
-        description: "Clean web view and downloadable PDF with provider names and contact details — ready to share."
+        title: 'Buyer-ready utility sheet output',
+        description: featureHighlights[3].description,
     },
     {
         icon: Bell,
-        title: "Tracking + Reminders",
-        description: "See each request’s status at a glance and nudge sellers with one click when they go quiet."
+        title: featureHighlights[4].title,
+        description: featureHighlights[4].description,
     },
     {
         icon: ShieldCheck,
-        title: "Secure by Design",
+        title: 'Secure by design',
         description: "Seller links are separate from share links. Utility sheets only become accessible after submission."
     },
     {
         icon: Palette,
-        title: "White-Label Branding",
-        tag: "Pro + Teams",
-        description: "Your logo, your colors, no UtilitySheet footer. A fully branded experience for your clients."
+        title: 'White-label branding',
+        tag: 'Pro + Teams',
+        description: featureHighlights[5].description,
     }
 ];
 
@@ -74,10 +75,12 @@ export function FeatureSection() {
         <section ref={sectionRef} id="features" className="scroll-mt-24 py-24 bg-background px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-7xl">
                 <div className="text-center mb-20">
-                    <h2 className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Features</h2>
-                    <h3 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Everything you need to stop the back-and-forth</h3>
+                    <p className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Features</p>
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                        Real estate utility sheet features that keep closings moving
+                    </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-4">
-                        Collect utility providers fast, standardize every handoff, and keep your deals moving.
+                        Collect seller utility information faster, standardize every handoff, and deliver cleaner buyer-facing utility packets.
                     </p>
                 </div>
 

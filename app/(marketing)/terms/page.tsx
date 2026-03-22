@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { createPageMetadata } from '@/lib/seo/site';
 
 const LAST_UPDATED = 'January 14, 2026';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
     title: 'Terms of Service',
     description: 'UtilitySheet terms governing access to and use of the UtilitySheet service.',
-};
+    path: '/terms',
+});
 
 export default function TermsPage() {
     return (

@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+
 import { HeroSection } from '@/components/landing/HeroSection';
 import { BeforeAfterSection } from '@/components/landing/BeforeAfterSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
@@ -7,10 +9,41 @@ import { PricingSection } from '@/components/landing/PricingSection';
 import { FaqSection } from '@/components/landing/FaqSection';
 import { StickyCTA } from '@/components/landing/StickyCTA';
 import { FinalCtaSection } from '@/components/landing/FinalCtaSection';
+import { ForTcsSection } from '@/components/landing/ForTcsSection';
+import { AudienceSection } from '@/components/landing/AudienceSection';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { faqItems } from '@/lib/marketing-content';
+import { createPageMetadata } from '@/lib/seo/site';
+import {
+    faqPageSchema,
+    organizationSchema,
+    softwareApplicationSchema,
+    websiteSchema,
+} from '@/lib/seo/schema';
+
+export const metadata: Metadata = createPageMetadata({
+    title: 'Utility Sheet Software for Transaction Coordinators and Agents',
+    description:
+        'UtilitySheet helps transaction coordinators and real estate agents collect seller utility information, generate polished utility sheet PDFs, and keep closings moving.',
+    path: '/',
+});
 
 export default function LandingPage() {
     return (
         <div className="relative overflow-hidden bg-background min-h-screen">
+            <JsonLd
+                data={[
+                    organizationSchema(),
+                    websiteSchema(),
+                    softwareApplicationSchema({
+                        path: '/',
+                        description:
+                            'Utility sheet software for transaction coordinators and real estate agents that collects seller utility information and generates polished PDFs for closing.',
+                    }),
+                    faqPageSchema(faqItems),
+                ]}
+            />
+
             {/* Sticky CTA Banner (appears after scrolling past social proof) */}
             <StickyCTA />
 
@@ -28,6 +61,12 @@ export default function LandingPage() {
 
             {/* Features — product capabilities grid */}
             <FeatureSection />
+
+            {/* Audience pages — internal links for high-intent searches */}
+            <AudienceSection />
+
+            {/* Use case content — TC workflow language */}
+            <ForTcsSection />
 
             {/* Pricing — clear tiers */}
             <PricingSection />
