@@ -67,6 +67,7 @@ function createDashboardFetchMock(options: FetchOptions) {
                 },
                 account: {
                     subscription_status: options.plan === 'pro' ? 'pro' : 'free',
+                    onboarding_completed_at: null,
                 },
                 activeOrganization: options.plan === 'team' ? { subscription_status: 'team' } : null,
             });
@@ -129,6 +130,7 @@ describe('dashboard reusable seller link', () => {
         render(<DashboardPage />);
 
         await screen.findByText('Reusable Seller Link');
+        expect(screen.getByText('Your seller link is ready')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /copy link/i }));
         await waitFor(() => {

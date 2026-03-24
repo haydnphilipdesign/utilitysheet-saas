@@ -66,6 +66,14 @@ type AnalyticsEventMap = {
   onboarding_completed: BasePayload & {
     destination: string;
   };
+  progressive_setup_viewed: BasePayload & {
+    source: string;
+  };
+  progressive_setup_task_completed: BasePayload & {
+    source: string;
+    task: string;
+    method: string;
+  };
   first_request_started: BasePayload & {
     source: string;
   };

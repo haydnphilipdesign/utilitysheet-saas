@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { vi, beforeEach, describe, it, expect } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import OnboardingPage from '@/app/onboarding/page';
 
@@ -19,15 +19,6 @@ vi.mock('next/image', () => ({
     },
 }));
 
-vi.mock('framer-motion', () => ({
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-    motion: {
-        div: ({ children, ...rest }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => (
-            <div {...rest}>{children}</div>
-        ),
-    },
-}));
-
 vi.mock('sonner', () => ({
     toast: {
         error: vi.fn(),
@@ -37,6 +28,10 @@ vi.mock('sonner', () => ({
 
 vi.mock('@/lib/analytics/events', () => ({
     trackEvent: vi.fn(),
+}));
+
+vi.mock('@/components/branding/UtilitySheetPdfPreview', () => ({
+    default: () => <div data-testid="branding-preview">Preview</div>,
 }));
 
 function jsonResponse(body: unknown, status = 200) {
@@ -49,265 +44,122 @@ function jsonResponse(body: unknown, status = 200) {
 beforeEach(() => {
     routerPush.mockReset();
     routerRefresh.mockReset();
+    vi.clearAllMocks();
+    Object.defineProperty(navigator, 'clipboard', {
+        value: {
+            writeText: vi.fn().mockResolvedValue(undefined),
+        },
+        configurable: true,
+    });
 });
 
-describe('onboarding branding step', () => {
-    it('can skip onboarding from step 1 and go to dashboard', async () => {
-        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = typeof input === 'string' ? input : (input as Request).url;
-            const method = (init?.method || 'GET').toUpperCase();
+function createFetchMock() {
+    return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : String(input);
+        const method = (init?.method || 'GET').toUpperCase();
 
-            if (url === '/api/account' && method === 'GET') {
-                return jsonResponse({
-                    account: {
-                        id: 'acc_1',
-                        full_name: 'Test User',
-                        email: 'test@example.com',
-                        onboarding_completed_at: null,
-                        active_organization_id: null,
-                    },
-                    activeOrganization: null,
-                    organizations: [],
-                    usage: { used: 0, limit: 3, plan: 'free' },
-                });
-            }
+        if (url === '/api/account' && method === 'GET') {
+            return jsonResponse({
+                account: {
+                    id: 'acc_1',
+                    full_name: 'Test User',
+                    email: 'test@example.com',
+                    onboarding_completed_at: null,
+                    active_organization_id: 'org_1',
+                    phone: '555-555-5555',
+                },
+                activeOrganization: { id: 'org_1', name: 'Test Org' },
+            });
+        }
 
-            if (url === '/api/onboarding/complete' && method === 'POST') {
-                return jsonResponse({ account: { id: 'acc_1', onboarding_completed_at: new Date().toISOString() } }, 200);
-            }
-
-            return jsonResponse({ error: 'Not found' }, 404);
-        });
-
-        vi.stubGlobal('fetch', fetchMock);
-
-        render(<OnboardingPage />);
-
-        await screen.findByText('Welcome, Test!');
-        fireEvent.click(screen.getByRole('button', { name: /skip setup and go straight to dashboard/i }));
-
-        await waitFor(() => {
-            expect(fetchMock).toHaveBeenCalledWith('/api/onboarding/complete', expect.objectContaining({ method: 'POST' }));
-            expect(routerPush).toHaveBeenCalledWith('/dashboard');
-        });
-    });
-
-    it('continues from branding by updating the default profile via PUT /api/branding/:id', async () => {
-        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = typeof input === 'string' ? input : (input as Request).url;
-            const method = (init?.method || 'GET').toUpperCase();
-
-            if (url === '/api/account' && method === 'GET') {
-                return jsonResponse({
-                    account: {
-                        id: 'acc_1',
-                        full_name: 'Test User',
-                        email: 'test@example.com',
-                        onboarding_completed_at: null,
-                        active_organization_id: 'org_1',
-                    },
-                    activeOrganization: { id: 'org_1', name: 'Test Org' },
-                    organizations: [{ id: 'org_1', name: 'Test Org', role: 'admin' }],
-                    usage: { used: 0, limit: 3, plan: 'free' },
-                });
-            }
-
-            if (url === '/api/branding' && method === 'GET') {
-                return jsonResponse([
-                    {
-                        id: 'brand_1',
-                        name: 'Test Org',
-                        primary_color: '#10b981',
-                        secondary_color: '#00a169',
-                        is_default: true,
-                    },
-                ]);
-            }
-
-            if (url === '/api/branding/brand_1' && method === 'PUT') {
-                return jsonResponse({
+        if (url === '/api/branding' && method === 'GET') {
+            return jsonResponse([
+                {
                     id: 'brand_1',
                     name: 'Test Org',
                     primary_color: '#10b981',
-                    secondary_color: '#00a169',
+                    secondary_color: '#059669',
+                    contact_name: 'Test User',
+                    contact_email: 'test@example.com',
+                    contact_phone: '555-555-5555',
+                    contact_website: '',
+                    logo_url: null,
                     is_default: true,
-                });
-            }
+                },
+            ]);
+        }
 
-            return jsonResponse({ error: 'Not found' }, 404);
-        });
+        if (url === '/api/intake-link' && method === 'GET') {
+            return jsonResponse({
+                intakeLink: {
+                    slug: 'test-link',
+                    url: 'https://utilitysheet.com/i/test-link',
+                    is_active: true,
+                },
+            });
+        }
 
+        if (url === '/api/onboarding/complete' && method === 'POST') {
+            return jsonResponse({ account: { id: 'acc_1', onboarding_completed_at: new Date().toISOString() } }, 200);
+        }
+
+        if (url === '/api/branding/brand_1' && method === 'PUT') {
+            return jsonResponse({ id: 'brand_1' });
+        }
+
+        return jsonResponse({ error: 'Not found' }, 404);
+    });
+}
+
+describe('progressive onboarding', () => {
+    it('centers the seller link and does not show manual request creation', async () => {
+        const fetchMock = createFetchMock();
         vi.stubGlobal('fetch', fetchMock);
 
         render(<OnboardingPage />);
 
-        await screen.findByLabelText('Brand Display Name');
-        fireEvent.click(screen.getByRole('button', { name: /save & continue/i }));
+        await screen.findByText(/your seller link is ready/i);
+        expect(screen.queryByText(/create my first request/i)).not.toBeInTheDocument();
+    });
+
+    it('copies the seller link and marks onboarding complete', async () => {
+        const fetchMock = createFetchMock();
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<OnboardingPage />);
+
+        await screen.findByDisplayValue('https://utilitysheet.com/i/test-link');
+        fireEvent.click(screen.getByRole('button', { name: /copy link/i }));
+
+        await waitFor(() => {
+            expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://utilitysheet.com/i/test-link');
+            expect(fetchMock).toHaveBeenCalledWith('/api/onboarding/complete', expect.objectContaining({ method: 'POST' }));
+        });
+    });
+
+    it('saves branding via the existing brand profile endpoint', async () => {
+        const fetchMock = createFetchMock();
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<OnboardingPage />);
+
+        const brandInput = await screen.findByLabelText('Brand Display Name');
+        fireEvent.change(brandInput, { target: { value: 'Updated Org' } });
+        fireEvent.click(screen.getByRole('button', { name: /save branding/i }));
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith('/api/branding/brand_1', expect.objectContaining({ method: 'PUT' }));
         });
-        await screen.findByLabelText(/your name/i);
-
-        expect(fetchMock).toHaveBeenCalledWith('/api/branding/brand_1', expect.objectContaining({ method: 'PUT' }));
-        expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/onboarding/brand-profile'))).toBe(false);
     });
 
-    it('skips branding without attempting to create a new profile', async () => {
-        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = typeof input === 'string' ? input : (input as Request).url;
-            const method = (init?.method || 'GET').toUpperCase();
-
-            if (url === '/api/account' && method === 'GET') {
-                return jsonResponse({
-                    account: {
-                        id: 'acc_1',
-                        full_name: 'Test User',
-                        email: 'test@example.com',
-                        onboarding_completed_at: null,
-                        active_organization_id: 'org_1',
-                    },
-                    activeOrganization: { id: 'org_1', name: 'Test Org' },
-                    organizations: [{ id: 'org_1', name: 'Test Org', role: 'admin' }],
-                    usage: { used: 0, limit: 3, plan: 'free' },
-                });
-            }
-
-            if (url === '/api/branding' && method === 'GET') {
-                return jsonResponse([
-                    {
-                        id: 'brand_1',
-                        name: 'Test Org',
-                        primary_color: '#475569',
-                        secondary_color: '#0ea5e9',
-                        is_default: true,
-                    },
-                ]);
-            }
-
-            if (method === 'PUT' && url.startsWith('/api/branding/')) {
-                return jsonResponse({ error: 'Unexpected PUT' }, 500);
-            }
-
-            return jsonResponse({ error: 'Not found' }, 404);
-        });
-
+    it('can finish setup and go to the dashboard', async () => {
+        const fetchMock = createFetchMock();
         vi.stubGlobal('fetch', fetchMock);
 
         render(<OnboardingPage />);
 
-        await screen.findByLabelText('Brand Display Name');
-        fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
-
-        await waitFor(() => {
-            expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/branding')).toBe(true);
-        });
-        await screen.findByLabelText(/your name/i);
-
-        expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'PUT')).toBe(false);
-        expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/onboarding/brand-profile'))).toBe(false);
-    });
-
-    it('can skip onboarding from the branding step and go to dashboard', async () => {
-        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = typeof input === 'string' ? input : (input as Request).url;
-            const method = (init?.method || 'GET').toUpperCase();
-
-            if (url === '/api/account' && method === 'GET') {
-                return jsonResponse({
-                    account: {
-                        id: 'acc_1',
-                        full_name: 'Test User',
-                        email: 'test@example.com',
-                        onboarding_completed_at: null,
-                        active_organization_id: 'org_1',
-                    },
-                    activeOrganization: { id: 'org_1', name: 'Test Org' },
-                    organizations: [{ id: 'org_1', name: 'Test Org', role: 'admin' }],
-                    usage: { used: 0, limit: 3, plan: 'free' },
-                });
-            }
-
-            if (url === '/api/branding' && method === 'GET') {
-                return jsonResponse([
-                    {
-                        id: 'brand_1',
-                        name: 'Test Org',
-                        primary_color: '#10b981',
-                        secondary_color: '#00a169',
-                        is_default: true,
-                    },
-                ]);
-            }
-
-            if (url === '/api/onboarding/complete' && method === 'POST') {
-                return jsonResponse({ account: { id: 'acc_1', onboarding_completed_at: new Date().toISOString() } }, 200);
-            }
-
-            return jsonResponse({ error: 'Not found' }, 404);
-        });
-
-        vi.stubGlobal('fetch', fetchMock);
-
-        render(<OnboardingPage />);
-        await screen.findByLabelText('Brand Display Name');
-
-        fireEvent.click(screen.getByRole('button', { name: /exit setup/i }));
-
-        await waitFor(() => {
-            expect(fetchMock).toHaveBeenCalledWith('/api/onboarding/complete', expect.objectContaining({ method: 'POST' }));
-            expect(routerPush).toHaveBeenCalledWith('/dashboard');
-        });
-    });
-
-    it('can skip onboarding from step 3 and go to dashboard', async () => {
-        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = typeof input === 'string' ? input : (input as Request).url;
-            const method = (init?.method || 'GET').toUpperCase();
-
-            if (url === '/api/account' && method === 'GET') {
-                return jsonResponse({
-                    account: {
-                        id: 'acc_1',
-                        full_name: 'Test User',
-                        email: 'test@example.com',
-                        onboarding_completed_at: null,
-                        active_organization_id: 'org_1',
-                    },
-                    activeOrganization: { id: 'org_1', name: 'Test Org' },
-                    organizations: [{ id: 'org_1', name: 'Test Org', role: 'admin' }],
-                    usage: { used: 0, limit: 3, plan: 'free' },
-                });
-            }
-
-            if (url === '/api/branding' && method === 'GET') {
-                return jsonResponse([
-                    {
-                        id: 'brand_1',
-                        name: 'Test Org',
-                        primary_color: '#475569',
-                        secondary_color: '#0ea5e9',
-                        is_default: true,
-                    },
-                ]);
-            }
-
-            if (url === '/api/onboarding/complete' && method === 'POST') {
-                return jsonResponse({ account: { id: 'acc_1', onboarding_completed_at: new Date().toISOString() } }, 200);
-            }
-
-            return jsonResponse({ error: 'Not found' }, 404);
-        });
-
-        vi.stubGlobal('fetch', fetchMock);
-
-        render(<OnboardingPage />);
-
-        await screen.findByLabelText('Brand Display Name');
-        fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
-
-        await screen.findByLabelText(/your name/i);
-        fireEvent.click(screen.getByRole('button', { name: /exit setup/i }));
+        await screen.findByText(/your seller link is ready/i);
+        fireEvent.click(screen.getByRole('button', { name: /go to dashboard/i }));
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith('/api/onboarding/complete', expect.objectContaining({ method: 'POST' }));

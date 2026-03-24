@@ -186,6 +186,20 @@ CREATE TABLE IF NOT EXISTS product_updates (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS activation_outreach_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    auth_user_id TEXT,
+    email TEXT NOT NULL,
+    campaign TEXT NOT NULL DEFAULT 'activation_reengagement',
+    stage TEXT NOT NULL CHECK (stage IN ('after_15m', 'after_1d')),
+    status TEXT NOT NULL CHECK (status IN ('sent', 'skipped', 'failed')),
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(account_id, campaign, stage)
+);
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_requests_account_id ON requests(account_id);
 CREATE INDEX IF NOT EXISTS idx_requests_public_token ON requests(public_token);
@@ -210,6 +224,8 @@ CREATE INDEX IF NOT EXISTS idx_product_updates_published_at ON product_updates(p
 CREATE INDEX IF NOT EXISTS idx_org_invites_org_id ON organization_invitations(organization_id);
 CREATE INDEX IF NOT EXISTS idx_org_invites_token ON organization_invitations(token);
 CREATE INDEX IF NOT EXISTS idx_org_invites_expires_at ON organization_invitations(expires_at);
+CREATE INDEX IF NOT EXISTS idx_activation_outreach_logs_account_campaign_stage ON activation_outreach_logs(account_id, campaign, stage);
+CREATE INDEX IF NOT EXISTS idx_activation_outreach_logs_sent_at ON activation_outreach_logs(sent_at DESC);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -95,6 +95,24 @@ export async function getAccountById(accountId: string) {
     return result[0] || null;
 }
 
+export async function getAccountsByAuthUserIds(authUserIds: string[]) {
+    if (!sql || authUserIds.length === 0) return [];
+
+    const result = await sql`
+        SELECT id, auth_user_id, email, onboarding_completed_at, created_at
+        FROM accounts
+        WHERE auth_user_id = ANY(${authUserIds}::text[])
+    `;
+
+    return result as Array<{
+        id: string;
+        auth_user_id: string | null;
+        email: string;
+        onboarding_completed_at: string | null;
+        created_at: string;
+    }>;
+}
+
 /**
  * Get account by Stripe customer ID
  */

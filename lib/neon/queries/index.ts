@@ -18,6 +18,7 @@ export {
     updateAccount,
     setOnboardingCompleted,
     getAccountById,
+    getAccountsByAuthUserIds,
     getAccountByStripeCustomerId,
     updateAccountStripeCustomer,
     updateAccountSubscription,
@@ -108,3 +109,9 @@ export {
     slugifyIntakeSlug,
     validateIntakeSlug,
 } from './intake-links';
+
+export type { ActivationOutreachCandidate } from './activation-outreach';
+export {
+    getDueActivationOutreachCandidates,
+    recordActivationOutreachAttempt,
+} from './activation-outreach';

@@ -776,7 +776,7 @@ export async function sendFeedbackEmail({
             return { success: false, error: 'Configuration error' };
         }
 
-        const { data, error } = await getResend().emails.send({
+        const { error } = await getResend().emails.send({
             from: 'UtilitySheet Feedback <feedback@utilitysheet.com>',
             to: feedbackEmail,
             replyTo: userEmail,
@@ -1359,6 +1359,150 @@ function generateWeeklySummaryHtml({
     `.trim();
 }
 
+interface SendActivationReminderEmailParams {
+    toEmail: string;
+    fullName?: string;
+    stage: 'after_15m' | 'after_1d';
+    setupUrl: string;
+    dashboardUrl: string;
+    sellerLinkUrl: string;
+}
+
+function generateActivationReminderHtml(params: {
+    fullName?: string;
+    stage: 'after_15m' | 'after_1d';
+    setupUrl: string;
+    dashboardUrl: string;
+    sellerLinkUrl: string;
+}) {
+    const greeting = params.fullName ? `Hi ${firstNameFromFullName(params.fullName) || params.fullName},` : 'Hello,';
+    const badgeText = params.stage === 'after_1d' ? 'Quick reminder' : 'Your link is ready';
+    const title = params.stage === 'after_1d' ? 'Your reusable seller link is still waiting' : 'Your reusable seller link is ready';
+    const intro =
+        params.stage === 'after_1d'
+            ? 'UtilitySheet already created your reusable seller link. You can share the same link across listings, email signatures, and text templates without creating a request first.'
+            : 'Your UtilitySheet workspace is live and your reusable seller link is already created. You can start using it right away without finishing a long setup flow.';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(title)}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #0f766e 0%, #065f46 100%); padding: 28px 32px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">UtilitySheet</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 24px 32px 0; text-align: center;">
+                            <div style="display: inline-block; background-color: #ecfdf5; color: #065f46; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;">
+                                ${escapeHtml(badgeText)}
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 24px 32px 32px;">
+                            <p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">${escapeHtml(greeting)}</p>
+                            <p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">${escapeHtml(intro)}</p>
+
+                            <div style="background-color: #f9fafb; border-radius: 10px; padding: 18px; margin: 20px 0; border-left: 4px solid #0f766e;">
+                                <p style="margin: 0 0 8px; color: #111827; font-size: 14px; font-weight: 700;">Your reusable seller link</p>
+                                <p style="margin: 0; color: #065f46; font-size: 14px; line-height: 1.6; word-break: break-all;">${escapeHtml(params.sellerLinkUrl)}</p>
+                            </div>
+
+                            <p style="margin: 0 0 20px; color: #374151; font-size: 15px; line-height: 1.6;">
+                                Open your setup page to copy the link, add your contact details, or head straight into the dashboard.
+                            </p>
+
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 8px;">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        ${renderBulletproofButton({
+        href: escapeHtml(params.setupUrl),
+        label: 'Open My Seller Link',
+        backgroundColor: '#0f766e',
+        borderRadius: 10,
+        fontWeight: 700,
+        paddingX: 28,
+        paddingY: 14,
+        minWidth: 240,
+    })}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 20px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                                Prefer to skip setup? Go straight to your dashboard:<br>
+                                <a href="${escapeHtml(params.dashboardUrl)}" style="color: #0f766e; word-break: break-all;">${escapeHtml(params.dashboardUrl)}</a>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 18px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">Sent via UtilitySheet.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    `.trim();
+}
+
+export async function sendActivationReminderEmail({
+    toEmail,
+    fullName,
+    stage,
+    setupUrl,
+    dashboardUrl,
+    sellerLinkUrl,
+}: SendActivationReminderEmailParams): Promise<{ success: boolean; error?: string }> {
+    const subject =
+        stage === 'after_1d'
+            ? 'Your UtilitySheet seller link is ready to share'
+            : 'Your UtilitySheet seller link is ready';
+    const html = generateActivationReminderHtml({
+        fullName,
+        stage,
+        setupUrl,
+        dashboardUrl,
+        sellerLinkUrl,
+    });
+
+    try {
+        const { error } = await getResend().emails.send({
+            from: 'UtilitySheet <noreply@utilitysheet.com>',
+            to: toEmail,
+            subject,
+            html,
+        });
+
+        if (error) {
+            console.error('Failed to send activation reminder email:', error);
+            return { success: false, error: error.message };
+        }
+
+        console.log('Activation reminder email sent successfully');
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending activation reminder email:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+        };
+    }
+}
+
 // =============================================================================
 // Testing Exports (for unit tests only)
 // =============================================================================
@@ -1368,4 +1512,5 @@ export const __testing = {
     generateTCCompletionNotificationHtml,
     generateContactResolutionAlertHtml,
     generateWeeklySummaryHtml,
+    generateActivationReminderHtml,
 };

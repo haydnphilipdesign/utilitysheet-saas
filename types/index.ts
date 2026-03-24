@@ -172,6 +172,22 @@ export interface Account {
     updated_at: string;
 }
 
+export type ActivationOutreachStage = 'after_15m' | 'after_1d';
+export type ActivationOutreachStatus = 'sent' | 'skipped' | 'failed';
+
+export interface ActivationOutreachLog {
+    id: string;
+    account_id: string;
+    auth_user_id: string | null;
+    email: string;
+    campaign: string;
+    stage: ActivationOutreachStage;
+    status: ActivationOutreachStatus;
+    metadata: Record<string, unknown> | null;
+    sent_at: string | null;
+    created_at: string;
+}
+
 export interface AdminUserRow extends Account {
     active_organization_subscription_status?: OrganizationPlan | null;
     active_organization_name?: string | null;

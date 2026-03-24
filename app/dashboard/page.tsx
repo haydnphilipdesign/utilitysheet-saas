@@ -86,6 +86,7 @@ export default function DashboardPage() {
     const [updatesLoading, setUpdatesLoading] = useState(true);
     const [dismissedUpdateId, setDismissedUpdateId] = useState<string | null>(null);
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
+    const [showSetupPrompt, setShowSetupPrompt] = useState(false);
     const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string } | null>(null);
     const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
     const [intakeCompanyName, setIntakeCompanyName] = useState('');
@@ -137,6 +138,7 @@ export default function DashboardPage() {
                     if (accountData.usage) {
                         setUsageInfo(accountData.usage);
                     }
+                    setShowSetupPrompt(!accountData.account?.onboarding_completed_at);
                 }
                 if (intakeLinkRes.ok) {
                     const intakeData = await intakeLinkRes.json().catch(() => ({}));
@@ -410,6 +412,48 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Reusable link hero */}
+                    {showSetupPrompt && intakeLink?.url && (
+                        <Card className="border-border/70 bg-card/55 backdrop-blur-sm">
+                            <CardHeader className="pb-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <CardTitle className="text-foreground text-lg">Your seller link is ready</CardTitle>
+                                        <CardDescription className="mt-1 text-sm">
+                                            UtilitySheet now works best when you share your reusable link first. Optional setup lives separately, so you can start using the product right away.
+                                        </CardDescription>
+                                    </div>
+                                    <Badge variant="outline" className="w-fit border-emerald-500/30 text-emerald-700 dark:text-emerald-300">
+                                        URL-first onboarding
+                                    </Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex flex-col gap-3 sm:flex-row">
+                                <Button
+                                    type="button"
+                                    onClick={handleCopyDashboardIntakeLink}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                >
+                                    {copiedDashboardLink ? (
+                                        <>
+                                            <Check className="mr-2 h-4 w-4" />
+                                            Copied
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="mr-2 h-4 w-4" />
+                                            Copy Seller Link
+                                        </>
+                                    )}
+                                </Button>
+                                <Link href="/onboarding">
+                                    <Button type="button" variant="outline" className="w-full sm:w-auto">
+                                        Finish Optional Setup
+                                    </Button>
+                                </Link>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <Card className="relative overflow-hidden border-emerald-500/30 bg-card/60 backdrop-blur-sm">
                         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
                         <CardHeader className="relative px-4 sm:px-6 pb-4">
@@ -785,15 +829,27 @@ export default function DashboardPage() {
                                                         <p className="text-sm text-muted-foreground mb-8">
                                                             {searchQuery
                                                                 ? `We couldn't find any requests matching "${searchQuery}". Try a different search term.`
-                                                                : "You haven't created any requests yet. Start by sending a link to your seller to collect their utility information."}
+                                                                : "You haven't created any requests yet. Start by sharing your reusable seller link so sellers can enter the property address themselves."}
                                                         </p>
                                                         {!searchQuery && (
-                                                            <Link href="/dashboard/requests/new">
-                                                                <Button className="bg-slate-600 hover:bg-slate-700 text-white shadow-lg shadow-slate-500/20">
-                                                                    <Plus className="mr-2 h-4 w-4" />
-                                                                    Create First Request
-                                                                </Button>
-                                                            </Link>
+                                                            <div className="flex flex-col gap-2 sm:flex-row">
+                                                                {intakeLink?.url ? (
+                                                                    <Button
+                                                                        type="button"
+                                                                        onClick={handleCopyDashboardIntakeLink}
+                                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+                                                                    >
+                                                                        <Copy className="mr-2 h-4 w-4" />
+                                                                        Copy Seller Link
+                                                                    </Button>
+                                                                ) : null}
+                                                                <Link href="/dashboard/requests/new">
+                                                                    <Button variant="outline" className="border-border text-foreground hover:bg-muted">
+                                                                        <Plus className="mr-2 h-4 w-4" />
+                                                                        Create Manual Request
+                                                                    </Button>
+                                                                </Link>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </TableCell>
