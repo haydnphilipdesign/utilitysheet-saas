@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import { NormaSuitePanel } from '@/components/norma-suite-panel';
 
 // Dynamically import the header to avoid SSR issues with useUser
 const MarketingHeader = dynamic(
@@ -101,6 +102,7 @@ export default function MarketingLayout({
                             </ul>
                         </div>
                     </div>
+                    <NormaSuitePanel variant="footer" />
                     <div className="mt-12 border-t border-border pt-8 flex flex-col items-center gap-4 text-sm text-muted-foreground">
                         <p className="text-xs text-norma-muted">
                             Part of the Norma ecosystem &middot;{' '}

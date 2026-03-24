@@ -17,6 +17,7 @@ import {
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { EmailVerificationBanner } from '@/components/email-verification-banner';
+import { NormaSuitePanel } from '@/components/norma-suite-panel';
 import { LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X, Megaphone, Plus } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import { trackActivationResponse, trackDashboardFirstViewOnce } from '@/lib/analytics/activation';
@@ -275,6 +276,9 @@ export function DashboardLayoutContent({
             {/* Main Content */}
             <main className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <EmailVerificationBanner />
+                <div className="mb-4 sm:mb-6">
+                    <NormaSuitePanel variant="strip" />
+                </div>
                 {children}
             </main>
         </div>
