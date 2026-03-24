@@ -9,6 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics/events';
+import {
+    consumePendingSignupVerification,
+    trackActivationResponse,
+} from '@/lib/analytics/activation';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -24,7 +29,7 @@ export default function LoginPage() {
         return nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
     };
 
-    const getPostAuthRoute = async (): Promise<string | null> => {
+    const getPostAuthRoute = async (source: string): Promise<string | null> => {
         const safeNext = getSafeNext();
         if (safeNext) return safeNext;
         try {
@@ -33,15 +38,11 @@ export default function LoginPage() {
             if (!response.ok) return '/dashboard';
 
             const data = await response.json().catch(() => ({}));
-            const account = data?.account || {};
-            const hasCompletionFlag = Object.prototype.hasOwnProperty.call(account, 'onboarding_completed_at');
-
-            if (hasCompletionFlag) {
-                return account.onboarding_completed_at ? '/dashboard' : '/onboarding';
+            trackActivationResponse(data, source);
+            if (consumePendingSignupVerification()) {
+                trackEvent('signup_verified', { source });
             }
-
-            // Fallback for databases that haven't run the onboarding completion migration yet
-            return account.active_organization_id ? '/dashboard' : '/onboarding';
+            return '/dashboard';
         } catch (e) {
             console.error(e);
             return '/dashboard';
@@ -53,7 +54,7 @@ export default function LoginPage() {
 
         (async () => {
             try {
-                const destination = await getPostAuthRoute();
+                const destination = await getPostAuthRoute('login_page_existing_session');
                 if (!destination) return;
                 if (cancelled) return;
 
@@ -85,11 +86,11 @@ export default function LoginPage() {
                 throw new Error(result.error.message || 'Invalid email or password');
             }
 
-            const destination = (await getPostAuthRoute()) || '/dashboard';
+            const destination = (await getPostAuthRoute('login_form_post_auth')) || '/dashboard';
             router.push(destination);
             router.refresh();
-        } catch (err: any) {
-            setError(err.message || 'Failed to sign in');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to sign in');
             setLoading(false);
         }
     };
@@ -101,8 +102,8 @@ export default function LoginPage() {
             await stackClientApp.signInWithOAuth('google', {
                 returnTo: getSafeNext() || '/dashboard',
             });
-        } catch (err: any) {
-            setError(err.message || 'Failed to sign in with Google');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
             setGoogleLoading(false);
         }
     };

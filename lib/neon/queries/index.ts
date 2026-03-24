@@ -13,6 +13,7 @@
 
 // Account queries
 export {
+    ensureAccountRecord,
     getOrCreateAccount,
     updateAccount,
     setOnboardingCompleted,
@@ -99,6 +100,7 @@ export {
 
 // Intake link queries
 export {
+    ensureIntakeLink,
     getOrCreateIntakeLink,
     getIntakeLinkBySlug,
     updateIntakeLinkSlug,

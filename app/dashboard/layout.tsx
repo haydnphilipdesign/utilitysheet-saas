@@ -1,9 +1,9 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { stackServerApp } from '@/lib/stack/server';
-import { getOrCreateAccount } from '@/lib/neon/queries';
 import { noIndexMetadata } from '@/lib/seo/site';
 import { DashboardLayoutContent } from './layout-content';
+import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 
 export const metadata = noIndexMetadata;
 
@@ -28,10 +28,9 @@ export default async function DashboardLayout({
         redirect('/auth/login');
     }
 
-    const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-    const hasCompletionFlag = account && Object.prototype.hasOwnProperty.call(account, 'onboarding_completed_at');
-    if (hasCompletionFlag && !account.onboarding_completed_at) {
-        redirect('/onboarding');
+    const activationState = await ensureAccountActivation(user);
+    if (!activationState?.account) {
+        redirect('/auth/login');
     }
 
     return (

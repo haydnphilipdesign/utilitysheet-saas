@@ -86,6 +86,11 @@ export async function getIntakeLinkBySlug(slug: string): Promise<IntakeLink | nu
 }
 
 export async function getOrCreateIntakeLink(accountId: string): Promise<IntakeLink | null> {
+    const result = await ensureIntakeLink(accountId);
+    return result?.intakeLink || null;
+}
+
+export async function ensureIntakeLink(accountId: string): Promise<{ intakeLink: IntakeLink | null; created: boolean } | null> {
     if (!sql) return null;
 
     const existing = await sql`
@@ -93,7 +98,7 @@ export async function getOrCreateIntakeLink(accountId: string): Promise<IntakeLi
         WHERE account_id = ${accountId}
         LIMIT 1
     `;
-    if (existing.length > 0) return existing[0] as IntakeLink;
+    if (existing.length > 0) return { intakeLink: existing[0] as IntakeLink, created: false };
 
     // Default slug is intentionally random (so Pro/Teams can upgrade for a custom slug).
     // Use a short, URL-safe, lowercase token.
@@ -117,7 +122,7 @@ export async function getOrCreateIntakeLink(accountId: string): Promise<IntakeLi
         RETURNING *
     `;
 
-    return (created[0] as IntakeLink) || null;
+    return { intakeLink: (created[0] as IntakeLink) || null, created: true };
 }
 
 export async function updateIntakeLinkSlug(accountId: string, slug: string): Promise<IntakeLink | null> {

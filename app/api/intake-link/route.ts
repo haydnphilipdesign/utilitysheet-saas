@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import {
-    getOrCreateAccount,
     getAccountOrganizations,
     getOrCreateIntakeLink,
     propagateAdvancedModuleDefaultsToOpenRequests,
@@ -10,6 +9,7 @@ import {
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { stackServerApp } from '@/lib/stack/server';
 import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode } from '@/types';
+import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -34,10 +34,11 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-        if (!account) {
+        const activationState = await ensureAccountActivation(user);
+        if (!activationState) {
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
+        const { account, activeOrganization } = activationState;
 
         const intakeLink = await getOrCreateIntakeLink(account.id);
         if (!intakeLink) {
@@ -45,7 +46,9 @@ export async function GET() {
         }
 
         const organizations = await getAccountOrganizations(account.id);
-        const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
+        const activeOrg = activeOrganization ||
+            (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) ||
+            null;
 
         const baseUrl = getAppBaseUrl();
         const url = `${baseUrl}/i/${intakeLink.slug}`;
@@ -81,13 +84,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-        if (!account) {
+        const activationState = await ensureAccountActivation(user);
+        if (!activationState) {
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
+        const { account, activeOrganization } = activationState;
 
         const organizations = await getAccountOrganizations(account.id);
-        const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
+        const activeOrg = activeOrganization ||
+            (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) ||
+            null;
 
         const allowed = canCustomizeSlug(account.subscription_status, activeOrg?.subscription_status);
 

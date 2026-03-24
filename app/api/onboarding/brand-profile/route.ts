@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stackServerApp } from '@/lib/stack/server';
-import { createBrandProfile, getOrCreateAccount } from '@/lib/neon/queries';
+import { createBrandProfile } from '@/lib/neon/queries';
+import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 
 export async function POST(request: Request) {
     try {
@@ -18,17 +19,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Brand name is required' }, { status: 400 });
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-        if (!account) {
+        const activationState = await ensureAccountActivation(user);
+        if (!activationState?.account) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
+        const { account, activeOrganization } = activationState;
 
         // Allow all users to create a brand profile during onboarding
         // Pro features like logo upload and advanced customization are gated elsewhere
 
         const profile = await createBrandProfile({
             accountId: account.id,
-            organizationId: account.active_organization_id || undefined,
+            organizationId: activeOrganization?.id || account.active_organization_id || undefined,
             name,
             primaryColor,
             secondaryColor,

@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOrCreateAccount, getAccountOrganizations, updateAccount, getMonthlyUsage } from '@/lib/neon/queries';
+import { getOrCreateAccount, updateAccount, getMonthlyUsage } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { enforceMaxRequestBodyBytes, invalidRequestBodyResponse } from '@/lib/security/api-response';
+import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 
 const ACCOUNT_UPDATE_MAX_BODY_BYTES = 16 * 1024;
 
@@ -25,13 +26,15 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail!, user.displayName || undefined);
-        if (!account) {
+        const activationState = await ensureAccountActivation(user);
+        if (!activationState) {
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
 
-        const organizations = await getAccountOrganizations(account.id) as OrganizationSummary[];
-        const activeOrg = organizations.find((o) => o.id === account.active_organization_id);
+        const { account, organizations, activeOrganization, activation } = activationState;
+        const activeOrg = (activeOrganization ||
+            (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) ||
+            null) as OrganizationSummary | null;
 
         // Get monthly usage for the current billing period
         const usage = await getMonthlyUsage(account.id, activeOrg?.id);
@@ -40,7 +43,8 @@ export async function GET() {
             account,
             organizations,
             activeOrganization: activeOrg || null,
-            usage
+            usage,
+            activation,
         });
 
     } catch (error) {

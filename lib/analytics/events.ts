@@ -31,6 +31,51 @@ type AnalyticsEventMap = {
     method: "email" | "google";
     source: string;
   };
+  signup_completed: BasePayload & {
+    method: "email" | "google";
+    source: string;
+  };
+  signup_verification_required: BasePayload & {
+    method: "email";
+    source: string;
+  };
+  signup_verified: BasePayload & {
+    source: string;
+  };
+  account_created: BasePayload & {
+    source: string;
+  };
+  defaults_provisioned: BasePayload & {
+    source: string;
+    organization_created: boolean;
+    brand_profile_created: boolean;
+    intake_link_created: boolean;
+  };
+  dashboard_first_view: BasePayload & {
+    source: string;
+  };
+  onboarding_step_viewed: BasePayload & {
+    step: string;
+    step_number: number;
+  };
+  onboarding_step_completed: BasePayload & {
+    step: string;
+    step_number: number;
+    method: "completed" | "skipped";
+  };
+  onboarding_completed: BasePayload & {
+    destination: string;
+  };
+  first_request_started: BasePayload & {
+    source: string;
+  };
+  first_request_created: BasePayload & {
+    source: string;
+    utility_count: number;
+  };
+  seller_link_copied: BasePayload & {
+    source: string;
+  };
   new_request_started: BasePayload & {
     source: string;
   };

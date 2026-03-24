@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stackServerApp } from '@/lib/stack/server';
-import { getOrCreateAccount, setOnboardingCompleted } from '@/lib/neon/queries';
+import { setOnboardingCompleted } from '@/lib/neon/queries';
+import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 
 export async function POST() {
     try {
@@ -9,10 +10,11 @@ export async function POST() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-        if (!account) {
+        const activationState = await ensureAccountActivation(user);
+        if (!activationState?.account) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
+        const { account } = activationState;
 
         const updatedAccount = await setOnboardingCompleted(account.id);
         if (!updatedAccount) {
@@ -25,4 +27,3 @@ export async function POST() {
         return NextResponse.json({ error: 'Failed to mark onboarding complete' }, { status: 500 });
     }
 }
-

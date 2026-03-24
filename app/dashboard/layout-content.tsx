@@ -17,8 +17,10 @@ import {
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { EmailVerificationBanner } from '@/components/email-verification-banner';
-import { Zap, LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X, Megaphone, Plus } from 'lucide-react';
+import { LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X, Megaphone, Plus } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
+import { trackActivationResponse, trackDashboardFirstViewOnce } from '@/lib/analytics/activation';
+import type { Account, Organization } from '@/types';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -36,21 +38,30 @@ export function DashboardLayoutContent({
     const pathname = usePathname();
     const router = useRouter();
     const user = useUser();
-    const [organization, setOrganization] = useState<any>(null);
-    const [account, setAccount] = useState<any>(null);
+    const [organization, setOrganization] = useState<Organization | null>(null);
+    const [account, setAccount] = useState<Account | null>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         // Fetch organization info
-        fetch('/api/account').then(res => res.json()).then(data => {
-            if (data.activeOrganization) {
-                setOrganization(data.activeOrganization);
-            }
-            if (data.account) {
-                setAccount(data.account);
-            }
-        });
+        fetch('/api/account')
+            .then(res => res.json())
+            .then(data => {
+                trackActivationResponse(data, 'dashboard_layout');
+                if (data.activeOrganization) {
+                    setOrganization(data.activeOrganization);
+                }
+                if (data.account) {
+                    setAccount(data.account);
+                }
+            })
+            .catch(console.error);
     }, []);
+
+    useEffect(() => {
+        if (pathname !== '/dashboard') return;
+        trackDashboardFirstViewOnce(account?.id, 'dashboard_home');
+    }, [account?.id, pathname]);
 
     useEffect(() => {
         if (!mobileMenuOpen) {

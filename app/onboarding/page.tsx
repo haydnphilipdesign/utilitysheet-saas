@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,6 +32,7 @@ import {
 import { toast } from 'sonner';
 import UtilitySheetPdfPreview from '@/components/branding/UtilitySheetPdfPreview';
 import type { Account, BrandProfile, Organization } from '@/types';
+import { trackEvent } from '@/lib/analytics/events';
 
 // Steps configuration
 const STEPS = [
@@ -69,6 +70,7 @@ function adjustHexColor(hex: string, amount: number) {
 
 export default function OnboardingPage() {
     const router = useRouter();
+    const trackedStepRef = useRef<number | null>(null);
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [account, setAccount] = useState<Account | null>(null);
@@ -109,12 +111,28 @@ export default function OnboardingPage() {
             .finally(() => setIntakeLinkLoading(false));
     }, [step, intakeLink, intakeLinkLoading]);
 
+    useEffect(() => {
+        if (trackedStepRef.current === step) return;
+        trackedStepRef.current = step;
+
+        const currentStep = STEPS.find((candidate) => candidate.id === step);
+        if (!currentStep) return;
+
+        trackEvent('onboarding_step_viewed', {
+            step: currentStep.title.toLowerCase(),
+            step_number: currentStep.id,
+        });
+    }, [step]);
+
     const handleCopyLink = async () => {
         if (!intakeLink?.url) return;
         try {
             await navigator.clipboard.writeText(intakeLink.url);
             setCopied(true);
             setTimeout(() => setCopied(false), 2500);
+            trackEvent('seller_link_copied', {
+                source: 'onboarding_launch_step',
+            });
         } catch {
             toast.error('Failed to copy link');
         }
@@ -227,6 +245,11 @@ export default function OnboardingPage() {
             if (!brandNameTouched || brandName.trim().length === 0) {
                 setBrandName(name);
             }
+            trackEvent('onboarding_step_completed', {
+                step: 'welcome',
+                step_number: 1,
+                method: 'completed',
+            });
             setStep(2);
         } catch (error) {
             console.error(error);
@@ -283,6 +306,11 @@ export default function OnboardingPage() {
 
             setBrandProfileId((data as BrandProfile).id);
             setBrandProfileCreated(true);
+            trackEvent('onboarding_step_completed', {
+                step: 'branding',
+                step_number: 2,
+                method: 'completed',
+            });
             setStep(3);
         } catch (error) {
             console.error(error);
@@ -311,6 +339,11 @@ export default function OnboardingPage() {
             if (defaultProfile.contact_phone) setContactPhone(defaultProfile.contact_phone);
             if (defaultProfile.contact_website) setContactWebsite(defaultProfile.contact_website);
 
+            trackEvent('onboarding_step_completed', {
+                step: 'branding',
+                step_number: 2,
+                method: 'skipped',
+            });
             setStep(3);
         } catch (error) {
             console.error(error);
@@ -359,6 +392,11 @@ export default function OnboardingPage() {
             }
 
             setContactInfoSaved(true);
+            trackEvent('onboarding_step_completed', {
+                step: 'contact',
+                step_number: 3,
+                method: 'completed',
+            });
             setStep(4);
         } catch (error) {
             console.error(error);
@@ -376,9 +414,26 @@ export default function OnboardingPage() {
         }
     };
 
+    const handlePreviewContinue = () => {
+        trackEvent('onboarding_step_completed', {
+            step: 'preview',
+            step_number: 4,
+            method: 'completed',
+        });
+        setStep(5);
+    };
+
     const handleStartFirstRequest = async () => {
         setLoading(true);
         try {
+            trackEvent('onboarding_step_completed', {
+                step: 'launch',
+                step_number: 5,
+                method: 'completed',
+            });
+            trackEvent('onboarding_completed', {
+                destination: 'first_request',
+            });
             await completeOnboarding();
             router.push('/dashboard/requests/new?onboarding=1');
             router.refresh();
@@ -393,6 +448,9 @@ export default function OnboardingPage() {
     const handleFinish = async () => {
         setLoading(true);
         try {
+            trackEvent('onboarding_completed', {
+                destination: 'dashboard',
+            });
             await completeOnboarding();
             router.push('/dashboard');
             router.refresh();
@@ -971,7 +1029,7 @@ export default function OnboardingPage() {
                                             <ArrowLeft className="h-4 w-4" />
                                         </Button>
                                         <Button
-                                            onClick={() => setStep(5)}
+                                            onClick={handlePreviewContinue}
                                             className="flex-1 bg-slate-700 hover:bg-slate-800 text-white h-11 font-medium active:scale-[0.98] transition-transform"
                                         >
                                             Looks great! <ArrowRight className="ml-2 h-4 w-4" />

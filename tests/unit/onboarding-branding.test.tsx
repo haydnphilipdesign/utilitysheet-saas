@@ -13,16 +13,18 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('next/image', () => ({
-    default: (props: any) => {
+    default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
         // eslint-disable-next-line @next/next/no-img-element
         return <img {...props} alt={props.alt || ''} />;
     },
 }));
 
 vi.mock('framer-motion', () => ({
-    AnimatePresence: ({ children }: any) => <>{children}</>,
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     motion: {
-        div: ({ children, ...rest }: any) => <div {...rest}>{children}</div>,
+        div: ({ children, ...rest }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => (
+            <div {...rest}>{children}</div>
+        ),
     },
 }));
 
@@ -31,6 +33,10 @@ vi.mock('sonner', () => ({
         error: vi.fn(),
         success: vi.fn(),
     },
+}));
+
+vi.mock('@/lib/analytics/events', () => ({
+    trackEvent: vi.fn(),
 }));
 
 function jsonResponse(body: unknown, status = 200) {
@@ -77,8 +83,8 @@ describe('onboarding branding step', () => {
 
         render(<OnboardingPage />);
 
-        await screen.findByText('Welcome to UtilitySheet!');
-        fireEvent.click(screen.getByRole('button', { name: /skip onboarding and go to dashboard/i }));
+        await screen.findByText('Welcome, Test!');
+        fireEvent.click(screen.getByRole('button', { name: /skip setup and go straight to dashboard/i }));
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith('/api/onboarding/complete', expect.objectContaining({ method: 'POST' }));
@@ -135,13 +141,13 @@ describe('onboarding branding step', () => {
 
         render(<OnboardingPage />);
 
-        await screen.findByText('Brand Your Utility Sheets');
-        fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+        await screen.findByLabelText('Brand Display Name');
+        fireEvent.click(screen.getByRole('button', { name: /save & continue/i }));
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith('/api/branding/brand_1', expect.objectContaining({ method: 'PUT' }));
         });
-        await screen.findByText('Contact Information');
+        await screen.findByLabelText(/your name/i);
 
         expect(fetchMock).toHaveBeenCalledWith('/api/branding/brand_1', expect.objectContaining({ method: 'PUT' }));
         expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/onboarding/brand-profile'))).toBe(false);
@@ -190,15 +196,15 @@ describe('onboarding branding step', () => {
 
         render(<OnboardingPage />);
 
-        await screen.findByText('Brand Your Utility Sheets');
-        fireEvent.click(screen.getByRole('button', { name: /skip branding for now/i }));
+        await screen.findByLabelText('Brand Display Name');
+        fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
         await waitFor(() => {
             expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/branding')).toBe(true);
         });
-        await screen.findByText('Contact Information');
+        await screen.findByLabelText(/your name/i);
 
-        expect(fetchMock.mock.calls.some(([u, init]) => (init as any)?.method === 'PUT')).toBe(false);
+        expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'PUT')).toBe(false);
         expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/api/onboarding/brand-profile'))).toBe(false);
     });
 
@@ -244,9 +250,9 @@ describe('onboarding branding step', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         render(<OnboardingPage />);
-        await screen.findByText('Brand Your Utility Sheets');
+        await screen.findByLabelText('Brand Display Name');
 
-        fireEvent.click(screen.getByRole('button', { name: /skip onboarding and go to dashboard/i }));
+        fireEvent.click(screen.getByRole('button', { name: /exit setup/i }));
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith('/api/onboarding/complete', expect.objectContaining({ method: 'POST' }));
@@ -297,11 +303,11 @@ describe('onboarding branding step', () => {
 
         render(<OnboardingPage />);
 
-        await screen.findByText('Brand Your Utility Sheets');
-        fireEvent.click(screen.getByRole('button', { name: /skip branding for now/i }));
+        await screen.findByLabelText('Brand Display Name');
+        fireEvent.click(screen.getByRole('button', { name: /skip for now/i }));
 
-        await screen.findByText('Contact Information');
-        fireEvent.click(screen.getByRole('button', { name: /skip onboarding and go to dashboard/i }));
+        await screen.findByLabelText(/your name/i);
+        fireEvent.click(screen.getByRole('button', { name: /exit setup/i }));
 
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith('/api/onboarding/complete', expect.objectContaining({ method: 'POST' }));

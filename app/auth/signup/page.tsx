@@ -10,6 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
+import {
+    consumePendingSignupVerification,
+    rememberPendingSignupVerification,
+    trackActivationResponse,
+} from '@/lib/analytics/activation';
 
 export default function SignupPage() {
     const router = useRouter();
@@ -27,7 +32,7 @@ export default function SignupPage() {
         return nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
     };
 
-    const getPostAuthRoute = async (): Promise<string | null> => {
+    const getPostAuthRoute = async (source: string): Promise<string | null> => {
         const safeNext = getSafeNext();
         if (safeNext) return safeNext;
         try {
@@ -36,15 +41,11 @@ export default function SignupPage() {
             if (!response.ok) return '/dashboard';
 
             const data = await response.json().catch(() => ({}));
-            const account = data?.account || {};
-            const hasCompletionFlag = Object.prototype.hasOwnProperty.call(account, 'onboarding_completed_at');
-
-            if (hasCompletionFlag) {
-                return account.onboarding_completed_at ? '/dashboard' : '/onboarding';
+            trackActivationResponse(data, source);
+            if (consumePendingSignupVerification()) {
+                trackEvent('signup_verified', { source });
             }
-
-            // Fallback for databases that haven't run the onboarding completion migration yet
-            return account.active_organization_id ? '/dashboard' : '/onboarding';
+            return '/dashboard';
         } catch (e) {
             console.error(e);
             return '/dashboard';
@@ -56,7 +57,7 @@ export default function SignupPage() {
 
         (async () => {
             try {
-                const destination = await getPostAuthRoute();
+                const destination = await getPostAuthRoute('signup_page_existing_session');
                 if (!destination) return;
                 if (cancelled) return;
 
@@ -89,6 +90,8 @@ export default function SignupPage() {
                 throw new Error(result.error.message || 'Failed to create account');
             }
 
+            trackEvent('signup_completed', { method: 'email', source: 'signup_form' });
+
             // Automatically sign in after successful signup
             const signInResult = await stackClientApp.signInWithCredential({
                 email,
@@ -98,6 +101,8 @@ export default function SignupPage() {
 
             if (signInResult.status === 'error') {
                 // Signup succeeded but sign-in failed - show success and let them sign in manually
+                rememberPendingSignupVerification();
+                trackEvent('signup_verification_required', { method: 'email', source: 'signup_form' });
                 setSuccess(true);
                 setLoading(false);
                 return;
@@ -109,11 +114,11 @@ export default function SignupPage() {
                 await currentUser.update({ displayName: fullName });
             }
 
-            const destination = (await getPostAuthRoute()) || '/dashboard';
+            const destination = (await getPostAuthRoute('signup_form_post_auth')) || '/dashboard';
             router.push(destination);
             router.refresh();
-        } catch (err: any) {
-            setError(err.message || 'Failed to create account');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to create account');
             setLoading(false);
         }
     };
@@ -126,8 +131,8 @@ export default function SignupPage() {
             await stackClientApp.signInWithOAuth('google', {
                 returnTo: getSafeNext() || '/dashboard',
             });
-        } catch (err: any) {
-            setError(err.message || 'Failed to sign up with Google');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to sign up with Google');
             setGoogleLoading(false);
         }
     };

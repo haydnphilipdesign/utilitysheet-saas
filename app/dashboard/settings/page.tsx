@@ -22,6 +22,7 @@ import {
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
 import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode } from '@/types';
+import { trackEvent } from '@/lib/analytics/events';
 
 type NotificationPreferences = {
     seller_submissions: boolean;
@@ -356,6 +357,9 @@ export default function SettingsPage() {
         if (!intakeLink?.url) return;
         try {
             await navigator.clipboard.writeText(intakeLink.url);
+            trackEvent('seller_link_copied', {
+                source: 'settings_reusable_link',
+            });
             toast.success('Link copied');
         } catch {
             toast.error('Failed to copy link');

@@ -3,35 +3,55 @@
  */
 import { sql } from '@/lib/neon/db';
 
-/**
- * Get or create an account for an authenticated user
- */
-export async function getOrCreateAccount(authUserId: string, email: string, fullName?: string) {
-    if (!sql) return null;
+export async function ensureAccountRecord(authUserId: string, email: string, fullName?: string) {
+    if (!sql) return { account: null, created: false };
 
-    // Try to find existing account
     let result = await sql`
         SELECT * FROM accounts WHERE auth_user_id = ${authUserId}
     `;
 
     if (result.length > 0) {
-        return result[0];
+        const existing = result[0];
+        const shouldUpdateEmail = email.trim().length > 0 && existing.email !== email;
+        const shouldUpdateFullName = Boolean(fullName?.trim()) && existing.full_name !== fullName;
+
+        if (shouldUpdateEmail || shouldUpdateFullName) {
+            result = await sql`
+                UPDATE accounts
+                SET email = CASE WHEN ${shouldUpdateEmail} THEN ${email} ELSE email END,
+                    full_name = CASE WHEN ${shouldUpdateFullName} THEN ${fullName || null} ELSE full_name END
+                WHERE auth_user_id = ${authUserId}
+                RETURNING *
+            `;
+        }
+
+        return { account: (result[0] || existing), created: false };
     }
 
-    // Create new account
     result = await sql`
         INSERT INTO accounts (auth_user_id, email, full_name, notification_preferences)
         VALUES (${authUserId}, ${email}, ${fullName || null}, '{}'::jsonb)
         RETURNING *
     `;
 
-    return result[0] || null;
+    return { account: result[0] || null, created: true };
+}
+
+/**
+ * Get or create an account for an authenticated user
+ */
+export async function getOrCreateAccount(authUserId: string, email: string, fullName?: string) {
+    const result = await ensureAccountRecord(authUserId, email, fullName);
+    return result.account;
 }
 
 /**
  * Update account information
  */
-export async function updateAccount(accountId: string, data: { fullName?: string; notificationPreferences?: any }) {
+export async function updateAccount(
+    accountId: string,
+    data: { fullName?: string; notificationPreferences?: Record<string, boolean> | null }
+) {
     if (!sql) return null;
 
     const result = await sql`

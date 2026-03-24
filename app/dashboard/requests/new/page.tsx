@@ -175,6 +175,11 @@ export default function NewRequestPage() {
         trackEvent('new_request_started', {
             source: isOnboarding ? 'onboarding_new_request_page' : 'new_request_page',
         });
+        if (isOnboarding) {
+            trackEvent('first_request_started', {
+                source: 'onboarding_new_request_page',
+            });
+        }
     }, [isOnboarding]);
 
     // ─── Reusable link copy + share ───────────────────────────────────────────
@@ -185,6 +190,9 @@ export default function NewRequestPage() {
             await navigator.clipboard.writeText(intakeLink.url);
             setCopiedIntake(true);
             setTimeout(() => setCopiedIntake(false), 2500);
+            trackEvent('seller_link_copied', {
+                source: 'new_request_reusable_link',
+            });
         } catch {
             toast.error('Failed to copy link');
         }
@@ -324,6 +332,12 @@ export default function NewRequestPage() {
                 source: isOnboarding ? 'onboarding_new_request_page' : 'new_request_page',
                 utility_count: formData.utility_categories.length,
             });
+            if (isOnboarding) {
+                trackEvent('first_request_created', {
+                    source: 'onboarding_new_request_page',
+                    utility_count: formData.utility_categories.length,
+                });
+            }
             setGeneratedToken(newRequest.seller_token || newRequest.public_token);
             setShowShareDialog(true);
         } catch (error) {

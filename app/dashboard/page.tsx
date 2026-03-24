@@ -279,6 +279,9 @@ export default function DashboardPage() {
             await navigator.clipboard.writeText(intakeLink.url);
             setCopiedDashboardLink(true);
             setTimeout(() => setCopiedDashboardLink(false), 2000);
+            trackEvent('seller_link_copied', {
+                source: 'dashboard_reusable_link_card',
+            });
             trackEvent('dashboard_reusable_link_copied', {
                 location: 'dashboard_reusable_link_card',
             });

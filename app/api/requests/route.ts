@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getOrCreateAccount, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog, getRequestCountForAccount, getOrganizationById } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog, getRequestCountForAccount, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -9,6 +9,7 @@ import { buildStructuredPropertyAddress } from '@/lib/address/structured-address
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
+import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 
 function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
@@ -33,13 +34,14 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-        if (!account) {
+        const activationState = await ensureAccountActivation(user);
+        if (!activationState?.account) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
+        const { account, activeOrganization } = activationState;
         const accountId = account.id;
-        const organizationId = account.active_organization_id;
-        const organization = organizationId ? await getOrganizationById(organizationId) : null;
+        const organizationId = activeOrganization?.id || account.active_organization_id;
+        const organization = activeOrganization || (organizationId ? await getOrganizationById(organizationId) : null);
         const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
         const url = new URL(request.url);
@@ -99,13 +101,14 @@ export async function POST(request: Request) {
             return invalidRequestBodyResponse();
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-        if (!account) {
+        const activationState = await ensureAccountActivation(user);
+        if (!activationState?.account) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
+        const { account, activeOrganization } = activationState;
         const accountId = account.id;
-        const organizationId = account.active_organization_id;
-        const organization = organizationId ? await getOrganizationById(organizationId) : null;
+        const organizationId = activeOrganization?.id || account.active_organization_id;
+        const organization = activeOrganization || (organizationId ? await getOrganizationById(organizationId) : null);
         const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
         const selectedUtilityCategories = parsedBody.data.utilityCategories

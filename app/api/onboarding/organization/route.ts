@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { stackServerApp } from '@/lib/stack/server';
-import { createOrganization, getAccountOrganizations, getOrCreateAccount, updateOrganization } from '@/lib/neon/queries';
+import { createOrganization, getAccountOrganizations, updateOrganization } from '@/lib/neon/queries';
+import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
+
+type AccountOrganization = { id: string; role?: 'admin' | 'member' };
 
 export async function POST(request: Request) {
     try {
@@ -15,10 +18,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Organization name is required' }, { status: 400 });
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-        if (!account) {
+        const activationState = await ensureAccountActivation(user);
+        if (!activationState?.account) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
+        const { account } = activationState;
 
         const organization = await createOrganization(name, account.id);
         if (!organization) {
@@ -45,18 +49,19 @@ export async function PUT(request: Request) {
             return NextResponse.json({ error: 'Organization name is required' }, { status: 400 });
         }
 
-        const account = await getOrCreateAccount(user.id, user.primaryEmail || '', user.displayName || undefined);
-        if (!account) {
+        const activationState = await ensureAccountActivation(user);
+        if (!activationState?.account) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
         }
+        const { account } = activationState;
 
         const organizationId = account.active_organization_id;
         if (!organizationId) {
             return NextResponse.json({ error: 'No active organization to update' }, { status: 400 });
         }
 
-        const organizations = await getAccountOrganizations(account.id);
-        const activeOrg = organizations.find((o: any) => o.id === organizationId);
+        const organizations = await getAccountOrganizations(account.id) as AccountOrganization[];
+        const activeOrg = organizations.find((o) => o.id === organizationId);
         if (!activeOrg || activeOrg.role !== 'admin') {
             return NextResponse.json({ error: 'Only organization admins can update organization details' }, { status: 403 });
         }
