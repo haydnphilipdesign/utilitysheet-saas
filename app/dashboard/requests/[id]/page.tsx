@@ -25,7 +25,7 @@ const statusConfig = {
 export default function RequestDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const router = useRouter();
-    const [request, setRequest] = useState<Request | null>(null);
+    const [request, setRequest] = useState<(Request & { can_edit_submitted_sheet?: boolean }) | null>(null);
     const [loading, setLoading] = useState(true);
     const [sendingReminder, setSendingReminder] = useState(false);
     const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -465,6 +465,18 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                 Open Info Sheet
                             </Button>
                         )}
+
+                        {request.can_edit_submitted_sheet ? (
+                            <Link href={`/dashboard/requests/${request.id}/edit`}>
+                                <Button variant="outline" className="w-full border-input text-foreground hover:bg-muted">
+                                    Edit Submitted Sheet
+                                </Button>
+                            </Link>
+                        ) : request.status === 'submitted' ? (
+                            <p className="text-xs text-muted-foreground">
+                                Editing submitted sheets is available on Pro and Team plans.
+                            </p>
+                        ) : null}
                     </CardContent>
                 </Card>
             </div>

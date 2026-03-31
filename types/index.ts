@@ -102,6 +102,7 @@ export type EventName =
     | 'seller_opened'
     | 'seller_saved'
     | 'seller_submitted'
+    | 'submitted_sheet_edited'
     | 'pdf_generated'
     | 'pdf_downloaded'
     | 'reminder_sent';
@@ -303,6 +304,56 @@ export interface UtilityEntry {
     extra?: Record<string, unknown> | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface SubmittedSheetEditableTrashDetails {
+    hasRecycling: '' | 'yes' | 'no' | 'not_sure';
+    trashPickupDay: '' | TrashPickupDay;
+    recyclingPickupDay: '' | TrashPickupDay;
+}
+
+export interface SubmittedSheetEditableUtility {
+    providerName: string;
+    contactPhone: string;
+    contactUrl: string;
+    meterNumber: string;
+    trashDetails: SubmittedSheetEditableTrashDetails;
+}
+
+export type SubmittedSheetEditableUtilities = Partial<Record<UtilityCategory, SubmittedSheetEditableUtility>>;
+
+export interface SubmittedSheetEditorRequest {
+    id: string;
+    propertyAddress: string;
+    sellerName: string | null;
+    sellerEmail: string | null;
+    sellerPhone: string | null;
+    closingDate: string | null;
+    status: RequestStatus;
+    updatedAt: string;
+    packetMode: PacketMode;
+    utilityCategories: UtilityCategory[];
+    advancedModules: AdvancedModuleKey[];
+    advancedModuleExclusions: AdvancedModuleExclusions;
+    waterSource: WaterSource | null;
+    sewerType: SewerType | null;
+    heatingType: HeatingType | null;
+}
+
+export interface SubmittedSheetEditorPayload {
+    request: SubmittedSheetEditorRequest;
+    editor: {
+        collectElectricMeterNumber: boolean;
+        utilities: SubmittedSheetEditableUtilities;
+        advanced: AdvancedPacketData;
+    };
+}
+
+export interface SubmittedSheetUpdatePayload {
+    updatedAt: string;
+    propertyAddress: string;
+    utilities: SubmittedSheetEditableUtilities;
+    advanced: AdvancedPacketData;
 }
 
 export interface EventLog {

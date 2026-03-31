@@ -2,6 +2,7 @@
  * Request-related database queries
  */
 import { sql, generateToken } from '@/lib/neon/db';
+import type { SubmittedSheetUtilityInsertRow } from '@/lib/submitted-sheet/editor';
 import type {
     AdvancedModuleExclusions,
     AdvancedModuleKey,
@@ -226,6 +227,98 @@ export async function updateRequestConfiguration(
             AND deleted_at IS NULL
         RETURNING *
     `;
+
+    return (result[0] as Request) || null;
+}
+
+export async function updateSubmittedRequestData(
+    id: string,
+    data: {
+        expectedUpdatedAt: string;
+        propertyAddress: string;
+        propertyAddressStructured: PropertyAddressStructured | null;
+        advancedPacketData: Record<string, unknown>;
+        utilityEntries: SubmittedSheetUtilityInsertRow[];
+        eventData?: Record<string, unknown> | null;
+        ipAddress?: string | null;
+        userAgent?: string | null;
+    }
+): Promise<Request | null> {
+    if (!sql) return null;
+
+    const utilityEntriesJson = JSON.stringify(data.utilityEntries);
+    const advancedPacketDataJson = JSON.stringify(data.advancedPacketData || {});
+    const eventDataJson = data.eventData ? JSON.stringify(data.eventData) : null;
+
+    const [result] = await sql.transaction([
+        sql`
+            WITH updated_request AS (
+                UPDATE requests
+                SET
+                    property_address = ${data.propertyAddress},
+                    property_address_structured = ${data.propertyAddressStructured ? JSON.stringify(data.propertyAddressStructured) : null}::jsonb,
+                    advanced_packet_data = ${advancedPacketDataJson}::jsonb,
+                    updated_at = NOW(),
+                    last_activity_at = NOW()
+                WHERE id = ${id}
+                    AND status = 'submitted'
+                    AND updated_at = ${data.expectedUpdatedAt}
+                    AND deleted_at IS NULL
+                RETURNING *
+            ),
+            deleted_entries AS (
+                DELETE FROM utility_entries
+                WHERE request_id IN (SELECT id FROM updated_request)
+            ),
+            inserted_entries AS (
+                INSERT INTO utility_entries (
+                    request_id,
+                    category,
+                    entry_mode,
+                    display_name,
+                    raw_text,
+                    contact_phone,
+                    contact_url,
+                    meter_number,
+                    extra
+                )
+                SELECT
+                    updated_request.id,
+                    entries.category,
+                    entries.entry_mode,
+                    entries.display_name,
+                    entries.raw_text,
+                    entries.contact_phone,
+                    entries.contact_url,
+                    entries.meter_number,
+                    COALESCE(entries.extra, '{}'::jsonb)
+                FROM updated_request
+                CROSS JOIN LATERAL jsonb_to_recordset(${utilityEntriesJson}::jsonb) AS entries(
+                    category text,
+                    entry_mode text,
+                    display_name text,
+                    raw_text text,
+                    contact_phone text,
+                    contact_url text,
+                    meter_number text,
+                    extra jsonb
+                )
+                RETURNING id
+            ),
+            inserted_event AS (
+                INSERT INTO event_logs (request_id, event_type, event_data, ip_address, user_agent)
+                SELECT
+                    updated_request.id,
+                    'submitted_sheet_edited',
+                    ${eventDataJson}::jsonb,
+                    ${data.ipAddress || null},
+                    ${data.userAgent || null}
+                FROM updated_request
+                RETURNING id
+            )
+            SELECT * FROM updated_request
+        `,
+    ]);
 
     return (result[0] as Request) || null;
 }

@@ -117,7 +117,7 @@ describe('Email Templates', () => {
             expect(html).toContain('John Seller has');
             expect(html).toContain('456 Oak Ave');
             expect(html).toContain('Submission Complete');
-            expect(html).toContain('View Utility Details');
+            expect(html).toContain('Review or Edit Utility Details');
         });
 
         it('handles missing seller name', () => {

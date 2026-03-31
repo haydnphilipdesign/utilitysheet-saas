@@ -191,6 +191,30 @@ const wateringDayEnum = z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 const trashRecyclingEnum = z.enum(['yes', 'no', 'not_sure']);
 const trashPickupDayEnum = z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'varies', 'not_sure']);
 
+const submittedSheetEditableTrashDetailsSchema = z.object({
+    hasRecycling: z.preprocess(nullToUndefined, z.union([z.literal('yes'), z.literal('no'), z.literal('not_sure'), z.literal('')]).optional()).default(''),
+    trashPickupDay: z.preprocess(nullToUndefined, z.union([trashPickupDayEnum, z.literal('')]).optional()).default(''),
+    recyclingPickupDay: z.preprocess(nullToUndefined, z.union([trashPickupDayEnum, z.literal('')]).optional()).default(''),
+}).default({
+    hasRecycling: '',
+    trashPickupDay: '',
+    recyclingPickupDay: '',
+});
+
+const submittedSheetEditableUtilitySchema = z.object({
+    providerName: z.preprocess(nullToUndefined, z.string().trim().max(200).optional()).default(''),
+    contactPhone: z.preprocess(nullToUndefined, z.string().trim().max(50).optional()).default(''),
+    contactUrl: z.preprocess(
+        (val) => {
+            const normalized = normalizeHttpUrlOrNull(val);
+            return normalized === null ? '' : normalized;
+        },
+        z.union([z.string().url().refine(isHttpUrl, { message: 'Must be an http(s) URL' }), z.literal('')])
+    ).default(''),
+    meterNumber: z.preprocess(nullToUndefined, z.string().trim().max(64).optional()).default(''),
+    trashDetails: submittedSheetEditableTrashDetailsSchema,
+}).strict();
+
 function normalizeTrashPickupDay(value: unknown): z.infer<typeof trashPickupDayEnum> | null | undefined {
     if (value === undefined) return undefined;
     if (value === null) return null;
@@ -344,5 +368,28 @@ export const requestConfigurationBodySchema = z.object({
             return normalizeAdvancedModuleExclusions(val);
         },
         z.record(z.string(), z.array(z.string())).optional()
+    ),
+}).strict();
+
+export const submittedSheetUpdateBodySchema = z.object({
+    updatedAt: z.string().datetime({ offset: true }),
+    propertyAddress: z.string().trim().min(5).max(200),
+    advanced: advancedModuleDataSchema.optional().default({}),
+    utilities: z.preprocess(
+        (val) => {
+            if (!val || typeof val !== 'object' || Array.isArray(val)) return val;
+
+            const filtered: Record<string, unknown> = {};
+            for (const [key, value] of Object.entries(val as Record<string, unknown>)) {
+                if (allowedUtilityCategories.has(key)) {
+                    filtered[key] = value;
+                }
+            }
+            return filtered;
+        },
+        z.record(z.string(), submittedSheetEditableUtilitySchema)
+            .refine((obj) => Object.keys(obj).length <= UTILITY_CATEGORY_KEYS.length, {
+                message: 'Too many utility entries',
+            })
     ),
 }).strict();

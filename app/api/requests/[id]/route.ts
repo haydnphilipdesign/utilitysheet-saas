@@ -14,6 +14,7 @@ function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
         ...r,
         is_locked: true,
+        can_edit_submitted_sheet: false,
         property_address: 'Locked — upgrade to view',
         property_address_structured: null,
         seller_name: null,
@@ -60,7 +61,11 @@ export async function GET(
         const row = requestData as unknown as Record<string, unknown> & { is_locked?: unknown };
         const accessLocked = Boolean(row.is_locked) && !isPaid;
         if (!accessLocked) {
-            return NextResponse.json({ ...row, is_locked: false });
+            return NextResponse.json({
+                ...row,
+                is_locked: false,
+                can_edit_submitted_sheet: isPaid && requestData.status === 'submitted',
+            });
         }
 
         return NextResponse.json(sanitizeLockedRequest(row));

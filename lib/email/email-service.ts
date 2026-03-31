@@ -979,7 +979,7 @@ function generateTCCompletionNotificationHtml({
                                     <td style="text-align: center;">
                                         ${renderBulletproofButton({
         href: dashboardUrl,
-        label: 'View Utility Details',
+        label: 'Review or Edit Utility Details',
         backgroundColor: '#059669',
         borderRadius: 8,
         fontWeight: 600,
