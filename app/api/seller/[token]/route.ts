@@ -134,6 +134,10 @@ function hasAnyContact(phone: string | null | undefined, url: string | null | un
     return Boolean((phone && phone.trim()) || (url && url.trim()));
 }
 
+function shouldTrustSubmittedContact(entryMode: string | null | undefined): boolean {
+    return entryMode === 'free_text';
+}
+
 function normalizeUnknownRecord(value: unknown): Record<string, unknown> {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
     return value as Record<string, unknown>;
@@ -506,6 +510,13 @@ export async function POST(
                 const finalExtra = typedCategory === 'trash'
                     ? normalizeTrashUtilityExtra(baseExtra)
                     : baseExtra;
+                const trustSubmittedContact = shouldTrustSubmittedContact(finalEntryMode);
+                const submittedPhone = trustSubmittedContact
+                    ? (e.contact_phone || null)
+                    : null;
+                const submittedUrl = trustSubmittedContact
+                    ? (e.contact_url || null)
+                    : null;
 
                 await sql`
                     INSERT INTO utility_entries (
@@ -516,15 +527,15 @@ export async function POST(
                         ${finalEntryMode},
                         ${e.display_name || null},
                         ${finalRawText || null},
-                        ${e.contact_phone || null},
-                        ${e.contact_url || null},
+                        ${submittedPhone},
+                        ${submittedUrl},
                         ${finalMeterNumber},
                         ${JSON.stringify(finalExtra)}::jsonb
                     )
                 `;
 
                 const providerName = String(e.display_name || e.raw_text || '').trim();
-                const hadSubmittedContact = hasAnyContact(e.contact_phone, e.contact_url);
+                const hadSubmittedContact = trustSubmittedContact && hasAnyContact(e.contact_phone, e.contact_url);
                 if (providerName && finalEntryMode !== 'unknown') {
                     contactResolutionTargets.push({
                         category: typedCategory,
@@ -574,7 +585,10 @@ export async function POST(
                     continue;
                 }
 
-                const contact = await resolveContact(target.providerName);
+                const contact = await resolveContact(target.providerName, {
+                    category: target.category,
+                    address: requestData.property_address,
+                });
                 if (hasValidContact(contact)) {
                     const resolvedPhone = contact?.customer_service_phone || null;
                     const resolvedUrl = contact?.start_stop_service_url || contact?.main_website || null;

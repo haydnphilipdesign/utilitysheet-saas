@@ -63,4 +63,33 @@ describe('contact-service', () => {
         });
         expect(hasValidContact(result)).toBe(true);
     });
+
+    it('scopes cache and prompt context by utility category and locality', async () => {
+        process.env.ALLOW_UNVERIFIED_AI_CONTACTS = 'true';
+        generateJSONMock.mockResolvedValue({
+            customer_service_phone: '1-800-555-1212',
+            start_stop_service_url: 'https://example.com/start',
+            main_website: 'https://example.com',
+        });
+
+        await resolveContact('Silver Spring Township', {
+            category: 'sewer',
+            address: '29 Clover Lane, Mechanicsburg, PA 17050',
+        });
+
+        expect(getFromCacheMock).toHaveBeenCalledWith(
+            expect.stringContaining('contact:ai:sewer:pa:170')
+        );
+        expect(generateJSONMock).toHaveBeenCalledWith(
+            expect.stringContaining('Utility Category: sewer')
+        );
+        expect(generateJSONMock).toHaveBeenCalledWith(
+            expect.stringContaining('Mechanicsburg')
+        );
+        expect(setInCacheMock).toHaveBeenCalledWith(
+            expect.stringContaining('contact:ai:sewer:pa:170'),
+            expect.anything(),
+            expect.any(Number)
+        );
+    });
 });
