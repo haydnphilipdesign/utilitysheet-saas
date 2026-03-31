@@ -15,6 +15,7 @@ function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
         ...r,
         is_locked: true,
+        can_edit_submitted_sheet: false,
         property_address: 'Locked — upgrade to view',
         property_address_structured: null,
         seller_name: null,
@@ -58,9 +59,18 @@ export async function GET(request: Request) {
 
         const result = await getRequests(accountId, organizationId, { page, limit });
         const data = result.data.map((requestRow) => {
-            const r = requestRow as unknown as Record<string, unknown> & { is_locked?: unknown };
+            const r = requestRow as unknown as Record<string, unknown> & {
+                is_locked?: unknown;
+                status?: unknown;
+            };
             const accessLocked = Boolean(r.is_locked) && !isPaid;
-            if (!accessLocked) return { ...r, is_locked: false };
+            if (!accessLocked) {
+                return {
+                    ...r,
+                    is_locked: false,
+                    can_edit_submitted_sheet: isPaid && r.status === 'submitted',
+                };
+            }
             return sanitizeLockedRequest(r);
         });
 

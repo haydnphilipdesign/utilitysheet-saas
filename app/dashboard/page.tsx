@@ -37,6 +37,7 @@ import {
     ExternalLink,
     Loader2,
     Trash2,
+    FilePenLine,
     Megaphone,
     Lock,
     X,
@@ -61,7 +62,7 @@ const statusConfig = {
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton';
 
 export default function DashboardPage() {
-    const [requests, setRequests] = useState<Request[]>([]);
+    const [requests, setRequests] = useState<Array<Request & { can_edit_submitted_sheet?: boolean }>>([]);
     const [meta, setMeta] = useState({
         total: 0,
         page: 1,
@@ -913,6 +914,15 @@ export default function DashboardPage() {
                                                                         <Eye className="mr-2 h-4 w-4" />
                                                                         View details
                                                                     </DropdownMenuItem>
+                                                                    {!isLocked && request.can_edit_submitted_sheet && (
+                                                                        <DropdownMenuItem
+                                                                            className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
+                                                                            onClick={() => window.open(`/dashboard/requests/${request.id}/edit`, '_self')}
+                                                                        >
+                                                                            <FilePenLine className="mr-2 h-4 w-4" />
+                                                                            Edit submission
+                                                                        </DropdownMenuItem>
+                                                                    )}
                                                                     {!isLocked && request.status === 'submitted' && (
                                                                         <>
                                                                             <DropdownMenuItem
