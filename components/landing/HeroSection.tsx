@@ -263,7 +263,7 @@ export function HeroSection() {
 
                         {/* Value Proposition — one clean sentence */}
                         <p className="mx-auto lg:mx-0 max-w-xl text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-8 leading-relaxed">
-                            Send one seller utility information form link, let sellers confirm providers with guided suggestions, and generate a polished utility sheet PDF for every real estate transaction.
+                            Send one seller utility information form link, let sellers confirm providers with guided suggestions, and generate a polished utility sheet your team can review, share, and keep current from the dashboard.
                         </p>
 
                         {/* CTAs */}
@@ -326,7 +326,7 @@ export function HeroSection() {
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                Cancel anytime
+                                Pro + Teams can edit submitted sheets
                             </span>
                         </motion.div>
                     </motion.div>

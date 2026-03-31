@@ -970,7 +970,7 @@ function generateTCCompletionNotificationHtml({
                             </div>
                             
                             <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                You can now view the complete utility details and generate the utility packet for this property.
+                                You can now review the live utility sheet, download the current PDF, and share it forward. If your workspace is on Pro or Team, you can also correct submitted details from the dashboard without reopening the seller link.
                             </p>
                             
                             <!-- CTA Button -->
@@ -979,7 +979,7 @@ function generateTCCompletionNotificationHtml({
                                     <td style="text-align: center;">
                                         ${renderBulletproofButton({
         href: dashboardUrl,
-        label: 'Review or Edit Utility Details',
+        label: 'Review Submitted Sheet',
         backgroundColor: '#059669',
         borderRadius: 8,
         fontWeight: 600,

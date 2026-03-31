@@ -11,7 +11,7 @@ import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
   title: 'UtilitySheet Pricing for Transaction Coordinators and Teams',
   description:
-    'View UtilitySheet pricing for Starter, Pro, and Teams plans. Compare free requests, branded utility sheet output, advanced packet mode, and team workflows.',
+    'View UtilitySheet pricing for Starter, Pro, and Teams plans. Compare free requests, submitted-sheet editing, branded utility sheet output, advanced packet mode, and team workflows.',
   path: '/pricing',
   keywords: [
     'utility sheet pricing',
@@ -32,7 +32,7 @@ export default function PricingPage() {
           softwareApplicationSchema({
             path: '/pricing',
             description:
-              'UtilitySheet pricing for real estate teams that need seller utility forms, utility sheet PDFs, and branded packet workflows.',
+              'UtilitySheet pricing for real estate teams that need seller utility forms, submitted-sheet editing on paid plans, utility sheet PDFs, and branded packet workflows.',
           }),
         ]}
       />
@@ -40,7 +40,7 @@ export default function PricingPage() {
       <MarketingPageHero
         eyebrow="Pricing"
         title="Choose the UtilitySheet plan that fits your transaction volume"
-        description="Start with the free plan if you want to test the workflow on live files. Upgrade to Pro or Teams when you need branded utility sheets, advanced packet mode, or shared team workflows."
+        description="Start with the free plan if you want to test the workflow on live files. Upgrade to Pro or Teams when you need submitted-sheet editing, branded utility sheets, advanced packet mode, or shared team workflows."
       >
         <MarketingBreadcrumbs
           items={[
@@ -76,7 +76,8 @@ export default function PricingPage() {
             'You want every seller utility form and PDF to reflect your own branding instead of UtilitySheet branding.',
             'You want Advanced Utility Packet mode so the handoff includes more than just utilities.',
             'You need unlimited requests because the workflow is now part of every transaction.',
-            'You need teammates inside the same workspace with shared defaults and shared visibility.',
+            'You need to correct submitted sheets inside the dashboard instead of sending the seller back through the public form.',
+            'You need teammates inside the same workspace with shared defaults, shared visibility, and shared editing access.',
           ].map((item) => (
             <div key={item} className="rounded-2xl border border-border bg-card/20 p-5 text-muted-foreground">
               {item}
@@ -101,7 +102,7 @@ export default function PricingPage() {
 
       <MarketingCtaBand
         title="Start on the free plan and upgrade when the workflow sticks"
-        description="That is the easiest way to see if UtilitySheet saves your team the time and back-and-forth it is meant to save."
+        description="That is the easiest way to see if UtilitySheet saves your team the time and back-and-forth it is meant to save before you add paid editing, branding, or team features."
       />
     </div>
   );

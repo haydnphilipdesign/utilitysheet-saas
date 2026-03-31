@@ -51,6 +51,7 @@ import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
 import type { ProductUpdate } from '@/types';
 import { trackEvent } from '@/lib/analytics/events';
+import { mergeFeaturedProductUpdate } from '@/lib/product-updates';
 
 const statusConfig = {
     draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
@@ -175,10 +176,13 @@ export default function DashboardPage() {
                 const res = await fetch('/api/updates?limit=3');
                 if (res.ok) {
                     const data = await res.json();
-                    setUpdates(Array.isArray(data) ? data : []);
+                    setUpdates(mergeFeaturedProductUpdate(Array.isArray(data) ? data : []));
+                } else {
+                    setUpdates(mergeFeaturedProductUpdate([]));
                 }
             } catch (error) {
                 console.error('Error fetching updates:', error);
+                setUpdates(mergeFeaturedProductUpdate([]));
             } finally {
                 setUpdatesLoading(false);
             }
@@ -390,7 +394,7 @@ export default function DashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                         <div>
                             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
-                            <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">Send seller links, track responses, and download utility info sheets</p>
+                            <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">Send seller links, track responses, review submitted sheets, and download utility info sheets</p>
                         </div>
                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                             <Link href="/dashboard/requests/new" className="w-full sm:w-auto">
@@ -521,7 +525,8 @@ export default function DashboardPage() {
                                 {[
                                     'Seller opens your link and enters the property address.',
                                     'They complete utility details in about 2 minutes.',
-                                    'You receive the submission by email, with PDF attachment support.',
+                                    'You receive the submission by email, with PDF attachment support and dashboard review on every plan.',
+                                    'Pro and Teams can edit submitted sheets after submission without reopening the seller link.',
                                 ].map((step) => (
                                     <div key={step} className="flex items-start gap-2">
                                         <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-500 shrink-0" />
@@ -685,7 +690,7 @@ export default function DashboardPage() {
                                             What&apos;s new
                                         </CardTitle>
                                         <CardDescription className="text-muted-foreground text-xs sm:text-sm">
-                                            Recent product updates and bugfixes
+                                            Recent product updates, bugfixes, and workflow improvements
                                         </CardDescription>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -920,7 +925,7 @@ export default function DashboardPage() {
                                                                             onClick={() => window.open(`/dashboard/requests/${request.id}/edit`, '_self')}
                                                                         >
                                                                             <FilePenLine className="mr-2 h-4 w-4" />
-                                                                            Edit submission
+                                                                            Edit submitted sheet
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     {!isLocked && request.status === 'submitted' && (

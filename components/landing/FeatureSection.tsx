@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useEffect, useRef } from 'react';
-import { Bell, FileText, Layers, Link2, MailCheck, Palette, ShieldCheck, Sparkles } from 'lucide-react';
+import { Bell, FilePenLine, FileText, Layers, Link2, MailCheck, Palette, ShieldCheck, Sparkles } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import { featureHighlights } from '@/lib/marketing-content';
 
@@ -21,8 +21,8 @@ const features = [
     },
     {
         icon: MailCheck,
-        title: 'PDF delivered to your inbox',
-        description: 'The completed PDF can auto-attach to the notification email the moment the seller submits, so nothing gets lost in the shuffle.',
+        title: 'Completion email + PDF attachment',
+        description: 'The completed PDF can auto-attach to the notification email the moment the seller submits, so the handoff is ready to review right away.',
     },
     {
         icon: Sparkles,
@@ -30,25 +30,31 @@ const features = [
         description: featureHighlights[2].description,
     },
     {
-        icon: FileText,
-        title: 'Buyer-ready utility sheet output',
+        icon: FilePenLine,
+        title: featureHighlights[3].title,
+        tag: 'Pro + Teams',
         description: featureHighlights[3].description,
     },
     {
-        icon: Bell,
-        title: featureHighlights[4].title,
+        icon: FileText,
+        title: 'Buyer-ready utility sheet output',
         description: featureHighlights[4].description,
+    },
+    {
+        icon: Bell,
+        title: featureHighlights[5].title,
+        description: featureHighlights[5].description,
     },
     {
         icon: ShieldCheck,
         title: 'Secure by design',
-        description: "Seller links are separate from share links. Utility sheets only become accessible after submission."
+        description: 'Seller links are separate from share links. After submission, public and seller links stay read-only, and any corrections happen inside the dashboard.'
     },
     {
         icon: Palette,
         title: 'White-label branding',
         tag: 'Pro + Teams',
-        description: featureHighlights[5].description,
+        description: featureHighlights[6].description,
     }
 ];
 
@@ -80,7 +86,7 @@ export function FeatureSection() {
                         Real estate utility sheet features that keep closings moving
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-4">
-                        Collect seller utility information faster, standardize every handoff, and deliver cleaner buyer-facing utility packets.
+                        Collect seller utility information faster, standardize every handoff, and keep the finished utility sheet accurate even when small corrections come up later.
                     </p>
                 </div>
 

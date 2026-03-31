@@ -110,10 +110,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">03.</span>
-                                Receive a polished utility sheet PDF
+                                Review the finished sheet and share it forward
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                As soon as the seller submits, your team gets a clean web view and downloadable PDF. Share it with buyers, add it to the file, or pass it to support staff without more formatting work.
+                                As soon as the seller submits, your team gets a clean web view and downloadable PDF. Share it with buyers, add it to the file, or, on Pro and Teams, make dashboard-side corrections that carry through to future PDF downloads.
                             </p>
                         </div>
                         <motion.div

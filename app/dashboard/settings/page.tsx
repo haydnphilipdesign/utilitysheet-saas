@@ -663,7 +663,7 @@ export default function SettingsPage() {
                         <div className="flex items-center justify-between gap-4">
                             <div>
                                 <p className="text-foreground text-sm font-medium">Attach PDF to submission emails</p>
-                                <p className="text-sm text-muted-foreground">Automatically include a branded utility sheet PDF attachment</p>
+                                <p className="text-sm text-muted-foreground">Automatically include the current utility sheet PDF. Later dashboard edits update the live sheet and future downloads, but already-sent attachments stay unchanged.</p>
                             </div>
                             <Switch
                                 checked={notifications.seller_submission_pdf_attachment}
@@ -1088,7 +1088,7 @@ export default function SettingsPage() {
                                                 {!orgIsAdmin && <Badge variant="outline">Admin only</Badge>}
                                             </div>
                                             <p className="text-xs text-muted-foreground">
-                                                Best for 3+ users who want one shared organization and centralized billing. (Pro is single-seat.)
+                                                Best for 3+ users who want one shared organization, centralized billing, and teammate access to submitted-sheet editing. (Pro is single-seat.)
                                             </p>
                                         </div>
                                     </div>
@@ -1099,7 +1099,7 @@ export default function SettingsPage() {
                                             <ul className="space-y-1.5 text-xs text-muted-foreground">
                                                 <li className="flex items-start gap-2">
                                                     <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
-                                                    Everything in Pro (unlimited requests + branding)
+                                                    Everything in Pro, including submitted-sheet editing
                                                 </li>
                                                 <li className="flex items-start gap-2">
                                                     <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />

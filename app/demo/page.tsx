@@ -148,7 +148,7 @@ export default function DemoPage() {
 
                     <div className="bg-card/50 border border-border rounded-2xl p-6 space-y-4">
                         <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-900">
-                            This demo shows the core guided flow. Pro/Teams can also run Advanced Utility Packet mode with optional transition-detail modules.
+                            This demo shows the core guided flow. Pro and Teams can also run Advanced Utility Packet mode and edit submitted sheets later from the dashboard.
                         </div>
 
                         <div>

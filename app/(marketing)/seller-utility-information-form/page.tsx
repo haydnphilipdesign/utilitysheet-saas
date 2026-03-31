@@ -10,7 +10,7 @@ import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
   title: 'Seller Utility Information Form',
   description:
-    'UtilitySheet provides a guided seller utility information form for real estate transactions, helping teams collect utility providers and generate a polished utility sheet PDF.',
+    'UtilitySheet provides a guided seller utility information form for real estate transactions, helping teams collect utility providers, generate a polished utility sheet PDF, and correct submitted sheets on paid plans.',
   path: '/seller-utility-information-form',
   keywords: [
     'seller utility information form',
@@ -31,7 +31,7 @@ export default function SellerUtilityInformationFormPage() {
           softwareApplicationSchema({
             path: '/seller-utility-information-form',
             description:
-              'A guided seller utility information form for real estate teams that need cleaner utility handoff data and ready-to-share PDFs.',
+              'A guided seller utility information form for real estate teams that need cleaner utility handoff data, ready-to-share PDFs, and dashboard-side corrections on paid plans.',
           }),
         ]}
       />
@@ -65,7 +65,7 @@ export default function SellerUtilityInformationFormPage() {
             },
             {
               title: 'Better final output',
-              copy: 'The submitted information becomes a utility sheet you can actually hand off to buyers or support staff.',
+              copy: 'The submitted information becomes a utility sheet you can actually hand off to buyers or support staff, and Pro/Teams can refine it later inside the dashboard.',
             },
           ].map((item) => (
             <article key={item.title} className="rounded-3xl border border-border bg-card/30 p-6">
@@ -104,7 +104,7 @@ export default function SellerUtilityInformationFormPage() {
 
       <MarketingCtaBand
         title="Replace the messy seller utility checklist"
-        description="Use one guided form and get a cleaner utility sheet at the end of the process."
+        description="Use one guided form, get a cleaner utility sheet at the end of the process, and add paid dashboard editing if your team needs that extra control."
       />
     </div>
   );

@@ -6,12 +6,13 @@ import { X, Check, Clock, MessageSquare, FileSpreadsheet, Zap } from 'lucide-rea
 const oldWaySteps = [
     { icon: MessageSquare, text: 'Multiple texts/emails to collect provider details' },
     { icon: Clock, text: 'Delays and follow-ups when sellers miss info' },
-    { icon: X, text: 'Inconsistent utility handoff quality across files' },
+    { icon: X, text: 'Small corrections turn into more seller follow-up after submission' },
 ];
 
 const newWaySteps = [
     { icon: MessageSquare, text: 'Send one secure link (takes 30 seconds)' },
     { icon: Zap, text: 'Seller confirms providers on their phone with guidance' },
+    { icon: Check, text: 'Pro/Teams can correct submitted sheets in the dashboard' },
     { icon: FileSpreadsheet, text: 'Web sheet + PDF generated for clean sharing' },
     { icon: Check, text: 'Optional completion email can include PDF attachment' },
 ];

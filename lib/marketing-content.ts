@@ -35,7 +35,12 @@ export const faqItems = [
   {
     question: 'How does PDF delivery work?',
     answer:
-      'When the seller submits, UtilitySheet can automatically attach the finished utility sheet PDF to the completion email, so the file is ready to review and share right away.',
+      'When the seller submits, UtilitySheet can automatically attach the finished utility sheet PDF to the completion email, so the file is ready to review and share right away. If you later update the live info sheet in the dashboard, future PDF downloads reflect those changes, but previously emailed attachments stay as sent snapshots.',
+  },
+  {
+    question: 'Can I edit a submitted info sheet?',
+    answer:
+      'Yes. Submitted info sheets can be edited after seller submission on Pro and Team plans. Editing happens inside the authenticated dashboard, seller and public links stay read-only after submission, and future PDF downloads reflect the latest saved version. In Team workspaces, any teammate who already has access to the request can make updates.',
   },
   {
     question: 'How do provider suggestions work?',
@@ -45,7 +50,7 @@ export const faqItems = [
   {
     question: 'What happens if I hit the free plan limit?',
     answer:
-      'Additional submissions are still saved. If they are locked because of the free-plan limit, they unlock automatically after you upgrade.',
+      'Additional submissions are still saved. If they are locked because of the free-plan limit, they unlock automatically after you upgrade. Editing submitted sheets is reserved for Pro and Team workspaces.',
   },
   {
     question: 'How long does it take to get started?',
@@ -59,12 +64,13 @@ export const pricingTiers = [
     name: 'Starter',
     price: 'Free',
     description:
-      'Try UtilitySheet on real transactions with a reusable seller link and simple utility sheet output.',
+      'Try UtilitySheet on real transactions with a reusable seller link, dashboard review, and simple utility sheet output.',
     href: '/auth/signup',
     features: [
       '3 unlocked requests per month',
       'Reusable seller link',
       'Simple Utility Sheet mode',
+      'Dashboard view of submitted sheets',
       'Buyer-ready PDF and share link',
       'Completion email notifications',
       'Optional PDF attachment on completion emails',
@@ -74,11 +80,13 @@ export const pricingTiers = [
     name: 'Pro',
     price: '$9/month',
     description:
-      'For solo transaction coordinators and agents who want unlimited requests, advanced packets, and branded output.',
+      'For solo transaction coordinators and agents who want unlimited requests, advanced packets, branded output, and post-submission edits.',
     href: '/auth/signup?plan=pro',
     features: [
       'Unlimited requests',
       'Advanced Utility Packet mode',
+      'Edit submitted sheets after seller submission',
+      'Live updates to future PDF downloads',
       'Custom branding and branded links',
       'Branded PDF attachments',
       'Locked submission unlocks',
@@ -89,11 +97,12 @@ export const pricingTiers = [
     name: 'Teams',
     price: '$7/seat/month',
     description:
-      'For brokerages and teams that need a shared workspace, seat-based billing, and consistent utility handoff workflows.',
+      'For brokerages and teams that need a shared workspace, teammate access, and consistent utility handoff workflows.',
     href: '/auth/signup?plan=teams',
     features: [
       'Everything in Pro',
       'Shared organization workspace',
+      'Any teammate with request access can edit submitted sheets',
       'Invites and user roles',
       'Org-wide packet defaults',
       'Branded output across the team',
@@ -117,9 +126,9 @@ export const workflowSteps = [
   },
   {
     number: '03',
-    title: 'Receive a polished utility sheet PDF',
+    title: 'Review, share, and keep the final sheet current',
     description:
-      'The finished utility sheet is ready as a web view and downloadable PDF, so you can add it to the file and share it with buyers or support teams.',
+      'The finished utility sheet is ready as a web view and downloadable PDF, so you can add it to the file and share it with buyers or support teams. Pro and Team workspaces can also make dashboard-side corrections after submission.',
   },
 ] as const;
 
@@ -138,6 +147,11 @@ export const featureHighlights = [
     title: 'AI-powered provider suggestions',
     description:
       'Start with likely providers based on the address so sellers can confirm details faster and with fewer mistakes.',
+  },
+  {
+    title: 'Submitted-sheet editing on Pro and Teams',
+    description:
+      'Correct capitalization, addresses, provider names, phone numbers, websites, and other seller-entered details after submission without sending the seller back through the form.',
   },
   {
     title: 'Professional web and PDF output',

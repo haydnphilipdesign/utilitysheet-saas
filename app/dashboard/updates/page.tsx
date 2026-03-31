@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getProductUpdates } from '@/lib/neon/queries/updates';
+import { mergeFeaturedProductUpdate } from '@/lib/product-updates';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,13 +21,15 @@ function categoryBadgeClass(category: string) {
 }
 
 export default async function DashboardUpdatesPage() {
-    const updates = await getProductUpdates({ limit: 50, includeUnpublished: false });
+    const updates = mergeFeaturedProductUpdate(
+        await getProductUpdates({ limit: 50, includeUnpublished: false })
+    );
 
     return (
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Updates</h1>
-                <p className="text-sm sm:text-base text-muted-foreground mt-1">Bug fixes, feature releases, and announcements.</p>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">Bug fixes, feature releases, announcements, and workflow improvements.</p>
             </div>
 
             <Card className="border-border bg-card/50">
@@ -54,4 +57,3 @@ export default async function DashboardUpdatesPage() {
         </div>
     );
 }
-

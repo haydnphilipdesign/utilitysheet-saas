@@ -23,7 +23,7 @@ export default function RealEstateClosingUtilityChecklistPage() {
     'Confirm the property address and unit details before collecting provider information.',
     'Ask the seller to verify electric, gas, water, sewer, trash, internet, and any other relevant providers.',
     'Collect any move-related access details, service vendors, or mailbox information your team needs for handoff.',
-    'Review the information for vague or incomplete answers before sharing it forward.',
+    'Review the information for vague or incomplete answers before sharing it forward, and clean up formatting or contact details as needed.',
     'Generate a utility sheet or packet that buyers and support staff can actually read.',
     'Store or share the finished handoff with the file so nobody has to ask for the same details twice.',
   ];
@@ -91,7 +91,7 @@ export default function RealEstateClosingUtilityChecklistPage() {
             },
             {
               title: 'Finished output at the end',
-              copy: 'The end result is not just a completed form. It is a utility sheet your team can actually share.',
+              copy: 'The end result is not just a completed form. It is a utility sheet your team can actually share, and Pro/Teams can revise after submission when the handoff needs cleanup.',
             },
           ].map((item) => (
             <article key={item.title} className="rounded-3xl border border-border bg-card/20 p-6">

@@ -38,7 +38,7 @@ export default function UtilitySheetForRealEstateAgentsPage() {
       <MarketingPageHero
         eyebrow="Use Case"
         title="UtilitySheet for real estate agents"
-        description="Agents want smooth closings, fewer last-minute requests, and a client experience that feels organized. UtilitySheet gives agents and their support teams a clean way to collect seller utility details without creating more admin work."
+        description="Agents want smooth closings, fewer last-minute requests, and a client experience that feels organized. UtilitySheet gives agents and their support teams a clean way to collect seller utility details without creating more admin work or last-minute cleanup chaos."
       >
         <MarketingBreadcrumbs
           items={[
@@ -83,6 +83,7 @@ export default function UtilitySheetForRealEstateAgentsPage() {
           {[
             'Sellers can complete the form without a login or app install.',
             'The finished utility sheet is easy to share with buyers and support staff.',
+            'Pro and Teams can correct submitted sheets in the dashboard when small details change before closing.',
             'The workflow helps the transaction feel more organized and less reactive.',
             'Paid plans let you brand the output so the experience feels like part of your business.',
           ].map((item) => (

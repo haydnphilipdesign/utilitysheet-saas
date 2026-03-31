@@ -10,7 +10,7 @@ import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
   title: 'Utility Sheet Software Features for Real Estate Teams',
   description:
-    'Explore UtilitySheet features for collecting seller utility information, generating utility sheet PDFs, tracking request status, and branding the handoff experience.',
+    'Explore UtilitySheet features for collecting seller utility information, editing submitted sheets on paid plans, generating utility sheet PDFs, and branding the handoff experience.',
   path: '/features',
   keywords: [
     'utility sheet features',
@@ -39,7 +39,7 @@ export default function FeaturesPage() {
       <MarketingPageHero
         eyebrow="Product"
         title="Utility sheet software features built for real estate closings"
-        description="UtilitySheet helps transaction coordinators and agents replace scattered texts, PDFs, and reminders with one guided workflow that collects seller utility information and turns it into polished output."
+        description="UtilitySheet helps transaction coordinators and agents replace scattered texts, PDFs, and reminders with one guided workflow that collects seller utility information, turns it into polished output, and supports dashboard-side corrections when needed."
       >
         <MarketingBreadcrumbs
           items={[
@@ -75,7 +75,7 @@ export default function FeaturesPage() {
             },
             {
               title: 'More consistent files',
-              copy: 'Every transaction gets the same structure, whether you need a simple utility sheet or a fuller closing-prep packet.',
+              copy: 'Every transaction gets the same structure, whether you need a simple utility sheet or a fuller closing-prep packet, and paid workspaces can clean up submitted details without restarting the seller.',
             },
             {
               title: 'More professional delivery',
@@ -119,7 +119,7 @@ export default function FeaturesPage() {
 
       <MarketingCtaBand
         title="See the features inside a real workflow"
-        description="Start free, send a seller utility form on a live file, and see how much back-and-forth disappears."
+        description="Start free, send a seller utility form on a live file, and see how much back-and-forth disappears before you decide whether paid editing and branding are worth adding."
       />
     </div>
   );

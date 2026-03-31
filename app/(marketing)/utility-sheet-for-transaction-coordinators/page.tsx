@@ -39,7 +39,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
       <MarketingPageHero
         eyebrow="Use Case"
         title="UtilitySheet for transaction coordinators"
-        description="Transaction coordinators are usually the ones chasing seller utility details, cleaning up inconsistent answers, and turning that information into something buyers can actually use. UtilitySheet is built to remove that busywork."
+        description="Transaction coordinators are usually the ones chasing seller utility details, cleaning up inconsistent answers, and turning that information into something buyers can actually use. UtilitySheet is built to remove that busywork before and after submission."
       >
         <MarketingBreadcrumbs
           items={[
@@ -65,7 +65,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
             },
             {
               title: 'Better handoff quality',
-              copy: 'The finished utility sheet looks polished enough to share with buyers, agents, and support teams right away.',
+              copy: 'The finished utility sheet looks polished enough to share with buyers, agents, and support teams right away, and Pro/Teams can clean up submitted details before it goes out.',
             },
           ].map((item) => (
             <article key={item.title} className="rounded-3xl border border-border bg-card/30 p-6">
@@ -94,7 +94,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
 
       <MarketingCtaBand
         title="Make utility collection one less thing to babysit"
-        description="Start free and test UtilitySheet on a real file to see how much TC follow-up time it cuts out."
+        description="Start free and test UtilitySheet on a real file to see how much TC follow-up time it cuts out before you decide whether paid editing belongs in your workflow."
       />
     </div>
   );

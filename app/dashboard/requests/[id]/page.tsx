@@ -208,7 +208,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Seller submitted — upgrade to view</h1>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Your seller filled out this form, but it arrived after your free plan limit for the month. Upgrade to Pro to view their answers and generate the utility info sheet.
+                        Your seller filled out this form, but it arrived after your free plan limit for the month. Upgrade to Pro to view their answers, generate the utility info sheet, and unlock dashboard editing on submitted sheets.
                     </p>
                 </div>
 
@@ -230,6 +230,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             {[
                                 'View your seller\'s submitted utility providers',
                                 'Generate and download the branded PDF',
+                                'Correct submitted sheet details from the dashboard',
                                 'Unlimited requests going forward — no monthly cap',
                             ].map((item) => (
                                 <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -435,7 +436,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     <CardHeader>
                         <CardTitle className="text-foreground">Actions</CardTitle>
                         <CardDescription className="text-muted-foreground">
-                            Share and export
+                            Review, edit, and export
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -469,12 +470,12 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         {request.can_edit_submitted_sheet ? (
                             <Link href={`/dashboard/requests/${request.id}/edit`}>
                                 <Button variant="outline" className="w-full border-input text-foreground hover:bg-muted">
-                                    Edit Submitted Sheet
+                                    Review / Edit Submitted Sheet
                                 </Button>
                             </Link>
                         ) : request.status === 'submitted' ? (
                             <p className="text-xs text-muted-foreground">
-                                Editing submitted sheets is available on Pro and Team plans.
+                                Submitted-sheet editing is a Pro and Team feature inside the dashboard.
                             </p>
                         ) : null}
                     </CardContent>

@@ -18,6 +18,7 @@ const tiers = [
             '3 unlocked requests per month',
             'Reusable seller link',
             'Simple Utility Sheet mode',
+            'Dashboard view of submitted sheets',
             'Buyer-ready PDF and share link',
             'Completion email notifications',
             'Optional PDF attachment on completion emails',
@@ -35,6 +36,8 @@ const tiers = [
             'Unlimited requests',
             'Custom branded link',
             'Advanced Utility Packet mode',
+            'Edit submitted sheets after seller submission',
+            'Live updates to future PDF downloads',
             'Custom branding',
             'Branded PDF attachments',
             'Unlock locked submissions',
@@ -52,6 +55,7 @@ const tiers = [
         features: [
             'Everything in Pro',
             'Shared organization workspace',
+            'Any teammate with request access can edit submitted sheets',
             'Invite members and assign roles',
             'Seat-based billing with 3-seat minimum',
             'Org-wide packet defaults',
@@ -88,7 +92,7 @@ export function PricingSection() {
                         Transparent pricing for utility sheet workflows
                     </h2>
                     <p className="text-muted-foreground text-sm sm:text-lg max-w-2xl mx-auto">
-                        Start free, upgrade when you need branded packets or team features, and keep every transaction moving with a consistent utility handoff process.
+                        Start free, then upgrade when you need post-submission edits, branded packets, or a shared team workflow.
                     </p>
                 </div>
 
@@ -152,7 +156,7 @@ export function PricingSection() {
                 </div>
 
                 <p className="mt-10 text-center text-sm text-muted-foreground">
-                    Start on Starter with no credit card. Upgrade or cancel anytime. Teams is billed per seat (3 seat minimum).
+                    Starter keeps submitted sheets read-only after seller submission. Pro and Teams add dashboard editing, and seller/public links stay write-protected after submission on every plan.
                 </p>
             </div>
         </section>

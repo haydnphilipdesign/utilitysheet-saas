@@ -49,7 +49,7 @@ export function SuccessStep({ isDemo = false, demoData }: SuccessStepProps) {
 
                 <div className="space-y-4 max-w-md w-full">
                     <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
-                        That's How Easy It Is!
+                        That&apos;s How Easy It Is!
                     </h2>
                     <div className="p-3 sm:p-4 bg-slate-500/10 border border-slate-500/20 rounded-xl">
                         <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base">
@@ -133,11 +133,11 @@ export function SuccessStep({ isDemo = false, demoData }: SuccessStepProps) {
                 </h2>
                 <div className="p-3 sm:p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
                     <p className="text-emerald-700 dark:text-emerald-300 text-sm sm:text-base">
-                        Thank you for providing this info. Your agent has been notified and the utility sheet is ready for the buyers.
+                        Thank you for providing this info. Your agent has been notified and can now review the submitted utility sheet.
                     </p>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                    You can safely close this page now.
+                    You can safely close this page now. If anything needs to be corrected later, your agent can review the sheet from their dashboard. This form link is now read-only.
                 </p>
             </div>
         </motion.div>

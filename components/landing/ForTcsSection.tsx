@@ -21,8 +21,8 @@ const painToOutcome = [
     },
     {
         icon: FileText,
-        title: 'Buyer-ready packet, instantly',
-        description: 'When a seller submits, the finished packet attaches to your notification email and is ready to share as web + PDF.',
+        title: 'Review and correct submitted sheets',
+        description: 'When a seller submits, Pro and Teams can fix formatting, provider names, addresses, and contact details in the dashboard before the sheet gets shared forward.',
         timeSaved: 'Saves 15 min',
     },
 ] as const;
@@ -30,7 +30,7 @@ const painToOutcome = [
 const tcWorkflow = [
     'Add your seller link to your email signature or text template — once, and it\'s there forever.',
     'When a new file opens, text or email the seller your link. They enter the address, confirm utilities, and can complete advanced module groups when needed.',
-    'The packet PDF attaches to your notification email automatically. Share the web link with buyers or drop the PDF in the file — done.',
+    'The packet PDF attaches to your notification email automatically. If anything needs cleanup after submission, update the live sheet in the dashboard before you share the web link or PDF forward.',
 ] as const;
 
 const painPoints = [

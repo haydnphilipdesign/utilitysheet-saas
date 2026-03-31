@@ -24,7 +24,7 @@ import {
 export const metadata: Metadata = createPageMetadata({
     title: 'Utility Sheet Software for Transaction Coordinators and Agents',
     description:
-        'UtilitySheet helps transaction coordinators and real estate agents collect seller utility information, generate polished utility sheet PDFs, and keep closings moving.',
+        'UtilitySheet helps transaction coordinators and real estate agents collect seller utility information, generate polished utility sheet PDFs, and keep submitted sheets current from the dashboard.',
     path: '/',
 });
 
@@ -38,7 +38,7 @@ export default function LandingPage() {
                     softwareApplicationSchema({
                         path: '/',
                         description:
-                            'Utility sheet software for transaction coordinators and real estate agents that collects seller utility information and generates polished PDFs for closing.',
+                            'Utility sheet software for transaction coordinators and real estate agents that collects seller utility information, generates polished PDFs, and supports dashboard-side updates after submission on paid plans.',
                     }),
                     faqPageSchema(faqItems),
                 ]}

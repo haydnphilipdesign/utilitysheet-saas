@@ -24,7 +24,7 @@ export default function AboutPage() {
                             Built from <span className="text-slate-500">Real Experience</span>
                         </h1>
                         <p className="text-xl text-muted-foreground leading-relaxed">
-                            UtilitySheet helps transaction coordinators collect utility providers with one seller link, then deliver a clean utility handoff as either a Simple Utility Sheet or an Advanced Utility Packet (web + PDF). It was built from real closing workflow pain.
+                            UtilitySheet helps transaction coordinators collect utility providers with one seller link, then deliver a clean utility handoff as either a Simple Utility Sheet or an Advanced Utility Packet (web + PDF). Paid plans can also update submitted sheets from the dashboard when the details change later.
                         </p>
                     </div>
                 </div>
@@ -36,7 +36,7 @@ export default function AboutPage() {
                     <div className="rounded-2xl border border-border/60 bg-card/40 p-6 sm:p-8">
                         <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">What UtilitySheet does</h2>
                         <p className="text-muted-foreground text-base sm:text-lg max-w-3xl">
-                            UtilitySheet helps transaction coordinators collect utility provider details from sellers and deliver clean handoff output without repeated follow-ups - with both simple and advanced packet options.
+                            UtilitySheet helps transaction coordinators collect utility provider details from sellers and deliver clean handoff output without repeated follow-ups, with both simple and advanced packet options plus dashboard-side editing on paid plans.
                         </p>
 
                         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -52,8 +52,8 @@ export default function AboutPage() {
                             </div>
                             <div className="rounded-xl border border-border/60 bg-background/70 p-4">
                                 <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">Step 3</p>
-                                <p className="font-semibold text-foreground">Deliver simple or advanced packet output</p>
-                                <p className="text-sm text-muted-foreground mt-1">Completion emails can include the finished PDF attachment automatically.</p>
+                                <p className="font-semibold text-foreground">Review, share, and update the final sheet</p>
+                                <p className="text-sm text-muted-foreground mt-1">Completion emails can include the finished PDF attachment automatically, and paid plans can make dashboard-side corrections later.</p>
                             </div>
                         </div>
 
@@ -203,7 +203,7 @@ export default function AboutPage() {
                                 UtilitySheet is a lightweight, transaction-friendly way to collect utility provider information and output it in a clean, professional format that can travel with the deal.
                             </p>
                             <p className="text-lg text-muted-foreground">
-                                No heavy setup. Sellers complete a guided form, and you get either a Simple Utility Sheet or an Advanced Utility Packet ready to share as web view + PDF. You can also auto-attach that PDF to completion emails.
+                                No heavy setup. Sellers complete a guided form, and you get either a Simple Utility Sheet or an Advanced Utility Packet ready to share as web view + PDF. You can also auto-attach that PDF to completion emails and, on paid plans, update submitted sheets inside the dashboard when something needs to be corrected.
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-6">
@@ -225,7 +225,7 @@ export default function AboutPage() {
                             <div className="bg-background p-6 rounded-2xl shadow-sm border border-border/50 mt-12">
                                 <Zap className="h-8 w-8 text-slate-500 mb-4" />
                                 <h3 className="font-semibold text-foreground mb-2">Instant</h3>
-                                <p className="text-sm text-muted-foreground">PDF ready to download and share immediately.</p>
+                                <p className="text-sm text-muted-foreground">PDF ready to download and share immediately, with future downloads reflecting dashboard edits on paid plans.</p>
                             </div>
                         </div>
                     </div>

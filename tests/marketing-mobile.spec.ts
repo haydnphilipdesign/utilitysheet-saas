@@ -5,8 +5,8 @@ test('Landing first screen explains product and shows primary CTA on mobile', as
 
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: /Stop chasing sellers/i })).toBeVisible();
-  await expect(page.getByText(/UtilitySheet gives you a guided seller link workflow/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Utility sheet software for transaction coordinators and agents/i })).toBeVisible();
+  await expect(page.getByText(/keep current from the dashboard/i)).toBeVisible();
   await expect(page.getByTestId('hero-signup-cta')).toBeVisible();
   await expect(page.getByTestId('marketing-header-mobile-signup-cta')).toBeVisible();
 });
@@ -31,10 +31,10 @@ test('PDF attachment value prop appears in multiple landing sections', async ({ 
 
   await expect(page.getByText(/Completion Email \+ PDF Attachment/i)).toBeVisible();
   await expect(page.getByText(/auto-attach the utility sheet PDF to the completion email/i)).toBeVisible();
-  await expect(page.getByText(/Optional completion-email PDF attachment/i)).toBeVisible();
+  await expect(page.getByText(/Optional PDF attachment on completion emails/i)).toBeVisible();
 
-  await page.getByRole('button', { name: /Can UtilitySheet auto-attach the PDF/i }).click();
-  await expect(page.getByText(/enabled by default and can be changed in Settings/i)).toBeVisible();
+  await page.getByRole('button', { name: /How does PDF delivery work/i }).click();
+  await expect(page.getByText(/previously emailed attachments stay as sent snapshots/i)).toBeVisible();
 });
 
 test('iPad-like layout keeps nav and CTA readable', async ({ page }) => {
@@ -50,13 +50,13 @@ test('iPad-like layout keeps nav and CTA readable', async ({ page }) => {
 
 test('About and Demo top sections communicate value with signup path', async ({ page }) => {
   await page.goto('/about');
-  await expect(page.getByText(/UtilitySheet helps transaction coordinators collect utility providers/i)).toBeVisible();
+  await expect(page.getByText(/Paid plans can also update submitted sheets from the dashboard/i)).toBeVisible();
   const aboutSummaryHeading = page.getByRole('heading', { name: /What UtilitySheet does/i });
   await aboutSummaryHeading.scrollIntoViewIfNeeded();
   await expect(aboutSummaryHeading).toBeVisible();
 
   await page.goto('/demo');
-  await expect(page.getByText(/After seller submission, TCs can receive a completion email/i)).toBeVisible();
+  await expect(page.getByText(/edit submitted sheets later from the dashboard/i)).toBeVisible();
   await expect(page.getByRole('link', { name: /Start Free instead/i })).toBeVisible();
 });
 

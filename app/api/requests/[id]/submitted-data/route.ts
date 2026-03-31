@@ -129,7 +129,7 @@ async function getEditorContext(id: string) {
             response: NextResponse.json(
                 {
                     error: 'Upgrade required',
-                    message: 'Editing submitted info sheets is available on Pro and Team plans.',
+                    message: 'Editing submitted info sheets is available on Pro and Team workspaces.',
                 },
                 { status: 403 }
             ),

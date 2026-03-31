@@ -303,7 +303,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                         </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Changes update the live packet and future PDF downloads. Any PDF that was already emailed stays as a past snapshot.
+                        Changes update the live info sheet and future PDF downloads. Seller and public links stay read-only after submission, and any PDF that was already emailed stays as a past snapshot.
                     </p>
                 </div>
 
@@ -336,7 +336,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                             <span className="font-medium">Editing safeguards</span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            This editor saves directly against the submitted request. If another teammate changes the sheet first, we’ll stop your save and reload the latest version instead of silently overwriting it.
+                            This editor saves directly against the submitted request. In Team workspaces, any teammate who already has access can make updates. If someone changes the sheet first, we’ll stop your save and reload the latest version instead of silently overwriting it.
                         </p>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -362,7 +362,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                 <CardHeader>
                     <CardTitle className="text-foreground">Property Address</CardTitle>
                     <CardDescription className="text-muted-foreground">
-                        Update the address if you need to correct formatting, capitalization, or seller-entered typos.
+                        Update the address if you need to correct formatting, capitalization, or seller-entered typos before the next share or download.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -384,7 +384,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                 <CardHeader>
                     <CardTitle className="text-foreground">Packet Context</CardTitle>
                     <CardDescription className="text-muted-foreground">
-                        These home basics are shown in the packet but remain read-only in v1.
+                        These home basics appear on the live info sheet and PDF but remain read-only in this first editing release.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-3 text-sm">
@@ -407,7 +407,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                 <div className="space-y-1">
                     <h2 className="text-xl font-semibold text-foreground">Utility Providers</h2>
                     <p className="text-sm text-muted-foreground">
-                        Fix capitalization, swap providers, or add missing phone and website details for the live sheet.
+                        Fix capitalization, swap providers, update address-specific providers, or add missing phone and website details for the live sheet.
                     </p>
                 </div>
 
