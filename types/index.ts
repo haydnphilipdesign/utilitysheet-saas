@@ -278,6 +278,7 @@ export interface Request {
     advanced_packet_data?: AdvancedPacketData | null;
     metered_at?: string | null;
     is_locked?: boolean | null;
+    can_edit_submitted_sheet?: boolean | null;
     locked_reason?: string | null;
     locked_at?: string | null;
     deleted_at?: string | null;

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,13 +20,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
     Plus,
     Search,
     MoreHorizontal,
@@ -35,8 +28,8 @@ import {
     Download,
     Mail,
     ExternalLink,
-    Filter,
     FileText,
+    FilePenLine,
     Send,
     Clock,
     CheckCircle2,
@@ -61,7 +54,6 @@ export default function RequestsPage() {
     const [requests, setRequests] = useState<Request[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
-    const [loading, setLoading] = useState(true);
     const [downloadingPdfToken, setDownloadingPdfToken] = useState<string | null>(null);
     const [sendingReminderRequestId, setSendingReminderRequestId] = useState<string | null>(null);
 
@@ -75,8 +67,6 @@ export default function RequestsPage() {
                 }
             } catch (error) {
                 console.error('Error fetching requests:', error);
-            } finally {
-                setLoading(false);
             }
         }
 
@@ -217,14 +207,26 @@ export default function RequestsPage() {
                                                 <p className="text-xs text-muted-foreground">
                                                     Closing: {request.closing_date ? format(new Date(request.closing_date), 'MMM d, yyyy') : '—'}
                                                 </p>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => window.open(`/dashboard/requests/${request.id}`, '_self')}
-                                                >
-                                                    <Eye className="mr-1.5 h-4 w-4" />
-                                                    View
-                                                </Button>
+                                                <div className="flex items-center gap-2">
+                                                    {request.can_edit_submitted_sheet && !isLocked && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => window.open(`/dashboard/requests/${request.id}/edit`, '_self')}
+                                                        >
+                                                            <FilePenLine className="mr-1.5 h-4 w-4" />
+                                                            Edit
+                                                        </Button>
+                                                    )}
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => window.open(`/dashboard/requests/${request.id}`, '_self')}
+                                                    >
+                                                        <Eye className="mr-1.5 h-4 w-4" />
+                                                        View
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -318,6 +320,15 @@ export default function RequestsPage() {
                                                                 <Eye className="mr-2 h-4 w-4" />
                                                                 View details
                                                             </DropdownMenuItem>
+                                                            {!isLocked && request.can_edit_submitted_sheet && (
+                                                                <DropdownMenuItem
+                                                                    className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
+                                                                    onClick={() => window.open(`/dashboard/requests/${request.id}/edit`, '_self')}
+                                                                >
+                                                                    <FilePenLine className="mr-2 h-4 w-4" />
+                                                                    Edit submitted sheet
+                                                                </DropdownMenuItem>
+                                                            )}
                                                             {!isLocked && request.status === 'submitted' && (
                                                                 <>
                                                                     <DropdownMenuItem
