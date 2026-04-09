@@ -262,7 +262,7 @@ export async function updateSubmittedRequestData(
                     last_activity_at = NOW()
                 WHERE id = ${id}
                     AND status = 'submitted'
-                    AND updated_at = ${data.expectedUpdatedAt}
+                    AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', ${data.expectedUpdatedAt}::timestamptz)
                     AND deleted_at IS NULL
                 RETURNING *
             ),
