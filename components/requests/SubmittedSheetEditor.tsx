@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, ArrowLeft, Loader2, Save, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Download, Loader2, Save, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import { generatePacketPdf } from '@/lib/pdf-generator';
 import {
     ADVANCED_MODULE_FIELD_METADATA,
     ADVANCED_MODULE_LABELS,
@@ -69,6 +70,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
     const [data, setData] = useState<SubmittedSheetEditorPayload | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const loadData = useCallback(async () => {
@@ -235,7 +237,14 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             }
 
             setData(result);
-            toast.success('Info sheet updated');
+            toast.success('Info sheet updated', {
+                action: {
+                    label: 'Download PDF',
+                    onClick: () => {
+                        void handleDownloadPdf(result.request.publicToken);
+                    },
+                },
+            });
         } catch (saveError) {
             console.error('Failed to save submitted sheet changes:', saveError);
             toast.error('Failed to save changes');
@@ -243,6 +252,25 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             setSaving(false);
         }
     };
+
+    const handleDownloadPdf = useCallback(async (tokenOverride?: string) => {
+        const token = tokenOverride || data?.request.publicToken;
+        if (!token) {
+            toast.error('PDF is not available for this request yet.');
+            return;
+        }
+
+        setDownloadingPdf(true);
+        try {
+            await generatePacketPdf(token);
+            toast.success('PDF downloaded successfully');
+        } catch (downloadError) {
+            console.error('Failed to download packet PDF:', downloadError);
+            toast.error('Failed to generate PDF. Please try again.');
+        } finally {
+            setDownloadingPdf(false);
+        }
+    }, [data]);
 
     if (loading) {
         return (
@@ -303,7 +331,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                         </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Changes update the live info sheet and future PDF downloads. Seller and public links stay read-only after submission, and any PDF that was already emailed stays as a past snapshot.
+                        Changes update the live info sheet and future PDF downloads.
                     </p>
                 </div>
 
@@ -314,9 +342,22 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                         </Button>
                     </Link>
                     <Button
+                        variant="outline"
+                        className="border-input text-foreground hover:bg-muted"
+                        onClick={() => void handleDownloadPdf()}
+                        disabled={saving || downloadingPdf}
+                    >
+                        {downloadingPdf ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Download className="mr-2 h-4 w-4" />
+                        )}
+                        {downloadingPdf ? 'Generating...' : 'Download PDF'}
+                    </Button>
+                    <Button
                         className="bg-emerald-600 hover:bg-emerald-700 text-white"
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || downloadingPdf}
                     >
                         {saving ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

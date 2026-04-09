@@ -76,6 +76,7 @@ function buildSubmittedSheetResponse({
     return {
         request: {
             id: requestData.id,
+            publicToken: requestData.public_token,
             propertyAddress: requestData.property_address,
             sellerName: requestData.seller_name || null,
             sellerEmail: requestData.seller_email || null,

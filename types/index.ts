@@ -325,6 +325,7 @@ export type SubmittedSheetEditableUtilities = Partial<Record<UtilityCategory, Su
 
 export interface SubmittedSheetEditorRequest {
     id: string;
+    publicToken: string;
     propertyAddress: string;
     sellerName: string | null;
     sellerEmail: string | null;
