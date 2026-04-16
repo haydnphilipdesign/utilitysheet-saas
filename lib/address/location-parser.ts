@@ -78,6 +78,25 @@ const AMBIGUOUS_STATE_ABBREVIATIONS = new Set(['IN', 'OR', 'ME', 'HI', 'AR', 'CT
 const VALID_STATE_CODES = new Set(
     Object.values(US_STATES)
 );
+const STREET_SUFFIXES = new Set([
+    'aly', 'allee', 'alley',
+    'ave', 'avenue',
+    'blvd', 'boulevard',
+    'cir', 'circle',
+    'court', 'ct',
+    'dr', 'drive',
+    'hwy', 'highway',
+    'ln', 'lane',
+    'loop',
+    'pkwy', 'parkway',
+    'pl', 'place',
+    'rd', 'road',
+    'sq', 'square',
+    'st', 'street',
+    'ter', 'terrace',
+    'trl', 'trail',
+    'way',
+]);
 
 function cleanSegment(input: string): string {
     return input
@@ -128,6 +147,108 @@ function editDistanceAtMostOne(a: string, b: string): boolean {
     return edits <= 1;
 }
 
+function getWords(input: string): string[] {
+    return input
+        .replace(/,/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+}
+
+function stripTrailingZip(input: string): string {
+    return cleanSegment(
+        input.replace(/\b\d{5}(?:[-\s]?\d{4})?\b\s*$/i, '')
+    );
+}
+
+function stripTrailingResolvedState(input: string, state: string | null): string {
+    if (!state) return cleanSegment(input);
+
+    const words = getWords(input);
+    for (let length = Math.min(3, words.length); length >= 1; length--) {
+        const phrase = words.slice(-length).join(' ');
+        if (resolveStateAbbreviation(phrase) === state) {
+            return cleanSegment(words.slice(0, -length).join(' '));
+        }
+    }
+
+    return cleanSegment(input);
+}
+
+function normalizeStreetSuffixToken(token: string): string {
+    return token.toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function deriveStreetAndCityFromCommaLessAddress(
+    address: string,
+    state: string | null,
+    zip: string | null
+): { street: string | null; city: string | null } {
+    let working = normalizeAddressInput(address);
+    if (zip) {
+        const zipRegex = new RegExp(`\\b${zip}(?:[-\\s]?\\d{4})?\\b\\s*$`, 'i');
+        working = cleanSegment(working.replace(zipRegex, ''));
+    }
+
+    working = stripTrailingResolvedState(working, state);
+    const words = getWords(working);
+    if (words.length === 0) {
+        return { street: null, city: null };
+    }
+
+    let streetSuffixIndex = -1;
+    for (let i = 0; i < words.length - 1; i++) {
+        if (STREET_SUFFIXES.has(normalizeStreetSuffixToken(words[i]))) {
+            streetSuffixIndex = i;
+        }
+    }
+
+    if (streetSuffixIndex >= 0 && streetSuffixIndex < words.length - 1) {
+        return {
+            street: cleanSegment(words.slice(0, streetSuffixIndex + 1).join(' ')) || null,
+            city: toTitleCase(words.slice(streetSuffixIndex + 1).join(' ')) || null,
+        };
+    }
+
+    return {
+        street: cleanSegment(working) || null,
+        city: null,
+    };
+}
+
+function deriveCityFromCommaSeparatedSegments(segments: string[], state: string | null): string | null {
+    if (segments.length < 2) return null;
+
+    for (let i = segments.length - 1; i >= 0; i--) {
+        const segment = cleanSegment(segments[i]);
+        const hasZip = /\b\d{5}(?:[-\s]?\d{4})?\b/.test(segment);
+        const resolvedSegmentState = resolveStateAbbreviation(segment);
+        const hasState = Boolean(state && resolvedSegmentState === state);
+
+        if (!hasZip && !hasState) {
+            continue;
+        }
+
+        const previous = i > 0 ? cleanSegment(segments[i - 1]) : '';
+        const previousResolvedState = resolveStateAbbreviation(previous);
+        const candidate = previousResolvedState && state && previousResolvedState === state && i > 1
+            ? cleanSegment(segments[i - 2])
+            : previous;
+        const strippedCandidate = stripTrailingResolvedState(stripTrailingZip(candidate), state);
+
+        if (strippedCandidate && !looksLikeStreetLine(strippedCandidate)) {
+            return toTitleCase(strippedCandidate);
+        }
+    }
+
+    const fallback = stripTrailingResolvedState(stripTrailingZip(segments[1]), state);
+    if (fallback && !looksLikeStreetLine(fallback)) {
+        return toTitleCase(fallback);
+    }
+
+    return null;
+}
+
 export function resolveStateAbbreviation(input: string): string | null {
     const normalized = input.toLowerCase().trim();
 
@@ -150,6 +271,17 @@ export function resolveStateAbbreviation(input: string): string | null {
 }
 
 function findState(address: string): string | null {
+    const withoutZip = stripTrailingZip(address);
+    const words = getWords(withoutZip);
+
+    for (let length = Math.min(3, words.length); length >= 1; length--) {
+        const phrase = words.slice(-length).join(' ');
+        const resolved = resolveStateAbbreviation(phrase);
+        if (resolved) {
+            return resolved;
+        }
+    }
+
     const normalized = address.toLowerCase();
 
     for (const name of STATE_FULL_NAMES) {
@@ -209,8 +341,9 @@ function findState(address: string): string | null {
 }
 
 function findZip(address: string): string | null {
-    const zipMatch = address.match(/\b(\d{5})(?:[-\s]?(\d{4}))?\b/);
-    return zipMatch ? zipMatch[1] : null;
+    const zipMatches = Array.from(address.matchAll(/\b(\d{5})(?:[-\s]?(\d{4}))?\b/g));
+    const lastMatch = zipMatches.at(-1);
+    return lastMatch ? lastMatch[1] : null;
 }
 
 function toTitleCase(input: string): string {
@@ -228,20 +361,9 @@ function looksLikeStreetLine(input: string): boolean {
 function findCity(address: string, state: string | null): string | null {
     const withCommas = address.split(',').map(cleanSegment).filter(Boolean);
     if (withCommas.length >= 2) {
-        for (let i = withCommas.length - 1; i >= 0; i--) {
-            const segment = withCommas[i];
-            const stateInSegment = state ? new RegExp(`\\b${state}\\b`, 'i').test(segment) : false;
-            const zipInSegment = /\b\d{5}(?:[-\s]?\d{4})?\b/.test(segment);
-            if ((stateInSegment || zipInSegment) && i > 0) {
-                const previous = cleanSegment(withCommas[i - 1]);
-                if (previous && !looksLikeStreetLine(previous)) {
-                    return toTitleCase(previous);
-                }
-            }
-        }
-
-        if (!looksLikeStreetLine(withCommas[1])) {
-            return toTitleCase(withCommas[1]);
+        const commaSeparatedCity = deriveCityFromCommaSeparatedSegments(withCommas, state);
+        if (commaSeparatedCity) {
+            return commaSeparatedCity;
         }
     }
 
@@ -259,19 +381,29 @@ function findCity(address: string, state: string | null): string | null {
         }
     }
 
+    const derived = deriveStreetAndCityFromCommaLessAddress(noComma, state, findZip(address));
+    if (derived.city) {
+        return derived.city;
+    }
+
     return null;
 }
 
-function findStreet(address: string, city: string | null): string | null {
+function findStreet(address: string, city: string | null, state: string | null, zip: string | null): string | null {
     const commaSplit = address.split(',').map(cleanSegment).filter(Boolean);
     if (commaSplit.length > 0) {
-        const first = commaSplit[0];
+        let first = commaSplit[0];
+        const reparsedFirstSegment = deriveStreetAndCityFromCommaLessAddress(first, state, zip);
+        if (reparsedFirstSegment.street && reparsedFirstSegment.street.length < first.length) {
+            first = reparsedFirstSegment.street;
+        }
         if (city && first.toLowerCase() === city.toLowerCase()) {
             return null;
         }
         return first || null;
     }
-    return null;
+
+    return deriveStreetAndCityFromCommaLessAddress(address, state, zip).street;
 }
 
 export function parseAddressWithConfidence(address: string): ParsedLocation {
@@ -279,12 +411,14 @@ export function parseAddressWithConfidence(address: string): ParsedLocation {
     const state = findState(normalized);
     const zip = findZip(normalized);
     const city = findCity(normalized, state);
-    const street = findStreet(normalized, city);
+    const street = findStreet(normalized, city, state, zip);
     const issues: string[] = [];
 
     let confidence: LocationConfidence = 'low';
-    if (state && (city || zip)) {
+    if (street && city && state && zip) {
         confidence = 'high';
+    } else if (street && (city || state || zip)) {
+        confidence = 'medium';
     } else if (state || zip) {
         confidence = 'medium';
     }

@@ -23,6 +23,18 @@ describe('intake-validation', () => {
         });
     });
 
+    it('treats a complete no-comma address as valid once it can be parsed cleanly', () => {
+        const result = validateIntakeAddress('135 acorn ln kunkletown pa 18058');
+        expect(result.isComplete).toBe(true);
+        expect(result.missingFields).toEqual([]);
+        expect(result.parsed).toEqual({
+            street: '135 acorn ln',
+            city: 'Kunkletown',
+            state: 'PA',
+            zip: '18058',
+        });
+    });
+
     it('formats canonical address without unit', () => {
         const formatted = formatCanonicalIntakeAddress({
             street: '123 Main St',

@@ -117,7 +117,26 @@ describe('POST /api/intake/[slug]/start', () => {
         expect(response.status).toBe(200);
         expect(await response.json()).toEqual({ sellerToken: 'seller-token-1' });
         expect(buildStructuredPropertyAddress).toHaveBeenCalledWith('123 Main St, Austin, TX 78701');
-        expect(createRequest).toHaveBeenCalled();
+        expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
+            propertyAddress: '123 Main St, Austin, TX 78701',
+        }));
+    });
+
+    it('accepts a complete no-comma address after parser normalization', async () => {
+        const request = new Request('http://localhost/api/intake/test-slug/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ propertyAddress: '135 acorn ln kunkletown pa 18058' }),
+        });
+
+        const response = await POST(request, { params: Promise.resolve({ slug: 'test-slug' }) });
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ sellerToken: 'seller-token-1' });
+        expect(buildStructuredPropertyAddress).toHaveBeenCalledWith('135 acorn ln, Kunkletown, PA 18058');
+        expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
+            propertyAddress: '135 acorn ln, Kunkletown, PA 18058',
+        }));
     });
 
     it('uses reusable-link advanced module defaults for paid accounts', async () => {

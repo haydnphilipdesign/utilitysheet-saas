@@ -5,7 +5,7 @@ import { intakeStartRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitU
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { getClientIp } from '@/lib/network/client-ip';
-import { validateIntakeAddress } from '@/lib/address/intake-validation';
+import { formatCanonicalIntakeAddress, validateIntakeAddress } from '@/lib/address/intake-validation';
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 
@@ -101,6 +101,7 @@ export async function POST(
                 { status: 400 }
             );
         }
+        const canonicalPropertyAddress = formatCanonicalIntakeAddress(intakeValidation.parsed);
 
         const intakeLink = await getIntakeLinkBySlug(slug);
         if (!intakeLink || !intakeLink.is_active) {
@@ -129,7 +130,7 @@ export async function POST(
             }
         }
 
-        const normalizedAddress = normalizeAddress(parsed.data.propertyAddress);
+        const normalizedAddress = normalizeAddress(canonicalPropertyAddress);
         const cookieName = `us_intake_${slug}`;
         const cookies = parseCookies(request.headers.get('cookie'));
         const existingCookie = cookies[cookieName];
@@ -162,7 +163,7 @@ export async function POST(
         }
 
         const defaultBrand = await getDefaultBrandProfile(account.id, activeOrg?.id);
-        const structuredPropertyAddress = await buildStructuredPropertyAddress(parsed.data.propertyAddress);
+        const structuredPropertyAddress = await buildStructuredPropertyAddress(canonicalPropertyAddress);
         const packetMode = isPaid && intakeLink.default_packet_mode === 'advanced' ? 'advanced' : 'simple';
         const advancedModules = packetMode === 'advanced'
             ? normalizeAdvancedModules(intakeLink.advanced_modules)
@@ -175,7 +176,7 @@ export async function POST(
             accountId: account.id,
             organizationId: account.active_organization_id || undefined,
             brandProfileId: defaultBrand?.id,
-            propertyAddress: parsed.data.propertyAddress,
+            propertyAddress: canonicalPropertyAddress,
             propertyAddressStructured: structuredPropertyAddress,
             utilityCategories: UTILITY_CATEGORY_KEYS,
             status: 'draft',
