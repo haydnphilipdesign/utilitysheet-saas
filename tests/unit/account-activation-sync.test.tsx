@@ -2,11 +2,13 @@ import React from 'react';
 import { render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockUseUser = vi.fn();
+const mockGetUser = vi.fn();
 const mockUsePathname = vi.fn();
 
-vi.mock('@stackframe/stack', () => ({
-    useUser: () => mockUseUser(),
+vi.mock('@/lib/stack/client', () => ({
+    stackClientApp: {
+        getUser: () => mockGetUser(),
+    },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -20,22 +22,25 @@ describe('AccountActivationSync', () => {
         vi.clearAllMocks();
         sessionStorage.clear();
         mockUsePathname.mockReturnValue('/dashboard');
-        mockUseUser.mockReturnValue(null);
+        mockGetUser.mockResolvedValue(null);
     });
 
-    it('does nothing when there is no authenticated user', () => {
+    it('does nothing when there is no authenticated user', async () => {
         const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
 
         render(<AccountActivationSync />);
 
+        await waitFor(() => {
+            expect(mockGetUser).toHaveBeenCalledTimes(1);
+        });
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('syncs the authenticated user once and remembers it for the session', async () => {
         const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
         vi.stubGlobal('fetch', fetchMock);
-        mockUseUser.mockReturnValue({ id: 'auth_123' });
+        mockGetUser.mockResolvedValue({ id: 'auth_123' });
 
         const { rerender } = render(<AccountActivationSync />);
 
@@ -53,5 +58,6 @@ describe('AccountActivationSync', () => {
 
         rerender(<AccountActivationSync />);
         expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(mockGetUser).toHaveBeenCalledTimes(1);
     });
 });
