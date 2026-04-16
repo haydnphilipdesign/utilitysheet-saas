@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Ban, Shield, Sparkles, Users } from 'lucide-react';
 import { searchUsers, getLatestAdminActionsForUsers, type SortDirection, type UserSortField } from '@/lib/admin';
 import { UsersTable } from './users-table';
+import { AuthReconciliationCard } from './auth-reconciliation-card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AdminDataTableShell, AdminFilterBar, AdminPageHeader, AdminPagination, AdminStatStrip } from '@/components/admin/primitives';
@@ -118,6 +119,8 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                     { label: 'Pro / Team', value: `${stats.pro} / ${stats.team}`, hint: `${stats.canceled} canceled`, icon: Sparkles },
                 ]}
             />
+
+            <AuthReconciliationCard />
 
             <AdminFilterBar>
                 <form method="GET" action="/admin/users" className="flex flex-col gap-3">

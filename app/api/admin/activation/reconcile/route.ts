@@ -28,6 +28,7 @@ export async function GET(request: Request) {
             limit: parseLimit(searchParams.get('limit')),
             cursor: searchParams.get('cursor'),
             includeUnverified: searchParams.get('includeUnverified') === 'true',
+            scanAll: searchParams.get('scanAll') === 'true',
             execute: false,
         });
 
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
             limit: parseLimit(typeof body?.limit === 'number' ? String(body.limit) : null),
             cursor: typeof body?.cursor === 'string' ? body.cursor : null,
             includeUnverified: body?.includeUnverified === true,
+            scanAll: body?.scanAll === true,
             execute: true,
         });
 

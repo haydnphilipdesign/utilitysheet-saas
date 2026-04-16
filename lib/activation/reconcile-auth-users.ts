@@ -55,80 +55,97 @@ export async function reconcileAuthUsers(options?: {
     limit?: number;
     execute?: boolean;
     includeUnverified?: boolean;
+    scanAll?: boolean;
 }): Promise<ReconcileAuthUsersResult> {
     const limit = Math.max(1, Math.min(options?.limit ?? 100, 200));
     const execute = options?.execute === true;
     const includeUnverified = options?.includeUnverified === true;
-
-    const users = await stackServerApp.listUsers({
-        cursor: options?.cursor || undefined,
-        limit,
-        orderBy: 'signedUpAt',
-        desc: false,
-        includeAnonymous: false,
-    });
-
-    const authUsers = Array.from(users).map((user) => ({
-        id: user.id,
-        primaryEmail: user.primaryEmail,
-        primaryEmailVerified: user.primaryEmailVerified,
-        displayName: user.displayName,
-        signedUpAt: user.signedUpAt,
-    }));
-
-    const existingAccounts = await getAccountsByAuthUserIds(authUsers.map((user) => user.id));
-    const existingAuthIds = new Set(existingAccounts.map((account) => account.auth_user_id).filter(Boolean));
-    const missingUsers = authUsers.filter((user) => !existingAuthIds.has(user.id));
-
-    const skipped: SkippedMissingAuthUser[] = [];
-    const eligibleUsers = missingUsers.filter((user) => {
-        if (!user.primaryEmail) {
-            skipped.push({ ...serializeAuthUser(user), reason: 'missing_primary_email' });
-            return false;
-        }
-        if (!includeUnverified && !user.primaryEmailVerified) {
-            skipped.push({ ...serializeAuthUser(user), reason: 'email_not_verified' });
-            return false;
-        }
-        return true;
-    });
-
-    const failures: FailedMissingAuthUser[] = [];
+    const scanAll = options?.scanAll === true;
+    let cursor = options?.cursor || null;
+    let scanned = 0;
+    let existingAccountCount = 0;
+    let missingCount = 0;
+    let eligibleCount = 0;
     let createdCount = 0;
+    const skipped: SkippedMissingAuthUser[] = [];
+    const failures: FailedMissingAuthUser[] = [];
 
-    if (execute) {
-        for (const user of eligibleUsers) {
-            try {
-                const activation = await ensureAccountActivation({
-                    id: user.id,
-                    primaryEmail: user.primaryEmail,
-                    displayName: user.displayName,
-                });
+    do {
+        const users = await stackServerApp.listUsers({
+            cursor: cursor || undefined,
+            limit,
+            orderBy: 'signedUpAt',
+            desc: true,
+            includeAnonymous: false,
+        });
 
-                if (!activation?.account) {
-                    failures.push({ ...serializeAuthUser(user), reason: 'activation_failed' });
-                    continue;
+        const authUsers = Array.from(users).map((user) => ({
+            id: user.id,
+            primaryEmail: user.primaryEmail,
+            primaryEmailVerified: user.primaryEmailVerified,
+            displayName: user.displayName,
+            signedUpAt: user.signedUpAt,
+        }));
+
+        scanned += authUsers.length;
+
+        const existingAccounts = await getAccountsByAuthUserIds(authUsers.map((user) => user.id));
+        existingAccountCount += existingAccounts.length;
+
+        const existingAuthIds = new Set(existingAccounts.map((account) => account.auth_user_id).filter(Boolean));
+        const missingUsers = authUsers.filter((user) => !existingAuthIds.has(user.id));
+        missingCount += missingUsers.length;
+
+        const eligibleUsers = missingUsers.filter((user) => {
+            if (!user.primaryEmail) {
+                skipped.push({ ...serializeAuthUser(user), reason: 'missing_primary_email' });
+                return false;
+            }
+            if (!includeUnverified && !user.primaryEmailVerified) {
+                skipped.push({ ...serializeAuthUser(user), reason: 'email_not_verified' });
+                return false;
+            }
+            return true;
+        });
+
+        eligibleCount += eligibleUsers.length;
+
+        if (execute) {
+            for (const user of eligibleUsers) {
+                try {
+                    const activation = await ensureAccountActivation({
+                        id: user.id,
+                        primaryEmail: user.primaryEmail,
+                        displayName: user.displayName,
+                    });
+
+                    if (!activation?.account) {
+                        failures.push({ ...serializeAuthUser(user), reason: 'activation_failed' });
+                        continue;
+                    }
+
+                    createdCount += 1;
+                } catch (error) {
+                    failures.push({
+                        ...serializeAuthUser(user),
+                        reason: error instanceof Error ? error.message : 'activation_failed',
+                    });
                 }
-
-                createdCount += 1;
-            } catch (error) {
-                failures.push({
-                    ...serializeAuthUser(user),
-                    reason: error instanceof Error ? error.message : 'activation_failed',
-                });
             }
         }
-    }
+
+        cursor = users.nextCursor ?? null;
+    } while (scanAll && cursor);
 
     return {
-        scanned: authUsers.length,
-        existingAccountCount: existingAccounts.length,
-        missingCount: missingUsers.length,
-        eligibleCount: eligibleUsers.length,
+        scanned,
+        existingAccountCount,
+        missingCount,
+        eligibleCount,
         createdCount,
         skipped,
         failures,
         dryRun: !execute,
-        nextCursor: users.nextCursor ?? null,
+        nextCursor: scanAll ? null : cursor,
     };
 }

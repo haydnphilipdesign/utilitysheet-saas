@@ -71,6 +71,10 @@ describe('reconcileAuthUsers', () => {
             }),
         ]);
         expect(result.nextCursor).toBe('next_cursor_123');
+        expect(stackServerAppMock.listUsers).toHaveBeenCalledWith(expect.objectContaining({
+            desc: true,
+            orderBy: 'signedUpAt',
+        }));
         expect(ensureAccountActivationMock).not.toHaveBeenCalled();
     });
 
@@ -101,5 +105,56 @@ describe('reconcileAuthUsers', () => {
             primaryEmail: 'verified@example.com',
             displayName: 'Verified Missing',
         });
+    });
+
+    it('can scan every auth page when requested', async () => {
+        const firstPage = [
+            {
+                id: 'auth_existing',
+                primaryEmail: 'existing@example.com',
+                primaryEmailVerified: true,
+                displayName: 'Existing User',
+                signedUpAt: new Date('2026-03-21T10:00:00.000Z'),
+            },
+        ] as unknown as Array<Record<string, unknown>> & { nextCursor: string | null };
+        firstPage.nextCursor = 'cursor_page_2';
+
+        const secondPage = [
+            {
+                id: 'auth_missing_verified',
+                primaryEmail: 'verified@example.com',
+                primaryEmailVerified: true,
+                displayName: 'Verified Missing',
+                signedUpAt: new Date('2026-04-16T11:00:00.000Z'),
+            },
+        ] as unknown as Array<Record<string, unknown>> & { nextCursor: string | null };
+        secondPage.nextCursor = null;
+
+        stackServerAppMock.listUsers
+            .mockResolvedValueOnce(firstPage)
+            .mockResolvedValueOnce(secondPage);
+        queryMocks.getAccountsByAuthUserIds
+            .mockResolvedValueOnce([
+                { id: 'acc_existing', auth_user_id: 'auth_existing', email: 'existing@example.com' },
+            ])
+            .mockResolvedValueOnce([]);
+
+        const result = await reconcileAuthUsers({ limit: 50, scanAll: true });
+
+        expect(result.scanned).toBe(2);
+        expect(result.existingAccountCount).toBe(1);
+        expect(result.missingCount).toBe(1);
+        expect(result.eligibleCount).toBe(1);
+        expect(result.nextCursor).toBeNull();
+        expect(stackServerAppMock.listUsers).toHaveBeenNthCalledWith(1, expect.objectContaining({
+            cursor: undefined,
+            desc: true,
+            limit: 50,
+        }));
+        expect(stackServerAppMock.listUsers).toHaveBeenNthCalledWith(2, expect.objectContaining({
+            cursor: 'cursor_page_2',
+            desc: true,
+            limit: 50,
+        }));
     });
 });
