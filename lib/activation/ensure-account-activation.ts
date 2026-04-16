@@ -17,6 +17,7 @@ type AuthUserLike = {
     id: string;
     primaryEmail?: string | null;
     displayName?: string | null;
+    signedUpAt?: Date | string | null;
 };
 
 type ActivationFlags = {
@@ -73,7 +74,8 @@ export async function ensureAccountActivation(user: AuthUserLike): Promise<Ensur
     const ensuredAccount = await ensureAccountRecord(
         user.id,
         user.primaryEmail || '',
-        user.displayName || undefined
+        user.displayName || undefined,
+        user.signedUpAt || null
     );
     if (!ensuredAccount.account) {
         return null;

@@ -60,8 +60,15 @@ describe('ensureAccountActivation', () => {
             id: 'auth_1',
             primaryEmail: 'jane@example.com',
             displayName: 'Jane Smith',
+            signedUpAt: new Date('2026-01-08T14:21:48.952Z'),
         });
 
+        expect(queryMocks.ensureAccountRecord).toHaveBeenCalledWith(
+            'auth_1',
+            'jane@example.com',
+            'Jane Smith',
+            new Date('2026-01-08T14:21:48.952Z')
+        );
         expect(queryMocks.createOrganization).toHaveBeenCalledWith('Jane Smith', 'acc_1');
         expect(queryMocks.createBrandProfile).toHaveBeenCalledWith(expect.objectContaining({
             accountId: 'acc_1',
@@ -105,8 +112,15 @@ describe('ensureAccountActivation', () => {
             id: 'auth_legacy',
             primaryEmail: 'legacy.agent@example.com',
             displayName: null,
+            signedUpAt: new Date('2026-01-20T19:59:06.757Z'),
         });
 
+        expect(queryMocks.ensureAccountRecord).toHaveBeenCalledWith(
+            'auth_legacy',
+            'legacy.agent@example.com',
+            undefined,
+            new Date('2026-01-20T19:59:06.757Z')
+        );
         expect(queryMocks.createOrganization).not.toHaveBeenCalled();
         expect(queryMocks.createBrandProfile).not.toHaveBeenCalled();
         expect(result?.activeOrganization).toBeNull();

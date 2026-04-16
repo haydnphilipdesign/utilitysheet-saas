@@ -3,8 +3,25 @@
  */
 import { sql } from '@/lib/neon/db';
 
-export async function ensureAccountRecord(authUserId: string, email: string, fullName?: string) {
+function normalizeTimestamp(value?: Date | string | null) {
+    if (!value) return null;
+
+    const normalized = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(normalized.getTime())) {
+        return null;
+    }
+
+    return normalized.toISOString();
+}
+
+export async function ensureAccountRecord(
+    authUserId: string,
+    email: string,
+    fullName?: string,
+    signedUpAt?: Date | string | null
+) {
     if (!sql) return { account: null, created: false };
+    const createdAt = normalizeTimestamp(signedUpAt);
 
     let result = await sql`
         SELECT * FROM accounts WHERE auth_user_id = ${authUserId}
@@ -29,8 +46,8 @@ export async function ensureAccountRecord(authUserId: string, email: string, ful
     }
 
     result = await sql`
-        INSERT INTO accounts (auth_user_id, email, full_name, notification_preferences)
-        VALUES (${authUserId}, ${email}, ${fullName || null}, '{}'::jsonb)
+        INSERT INTO accounts (auth_user_id, email, full_name, notification_preferences, created_at)
+        VALUES (${authUserId}, ${email}, ${fullName || null}, '{}'::jsonb, COALESCE(${createdAt}, NOW()))
         RETURNING *
     `;
 
@@ -40,8 +57,8 @@ export async function ensureAccountRecord(authUserId: string, email: string, ful
 /**
  * Get or create an account for an authenticated user
  */
-export async function getOrCreateAccount(authUserId: string, email: string, fullName?: string) {
-    const result = await ensureAccountRecord(authUserId, email, fullName);
+export async function getOrCreateAccount(authUserId: string, email: string, fullName?: string, signedUpAt?: Date | string | null) {
+    const result = await ensureAccountRecord(authUserId, email, fullName, signedUpAt);
     return result.account;
 }
 

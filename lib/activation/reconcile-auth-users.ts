@@ -117,6 +117,7 @@ export async function reconcileAuthUsers(options?: {
                         id: user.id,
                         primaryEmail: user.primaryEmail,
                         displayName: user.displayName,
+                        signedUpAt: user.signedUpAt,
                     });
 
                     if (!activation?.account) {

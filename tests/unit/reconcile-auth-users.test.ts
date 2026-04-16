@@ -104,6 +104,7 @@ describe('reconcileAuthUsers', () => {
             id: 'auth_missing_verified',
             primaryEmail: 'verified@example.com',
             displayName: 'Verified Missing',
+            signedUpAt: new Date('2026-03-21T10:00:00.000Z'),
         });
     });
 
