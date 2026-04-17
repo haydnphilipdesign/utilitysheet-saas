@@ -11,14 +11,31 @@ type ReconcilePreview = {
     missingCount: number;
     eligibleCount: number;
     createdCount: number;
-    skipped: Array<{ reason: string }>;
+    skipped: Array<{
+        id: string;
+        reason: string;
+        signedUpAt: string;
+        primaryEmail: string | null;
+        primaryEmailVerified: boolean;
+        displayName: string | null;
+    }>;
     failures: Array<{ reason: string }>;
     dryRun: boolean;
     nextCursor: string | null;
 };
 
+const STALE_BLOCKED_SIGNUP_DAYS = 30;
+
 function pluralize(count: number, singular: string, plural: string) {
     return count === 1 ? singular : plural;
+}
+
+function isStaleBlockedSignup(signedUpAt: string) {
+    const signedUpAtMs = Date.parse(signedUpAt);
+    if (!Number.isFinite(signedUpAtMs)) return false;
+
+    const ageMs = Date.now() - signedUpAtMs;
+    return ageMs >= STALE_BLOCKED_SIGNUP_DAYS * 24 * 60 * 60 * 1000;
 }
 
 export function AuthReconciliationCard() {
@@ -112,8 +129,14 @@ export function AuthReconciliationCard() {
         return null;
     }
 
-    const blockedCount = Math.max(0, preview.missingCount - preview.eligibleCount);
+    const staleBlockedCount = preview.skipped.filter((record) => isStaleBlockedSignup(record.signedUpAt)).length;
+    const recentBlockedCount = Math.max(0, preview.skipped.length - staleBlockedCount);
+    const visiblePendingCount = preview.eligibleCount + recentBlockedCount;
     const createdCount = preview.createdCount;
+
+    if (visiblePendingCount === 0) {
+        return null;
+    }
 
     return (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 shadow-sm backdrop-blur">
@@ -124,11 +147,16 @@ export function AuthReconciliationCard() {
                         Auth signups are waiting to be activated
                     </div>
                     <p className="text-sm text-amber-900/80 dark:text-amber-100/80">
-                        {preview.eligibleCount} verified {pluralize(preview.eligibleCount, 'signup is', 'signups are')} ready to sync into your admin users table.
-                        {blockedCount > 0 ? ` ${blockedCount} ${pluralize(blockedCount, 'record is', 'records are')} still blocked by missing or unverified email.` : ''}
+                        {preview.eligibleCount > 0
+                            ? `${preview.eligibleCount} verified ${pluralize(preview.eligibleCount, 'signup is', 'signups are')} ready to sync into your admin users table.`
+                            : 'No verified signups are ready to sync right now.'}
+                        {recentBlockedCount > 0
+                            ? ` ${recentBlockedCount} recent ${pluralize(recentBlockedCount, 'record is', 'records are')} still blocked by missing or unverified email.`
+                            : ''}
                     </p>
                     <p className="text-xs text-amber-900/70 dark:text-amber-100/70">
-                        Scanned {preview.scanned} auth {pluralize(preview.scanned, 'user', 'users')} and found {preview.missingCount} missing app {pluralize(preview.missingCount, 'account', 'accounts')}.
+                        Scanned {preview.scanned} auth {pluralize(preview.scanned, 'user', 'users')} and found {visiblePendingCount} pending app {pluralize(visiblePendingCount, 'activation', 'activations')}.
+                        {staleBlockedCount > 0 ? ` ${staleBlockedCount} older unverified ${pluralize(staleBlockedCount, 'signup is', 'signups are')} hidden from this alert.` : ''}
                         {createdCount > 0 ? ` The last sync created ${createdCount} ${pluralize(createdCount, 'account', 'accounts')}.` : ''}
                     </p>
                     {error ? (
