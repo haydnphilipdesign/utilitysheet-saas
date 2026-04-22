@@ -87,7 +87,7 @@ function roleBadge(role: AdminUserRow['role']) {
 
 function actionGroups(user: AdminUserRow): Array<{ label: string; actions: ConfirmableAction['type'][]; note?: string }> {
     const effectivePlan = getEffectivePlan(user);
-    return [
+    const groups: Array<{ label: string; actions: ConfirmableAction['type'][]; note?: string }> = [
         {
             label: 'Access',
             actions: user.role === 'admin' ? ['demote'] : [],
@@ -103,7 +103,9 @@ function actionGroups(user: AdminUserRow): Array<{ label: string; actions: Confi
             label: 'Enforcement',
             actions: [user.role === 'banned' ? 'unban' : 'ban'],
         },
-    ].filter((group) => group.actions.length > 0 || group.note);
+    ];
+
+    return groups.filter((group) => group.actions.length > 0 || Boolean(group.note));
 }
 
 export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }: UsersTableProps) {
