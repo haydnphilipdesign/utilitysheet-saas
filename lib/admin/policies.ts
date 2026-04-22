@@ -8,6 +8,7 @@ export type AdminPolicyResult =
         | 'SELF_ROLE_CHANGE_BLOCKED'
         | 'SELF_BAN_BLOCKED'
         | 'LAST_ADMIN_PROTECTED'
+        | 'ADMIN_PROMOTION_DISABLED'
         | 'NO_OP_ROLE'
         | 'NO_OP_BAN'
         | 'NO_OP_UNBAN'
@@ -16,6 +17,7 @@ export type AdminPolicyResult =
         policy:
         | 'self_protection'
         | 'last_admin_protection'
+        | 'admin_promotion_disabled'
         | 'no_op';
     };
 
@@ -25,6 +27,7 @@ type RolePolicyInput = {
     currentRole: UserRole;
     nextRole: UserRole;
     adminCount: number;
+    allowAdminPromotion?: boolean;
 };
 
 export function evaluateRoleChangePolicy(input: RolePolicyInput): AdminPolicyResult {
@@ -34,6 +37,15 @@ export function evaluateRoleChangePolicy(input: RolePolicyInput): AdminPolicyRes
             code: 'NO_OP_ROLE',
             message: `User already has role "${input.nextRole}".`,
             policy: 'no_op',
+        };
+    }
+
+    if (input.nextRole === 'admin' && input.currentRole !== 'admin' && input.allowAdminPromotion === false) {
+        return {
+            allowed: false,
+            code: 'ADMIN_PROMOTION_DISABLED',
+            message: 'Admin promotion is disabled in this user management flow.',
+            policy: 'admin_promotion_disabled',
         };
     }
 

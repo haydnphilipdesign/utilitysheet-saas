@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowUp, Ban, ExternalLink, Shield, User, UserCheck } from 'lucide-react';
+import { ArrowDown, ArrowUp, Ban, ExternalLink, User, UserCheck } from 'lucide-react';
 import type { AdminUserRow, EffectivePlan } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,6 @@ interface UsersTableProps {
 }
 
 type ConfirmableAction =
-    | { type: 'promote'; user: AdminUserRow }
     | { type: 'demote'; user: AdminUserRow }
     | { type: 'ban'; user: AdminUserRow }
     | { type: 'unban'; user: AdminUserRow }
@@ -49,8 +48,6 @@ type ConfirmableAction =
 
 function getActionCopy(action: ConfirmableAction['type']) {
     switch (action) {
-        case 'promote':
-            return { title: 'Promote to Admin', confirm: 'Promote', tone: 'default' as const };
         case 'demote':
             return { title: 'Demote to User', confirm: 'Demote', tone: 'default' as const };
         case 'ban':
@@ -93,7 +90,7 @@ function actionGroups(user: AdminUserRow): Array<{ label: string; actions: Confi
     return [
         {
             label: 'Access',
-            actions: [user.role === 'admin' ? 'demote' : 'promote'],
+            actions: user.role === 'admin' ? ['demote'] : [],
         },
         {
             label: 'Subscription',
@@ -106,7 +103,7 @@ function actionGroups(user: AdminUserRow): Array<{ label: string; actions: Confi
             label: 'Enforcement',
             actions: [user.role === 'banned' ? 'unban' : 'ban'],
         },
-    ];
+    ].filter((group) => group.actions.length > 0 || group.note);
 }
 
 export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }: UsersTableProps) {
@@ -150,9 +147,6 @@ export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }:
                 let result: { success: boolean; error?: string; code?: string } = { success: false, error: 'Unknown action' };
 
                 switch (confirmAction.type) {
-                    case 'promote':
-                        result = await updateUserRoleAction(userId, 'admin', reasonText);
-                        break;
                     case 'demote':
                         result = await updateUserRoleAction(userId, 'user', reasonText);
                         break;
@@ -305,8 +299,7 @@ export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }:
                                             {group.actions.map((type) => {
                                                 const copy = getActionCopy(type);
                                                 const icon =
-                                                    type === 'promote' ? <Shield className="h-4 w-4" /> :
-                                                        type === 'demote' ? <User className="h-4 w-4" /> :
+                                                    type === 'demote' ? <User className="h-4 w-4" /> :
                                                             type === 'ban' ? <Ban className="h-4 w-4" /> :
                                                                 type === 'unban' ? <UserCheck className="h-4 w-4" /> :
                                                                     <ArrowUp className="h-4 w-4" />;

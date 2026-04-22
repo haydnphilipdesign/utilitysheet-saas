@@ -153,6 +153,7 @@ export async function updateUserRoleAction(userId: string, role: UserRole, reaso
             currentRole: previousRole,
             nextRole: role,
             adminCount,
+            allowAdminPromotion: false,
         });
 
         if (!policy.allowed) {

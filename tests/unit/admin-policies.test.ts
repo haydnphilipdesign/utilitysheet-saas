@@ -80,4 +80,21 @@ describe('admin guardrail policies', () => {
         expect(noOpUnban.allowed).toBe(false);
         if (!noOpUnban.allowed) expect(noOpUnban.code).toBe('NO_OP_UNBAN');
     });
+
+    it('blocks admin promotion when the flow disables it', () => {
+        const result = evaluateRoleChangePolicy({
+            actorId: 'acct_2',
+            targetId: 'acct_1',
+            currentRole: 'user',
+            nextRole: 'admin',
+            adminCount: 2,
+            allowAdminPromotion: false,
+        });
+
+        expect(result.allowed).toBe(false);
+        if (!result.allowed) {
+            expect(result.code).toBe('ADMIN_PROMOTION_DISABLED');
+            expect(result.policy).toBe('admin_promotion_disabled');
+        }
+    });
 });
