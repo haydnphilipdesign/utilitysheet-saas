@@ -129,9 +129,7 @@ export default function SignupPage() {
         setError(null);
         trackEvent('signup_started', { method: 'google', source: 'signup_google' });
         try {
-            await stackClientApp.signInWithOAuth('google', {
-                returnTo: getSafeNext() || '/dashboard',
-            });
+            await stackClientApp.signInWithOAuth('google');
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to sign up with Google');
             setGoogleLoading(false);

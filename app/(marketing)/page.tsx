@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 
+import { AuthenticatedRedirect } from '@/components/landing/AuthenticatedRedirect';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { BeforeAfterSection } from '@/components/landing/BeforeAfterSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
@@ -31,6 +32,7 @@ export const metadata: Metadata = createPageMetadata({
 export default function LandingPage() {
     return (
         <div className="relative overflow-hidden bg-background min-h-screen">
+            <AuthenticatedRedirect />
             <JsonLd
                 data={[
                     organizationSchema(),
