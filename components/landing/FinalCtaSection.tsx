@@ -36,14 +36,14 @@ export function FinalCtaSection() {
                     <div className="relative z-10">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-sm font-medium mb-6">
                             <Sparkles className="w-4 h-4" />
-                            <span>Join TCs already using UtilitySheet</span>
+                            <span>Start with your seller link</span>
                         </div>
 
                         <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:text-5xl tracking-tight">
-                            Your next utility handoff takes 2 minutes.
+                            Your next utility handoff can start with one reusable link.
                         </h2>
                         <p className="text-slate-100/90 text-base sm:text-lg mb-8 sm:mb-10 max-w-2xl mx-auto font-medium">
-                            Start free — 3 requests, no credit card, no time limit.
+                            Start free: copy your seller link, send it on a live file, and review the finished sheet when the seller submits.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

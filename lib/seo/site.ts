@@ -8,7 +8,7 @@ export const siteConfig = {
   name: 'UtilitySheet',
   shortName: 'UtilitySheet',
   description:
-    'Utility sheet software for transaction coordinators and real estate agents. Collect seller utility information fast and generate polished utility sheets and PDFs for closing.',
+    'Utility sheet software for transaction coordinators and real estate agents. Share one seller link, collect utility details, and review clean utility sheets and PDFs for closing.',
   applicationCategory: 'BusinessApplication',
   creator: 'UtilitySheet',
   publisher: 'UtilitySheet',

@@ -9,9 +9,9 @@ import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'UtilitySheet Pricing for Transaction Coordinators and Teams',
+  title: 'UtilitySheet Pricing for Seller Utility Link Workflows',
   description:
-    'View UtilitySheet pricing for Starter, Pro, and Teams plans. Compare free requests, submitted-sheet editing, branded utility sheet output, advanced packet mode, and team workflows.',
+    'View UtilitySheet pricing for Starter, Pro, and Teams. Compare reusable seller links, free requests, submitted-sheet editing, branded utility sheet output, advanced packet mode, and team workflows.',
   path: '/pricing',
   keywords: [
     'utility sheet pricing',
@@ -39,8 +39,8 @@ export default function PricingPage() {
 
       <MarketingPageHero
         eyebrow="Pricing"
-        title="Choose the UtilitySheet plan that fits your transaction volume"
-        description="Start with the free plan if you want to test the workflow on live files. Upgrade to Pro or Teams when you need submitted-sheet editing, branded utility sheets, advanced packet mode, or shared team workflows."
+        title="Choose the plan that fits your seller-link workflow"
+        description="Start with the free plan if you want to test the reusable seller link on live files. Upgrade to Pro or Teams when you need submitted-sheet editing, branded utility sheets, advanced packet mode, or shared team workflows."
       >
         <MarketingBreadcrumbs
           items={[

@@ -12,13 +12,13 @@ export function AudienceSection() {
             Built for the real estate teams chasing utility details every week
           </h2>
           <p className="mt-4 text-lg leading-8 text-muted-foreground">
-            UtilitySheet is not generic form software. It is designed around the people who need seller utility information before closing and want a cleaner, more professional handoff.
+            UtilitySheet is purpose-built for the people who need seller utility information before closing and want one reusable link instead of scattered messages, checklists, and attachments.
           </p>
         </div>
 
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           {audiencePages.map((page) => (
-            <article key={page.href} className="rounded-3xl border border-border bg-card/40 p-6">
+            <article key={page.href} className="rounded-lg border border-border bg-card/40 p-6">
               <h3 className="text-xl font-semibold text-foreground">{page.title}</h3>
               <p className="mt-3 leading-7 text-muted-foreground">{page.description}</p>
               <Link

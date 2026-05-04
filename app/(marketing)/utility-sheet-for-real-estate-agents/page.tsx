@@ -7,9 +7,9 @@ import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Utility Sheet for Real Estate Agents',
+  title: 'Utility Sheet Workflow for Real Estate Agents',
   description:
-    'UtilitySheet helps real estate agents collect seller utility information, reduce closing friction, and share a more professional utility sheet with buyers.',
+    'UtilitySheet helps real estate agents share one seller utility link, reduce closing friction, and deliver a more professional utility sheet to buyers.',
   path: '/utility-sheet-for-real-estate-agents',
   keywords: [
     'utility sheet for real estate agents',
@@ -37,8 +37,8 @@ export default function UtilitySheetForRealEstateAgentsPage() {
 
       <MarketingPageHero
         eyebrow="Use Case"
-        title="UtilitySheet for real estate agents"
-        description="Agents want smooth closings, fewer last-minute requests, and a client experience that feels organized. UtilitySheet gives agents and their support teams a clean way to collect seller utility details without creating more admin work or last-minute cleanup chaos."
+        title="UtilitySheet for real estate agents who want a cleaner seller utility handoff"
+        description="Agents want smooth closings, fewer last-minute requests, and a client experience that feels organized. UtilitySheet gives agents and their support teams one reusable seller link for utility details, then a clean sheet and PDF to review before sharing."
       >
         <MarketingBreadcrumbs
           items={[

@@ -22,9 +22,9 @@ import {
 } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-    title: 'Utility Sheet Software for Transaction Coordinators and Agents',
+    title: 'Share a Seller Link and Get a Ready Utility Sheet',
     description:
-        'UtilitySheet helps transaction coordinators and real estate agents collect seller utility information, generate polished utility sheet PDFs, and keep submitted sheets current from the dashboard.',
+        'UtilitySheet helps agents and transaction coordinators share one reusable seller link, collect utility details, and review a clean utility sheet and PDF after submission.',
     path: '/',
 });
 
@@ -38,7 +38,7 @@ export default function LandingPage() {
                     softwareApplicationSchema({
                         path: '/',
                         description:
-                            'Utility sheet software for transaction coordinators and real estate agents that collects seller utility information, generates polished PDFs, and supports dashboard-side updates after submission on paid plans.',
+                            'Utility sheet software for transaction coordinators and real estate agents built around one reusable seller link, guided utility intake, clean web and PDF output, and dashboard-side updates after submission on paid plans.',
                     }),
                     faqPageSchema(faqItems),
                 ]}

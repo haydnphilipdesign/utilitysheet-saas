@@ -10,7 +10,7 @@ const oldWaySteps = [
 ];
 
 const newWaySteps = [
-    { icon: MessageSquare, text: 'Send one secure link (takes 30 seconds)' },
+    { icon: MessageSquare, text: 'Send one secure seller link you can reuse on every file' },
     { icon: Zap, text: 'Seller confirms providers on their phone with guidance' },
     { icon: Check, text: 'Pro/Teams can correct submitted sheets in the dashboard' },
     { icon: FileSpreadsheet, text: 'Web sheet + PDF generated for clean sharing' },
@@ -34,11 +34,11 @@ export function BeforeAfterSection() {
                         <Clock className="w-4 h-4" />
                         <span>Sound familiar?</span>
                     </div>
-                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground tracking-tight mb-4">
-                        Still doing this the old way?
+                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground tracking-tight mb-4 text-balance">
+                        Replace utility chase-downs with one seller-link workflow
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                        Here&apos;s what changes when you switch to UtilitySheet.
+                        The product story is simple: send the link once, review the finished sheet when the seller submits.
                     </p>
                 </motion.div>
 
@@ -137,7 +137,7 @@ export function BeforeAfterSection() {
                             <Clock className="w-6 h-6" />
                             <span className="text-lg font-semibold">Standardized handoff:</span>
                         </div>
-                        <span className="text-lg">one guided seller link, one clean output</span>
+                        <span className="text-lg">one guided seller link, one ready-to-review output</span>
                     </div>
                 </motion.div>
             </div>

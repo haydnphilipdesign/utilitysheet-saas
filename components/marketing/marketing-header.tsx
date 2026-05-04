@@ -132,8 +132,10 @@ export function MarketingHeader() {
                         className="md:hidden text-muted-foreground hover:text-foreground"
                         data-testid="marketing-mobile-menu-toggle"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        aria-label={mobileMenuOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
+                        aria-expanded={mobileMenuOpen}
                     >
-                        {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                        {mobileMenuOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
                     </Button>
                 </div>
             </div>

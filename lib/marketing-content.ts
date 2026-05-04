@@ -1,5 +1,6 @@
 export const siteKeywords = [
   'utility sheet software',
+  'reusable seller utility link',
   'seller utility information form',
   'real estate utility sheet',
   'transaction coordinator software',
@@ -15,12 +16,12 @@ export const faqItems = [
   {
     question: 'Who is UtilitySheet for?',
     answer:
-      'UtilitySheet is built for transaction coordinators, real estate agents, listing support staff, and teams that need a faster, cleaner way to collect seller utility information and share it before closing.',
+      'UtilitySheet is built for transaction coordinators, real estate agents, listing support staff, and teams that need a repeatable way to collect seller utility information and share a clean utility handoff before closing.',
   },
   {
     question: 'Can I use one link for every property?',
     answer:
-      'Yes. Your seller link is reusable, so you can add it to your email signature, text templates, or closing checklist and use it across transactions.',
+      'Yes. UtilitySheet creates a reusable seller link for your workspace. Add it to your email signature, text templates, or closing checklist, and sellers can start by entering the property address.',
   },
   {
     question: 'What is the Advanced Utility Packet?',
@@ -55,7 +56,12 @@ export const faqItems = [
   {
     question: 'How long does it take to get started?',
     answer:
-      'Most users can sign up, grab their reusable seller link, and send their first request in a minute or two.',
+      'After signup, your reusable seller link is the first thing you see in the dashboard. You can copy it right away, share it with a seller, and come back later to adjust branding, packet mode, or other settings.',
+  },
+  {
+    question: 'What happens after I sign up?',
+    answer:
+      'You land on a dashboard built around your seller link. Copy the link, send it to a seller, track submissions, review the finished utility sheet, and download the PDF when the seller is done.',
   },
 ] as const;
 
@@ -64,7 +70,7 @@ export const pricingTiers = [
     name: 'Starter',
     price: 'Free',
     description:
-      'Try UtilitySheet on real transactions with a reusable seller link, dashboard review, and simple utility sheet output.',
+      'Use UtilitySheet on real transactions with a reusable seller link, dashboard review, and simple utility sheet output.',
     href: '/auth/signup',
     features: [
       '3 unlocked requests per month',
@@ -80,7 +86,7 @@ export const pricingTiers = [
     name: 'Pro',
     price: '$9/month',
     description:
-      'For solo transaction coordinators and agents who want unlimited requests, advanced packets, branded output, and post-submission edits.',
+      'For solo transaction coordinators and agents who want unlimited seller submissions, advanced packets, branded output, and post-submission edits.',
     href: '/auth/signup?plan=pro',
     features: [
       'Unlimited requests',
@@ -116,19 +122,19 @@ export const workflowSteps = [
     number: '01',
     title: 'Send one seller utility form link',
     description:
-      'Share your reusable link by email, text, or inside your transaction checklist. Sellers enter the property address and start from any device.',
+      'Share your reusable seller link by email, text, signature, or checklist. Sellers enter the property address and start from any device.',
   },
   {
     number: '02',
     title: 'Let the seller confirm utility providers',
     description:
-      'UtilitySheet suggests likely providers, and the seller confirms or edits the information so your team gets cleaner data with less follow-up.',
+      'UtilitySheet guides the seller through providers and optional handoff details, with suggestions where available so your team gets cleaner data with less follow-up.',
   },
   {
     number: '03',
     title: 'Review, share, and keep the final sheet current',
     description:
-      'The finished utility sheet is ready as a web view and downloadable PDF, so you can add it to the file and share it with buyers or support teams. Pro and Team workspaces can also make dashboard-side corrections after submission.',
+      'The finished utility sheet is ready as a web view and downloadable PDF. Add it to the file, share it with buyers or support teams, and make dashboard-side corrections on Pro and Teams.',
   },
 ] as const;
 
@@ -136,7 +142,7 @@ export const featureHighlights = [
   {
     title: 'Reusable seller link',
     description:
-      'Use the same utility information form across listings instead of rebuilding the process for every property.',
+      'Use the same seller intake link across listings instead of rebuilding a utility request for every property.',
   },
   {
     title: 'Simple Utility Sheet and Advanced Utility Packet modes',
@@ -146,17 +152,17 @@ export const featureHighlights = [
   {
     title: 'AI-powered provider suggestions',
     description:
-      'Start with likely providers based on the address so sellers can confirm details faster and with fewer mistakes.',
+      'Where suggestions are available, start sellers with likely providers based on the address so they can confirm or correct details faster.',
   },
   {
     title: 'Submitted-sheet editing on Pro and Teams',
     description:
-      'Correct capitalization, addresses, provider names, phone numbers, websites, and other seller-entered details after submission without sending the seller back through the form.',
+      'Correct capitalization, addresses, provider names, phone numbers, websites, and other seller-entered details after submission without reopening the seller form.',
   },
   {
     title: 'Professional web and PDF output',
     description:
-      'Deliver a polished utility sheet that is easy to read, easy to share, and consistent across transactions.',
+      'Deliver a polished utility sheet that is easy to review, easy to share, and consistent across transactions.',
   },
   {
     title: 'Tracking, reminders, and status visibility',
@@ -175,25 +181,25 @@ export const audiencePages = [
     href: '/utility-sheet-for-transaction-coordinators',
     title: 'Utility sheet for transaction coordinators',
     description:
-      'Position UtilitySheet as a repeatable workflow that saves time, standardizes handoffs, and reduces seller follow-up.',
+      'A repeatable workflow for TCs who want one seller link, cleaner submissions, and fewer utility follow-up messages.',
   },
   {
     href: '/utility-sheet-for-real-estate-agents',
     title: 'Utility sheet for real estate agents',
     description:
-      'Show agents how to collect seller utility information quickly and hand buyers a more professional closing packet.',
+      'A simple way for agents and support teams to collect seller utility information and share a more professional buyer handoff.',
   },
   {
     href: '/seller-utility-information-form',
     title: 'Seller utility information form',
     description:
-      'Explain the guided seller form experience and why it works better than scattered emails, texts, and PDFs.',
+      'See how the guided seller experience turns one intake link into a ready-to-review utility sheet.',
   },
   {
     href: '/real-estate-closing-utility-checklist',
     title: 'Real estate closing utility checklist',
     description:
-      'Capture checklist-oriented search intent around pre-closing utility handoff preparation.',
+      'Use a practical utility checklist and see how UtilitySheet standardizes the collection and handoff steps.',
   },
 ] as const;
 

@@ -53,7 +53,7 @@ export default function MarketingLayout({
                                 <span className="text-xl font-bold">UtilitySheet</span>
                             </Link>
                             <p className="mt-4 max-w-xs text-sm text-muted-foreground leading-relaxed">
-                                Utility sheet software for transaction coordinators, agents, and support teams. One seller link, cleaner utility handoffs, and polished web plus PDF output with paid dashboard editing after submission.
+                                Share one reusable seller link, collect utility details, and get a clean web sheet plus PDF ready for review. Pro and Teams can make dashboard edits after submission.
                             </p>
                             <div className="mt-5 flex flex-wrap gap-3">
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
@@ -89,7 +89,7 @@ export default function MarketingLayout({
                             <h3 className="text-sm font-semibold text-foreground">Company</h3>
                             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                                 <li><Link href="/about" className="hover:text-foreground transition-colors">About</Link></li>
-                                <li><Link href="/auth/signup" className="hover:text-foreground transition-colors">Get Started</Link></li>
+                                <li><Link href="/auth/signup" className="hover:text-foreground transition-colors">Start Free</Link></li>
                                 <li><Link href="/auth/login" className="hover:text-foreground transition-colors">Sign In</Link></li>
                             </ul>
                         </div>

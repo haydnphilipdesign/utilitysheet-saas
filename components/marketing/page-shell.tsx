@@ -46,8 +46,8 @@ export function MarketingPageHero({
       <div className="mx-auto max-w-6xl">
         <div className="max-w-4xl">
           <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-slate-600">{eyebrow}</p>
-          <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl lg:text-6xl">{title}</h1>
-          <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground sm:text-xl">{description}</p>
+          <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl lg:text-6xl text-balance">{title}</h1>
+          <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground sm:text-xl text-pretty">{description}</p>
           {children ? <div className="mt-8">{children}</div> : null}
         </div>
       </div>
@@ -70,7 +70,7 @@ export function MarketingSection({
     <section id={id} className="px-4 py-14 sm:px-6 sm:py-18 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <div className="max-w-3xl">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">{title}</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-balance">{title}</h2>
           {description ? (
             <p className="mt-4 text-lg leading-8 text-muted-foreground">{description}</p>
           ) : null}
@@ -90,8 +90,8 @@ export function MarketingCtaBand({
 }) {
   return (
     <section className="px-4 py-16 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl rounded-3xl bg-slate-700 px-6 py-10 text-center shadow-2xl shadow-slate-500/20 sm:px-10 sm:py-14">
-        <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{title}</h2>
+      <div className="mx-auto max-w-5xl rounded-lg bg-slate-700 px-6 py-10 text-center shadow-2xl shadow-slate-500/20 sm:px-10 sm:py-14">
+        <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl text-balance">{title}</h2>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-200">{description}</p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/auth/signup" className="w-full sm:w-auto">

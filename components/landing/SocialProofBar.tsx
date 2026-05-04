@@ -7,21 +7,21 @@ import Image from 'next/image';
 const stats = [
     {
         icon: Clock,
-        value: '30+ min',
-        label: 'Saved per file',
-        description: 'Typical time saved on utility collection and follow-up per transaction',
+        value: 'Reusable',
+        label: 'Seller link',
+        description: 'Add one link to your templates and reuse it across transactions',
     },
     {
         icon: Link2,
         value: '1 link',
-        label: 'Sent to the seller',
-        description: 'No app install, no login, no account — sellers complete it on their phone',
+        label: 'Shared with sellers',
+        description: 'No app install, no login, no account required for the seller',
     },
     {
         icon: FileText,
-        value: '~2 min',
-        label: 'Seller completion',
-        description: 'Average time for a seller to fill out the guided utility form',
+        value: 'PDF',
+        label: 'Ready after submission',
+        description: 'Review the web sheet and download a shareable utility sheet PDF',
     },
 ];
 
@@ -51,7 +51,7 @@ export function SocialProofBar() {
                             <div className="flex justify-center mb-2">
                                 <stat.icon className="w-5 h-5 text-slate-300" />
                             </div>
-                            <div className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-1">
+                            <div className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-1 text-balance">
                                 {stat.value}
                             </div>
                             <div className="text-xs sm:text-sm font-semibold text-white mb-1">{stat.label}</div>

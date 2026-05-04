@@ -8,9 +8,9 @@ import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Utility Sheet Software Features for Real Estate Teams',
+  title: 'UtilitySheet Features for Seller Utility Handoffs',
   description:
-    'Explore UtilitySheet features for collecting seller utility information, editing submitted sheets on paid plans, generating utility sheet PDFs, and branding the handoff experience.',
+    'Explore UtilitySheet features for reusable seller links, guided utility intake, ready-to-review utility sheet PDFs, submitted-sheet editing, and branded handoffs.',
   path: '/features',
   keywords: [
     'utility sheet features',
@@ -38,8 +38,8 @@ export default function FeaturesPage() {
 
       <MarketingPageHero
         eyebrow="Product"
-        title="Utility sheet software features built for real estate closings"
-        description="UtilitySheet helps transaction coordinators and agents replace scattered texts, PDFs, and reminders with one guided workflow that collects seller utility information, turns it into polished output, and supports dashboard-side corrections when needed."
+        title="Features built around one reusable seller utility link"
+        description="UtilitySheet helps transaction coordinators and agents replace scattered texts, PDFs, and reminders with one guided workflow: share the seller link, collect utility information, review the finished sheet, and make dashboard-side corrections when needed."
       >
         <MarketingBreadcrumbs
           items={[
@@ -96,7 +96,7 @@ export default function FeaturesPage() {
             {
               href: '/how-it-works',
               title: 'How UtilitySheet works',
-              copy: 'See the full path from seller link to utility sheet PDF.',
+              copy: 'See the full path from reusable seller link to utility sheet PDF.',
             },
             {
               href: '/pricing',

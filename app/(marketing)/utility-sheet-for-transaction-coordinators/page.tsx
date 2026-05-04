@@ -8,9 +8,9 @@ import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Utility Sheet for Transaction Coordinators',
+  title: 'Utility Sheet Workflow for Transaction Coordinators',
   description:
-    'UtilitySheet helps transaction coordinators collect seller utility information faster, reduce follow-up, and deliver cleaner utility sheet PDFs for every file.',
+    'UtilitySheet helps transaction coordinators reuse one seller link, reduce utility follow-up, and deliver cleaner utility sheet PDFs for every file.',
   path: '/utility-sheet-for-transaction-coordinators',
   keywords: [
     'utility sheet for transaction coordinators',
@@ -38,8 +38,8 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
 
       <MarketingPageHero
         eyebrow="Use Case"
-        title="UtilitySheet for transaction coordinators"
-        description="Transaction coordinators are usually the ones chasing seller utility details, cleaning up inconsistent answers, and turning that information into something buyers can actually use. UtilitySheet is built to remove that busywork before and after submission."
+        title="UtilitySheet for transaction coordinators who need one repeatable utility workflow"
+        description="Transaction coordinators are usually the ones chasing seller utility details, cleaning up inconsistent answers, and turning that information into something buyers can actually use. UtilitySheet gives you one reusable seller link and a cleaner review step after submission."
       >
         <MarketingBreadcrumbs
           items={[

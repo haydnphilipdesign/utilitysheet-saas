@@ -8,9 +8,9 @@ import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Seller Utility Information Form',
+  title: 'Seller Utility Information Form With a Reusable Link',
   description:
-    'UtilitySheet provides a guided seller utility information form for real estate transactions, helping teams collect utility providers, generate a polished utility sheet PDF, and correct submitted sheets on paid plans.',
+    'UtilitySheet provides a guided seller utility information form through one reusable link, helping teams collect utility details, generate a polished utility sheet PDF, and correct submitted sheets on paid plans.',
   path: '/seller-utility-information-form',
   keywords: [
     'seller utility information form',
@@ -38,8 +38,8 @@ export default function SellerUtilityInformationFormPage() {
 
       <MarketingPageHero
         eyebrow="Search Intent"
-        title="A seller utility information form that is easier to finish and easier to share"
-        description="Many real estate teams still collect utility details through loose checklists, emails, or text chains. UtilitySheet turns that into a guided seller utility form with cleaner output at the end."
+        title="A seller utility information form that starts with one reusable link"
+        description="Many real estate teams still collect utility details through loose checklists, emails, or text chains. UtilitySheet turns that into a guided seller form and gives your team a cleaner utility sheet at the end."
       >
         <MarketingBreadcrumbs
           items={[

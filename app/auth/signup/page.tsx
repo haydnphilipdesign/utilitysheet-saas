@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { stackClientApp } from '@/lib/stack/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/components/ui/card';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import {
@@ -26,13 +27,13 @@ export default function SignupPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    const getSafeNext = (): string | null => {
+    const getSafeNext = useCallback((): string | null => {
         if (typeof window === 'undefined') return null;
         const nextParam = new URLSearchParams(window.location.search).get('next');
         return nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
-    };
+    }, []);
 
-    const getPostAuthRoute = async (source: string): Promise<string | null> => {
+    const getPostAuthRoute = useCallback(async (source: string): Promise<string | null> => {
         const safeNext = getSafeNext();
         if (safeNext) return safeNext;
         try {
@@ -50,7 +51,7 @@ export default function SignupPage() {
             console.error(e);
             return '/dashboard';
         }
-    };
+    }, [getSafeNext]);
 
     useEffect(() => {
         let cancelled = false;
@@ -71,7 +72,7 @@ export default function SignupPage() {
         return () => {
             cancelled = true;
         };
-    }, [router]);
+    }, [getPostAuthRoute, router]);
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -150,7 +151,7 @@ export default function SignupPage() {
                         <div className="mx-auto p-2.5 sm:p-3 rounded-full bg-emerald-500/10">
                             <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12 text-emerald-500" />
                         </div>
-                        <CardTitle className="text-xl sm:text-2xl text-foreground">Check your email</CardTitle>
+                        <h1 className="text-xl sm:text-2xl font-medium text-foreground">Check your email</h1>
                         <CardDescription className="text-muted-foreground text-sm">
                             We&apos;ve sent a confirmation link to <span className="text-foreground font-medium break-all">{email}</span>
                         </CardDescription>
@@ -186,16 +187,16 @@ export default function SignupPage() {
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
                     <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
-                        <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-6 w-6 sm:h-8 sm:w-8" />
+                        <Image src="/logo-sm.png" alt="UtilitySheet Logo" width={32} height={32} className="h-6 w-6 sm:h-8 sm:w-8" />
                     </div>
                     <span className="text-2xl sm:text-3xl font-bold text-foreground">UtilitySheet</span>
                 </div>
 
                 <Card className="border-border bg-card/80 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="space-y-1 px-4 sm:px-6 pt-4 sm:pt-6">
-                        <CardTitle className="text-xl sm:text-2xl text-center text-foreground">Create an account</CardTitle>
+                        <h1 className="text-xl sm:text-2xl font-medium text-center text-foreground">Create an account</h1>
                         <CardDescription className="text-center text-muted-foreground text-sm">
-                            Start creating utility info sheets in minutes
+                            Get your reusable seller link and start collecting utility info
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleSignup} data-testid="signup-form">
@@ -258,10 +259,10 @@ export default function SignupPage() {
                                 {loading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Creating account...
+                                        Creating account…
                                     </>
                                 ) : (
-                                    'Create Account'
+                                    'Start Free'
                                 )}
                             </Button>
 
@@ -323,15 +324,15 @@ export default function SignupPage() {
                 <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-3 sm:gap-4 text-center px-2">
                     <div className="space-y-1 sm:space-y-2">
                         <div className="text-xl sm:text-2xl">⚡</div>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">2-min seller forms</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Seller link first</p>
                     </div>
                     <div className="space-y-1 sm:space-y-2">
                         <div className="text-xl sm:text-2xl">📄</div>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Branded packets</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Utility sheet PDF</p>
                     </div>
                     <div className="space-y-1 sm:space-y-2">
                         <div className="text-xl sm:text-2xl">🔄</div>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Auto contact lookup</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Dashboard review</p>
                     </div>
                 </div>
             </div>

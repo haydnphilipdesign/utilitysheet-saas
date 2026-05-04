@@ -9,9 +9,9 @@ import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'How UtilitySheet Works for Seller Utility Handoffs',
+  title: 'How UtilitySheet Works After Signup',
   description:
-    'See how UtilitySheet works: send one seller utility information form, collect cleaner provider details, generate a buyer-ready utility sheet PDF, and update submitted sheets on paid plans.',
+    'See how UtilitySheet works after signup: copy your reusable seller link, collect utility details, review the finished utility sheet PDF, and update submitted sheets on paid plans.',
   path: '/how-it-works',
   keywords: [
     'how utility sheet works',
@@ -39,8 +39,8 @@ export default function HowItWorksPage() {
 
       <MarketingPageHero
         eyebrow="Workflow"
-        title="How UtilitySheet turns seller utility info into a clean closing handoff"
-        description="UtilitySheet is designed to be simple for sellers and useful for transaction teams. One reusable link starts the process, guided provider confirmation keeps the information cleaner, and finished output is ready to review, share, and update from the dashboard."
+        title="How UtilitySheet turns one seller link into a clean utility handoff"
+        description="UtilitySheet is designed to be simple for sellers and useful for transaction teams. After signup, your reusable seller link starts the process; guided utility intake keeps information cleaner; and finished output is ready to review, share, and update from the dashboard."
       >
         <MarketingBreadcrumbs
           items={[
@@ -73,7 +73,7 @@ export default function HowItWorksPage() {
       >
         <div className="grid gap-6 md:grid-cols-2">
           {[
-            'Add the seller link to your listing-to-closing checklist or email template once, then reuse it on every file.',
+            'Add the reusable seller link to your listing-to-closing checklist or email template once, then reuse it on every file.',
             'When the seller submits, review the finished utility sheet in the dashboard before sharing it with buyers, agents, support staff, or anyone else who needs the information.',
             'On Pro and Teams, you can correct capitalization, addresses, provider names, or contact details after submission without reopening the seller form.',
             'Use Simple mode when you just need utilities, or Advanced Utility Packet mode when the deal needs deeper transition details.',

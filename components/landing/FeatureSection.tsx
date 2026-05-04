@@ -82,11 +82,11 @@ export function FeatureSection() {
             <div className="mx-auto max-w-7xl">
                 <div className="text-center mb-20">
                     <p className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Features</p>
-                    <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                        Real estate utility sheet features that keep closings moving
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-balance">
+                        Built around the seller-link workflow
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-4">
-                        Collect seller utility information faster, standardize every handoff, and keep the finished utility sheet accurate even when small corrections come up later.
+                        UtilitySheet is focused on one real estate job: collect seller utility details once, turn them into a clean handoff, and keep the finished sheet useful after submission.
                     </p>
                 </div>
 
@@ -95,10 +95,10 @@ export function FeatureSection() {
                         <motion.div
                             key={idx}
                             whileHover={{ y: -5 }}
-                            className="group p-8 rounded-2xl bg-card/40 border border-border hover:border-slate-500/30 transition-all hover:bg-card/60"
+                            className="group p-8 rounded-lg bg-card/40 border border-border hover:border-slate-500/30 transition-all hover:bg-card/60"
                         >
-                            <div className="w-12 h-12 rounded-xl bg-slate-500/10 flex items-center justify-center mb-6 group-hover:bg-slate-500/20 transition-colors">
-                                <feature.icon className="h-6 w-6 text-slate-600" />
+                            <div className="w-12 h-12 rounded-lg bg-slate-500/10 flex items-center justify-center mb-6 group-hover:bg-slate-500/20 transition-colors">
+                                <feature.icon className="h-6 w-6 text-slate-600" aria-hidden="true" />
                             </div>
                             <h4 className="text-xl font-bold text-foreground mb-3">
                                 <span className="inline-flex items-center gap-2">

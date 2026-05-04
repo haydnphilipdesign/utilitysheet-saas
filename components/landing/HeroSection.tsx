@@ -1,207 +1,61 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
-import { motion, AnimatePresence, useInView, useReducedMotion } from 'framer-motion';
+import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, Search, Check, Zap, CheckCircle2, Clock } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { UtilitySheetPreview } from './UtilitySheetPreview';
+import { ArrowRight, Sparkles, CheckCircle2, Link2, FileCheck2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { trackEvent } from '@/lib/analytics/events';
-
-const AnimationState = {
-    INPUT: 0,
-    LOADING: 1,
-    SELECT: 2,
-    SUCCESS: 3,
-} as const;
-
-function HeroFeatureAnimation() {
-    const [step, setStep] = useState<number>(AnimationState.SUCCESS);
-    const [text, setText] = useState("");
-    const targetText = "123 Main St, Springfield";
-    const shouldReduceMotion = useReducedMotion();
-
-    useEffect(() => {
-        if (shouldReduceMotion) {
-            return;
-        }
-
-        let timeout: NodeJS.Timeout;
-
-        const runAnimation = async () => {
-            if (step === AnimationState.INPUT) {
-                if (text.length < targetText.length) {
-                    timeout = setTimeout(() => {
-                        setText(targetText.slice(0, text.length + 1));
-                    }, 50 + Math.random() * 50);
-                } else {
-                    timeout = setTimeout(() => setStep(AnimationState.LOADING), 800);
-                }
-            }
-            else if (step === AnimationState.LOADING) {
-                timeout = setTimeout(() => setStep(AnimationState.SELECT), 1500);
-            }
-            else if (step === AnimationState.SELECT) {
-                timeout = setTimeout(() => setStep(AnimationState.SUCCESS), 2500);
-            }
-            else if (step === AnimationState.SUCCESS) {
-                timeout = setTimeout(() => {
-                    setStep(AnimationState.INPUT);
-                    setText("");
-                }, 6000);
-            }
-        };
-
-        runAnimation();
-        return () => clearTimeout(timeout);
-    }, [shouldReduceMotion, step, targetText, text]);
-
-    if (shouldReduceMotion) {
-        return (
-            <div className="w-full h-full flex flex-col font-sans">
-                <div className="h-12 border-b border-border flex items-center justify-between px-6 bg-secondary/50">
-                    <div className="w-24 h-4 bg-secondary rounded-full" />
-                    <div className="flex gap-2">
-                        <div className="w-6 h-6 rounded-full bg-secondary" />
-                        <div className="w-6 h-6 rounded-full bg-secondary" />
-                    </div>
-                </div>
-                <div className="flex-1 p-8 relative overflow-hidden bg-white/50 dark:bg-black/20">
-                    <UtilitySheetPreview />
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="w-full h-full flex flex-col font-sans">
-            {/* Mock Header */}
-            <div className="h-12 border-b border-border flex items-center justify-between px-6 bg-secondary/50">
-                <div className="w-24 h-4 bg-secondary rounded-full" />
-                <div className="flex gap-2">
-                    <div className="w-6 h-6 rounded-full bg-secondary" />
-                    <div className="w-6 h-6 rounded-full bg-secondary" />
-                </div>
-            </div>
-
-            {/* Content Area */}
-            <div className="flex-1 p-8 relative overflow-hidden bg-white/50 dark:bg-black/20">
-                <AnimatePresence mode="wait">
-                    {step === AnimationState.INPUT && (
-                        <motion.div
-                            key="input"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="flex flex-col items-center justify-center h-full gap-6"
-                        >
-                            <div className="text-center space-y-2">
-                                <h3 className="text-xl font-medium text-foreground">Enter the property address</h3>
-                                <p className="text-muted-foreground text-sm">We&apos;ll suggest likely utility providers.</p>
-                            </div>
-                            <div className="w-full max-w-md bg-card border border-border rounded-lg h-12 flex items-center px-4 gap-3 shadow-lg shadow-black/10 dark:shadow-black/20">
-                                <Search className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-foreground">
-                                    {text}
-                                    <span className="animate-pulse text-slate-500">|</span>
-                                </span>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {step === AnimationState.LOADING && (
-                        <motion.div
-                            key="loading"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex flex-col items-center justify-center h-full gap-4"
-                        >
-                            <div className="w-12 h-12 rounded-full border-2 border-emerald-500/20 border-t-emerald-500 animate-spin" />
-                            <p className="text-muted-foreground text-sm">Scanning providers...</p>
-                        </motion.div>
-                    )}
-
-                    {step === AnimationState.SELECT && (
-                        <motion.div
-                            key="select"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 1.05 }}
-                            className="w-full max-w-md mx-auto space-y-4 pt-4"
-                        >
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="space-y-1">
-                                    <h4 className="text-foreground font-medium">Select Electric</h4>
-                                    <p className="text-xs text-muted-foreground">Based on your address</p>
-                                </div>
-                                <Zap className="w-5 h-5 text-emerald-500" />
-                            </div>
-
-                            <motion.div
-                                initial={{ y: 20, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                transition={{ delay: 0.2 }}
-                                className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-500/50 flex items-center justify-between shadow-lg shadow-emerald-500/10 cursor-pointer"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-card border border-border flex items-center justify-center">
-                                        <Zap className="w-6 h-6 text-foreground fill-foreground" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-foreground font-medium">National Grid</span>
-                                        <span className="text-xs text-emerald-600 dark:text-emerald-400">98% Match</span>
-                                    </div>
-                                </div>
-                                <div className="w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center scale-0 animate-[scale-in_0.3s_ease-out_1s_forwards]">
-                                    <Check className="w-4 h-4 text-white" />
-                                </div>
-                            </motion.div>
-
-                            <motion.div
-                                initial={{ y: 20, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                transition={{ delay: 0.4 }}
-                                className="p-4 rounded-xl bg-card border border-border flex items-center justify-between opacity-50"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                                        <Zap className="w-6 h-6 text-muted-foreground" />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-muted-foreground font-medium">Eversource</span>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        </motion.div>
-                    )}
-
-                    {step === AnimationState.SUCCESS && (
-                        <motion.div
-                            key="success"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="w-full h-full"
-                        >
-                            <UtilitySheetPreview />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        </div>
-    );
-}
 
 function Hero3DCard() {
     return (
-        <div
-            className="relative w-full max-w-4xl mx-auto h-[280px] sm:h-[420px] lg:h-[560px] rounded-xl bg-card/50 border border-border backdrop-blur-sm shadow-2xl shadow-emerald-500/5 flex items-center justify-center p-2"
-        >
-            <div
-                className="w-full h-full bg-background rounded-lg border border-border overflow-hidden flex flex-col shadow-inner"
-            >
-                <HeroFeatureAnimation />
+        <div className="relative mx-auto w-full max-w-4xl">
+            <div className="absolute -left-4 top-8 z-10 hidden rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-xl shadow-emerald-900/10 backdrop-blur sm:block dark:bg-slate-950/95 dark:border-emerald-900/40">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                        <Link2 className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-foreground">Reusable Seller Link</p>
+                        <p className="text-xs text-muted-foreground">Ready after signup</p>
+                    </div>
+                </div>
+            </div>
+            <div className="absolute -right-2 bottom-6 z-10 hidden rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl shadow-slate-900/10 backdrop-blur lg:block dark:bg-slate-950/95 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                        <FileCheck2 className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-foreground">Utility Sheet + PDF</p>
+                        <p className="text-xs text-muted-foreground">Ready to review</p>
+                    </div>
+                </div>
+            </div>
+            <div className="relative h-[360px] overflow-hidden rounded-2xl border border-border bg-card/70 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-sm sm:h-[470px] lg:h-[560px]">
+                <div className="grid h-full grid-rows-[0.8fr_1.2fr] gap-3 lg:grid-cols-[0.9fr_1.1fr] lg:grid-rows-1">
+                    <div className="relative overflow-hidden rounded-xl border border-border bg-background shadow-inner">
+                        <Image
+                            src="/landing/seller-wizard.png"
+                            alt="Seller-facing UtilitySheet intake flow where the seller starts from a property address"
+                            fill
+                            priority
+                            sizes="(min-width: 1024px) 38vw, 90vw"
+                            className="object-cover object-top"
+                        />
+                    </div>
+                    <div className="relative overflow-hidden rounded-xl border border-border bg-white shadow-inner">
+                        <Image
+                            src="/landing/utility-info-sheet.png"
+                            alt="Finished UtilitySheet utility info sheet with provider contacts and buyer next steps"
+                            fill
+                            priority
+                            sizes="(min-width: 1024px) 44vw, 90vw"
+                            className="object-cover object-top"
+                        />
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -229,7 +83,7 @@ export function HeroSection() {
     }, [isInView]);
 
     return (
-        <section ref={sectionRef} className="relative overflow-hidden pt-24 pb-14 sm:pt-32 sm:pb-20 lg:pt-40 lg:pb-28 px-4 lg:px-8">
+        <section ref={sectionRef} className="relative overflow-hidden pt-20 pb-14 sm:pt-28 sm:pb-20 lg:pt-32 lg:pb-24 px-4 lg:px-8">
             {/* Background Effects */}
             <div className="absolute inset-0 -z-10">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-emerald-500/10 blur-[120px] rounded-full opacity-30 pointer-events-none" />
@@ -251,19 +105,18 @@ export function HeroSection() {
                             transition={shouldReduceMotion ? { duration: 0.01 } : { delay: 0.2 }}
                             className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm font-medium mb-4 sm:mb-6 border border-emerald-600/20"
                         >
-                            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            <span>Saves 30+ minutes per transaction</span>
+                            <Link2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
+                            <span>Your reusable seller link is ready after signup</span>
                         </motion.div>
 
                         {/* Headline */}
-                        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-6xl font-black tracking-tight text-foreground mb-4 sm:mb-6">
-                            Utility sheet software for transaction coordinators and agents
-                            <span className="text-emerald-600 dark:text-emerald-400 block mt-1">that collects seller utility info fast.</span>
+                        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-6xl font-black tracking-tight text-foreground mb-4 sm:mb-6 text-balance">
+                            Share a seller link. Collect utility info. Get a ready-to-review utility sheet.
                         </h1>
 
                         {/* Value Proposition — one clean sentence */}
                         <p className="mx-auto lg:mx-0 max-w-xl text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-8 leading-relaxed">
-                            Send one seller utility information form link, let sellers confirm providers with guided suggestions, and generate a polished utility sheet your team can review, share, and keep current from the dashboard.
+                            UtilitySheet gives agents and transaction coordinators one reusable seller intake link. Sellers enter utility details, and your dashboard gets a clean web sheet plus PDF for review and sharing.
                         </p>
 
                         {/* CTAs */}
@@ -326,7 +179,7 @@ export function HeroSection() {
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                Pro + Teams can edit submitted sheets
+                                Copy your seller link first
                             </span>
                         </motion.div>
                     </motion.div>

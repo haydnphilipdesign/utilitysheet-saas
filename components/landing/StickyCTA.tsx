@@ -58,8 +58,8 @@ export function StickyCTA() {
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <Sparkles className="w-5 h-5 text-yellow-300 flex-shrink-0 hidden sm:block" />
                                 <p className="text-sm sm:text-base font-medium truncate">
-                                    <span className="hidden sm:inline">Ready to stop chasing utility info? </span>
-                                    <span className="text-slate-200">Start free — 3 requests, no credit card.</span>
+                                    <span className="hidden sm:inline">Ready to share your seller link? </span>
+                                    <span className="text-slate-200">Start free: 3 requests, no credit card.</span>
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">

@@ -12,7 +12,7 @@ const tiers = [
     {
         ...pricingTiers[0],
         period: undefined,
-        cta: 'Start for Free',
+        cta: 'Start Free',
         popular: false,
         features: [
             '3 unlocked requests per month',
@@ -30,7 +30,7 @@ const tiers = [
         ...pricingTiers[1],
         price: '$9',
         period: '/month',
-        cta: 'Get Started',
+        cta: 'Start Pro',
         popular: true,
         features: [
             'Unlimited requests',
@@ -88,11 +88,11 @@ export function PricingSection() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-10 sm:mb-16 lg:mb-20">
                     <p className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">Pricing</p>
-                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight mb-3 sm:mb-4">
-                        Transparent pricing for utility sheet workflows
+                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight mb-3 sm:mb-4 text-balance">
+                        Pricing for reusable seller-link workflows
                     </h2>
                     <p className="text-muted-foreground text-sm sm:text-lg max-w-2xl mx-auto">
-                        Start free, then upgrade when you need post-submission edits, branded packets, or a shared team workflow.
+                        Start with your reusable seller link. Upgrade when you need unlimited submissions, post-submission edits, branded output, or a shared team workspace.
                     </p>
                 </div>
 
@@ -100,7 +100,7 @@ export function PricingSection() {
                     {tiers.map((tier) => (
                         <div
                             key={tier.name}
-                            className={`relative rounded-2xl sm:rounded-3xl p-5 sm:p-8 border ${tier.popular
+                            className={`relative rounded-lg p-5 sm:p-8 border ${tier.popular
                                 ? 'bg-card/40 border-emerald-500/30 shadow-2xl shadow-emerald-500/10'
                                 : 'bg-card/20 border-border'
                                 } flex flex-col`}
@@ -156,7 +156,7 @@ export function PricingSection() {
                 </div>
 
                 <p className="mt-10 text-center text-sm text-muted-foreground">
-                    Starter keeps submitted sheets read-only after seller submission. Pro and Teams add dashboard editing, and seller/public links stay write-protected after submission on every plan.
+                    Every plan starts with a reusable seller link. Starter keeps submitted sheets read-only after seller submission; Pro and Teams add dashboard editing while seller and public links stay write-protected.
                 </p>
             </div>
         </section>

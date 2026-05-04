@@ -62,7 +62,7 @@ export default function AboutPage() {
                                 <Button className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-500">Start Free</Button>
                             </Link>
                             <Link href="/demo">
-                                <Button variant="outline" className="w-full sm:w-auto">Try Demo</Button>
+                                <Button variant="outline" className="w-full sm:w-auto">Try the Demo</Button>
                             </Link>
                         </div>
                     </div>
@@ -257,13 +257,13 @@ export default function AboutPage() {
                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-slate-900/40 blur-[80px] rounded-full" />
 
                         <div className="relative z-10">
-                            <h2 className="text-3xl font-bold text-white mb-6 sm:text-5xl tracking-tight">Ready to simplify your workflow?</h2>
+                            <h2 className="text-3xl font-bold text-white mb-6 sm:text-5xl tracking-tight">Ready to share your seller link?</h2>
                             <p className="text-slate-100/90 text-lg mb-10 max-w-2xl mx-auto font-medium">
-                                Try UtilitySheet free and standardize your utility handoff.
+                                Start free, copy your reusable seller link, and test the workflow on a real file.
                             </p>
                             <Link href="/auth/signup">
                                 <Button size="lg" className="bg-emerald-500 text-white hover:bg-emerald-400 h-14 px-10 text-xl font-bold shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 transform hover:-translate-y-1 transition-all">
-                                    Get Started Free
+                                    Start Free
                                 </Button>
                             </Link>
                         </div>
