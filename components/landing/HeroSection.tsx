@@ -4,58 +4,37 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, CheckCircle2, Link2, FileCheck2 } from 'lucide-react';
+import { ArrowRight, Sparkles, CheckCircle2, Link2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { trackEvent } from '@/lib/analytics/events';
 
 function Hero3DCard() {
     return (
-        <div className="relative mx-auto w-full max-w-4xl">
-            <div className="absolute -left-4 top-8 z-10 hidden rounded-2xl border border-emerald-200 bg-white/95 p-4 shadow-xl shadow-emerald-900/10 backdrop-blur sm:block dark:bg-slate-950/95 dark:border-emerald-900/40">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                        <Link2 className="h-5 w-5" aria-hidden="true" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-semibold text-foreground">Reusable Seller Link</p>
-                        <p className="text-xs text-muted-foreground">Ready after signup</p>
-                    </div>
+        <div className="relative mx-auto w-full max-w-3xl lg:max-w-4xl">
+            <div className="absolute -inset-x-4 bottom-0 top-10 -z-10 rounded-[2rem] bg-gradient-to-br from-emerald-200/25 via-slate-200/35 to-transparent blur-3xl dark:from-emerald-900/20 dark:via-slate-900/40" />
+            <div className="relative mx-auto aspect-[1.08] w-full max-w-[520px] sm:aspect-[1.18] lg:max-w-[620px]">
+                <Image
+                    src="/landing/utility-info-sheet.png"
+                    alt="Finished UtilitySheet utility info sheet with provider contacts and buyer next steps"
+                    fill
+                    priority
+                    sizes="(min-width: 1024px) 40vw, 88vw"
+                    className="object-contain drop-shadow-[0_28px_48px_rgba(15,23,42,0.16)]"
+                />
+            </div>
+            <div className="absolute left-2 right-2 top-5 mx-auto max-w-[270px] rounded-lg border border-emerald-200 bg-white/95 px-4 py-3 shadow-lg shadow-emerald-900/10 backdrop-blur dark:border-emerald-900/40 dark:bg-slate-950/95 sm:left-0 sm:right-auto sm:top-12">
+                <div className="flex items-center gap-3 text-left">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                        <Link2 className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                    <p className="text-sm font-semibold leading-tight text-foreground">
+                        Seller submits from your reusable link
+                    </p>
                 </div>
             </div>
-            <div className="absolute -right-2 bottom-6 z-10 hidden rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl shadow-slate-900/10 backdrop-blur lg:block dark:bg-slate-950/95 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                        <FileCheck2 className="h-5 w-5" aria-hidden="true" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-semibold text-foreground">Utility Sheet + PDF</p>
-                        <p className="text-xs text-muted-foreground">Ready to review</p>
-                    </div>
-                </div>
-            </div>
-            <div className="relative h-[360px] overflow-hidden rounded-2xl border border-border bg-card/70 p-3 shadow-2xl shadow-slate-900/10 backdrop-blur-sm sm:h-[470px] lg:h-[560px]">
-                <div className="grid h-full grid-rows-[0.8fr_1.2fr] gap-3 lg:grid-cols-[0.9fr_1.1fr] lg:grid-rows-1">
-                    <div className="relative overflow-hidden rounded-xl border border-border bg-background shadow-inner">
-                        <Image
-                            src="/landing/seller-wizard.png"
-                            alt="Seller-facing UtilitySheet intake flow where the seller starts from a property address"
-                            fill
-                            priority
-                            sizes="(min-width: 1024px) 38vw, 90vw"
-                            className="object-cover object-top"
-                        />
-                    </div>
-                    <div className="relative overflow-hidden rounded-xl border border-border bg-white shadow-inner">
-                        <Image
-                            src="/landing/utility-info-sheet.png"
-                            alt="Finished UtilitySheet utility info sheet with provider contacts and buyer next steps"
-                            fill
-                            priority
-                            sizes="(min-width: 1024px) 44vw, 90vw"
-                            className="object-cover object-top"
-                        />
-                    </div>
-                </div>
+            <div className="absolute bottom-6 right-0 hidden max-w-[220px] rounded-lg border border-slate-200 bg-white/95 px-4 py-3 shadow-lg shadow-slate-900/10 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:block">
+                <p className="text-sm font-semibold text-foreground">Review the finished sheet</p>
+                <p className="mt-1 text-xs text-muted-foreground">Web view plus downloadable PDF</p>
             </div>
         </div>
     );
