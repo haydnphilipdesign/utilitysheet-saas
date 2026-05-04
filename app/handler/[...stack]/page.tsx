@@ -1,8 +1,13 @@
 import { Suspense } from "react";
 import { StackHandler } from "@stackframe/stack";
 import { stackServerApp } from "@/lib/stack/server";
+import { CustomOAuthCallback } from "@/components/auth/custom-oauth-callback";
 
-function StackHandlerContent(props: { params: Promise<{ stack: string[] }> }) {
+async function StackHandlerContent(props: { params: Promise<{ stack: string[] }> }) {
+    const { stack } = await props.params;
+    if (stack?.[0] === "oauth-callback") {
+        return <CustomOAuthCallback />;
+    }
     return <StackHandler fullPage={true} app={stackServerApp} {...props} />;
 }
 
