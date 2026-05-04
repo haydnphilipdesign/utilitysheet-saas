@@ -20,6 +20,7 @@ const accountUpdateSchema = z.object({
 type OrganizationSummary = { id: string };
 
 export async function GET() {
+    const startTime = Date.now();
     try {
         const user = await stackServerApp.getUser();
         if (!user) {
@@ -28,6 +29,14 @@ export async function GET() {
 
         const activationState = await ensureAccountActivation(user);
         if (!activationState) {
+            console.error(JSON.stringify({
+                level: 'error',
+                message: 'Account activation returned no state',
+                route: '/api/account',
+                authUserId: user.id,
+                primaryEmail: user.primaryEmail,
+                durationMs: Date.now() - startTime,
+            }));
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
 
@@ -39,6 +48,23 @@ export async function GET() {
         // Get monthly usage for the current billing period
         const usage = await getMonthlyUsage(account.id, activeOrg?.id);
 
+        if (activation.accountCreated || activation.defaultsProvisioned) {
+            console.log(JSON.stringify({
+                level: 'info',
+                message: 'Account activation completed',
+                route: '/api/account',
+                authUserId: user.id,
+                accountId: account.id,
+                accountCreated: activation.accountCreated,
+                defaultsProvisioned: activation.defaultsProvisioned,
+                organizationCreated: activation.organizationCreated,
+                organizationAssigned: activation.organizationAssigned,
+                brandProfileCreated: activation.brandProfileCreated,
+                intakeLinkCreated: activation.intakeLinkCreated,
+                durationMs: Date.now() - startTime,
+            }));
+        }
+
         return NextResponse.json({
             account,
             organizations,
@@ -48,7 +74,13 @@ export async function GET() {
         });
 
     } catch (error) {
-        console.error('Error fetching account:', error);
+        console.error(JSON.stringify({
+            level: 'error',
+            message: 'Error fetching account',
+            route: '/api/account',
+            error: error instanceof Error ? error.message : String(error),
+            durationMs: Date.now() - startTime,
+        }));
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

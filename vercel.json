@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/activation-reconcile",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/activation-reengagement",
+      "schedule": "30 12 * * *"
+    }
+  ]
+}
