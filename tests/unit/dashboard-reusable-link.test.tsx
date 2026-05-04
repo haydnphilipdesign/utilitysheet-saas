@@ -36,6 +36,7 @@ type FetchOptions = {
     plan: 'free' | 'pro' | 'team';
     canCustomize: boolean;
     slug: string;
+    onboardingCompleted?: boolean;
 };
 
 function createDashboardFetchMock(options: FetchOptions) {
@@ -67,7 +68,7 @@ function createDashboardFetchMock(options: FetchOptions) {
                 },
                 account: {
                     subscription_status: options.plan === 'pro' ? 'pro' : 'free',
-                    onboarding_completed_at: null,
+                    onboarding_completed_at: options.onboardingCompleted ? '2026-05-04T12:00:00.000Z' : null,
                 },
                 activeOrganization: options.plan === 'team' ? { subscription_status: 'team' } : null,
             });
@@ -119,7 +120,7 @@ beforeEach(() => {
 });
 
 describe('dashboard reusable seller link', () => {
-    it('shows free-plan upgrade CTA and starts checkout request', async () => {
+    it('shows first-run seller link card and share actions', async () => {
         const fetchMock = createDashboardFetchMock({
             plan: 'free',
             canCustomize: false,
@@ -129,21 +130,27 @@ describe('dashboard reusable seller link', () => {
 
         render(<DashboardPage />);
 
-        await screen.findByText('Reusable Seller Link');
-        expect(screen.getByText('Your seller link is ready')).toBeInTheDocument();
+        await screen.findByText('Your seller intake link is ready');
+        expect(screen.queryByText('Reusable Seller Link')).not.toBeInTheDocument();
+        expect(trackEventMock).toHaveBeenCalledWith('dashboard_first_run_link_viewed', {
+            source: 'dashboard_first_run_card',
+        });
 
-        fireEvent.click(screen.getByRole('button', { name: /copy link/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^copy link$/i }));
         await waitFor(() => {
             expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://www.utilitysheet.com/i/free-slug-123');
         });
 
-        expect(screen.queryByRole('button', { name: /save slug/i })).not.toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('button', { name: /upgrade to pro/i }));
-
+        fireEvent.click(screen.getByRole('button', { name: /copy sms/i }));
         await waitFor(() => {
-            expect(fetchMock).toHaveBeenCalledWith('/api/billing/checkout', expect.objectContaining({ method: 'POST' }));
+            expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining('https://www.utilitysheet.com/i/free-slug-123'));
         });
+        expect(trackEventMock).toHaveBeenCalledWith('seller_link_sms_copied', {
+            source: 'dashboard_first_run_card',
+        });
+
+        expect(screen.getByRole('link', { name: /finish optional setup/i })).toHaveAttribute('href', '/onboarding');
+        expect(fetchMock).not.toHaveBeenCalledWith('/api/billing/checkout', expect.anything());
     });
 
     it('allows Pro users to edit and save slug inline', async () => {
@@ -151,11 +158,13 @@ describe('dashboard reusable seller link', () => {
             plan: 'pro',
             canCustomize: true,
             slug: 'pro-slug',
+            onboardingCompleted: true,
         });
         vi.stubGlobal('fetch', fetchMock);
 
         render(<DashboardPage />);
 
+        await screen.findByText('Reusable Seller Link');
         const slugInput = await screen.findByDisplayValue('pro-slug');
         fireEvent.change(slugInput, { target: { value: 'updated-pro-slug' } });
 

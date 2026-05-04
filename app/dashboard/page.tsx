@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ import {
     Eye,
     Download,
     Mail,
+    MessageSquare,
     ExternalLink,
     Loader2,
     Trash2,
@@ -63,6 +64,7 @@ const statusConfig = {
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton';
 
 export default function DashboardPage() {
+    const firstRunLinkViewedRef = useRef(false);
     const [requests, setRequests] = useState<Array<Request & { can_edit_submitted_sheet?: boolean }>>([]);
     const [meta, setMeta] = useState({
         total: 0,
@@ -190,6 +192,17 @@ export default function DashboardPage() {
         fetchUpdates();
     }, []);
 
+    useEffect(() => {
+        if (!showSetupPrompt || !intakeLink?.url || firstRunLinkViewedRef.current) {
+            return;
+        }
+
+        firstRunLinkViewedRef.current = true;
+        trackEvent('dashboard_first_run_link_viewed', {
+            source: 'dashboard_first_run_card',
+        });
+    }, [intakeLink?.url, showSetupPrompt]);
+
     const filteredRequests = requests.filter((request) =>
         request.property_address.toLowerCase().includes(searchQuery.toLowerCase()) ||
         request.seller_name?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -295,6 +308,38 @@ export default function DashboardPage() {
         } catch {
             toast.error('Failed to copy link');
         }
+    };
+
+    const getReusableLinkSmsText = () => {
+        const link = intakeLink?.url || '';
+        return `Hi, please use this link to fill in the utility providers for your property. It takes about 2 minutes and no account is needed: ${link}`;
+    };
+
+    const handleCopyReusableLinkSms = async () => {
+        if (!intakeLink?.url) return;
+        try {
+            await navigator.clipboard.writeText(getReusableLinkSmsText());
+            trackEvent('seller_link_sms_copied', {
+                source: showSetupPrompt ? 'dashboard_first_run_card' : 'dashboard_reusable_link_card',
+            });
+            toast.success('SMS text copied');
+        } catch {
+            toast.error('Failed to copy SMS text');
+        }
+    };
+
+    const handleOpenReusableLinkEmail = () => {
+        if (!intakeLink?.url) return;
+
+        const subject = encodeURIComponent('Utility Information Request');
+        const body = encodeURIComponent(
+            `Hi,\n\nPlease use the link below to fill in the utility providers for your property. It takes about 2 minutes and no account is needed.\n\n${intakeLink.url}\n\nThank you.`
+        );
+
+        trackEvent('seller_link_email_opened', {
+            source: showSetupPrompt ? 'dashboard_first_run_card' : 'dashboard_reusable_link_card',
+        });
+        window.open(`mailto:?subject=${subject}&body=${body}`);
     };
 
     const handleSaveDashboardSlug = async () => {
@@ -416,49 +461,80 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Reusable link hero */}
+                    {/* First-run seller link hero */}
                     {showSetupPrompt && intakeLink?.url && (
-                        <Card className="border-border/70 bg-card/55 backdrop-blur-sm">
-                            <CardHeader className="pb-4">
+                        <Card className="relative overflow-hidden border-emerald-500/30 bg-card/70 backdrop-blur-sm">
+                            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
+                            <CardHeader className="relative pb-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
-                                        <CardTitle className="text-foreground text-lg">Your seller link is ready</CardTitle>
-                                        <CardDescription className="mt-1 text-sm">
-                                            UtilitySheet now works best when you share your reusable link first. Optional setup lives separately, so you can start using the product right away.
+                                        <CardTitle className="text-foreground text-xl sm:text-2xl">Your seller intake link is ready</CardTitle>
+                                        <CardDescription className="mt-2 max-w-2xl text-sm">
+                                            Share this with a seller. They enter the property address, complete the utility details, and you get a ready-to-review sheet.
                                         </CardDescription>
                                     </div>
                                     <Badge variant="outline" className="w-fit border-emerald-500/30 text-emerald-700 dark:text-emerald-300">
-                                        URL-first onboarding
+                                        Start here
                                     </Badge>
                                 </div>
                             </CardHeader>
-                            <CardContent className="flex flex-col gap-3 sm:flex-row">
-                                <Button
-                                    type="button"
-                                    onClick={handleCopyDashboardIntakeLink}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                >
-                                    {copiedDashboardLink ? (
-                                        <>
-                                            <Check className="mr-2 h-4 w-4" />
-                                            Copied
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Copy className="mr-2 h-4 w-4" />
-                                            Copy Seller Link
-                                        </>
-                                    )}
-                                </Button>
-                                <Link href="/onboarding">
-                                    <Button type="button" variant="outline" className="w-full sm:w-auto">
-                                        Finish Optional Setup
-                                    </Button>
-                                </Link>
+                            <CardContent className="relative space-y-4">
+                                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+                                    <Input
+                                        value={intakeLink.url}
+                                        readOnly
+                                        className="bg-background/70 font-mono text-xs sm:text-sm"
+                                    />
+                                    <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
+                                        <Button
+                                            type="button"
+                                            onClick={handleCopyDashboardIntakeLink}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        >
+                                            {copiedDashboardLink ? (
+                                                <>
+                                                    <Check className="mr-2 h-4 w-4" />
+                                                    Copied
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Copy className="mr-2 h-4 w-4" />
+                                                    Copy Link
+                                                </>
+                                            )}
+                                        </Button>
+                                        <Button type="button" variant="outline" onClick={handleCopyReusableLinkSms}>
+                                            <MessageSquare className="mr-2 h-4 w-4" />
+                                            Copy SMS
+                                        </Button>
+                                        <Button type="button" variant="outline" onClick={handleOpenReusableLinkEmail}>
+                                            <Mail className="mr-2 h-4 w-4" />
+                                            Open Email
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                                    <div className="rounded-lg border border-border/70 bg-background/45 px-3 py-2">Seller enters the property address</div>
+                                    <div className="rounded-lg border border-border/70 bg-background/45 px-3 py-2">Utility details are collected for you</div>
+                                    <div className="rounded-lg border border-border/70 bg-background/45 px-3 py-2">You review the sheet in your dashboard</div>
+                                </div>
+
+                                <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                                    <p className="text-xs text-muted-foreground">
+                                        Branding and contact details are optional. You can refine them after the first share.
+                                    </p>
+                                    <Link href="/onboarding">
+                                        <Button type="button" variant="ghost" className="w-full text-muted-foreground hover:text-foreground sm:w-auto">
+                                            Finish optional setup
+                                        </Button>
+                                    </Link>
+                                </div>
                             </CardContent>
                         </Card>
                     )}
 
+                    {!showSetupPrompt && (
                     <Card className="relative overflow-hidden border-emerald-500/30 bg-card/60 backdrop-blur-sm">
                         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
                         <CardHeader className="relative px-4 sm:px-6 pb-4">
@@ -502,6 +578,24 @@ export default function DashboardPage() {
                                                 <Copy className="mr-2 h-4 w-4" />
                                             )}
                                             {copiedDashboardLink ? 'Copied!' : 'Copy Link'}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="border-input text-foreground hover:bg-muted active:scale-[0.98]"
+                                            onClick={handleCopyReusableLinkSms}
+                                        >
+                                            <MessageSquare className="mr-2 h-4 w-4" />
+                                            Copy SMS
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="border-input text-foreground hover:bg-muted active:scale-[0.98]"
+                                            onClick={handleOpenReusableLinkEmail}
+                                        >
+                                            <Mail className="mr-2 h-4 w-4" />
+                                            Open Email
                                         </Button>
                                         <Button
                                             type="button"
@@ -626,6 +720,7 @@ export default function DashboardPage() {
                             )}
                         </CardContent>
                     </Card>
+                    )}
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

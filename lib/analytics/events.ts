@@ -54,6 +54,9 @@ type AnalyticsEventMap = {
   dashboard_first_view: BasePayload & {
     source: string;
   };
+  dashboard_first_run_link_viewed: BasePayload & {
+    source: string;
+  };
   onboarding_step_viewed: BasePayload & {
     step: string;
     step_number: number;
@@ -83,6 +86,16 @@ type AnalyticsEventMap = {
   };
   seller_link_copied: BasePayload & {
     source: string;
+  };
+  seller_link_sms_copied: BasePayload & {
+    source: string;
+  };
+  seller_link_email_opened: BasePayload & {
+    source: string;
+  };
+  setup_dismissed: BasePayload & {
+    source: string;
+    destination: string;
   };
   new_request_started: BasePayload & {
     source: string;

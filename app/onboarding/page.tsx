@@ -234,17 +234,15 @@ export default function OnboardingPage() {
         setFinishing(true);
         try {
             await completeOnboarding();
-            trackEvent('onboarding_completed', { destination: 'dashboard' });
-            trackEvent('progressive_setup_task_completed', {
+            trackEvent('setup_dismissed', {
                 source: 'onboarding_page',
-                task: 'done_for_now',
-                method: 'dashboard',
+                destination: 'dashboard',
             });
             router.push('/dashboard');
             router.refresh();
         } catch (error) {
             console.error(error);
-            toast.error(error instanceof Error ? error.message : 'Failed to finish setup');
+            toast.error(error instanceof Error ? error.message : 'Failed to save setup progress');
         } finally {
             setFinishing(false);
         }
