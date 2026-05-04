@@ -22,20 +22,6 @@ function Hero3DCard() {
                     className="object-contain drop-shadow-[0_28px_48px_rgba(15,23,42,0.16)]"
                 />
             </div>
-            <div className="absolute left-2 right-2 top-5 mx-auto max-w-[270px] rounded-lg border border-emerald-200 bg-white/95 px-4 py-3 shadow-lg shadow-emerald-900/10 backdrop-blur dark:border-emerald-900/40 dark:bg-slate-950/95 sm:left-0 sm:right-auto sm:top-12">
-                <div className="flex items-center gap-3 text-left">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                        <Link2 className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                    <p className="text-sm font-semibold leading-tight text-foreground">
-                        Seller submits from your reusable link
-                    </p>
-                </div>
-            </div>
-            <div className="absolute bottom-6 right-0 hidden max-w-[220px] rounded-lg border border-slate-200 bg-white/95 px-4 py-3 shadow-lg shadow-slate-900/10 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:block">
-                <p className="text-sm font-semibold text-foreground">Review the finished sheet</p>
-                <p className="mt-1 text-xs text-muted-foreground">Web view plus downloadable PDF</p>
-            </div>
         </div>
     );
 }
