@@ -59,7 +59,7 @@ export async function getDueActivationOutreachCandidates(limit = 50): Promise<Ac
                             FROM activation_outreach_logs log
                             WHERE log.account_id = base.account_id
                               AND log.campaign = 'activation_reengagement'
-                              AND log.stage = 'after_15m'
+                              AND log.stage IN ('after_15m', 'after_1d')
                               AND log.status = 'sent'
                         )
                         THEN 'after_15m'

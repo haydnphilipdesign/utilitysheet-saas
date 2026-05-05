@@ -6,12 +6,18 @@ import {
 } from '@/lib/neon/queries';
 import { sendActivationReminderEmail } from '@/lib/email/email-service';
 
+const RESEND_PACING_DELAY_MS = 250;
+
 function getAppBaseUrl() {
     return (
         process.env.NEXT_PUBLIC_APP_URL ||
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
         'http://localhost:3000'
     );
+}
+
+function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function GET(request: Request) {
@@ -45,7 +51,12 @@ export async function GET(request: Request) {
         let sent = 0;
         let failed = 0;
 
-        for (const candidate of candidates) {
+        for (let index = 0; index < candidates.length; index += 1) {
+            const candidate = candidates[index];
+            if (index > 0) {
+                await sleep(RESEND_PACING_DELAY_MS);
+            }
+
             const intakeLink = await getOrCreateIntakeLink(candidate.account_id);
             if (!intakeLink) {
                 failed += 1;
