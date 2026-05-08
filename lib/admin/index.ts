@@ -332,6 +332,61 @@ export async function getLatestAdminActionsForUsers(userIds: string[]): Promise<
     return map;
 }
 
+export type UserLatestRequest = {
+    id: string;
+    accountId: string;
+    propertyAddress: string;
+    status: string;
+    createdAt: string;
+};
+
+export async function getLatestRequestsForUsers(userIds: string[], limitPerUser = 3): Promise<Record<string, UserLatestRequest[]>> {
+    if (!sql || userIds.length === 0) return {};
+
+    const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean)));
+    if (uniqueUserIds.length === 0) return {};
+
+    const perUserLimit = Math.min(10, Math.max(1, limitPerUser));
+    const result = await sql`
+        SELECT id, account_id, property_address, status, created_at
+        FROM (
+            SELECT
+                r.id,
+                r.account_id,
+                r.property_address,
+                r.status,
+                r.created_at,
+                ROW_NUMBER() OVER (PARTITION BY r.account_id ORDER BY r.created_at DESC, r.id DESC) as row_num
+            FROM requests r
+            WHERE r.account_id = ANY(${uniqueUserIds}::uuid[])
+                AND r.deleted_at IS NULL
+        ) ranked_requests
+        WHERE row_num <= ${perUserLimit}
+        ORDER BY account_id, created_at DESC, id DESC
+    `;
+
+    const map: Record<string, UserLatestRequest[]> = {};
+    for (const row of result as Array<{
+        id: string;
+        account_id: string;
+        property_address: string;
+        status: string;
+        created_at: string;
+    }>) {
+        if (!row.account_id) continue;
+        map[row.account_id] ||= [];
+        map[row.account_id].push({
+            id: row.id,
+            accountId: row.account_id,
+            propertyAddress: row.property_address,
+            status: row.status,
+            createdAt: row.created_at,
+        });
+    }
+
+    return map;
+}
+
 /**
  * Get a single user by ID
  */

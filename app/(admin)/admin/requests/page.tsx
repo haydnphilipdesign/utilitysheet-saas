@@ -6,6 +6,7 @@ import { RequestsTable } from '@/components/admin/RequestsTable';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { AdminDataTableShell, AdminFilterBar, AdminPageHeader, AdminPagination } from '@/components/admin/primitives';
+import { getLatestRequestsForUsers } from '@/lib/admin';
 import {
     DEFAULT_PAGE_SIZE,
     buildAdminHref,
@@ -28,6 +29,7 @@ function isRequestStatus(value: string): value is RequestStatus {
 
 type AdminRequestRow = {
     id: string;
+    account_id: string | null;
     property_address: string;
     status: string;
     created_at: string;
@@ -127,6 +129,9 @@ export default async function RequestsPage({ searchParams }: { searchParams: Req
         getRequests({ query, status, limit: pageSize, offset }),
         getRequestsCount({ query, status }),
     ]);
+    const latestRequests = await getLatestRequestsForUsers(
+        requests.map((request) => request.account_id).filter((id): id is string => Boolean(id))
+    );
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const canonicalPage = clampPage(page, totalPages);
 
@@ -197,7 +202,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Req
 
             <AdminDataTableShell>
                 <div className="p-4">
-                    <RequestsTable requests={requests} />
+                    <RequestsTable requests={requests} latestRequests={latestRequests} />
                 </div>
                 <AdminPagination
                     page={canonicalPage}

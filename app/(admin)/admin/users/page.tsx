@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Ban, Shield, Sparkles, Users } from 'lucide-react';
-import { searchUsers, getLatestAdminActionsForUsers, type SortDirection, type UserSortField } from '@/lib/admin';
+import { searchUsers, getLatestAdminActionsForUsers, getLatestRequestsForUsers, type SortDirection, type UserSortField } from '@/lib/admin';
 import { UsersTable } from './users-table';
 import { AuthReconciliationCard } from './auth-reconciliation-card';
 import { Input } from '@/components/ui/input';
@@ -87,7 +87,11 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
         redirect(buildPageHref(canonicalPage));
     }
 
-    const latestActions = await getLatestAdminActionsForUsers(users.map((user) => user.id));
+    const userIds = users.map((user) => user.id);
+    const [latestActions, latestRequests] = await Promise.all([
+        getLatestAdminActionsForUsers(userIds),
+        getLatestRequestsForUsers(userIds),
+    ]);
 
     const buildSortHref = (field: UserSortField) =>
         buildAdminHref('/admin/users', {
@@ -182,6 +186,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                         created: buildSortHref('created'),
                     }}
                     latestActions={latestActions}
+                    latestRequests={latestRequests}
                 />
 
                 <AdminPagination

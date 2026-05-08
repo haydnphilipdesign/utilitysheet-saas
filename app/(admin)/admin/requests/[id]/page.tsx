@@ -3,9 +3,11 @@ import { sql } from '@/lib/neon/db';
 import { UtilityEntriesTable } from '@/components/admin/UtilityEntriesTable';
 import { EventLogTable } from '@/components/admin/EventLogTable';
 import { RequestAdminActions } from '@/components/admin/RequestAdminActions';
+import { AdminAccountPreview } from '@/components/admin/AdminAccountPreview';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { getLatestRequestsForUsers } from '@/lib/admin';
 import type { EventLog, UtilityEntry } from '@/types';
 
 async function getRequestData(requestId: string) {
@@ -13,7 +15,7 @@ async function getRequestData(requestId: string) {
 
     const [requestRes, entriesRes, logsRes] = await Promise.all([
         sql`
-            SELECT r.*, a.full_name as user_name, a.email as user_email 
+            SELECT r.*, a.full_name as user_name, a.email as user_email, a.role as user_role, a.subscription_status as user_plan
             FROM requests r 
             LEFT JOIN accounts a ON r.account_id = a.id 
             WHERE r.id = ${requestId}
@@ -40,6 +42,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     }
 
     const { request, entries, logs } = data;
+    const latestRequests = request.account_id ? await getLatestRequestsForUsers([request.account_id]) : {};
 
     return (
         <div className="space-y-8">
@@ -92,8 +95,26 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                         <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Seller Name</span> {request.seller_name || 'N/A'}</div>
                         <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Seller Email</span> {request.seller_email || 'N/A'}</div>
                         <Separator className="my-2" />
-                        <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Agent Name</span> {request.user_name || 'N/A'}</div>
-                        <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Agent Email</span> {request.user_email || 'N/A'}</div>
+                        <div className="py-1">
+                            <span className="font-medium text-sm text-muted-foreground block">Agent Account</span>
+                            {request.account_id ? (
+                                <AdminAccountPreview
+                                    account={{
+                                        id: request.account_id,
+                                        name: request.user_name,
+                                        email: request.user_email,
+                                        role: request.user_role,
+                                        plan: request.user_plan,
+                                    }}
+                                    latestRequests={latestRequests[request.account_id] || []}
+                                >
+                                    <span className="block font-medium text-foreground">{request.user_name || request.user_email || 'Unknown user'}</span>
+                                    {request.user_email ? <span className="block text-sm text-muted-foreground">{request.user_email}</span> : null}
+                                </AdminAccountPreview>
+                            ) : (
+                                'N/A'
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             </div>

@@ -26,8 +26,12 @@ type AdminOrgRow = {
     name: string;
     slug: string;
     logo_url: string | null;
+    subscription_status: string | null;
+    seat_quantity: number;
     created_at: string;
     member_count: number;
+    admin_names: string[];
+    admin_count: number;
 };
 
 async function getOrgs(params: { query?: string; limit: number; offset: number }) {
@@ -47,17 +51,39 @@ async function getOrgs(params: { query?: string; limit: number; offset: number }
     }
 
     const data = await sql`
-        SELECT o.*,
-        (SELECT count(*) FROM organization_members WHERE organization_id = o.id) as member_count
+        SELECT
+            o.*,
+            (SELECT count(*) FROM organization_members WHERE organization_id = o.id) as member_count,
+            (
+                SELECT count(*)
+                FROM organization_members om
+                WHERE om.organization_id = o.id AND om.role = 'admin'
+            ) as admin_count,
+            COALESCE(
+                (
+                    SELECT array_agg(COALESCE(a.full_name, a.email) ORDER BY COALESCE(a.full_name, a.email))
+                    FROM organization_members om
+                    JOIN accounts a ON a.id = om.account_id
+                    WHERE om.organization_id = o.id AND om.role = 'admin'
+                ),
+                ARRAY[]::text[]
+            ) as admin_names
         FROM organizations o
         WHERE ${whereClause}
         ORDER BY o.created_at DESC, o.id DESC
         LIMIT ${params.limit} OFFSET ${params.offset}
     `;
 
-    return (data as unknown as Array<AdminOrgRow & { member_count: string | number }>).map((org) => ({
+    return (data as unknown as Array<AdminOrgRow & {
+        member_count: string | number;
+        admin_count: string | number;
+        seat_quantity: string | number;
+    }>).map((org) => ({
         ...org,
         member_count: Number(org.member_count || 0),
+        admin_count: Number(org.admin_count || 0),
+        seat_quantity: Number(org.seat_quantity || 0),
+        admin_names: org.admin_names || [],
     }));
 }
 

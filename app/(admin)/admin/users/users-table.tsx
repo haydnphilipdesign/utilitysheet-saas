@@ -17,6 +17,8 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
+import { formatAdminDate } from '@/lib/admin/date-format';
+import type { UserLatestRequest } from '@/lib/admin';
 import { updateUserRoleAction, banUserAction, unbanUserAction, updateUserPlanAction } from './actions';
 
 type UserSortField = 'created' | 'email' | 'name';
@@ -37,6 +39,7 @@ interface UsersTableProps {
     sortDir: SortDirection;
     sortHrefs: Record<UserSortField, string>;
     latestActions: Record<string, LatestAction>;
+    latestRequests?: Record<string, UserLatestRequest[]>;
 }
 
 type ConfirmableAction =
@@ -108,7 +111,7 @@ function actionGroups(user: AdminUserRow): Array<{ label: string; actions: Confi
     return groups.filter((group) => group.actions.length > 0 || Boolean(group.note));
 }
 
-export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }: UsersTableProps) {
+export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions, latestRequests = {} }: UsersTableProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -291,6 +294,34 @@ export function UsersTable({ users, sortBy, sortDir, sortHrefs, latestActions }:
                                         </div>
                                     ) : (
                                         <p className="mt-2 text-sm text-muted-foreground">No admin actions recorded yet.</p>
+                                    )}
+                                </section>
+
+                                <section className="rounded-lg border border-border/70 bg-secondary/20 p-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Latest Requests</h3>
+                                        <Link href={`/admin/requests?q=${selectedUser.id}`} className="text-xs text-muted-foreground hover:text-foreground">
+                                            View all
+                                        </Link>
+                                    </div>
+                                    {latestRequests[selectedUser.id]?.length ? (
+                                        <div className="mt-3 divide-y divide-border/70">
+                                            {latestRequests[selectedUser.id].map((request) => (
+                                                <Link
+                                                    key={request.id}
+                                                    href={`/admin/requests/${request.id}`}
+                                                    className="block rounded-md py-2 text-sm hover:bg-background/70"
+                                                >
+                                                    <span className="block truncate font-medium text-foreground">{request.propertyAddress}</span>
+                                                    <span className="mt-1 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                                                        <span>{request.status.replace(/_/g, ' ')}</span>
+                                                        <span>{formatAdminDate(request.createdAt)}</span>
+                                                    </span>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="mt-2 text-sm text-muted-foreground">No requests found for this account.</p>
                                     )}
                                 </section>
 

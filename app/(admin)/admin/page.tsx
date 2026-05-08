@@ -5,6 +5,8 @@ import { RecentActivity } from '@/components/admin/RecentActivity';
 import { Users, FileText, Building2, Activity, ClipboardCheck, Link2, TriangleAlert } from 'lucide-react';
 import { AdminPageHeader } from '@/components/admin/primitives';
 import { getActivationFunnelStats } from '@/lib/admin/activation-funnel';
+import { formatAdminDate } from '@/lib/admin/date-format';
+import { getLatestRequestsForUsers } from '@/lib/admin';
 
 // Force dynamic rendering as this is an admin dashboard
 export const dynamic = 'force-dynamic';
@@ -27,7 +29,7 @@ async function getStats() {
         sql`SELECT count(*) as count FROM organizations`,
         sql`SELECT status, count(*) as count FROM requests GROUP BY status`,
         sql`
-            SELECT r.id, r.created_at, r.status, a.full_name, a.email 
+            SELECT r.id, r.account_id, r.created_at, r.status, a.full_name, a.email 
             FROM requests r 
             LEFT JOIN accounts a ON r.account_id = a.id 
             ORDER BY r.created_at DESC 
@@ -35,6 +37,10 @@ async function getStats() {
         `,
         getActivationFunnelStats(),
     ]);
+
+    const latestRequestsByUser = await getLatestRequestsForUsers(
+        recentRequests.map((request) => request.account_id).filter((id): id is string => Boolean(id))
+    );
 
     return {
         totalUsers: Number(usersCount[0]?.count || 0),
@@ -48,12 +54,14 @@ async function getStats() {
         recentActivity: recentRequests.map(r => ({
             id: r.id,
             user: {
+                id: r.account_id,
                 name: r.full_name || 'Unknown User',
                 email: r.email || 'No email',
             },
             action: 'Created a request',
             details: r.status,
-            timestamp: new Date(r.created_at).toLocaleDateString(),
+            timestamp: formatAdminDate(r.created_at),
+            latestRequests: r.account_id ? latestRequestsByUser[r.account_id] || [] : [],
         })),
         activationFunnel,
     };
