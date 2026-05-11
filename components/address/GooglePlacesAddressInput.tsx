@@ -134,10 +134,12 @@ export function GooglePlacesAddressInput({
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [autocompleteUnavailable, setAutocompleteUnavailable] = useState(false);
+    const [selecting, setSelecting] = useState(false);
+    const inputRef = useRef<HTMLInputElement | null>(null);
     const requestIdRef = useRef(0);
 
     useEffect(() => {
-        if (!apiKey || autocompleteUnavailable || disabled) return;
+        if (!apiKey || autocompleteUnavailable || disabled || selecting) return;
 
         const query = value.trim();
         const requestId = requestIdRef.current + 1;
@@ -166,25 +168,31 @@ export function GooglePlacesAddressInput({
         }, 250);
 
         return () => window.clearTimeout(timeout);
-    }, [apiKey, autocompleteUnavailable, disabled, sessionToken, value]);
+    }, [apiKey, autocompleteUnavailable, disabled, selecting, sessionToken, value]);
 
     const handleSelectSuggestion = async (suggestion: AddressSuggestion) => {
+        setSelecting(true);
+        requestIdRef.current += 1;
         setOpen(false);
         setSuggestions([]);
-        onChange(suggestion.label);
         try {
             const parsed = await fetchPlaceDetails(suggestion.id, apiKey, sessionToken);
-            if (parsed.full) onChange(parsed.full);
+            onChange(parsed.full || suggestion.label.replace(/,\s*USA$/i, ''));
             onAddressSelected(parsed);
             setSessionToken(createSessionToken());
         } catch (error) {
             console.warn('Address autocomplete details failed:', error);
+            onChange(suggestion.label.replace(/,\s*USA$/i, ''));
+        } finally {
+            setSelecting(false);
+            inputRef.current?.blur();
         }
     };
 
     return (
         <div className="relative">
             <Input
+                ref={inputRef}
                 id={id}
                 value={value}
                 onChange={(event) => {
