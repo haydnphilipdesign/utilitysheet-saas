@@ -1,11 +1,12 @@
 'use client';
 
-import { use, useEffect, useMemo, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Loader2, MapPin, ArrowRight } from 'lucide-react';
 import { SellerLayout } from '@/components/seller-form/SellerLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { GooglePlacesAddressInput } from '@/components/address/GooglePlacesAddressInput';
 import { trackEvent } from '@/lib/analytics/events';
 import {
     type IntakeAddressParts,
@@ -129,6 +130,11 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
         });
     };
 
+    const handleAddressInputChange = useCallback((value: string) => {
+        setAddress(value);
+        setFormError(null);
+    }, []);
+
     const focusFirstMissingField = (missingFields: IntakeMissingField[]) => {
         const ordered: IntakeMissingField[] = ['street', 'city', 'state', 'zip'];
         const first = ordered.find((field) => missingFields.includes(field));
@@ -147,6 +153,45 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
             | null;
         target?.focus();
     };
+
+    const handleAutocompleteAddressSelected = useCallback((selectedAddress: {
+        street: string;
+        unit: string;
+        city: string;
+        state: string;
+        zip: string;
+        full: string;
+        placeId: string | null;
+        isComplete: boolean;
+    }) => {
+        setFormError(null);
+        setFieldErrors({});
+        setConfirmAddress({
+            street: selectedAddress.street,
+            unit: selectedAddress.unit,
+            city: selectedAddress.city,
+            state: selectedAddress.state,
+            zip: selectedAddress.zip,
+        });
+
+        trackEvent('intake_address_autocomplete_selected', {
+            location: 'intake_link',
+            page: 'intake_link',
+            has_place_id: Boolean(selectedAddress.placeId),
+            is_complete: selectedAddress.isComplete,
+        });
+
+        if (selectedAddress.isComplete) {
+            setShowConfirmAddress(false);
+            return;
+        }
+
+        const missingFields = getMissingIntakeFields(selectedAddress);
+        setShowConfirmAddress(true);
+        setFieldErrors(toFieldErrors(missingFields));
+        setFormError('Please confirm the full address details below.');
+        setTimeout(() => focusFirstMissingField(missingFields), 0);
+    }, []);
 
     const submitStart = async (propertyAddress: string) => {
         setSubmitting(true);
@@ -321,17 +366,14 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
 
                         <div className="mt-6 space-y-2">
                             <Label htmlFor="propertyAddress" className="text-foreground">Property Address</Label>
-                            <Input
+                            <GooglePlacesAddressInput
                                 id="propertyAddress"
                                 value={address}
-                                onChange={(e) => {
-                                    setAddress(e.target.value);
-                                    setFormError(null);
-                                }}
+                                onChange={handleAddressInputChange}
+                                onAddressSelected={handleAutocompleteAddressSelected}
                                 placeholder="123 Main St, Austin, TX 78701"
                                 data-testid="intake-address-input"
                                 className="bg-background/50 border-input text-foreground"
-                                autoComplete="street-address"
                                 disabled={submitting || showConfirmAddress}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && canStart) {

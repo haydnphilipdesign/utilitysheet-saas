@@ -36,6 +36,21 @@ function normalizeState(value: string | null | undefined): string {
     return resolved || '';
 }
 
+function normalizeComparableAddressText(value: string): string {
+    return value
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function hasSuspiciousCityInStreet(parts: IntakeAddressParts): boolean {
+    const street = normalizeComparableAddressText(parts.street);
+    const city = normalizeComparableAddressText(parts.city);
+    if (!street || !city || city.length < 4) return false;
+    return street.endsWith(` ${city}`) || street === city;
+}
+
 export function normalizeIntakeAddressParts(input: Partial<IntakeAddressParts>): IntakeAddressParts {
     return {
         street: normalizeWhitespace(input.street),
@@ -65,6 +80,9 @@ export function validateIntakeAddress(address: string): IntakeAddressValidationR
         zip: parsed.zip || '',
     });
     const missingFields = getMissingIntakeFields(normalized);
+    if (!missingFields.includes('street') && hasSuspiciousCityInStreet(normalized)) {
+        missingFields.push('street');
+    }
 
     return {
         isComplete: missingFields.length === 0,

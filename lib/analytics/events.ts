@@ -163,6 +163,11 @@ type AnalyticsEventMap = {
     location: string;
     source: "confirm_step";
   };
+  intake_address_autocomplete_selected: BasePayload & {
+    location: string;
+    has_place_id: boolean;
+    is_complete: boolean;
+  };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

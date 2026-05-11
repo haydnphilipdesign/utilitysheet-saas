@@ -35,6 +35,12 @@ describe('intake-validation', () => {
         });
     });
 
+    it('requires confirmation when city text appears duplicated in the street line', () => {
+        const result = validateIntakeAddress('5439 Bluepine Cincinnati, Bluepine Cincinnati, OH 45247');
+        expect(result.isComplete).toBe(false);
+        expect(result.missingFields).toContain('street');
+    });
+
     it('formats canonical address without unit', () => {
         const formatted = formatCanonicalIntakeAddress({
             street: '123 Main St',
