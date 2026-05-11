@@ -44,4 +44,29 @@ describe('parseGooglePlaceAddress', () => {
         expect(parsed.zip).toBe('');
         expect(parsed.full).toBe('Bluepine, Cincinnati, OH, USA');
     });
+
+    it('supports Places API New address component shape', () => {
+        const parsed = parseGooglePlaceAddress({
+            id: 'new-place-123',
+            formattedAddress: '5439 Bluepine Dr, Cincinnati, OH 45247, USA',
+            addressComponents: [
+                { longText: '5439', shortText: '5439', types: ['street_number'] },
+                { longText: 'Bluepine Drive', shortText: 'Bluepine Dr', types: ['route'] },
+                { longText: 'Cincinnati', shortText: 'Cincinnati', types: ['locality', 'political'] },
+                { longText: 'Ohio', shortText: 'OH', types: ['administrative_area_level_1', 'political'] },
+                { longText: '45247', shortText: '45247', types: ['postal_code'] },
+            ],
+        });
+
+        expect(parsed).toEqual({
+            street: '5439 Bluepine Drive',
+            unit: '',
+            city: 'Cincinnati',
+            state: 'OH',
+            zip: '45247',
+            full: '5439 Bluepine Drive, Cincinnati, OH 45247',
+            placeId: 'new-place-123',
+            isComplete: true,
+        });
+    });
 });

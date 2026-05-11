@@ -11,10 +11,19 @@ export interface GooglePlaceAddressComponent {
     types: string[];
 }
 
+export interface GooglePlaceNewAddressComponent {
+    longText?: string;
+    shortText?: string;
+    types: string[];
+}
+
 export interface GooglePlaceAddressInput {
     address_components?: GooglePlaceAddressComponent[];
+    addressComponents?: GooglePlaceNewAddressComponent[];
     formatted_address?: string;
+    formattedAddress?: string;
     place_id?: string;
+    id?: string;
 }
 
 export interface ParsedGooglePlaceAddress extends IntakeAddressParts {
@@ -25,15 +34,20 @@ export interface ParsedGooglePlaceAddress extends IntakeAddressParts {
 }
 
 function getComponent(
-    components: GooglePlaceAddressComponent[],
+    components: Array<GooglePlaceAddressComponent | GooglePlaceNewAddressComponent>,
     type: string,
     name: 'long_name' | 'short_name' = 'long_name'
 ): string {
-    return components.find((component) => component.types.includes(type))?.[name] || '';
+    const component = components.find((item) => item.types.includes(type));
+    if (!component) return '';
+    if ('long_name' in component) return component[name] || '';
+    return name === 'short_name'
+        ? component.shortText || component.longText || ''
+        : component.longText || component.shortText || '';
 }
 
 export function parseGooglePlaceAddress(place: GooglePlaceAddressInput): ParsedGooglePlaceAddress {
-    const components = place.address_components || [];
+    const components = place.address_components || place.addressComponents || [];
     const streetNumber = getComponent(components, 'street_number');
     const route = getComponent(components, 'route');
     const unit = getComponent(components, 'subpremise');
@@ -50,13 +64,13 @@ export function parseGooglePlaceAddress(place: GooglePlaceAddressInput): ParsedG
     const isComplete = getMissingIntakeFields(normalized).length === 0;
     const full = isComplete
         ? formatCanonicalIntakeAddress({ ...normalized, unit: normalizedUnit })
-        : (place.formatted_address || '').trim();
+        : (place.formatted_address || place.formattedAddress || '').trim();
 
     return {
         ...normalized,
         unit: normalizedUnit,
         full,
-        placeId: place.place_id || null,
+        placeId: place.place_id || place.id || null,
         isComplete,
     };
 }
