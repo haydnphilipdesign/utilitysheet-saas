@@ -137,6 +137,8 @@ export function GooglePlacesAddressInput({
     const [selecting, setSelecting] = useState(false);
     const inputRef = useRef<HTMLInputElement | null>(null);
     const requestIdRef = useRef(0);
+    const selectedValueRef = useRef('');
+    const suppressSuggestionsRef = useRef(false);
 
     useEffect(() => {
         if (!apiKey || autocompleteUnavailable || disabled || selecting) return;
@@ -145,13 +147,14 @@ export function GooglePlacesAddressInput({
         const requestId = requestIdRef.current + 1;
         requestIdRef.current = requestId;
 
-        if (query.length < 3) return;
+        if (query.length < 3 || suppressSuggestionsRef.current || query === selectedValueRef.current) return;
 
         const timeout = window.setTimeout(() => {
             setLoading(true);
             fetchAddressSuggestions(query, apiKey, sessionToken)
                 .then((nextSuggestions) => {
                     if (requestIdRef.current !== requestId) return;
+                    if (value.trim() === selectedValueRef.current) return;
                     setSuggestions(nextSuggestions);
                     setOpen(nextSuggestions.length > 0);
                 })
@@ -172,17 +175,23 @@ export function GooglePlacesAddressInput({
 
     const handleSelectSuggestion = async (suggestion: AddressSuggestion) => {
         setSelecting(true);
+        suppressSuggestionsRef.current = true;
         requestIdRef.current += 1;
         setOpen(false);
         setSuggestions([]);
+        setLoading(false);
         try {
             const parsed = await fetchPlaceDetails(suggestion.id, apiKey, sessionToken);
-            onChange(parsed.full || suggestion.label.replace(/,\s*USA$/i, ''));
+            const finalValue = parsed.full || suggestion.label.replace(/,\s*USA$/i, '');
+            selectedValueRef.current = finalValue;
+            onChange(finalValue);
             onAddressSelected(parsed);
             setSessionToken(createSessionToken());
         } catch (error) {
             console.warn('Address autocomplete details failed:', error);
-            onChange(suggestion.label.replace(/,\s*USA$/i, ''));
+            const fallbackValue = suggestion.label.replace(/,\s*USA$/i, '');
+            selectedValueRef.current = fallbackValue;
+            onChange(fallbackValue);
         } finally {
             setSelecting(false);
             inputRef.current?.blur();
@@ -196,6 +205,8 @@ export function GooglePlacesAddressInput({
                 id={id}
                 value={value}
                 onChange={(event) => {
+                    suppressSuggestionsRef.current = false;
+                    selectedValueRef.current = '';
                     onChange(event.target.value);
                     setAutocompleteUnavailable(false);
                     if (event.target.value.trim().length < 3) {
@@ -204,6 +215,7 @@ export function GooglePlacesAddressInput({
                     }
                 }}
                 onFocus={() => {
+                    if (suppressSuggestionsRef.current) return;
                     if (suggestions.length > 0) setOpen(true);
                 }}
                 onBlur={() => {
