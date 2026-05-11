@@ -10,8 +10,10 @@ type PlacesAutocompleteResponse = {
         placePrediction?: {
             placeId: string;
             text?: { text?: string };
-            mainText?: { text?: string };
-            secondaryText?: { text?: string };
+            structuredFormat?: {
+                mainText?: { text?: string };
+                secondaryText?: { text?: string };
+            };
         };
     }>;
 };
@@ -55,13 +57,13 @@ function createSessionToken() {
 function toSuggestion(item: NonNullable<PlacesAutocompleteResponse['suggestions']>[number]): AddressSuggestion | null {
     const prediction = item.placePrediction;
     if (!prediction?.placeId) return null;
-    const label = prediction.text?.text || prediction.mainText?.text || '';
+    const label = prediction.text?.text || prediction.structuredFormat?.mainText?.text || '';
     if (!label) return null;
     return {
         id: prediction.placeId,
         label,
-        mainText: prediction.mainText?.text || label,
-        secondaryText: prediction.secondaryText?.text || '',
+        mainText: prediction.structuredFormat?.mainText?.text || label,
+        secondaryText: prediction.structuredFormat?.secondaryText?.text || '',
     };
 }
 
@@ -74,8 +76,8 @@ async function fetchAddressSuggestions(input: string, apiKey: string, sessionTok
             'X-Goog-FieldMask': [
                 'suggestions.placePrediction.placeId',
                 'suggestions.placePrediction.text.text',
-                'suggestions.placePrediction.mainText.text',
-                'suggestions.placePrediction.secondaryText.text',
+                'suggestions.placePrediction.structuredFormat.mainText.text',
+                'suggestions.placePrediction.structuredFormat.secondaryText.text',
             ].join(','),
         },
         body: JSON.stringify({
