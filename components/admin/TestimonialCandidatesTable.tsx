@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowDown, ArrowUp, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TestimonialOutreachButton } from '@/components/admin/TestimonialOutreachActions';
 import { formatAdminDate } from '@/lib/admin/date-format';
 import type {
     TestimonialCandidateRow,
@@ -142,12 +143,31 @@ export function TestimonialCandidatesTable({
                                     </div>
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                    <Link href={`/admin/users/${candidate.id}`}>
-                                        <Button variant="ghost" size="sm">
-                                            <ExternalLink className="h-4 w-4" />
-                                            View
-                                        </Button>
-                                    </Link>
+                                    <div className="flex flex-col items-end gap-2">
+                                        {candidate.latestTestimonialOutreach?.status === 'sent' ? (
+                                            <div className="text-xs text-muted-foreground">
+                                                Sent {candidate.latestTestimonialOutreach.sentAt ? formatAdminDate(candidate.latestTestimonialOutreach.sentAt) : ''}
+                                            </div>
+                                        ) : candidate.latestTestimonialOutreach ? (
+                                            <div className="text-xs text-muted-foreground">
+                                                Last: {(candidate.latestTestimonialOutreach.status || 'unknown').replace('_', ' ')}
+                                                {candidate.latestTestimonialOutreach.sentAt ? ` ${formatAdminDate(candidate.latestTestimonialOutreach.sentAt)}` : ''}
+                                            </div>
+                                        ) : null}
+                                        <div className="flex justify-end gap-2">
+                                            <TestimonialOutreachButton
+                                                userId={candidate.id}
+                                                recipientEmail={candidate.email}
+                                                alreadySent={candidate.latestTestimonialOutreach?.status === 'sent'}
+                                            />
+                                            <Link href={`/admin/users/${candidate.id}`}>
+                                                <Button variant="ghost" size="sm">
+                                                    <ExternalLink className="h-4 w-4" />
+                                                    View
+                                                </Button>
+                                            </Link>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         ))

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Clock, CreditCard, Filter, Sparkles } from 'lucide-react';
 import { TestimonialCandidatesTable } from '@/components/admin/TestimonialCandidatesTable';
+import { TestimonialOutreachTestButton } from '@/components/admin/TestimonialOutreachActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -149,6 +150,9 @@ export default async function TestimonialCandidatesPage({ searchParams }: { sear
                 title="Testimonial Candidates"
                 description={`Rank paying customers by UtilitySheet activity, recency, consistency, setup health, and data quality (${total.toLocaleString()}).`}
             />
+            <div className="flex justify-end">
+                <TestimonialOutreachTestButton />
+            </div>
 
             <AdminStatStrip
                 stats={[

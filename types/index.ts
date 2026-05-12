@@ -149,6 +149,8 @@ export type AdminAction =
     | 'request_status_changed'
     | 'request_seller_updated'
     | 'request_reminder_sent'
+    | 'testimonial_request_sent'
+    | 'testimonial_test_sent'
     | 'user_updated'
     | 'product_update_created'
     | 'product_update_deleted';

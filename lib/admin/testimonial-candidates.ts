@@ -35,6 +35,10 @@ export type TestimonialCandidateRow = TestimonialCandidateScoringInput & {
     accountCreatedAt: string;
     score: number;
     reasons: string[];
+    latestTestimonialOutreach: {
+        status: 'pending' | 'sent' | 'failed' | 'dry_run' | null;
+        sentAt: string | null;
+    } | null;
 };
 
 export type TestimonialCandidateFilters = {
@@ -73,6 +77,8 @@ type RawCandidateRow = {
     seller_submitted_events: number | string | null;
     pdf_generated_events: number | string | null;
     reminder_sent_events: number | string | null;
+    testimonial_outreach_status: 'pending' | 'sent' | 'failed' | 'dry_run' | null;
+    testimonial_outreach_sent_at: string | null;
 };
 
 function asNumber(value: number | string | null | undefined): number {
@@ -194,6 +200,12 @@ function mapRawCandidate(row: RawCandidateRow): TestimonialCandidateRow {
         accountCreatedAt: row.created_at,
         score: calculateTestimonialCandidateScore(input),
         reasons,
+        latestTestimonialOutreach: row.testimonial_outreach_status
+            ? {
+                status: row.testimonial_outreach_status,
+                sentAt: row.testimonial_outreach_sent_at,
+            }
+            : null,
     };
 }
 
@@ -219,6 +231,13 @@ function sortCandidates(
     });
 }
 
+async function hasTestimonialOutreachLogsTable(): Promise<boolean> {
+    if (!sql) return false;
+
+    const result = await sql`SELECT to_regclass('public.testimonial_outreach_logs') AS table_name`;
+    return Boolean(result[0]?.table_name);
+}
+
 export async function getTestimonialCandidates(filters: TestimonialCandidateFilters = {}) {
     if (!sql) return { candidates: [], total: 0 };
 
@@ -229,6 +248,32 @@ export async function getTestimonialCandidates(filters: TestimonialCandidateFilt
     const excludeInternalTest = filters.excludeInternalTest ?? true;
     const sortBy = filters.sortBy ?? 'score';
     const sortDir = filters.sortDir ?? 'desc';
+    const includeTestimonialOutreach = await hasTestimonialOutreachLogsTable();
+    const testimonialOutreachCte = includeTestimonialOutreach
+        ? sql`
+        ,
+        latest_testimonial_outreach AS (
+            SELECT DISTINCT ON (user_id)
+                user_id,
+                status,
+                sent_at
+            FROM testimonial_outreach_logs
+            WHERE user_id IS NOT NULL
+            ORDER BY user_id, sent_at DESC NULLS LAST, created_at DESC
+        )`
+        : sql``;
+    const testimonialOutreachColumns = includeTestimonialOutreach
+        ? sql`
+            ,
+            lto.status AS testimonial_outreach_status,
+            lto.sent_at AS testimonial_outreach_sent_at`
+        : sql`
+            ,
+            NULL::text AS testimonial_outreach_status,
+            NULL::timestamptz AS testimonial_outreach_sent_at`;
+    const testimonialOutreachJoin = includeTestimonialOutreach
+        ? sql`LEFT JOIN latest_testimonial_outreach lto ON lto.user_id = a.id`
+        : sql``;
 
     const rows = await sql`
         WITH team_memberships AS (
@@ -290,6 +335,7 @@ export async function getTestimonialCandidates(filters: TestimonialCandidateFilt
             FROM intake_links
             GROUP BY account_id
         )
+        ${testimonialOutreachCte}
         SELECT
             a.id,
             a.email,
@@ -317,12 +363,14 @@ export async function getTestimonialCandidates(filters: TestimonialCandidateFilt
             COALESCE(es.seller_submitted_events, 0) AS seller_submitted_events,
             COALESCE(es.pdf_generated_events, 0) AS pdf_generated_events,
             COALESCE(es.reminder_sent_events, 0) AS reminder_sent_events
+            ${testimonialOutreachColumns}
         FROM accounts a
         LEFT JOIN team_memberships tm ON tm.account_id = a.id
         LEFT JOIN request_stats rs ON rs.account_id = a.id
         LEFT JOIN brand_stats bs ON bs.account_id = a.id
         LEFT JOIN intake_stats ins ON ins.account_id = a.id
         LEFT JOIN event_stats es ON es.account_id = a.id
+        ${testimonialOutreachJoin}
     `;
 
     let candidates = (rows as unknown as RawCandidateRow[]).map(mapRawCandidate);

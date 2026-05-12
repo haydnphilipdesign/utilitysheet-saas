@@ -200,6 +200,21 @@ CREATE TABLE IF NOT EXISTS activation_outreach_logs (
     UNIQUE(account_id, campaign, stage)
 );
 
+CREATE TABLE IF NOT EXISTS testimonial_outreach_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    org_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
+    recipient_email TEXT NOT NULL,
+    recipient_name TEXT,
+    subject TEXT NOT NULL,
+    resend_email_id TEXT,
+    sent_by_admin_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'sent', 'failed', 'dry_run')),
+    error_message TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_requests_account_id ON requests(account_id);
 CREATE INDEX IF NOT EXISTS idx_requests_public_token ON requests(public_token);
@@ -219,6 +234,8 @@ CREATE INDEX IF NOT EXISTS idx_event_logs_request_id ON event_logs(request_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_id ON admin_audit_logs(admin_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_target_user_id ON admin_audit_logs(target_user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON admin_audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_testimonial_outreach_logs_user_sent_at ON testimonial_outreach_logs(user_id, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_testimonial_outreach_logs_admin_sent_at ON testimonial_outreach_logs(sent_by_admin_id, sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_product_updates_is_published ON product_updates(is_published);
 CREATE INDEX IF NOT EXISTS idx_product_updates_published_at ON product_updates(published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_org_invites_org_id ON organization_invitations(organization_id);
