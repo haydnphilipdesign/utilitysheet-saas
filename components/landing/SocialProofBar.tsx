@@ -100,14 +100,14 @@ export function SocialProofBar() {
                         </p>
                     </div>
 
-                    <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+                    <div className="grid gap-4 lg:grid-cols-3 lg:items-stretch">
                         {customerTestimonials.map((testimonial) => (
                             <div
                                 key={testimonial.name}
-                                className="relative bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8"
+                                className="relative bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 flex flex-col"
                             >
                                 <Quote className="w-8 h-8 text-emerald-300 mb-5" aria-hidden="true" />
-                                <blockquote className="text-base sm:text-lg font-medium leading-relaxed mb-6 text-slate-100">
+                                <blockquote className="text-base sm:text-lg font-medium leading-relaxed mb-6 text-slate-100 flex-1">
                                     &ldquo;{testimonial.quote}&rdquo;
                                 </blockquote>
                                 <div className="flex items-center gap-4">
@@ -122,9 +122,13 @@ export function SocialProofBar() {
                             </div>
                         ))}
 
-                        <div className="relative bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 lg:col-span-2 lg:flex lg:items-center lg:gap-6">
-                            <div className="flex items-center gap-4 mb-5 lg:mb-0">
-                                <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-white/20 shadow-lg flex-shrink-0">
+                        <div className="relative bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 flex flex-col">
+                            <Quote className="w-8 h-8 text-emerald-300 mb-5" aria-hidden="true" />
+                            <blockquote className="text-base sm:text-lg font-medium leading-relaxed mb-6 text-slate-100 flex-1">
+                                &ldquo;{debbieTestimonial.quote}&rdquo;
+                            </blockquote>
+                            <div className="flex items-center gap-4">
+                                <div className="relative w-12 h-12 rounded-full overflow-hidden border border-emerald-300/30 shadow-lg flex-shrink-0">
                                     <Image
                                         src={debbieTestimonial.image}
                                         alt={debbieTestimonial.imageAlt}
@@ -137,9 +141,6 @@ export function SocialProofBar() {
                                     <div className="text-sm text-slate-300">{debbieTestimonial.role}</div>
                                 </div>
                             </div>
-                            <blockquote className="text-sm sm:text-base font-medium leading-relaxed text-slate-100 lg:flex-1">
-                                &ldquo;{debbieTestimonial.quote}&rdquo;
-                            </blockquote>
                         </div>
                     </div>
                 </motion.div>
