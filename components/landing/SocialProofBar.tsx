@@ -41,7 +41,7 @@ const customerTestimonials = [
 ];
 
 const debbieTestimonial = {
-    quote: 'My TC business runs on UtilitySheet now. Sellers get one link, fill it out in a couple minutes, and I get a clean sheet ready to share. No more texting back and forth asking who their gas company is.',
+    quote: 'Before UtilitySheet, I was chasing utility information through texts and emails, then cleaning up vague answers like "the gas company" right before closing. Now I send sellers one link, they complete the guided form, and I get a clean branded sheet that is easy to review and share with everyone who needs it.',
     name: 'Debbie O\'Brien',
     role: 'Transaction Coordinator, PA Real Estate Support Services, LLC',
     image: '/debbie_headshot.png',
