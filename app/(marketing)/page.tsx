@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 
 import { AuthenticatedRedirect } from '@/components/landing/AuthenticatedRedirect';
 import { HeroSection } from '@/components/landing/HeroSection';
+import { DemoVideoSection } from '@/components/landing/DemoVideoSection';
 import { BeforeAfterSection } from '@/components/landing/BeforeAfterSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
 import { FeatureSection } from '@/components/landing/FeatureSection';
@@ -54,6 +55,9 @@ export default function LandingPage() {
 
             {/* Hero — outcome-focused headline + animated visual */}
             <HeroSection />
+
+            {/* Product Demo — visual walkthrough of the reusable seller-link workflow */}
+            <DemoVideoSection />
 
             {/* Social Proof — stats + real customer quote (builds trust early) */}
             <SocialProofBar />

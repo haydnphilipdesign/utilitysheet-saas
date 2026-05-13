@@ -57,10 +57,10 @@ export function HowItWorks() {
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
                             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
                                 <Image
-                                    src="/landing/new-request.png"
-                                    alt="UtilitySheet dashboard request flow for creating and sharing a seller utility information request"
+                                    src="/landing/demo-seller-link-dashboard.jpg"
+                                    alt="UtilitySheet dashboard showing one reusable seller link ready to copy and send"
                                     width={1600}
-                                    height={1040}
+                                    height={900}
                                     className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />
@@ -91,10 +91,10 @@ export function HowItWorks() {
                         >
                             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
                                 <Image
-                                    src="/landing/seller-wizard-electric.png"
-                                    alt="Seller utility information form step for confirming an electric provider inside UtilitySheet"
+                                    src="/landing/demo-provider-confirmation.jpg"
+                                    alt="Mobile seller form showing guided utility questions inside UtilitySheet"
                                     width={1600}
-                                    height={1040}
+                                    height={900}
                                     className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />
@@ -125,10 +125,10 @@ export function HowItWorks() {
                         >
                             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-card group">
                                 <Image
-                                    src="/landing/utility-info-sheet.png"
-                                    alt="Generated utility sheet PDF for a real estate transaction"
+                                    src="/landing/demo-dashboard-saved.jpg"
+                                    alt="UtilitySheet dashboard showing submitted requests with options to view, edit, and download the PDF"
                                     width={1600}
-                                    height={1040}
+                                    height={900}
                                     className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-700"
                                 />
                                 <div className="absolute inset-0 ring-1 ring-inset ring-black/10 rounded-2xl" />
