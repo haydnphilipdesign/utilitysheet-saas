@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
 
-import { buildDemoSeedConfig } from '../../scripts/demo-seed.mjs';
+import { buildDemoSeedConfig, chooseCanonicalDemoAccount } from '../../scripts/demo-seed.mjs';
 
 describe('demo seed configuration', () => {
     it('uses isolated fake demo identity and Team access without Stripe identifiers', () => {
@@ -40,5 +40,22 @@ describe('demo seed configuration', () => {
         const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
         expect(packageJson.scripts['demo:reset']).toBe('node scripts/demo-seed.mjs');
         expect(packageJson.scripts['seed:demo']).toBe('npm run demo:reset');
+    });
+
+    it('keeps the real authenticated account when production has a seeded duplicate', () => {
+        const canonical = chooseCanonicalDemoAccount([
+            {
+                id: 'seeded-team-row',
+                auth_user_id: null,
+                created_at: '2026-05-13T16:05:00.084Z',
+            },
+            {
+                id: 'stack-signup-row',
+                auth_user_id: 'real-stack-user-id',
+                created_at: '2026-05-13T17:18:41.292Z',
+            },
+        ]);
+
+        expect(canonical?.id).toBe('stack-signup-row');
     });
 });

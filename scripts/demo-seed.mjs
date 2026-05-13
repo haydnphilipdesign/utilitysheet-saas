@@ -187,6 +187,22 @@ export function buildDemoSeedConfig(overrides = {}) {
     };
 }
 
+export function chooseCanonicalDemoAccount(accounts) {
+    if (!Array.isArray(accounts) || accounts.length === 0) return null;
+
+    const sorted = [...accounts].sort((a, b) => {
+        const aHasAuth = typeof a?.auth_user_id === 'string' && a.auth_user_id.trim().length > 0;
+        const bHasAuth = typeof b?.auth_user_id === 'string' && b.auth_user_id.trim().length > 0;
+        if (aHasAuth !== bHasAuth) return aHasAuth ? -1 : 1;
+
+        const aTime = new Date(a?.created_at || 0).getTime();
+        const bTime = new Date(b?.created_at || 0).getTime();
+        return aTime - bTime;
+    });
+
+    return sorted[0] || null;
+}
+
 async function getSingle(sql, query) {
     const rows = await query;
     return rows[0] || null;
@@ -208,16 +224,15 @@ async function ensureNoSlugCollision(sql, config, existingAccountId) {
 }
 
 async function resetDemo(sql, config) {
-    const existingAccount = await getSingle(sql, sql`
+    const existingAccounts = await sql`
         SELECT *
         FROM accounts
         WHERE lower(email) = ${config.account.email}
             OR (${config.account.authUserId}::text IS NOT NULL AND auth_user_id = ${config.account.authUserId})
         ORDER BY created_at ASC
-        LIMIT 1
-    `);
+    `;
 
-    let account = existingAccount;
+    let account = chooseCanonicalDemoAccount(existingAccounts);
     if (!account) {
         account = await getSingle(sql, sql`
             INSERT INTO accounts (
@@ -250,10 +265,11 @@ async function resetDemo(sql, config) {
             RETURNING *
         `);
     } else {
+        const nextAuthUserId = config.account.authUserId || account.auth_user_id || null;
         account = await getSingle(sql, sql`
             UPDATE accounts
             SET
-                auth_user_id = ${config.account.authUserId},
+                auth_user_id = ${nextAuthUserId},
                 email = ${config.account.email},
                 full_name = ${config.account.fullName},
                 company_name = ${config.account.companyName},
@@ -266,10 +282,14 @@ async function resetDemo(sql, config) {
                 onboarding_completed_at = COALESCE(onboarding_completed_at, NOW()),
                 notification_preferences = ${JSON.stringify(config.account.notificationPreferences)}::jsonb,
                 updated_at = NOW()
-            WHERE id = ${existingAccount.id}
+            WHERE id = ${account.id}
             RETURNING *
         `);
     }
+
+    const duplicateAccountIds = existingAccounts
+        .filter((candidate) => candidate.id !== account.id)
+        .map((candidate) => candidate.id);
 
     let organization = await getSingle(sql, sql`
         SELECT *
@@ -317,6 +337,48 @@ async function resetDemo(sql, config) {
             RETURNING *
         `);
     }
+
+    if (duplicateAccountIds.length > 0) {
+        const duplicateRequestIds = await sql`
+            SELECT id
+            FROM requests
+            WHERE account_id = ANY(${duplicateAccountIds}::uuid[])
+        `;
+        if (duplicateRequestIds.length > 0) {
+            const ids = duplicateRequestIds.map((row) => row.id);
+            await sql`DELETE FROM utility_entries WHERE request_id = ANY(${ids}::uuid[])`;
+            await sql`DELETE FROM event_logs WHERE request_id = ANY(${ids}::uuid[])`;
+            await sql`DELETE FROM requests WHERE id = ANY(${ids}::uuid[])`;
+        }
+
+        await sql`DELETE FROM intake_links WHERE account_id = ANY(${duplicateAccountIds}::uuid[])`;
+        await sql`DELETE FROM brand_profiles WHERE account_id = ANY(${duplicateAccountIds}::uuid[])`;
+        await sql`DELETE FROM organization_members WHERE account_id = ANY(${duplicateAccountIds}::uuid[])`;
+        await sql`DELETE FROM accounts WHERE id = ANY(${duplicateAccountIds}::uuid[])`;
+    }
+
+    const throwawayOrgSlugs = ['demo-tc'];
+    await sql`
+        DELETE FROM organization_members
+        WHERE account_id = ${account.id}
+            AND organization_id IN (
+                SELECT id
+                FROM organizations
+                WHERE id != ${organization.id}
+                    AND slug = ANY(${throwawayOrgSlugs}::text[])
+            )
+    `;
+
+    await sql`
+        DELETE FROM organizations o
+        WHERE o.id != ${organization.id}
+            AND o.slug = ANY(${throwawayOrgSlugs}::text[])
+            AND NOT EXISTS (
+                SELECT 1
+                FROM organization_members om
+                WHERE om.organization_id = o.id
+            )
+    `;
 
     await sql`
         INSERT INTO organization_members (organization_id, account_id, role)

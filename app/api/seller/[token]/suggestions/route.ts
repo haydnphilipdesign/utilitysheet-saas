@@ -1,12 +1,100 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
+import { getOrganizationById, getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
 import { createEventLog } from '@/lib/neon/queries/event-logs';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
-import type { UtilityCategory } from '@/types';
+import type { ProviderSuggestion, UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { aiRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/network/client-ip';
 import { lazyBackfillRequestStructuredAddress } from '@/lib/address/structured-address';
+
+const DEMO_WORKSPACE_SLUG = 'utilitysheet-demo';
+const DEMO_ADDRESS_PATTERN = /\b123\s+main\s+(?:street|st)\b.*\banytown\b.*\bpa\b.*\b18301\b/i;
+
+const DEMO_PROVIDER_SUGGESTIONS: Partial<Record<UtilityCategory, ProviderSuggestion[]>> = {
+    electric: [
+        {
+            display_name: 'Keystone Electric Co.',
+            confidence: 0.99,
+            rationale_short: 'Demo electric provider for the sample Anytown property.',
+            contact_phone: '555-0101',
+            contact_website: 'https://example.test/keystone-electric/start',
+        },
+    ],
+    gas: [
+        {
+            display_name: 'Valley Natural Gas',
+            confidence: 0.99,
+            rationale_short: 'Demo gas provider for the sample Anytown property.',
+            contact_phone: '555-0102',
+            contact_website: 'https://example.test/valley-natural-gas/start',
+        },
+    ],
+    water: [
+        {
+            display_name: 'Anytown Water Authority',
+            confidence: 0.99,
+            rationale_short: 'Demo water provider for the sample Anytown property.',
+            contact_phone: '555-0103',
+            contact_website: 'https://example.test/anytown-water/start',
+        },
+    ],
+    sewer: [
+        {
+            display_name: 'Anytown Sewer Authority',
+            confidence: 0.99,
+            rationale_short: 'Demo sewer provider for the sample Anytown property.',
+            contact_phone: '555-0104',
+            contact_website: 'https://example.test/anytown-sewer/start',
+        },
+    ],
+    trash: [
+        {
+            display_name: 'GreenCart Waste Services',
+            confidence: 0.99,
+            rationale_short: 'Demo waste provider for the sample Anytown property.',
+            contact_phone: '555-0105',
+            contact_website: 'https://example.test/greencart/start',
+        },
+    ],
+    internet: [
+        {
+            display_name: 'Blue Ridge Fiber',
+            confidence: 0.99,
+            rationale_short: 'Demo internet provider for the sample Anytown property.',
+            contact_phone: '555-0106',
+            contact_website: 'https://example.test/blue-ridge-fiber/start',
+        },
+    ],
+    cable: [
+        {
+            display_name: 'Blue Ridge Fiber',
+            confidence: 0.99,
+            rationale_short: 'Demo cable provider for the sample Anytown property.',
+            contact_phone: '555-0106',
+            contact_website: 'https://example.test/blue-ridge-fiber/start',
+        },
+    ],
+};
+
+async function getDemoSuggestionsIfApplicable(
+    organizationId: string | null | undefined,
+    propertyAddress: string,
+    categories: UtilityCategory[]
+) {
+    if (!organizationId || !DEMO_ADDRESS_PATTERN.test(propertyAddress)) {
+        return null;
+    }
+
+    const organization = await getOrganizationById(organizationId);
+    if (organization?.slug !== DEMO_WORKSPACE_SLUG) {
+        return null;
+    }
+
+    return Object.fromEntries(
+        categories.map((category) => [category, DEMO_PROVIDER_SUGGESTIONS[category] ?? []])
+    ) as Record<UtilityCategory, ProviderSuggestion[]>;
+}
 
 export async function GET(
     request: Request,
@@ -87,7 +175,12 @@ export async function GET(
             accountId: requestData.account_id,
             organizationId: requestData.organization_id ?? null,
         };
-        const suggestions = await getAllSuggestions(requestData.property_address, categories, context);
+        const suggestions =
+            (await getDemoSuggestionsIfApplicable(
+                requestData.organization_id,
+                requestData.property_address,
+                categories
+            )) ?? (await getAllSuggestions(requestData.property_address, categories, context));
 
         void createEventLog({
             requestId: requestData.id,
