@@ -97,7 +97,7 @@ export function buildDemoSeedConfig(overrides = {}) {
             contactPhone: '555-0142',
             contactWebsite: 'https://utilitysheet.com',
             disclaimerText: 'Demo utility information prepared for marketing screenshots. All names, addresses, and provider details are fictional.',
-            welcomeMessage: 'Thanks for helping us prepare a clean utility handoff for the buyer.',
+            welcomeMessage: 'Utility provider details for buyer handoff. Please verify availability and transfer requirements directly with each provider.',
             nextStepsTitle: 'Buyer next steps',
             buyerNextSteps: [
                 'Contact each provider to start service in your name before closing.',
