@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import { Clock, Link2, FileText, Quote } from 'lucide-react';
-import Image from 'next/image';
 
 const stats = [
     {
@@ -27,10 +26,10 @@ const stats = [
 
 const customerTestimonials = [
     {
-        quote: 'Before UtilitySheet, I was using a Google spreadsheet with local providers and copying/pasting information into emails, which made it difficult to find the correct providers for unique cities and townships. UtilitySheet makes it easy for the co-op agent to send the form to the seller, and I love that it doesn\'t collect confidential information. The completed branded PDF helps level up my TC company\'s service for agents and their clients.',
-        name: 'Agatha Aquilia',
-        role: 'Transaction Manager, Aquilia Associates',
-        initials: 'AA',
+        quote: 'Before UtilitySheet, we were sending a blank form to homeowners through Dotloop or DocuSign. It was a pain and rarely came back completed. UtilitySheet transformed the process. Now we send the generic seller link from a templated email, get notified when it\'s complete, download the finished sheet, and we\'re done. It saves time, helps us streamline, and the AI prediction makes it super simple for clients.',
+        name: 'Kaylin Nunn',
+        role: 'Owner & Director of Transaction Coordination, Precision Leverage Solutions',
+        initials: 'KN',
     },
     {
         quote: 'UtilitySheet has made obtaining utility information much easier. Before, we were sending emails asking for the info and trying to track down utility companies last minute. Now we keep the email simple, send sellers the UtilitySheet link, and the completion rate has been pretty dang good. I would absolutely recommend it to another TC or agent.',
@@ -38,14 +37,20 @@ const customerTestimonials = [
         role: 'Owner | Lead Transaction Manager, FastForward Transaction Management',
         initials: 'CB',
     },
+    {
+        quote: 'Before UtilitySheet, I was using a Google spreadsheet with local providers and copying/pasting information into emails, which made it difficult to find the correct providers for unique cities and townships. UtilitySheet makes it easy for the co-op agent to send the form to the seller, and I love that it doesn\'t collect confidential information. The completed branded PDF helps level up my TC company\'s service for agents and their clients.',
+        name: 'Agatha Aquilia',
+        role: 'Transaction Manager, Aquilia Associates',
+        initials: 'AA',
+    },
 ];
 
-const debbieTestimonial = {
+const originStoryTestimonial = {
+    heading: 'Built from real TC workflow',
+    description: 'UtilitySheet started as an internal tool for a working transaction coordinator, then grew into a reusable seller intake workflow for TCs and real estate teams.',
     quote: 'Before UtilitySheet, I was chasing utility information through texts and emails, then cleaning up vague answers like "the gas company" right before closing. Now I send sellers one link, they complete the guided form, and I get a clean branded sheet that is easy to review and share with everyone who needs it.',
     name: 'Debbie O\'Brien',
     role: 'Transaction Coordinator, PA Real Estate Support Services, LLC',
-    image: '/debbie_headshot.png',
-    imageAlt: 'Debbie O\'Brien - PA Real Estate Support Services',
 };
 
 export function SocialProofBar() {
@@ -104,10 +109,10 @@ export function SocialProofBar() {
                         {customerTestimonials.map((testimonial) => (
                             <div
                                 key={testimonial.name}
-                                className="relative bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 flex flex-col"
+                                className="relative bg-white/5 border border-white/10 rounded-lg p-6 sm:p-7 flex flex-col"
                             >
-                                <Quote className="w-8 h-8 text-emerald-300 mb-5" aria-hidden="true" />
-                                <blockquote className="text-base sm:text-lg font-medium leading-relaxed mb-6 text-slate-100 flex-1">
+                                <Quote className="w-7 h-7 text-emerald-300 mb-5" aria-hidden="true" />
+                                <blockquote className="text-sm sm:text-base font-medium leading-7 mb-6 text-slate-100 flex-1">
                                     &ldquo;{testimonial.quote}&rdquo;
                                 </blockquote>
                                 <div className="flex items-center gap-4">
@@ -121,24 +126,32 @@ export function SocialProofBar() {
                                 </div>
                             </div>
                         ))}
+                    </div>
 
-                        <div className="relative bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 flex flex-col">
-                            <Quote className="w-8 h-8 text-emerald-300 mb-5" aria-hidden="true" />
-                            <blockquote className="text-base sm:text-lg font-medium leading-relaxed mb-6 text-slate-100 flex-1">
-                                &ldquo;{debbieTestimonial.quote}&rdquo;
+                    <div className="mt-6 rounded-lg border border-white/10 bg-slate-800/40 p-6 sm:p-8 lg:flex lg:items-start lg:gap-10">
+                        <div className="lg:w-5/12">
+                            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                                Origin story
+                            </p>
+                            <h3 className="mt-3 text-2xl font-bold tracking-tight text-white">
+                                {originStoryTestimonial.heading}
+                            </h3>
+                            <p className="mt-3 text-sm sm:text-base leading-7 text-slate-300">
+                                {originStoryTestimonial.description}
+                            </p>
+                        </div>
+                        <div className="mt-6 border-t border-white/10 pt-6 lg:mt-0 lg:w-7/12 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
+                            <Quote className="w-7 h-7 text-emerald-300 mb-4" aria-hidden="true" />
+                            <blockquote className="text-sm sm:text-base font-medium leading-7 text-slate-100">
+                                &ldquo;{originStoryTestimonial.quote}&rdquo;
                             </blockquote>
-                            <div className="flex items-center gap-4">
-                                <div className="relative w-12 h-12 rounded-full overflow-hidden border border-emerald-300/30 shadow-lg flex-shrink-0">
-                                    <Image
-                                        src={debbieTestimonial.image}
-                                        alt={debbieTestimonial.imageAlt}
-                                        fill
-                                        className="object-cover"
-                                    />
+                            <div className="mt-5 flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-emerald-400/15 border border-emerald-300/30 flex items-center justify-center text-sm font-semibold text-emerald-100 flex-shrink-0">
+                                    DO
                                 </div>
                                 <div>
-                                    <div className="font-semibold text-white">{debbieTestimonial.name}</div>
-                                    <div className="text-sm text-slate-300">{debbieTestimonial.role}</div>
+                                    <div className="font-semibold text-white">{originStoryTestimonial.name}</div>
+                                    <div className="text-sm text-slate-300">{originStoryTestimonial.role}</div>
                                 </div>
                             </div>
                         </div>
