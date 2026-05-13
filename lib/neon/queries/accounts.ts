@@ -45,6 +45,32 @@ export async function ensureAccountRecord(
         return { account: (result[0] || existing), created: false };
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail) {
+        const claimableSeededAccount = await sql`
+            SELECT *
+            FROM accounts
+            WHERE auth_user_id IS NULL
+                AND lower(email) = ${normalizedEmail}
+            ORDER BY created_at ASC
+            LIMIT 1
+        `;
+
+        if (claimableSeededAccount.length > 0) {
+            const claimed = await sql`
+                UPDATE accounts
+                SET auth_user_id = ${authUserId},
+                    email = ${email},
+                    full_name = COALESCE(${fullName || null}, full_name),
+                    updated_at = NOW()
+                WHERE id = ${claimableSeededAccount[0].id}
+                RETURNING *
+            `;
+
+            return { account: claimed[0] || claimableSeededAccount[0], created: false };
+        }
+    }
+
     result = await sql`
         INSERT INTO accounts (auth_user_id, email, full_name, notification_preferences, created_at)
         VALUES (${authUserId}, ${email}, ${fullName || null}, '{}'::jsonb, COALESCE(${createdAt}, NOW()))

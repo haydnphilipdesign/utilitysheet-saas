@@ -9,7 +9,7 @@ vi.mock('@/lib/neon/db', () => ({
 }));
 
 import { deleteRequest } from '@/lib/neon/queries/requests';
-import { getMonthlyUsage } from '@/lib/neon/queries/accounts';
+import { ensureAccountRecord, getMonthlyUsage } from '@/lib/neon/queries/accounts';
 
 function callSqlText(call: unknown[]): string {
     const [strings] = call as [TemplateStringsArray];
@@ -78,5 +78,42 @@ describe('Requests: metering + soft-delete', () => {
 
         expect(usage).toEqual({ used: 2, limit: 999999, plan: 'team' });
         expect(sqlMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('claims a pre-seeded account with matching email and no auth user id', async () => {
+        sqlMock
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([{
+                id: 'acct_demo',
+                auth_user_id: null,
+                email: 'demo.tc@utilitysheet.test',
+                full_name: 'Demo TC',
+            }])
+            .mockResolvedValueOnce([{
+                id: 'acct_demo',
+                auth_user_id: 'stack_user_123',
+                email: 'demo.tc@utilitysheet.test',
+                full_name: 'Demo TC',
+            }]);
+
+        const result = await ensureAccountRecord(
+            'stack_user_123',
+            'demo.tc@utilitysheet.test',
+            'Demo TC',
+            null
+        );
+
+        expect(result).toEqual({
+            account: expect.objectContaining({
+                id: 'acct_demo',
+                auth_user_id: 'stack_user_123',
+            }),
+            created: false,
+        });
+        expect(sqlMock).toHaveBeenCalledTimes(3);
+        const texts = sqlMock.mock.calls.map(callSqlText).join('\n');
+        expect(texts).toContain('auth_user_id IS NULL');
+        expect(texts).toContain('UPDATE accounts');
+        expect(texts).not.toContain('INSERT INTO accounts');
     });
 });

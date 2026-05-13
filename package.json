@@ -13,6 +13,8 @@
     "test:e2e": "playwright test",
     "test:e2e:mobile": "playwright test --project=\"Mobile Safari\" --project=\"Mobile Chrome\"",
     "test:e2e:desktop": "playwright test --project=\"Desktop Chrome\"",
+    "demo:reset": "node scripts/demo-seed.mjs",
+    "seed:demo": "npm run demo:reset",
     "security:scan": "node scripts/security/scan-artifacts.mjs"
   },
   "dependencies": {
