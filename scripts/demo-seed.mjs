@@ -72,7 +72,7 @@ export function buildDemoSeedConfig(overrides = {}) {
             subscriptionId: null,
             subscriptionStatus: 'free',
             notificationPreferences: {
-                seller_submissions: false,
+                seller_submissions: true,
                 seller_submission_pdf_attachment: true,
                 collect_electric_meter_number: true,
                 contact_resolution: false,

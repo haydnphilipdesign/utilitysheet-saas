@@ -21,6 +21,7 @@ import { sendTCCompletionNotificationEmail } from '@/lib/email/email-service';
 
 beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.DEMO_EMAIL_REDIRECT_TO;
     sendEmailMock.mockResolvedValue({ data: { id: 'email_123' }, error: null });
 });
 
@@ -89,5 +90,45 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
 
         const payload = sendEmailMock.mock.calls[0][0];
         expect(payload.attachments).toBeUndefined();
+    });
+
+    it('redirects demo .test recipients to the configured recording inbox', async () => {
+        process.env.DEMO_EMAIL_REDIRECT_TO = 'haydn@multimedium.dev';
+        createPacketPdfAttachmentForRequestMock.mockResolvedValue({
+            status: 'attached',
+            attachment: {
+                filename: 'utility-info-sheet-main.pdf',
+                content: Buffer.from('fake-pdf-content'),
+                contentType: 'application/pdf',
+            },
+        });
+
+        const result = await sendTCCompletionNotificationEmail({
+            tcEmail: 'demo.tc@utilitysheet.test',
+            propertyAddress: '123 Main Street, Anytown, PA 18301',
+            requestId: 'demo-request',
+            attachPdf: true,
+        });
+
+        expect(result).toEqual({ success: true });
+        const payload = sendEmailMock.mock.calls[0][0];
+        expect(payload.to).toBe('haydn@multimedium.dev');
+        expect(payload.subject).toBe('Utility Info Submitted for 123 Main Street, Anytown, PA 18301');
+        expect(payload.attachments).toHaveLength(1);
+    });
+
+    it('does not redirect real recipients when demo redirect is configured', async () => {
+        process.env.DEMO_EMAIL_REDIRECT_TO = 'haydn@multimedium.dev';
+
+        const result = await sendTCCompletionNotificationEmail({
+            tcEmail: 'tc@example.com',
+            propertyAddress: '123 Main St',
+            requestId: 'req_real',
+            attachPdf: false,
+        });
+
+        expect(result).toEqual({ success: true });
+        const payload = sendEmailMock.mock.calls[0][0];
+        expect(payload.to).toBe('tc@example.com');
     });
 });

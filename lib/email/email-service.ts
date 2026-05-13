@@ -16,6 +16,28 @@ function getAppBaseUrl(): string {
     return 'http://localhost:3000';
 }
 
+function getDemoEmailRecipient(toEmail: string): string {
+    const redirectTo = process.env.DEMO_EMAIL_REDIRECT_TO?.trim();
+    if (!redirectTo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(redirectTo)) {
+        return toEmail;
+    }
+
+    const normalizedTo = toEmail.trim().toLowerCase();
+    const isDemoRecipient =
+        normalizedTo === 'demo.tc@utilitysheet.test' ||
+        normalizedTo.endsWith('@utilitysheet.test');
+
+    if (!isDemoRecipient) {
+        return toEmail;
+    }
+
+    console.log('[email][demo_redirect] redirecting demo email recipient', {
+        originalRecipient: toEmail,
+        redirectTo,
+    });
+    return redirectTo;
+}
+
 interface SendSellerNotificationEmailParams {
     sellerEmail: string;
     sellerName?: string;
@@ -884,7 +906,7 @@ export async function sendTCCompletionNotificationEmail({
         const resend = getResend();
         const { data, error } = await resend.emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
-            to: tcEmail,
+            to: getDemoEmailRecipient(tcEmail),
             subject: `Utility Info Submitted for ${propertyAddress}`,
             html: emailHtml,
             attachments,

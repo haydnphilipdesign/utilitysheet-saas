@@ -62,6 +62,35 @@ type ContactResolutionTarget = {
     hadSubmittedContact: boolean;
 };
 
+const DEMO_WORKSPACE_SLUG = 'utilitysheet-demo';
+const DEMO_ADDRESS_PATTERN = /\b123\s+main\s+(?:street|st)\b.*\banytown\b.*\bpa\b.*\b18301\b/i;
+const DEMO_PROVIDER_CONTACTS: Record<string, { phone: string; url: string }> = {
+    'keystone electric co.': {
+        phone: '555-0101',
+        url: 'https://keystone-electric.example/start',
+    },
+    'valley natural gas': {
+        phone: '555-0102',
+        url: 'https://valley-natural-gas.example/start',
+    },
+    'anytown water authority': {
+        phone: '555-0103',
+        url: 'https://anytown-water.example/start',
+    },
+    'anytown sewer authority': {
+        phone: '555-0104',
+        url: 'https://anytown-sewer.example/start',
+    },
+    'greencart waste services': {
+        phone: '555-0105',
+        url: 'https://greencart-waste.example/start',
+    },
+    'blue ridge fiber': {
+        phone: '555-0106',
+        url: 'https://blue-ridge-fiber.example/start',
+    },
+};
+
 const TRASH_PICKUP_DAYS = new Set<TrashPickupDay>([
     'mon',
     'tue',
@@ -413,6 +442,9 @@ export async function POST(
 
         const account = await getAccountById(requestData.account_id);
         const organization = requestData.organization_id ? await getOrganizationById(requestData.organization_id) : null;
+        const isUtilitySheetDemoSubmission =
+            organization?.slug === DEMO_WORKSPACE_SLUG &&
+            DEMO_ADDRESS_PATTERN.test(requestData.property_address);
         const isPaid = account?.subscription_status === 'pro' || organization?.subscription_status === 'team';
         const notificationPrefs = (account?.notification_preferences || {}) as {
             seller_submissions?: boolean;
@@ -511,12 +543,15 @@ export async function POST(
                     ? normalizeTrashUtilityExtra(baseExtra)
                     : baseExtra;
                 const trustSubmittedContact = shouldTrustSubmittedContact(finalEntryMode);
-                const submittedPhone = trustSubmittedContact
+                const demoContact = isUtilitySheetDemoSubmission
+                    ? DEMO_PROVIDER_CONTACTS[String(e.display_name || e.raw_text || '').trim().toLowerCase()]
+                    : undefined;
+                const submittedPhone = demoContact?.phone || (trustSubmittedContact
                     ? (e.contact_phone || null)
-                    : null;
-                const submittedUrl = trustSubmittedContact
+                    : null);
+                const submittedUrl = demoContact?.url || (trustSubmittedContact
                     ? (e.contact_url || null)
-                    : null;
+                    : null);
 
                 await sql`
                     INSERT INTO utility_entries (
@@ -550,7 +585,7 @@ export async function POST(
         const unresolvedEntries: { category: string; displayName?: string }[] = [];
         const seenContactTargets = new Set<string>();
 
-        if (!accessLocked) {
+        if (!accessLocked && !isUtilitySheetDemoSubmission) {
             for (const target of contactResolutionTargets) {
                 const normalizedProviderName = normalizeProviderNameForLookup(target.providerName);
                 if (!normalizedProviderName) continue;
