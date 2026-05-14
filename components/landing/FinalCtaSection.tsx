@@ -40,10 +40,10 @@ export function FinalCtaSection() {
                         </div>
 
                         <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:text-5xl tracking-tight">
-                            Your next utility handoff can start with one reusable link.
+                            Your next utility request can start with one reusable link.
                         </h2>
                         <p className="text-slate-100/90 text-base sm:text-lg mb-8 sm:mb-10 max-w-2xl mx-auto font-medium">
-                            Start free: copy your seller link, send it on a live file, and review the finished sheet when the seller submits.
+                            Start free: create your seller link, add it to a template or send it on a live file, and review the finished sheet when the seller submits.
                         </p>
 
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -60,7 +60,7 @@ export function FinalCtaSection() {
                                         })
                                     }
                                 >
-                                    Start Free
+                                    Create My Seller Link
                                     <ArrowRight className="ml-2 h-5 w-5" />
                                 </Button>
                             </Link>
@@ -77,7 +77,7 @@ export function FinalCtaSection() {
                                         })
                                     }
                                 >
-                                    Try the Demo
+                                    Try the Seller Flow
                                 </Button>
                             </Link>
                         </div>

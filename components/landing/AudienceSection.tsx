@@ -9,10 +9,10 @@ export function AudienceSection() {
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-600">Use cases</p>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Built for the real estate teams chasing utility details every week
+            Built for the people chasing utility details every week
           </h2>
           <p className="mt-4 text-lg leading-8 text-muted-foreground">
-            UtilitySheet is purpose-built for the people who need seller utility information before closing and want one reusable link instead of scattered messages, checklists, and attachments.
+            UtilitySheet is purpose-built for the people who need seller utility information before closing and want one reusable link instead of scattered messages, checklists, and blank forms.
           </p>
         </div>
 

@@ -12,16 +12,16 @@ const tiers = [
     {
         ...pricingTiers[0],
         period: undefined,
-        cta: 'Start Free',
+        cta: 'Create My Link',
         popular: false,
         features: [
             '3 unlocked requests per month',
             'Reusable seller link',
             'Simple Utility Sheet mode',
             'Dashboard view of submitted sheets',
-            'Buyer-ready PDF and share link',
+            'Clean PDF and share link',
             'Completion email notifications',
-            'Optional PDF attachment on completion emails',
+            'PDF can attach to completion emails',
             'Saved over-limit submissions',
             'UtilitySheet branding on shared links',
         ],
@@ -38,8 +38,8 @@ const tiers = [
             'Advanced Utility Packet mode',
             'Edit submitted sheets after seller submission',
             'Live updates to future PDF downloads',
-            'Custom branding',
-            'Branded PDF attachments',
+            'Custom PDF branding',
+            'Branded PDF attachments on completion emails',
             'Unlock locked submissions',
             'Remove UtilitySheet footer',
             'Priority support',
@@ -59,7 +59,7 @@ const tiers = [
             'Invite members and assign roles',
             'Seat-based billing with 3-seat minimum',
             'Org-wide packet defaults',
-            'Branded output across the team',
+            'Consistent branded output across the team',
             'Priority support',
         ],
     },
@@ -89,10 +89,10 @@ export function PricingSection() {
                 <div className="text-center mb-10 sm:mb-16 lg:mb-20">
                     <p className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">Pricing</p>
                     <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight mb-3 sm:mb-4 text-balance">
-                        Pricing for reusable seller-link workflows
+                        Pricing for reusable seller links
                     </h2>
                     <p className="text-muted-foreground text-sm sm:text-lg max-w-2xl mx-auto">
-                        Start with your reusable seller link. Upgrade when you need unlimited submissions, post-submission edits, branded output, or a shared team workspace.
+                        Start with your reusable seller link. Upgrade when you need unlimited submissions, post-submission edits, custom branding, a branded link, advanced packet mode, or a shared team workspace.
                     </p>
                 </div>
 
@@ -156,7 +156,7 @@ export function PricingSection() {
                 </div>
 
                 <p className="mt-10 text-center text-sm text-muted-foreground">
-                    Every plan starts with a reusable seller link. Starter keeps submitted sheets read-only after seller submission; Pro and Teams add dashboard editing while seller and public links stay write-protected.
+                    Every plan starts with a reusable seller link. Starter includes UtilitySheet branding and keeps submitted sheets read-only after seller submission; Pro and Teams add custom branding, branded links, and dashboard editing while seller and public links stay write-protected.
                 </p>
             </div>
         </section>

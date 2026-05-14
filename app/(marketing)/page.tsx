@@ -53,23 +53,23 @@ export default function LandingPage() {
             {/* Sticky CTA Banner (appears after scrolling past social proof) */}
             <StickyCTA />
 
-            {/* Hero — outcome-focused headline + animated visual */}
+            {/* Hero — pain-first seller-link positioning */}
             <HeroSection />
-
-            {/* Product Demo — visual walkthrough of the reusable seller-link workflow */}
-            <DemoVideoSection />
-
-            {/* Social Proof — stats + real customer quote (builds trust early) */}
-            <SocialProofBar />
 
             {/* Before/After — pain vs. solution contrast */}
             <BeforeAfterSection />
 
-            {/* How It Works — 3-step process visualization */}
+            {/* How It Works — 3-step seller-link process visualization */}
             <HowItWorks />
+
+            {/* Product Demo — visual walkthrough of the reusable seller-link process */}
+            <DemoVideoSection />
 
             {/* Features — product capabilities grid */}
             <FeatureSection />
+
+            {/* Social Proof — proof from real customer workflow */}
+            <SocialProofBar />
 
             {/* Audience pages — internal links for high-intent searches */}
             <AudienceSection />

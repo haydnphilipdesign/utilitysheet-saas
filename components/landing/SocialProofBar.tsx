@@ -6,14 +6,14 @@ import { Clock, Link2, FileText, Quote } from 'lucide-react';
 const stats = [
     {
         icon: Clock,
-        value: 'Reusable',
-        label: 'Seller link',
+        value: 'One link',
+        label: 'Reused across files',
         description: 'Add one link to your templates and reuse it across transactions',
     },
     {
         icon: Link2,
-        value: '1 link',
-        label: 'Shared with sellers',
+        value: 'No login',
+        label: 'For sellers',
         description: 'No app install, no login, no account required for the seller',
     },
     {
@@ -26,19 +26,19 @@ const stats = [
 
 const customerTestimonials = [
     {
-        quote: 'Before UtilitySheet, we were sending a blank form to homeowners through Dotloop or DocuSign. It was a pain and rarely came back completed. UtilitySheet transformed the process. Now we send the generic seller link from a templated email, get notified when it\'s complete, download the finished sheet, and we\'re done. It saves time, helps us streamline, and the AI prediction makes it super simple for clients.',
+        quote: 'Before UtilitySheet, we sent blank forms to homeowners through Dotloop or DocuSign, and they rarely came back completed. Now we send one seller link from a templated email, get notified when it is complete, download the finished sheet, and we are done.',
         name: 'Kaylin Nunn',
         role: 'Owner & Director of Transaction Coordination, Precision Leverage Solutions',
         initials: 'KN',
     },
     {
-        quote: 'UtilitySheet has made obtaining utility information much easier. Before, we were sending emails asking for the info and trying to track down utility companies last minute. Now we keep the email simple, send sellers the UtilitySheet link, and the completion rate has been pretty dang good. I would absolutely recommend it to another TC or agent.',
+        quote: 'UtilitySheet has made obtaining utility information much easier. Before, we sent emails asking for the info and tried to track down utility companies last minute. Now we keep the email simple, send sellers the UtilitySheet link, and the completion rate has been pretty dang good.',
         name: 'Courtney Bownes',
         role: 'Owner | Lead Transaction Manager, FastForward Transaction Management',
         initials: 'CB',
     },
     {
-        quote: 'Before UtilitySheet, I was using a Google spreadsheet with local providers and copying/pasting information into emails, which made it difficult to find the correct providers for unique cities and townships. UtilitySheet makes it easy for the co-op agent to send the form to the seller, and I love that it doesn\'t collect confidential information. The completed branded PDF helps level up my TC company\'s service for agents and their clients.',
+        quote: 'Before UtilitySheet, I used a Google spreadsheet with local providers and copied information into emails. UtilitySheet makes it easy for the co-op agent to send the form to the seller, and the completed branded PDF helps level up my TC company\'s service.',
         name: 'Agatha Aquilia',
         role: 'Transaction Manager, Aquilia Associates',
         initials: 'AA',
@@ -47,8 +47,8 @@ const customerTestimonials = [
 
 const originStoryTestimonial = {
     heading: 'Built from real TC workflow',
-    description: 'UtilitySheet started as an internal tool for a working transaction coordinator, then grew into a reusable seller intake workflow for TCs and real estate teams.',
-    quote: 'Before UtilitySheet, I was chasing utility information through texts and emails, then cleaning up vague answers like "the gas company" right before closing. Now I send sellers one link, they complete the guided form, and I get a clean branded sheet that is easy to review and share with everyone who needs it.',
+    description: 'UtilitySheet started as an internal tool for a working transaction coordinator, then grew into a reusable seller link for TCs and real estate teams.',
+    quote: 'Before UtilitySheet, I was chasing utility information through texts and emails, then cleaning up vague answers like "the gas company" right before closing. Now I send sellers one link, they complete the guided form, and I get a clean sheet that is easy to review and share.',
     name: 'Debbie O\'Brien',
     role: 'Transaction Coordinator, PA Real Estate Support Services, LLC',
 };
@@ -98,10 +98,10 @@ export function SocialProofBar() {
                 >
                     <div className="mx-auto max-w-3xl text-center mb-8 sm:mb-10">
                         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white text-balance">
-                            Trusted by real estate professionals using UtilitySheet in the field
+                            Used by real estate professionals collecting utility info on real files
                         </h2>
                         <p className="mt-3 text-sm sm:text-base text-slate-300 leading-relaxed">
-                            Real feedback from TCs and real estate professionals using UtilitySheet to collect seller utility information faster and deliver cleaner branded PDFs.
+                            Real feedback from TCs and real estate professionals using UtilitySheet to get cleaner seller submissions with less back-and-forth.
                         </p>
                     </div>
 

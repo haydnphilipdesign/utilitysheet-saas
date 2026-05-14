@@ -102,7 +102,7 @@ export function MarketingHeader() {
                                         })
                                     }
                                 >
-                                    Start Free
+                                    Create My Link
                                 </Button>
                             </Link>
 
@@ -119,7 +119,7 @@ export function MarketingHeader() {
                                         })
                                     }
                                 >
-                                    Start Free
+                                    Create Link
                                 </Button>
                             </Link>
                         </>
@@ -224,7 +224,7 @@ export function MarketingHeader() {
                                         className="block px-4 py-3 text-sm font-medium text-center bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg transition-colors"
                                         data-testid="marketing-mobile-signup-cta"
                                     >
-                                        Start Free
+                                        Create My Link
                                     </Link>
                                 </>
                             )}

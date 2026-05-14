@@ -15,14 +15,14 @@ const impactStats = [
         icon: CheckCircle,
         value: 'Clean',
         unit: '',
-        label: 'Utility handoff output',
-        description: 'Web sheet and PDF for buyer-ready sharing',
+        label: 'Utility sheet output',
+        description: 'Web sheet and PDF for review and sharing',
     },
     {
         icon: TrendingUp,
-        value: 'AI',
+        value: 'Hints',
         unit: '',
-        label: 'Suggestion assist',
+        label: 'Provider suggestions',
         description: 'Sellers can confirm, search, or manually enter providers',
     },
     {
@@ -53,7 +53,7 @@ export function StatsSection() {
                         Why teams use UtilitySheet
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                        Built to remove repetitive utility handoff work while keeping output consistent.
+                        Built to remove repetitive utility collection work while keeping the finished sheet consistent.
                     </p>
                 </motion.div>
 

@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useEffect, useRef } from 'react';
-import { Bell, FilePenLine, FileText, Layers, Link2, MailCheck, Palette, ShieldCheck, Sparkles } from 'lucide-react';
+import { Bell, FilePenLine, FileText, Layers, Link2, MailCheck, Palette, ShieldCheck, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import { featureHighlights } from '@/lib/marketing-content';
 
@@ -14,6 +14,11 @@ const features = [
         description: featureHighlights[0].description,
     },
     {
+        icon: SlidersHorizontal,
+        title: 'A dashboard you do not have to babysit',
+        description: 'Set up your reusable link once, add it to your template, and let sellers complete the form. Open the dashboard when you need to review, edit, manage branding, or adjust settings.',
+    },
+    {
         icon: Layers,
         title: featureHighlights[1].title,
         tag: 'Advanced',
@@ -22,7 +27,7 @@ const features = [
     {
         icon: MailCheck,
         title: 'Completion email + PDF attachment',
-        description: 'The completed PDF can auto-attach to the notification email the moment the seller submits, so the handoff is ready to review right away.',
+        description: 'The completed PDF can attach to your completion email when the seller submits, so the sheet is ready to review right away.',
     },
     {
         icon: Sparkles,
@@ -37,7 +42,7 @@ const features = [
     },
     {
         icon: FileText,
-        title: 'Buyer-ready utility sheet output',
+        title: 'Clean utility sheet output',
         description: featureHighlights[4].description,
     },
     {
@@ -83,10 +88,10 @@ export function FeatureSection() {
                 <div className="text-center mb-20">
                     <p className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Features</p>
                     <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-balance">
-                        Built around the seller-link workflow
+                        Built around the seller link
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-4">
-                        UtilitySheet is focused on one real estate job: collect seller utility details once, turn them into a clean handoff, and keep the finished sheet useful after submission.
+                        UtilitySheet is focused on one real estate job: collect seller utility details once, turn them into a clean web sheet and PDF, and keep the finished sheet useful after submission.
                     </p>
                 </div>
 

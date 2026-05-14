@@ -10,32 +10,32 @@ const painToOutcome = [
     {
         icon: Link2,
         title: 'One permanent link, reused on every file',
-        description: 'Share your seller link in texts, emails, or your signature. Sellers enter the address — no back-and-forth, no "who\'s your gas company?" texts.',
-        timeSaved: 'Saves 15 min',
+        description: 'Share your seller link in texts, emails, or your signature. Sellers enter the address, then confirm or type their utility providers.',
+        timeSaved: 'Reusable on every file',
     },
     {
         icon: Bell,
         title: 'Choose simple or advanced packet output',
-        description: 'Keep simple handoffs fast, or collect deeper transition details with Advanced Utility Packet modules (Pro/Teams).',
-        timeSaved: 'Saves 10 min',
+        description: 'Keep simple utility sheets fast, or collect deeper transition details with Advanced Utility Packet modules (Pro/Teams).',
+        timeSaved: 'Flexible output',
     },
     {
         icon: FileText,
         title: 'Review and correct submitted sheets',
         description: 'When a seller submits, Pro and Teams can fix formatting, provider names, addresses, and contact details in the dashboard before the sheet gets shared forward.',
-        timeSaved: 'Saves 15 min',
+        timeSaved: 'Reduces cleanup',
     },
 ] as const;
 
 const tcWorkflow = [
-    'Add your seller link to your email signature or text template — once, and it\'s there forever.',
-    'When a new file opens, text or email the seller your link. They enter the address, confirm utilities, and can complete advanced module groups when needed.',
-    'The packet PDF attaches to your notification email automatically. If anything needs cleanup after submission, update the live sheet in the dashboard before you share the web link or PDF forward.',
+    'Add your seller link to your email signature, listing email template, or text template once.',
+    'When a new file opens, text or email the seller your link. They enter the property address, confirm suggested providers when available, or type their own answers.',
+    'Your completion email can include the finished PDF automatically. If anything needs cleanup after submission, update the live sheet in the dashboard before you share the web link or PDF forward.',
 ] as const;
 
 const painPoints = [
-    { icon: XCircle, text: 'Wasting 30-45 min per file on utility busywork' },
-    { icon: AlertTriangle, text: 'Incomplete buyer packets at closing' },
+    { icon: XCircle, text: 'Repeating the same utility questions on every file' },
+    { icon: AlertTriangle, text: 'Incomplete utility details right before closing' },
     { icon: Clock, text: 'Waiting days for sellers to respond' },
 ];
 
@@ -56,10 +56,10 @@ export function ForTcsSection() {
                         <span>Built by TCs, for TCs</span>
                     </div>
                     <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight mb-4">
-                        The utility handoff, standardized.
+                        The seller-link process, built from real TC work.
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
-                        Turn a messy, repeated task into a simple workflow you can run on every file—without chasing sellers.
+                        Turn a messy, repeated task into one reusable link sellers can complete from their phone.
                     </p>
                 </motion.div>
 
@@ -121,13 +121,13 @@ export function ForTcsSection() {
                             <div className="pt-4 flex flex-col sm:flex-row gap-3">
                                 <Link href="/auth/signup" className="flex-1">
                                     <Button className="w-full bg-slate-600 text-white hover:bg-slate-700 h-11">
-                                        Start Free
+                                        Create My Seller Link
                                         <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 </Link>
                                 <Link href="/demo" className="flex-1">
                                     <Button variant="outline" className="w-full border-slate-500/50 text-slate-600 hover:text-slate-700 hover:bg-slate-500/10 h-11">
-                                        Try the Demo
+                                        Try the Seller Flow
                                     </Button>
                                 </Link>
                             </div>
@@ -144,8 +144,8 @@ export function ForTcsSection() {
                     >
                         <Card className="border-border bg-card/20 h-full">
                             <CardHeader className="pb-4">
-                                <h4 className="text-xl font-bold text-foreground">The TC workflow</h4>
-                                <p className="text-muted-foreground">Drop it into whatever system you already use.</p>
+                                <h4 className="text-xl font-bold text-foreground">The TC process</h4>
+                                <p className="text-muted-foreground">Drop the link into the messages you already send.</p>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {tcWorkflow.map((step, idx) => (
@@ -176,9 +176,9 @@ export function ForTcsSection() {
                                     <div className="flex items-start gap-3">
                                         <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5" />
                                         <div>
-                                            <div className="font-semibold text-foreground">Works with your process</div>
+                                            <div className="font-semibold text-foreground">The dashboard stays out of your way</div>
                                             <div className="text-muted-foreground mt-1 text-sm">
-                                                Paste your reusable link into email, text, Dotloop, Skyslope, Brokermint, or your TC checklist — no integrations, no new logins, no extra steps.
+                                                Paste your reusable link into email, text, Dotloop, Skyslope, Brokermint, or your TC checklist. Open UtilitySheet when you need to review a submission, fix a typo, update provider details, manage branding, or adjust settings.
                                             </div>
                                         </div>
                                     </div>

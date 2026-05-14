@@ -6,15 +6,15 @@ import { X, Check, Clock, MessageSquare, FileSpreadsheet, Zap } from 'lucide-rea
 const oldWaySteps = [
     { icon: MessageSquare, text: 'Multiple texts/emails to collect provider details' },
     { icon: Clock, text: 'Delays and follow-ups when sellers miss info' },
-    { icon: X, text: 'Small corrections turn into more seller follow-up after submission' },
+    { icon: X, text: 'Typos and vague answers turn into more cleanup before closing' },
 ];
 
 const newWaySteps = [
     { icon: MessageSquare, text: 'Send one secure seller link you can reuse on every file' },
-    { icon: Zap, text: 'Seller confirms providers on their phone with guidance' },
+    { icon: Zap, text: 'Seller enters the address and confirms providers on their phone' },
     { icon: Check, text: 'Pro/Teams can correct submitted sheets in the dashboard' },
     { icon: FileSpreadsheet, text: 'Web sheet + PDF generated for clean sharing' },
-    { icon: Check, text: 'Optional completion email can include PDF attachment' },
+    { icon: Check, text: 'Your completion email can include the finished PDF automatically' },
 ];
 
 export function BeforeAfterSection() {
@@ -35,10 +35,10 @@ export function BeforeAfterSection() {
                         <span>Sound familiar?</span>
                     </div>
                     <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground tracking-tight mb-4 text-balance">
-                        Replace utility chase-downs with one seller-link workflow
+                        Replace utility chase-downs with one seller link
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                        The product story is simple: send the link once, review the finished sheet when the seller submits.
+                        The old way is a blank form, scattered replies, and last-minute cleanup. UtilitySheet keeps the task simple: send the link, let the seller complete it, and review the finished sheet.
                     </p>
                 </motion.div>
 
@@ -78,7 +78,7 @@ export function BeforeAfterSection() {
 
                         <div className="mt-6 p-4 rounded-xl bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30">
                             <p className="text-red-800 dark:text-red-300 text-sm font-medium text-center">
-                                Result: fragmented process, delayed handoffs, inconsistent output
+                                Result: scattered answers, delayed files, and extra cleanup
                             </p>
                         </div>
                     </motion.div>
@@ -118,7 +118,7 @@ export function BeforeAfterSection() {
 
                         <div className="mt-6 p-4 rounded-xl bg-emerald-100/50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/30">
                             <p className="text-emerald-800 dark:text-emerald-300 text-sm font-medium text-center">
-                                Result: consistent workflow, faster handoffs, professional delivery
+                                Result: fewer last-minute utility questions and the same clean sheet every time
                             </p>
                         </div>
                     </motion.div>
@@ -135,9 +135,9 @@ export function BeforeAfterSection() {
                     <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-6 px-6 py-4 rounded-2xl bg-slate-600 text-white shadow-xl shadow-slate-500/20">
                         <div className="flex items-center gap-3">
                             <Clock className="w-6 h-6" />
-                            <span className="text-lg font-semibold">Standardized handoff:</span>
+                            <span className="text-lg font-semibold">Simple utility collection:</span>
                         </div>
-                        <span className="text-lg">one guided seller link, one ready-to-review output</span>
+                        <span className="text-lg">one guided seller link, one utility sheet you can review and share</span>
                     </div>
                 </motion.div>
             </div>

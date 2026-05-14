@@ -32,10 +32,10 @@ export function HowItWorks() {
                 <div className="text-center mb-12 sm:mb-16 lg:mb-24">
                     <p className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">How it works</p>
                     <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight text-balance">
-                        What happens after signup
+                        How the seller-link flow works
                     </h2>
                     <p className="mt-4 max-w-3xl mx-auto text-base sm:text-lg text-muted-foreground">
-                        You land on a dashboard built around your reusable seller link. Copy it, send it to the seller, then review the finished utility sheet and PDF when they submit.
+                        Set up one reusable link, add it to your listing email template or send it directly, then let the seller complete the utility form from their phone.
                     </p>
                 </div>
 
@@ -48,10 +48,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">01.</span>
-                                Copy your reusable seller link
+                                Set up your reusable seller link
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Your workspace starts with a seller link you can reuse across files. Put it in your email signature, text template, checklist, or send it directly on a transaction.
+                                Your workspace starts with one seller link you can reuse across files. Add it to your listing email template, text template, checklist, or send it directly on a transaction.
                             </p>
                         </div>
                         <div className="flex-1 w-full max-w-[500px] lg:max-w-none">
@@ -76,10 +76,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">02.</span>
-                                Seller enters and confirms utility details
+                                Seller enters the address and confirms utilities
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                Sellers open the link on their phone, enter the property address, and move through a guided utility intake. Where provider suggestions are available, they can confirm or correct them before submitting.
+                                Sellers open the link on their phone, enter the property address, and move through a guided utility form. UtilitySheet can suggest likely providers based on the address, and sellers can confirm, search, or type their own answer.
                             </p>
                         </div>
                         <motion.div
@@ -110,10 +110,10 @@ export function HowItWorks() {
                             </div>
                             <h4 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-4">
                                 <span className="text-slate-600 mr-2">03.</span>
-                                Review the finished sheet and share it forward
+                                Get a clean sheet and PDF back
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                As soon as the seller submits, your team gets a clean web view and downloadable PDF. Share it with buyers, add it to the file, or make Pro/Teams dashboard corrections that carry through to future PDF downloads.
+                                After submission, your team gets a clean web sheet and downloadable PDF. Your completion email can include the finished PDF automatically, and Pro/Teams can make dashboard edits that carry through to future PDF downloads.
                             </p>
                         </div>
                         <motion.div

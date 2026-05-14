@@ -74,7 +74,7 @@ export default function PricingPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {[
             'You want every seller utility form and PDF to reflect your own branding instead of UtilitySheet branding.',
-            'You want Advanced Utility Packet mode so the handoff includes more than just utilities.',
+            'You want Advanced Utility Packet mode so the finished sheet includes more than just utilities.',
             'You need unlimited requests because the workflow is now part of every transaction.',
             'You need to correct submitted sheets inside the dashboard instead of sending the seller back through the public form.',
             'You need teammates inside the same workspace with shared defaults, shared visibility, and shared editing access.',

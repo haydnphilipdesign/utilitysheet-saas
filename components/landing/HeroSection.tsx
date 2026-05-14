@@ -76,12 +76,15 @@ export function HeroSection() {
 
                         {/* Headline */}
                         <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-6xl font-black tracking-tight text-foreground mb-4 sm:mb-6 text-balance">
-                            Share a seller link. Collect utility info. Get a ready-to-review utility sheet.
+                            Stop chasing sellers for utility info.
                         </h1>
 
                         {/* Value Proposition — one clean sentence */}
                         <p className="mx-auto lg:mx-0 max-w-xl text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-8 leading-relaxed">
-                            UtilitySheet gives agents and transaction coordinators one reusable seller intake link. Sellers enter utility details, and your dashboard gets a clean web sheet plus PDF for review and sharing.
+                            Send one reusable link, let the seller complete it on their phone, and get a clean utility sheet PDF back after submission.
+                            <span className="mt-3 block text-sm sm:text-base md:text-lg text-muted-foreground/90">
+                                Built for transaction coordinators, agents, listing admins, and small real estate teams that need seller utility details before closing.
+                            </span>
                         </p>
 
                         {/* CTAs */}
@@ -104,7 +107,7 @@ export function HeroSection() {
                                         })
                                     }
                                 >
-                                    Start Free
+                                    Create My Seller Link
                                     <ArrowRight className="ml-2 h-5 w-5" />
                                 </Button>
                             </Link>
@@ -122,7 +125,7 @@ export function HeroSection() {
                                     }
                                 >
                                     <Sparkles className="mr-2 h-4 w-5" />
-                                    Try the Demo
+                                    Try the Seller Flow
                                 </Button>
                             </Link>
                         </motion.div>
