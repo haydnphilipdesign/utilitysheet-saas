@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 import type { AdvancedModuleExclusions, AdvancedModuleKey, AdvancedPacketData } from '@/types';
 import { ADVANCED_MODULE_LABELS, getAdvancedModuleVisibleFieldKeys } from '@/lib/packet/modules';
+import { trackEvent } from '@/lib/analytics/events';
 
 interface AdvancedDetailsStepProps {
     moduleKey: AdvancedModuleKey;
@@ -118,6 +119,34 @@ export function AdvancedDetailsStep({
     const showField = (fieldKey: string) => visibleFieldSet.has(fieldKey);
     const renderIfVisible = (fieldKey: string, node: ReactNode) => (showField(fieldKey) ? node : null);
 
+    const handleSkipSection = () => {
+        trackEvent('seller_advanced_section_skipped', {
+            module: moduleKey,
+            location: 'seller_flow',
+        });
+        onNext();
+    };
+
+    const setQuickWateringDays = (preset: 'every_day' | 'mwf' | 'tts' | 'weekends' | 'clear') => {
+        const all = WATERING_DAY_OPTIONS.map((d) => d.value);
+        const map: Record<typeof preset, typeof all> = {
+            every_day: all,
+            mwf: ['mon', 'wed', 'fri'],
+            tts: ['tue', 'thu', 'sat'],
+            weekends: ['sat', 'sun'],
+            clear: [],
+        };
+        updateAdvanced({
+            irrigation_seasonal_controls: {
+                ...advanced.irrigation_seasonal_controls,
+                watering_days: map[preset],
+            },
+        });
+    };
+
+    const irrigationHasSystem = advanced.irrigation_seasonal_controls?.has_irrigation_system;
+    const hideIrrigationDetails = moduleKey === 'irrigation_seasonal_controls' && irrigationHasSystem === 'no';
+
     const toggleWateringDay = (dayValue: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun') => {
         const currentDays = advanced.irrigation_seasonal_controls?.watering_days || [];
         const daySet = new Set(currentDays);
@@ -228,7 +257,7 @@ export function AdvancedDetailsStep({
                             <option value="no">No</option>
                         </select>
                     </label>)}
-                    {renderIfVisible('irrigation_provider_name', <Field
+                    {!hideIrrigationDetails && renderIfVisible('irrigation_provider_name', <Field
                         label="Irrigation Provider"
                         value={advanced.irrigation_seasonal_controls?.irrigation_provider_name}
                         placeholder="Name of company or person"
@@ -239,7 +268,7 @@ export function AdvancedDetailsStep({
                             },
                         })}
                     />)}
-                    {renderIfVisible('irrigation_provider_phone', <Field
+                    {!hideIrrigationDetails && renderIfVisible('irrigation_provider_phone', <Field
                         label="Irrigation Phone"
                         type="tel"
                         inputMode="tel"
@@ -252,8 +281,26 @@ export function AdvancedDetailsStep({
                             },
                         })}
                     />)}
-                    {renderIfVisible('watering_days', <div className="space-y-2 sm:col-span-2">
+                    {!hideIrrigationDetails && renderIfVisible('watering_days', <div className="space-y-2 sm:col-span-2">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Watering Days</span>
+                        <div className="flex flex-wrap gap-1.5 pb-1">
+                            {[
+                                { id: 'every_day' as const, label: 'Every day' },
+                                { id: 'mwf' as const, label: 'M / W / F' },
+                                { id: 'tts' as const, label: 'T / Th / Sat' },
+                                { id: 'weekends' as const, label: 'Weekends' },
+                                { id: 'clear' as const, label: 'Clear' },
+                            ].map((preset) => (
+                                <button
+                                    key={preset.id}
+                                    type="button"
+                                    onClick={() => setQuickWateringDays(preset.id)}
+                                    className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                >
+                                    {preset.label}
+                                </button>
+                            ))}
+                        </div>
                         <div className="flex flex-wrap gap-2">
                             {WATERING_DAY_OPTIONS.map((day) => {
                                 const isSelected = selectedDays.includes(day.value);
@@ -277,7 +324,7 @@ export function AdvancedDetailsStep({
                         </div>
                         <p className="text-xs text-muted-foreground">Select any regular watering days, if known.</p>
                     </div>)}
-                    {renderIfVisible('irrigation_season_start_month', <label className="space-y-1">
+                    {!hideIrrigationDetails && renderIfVisible('irrigation_season_start_month', <label className="space-y-1">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Season Start Month</span>
                         <select
                             data-testid="irrigation-season-start-month"
@@ -298,7 +345,7 @@ export function AdvancedDetailsStep({
                             ))}
                         </select>
                     </label>)}
-                    {renderIfVisible('irrigation_season_end_month', <label className="space-y-1">
+                    {!hideIrrigationDetails && renderIfVisible('irrigation_season_end_month', <label className="space-y-1">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">Season End Month</span>
                         <select
                             data-testid="irrigation-season-end-month"
@@ -319,7 +366,7 @@ export function AdvancedDetailsStep({
                             ))}
                         </select>
                     </label>)}
-                    {renderIfVisible('irrigation_notes', <Field
+                    {!hideIrrigationDetails && renderIfVisible('irrigation_notes', <Field
                         label="Notes"
                         multiline
                         value={advanced.irrigation_seasonal_controls?.irrigation_notes}
@@ -500,12 +547,14 @@ export function AdvancedDetailsStep({
             className="space-y-5"
         >
             <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Step {moduleIndex + 1} of {moduleCount}</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Additional Home Details</h3>
+                {!isReviewEdit && moduleCount > 1 && (
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Optional section {moduleIndex + 1} of {moduleCount}</p>
+                )}
+                <h3 className="text-xl sm:text-2xl font-bold text-foreground">{moduleTitle}</h3>
                 <p className="text-sm text-muted-foreground">
                     {isReviewEdit
-                        ? `Editing ${moduleTitle}. You can skip any field.`
-                        : `Add any ${moduleTitle.toLowerCase()} details you want to share. You can skip any field.`}
+                        ? `Editing ${moduleTitle.toLowerCase()}. Update anything you need.`
+                        : `These help the next owner take over smoothly. Fill in what you know, skip the rest.`}
                 </p>
             </div>
 
@@ -513,21 +562,34 @@ export function AdvancedDetailsStep({
                 {renderModuleFields()}
             </Section>
 
-            <div className="flex gap-2 sm:gap-3 pt-1">
-                <button
-                    type="button"
-                    onClick={onBack}
-                    className="flex-1 py-3 rounded-xl font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                    Back
-                </button>
-                <button
-                    type="button"
-                    onClick={onNext}
-                    className="flex-[2] py-3 rounded-xl font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors"
-                >
-                    {isReviewEdit ? 'Save & Return to Review' : 'Continue'}
-                </button>
+            <div className="flex flex-col gap-2 sm:gap-3 pt-1">
+                <div className="flex gap-2 sm:gap-3">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="flex-1 py-3 rounded-xl font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                        Back
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onNext}
+                        className="flex-[2] py-3 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                        data-testid="advanced-continue"
+                    >
+                        {isReviewEdit ? 'Save & Return to Review' : 'Continue'}
+                    </button>
+                </div>
+                {!isReviewEdit && (
+                    <button
+                        type="button"
+                        onClick={handleSkipSection}
+                        className="w-full py-2.5 rounded-xl text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        data-testid="advanced-skip-section"
+                    >
+                        Skip this section
+                    </button>
+                )}
             </div>
         </motion.div>
     );

@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Loader2, MapPin, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Loader2, MapPin, ArrowRight, ShieldCheck, Mail, Phone } from 'lucide-react';
 import { SellerLayout } from '@/components/seller-form/SellerLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -334,12 +334,14 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                 </div>
             ) : loadError ? (
                 <div className="flex-1 flex items-center justify-center">
-                    <div className="w-full max-w-md bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 text-center">
-                        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-500/10 flex items-center justify-center">
+                    <div className="w-full max-w-md bg-card/60 border border-border rounded-2xl p-8 text-center space-y-5">
+                        <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
                             <AlertTriangle className="h-8 w-8 text-red-400" />
                         </div>
-                        <h1 className="text-xl font-bold text-white mb-2">Unavailable</h1>
-                        <p className="text-zinc-400 mb-6 text-sm">{loadError}</p>
+                        <div className="space-y-2">
+                            <h1 className="text-xl font-bold text-foreground">This link isn’t working</h1>
+                            <p className="text-muted-foreground text-sm">{loadError}</p>
+                        </div>
                         <Button
                             variant="outline"
                             className="border-input text-foreground hover:bg-muted"
@@ -347,55 +349,95 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                         >
                             Try Again
                         </Button>
+                        <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+                            If this link was sent to you by your real estate agent, please ask them to resend it.
+                        </p>
                     </div>
                 </div>
             ) : (
                 <div className="w-full max-w-xl mx-auto space-y-6">
-                    <div className="rounded-2xl border border-border bg-card/50 p-6 sm:p-8">
+                    <div className="rounded-2xl border border-border bg-card/50 p-6 sm:p-8 space-y-5">
                         <div className="flex items-start gap-3">
                             <div className="mt-0.5 rounded-xl bg-emerald-500/10 p-2">
-                                <MapPin className="h-5 w-5 text-emerald-400" />
+                                <ShieldCheck className="h-5 w-5 text-emerald-400" />
                             </div>
                             <div className="space-y-1">
-                                <h1 className="text-xl font-semibold text-foreground">Enter the property address</h1>
+                                <h1 className="text-xl font-semibold text-foreground">
+                                    {brandProfile?.name
+                                        ? `${brandProfile.name} needs a few utility details`
+                                        : 'Share your home’s utility details'}
+                                </h1>
                                 <p className="text-sm text-muted-foreground">
-                                    We’ll use this to tailor the utility questions for your home.
+                                    {brandProfile?.name
+                                        ? `Your agent at ${brandProfile.name} sent you this link to gather utility info for the buyer. It takes about 2 to 3 minutes, and your progress saves automatically.`
+                                        : 'Your agent sent this link to gather utility info for the buyer. It takes about 2 to 3 minutes, and your progress saves automatically.'}
                                 </p>
                             </div>
                         </div>
 
-                        <div className="mt-6 space-y-2">
-                            <Label htmlFor="propertyAddress" className="text-foreground">Property Address</Label>
-                            <GooglePlacesAddressInput
-                                id="propertyAddress"
-                                value={address}
-                                onChange={handleAddressInputChange}
-                                onAddressSelected={handleAutocompleteAddressSelected}
-                                placeholder="123 Main St, Austin, TX 78701"
-                                data-testid="intake-address-input"
-                                className="bg-background/50 border-input text-foreground"
-                                disabled={submitting || showConfirmAddress}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && canStart) {
-                                        e.preventDefault();
-                                        handleStart();
-                                    }
-                                }}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Please include street, city, state, and ZIP code.
-                            </p>
+                        {(brandProfile?.contact_email || brandProfile?.contact_phone) && (
+                            <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                                <span className="font-medium text-foreground">Not sure this is for you?</span>
+                                {brandProfile.contact_email && (
+                                    <a
+                                        href={`mailto:${brandProfile.contact_email}`}
+                                        className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400 transition-colors"
+                                    >
+                                        <Mail className="h-3.5 w-3.5" />
+                                        {brandProfile.contact_email}
+                                    </a>
+                                )}
+                                {brandProfile.contact_phone && (
+                                    <a
+                                        href={`tel:${brandProfile.contact_phone.replace(/[^0-9+]/g, '')}`}
+                                        className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400 transition-colors"
+                                    >
+                                        <Phone className="h-3.5 w-3.5" />
+                                        {brandProfile.contact_phone}
+                                    </a>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                            <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground/70 shrink-0" />
+                            <span>First, confirm the property address so we can tailor the questions to your home.</span>
                         </div>
+
+                        {!showConfirmAddress && (
+                            <div className="space-y-2">
+                                <Label htmlFor="propertyAddress" className="text-foreground">Property Address</Label>
+                                <GooglePlacesAddressInput
+                                    id="propertyAddress"
+                                    value={address}
+                                    onChange={handleAddressInputChange}
+                                    onAddressSelected={handleAutocompleteAddressSelected}
+                                    placeholder="123 Main St, Austin, TX 78701"
+                                    data-testid="intake-address-input"
+                                    className="bg-background/50 border-input text-foreground"
+                                    disabled={submitting}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && canStart) {
+                                            e.preventDefault();
+                                            handleStart();
+                                        }
+                                    }}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Please include street, city, state, and ZIP code.
+                                </p>
+                            </div>
+                        )}
 
                         {showConfirmAddress && (
                             <div
-                                className="mt-6 rounded-xl border border-border bg-background/40 p-4 sm:p-5 space-y-4"
+                                className="rounded-xl border border-border bg-background/40 p-4 sm:p-5 space-y-4"
                                 data-testid="intake-address-confirm"
                             >
                                 <div className="space-y-1">
-                                    <h2 className="text-sm font-semibold text-foreground">Confirm your address details</h2>
+                                    <h2 className="text-sm font-semibold text-foreground">Confirm a few address details</h2>
                                     <p className="text-xs text-muted-foreground">
-                                        This helps us find the right utility providers for your home.
+                                        We need a couple more pieces to find the right utility providers for your home.
                                     </p>
                                 </div>
 

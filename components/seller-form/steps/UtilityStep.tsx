@@ -21,6 +21,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import { UtilityCategory, ProviderSuggestion, TrashPickupDay, TrashUtilityExtra } from '@/types';
+import { trackEvent } from '@/lib/analytics/events';
 
 // Category-specific icons
 const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }> = {
@@ -188,6 +189,7 @@ export function UtilityStep({
     };
 
     const handleSkip = () => {
+        trackSkip('i_dont_know');
         updateState(category, {
             entry_mode: 'unknown',
             display_name: null,
@@ -198,6 +200,15 @@ export function UtilityStep({
             return;
         }
         onNext();
+    };
+
+    const handleManualEntryFromSearch = () => {
+        trackEvent('seller_provider_search_no_results_committed', {
+            category,
+            query_length: searchQuery.length,
+            location: 'seller_flow',
+        });
+        handleManualEntry();
     };
 
     const handleBackPress = () => {
@@ -220,9 +231,39 @@ export function UtilityStep({
     const iconConfig = categoryIcons[category];
     const CategoryIcon = iconConfig?.icon || Zap;
     const iconColorClass = iconConfig?.color || 'text-slate-500';
-    const providerPrompt = category === 'trash'
-        ? 'Who handles trash and recycling pickup?'
-        : `Who provides your ${categoryLabel.toLowerCase()}?`;
+
+    const PROVIDER_PROMPTS: Partial<Record<UtilityCategory, string>> = {
+        electric: 'Who provides electricity for this home?',
+        water: 'Who provides water service to this home?',
+        sewer: 'Which authority handles wastewater service for this home?',
+        gas: 'Who supplies natural gas to this home?',
+        propane: 'Who delivers propane to this home?',
+        oil: 'Who delivers heating oil to this home?',
+        trash: 'Who handles trash and recycling pickup?',
+        internet: 'Who provides internet service to this home?',
+        cable: 'Who provides cable or TV service to this home?',
+    };
+    const PROVIDER_HELPERS: Partial<Record<UtilityCategory, string>> = {
+        water: "Usually a city utility or water district. Check a recent water bill if you're not sure.",
+        sewer: "Often the city, county, or a separate sewer authority. Check a recent bill or your county's website.",
+        electric: "Listed on your monthly electric bill.",
+        gas: "Listed on your monthly gas bill.",
+        propane: "The company that fills your propane tank.",
+        oil: "The company that delivers heating oil.",
+        trash: "Could be the city, the county, or a private hauler.",
+        internet: "Like Xfinity, Spectrum, AT&T Fiber, etc.",
+        cable: "Like Xfinity, Spectrum, DirecTV, etc.",
+    };
+    const providerPrompt = PROVIDER_PROMPTS[category] || `Who provides your ${categoryLabel.toLowerCase()}?`;
+    const providerHelper = PROVIDER_HELPERS[category];
+
+    const trackSkip = (reason: 'i_dont_know' | 'skipped_section' = 'i_dont_know') => {
+        trackEvent('seller_utility_skipped', {
+            category,
+            reason,
+            location: 'seller_flow',
+        });
+    };
 
     return (
         <motion.div
@@ -247,10 +288,14 @@ export function UtilityStep({
                     </div>
                     <div className="min-w-0">
                         <h3 className="text-lg sm:text-xl font-bold text-foreground">{categoryLabel} Provider</h3>
-                        <p className="text-muted-foreground text-xs sm:text-sm truncate">{providerPrompt}</p>
+                        <p className="text-muted-foreground text-xs sm:text-sm">{providerPrompt}</p>
                     </div>
                 </div>
             </div>
+
+            {providerHelper && mode === 'view' && (
+                <p className="text-xs text-muted-foreground -mt-2 sm:-mt-4">{providerHelper}</p>
+            )}
 
             {mode === 'view' && (
                 <div className="space-y-4 sm:space-y-6">
@@ -267,16 +312,16 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={() => setMode('search')}
-                                    className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
                                     Search Providers
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleSkip}
-                                    className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className="w-full py-3 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
-                                    I don&apos;t know
+                                    I&apos;m not sure
                                 </button>
                             </div>
                         </div>
@@ -301,7 +346,7 @@ export function UtilityStep({
                                                     {suggestion.display_name}
                                                 </span>
                                                 {suggestion.rationale_short && (
-                                                    <span className="text-xs text-muted-foreground mt-0.5 block truncate">
+                                                    <span className="text-xs text-muted-foreground mt-0.5 block line-clamp-2">
                                                         {suggestion.rationale_short}
                                                     </span>
                                                 )}
@@ -316,42 +361,49 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={() => setMode('search')}
-                                    className="py-2.5 sm:py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-xs sm:text-sm active:scale-[0.98]"
+                                    className="py-3 sm:py-3.5 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-sm active:scale-[0.98]"
                                 >
                                     Search for another
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleSkip}
-                                    className="py-2.5 sm:py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-xs sm:text-sm active:scale-[0.98]"
+                                    data-testid={`seller-utility-skip-${category}`}
+                                    className="py-3 sm:py-3.5 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-sm active:scale-[0.98]"
                                 >
-                                    I don&apos;t know
+                                    I&apos;m not sure
                                 </button>
                             </div>
+                            <p className="text-xs text-muted-foreground text-center">
+                                Picking &quot;I&apos;m not sure&quot; is fine. We&apos;ll flag it for your agent to fill in.
+                            </p>
                         </div>
                     ) : (
                         <div className="bg-muted/50 border border-border rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center space-y-4 sm:space-y-6">
-                            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted flex items-center justify-center">
-                                <Search className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+                            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                                <Search className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-400" />
                             </div>
                             <div>
-                                <h4 className="text-base sm:text-lg font-medium text-foreground">Search for your provider</h4>
-                                <p className="text-muted-foreground text-xs sm:text-sm mt-1">We couldn&apos;t auto-detect this one.</p>
+                                <h4 className="text-base sm:text-lg font-medium text-foreground">Help us find your provider</h4>
+                                <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+                                    {providerHelper || "We don't have a suggestion for this one. You can search by name, or skip if you're not sure."}
+                                </p>
                             </div>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setMode('search')}
-                                    className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
                                     Search Providers
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleSkip}
-                                    className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    data-testid={`seller-utility-skip-${category}`}
+                                    className="w-full py-3 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
-                                    I don&apos;t know
+                                    I&apos;m not sure, my agent can fill this in
                                 </button>
                             </div>
                         </div>
@@ -431,14 +483,24 @@ export function UtilityStep({
                         )}
 
                         {!isSearching && searchQuery.length >= 2 && searchResults.length === 0 && (
-                            <div className="text-center pt-4 pb-2">
-                                <p className="text-muted-foreground text-xs sm:text-sm mb-3">No matching providers found.</p>
+                            <div className="pt-3 pb-2 space-y-3">
+                                <p className="text-muted-foreground text-xs sm:text-sm text-center">
+                                    No matches in our directory. That&apos;s ok, you can still use this name.
+                                </p>
                                 <button
                                     type="button"
-                                    onClick={handleManualEntry}
-                                    className="text-slate-500 hover:text-slate-400 text-xs sm:text-sm font-medium underline underline-offset-4"
+                                    onClick={handleManualEntryFromSearch}
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    data-testid="seller-provider-use-typed"
                                 >
-                                    {`Use "${searchQuery}" anyway`}
+                                    {`Use "${searchQuery}"`}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery('')}
+                                    className="w-full py-2.5 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-sm active:scale-[0.98]"
+                                >
+                                    Search again
                                 </button>
                             </div>
                         )}

@@ -2,9 +2,17 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Rocket, ArrowRight, FileDown, Loader2 } from 'lucide-react';
+import { CheckCircle2, Rocket, ArrowRight, FileDown, Loader2, Mail, Phone, Send, Check } from 'lucide-react';
 import Link from 'next/link';
 import type { WizardState } from '../SellerWizard';
+import { trackEvent } from '@/lib/analytics/events';
+
+interface BrandContact {
+    name?: string;
+    contact_email?: string;
+    contact_phone?: string;
+    contact_website?: string;
+}
 
 interface SuccessStepProps {
     isDemo?: boolean;
@@ -12,11 +20,51 @@ interface SuccessStepProps {
         address: string;
         state: WizardState;
     };
+    brandProfile?: BrandContact | null;
+    sellerToken?: string;
+    propertyAddress?: string;
 }
 
-export function SuccessStep({ isDemo = false, demoData }: SuccessStepProps) {
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function SuccessStep({ isDemo = false, demoData, brandProfile, sellerToken, propertyAddress }: SuccessStepProps) {
     const [downloading, setDownloading] = useState(false);
     const [downloaded, setDownloaded] = useState(false);
+    const [confirmEmail, setConfirmEmail] = useState('');
+    const [confirmSubmitting, setConfirmSubmitting] = useState(false);
+    const [confirmSent, setConfirmSent] = useState(false);
+    const [confirmError, setConfirmError] = useState<string | null>(null);
+
+    const handleSendConfirmation = async () => {
+        if (!sellerToken) return;
+        const trimmed = confirmEmail.trim();
+        if (!EMAIL_PATTERN.test(trimmed)) {
+            setConfirmError('Please enter a valid email.');
+            return;
+        }
+        setConfirmSubmitting(true);
+        setConfirmError(null);
+        try {
+            const res = await fetch(`/api/seller/${encodeURIComponent(sellerToken)}/send-link`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: trimmed }),
+            });
+            if (res.ok) {
+                setConfirmSent(true);
+                trackEvent('seller_success_email_confirmation_requested', { success: true, location: 'seller_flow' });
+            } else {
+                const body = await res.json().catch(() => null);
+                setConfirmError(body?.error || 'Could not send. Please try again.');
+                trackEvent('seller_success_email_confirmation_requested', { success: false, location: 'seller_flow' });
+            }
+        } catch {
+            setConfirmError('Network error. Please try again.');
+            trackEvent('seller_success_email_confirmation_requested', { success: false, location: 'seller_flow' });
+        } finally {
+            setConfirmSubmitting(false);
+        }
+    };
 
     const handleDownloadPdf = async () => {
         if (!demoData) return;
@@ -127,18 +175,79 @@ export function SuccessStep({ isDemo = false, demoData }: SuccessStepProps) {
                 </div>
             </div>
 
-            <div className="space-y-4 max-w-md w-full">
+            <div className="space-y-5 max-w-md w-full">
                 <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
                     All Done!
                 </h2>
-                <div className="p-3 sm:p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                <div className="p-3 sm:p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-left">
                     <p className="text-emerald-700 dark:text-emerald-300 text-sm sm:text-base">
-                        Thank you for providing this info. Your agent has been notified and can now review the submitted utility sheet.
+                        Thank you{propertyAddress ? ` for sharing utility details for ${propertyAddress}` : ''}.{' '}
+                        {brandProfile?.name ? `${brandProfile.name} has been notified` : 'Your agent has been notified'} and will take it from here.
                     </p>
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                    You can safely close this page now. If anything needs to be corrected later, your agent can review the sheet from their dashboard. This form link is now read-only.
-                </p>
+
+                <div className="text-left space-y-2 text-sm">
+                    <p className="font-medium text-foreground">What happens next:</p>
+                    <ul className="text-xs sm:text-sm text-muted-foreground space-y-1.5 pl-4 list-disc marker:text-muted-foreground/50">
+                        <li>Your agent reviews the info and prepares a packet for the buyer.</li>
+                        <li>If anything is unclear, your agent may reach out to confirm.</li>
+                        <li>You can safely close this page. The link is now read-only.</li>
+                    </ul>
+                </div>
+
+                {sellerToken && !confirmSent && (
+                    <div className="rounded-xl border border-border bg-card/40 p-4 text-left space-y-2">
+                        <p className="text-sm font-medium text-foreground">Want a copy?</p>
+                        <p className="text-xs text-muted-foreground">We&apos;ll email you a link so you can revisit what you submitted anytime.</p>
+                        <div className="flex gap-2 pt-1">
+                            <input
+                                type="email"
+                                inputMode="email"
+                                autoComplete="email"
+                                value={confirmEmail}
+                                placeholder="you@example.com"
+                                onChange={(e) => { setConfirmEmail(e.target.value); setConfirmError(null); }}
+                                disabled={confirmSubmitting}
+                                className="flex-1 h-10 rounded-md border border-border bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleSendConfirmation}
+                                disabled={confirmSubmitting}
+                                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-3 disabled:opacity-50"
+                            >
+                                {confirmSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                Send
+                            </button>
+                        </div>
+                        {confirmError && <p className="text-xs text-red-400">{confirmError}</p>}
+                    </div>
+                )}
+                {confirmSent && (
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                        <Check className="h-4 w-4" /> Sent. Check your inbox.
+                    </div>
+                )}
+
+                {(brandProfile?.contact_email || brandProfile?.contact_phone) && (
+                    <div className="text-left rounded-xl border border-border bg-card/40 p-4 space-y-2">
+                        <p className="text-xs font-medium text-foreground">Questions? Contact {brandProfile?.name || 'your agent'}:</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+                            {brandProfile?.contact_email && (
+                                <a href={`mailto:${brandProfile.contact_email}`} className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400">
+                                    <Mail className="h-3.5 w-3.5" />
+                                    {brandProfile.contact_email}
+                                </a>
+                            )}
+                            {brandProfile?.contact_phone && (
+                                <a href={`tel:${brandProfile.contact_phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400">
+                                    <Phone className="h-3.5 w-3.5" />
+                                    {brandProfile.contact_phone}
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </motion.div>
     );

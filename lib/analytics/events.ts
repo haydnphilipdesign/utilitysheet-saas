@@ -168,6 +168,35 @@ type AnalyticsEventMap = {
     has_place_id: boolean;
     is_complete: boolean;
   };
+  seller_help_contact_clicked: BasePayload & {
+    contact_type: "email" | "phone" | "website";
+    step: string;
+  };
+  seller_save_link_requested: BasePayload & {
+    step: string;
+  };
+  seller_save_link_sent: BasePayload & {
+    step: string;
+    success: boolean;
+  };
+  seller_utility_skipped: BasePayload & {
+    category: string;
+    reason: "i_dont_know" | "skipped_section";
+  };
+  seller_provider_search_no_results_committed: BasePayload & {
+    category: string;
+    query_length: number;
+  };
+  seller_advanced_section_skipped: BasePayload & {
+    module: string;
+  };
+  seller_submission_retry_clicked: BasePayload & {
+    error_kind: "network" | "server" | "rate_limit" | "unknown";
+  };
+  seller_success_pdf_downloaded: BasePayload;
+  seller_success_email_confirmation_requested: BasePayload & {
+    success: boolean;
+  };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

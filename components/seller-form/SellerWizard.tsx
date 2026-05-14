@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { SellerLayout } from './SellerLayout';
 import type {
     AdvancedModuleExclusions,
@@ -28,7 +29,6 @@ import {
     normalizeAdvancedModuleExclusions,
 } from '@/lib/packet/modules';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
-import { toast } from 'sonner';
 
 export interface WizardState {
     water_source: WaterSource;
@@ -98,6 +98,9 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [advancedModuleIndex, setAdvancedModuleIndex] = useState(0);
     const [advancedNavigationMode, setAdvancedNavigationMode] = useState<AdvancedNavigationMode>('linear');
     const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<{ kind: 'network' | 'server' | 'rate_limit' | 'unknown'; message: string } | null>(null);
+    const [autosaveFlash, setAutosaveFlash] = useState(false);
+    const autosaveFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
     const shouldReduceMotion = useReducedMotion();
@@ -196,13 +199,23 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         advancedNavigationMode,
                     })
                 );
+                if (currentStep > Step.WELCOME && currentStep < Step.SUCCESS) {
+                    setAutosaveFlash(true);
+                    if (autosaveFlashTimer.current) clearTimeout(autosaveFlashTimer.current);
+                    autosaveFlashTimer.current = setTimeout(() => setAutosaveFlash(false), 1400);
+                }
             } catch {
                 // ignore
             }
         }, 250);
 
         return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [draftStorageKey, state, currentStep, utilityIndex, advancedModuleIndex, advancedNavigationMode, isDemo]);
+
+    useEffect(() => () => {
+        if (autosaveFlashTimer.current) clearTimeout(autosaveFlashTimer.current);
+    }, []);
 
     useEffect(() => {
         if (configuredAdvancedModules.length === 0) return;
@@ -389,17 +402,31 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     const totalUtilities = visibleUtilities.length;
     const totalAdvancedSteps = orderedAdvancedModules.length;
-    const totalStepsWeight = 1.5 + totalUtilities + totalAdvancedSteps + 1;
-    let currentProgressWeight = 0;
-    if (currentStep > Step.WELCOME) currentProgressWeight += 0.5;
-    if (currentStep > Step.HOME_BASICS) currentProgressWeight += 1;
-    if (currentStep === Step.UTILITIES) currentProgressWeight += utilityIndex;
-    if (currentStep > Step.UTILITIES) currentProgressWeight += totalUtilities;
-    if (currentStep === Step.ADVANCED_DETAILS) currentProgressWeight += advancedModuleIndex;
-    if (currentStep > Step.ADVANCED_DETAILS) currentProgressWeight += totalAdvancedSteps;
-    if (currentStep > Step.REVIEW) currentProgressWeight += 1;
+    // Step counter: 1 (basics) + N utilities + M advanced + 1 (review)
+    const totalSteps = 1 + totalUtilities + totalAdvancedSteps + 1;
+    let currentStepNumber = 0;
+    if (currentStep === Step.HOME_BASICS) currentStepNumber = 1;
+    else if (currentStep === Step.UTILITIES) currentStepNumber = 1 + utilityIndex + 1;
+    else if (currentStep === Step.ADVANCED_DETAILS) currentStepNumber = 1 + totalUtilities + advancedModuleIndex + 1;
+    else if (currentStep === Step.REVIEW) currentStepNumber = totalSteps;
+    else if (currentStep === Step.SUCCESS) currentStepNumber = totalSteps;
 
-    const progress = Math.min((currentProgressWeight / totalStepsWeight) * 100, 100);
+    // Front-load the progress slightly so the first few steps feel like meaningful momentum.
+    // Welcome -> 8%, Basics -> 18%, then utilities + advanced split the middle, review = ~94%, success = 100%.
+    let progress = 0;
+    if (currentStep === Step.WELCOME) progress = 4;
+    else if (currentStep === Step.HOME_BASICS) progress = 18;
+    else if (currentStep === Step.UTILITIES) {
+        const midSpan = 64; // 18 -> 82
+        const midSlots = totalUtilities + totalAdvancedSteps;
+        progress = 18 + ((utilityIndex + 1) / Math.max(midSlots, 1)) * midSpan;
+    } else if (currentStep === Step.ADVANCED_DETAILS) {
+        const midSpan = 64;
+        const midSlots = totalUtilities + totalAdvancedSteps;
+        progress = 18 + ((totalUtilities + advancedModuleIndex + 1) / Math.max(midSlots, 1)) * midSpan;
+    } else if (currentStep === Step.REVIEW) progress = 94;
+    else if (currentStep === Step.SUCCESS) progress = 100;
+    progress = Math.min(Math.max(progress, 0), 100);
 
     const handleNext = () => {
         if (currentStep === Step.WELCOME) {
@@ -502,6 +529,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     const handleSubmit = async () => {
         setSubmitting(true);
+        setSubmitError(null);
 
         if (isDemo) {
             await new Promise((resolve) => setTimeout(resolve, 500));
@@ -541,14 +569,33 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     status: response.status,
                     error: errorBody,
                 });
-                toast.error('Something went wrong. Please check your connection and try again.');
+                const kind: 'server' | 'rate_limit' =
+                    response.status === 429 ? 'rate_limit' : 'server';
+                const message = response.status === 429
+                    ? 'Too many submissions in a short window. Please wait a moment, then tap retry.'
+                    : 'We couldn’t save your info just now. Your answers are still here. Tap retry to try again.';
+                setSubmitError({ kind, message });
                 setSubmitting(false);
             }
         } catch (err) {
             console.error('Failed to submit form:', err);
-            toast.error('Could not submit. Please check your connection and try again.');
+            const isNetwork = typeof navigator !== 'undefined' && navigator.onLine === false;
+            setSubmitError({
+                kind: isNetwork ? 'network' : 'unknown',
+                message: isNetwork
+                    ? 'You appear to be offline. Reconnect and tap retry. Your progress is saved.'
+                    : 'Something interrupted the submission. Your answers are saved. Tap retry to try again.',
+            });
             setSubmitting(false);
         }
+    };
+
+    const handleRetrySubmit = () => {
+        trackEvent('seller_submission_retry_clicked', {
+            error_kind: submitError?.kind || 'unknown',
+            location: 'seller_flow',
+        });
+        handleSubmit();
     };
 
     return (
@@ -575,15 +622,28 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             completedCount={visibleUtilities.filter((cat) => state.utilities[cat]?.entry_mode !== null).length}
             totalCount={visibleUtilities.length}
             brandProfile={brandProfile}
+            stepNumber={currentStepNumber}
+            stepTotal={totalSteps}
+            autosaveFlash={autosaveFlash}
+            sellerToken={isDemo ? undefined : token}
+            showSaveLink={!isDemo && currentStep > Step.WELCOME && currentStep < Step.SUCCESS}
         >
             <AnimatePresence mode={shouldReduceMotion ? 'sync' : 'wait'} initial={!shouldReduceMotion}>
-                {currentStep === Step.WELCOME && (
-                    <WelcomeStep
-                        key="welcome"
-                        address={initialRequestData.property_address}
-                        onNext={handleNext}
-                    />
-                )}
+                {currentStep === Step.WELCOME && (() => {
+                    const utilityCount = Math.max(1, visibleUtilities.length || initialRequestData.utility_categories.length);
+                    const advancedCount = orderedAdvancedModules.length;
+                    const totalSteps = 1 /* basics */ + utilityCount + advancedCount + 1 /* review */;
+                    const estimatedMinutes = Math.max(2, Math.round(utilityCount * 0.5 + advancedCount * 1.0 + 1));
+                    return (
+                        <WelcomeStep
+                            key="welcome"
+                            address={initialRequestData.property_address}
+                            onNext={handleNext}
+                            estimatedMinutes={estimatedMinutes}
+                            stepCount={totalSteps}
+                        />
+                    );
+                })()}
 
                 {currentStep === Step.HOME_BASICS && (
                     <HomeBasicsStep
@@ -627,7 +687,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     />
                 )}
 
-                {currentStep === Step.REVIEW && (
+                {currentStep === Step.REVIEW && !submitting && (
                     <ReviewStep
                         key="review"
                         state={state}
@@ -647,7 +707,29 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         packetMode={state.packet_mode}
                         advancedModules={orderedAdvancedModules}
                         advancedData={state.advanced}
+                        submitError={submitError}
+                        onRetry={handleRetrySubmit}
                     />
+                )}
+
+                {currentStep === Step.REVIEW && submitting && (
+                    <motion.div
+                        key="submitting-interstitial"
+                        initial={{ opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex flex-col items-center justify-center flex-1 text-center space-y-6 py-12 px-2"
+                    >
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-xl relative z-10">
+                                <Loader2 className="h-9 w-9 sm:h-11 sm:w-11 text-white animate-spin" />
+                            </div>
+                        </div>
+                        <div className="space-y-2 max-w-sm">
+                            <h2 className="text-xl sm:text-2xl font-bold text-foreground">Sending your info to your agent…</h2>
+                            <p className="text-sm text-muted-foreground">This usually takes a few seconds. Please don’t close the tab.</p>
+                        </div>
+                    </motion.div>
                 )}
 
                 {currentStep === Step.SUCCESS && (
@@ -658,6 +740,9 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                             address: initialRequestData.property_address,
                             state,
                         } : undefined}
+                        brandProfile={brandProfile || undefined}
+                        sellerToken={isDemo ? undefined : token}
+                        propertyAddress={initialRequestData.property_address}
                     />
                 )}
             </AnimatePresence>

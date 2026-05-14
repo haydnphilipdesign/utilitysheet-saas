@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Check, Pencil, Loader2, ArrowRight, Zap, Droplets, Flame, Fuel, FlameKindling, Trash2, Wifi, Tv, Waves } from 'lucide-react';
+import { Check, Pencil, Loader2, ArrowRight, Zap, Droplets, Flame, Fuel, FlameKindling, Trash2, Wifi, Tv, Waves, AlertTriangle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import { AdvancedModuleKey, AdvancedPacketData, TrashUtilityExtra, UtilityCategory } from '@/types';
@@ -35,6 +35,8 @@ interface ReviewStepProps {
     advancedModules?: AdvancedModuleKey[];
     advancedData?: AdvancedPacketData;
     onEditAdvancedModule?: (moduleKey: AdvancedModuleKey) => void;
+    submitError?: { kind: 'network' | 'server' | 'rate_limit' | 'unknown'; message: string } | null;
+    onRetry?: () => void;
 }
 
 export function ReviewStep({
@@ -51,6 +53,8 @@ export function ReviewStep({
     advancedModules = [],
     advancedData = {},
     onEditAdvancedModule,
+    submitError,
+    onRetry,
 }: ReviewStepProps) {
     const utilityLabels = Object.fromEntries(
         UTILITY_CATEGORIES.map((category) => [category.key, category.label])
@@ -299,6 +303,31 @@ export function ReviewStep({
                 )}
             </div>
 
+            {submitError && (
+                <div
+                    role="alert"
+                    className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 flex items-start gap-3"
+                    data-testid="review-submit-error"
+                >
+                    <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                        <p className="text-sm text-foreground font-medium">We couldn’t send your info.</p>
+                        <p className="text-sm text-muted-foreground">{submitError.message}</p>
+                        {onRetry && (
+                            <button
+                                type="button"
+                                onClick={onRetry}
+                                disabled={submitting}
+                                className="inline-flex items-center gap-1.5 mt-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-100 px-3 py-1.5 text-sm font-medium transition-colors"
+                                data-testid="review-submit-retry"
+                            >
+                                Retry
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <div className="pt-2 sm:pt-4 flex gap-2 sm:gap-3">
                 <button
                     type="button"
@@ -312,7 +341,7 @@ export function ReviewStep({
                     type="button"
                     onClick={onSubmit}
                     disabled={submitting}
-                    className="flex-[2] py-3 sm:py-4 text-center rounded-xl font-bold bg-slate-700 hover:bg-slate-600 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+                    className="flex-[2] py-3 sm:py-4 text-center rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base shadow-lg shadow-emerald-900/20"
                 >
                     {submitting ? (
                         <>

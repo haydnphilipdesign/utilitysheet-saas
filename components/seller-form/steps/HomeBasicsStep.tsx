@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Droplets, Flame, Waves, Wifi, Tv, Trash2, Check, Flower2, ShieldCheck, Wrench, KeyRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
-import type { AdvancedModuleKey, UtilityCategory } from '@/types';
+import type { AdvancedModuleKey, SewerType, UtilityCategory, WaterSource } from '@/types';
 import { ADVANCED_MODULE_KEYS } from '@/lib/packet/modules';
 
 interface HomeBasicsStepProps {
@@ -88,7 +88,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
         >
             <div className="text-center space-y-1 sm:space-y-2">
                 <h3 className="text-xl sm:text-2xl font-bold text-foreground">Home Basics</h3>
-                <p className="text-sm sm:text-base text-muted-foreground">Let's start with the essentials.</p>
+                <p className="text-sm sm:text-base text-muted-foreground">Let&apos;s start with the essentials.</p>
             </div>
 
             {/* Water Source */}
@@ -99,7 +99,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     {[
-                        { id: 'city', label: 'Public Water' },
+                        { id: 'city', label: 'Public Water', hint: "We'll ask the provider name next" },
                         { id: 'well', label: 'Private Well' },
                         { id: 'hoa', label: 'HOA / Condo' },
                         { id: 'not_sure', label: 'Not Sure' },
@@ -107,14 +107,17 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         <button
                             key={opt.id}
                             type="button"
-                            onClick={() => updateState({ water_source: opt.id as any })}
+                            onClick={() => updateState({ water_source: opt.id as WaterSource })}
                             aria-pressed={state.water_source === opt.id}
                             className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.water_source === opt.id
-                                ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
+                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
                             <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
+                            {opt.hint && (
+                                <span className="block text-[10px] sm:text-xs opacity-70 mt-0.5">{opt.hint}</span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -128,7 +131,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     {[
-                        { id: 'public', label: 'Public Sewer' },
+                        { id: 'public', label: 'Public Sewer', hint: "We'll ask the authority next" },
                         { id: 'septic', label: 'Septic System' },
                         { id: 'hoa', label: 'HOA / Condo' },
                         { id: 'not_sure', label: 'Not Sure' },
@@ -136,14 +139,17 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         <button
                             key={opt.id}
                             type="button"
-                            onClick={() => updateState({ sewer_type: opt.id as any })}
+                            onClick={() => updateState({ sewer_type: opt.id as SewerType })}
                             aria-pressed={state.sewer_type === opt.id}
                             className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.sewer_type === opt.id
-                                ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
+                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
                             <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
+                            {opt.hint && (
+                                <span className="block text-[10px] sm:text-xs opacity-70 mt-0.5">{opt.hint}</span>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -196,7 +202,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                 }}
                                 aria-pressed={isSelected}
                                 className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${isSelected
-                                    ? 'bg-slate-500/10 border-slate-500/50 text-slate-700 dark:text-slate-300 shadow-lg shadow-slate-500/10'
+                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
                                     : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                     }`}
                             >
@@ -214,11 +220,14 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     animate={{ opacity: 1, height: 'auto' }}
                     className="space-y-3 sm:space-y-4"
                 >
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
-                        <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        Which is your PRIMARY heat source?
-                    </label>
-                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                    <div>
+                        <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                            <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            Which is the primary heat source?
+                        </label>
+                        <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">This determines which heating provider we ask about next.</p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                         {state.fuels_present.map((fuelId) => {
                             const label = fuelId === 'natural_gas' ? 'Natural Gas' :
                                 fuelId === 'propane' ? 'Propane' :
@@ -231,17 +240,25 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     type="button"
                                     onClick={() => updateState({ primary_heating_type: fuelId })}
                                     aria-pressed={state.primary_heating_type === fuelId}
-                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all active:scale-95 ${state.primary_heating_type === fuelId
-                                        ? 'bg-slate-600 text-white border-slate-600'
-                                        : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
+                                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.primary_heating_type === fuelId
+                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                        : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
                                 >
-                                    {label}
+                                    <span className="block font-medium text-sm sm:text-base">{label}</span>
                                 </button>
                             );
                         })}
                     </div>
                 </motion.div>
+            )}
+
+            {(availableOptionalUtilities.length > 0 || showAdvancedModuleSelector) && (
+                <div className="pt-2 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-medium">Optional</span>
+                    <div className="h-px flex-1 bg-border" />
+                </div>
             )}
 
             {/* Optional Utilities */}
@@ -318,7 +335,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         Optional handoff details
                     </label>
                     <p className="text-xs text-muted-foreground -mt-1 sm:-mt-2">
-                        Choose any optional sections you want to complete.
+                        These help the next owner take over smoothly. Each section you pick adds one short page. You can skip any field later.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                         {advancedGroups.map((group) => {
