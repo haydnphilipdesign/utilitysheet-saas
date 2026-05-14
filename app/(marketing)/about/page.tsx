@@ -109,7 +109,7 @@ export default function AboutPage() {
                                         <div className="absolute -inset-3 bg-gradient-to-r from-rose-500/20 to-pink-500/20 rounded-full blur-xl" />
                                         <div className="relative w-44 h-44 rounded-full overflow-hidden border-4 border-background shadow-2xl">
                                             <Image
-                                                src="/debbie_headshot.png"
+                                                src="/debbie_headshot.jpg"
                                                 alt="Debbie O'Brien - PA Real Estate Support Services"
                                                 fill
                                                 className="object-cover"
@@ -128,7 +128,7 @@ export default function AboutPage() {
                                         <div className="absolute -inset-3 bg-gradient-to-r from-slate-500/20 to-sky-500/20 rounded-full blur-xl" />
                                         <div className="relative w-44 h-44 rounded-full overflow-hidden border-4 border-background shadow-2xl">
                                             <Image
-                                                src="/haydn.png"
+                                                src="/haydn.jpg"
                                                 alt="Haydn - Developer of UtilitySheet"
                                                 fill
                                                 className="object-cover"
