@@ -2,6 +2,7 @@ import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import { jsPDF } from 'jspdf';
 import { fitRectWithin } from '@/lib/pdf-fit';
+import { calculateSimplePdfFitDiagnostics } from '@/lib/pdf/simple-fit-diagnostics';
 import { getPacketDataByRequestId, getPacketDataByPublicToken } from '@/lib/packet/packet-data';
 import { buildPacketPdfHtml, type PacketPdfData } from '@/lib/pdf/packet-html';
 
@@ -129,6 +130,8 @@ async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: s
             throw new Error('Failed to find packet render root in headless browser');
         }
 
+        const rootBox = await root.boundingBox();
+
         const pngBuffer = await root.screenshot({ type: 'png' });
         const imageData = `data:image/png;base64,${Buffer.from(pngBuffer).toString('base64')}`;
 
@@ -143,6 +146,25 @@ async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: s
         const margin = 0.5;
         const contentWidth = pageWidth - margin * 2;
         const contentHeight = pageHeight - margin * 2;
+
+        if (rootBox) {
+            const diagnostics = calculateSimplePdfFitDiagnostics({
+                sourceWidth: rootBox.width,
+                sourceHeight: rootBox.height,
+                targetWidth: contentWidth,
+                targetHeight: contentHeight,
+            });
+
+            if (!diagnostics.isReadable) {
+                console.warn('[pdf][simple_fit] readability_threshold_exceeded', {
+                    filename: render.filename,
+                    sourceWidth: Math.round(rootBox.width),
+                    sourceHeight: Math.round(rootBox.height),
+                    limitingDimension: diagnostics.limitingDimension,
+                    effectiveBaselineFontPt: Number(diagnostics.effectiveBaselineFontPt.toFixed(2)),
+                });
+            }
+        }
 
         const imageProperties = pdf.getImageProperties(imageData);
         const { width: imgWidth, height: imgHeight } = fitRectWithin({

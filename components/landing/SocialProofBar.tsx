@@ -57,7 +57,7 @@ export function SocialProofBar() {
     const shouldReduceMotion = useReducedMotion();
 
     return (
-        <section className="py-12 sm:py-16 bg-slate-700 text-white px-4 sm:px-6 lg:px-8">
+        <section className="bg-slate-700 px-4 py-12 text-white sm:px-6 sm:py-20 lg:px-8">
             <div className="mx-auto max-w-7xl">
                 {/* Stats Row */}
                 <motion.div
@@ -65,7 +65,7 @@ export function SocialProofBar() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.5 }}
-                    className="grid grid-cols-3 gap-4 sm:gap-8 mb-12"
+                    className="mb-12 grid grid-cols-3 gap-4 border-b border-white/10 pb-10 sm:gap-8"
                 >
                     {stats.map((stat, idx) => (
                         <motion.div
@@ -83,7 +83,7 @@ export function SocialProofBar() {
                                 {stat.value}
                             </div>
                             <div className="text-xs sm:text-sm font-semibold text-white mb-1">{stat.label}</div>
-                            <div className="text-xs text-slate-300 max-w-[160px] mx-auto hidden sm:block leading-snug">{stat.description}</div>
+                            <div className="mx-auto hidden max-w-[160px] text-xs leading-snug text-slate-300 sm:block">{stat.description}</div>
                         </motion.div>
                     ))}
                 </motion.div>
@@ -109,19 +109,19 @@ export function SocialProofBar() {
                         {customerTestimonials.map((testimonial) => (
                             <div
                                 key={testimonial.name}
-                                className="relative bg-white/5 border border-white/10 rounded-lg p-6 sm:p-7 flex flex-col"
+                                className="relative flex min-h-[360px] flex-col rounded-lg border border-white/10 bg-white/[0.055] p-6 sm:p-7"
                             >
-                                <Quote className="w-7 h-7 text-emerald-300 mb-5" aria-hidden="true" />
-                                <blockquote className="text-sm sm:text-base font-medium leading-7 mb-6 text-slate-100 flex-1">
+                                <Quote className="mb-5 h-7 w-7 text-emerald-300" aria-hidden="true" />
+                                <blockquote className="mb-7 flex-1 text-sm font-medium leading-7 text-slate-100 sm:text-[0.9375rem]">
                                     &ldquo;{testimonial.quote}&rdquo;
                                 </blockquote>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-emerald-400/15 border border-emerald-300/30 flex items-center justify-center text-sm font-semibold text-emerald-100 flex-shrink-0">
+                                <div className="flex items-start gap-4 border-t border-white/10 pt-5">
+                                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-400/15 text-sm font-semibold text-emerald-100">
                                         {testimonial.initials}
                                     </div>
                                     <div>
                                         <div className="font-semibold text-white">{testimonial.name}</div>
-                                        <div className="text-sm text-slate-300">{testimonial.role}</div>
+                                        <div className="mt-0.5 text-sm leading-snug text-slate-300">{testimonial.role}</div>
                                     </div>
                                 </div>
                             </div>
@@ -130,7 +130,7 @@ export function SocialProofBar() {
 
                     <div className="mt-6 rounded-lg border border-white/10 bg-slate-800/40 p-6 sm:p-8 lg:flex lg:items-start lg:gap-10">
                         <div className="lg:w-5/12">
-                            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200 sm:text-sm">
                                 Origin story
                             </p>
                             <h3 className="mt-3 text-2xl font-bold tracking-tight text-white">
@@ -142,7 +142,7 @@ export function SocialProofBar() {
                         </div>
                         <div className="mt-6 border-t border-white/10 pt-6 lg:mt-0 lg:w-7/12 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
                             <Quote className="w-7 h-7 text-emerald-300 mb-4" aria-hidden="true" />
-                            <blockquote className="text-sm sm:text-base font-medium leading-7 text-slate-100">
+                            <blockquote className="text-sm font-medium leading-7 text-slate-100 sm:text-base">
                                 &ldquo;{originStoryTestimonial.quote}&rdquo;
                             </blockquote>
                             <div className="mt-5 flex items-center gap-4">

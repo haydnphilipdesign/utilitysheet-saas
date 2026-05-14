@@ -23,7 +23,7 @@ export function AudienceSection() {
               <p className="mt-3 leading-7 text-muted-foreground">{page.description}</p>
               <Link
                 href={page.href}
-                className="mt-5 inline-flex text-sm font-semibold text-slate-700 underline underline-offset-4 hover:text-slate-900"
+                className="mt-5 inline-flex text-sm font-semibold text-slate-500 underline underline-offset-4 hover:text-slate-300"
               >
                 Explore this use case
               </Link>

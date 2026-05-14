@@ -41,10 +41,10 @@ export function DemoVideoSection() {
     }, [isInView]);
 
     return (
-        <section ref={sectionRef} className="relative overflow-hidden bg-background px-4 pt-8 pb-12 sm:px-6 sm:py-18 lg:px-8 lg:py-24">
+        <section ref={sectionRef} className="relative overflow-hidden border-t border-border/50 bg-background px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
             <div className="absolute inset-x-0 top-0 -z-10 h-32 bg-gradient-to-b from-emerald-500/5 to-transparent" />
             <div className="mx-auto max-w-7xl">
-                <div className="grid items-center gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12">
+                <div className="grid items-center gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:gap-14">
                     <motion.div
                         initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -52,7 +52,7 @@ export function DemoVideoSection() {
                         transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.5 }}
                         className="text-center lg:text-left"
                     >
-                        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600">
+                        <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                             Product demo
                         </p>
                         <h2 className="text-3xl font-bold tracking-tight text-foreground text-balance sm:text-4xl lg:text-5xl">
@@ -66,7 +66,7 @@ export function DemoVideoSection() {
                             {demoHighlights.map((item) => (
                                 <div
                                     key={item.text}
-                                    className="flex items-center gap-3 rounded-lg border border-border/70 bg-card/70 px-4 py-3 text-left shadow-sm"
+                                    className="flex min-h-16 items-center gap-3 rounded-lg border border-border/70 bg-card/60 px-4 py-3 text-left shadow-sm"
                                 >
                                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600/10 text-emerald-700 dark:text-emerald-300">
                                         <item.icon className="h-4 w-4" aria-hidden="true" />

@@ -7,6 +7,14 @@ import { Bell, FilePenLine, FileText, Layers, Link2, MailCheck, Palette, ShieldC
 import { trackEvent } from '@/lib/analytics/events';
 import { featureHighlights } from '@/lib/marketing-content';
 
+function PlanBadge({ children }: { children: string }) {
+    return (
+        <span className="inline-flex h-6 items-center rounded-full border border-slate-400/25 bg-slate-500/12 px-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-300 dark:text-slate-200">
+            {children}
+        </span>
+    );
+}
+
 const features = [
     {
         icon: Link2,
@@ -83,39 +91,35 @@ export function FeatureSection() {
     }, [isInView]);
 
     return (
-        <section ref={sectionRef} id="features" className="scroll-mt-24 py-24 bg-background px-4 sm:px-6 lg:px-8">
+        <section ref={sectionRef} id="features" className="scroll-mt-24 bg-background px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
             <div className="mx-auto max-w-7xl">
-                <div className="text-center mb-20">
-                    <p className="text-slate-600 font-bold text-sm tracking-wider uppercase mb-3">Features</p>
+                <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-16">
+                    <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-slate-500 sm:text-sm">Features</p>
                     <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl text-balance">
                         Built around the seller link
                     </h2>
-                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto mt-4">
+                    <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
                         UtilitySheet is focused on one real estate job: collect seller utility details once, turn them into a clean web sheet and PDF, and keep the finished sheet useful after submission.
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-8">
                     {features.map((feature, idx) => (
                         <motion.div
                             key={idx}
-                            whileHover={{ y: -5 }}
-                            className="group p-8 rounded-lg bg-card/40 border border-border hover:border-slate-500/30 transition-all hover:bg-card/60"
+                            whileHover={{ y: -4 }}
+                            className="group flex min-h-[270px] flex-col rounded-lg border border-border bg-card/35 p-6 transition-all hover:border-slate-500/35 hover:bg-card/55 sm:p-7 lg:min-h-[292px] lg:last:col-start-2"
                         >
-                            <div className="w-12 h-12 rounded-lg bg-slate-500/10 flex items-center justify-center mb-6 group-hover:bg-slate-500/20 transition-colors">
-                                <feature.icon className="h-6 w-6 text-slate-600" aria-hidden="true" />
+                            <div className="mb-6 flex items-start justify-between gap-4">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-500/10 transition-colors group-hover:bg-slate-500/18">
+                                    <feature.icon className="h-5 w-5 text-slate-500 sm:h-6 sm:w-6" aria-hidden="true" />
+                                </div>
+                                {feature.tag && <PlanBadge>{feature.tag}</PlanBadge>}
                             </div>
-                            <h4 className="text-xl font-bold text-foreground mb-3">
-                                <span className="inline-flex items-center gap-2">
-                                    {feature.title}
-                                    {feature.tag && (
-                                        <span className="inline-flex items-center rounded-full bg-slate-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase shadow-sm shadow-slate-500/20">
-                                            {feature.tag}
-                                        </span>
-                                    )}
-                                </span>
+                            <h4 className="mb-3 max-w-[18rem] text-xl font-bold leading-snug text-foreground">
+                                {feature.title}
                             </h4>
-                            <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                            <p className="text-base leading-7 text-muted-foreground">{feature.description}</p>
                         </motion.div>
                     ))}
                 </div>

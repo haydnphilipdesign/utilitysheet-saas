@@ -2,6 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { buildPacketPdfHtml } from '@/lib/pdf/packet-html';
 
 describe('buildPacketPdfHtml meter number rendering', () => {
+    it('uses screenshot rendering for simple mode and print rendering for advanced mode', () => {
+        const base = {
+            request: {
+                id: 'req_strategy',
+                property_address: '123 Main St, Town, ST 00000',
+                created_at: '2026-01-01T00:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+        };
+
+        expect(buildPacketPdfHtml(base).renderStrategy).toBe('screenshot');
+        expect(buildPacketPdfHtml({ ...base, mode: 'advanced' }).renderStrategy).toBe('print_pdf');
+    });
+
     it('renders meter number only for electric utility rows when provided', () => {
         const result = buildPacketPdfHtml({
             request: {

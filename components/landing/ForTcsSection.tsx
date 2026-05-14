@@ -109,7 +109,7 @@ export function ForTcsSection() {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <div className="font-semibold text-foreground">{item.title}</div>
-                                            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">
+                                            <span className="inline-flex max-w-[9.5rem] shrink-0 items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium leading-tight text-emerald-700">
                                                 {item.timeSaved}
                                             </span>
                                         </div>
@@ -120,7 +120,7 @@ export function ForTcsSection() {
 
                             <div className="pt-4 flex flex-col sm:flex-row gap-3">
                                 <Link href="/auth/signup" className="flex-1">
-                                    <Button className="w-full bg-slate-600 text-white hover:bg-slate-700 h-11">
+                                    <Button className="h-11 w-full !bg-slate-600 !text-white hover:!bg-slate-500">
                                         Create My Seller Link
                                         <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>

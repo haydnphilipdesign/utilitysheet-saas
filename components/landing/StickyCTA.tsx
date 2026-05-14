@@ -51,13 +51,13 @@ export function StickyCTA() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
                     transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.2, ease: 'easeOut' }}
-                    className="fixed inset-x-0 bottom-0 sm:bottom-auto sm:top-0 z-[60] bg-slate-700 text-white shadow-2xl pb-safe"
+                    className="fixed inset-x-3 bottom-3 z-[60] rounded-2xl bg-slate-700 text-white shadow-2xl shadow-black/25 sm:inset-x-0 sm:bottom-auto sm:top-0 sm:rounded-none"
                 >
-                    <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-3">
+                    <div className="mx-auto max-w-7xl px-3 py-3 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <Sparkles className="w-5 h-5 text-yellow-300 flex-shrink-0 hidden sm:block" />
-                                <p className="text-sm sm:text-base font-medium truncate">
+                                <p className="truncate text-sm font-medium sm:text-base">
                                     <span className="hidden sm:inline">Ready to create your seller link? </span>
                                     <span className="text-slate-200">Start free: 3 requests, no credit card.</span>
                                 </p>
@@ -66,7 +66,7 @@ export function StickyCTA() {
                                 <Link href="/auth/signup">
                                     <Button
                                         size="sm"
-                                        className="bg-emerald-500 text-white hover:bg-emerald-400 font-semibold h-10 px-4 shadow-md"
+                                        className="h-10 !bg-emerald-500 px-4 font-semibold !text-white shadow-md hover:!bg-emerald-400"
                                         data-testid="sticky-cta-signup"
                                         onClick={() =>
                                             trackEvent('landing_primary_cta_clicked', {

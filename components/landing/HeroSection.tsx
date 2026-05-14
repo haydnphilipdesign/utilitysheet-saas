@@ -98,7 +98,7 @@ export function HeroSection() {
                                 <Button
                                     size="lg"
                                     data-testid="hero-signup-cta"
-                                    className="w-full sm:w-auto h-14 px-8 sm:px-10 text-base sm:text-lg bg-emerald-600 text-white hover:bg-emerald-500 transition-all hover:scale-105 shadow-[0_0_40px_-10px_rgba(16,185,129,0.5)] active:scale-[0.98]"
+                                    className="h-14 w-full !bg-emerald-600 px-8 text-base !text-white shadow-[0_0_40px_-10px_rgba(16,185,129,0.5)] transition-all hover:scale-105 hover:!bg-emerald-500 active:scale-[0.98] sm:w-auto sm:px-10 sm:text-lg"
                                     onClick={() =>
                                         trackEvent('landing_primary_cta_clicked', {
                                             cta_id: 'primary_hero_start_free',
@@ -115,7 +115,7 @@ export function HeroSection() {
                                 <Button
                                     size="lg"
                                     variant="outline"
-                                    className="w-full sm:w-auto h-14 px-6 sm:px-8 text-base sm:text-lg border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 bg-card/50 backdrop-blur-sm active:scale-[0.98]"
+                                    className="h-14 w-full border-border bg-card/50 px-6 text-base text-muted-foreground backdrop-blur-sm hover:bg-muted/50 hover:text-foreground active:scale-[0.98] sm:w-auto sm:px-8 sm:text-lg"
                                     onClick={() =>
                                         trackEvent('landing_cta_clicked', {
                                             cta_id: 'secondary_hero_demo',

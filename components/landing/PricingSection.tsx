@@ -96,39 +96,39 @@ export function PricingSection() {
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
+                <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
                     {tiers.map((tier) => (
                         <div
                             key={tier.name}
-                            className={`relative rounded-lg p-5 sm:p-8 border ${tier.popular
-                                ? 'bg-card/40 border-emerald-500/30 shadow-2xl shadow-emerald-500/10'
-                                : 'bg-card/20 border-border'
-                                } flex flex-col`}
+                            className={`relative flex min-h-full flex-col rounded-lg border p-6 sm:p-7 lg:p-8 ${tier.popular
+                                ? 'bg-card/45 border-emerald-500/40 shadow-2xl shadow-emerald-500/10'
+                                : 'bg-card/25 border-border'
+                                }`}
                         >
                             {tier.popular && (
-                                <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-0.5 sm:py-1 bg-emerald-600 text-white text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wide">
+                                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-4 py-1 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-white shadow-lg shadow-emerald-950/20 sm:-top-4">
                                     Most Popular
                                 </div>
                             )}
 
-                            <div className="mb-6 sm:mb-8">
-                                <h4 className="text-base sm:text-lg font-medium text-foreground">{tier.name}</h4>
-                                <div className="mt-3 sm:mt-4 flex items-baseline text-foreground">
-                                    <span className="text-4xl sm:text-5xl font-bold tracking-tight">{tier.price}</span>
+                            <div className="mb-7">
+                                <h4 className="text-lg font-semibold text-foreground">{tier.name}</h4>
+                                <div className="mt-4 flex flex-wrap items-baseline text-foreground">
+                                    <span className="text-4xl font-bold tracking-tight sm:text-5xl">{tier.price}</span>
                                     {tier.period && (
-                                        <span className="ml-1 text-lg sm:text-xl font-medium text-muted-foreground">{tier.period}</span>
+                                        <span className="ml-1.5 text-base font-medium text-muted-foreground sm:text-lg">{tier.period}</span>
                                     )}
                                 </div>
-                                <p className="mt-3 sm:mt-4 text-muted-foreground text-xs sm:text-sm h-8 sm:h-10">{tier.description}</p>
+                                <p className="mt-4 min-h-0 text-sm leading-6 text-muted-foreground lg:min-h-[5.25rem]">{tier.description}</p>
                             </div>
 
-                            <ul className="space-y-3 sm:space-y-4 mb-6 sm:mb-8 flex-1">
+                            <ul className="mb-8 flex-1 space-y-3.5">
                                 {tier.features.map((feature) => (
-                                    <li key={feature} className="flex items-start">
-                                        <div className="flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-600/10 flex items-center justify-center mt-0.5">
-                                            <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-600" />
+                                    <li key={feature} className="flex items-start gap-3">
+                                        <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-slate-500/12">
+                                            <Check className="h-3.5 w-3.5 text-slate-400" />
                                         </div>
-                                        <span className="ml-2.5 sm:ml-3 text-secondary-foreground text-xs sm:text-sm">{feature}</span>
+                                        <span className="text-sm leading-6 text-secondary-foreground">{feature}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -136,9 +136,9 @@ export function PricingSection() {
                             <Link href={tier.href} className="block mt-auto">
                                 <Button
                                     data-testid={`pricing-${tier.name.toLowerCase()}-cta`}
-                                    className={`w-full h-11 sm:h-12 text-sm sm:text-base font-semibold active:scale-[0.98] ${tier.popular
-                                        ? 'bg-emerald-600 text-white hover:bg-emerald-500'
-                                        : 'bg-foreground text-background hover:bg-foreground/90'
+                                    className={`h-12 w-full text-sm font-semibold active:scale-[0.98] sm:text-base ${tier.popular
+                                        ? '!bg-emerald-600 !text-white hover:!bg-emerald-500'
+                                        : '!bg-foreground !text-background hover:!bg-foreground/90'
                                         }`}
                                     onClick={() => {
                                         trackEvent('landing_cta_clicked', {

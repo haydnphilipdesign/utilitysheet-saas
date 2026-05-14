@@ -51,7 +51,7 @@ export function FinalCtaSection() {
                                 <Button
                                     size="lg"
                                     data-testid="marketing-final-signup-cta"
-                                    className="w-full sm:w-auto bg-emerald-500 text-white hover:bg-emerald-400 h-14 px-8 sm:px-10 text-base sm:text-xl font-bold shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all"
+                                    className="h-14 w-full !bg-emerald-500 px-8 text-base font-bold !text-white shadow-xl shadow-emerald-500/20 transition-all hover:!bg-emerald-400 hover:shadow-emerald-500/30 sm:w-auto sm:px-10 sm:text-xl"
                                     onClick={() =>
                                         trackEvent('landing_primary_cta_clicked', {
                                             cta_id: 'primary_final_start_free',
