@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowLeft, Building2, FileText, Inbox, LayoutDashboard, Megaphone, Shield, Sparkles, Users, Zap } from 'lucide-react';
+import { ArrowLeft, Building2, FileText, Inbox, LayoutDashboard, Megaphone, Shield, Sparkles, TrendingDown, Users, Zap } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,7 @@ const adminNavigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Requests', href: '/admin/requests', icon: Inbox },
+    { name: 'Abandonment', href: '/admin/abandonment', icon: TrendingDown },
     { name: 'Top Users', href: '/admin/testimonial-candidates', icon: Sparkles },
     { name: 'Orgs', href: '/admin/organizations', icon: Building2 },
     { name: 'Updates', href: '/admin/updates', icon: Megaphone },
