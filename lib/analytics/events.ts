@@ -27,6 +27,7 @@ type AnalyticsEventMap = {
   pdf_attachment_value_prop_viewed: BasePayload & {
     section_id: string;
   };
+  landing_demo_video_played: BasePayload;
   signup_started: BasePayload & {
     method: "email" | "google";
     source: string;

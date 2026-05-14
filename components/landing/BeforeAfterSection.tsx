@@ -12,9 +12,7 @@ const oldWaySteps = [
 const newWaySteps = [
     { icon: MessageSquare, text: 'Send one secure seller link you can reuse on every file' },
     { icon: Zap, text: 'Seller enters the address and confirms providers on their phone' },
-    { icon: Check, text: 'Pro/Teams can correct submitted sheets in the dashboard' },
-    { icon: FileSpreadsheet, text: 'Web sheet + PDF generated for clean sharing' },
-    { icon: Check, text: 'Your completion email can include the finished PDF automatically' },
+    { icon: FileSpreadsheet, text: 'Get a clean web sheet plus shareable PDF after submission' },
 ];
 
 export function BeforeAfterSection() {

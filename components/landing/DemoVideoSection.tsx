@@ -56,10 +56,10 @@ export function DemoVideoSection() {
                             Product demo
                         </p>
                         <h2 className="text-3xl font-bold tracking-tight text-foreground text-balance sm:text-4xl lg:text-5xl">
-                            See the seller flow
+                            Watch a real submission, start to finish
                         </h2>
                         <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg lg:mx-0">
-                            Send one reusable seller link, let the seller confirm their utilities, and get a clean web sheet plus PDF back after submission.
+                            66 seconds: send the link, the seller confirms their utilities on their phone, and a clean web sheet plus PDF land in your dashboard.
                         </p>
 
                         <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:max-w-xl">

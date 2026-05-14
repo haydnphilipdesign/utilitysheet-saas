@@ -3,7 +3,6 @@ import { Suspense } from 'react';
 
 import { AuthenticatedRedirect } from '@/components/landing/AuthenticatedRedirect';
 import { HeroSection } from '@/components/landing/HeroSection';
-import { DemoVideoSection } from '@/components/landing/DemoVideoSection';
 import { BeforeAfterSection } from '@/components/landing/BeforeAfterSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
 import { FeatureSection } from '@/components/landing/FeatureSection';
@@ -13,7 +12,6 @@ import { FaqSection } from '@/components/landing/FaqSection';
 import { StickyCTA } from '@/components/landing/StickyCTA';
 import { FinalCtaSection } from '@/components/landing/FinalCtaSection';
 import { ForTcsSection } from '@/components/landing/ForTcsSection';
-import { AudienceSection } from '@/components/landing/AudienceSection';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { faqItems } from '@/lib/marketing-content';
 import { createPageMetadata } from '@/lib/seo/site';
@@ -59,20 +57,14 @@ export default function LandingPage() {
             {/* Before/After — pain vs. solution contrast */}
             <BeforeAfterSection />
 
-            {/* How It Works — 3-step seller-link process visualization */}
-            <HowItWorks />
+            {/* Social Proof — testimonials land hardest right after seeing the demo in the hero */}
+            <SocialProofBar />
 
-            {/* Product Demo — visual walkthrough of the reusable seller-link process */}
-            <DemoVideoSection />
+            {/* How It Works — skimmable still-image walkthrough for people who did not play the hero video */}
+            <HowItWorks />
 
             {/* Features — product capabilities grid */}
             <FeatureSection />
-
-            {/* Social Proof — proof from real customer workflow */}
-            <SocialProofBar />
-
-            {/* Audience pages — internal links for high-intent searches */}
-            <AudienceSection />
 
             {/* Use case content — TC workflow language */}
             <ForTcsSection />

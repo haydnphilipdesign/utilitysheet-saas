@@ -18,8 +18,8 @@ const stats = [
     },
     {
         icon: FileText,
-        value: 'PDF',
-        label: 'Ready after submission',
+        value: 'PDF ready',
+        label: 'After submission',
         description: 'Review the web sheet and download a shareable utility sheet PDF',
     },
 ];
