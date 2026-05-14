@@ -14,7 +14,7 @@ function Hero3DCard() {
             <div className="absolute -inset-x-4 bottom-0 top-10 -z-10 rounded-[2rem] bg-gradient-to-br from-emerald-200/25 via-slate-200/35 to-transparent blur-3xl dark:from-emerald-900/20 dark:via-slate-900/40" />
             <div className="relative mx-auto aspect-[1.08] w-full max-w-[520px] sm:aspect-[1.18] lg:max-w-[620px]">
                 <Image
-                    src="/landing/utility-info-sheet.png"
+                    src="/landing/utility-info-sheet-123-Main-St.png"
                     alt="Finished UtilitySheet utility info sheet with provider contacts and buyer next steps"
                     fill
                     priority
