@@ -41,6 +41,18 @@ describe('intake-validation', () => {
         expect(result.missingFields).toContain('street');
     });
 
+    it('allows addresses without a house number when the rest of the address is complete', () => {
+        const result = validateIntakeAddress('Oakwood Court, Middle Smithfield Township, PA 18302');
+        expect(result.isComplete).toBe(true);
+        expect(result.missingFields).toEqual([]);
+        expect(result.parsed).toEqual({
+            street: 'Oakwood Court',
+            city: 'Middle Smithfield Township',
+            state: 'PA',
+            zip: '18302',
+        });
+    });
+
     it('formats canonical address without unit', () => {
         const formatted = formatCanonicalIntakeAddress({
             street: '123 Main St',

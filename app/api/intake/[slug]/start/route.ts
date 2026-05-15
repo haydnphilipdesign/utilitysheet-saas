@@ -5,7 +5,7 @@ import { intakeStartRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitU
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { getClientIp } from '@/lib/network/client-ip';
-import { formatCanonicalIntakeAddress, validateIntakeAddress } from '@/lib/address/intake-validation';
+import { formatCanonicalIntakeAddress, hasIntakeStreetNumber, validateIntakeAddress } from '@/lib/address/intake-validation';
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 
@@ -95,7 +95,7 @@ export async function POST(
             return NextResponse.json(
                 {
                     error: 'Incomplete address',
-                    message: 'Please include street address, city, state, and ZIP code.',
+                    message: 'Please include house number, street address, city, state, and ZIP code.',
                     missingFields: intakeValidation.missingFields,
                 },
                 { status: 400 }
@@ -198,6 +198,10 @@ export async function POST(
                 actor: 'seller',
                 source: 'intake_link',
                 slug,
+                submitted_property_address: parsed.data.propertyAddress,
+                canonical_property_address: canonicalPropertyAddress,
+                address_was_canonicalized: parsed.data.propertyAddress !== canonicalPropertyAddress,
+                street_has_number: hasIntakeStreetNumber(intakeValidation.parsed.street),
                 utility_categories: UTILITY_CATEGORY_KEYS,
                 packet_mode: packetMode,
                 advanced_modules: advancedModules,

@@ -51,6 +51,10 @@ function hasSuspiciousCityInStreet(parts: IntakeAddressParts): boolean {
     return street.endsWith(` ${city}`) || street === city;
 }
 
+export function hasIntakeStreetNumber(street: string): boolean {
+    return /\d/.test(street);
+}
+
 export function normalizeIntakeAddressParts(input: Partial<IntakeAddressParts>): IntakeAddressParts {
     return {
         street: normalizeWhitespace(input.street),

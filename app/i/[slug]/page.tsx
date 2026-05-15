@@ -40,7 +40,7 @@ const EMPTY_CONFIRM_ADDRESS: ConfirmAddressFields = {
 };
 
 const FIELD_ERROR_MESSAGE: Record<IntakeMissingField, string> = {
-    street: 'Please enter a street address.',
+    street: 'Please enter the full street address, including the house number.',
     city: 'Please enter a city.',
     state: 'Please select a state.',
     zip: 'Please enter a valid 5-digit ZIP code.',
