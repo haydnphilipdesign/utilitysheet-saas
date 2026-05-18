@@ -53,6 +53,7 @@ import { toast } from 'sonner';
 import type { ProductUpdate } from '@/types';
 import { trackEvent } from '@/lib/analytics/events';
 import { mergeFeaturedProductUpdate } from '@/lib/product-updates';
+import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton';
 
 const statusConfig = {
     draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
@@ -61,7 +62,7 @@ const statusConfig = {
     submitted: { label: 'Submitted', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30', icon: CheckCircle2 },
 };
 
-import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton';
+const REUSABLE_LINK_NEXT_STEPS_DISMISSED_KEY = 'utilitysheet:reusable-link-next-steps-dismissed';
 
 export default function DashboardPage() {
     const firstRunLinkViewedRef = useRef(false);
@@ -99,6 +100,7 @@ export default function DashboardPage() {
     const [checkoutLoading, setCheckoutLoading] = useState(false);
     const [intakeLinkLoading, setIntakeLinkLoading] = useState(true);
     const [copiedDashboardLink, setCopiedDashboardLink] = useState(false);
+    const [reusableLinkNextStepsDismissed, setReusableLinkNextStepsDismissed] = useState(false);
 
     useEffect(() => {
         async function fetchRequests() {
@@ -169,6 +171,8 @@ export default function DashboardPage() {
         if (savedDismissedId) {
             setDismissedUpdateId(savedDismissedId);
         }
+
+        setReusableLinkNextStepsDismissed(localStorage.getItem(REUSABLE_LINK_NEXT_STEPS_DISMISSED_KEY) === 'true');
     }, []);
 
     useEffect(() => {
@@ -291,6 +295,11 @@ export default function DashboardPage() {
             localStorage.setItem('dismissedUpdateId', latestUpdateId);
             setDismissedUpdateId(latestUpdateId);
         }
+    };
+
+    const handleDismissReusableLinkNextSteps = () => {
+        localStorage.setItem(REUSABLE_LINK_NEXT_STEPS_DISMISSED_KEY, 'true');
+        setReusableLinkNextStepsDismissed(true);
     };
 
     const handleCopyDashboardIntakeLink = async () => {
@@ -614,20 +623,32 @@ export default function DashboardPage() {
                                 </p>
                             )}
 
-                            <div className="rounded-lg border border-border bg-background/40 p-4 space-y-2.5">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-foreground">What happens next</p>
-                                {[
-                                    'Seller opens your link and enters the property address.',
-                                    'They complete utility details in about 2 minutes.',
-                                    'You receive the submission by email, with PDF attachment support and dashboard review on every plan.',
-                                    'Pro and Teams can edit submitted sheets after submission without reopening the seller link.',
-                                ].map((step) => (
-                                    <div key={step} className="flex items-start gap-2">
-                                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                        <p className="text-xs sm:text-sm text-muted-foreground">{step}</p>
+                            {!reusableLinkNextStepsDismissed && (
+                                <div className="rounded-lg border border-border bg-background/40 p-4 space-y-2.5">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-foreground">What happens next</p>
+                                        <button
+                                            type="button"
+                                            aria-label="Dismiss what happens next"
+                                            onClick={handleDismissReusableLinkNextSteps}
+                                            className="-mr-1 -mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                                        >
+                                            <X className="h-3.5 w-3.5" aria-hidden="true" />
+                                        </button>
                                     </div>
-                                ))}
-                            </div>
+                                    {[
+                                        'Seller opens your link and enters the property address.',
+                                        'They complete utility details in about 2 minutes.',
+                                        'You receive the submission by email, with PDF attachment support and dashboard review on every plan.',
+                                        'Pro and Teams can edit submitted sheets after submission without reopening the seller link.',
+                                    ].map((step) => (
+                                        <div key={step} className="flex items-start gap-2">
+                                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                            <p className="text-xs sm:text-sm text-muted-foreground">{step}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
                             <Separator className="bg-border" />
 
