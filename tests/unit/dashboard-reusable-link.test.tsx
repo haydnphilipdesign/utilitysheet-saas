@@ -111,6 +111,7 @@ function createDashboardFetchMock(options: FetchOptions) {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     Object.defineProperty(navigator, 'clipboard', {
         value: {
             writeText: vi.fn().mockResolvedValue(undefined),
@@ -180,5 +181,44 @@ describe('dashboard reusable seller link', () => {
         expect(saveCall).toBeTruthy();
         const body = JSON.parse(String((saveCall?.[1] as RequestInit).body));
         expect(body.slug).toBe('updated-pro-slug');
+    });
+
+    it('lets users dismiss the reusable link next steps explainer', async () => {
+        const fetchMock = createDashboardFetchMock({
+            plan: 'pro',
+            canCustomize: true,
+            slug: 'pro-slug',
+            onboardingCompleted: true,
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<DashboardPage />);
+
+        expect(await screen.findByText('What happens next')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /dismiss what happens next/i }));
+
+        await waitFor(() => {
+            expect(screen.queryByText('What happens next')).not.toBeInTheDocument();
+        });
+        expect(localStorage.getItem('utilitysheet:reusable-link-next-steps-dismissed')).toBe('true');
+    });
+
+    it('keeps the reusable link next steps explainer hidden after dismissal', async () => {
+        localStorage.setItem('utilitysheet:reusable-link-next-steps-dismissed', 'true');
+        const fetchMock = createDashboardFetchMock({
+            plan: 'pro',
+            canCustomize: true,
+            slug: 'pro-slug',
+            onboardingCompleted: true,
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<DashboardPage />);
+
+        await screen.findByText('Reusable Seller Link');
+        await waitFor(() => {
+            expect(screen.queryByText('What happens next')).not.toBeInTheDocument();
+        });
     });
 });
