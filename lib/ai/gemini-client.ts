@@ -7,7 +7,8 @@ const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Model configuration
-const MODEL_NAME = 'gemini-flash-latest';
+const DEFAULT_MODEL_NAME = 'gemini-3.5-flash';
+const MODEL_NAME = process.env.GEMINI_MODEL_NAME?.trim() || DEFAULT_MODEL_NAME;
 
 // Retry configuration
 const MAX_RETRIES = 3;

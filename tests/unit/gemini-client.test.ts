@@ -33,6 +33,7 @@ describe('gemini-client grounding config', () => {
         delete process.env.GEMINI_GOOGLE_SEARCH_GROUNDING;
         delete process.env.GEMINI_GROUNDING_DYNAMIC_THRESHOLD;
         delete process.env.GEMINI_API_KEY;
+        delete process.env.GEMINI_MODEL_NAME;
     });
 
     afterEach(() => {
@@ -45,7 +46,7 @@ describe('gemini-client grounding config', () => {
         const modelParams = getGeminiModel(true);
 
         expect(GoogleGenAIMock).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
-        expect(modelParams?.model).toBe('gemini-flash-latest');
+        expect(modelParams?.model).toBe('gemini-3.5-flash');
         expect(modelParams?.config.responseMimeType).toBe('application/json');
         expect(modelParams?.config.tools).toEqual([
             {
@@ -87,7 +88,16 @@ describe('gemini-client grounding config', () => {
 
         expect(isGeminiConfigured()).toBe(true);
         expect(GoogleGenAIMock).toHaveBeenCalledWith({ apiKey: 'fallback-key' });
-        expect(modelParams?.model).toBe('gemini-flash-latest');
+        expect(modelParams?.model).toBe('gemini-3.5-flash');
+    });
+
+    it('allows overriding the Gemini model via GEMINI_MODEL_NAME', async () => {
+        process.env.GEMINI_MODEL_NAME = 'gemini-3-flash-preview';
+
+        const { getGeminiModel } = await import('@/lib/ai/gemini-client');
+        const modelParams = getGeminiModel(false);
+
+        expect(modelParams?.model).toBe('gemini-3-flash-preview');
     });
 });
 
