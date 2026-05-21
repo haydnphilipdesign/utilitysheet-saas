@@ -1,4 +1,5 @@
-import { GenerateContentConfig, GoogleGenAI, Tool } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
+import type { GenerateContentConfig, ThinkingLevel, Tool } from '@google/genai';
 
 // Get API key from environment
 const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
@@ -9,6 +10,7 @@ const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
 // Model configuration
 const DEFAULT_MODEL_NAME = 'gemini-3.5-flash';
 const MODEL_NAME = process.env.GEMINI_MODEL_NAME?.trim() || DEFAULT_MODEL_NAME;
+const ALLOWED_THINKING_LEVELS = ['minimal', 'low', 'medium', 'high'] as const;
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -52,6 +54,41 @@ interface GeminiErrorMetadata {
 
 function isSearchGroundingEnabled(): boolean {
     return process.env.GEMINI_GOOGLE_SEARCH_GROUNDING !== 'false';
+}
+
+function getThinkingLevel(): ThinkingLevel | undefined {
+    const raw = process.env.GEMINI_THINKING_LEVEL?.trim().toLowerCase();
+    if (!raw) {
+        return undefined;
+    }
+
+    if ((ALLOWED_THINKING_LEVELS as readonly string[]).includes(raw)) {
+        return raw as ThinkingLevel;
+    }
+
+    console.warn(
+        `[Gemini] Ignoring invalid GEMINI_THINKING_LEVEL="${raw}". Expected one of: ${ALLOWED_THINKING_LEVELS.join(', ')}.`
+    );
+    return undefined;
+}
+
+function supportsThinkingConfig(modelName: string): boolean {
+    const normalized = modelName.trim().toLowerCase();
+    if (!normalized.startsWith('gemini-')) {
+        return false;
+    }
+
+    const unsupportedModelKinds = [
+        'embedding',
+        'image',
+        'imagen',
+        'live',
+        'tts',
+        'veo',
+        'lyria',
+    ];
+
+    return !unsupportedModelKinds.some((kind) => normalized.includes(kind));
 }
 
 function warnGroundingThresholdDeprecationIfSet(): void {
@@ -255,6 +292,17 @@ export function getGeminiModel(jsonMode: boolean = false) {
     const config: GenerateContentConfig = {};
     if (jsonMode) {
         config.responseMimeType = 'application/json';
+    }
+
+    const thinkingLevel = getThinkingLevel();
+    if (thinkingLevel && supportsThinkingConfig(MODEL_NAME)) {
+        config.thinkingConfig = {
+            thinkingLevel,
+        };
+    } else if (thinkingLevel) {
+        console.warn(
+            `[Gemini] GEMINI_THINKING_LEVEL is set, but "${MODEL_NAME}" does not appear to support thinkingConfig. Omitting thinkingConfig.`
+        );
     }
 
     const tools = getGroundingTools();

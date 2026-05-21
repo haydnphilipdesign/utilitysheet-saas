@@ -34,6 +34,7 @@ describe('gemini-client grounding config', () => {
         delete process.env.GEMINI_GROUNDING_DYNAMIC_THRESHOLD;
         delete process.env.GEMINI_API_KEY;
         delete process.env.GEMINI_MODEL_NAME;
+        delete process.env.GEMINI_THINKING_LEVEL;
     });
 
     afterEach(() => {
@@ -99,6 +100,58 @@ describe('gemini-client grounding config', () => {
 
         expect(modelParams?.model).toBe('gemini-3-flash-preview');
     });
+
+    it('allows setting Gemini thinking level via GEMINI_THINKING_LEVEL', async () => {
+        process.env.GEMINI_THINKING_LEVEL = 'low';
+
+        const { getGeminiModel } = await import('@/lib/ai/gemini-client');
+        const modelParams = getGeminiModel(false);
+
+        expect(modelParams?.config.thinkingConfig).toEqual({
+            thinkingLevel: 'low',
+        });
+    });
+
+    it('keeps thinking config enabled for Gemini 3 Flash Preview', async () => {
+        process.env.GEMINI_MODEL_NAME = 'gemini-3-flash-preview';
+        process.env.GEMINI_THINKING_LEVEL = 'low';
+
+        const { getGeminiModel } = await import('@/lib/ai/gemini-client');
+        const modelParams = getGeminiModel(false);
+
+        expect(modelParams?.model).toBe('gemini-3-flash-preview');
+        expect(modelParams?.config.thinkingConfig).toEqual({
+            thinkingLevel: 'low',
+        });
+    });
+
+    it('omits thinking config for Gemini models that do not support it', async () => {
+        process.env.GEMINI_MODEL_NAME = 'gemini-3.1-flash-tts-preview';
+        process.env.GEMINI_THINKING_LEVEL = 'low';
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        const { getGeminiModel } = await import('@/lib/ai/gemini-client');
+        const modelParams = getGeminiModel(false);
+
+        expect(modelParams?.model).toBe('gemini-3.1-flash-tts-preview');
+        expect(modelParams?.config.thinkingConfig).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalledWith(
+            '[Gemini] GEMINI_THINKING_LEVEL is set, but "gemini-3.1-flash-tts-preview" does not appear to support thinkingConfig. Omitting thinkingConfig.'
+        );
+    });
+
+    it('ignores invalid Gemini thinking levels', async () => {
+        process.env.GEMINI_THINKING_LEVEL = 'turbo';
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        const { getGeminiModel } = await import('@/lib/ai/gemini-client');
+        const modelParams = getGeminiModel(false);
+
+        expect(modelParams?.config.thinkingConfig).toBeUndefined();
+        expect(warnSpy).toHaveBeenCalledWith(
+            '[Gemini] Ignoring invalid GEMINI_THINKING_LEVEL="turbo". Expected one of: minimal, low, medium, high.'
+        );
+    });
 });
 
 describe('gemini-client retry behavior', () => {
@@ -107,6 +160,7 @@ describe('gemini-client retry behavior', () => {
         vi.useFakeTimers();
         process.env.GOOGLE_AI_API_KEY = 'test-api-key';
         delete process.env.GEMINI_GOOGLE_SEARCH_GROUNDING;
+        delete process.env.GEMINI_THINKING_LEVEL;
         generateContentMock.mockReset();
         GoogleGenAIMock.mockReset();
         GoogleGenAIMock.mockImplementation(function MockGoogleGenAI() {
