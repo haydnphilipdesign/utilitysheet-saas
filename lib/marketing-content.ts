@@ -34,6 +34,11 @@ export const faqItems = [
       'No. Sellers open a secure link on their phone, confirm their utility providers, and submit the form without creating an account or downloading anything.',
   },
   {
+    question: 'Do sellers actually complete the form?',
+    answer:
+      'Yes. Nearly 86% of started UtilitySheets are completed, which is why the workflow is built around one simple seller link instead of a long email thread or a blank PDF.',
+  },
+  {
     question: 'How does PDF delivery work?',
     answer:
       'When the seller submits, UtilitySheet can attach the finished utility sheet PDF to the completion email, so the file is ready to review and share right away. If you later update the live info sheet in the dashboard, future PDF downloads reflect those changes, but previously emailed attachments stay as sent snapshots.',
@@ -128,7 +133,7 @@ export const workflowSteps = [
     number: '02',
     title: 'Let the seller confirm utility providers',
     description:
-      'UtilitySheet guides the seller through each utility. Where suggestions are available, sellers can confirm, search, or type their own provider details.',
+      'UtilitySheet guides the seller through each utility. Where suggestions are available, sellers can confirm, search, or type their own provider details, and nearly 86% of started UtilitySheets are completed.',
   },
   {
     number: '03',

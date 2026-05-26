@@ -57,7 +57,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
           {[
             {
               title: 'Fewer seller chase-downs',
-              copy: 'Instead of multiple follow-up emails or texts, you send one guided link and let the seller complete the form in a cleaner flow.',
+              copy: 'Instead of multiple follow-up emails or texts, you send one guided link and let the seller complete the form in a cleaner flow. Nearly 86% of started UtilitySheets are completed.',
             },
             {
               title: 'More consistent files',

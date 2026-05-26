@@ -81,7 +81,7 @@ export default function UtilitySheetForRealEstateAgentsPage() {
       >
         <div className="grid gap-4 md:grid-cols-2">
           {[
-            'Sellers can complete the form without a login or app install.',
+            'Sellers can complete the form without a login or app install, and nearly 86% of started UtilitySheets are completed.',
             'The finished utility sheet is easy to share with buyers and support staff.',
             'Pro and Teams can correct submitted sheets in the dashboard when small details change before closing.',
             'The workflow helps the transaction feel more organized and less reactive.',

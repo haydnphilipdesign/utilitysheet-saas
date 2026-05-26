@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'framer-motion';
-import { Clock, Link2, FileText, Quote } from 'lucide-react';
+import { CheckCircle2, Clock, Link2, FileText, Quote } from 'lucide-react';
 
 const stats = [
     {
@@ -15,6 +15,12 @@ const stats = [
         value: 'No login',
         label: 'For sellers',
         description: 'No app install, no login, no account required for the seller',
+    },
+    {
+        icon: CheckCircle2,
+        value: 'Nearly 86%',
+        label: 'Started sheets completed',
+        description: 'Most sellers who start a UtilitySheet finish it',
     },
     {
         icon: FileText,
@@ -65,7 +71,7 @@ export function SocialProofBar() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={shouldReduceMotion ? { duration: 0.01 } : { duration: 0.5 }}
-                    className="mb-12 grid grid-cols-3 gap-4 border-b border-white/10 pb-10 sm:gap-8"
+                    className="mb-12 grid grid-cols-2 gap-4 border-b border-white/10 pb-10 sm:gap-8 lg:grid-cols-4"
                 >
                     {stats.map((stat, idx) => (
                         <motion.div
