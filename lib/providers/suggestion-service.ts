@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ProviderSuggestion, UtilityCategory } from '@/types';
-import { generateJSONWithMeta, isGeminiConfigured } from '@/lib/ai/gemini-client';
+import { generateJSONWithMeta, getGeminiModelName, isGeminiConfigured } from '@/lib/ai/gemini-client';
 import { getFromCache, setInCache } from '@/lib/cache';
 import {
     US_STATES,
@@ -11,6 +11,7 @@ import {
 import { resolveParsedLocation } from '@/lib/address/location-verifier';
 import { createHash } from 'crypto';
 import { getProviderMemoryCandidates, type ProviderMemoryCandidate } from '@/lib/neon/queries/provider-memory';
+import { createAiSuggestionRun, type AiTelemetryFeature, type AiTelemetryStatus } from '@/lib/neon/queries/ai-telemetry';
 
 // Cache TTL: 30 days in seconds
 const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -21,6 +22,8 @@ const PROVIDER_MEMORY_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const SUGGESTION_CACHE_VERSION = 'v5';
 const SEARCH_CACHE_VERSION = 'v5';
 const PROVIDER_MEMORY_CACHE_VERSION = 'v1';
+const SUGGESTION_PROMPT_VERSION = 'provider-suggestions-v1';
+const SEARCH_PROMPT_VERSION = 'provider-search-v1';
 const DEFAULT_MAX_PIPELINE_MS = 6000;
 const DEFAULT_MIN_VALID_SUGGESTIONS = 2;
 const DEFAULT_MIN_TOP_CONFIDENCE = 0.45;
@@ -34,7 +37,7 @@ export type SuggestionReasonCode =
     | 'state_mismatch_rejected'
     | 'fallback_used';
 
-export type SuggestionSource = 'ai_primary' | 'ai_verify' | 'ai_recovery' | 'history_blend' | 'fallback';
+export type SuggestionSource = 'ai_primary' | 'ai_verify' | 'ai_recovery' | 'history_blend' | 'fallback' | 'cache';
 
 export interface SuggestionContext {
     requestId?: string;
@@ -588,6 +591,86 @@ function logShadowComparison(params: {
     const enableTelemetry = process.env.NODE_ENV !== 'production' || process.env.SUGGESTIONS_LOG_TELEMETRY === 'true';
     if (!enableTelemetry) return;
     console.log('[Suggestions] shadow_compare', params);
+}
+
+function getTelemetryStatus(outcome: SuggestionOutcome): AiTelemetryStatus {
+    if (outcome.source === 'fallback' || outcome.reasonCode === 'fallback_used') {
+        return 'fallback';
+    }
+    if (outcome.upstreamReasonCode === 'ai_parse_error') {
+        return 'parse_error';
+    }
+    if (outcome.upstreamReasonCode === 'ai_provider_error' || outcome.upstreamReasonCode === 'ai_unconfigured') {
+        return 'error';
+    }
+    if (
+        outcome.upstreamReasonCode === 'quality_gate_failed' ||
+        outcome.upstreamReasonCode === 'state_mismatch_rejected' ||
+        outcome.reasonCode === 'quality_gate_failed' ||
+        outcome.reasonCode === 'state_mismatch_rejected'
+    ) {
+        return 'quality_rejected';
+    }
+    return 'success';
+}
+
+async function persistSuggestionTelemetry(params: {
+    feature: AiTelemetryFeature;
+    context?: SuggestionContext;
+    outcome: SuggestionOutcome;
+    suggestions: ProviderSuggestion[];
+    promptVersion: string;
+    cacheHit?: boolean;
+}): Promise<void> {
+    try {
+        await createAiSuggestionRun({
+            requestId: params.context?.requestId,
+            accountId: params.context?.accountId,
+            organizationId: params.context?.organizationId ?? null,
+            feature: params.feature,
+            category: params.outcome.category,
+            provider: 'gemini',
+            model: getGeminiModelName(),
+            promptVersion: params.promptVersion,
+            servedPipeline: params.outcome.servedPipeline,
+            source: params.outcome.source,
+            status: getTelemetryStatus(params.outcome),
+            reasonCode: params.outcome.reasonCode,
+            upstreamReasonCode: params.outcome.upstreamReasonCode,
+            latencyMs: params.outcome.latencyMs,
+            attemptCount: params.outcome.attemptCount,
+            localityState: params.outcome.localityState,
+            localityZip3: params.outcome.localityZip3,
+            localityCity: params.outcome.localityCity,
+            suggestionCount: params.outcome.suggestionCount,
+            cacheHit: Boolean(params.cacheHit),
+            suggestions: params.suggestions,
+        });
+    } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+            console.warn('[Suggestions] Failed to persist AI telemetry:', error);
+        }
+    }
+}
+
+function buildCachedOutcome(params: {
+    category: UtilityCategory;
+    suggestions: ProviderSuggestion[];
+    location: ParsedLocation | undefined;
+}): SuggestionOutcome {
+    return {
+        category: params.category,
+        source: 'cache',
+        reasonCode: null,
+        upstreamReasonCode: null,
+        attemptCount: 0,
+        latencyMs: 0,
+        suggestionCount: params.suggestions.length,
+        localityState: params.location?.state || null,
+        localityZip3: params.location?.zip ? params.location.zip.slice(0, 3) : null,
+        localityCity: params.location?.city || null,
+        servedPipeline: 'new',
+    };
 }
 
 // ============================================================================
@@ -1421,6 +1504,13 @@ async function runSuggestionPipeline(
     if (!isShadowModeEnabled()) {
         const result = await runTwoPassSuggestionPipeline(address, category, context);
         logSuggestionOutcome(result.outcome);
+        await persistSuggestionTelemetry({
+            feature: 'provider_suggestions',
+            context,
+            outcome: result.outcome,
+            suggestions: result.suggestions,
+            promptVersion: SUGGESTION_PROMPT_VERSION,
+        });
         return result;
     }
 
@@ -1433,6 +1523,13 @@ async function runSuggestionPipeline(
 
     const [servedResult, shadowResult] = await Promise.all([served, shadow]);
     logSuggestionOutcome(servedResult.outcome);
+    await persistSuggestionTelemetry({
+        feature: 'provider_suggestions',
+        context,
+        outcome: servedResult.outcome,
+        suggestions: servedResult.suggestions,
+        promptVersion: SUGGESTION_PROMPT_VERSION,
+    });
     logShadowComparison({
         category,
         servedPipeline: serveNew ? 'new' : 'legacy',
@@ -1455,6 +1552,13 @@ async function runSearchPipeline(params: SearchPipelineParams): Promise<Pipeline
     if (!isShadowModeEnabled()) {
         const result = await runTwoPassSearchPipeline(params);
         logSuggestionOutcome(result.outcome);
+        await persistSuggestionTelemetry({
+            feature: 'provider_search',
+            context: params.context,
+            outcome: result.outcome,
+            suggestions: result.suggestions,
+            promptVersion: SEARCH_PROMPT_VERSION,
+        });
         return result;
     }
 
@@ -1462,6 +1566,13 @@ async function runSearchPipeline(params: SearchPipelineParams): Promise<Pipeline
     const shadow = serveNew ? runLegacySearchPipeline(params) : runTwoPassSearchPipeline(params);
     const [servedResult, shadowResult] = await Promise.all([served, shadow]);
     logSuggestionOutcome(servedResult.outcome);
+    await persistSuggestionTelemetry({
+        feature: 'provider_search',
+        context: params.context,
+        outcome: servedResult.outcome,
+        suggestions: servedResult.suggestions,
+        promptVersion: SEARCH_PROMPT_VERSION,
+    });
     logShadowComparison({
         category: params.category,
         servedPipeline: serveNew ? 'new' : 'legacy',
@@ -1491,6 +1602,15 @@ export async function getSuggestions(
 
     const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
     if (cached) {
+        const parsed = await resolveParsedLocation(address);
+        await persistSuggestionTelemetry({
+            feature: 'provider_suggestions',
+            context,
+            outcome: buildCachedOutcome({ category, suggestions: cached, location: parsed }),
+            suggestions: cached,
+            promptVersion: SUGGESTION_PROMPT_VERSION,
+            cacheHit: true,
+        });
         return cached;
     }
 
@@ -1563,6 +1683,15 @@ export async function searchProviders(
     const cacheKey = getPipelineCacheKey(baseKey, shouldServeNewPipeline(baseKey));
     const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
     if (cached) {
+        const parsed = address ? await resolveParsedLocation(address) : undefined;
+        await persistSuggestionTelemetry({
+            feature: 'provider_search',
+            context,
+            outcome: buildCachedOutcome({ category: resolvedCategory, suggestions: cached, location: parsed }),
+            suggestions: cached,
+            promptVersion: SEARCH_PROMPT_VERSION,
+            cacheHit: true,
+        });
         return cached;
     }
 

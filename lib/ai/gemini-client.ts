@@ -325,6 +325,10 @@ export function isGeminiConfigured(): boolean {
     return !!apiKey;
 }
 
+export function getGeminiModelName(): string {
+    return MODEL_NAME;
+}
+
 /**
  * Generate content using Gemini with retry logic
  * Returns null if not configured or on error after retries

@@ -50,6 +50,8 @@ export interface UtilityWizardState {
     display_name: string | null;
     raw_text: string | null;
     meter_number?: string | null;
+    canonical_id?: string | null;
+    confidence_score?: number | null;
     hidden: boolean;
     contact_phone?: string | null;
     contact_url?: string | null;

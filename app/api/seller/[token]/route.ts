@@ -8,6 +8,8 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
+import { markAiSuggestionSelection } from '@/lib/neon/queries/ai-telemetry';
+import { buildSellerSubmittedEventSummary } from '@/lib/telemetry/seller-submission';
 import {
     filterAdvancedPacketDataByExclusions,
     getAdvancedModuleVisibleFieldKeys,
@@ -53,6 +55,8 @@ type SellerUtilityEntryInput = {
     contact_phone?: string | null;
     contact_url?: string | null;
     meter_number?: string | null;
+    canonical_id?: string | null;
+    confidence_score?: number | null;
     extra?: SellerUtilityExtra | null;
 };
 
@@ -553,21 +557,51 @@ export async function POST(
                     ? (e.contact_url || null)
                     : null);
 
+                const finalCanonicalId = typeof e.canonical_id === 'string' && e.canonical_id.trim()
+                    ? e.canonical_id.trim()
+                    : null;
+                const finalConfidenceScore = typeof e.confidence_score === 'number' && Number.isFinite(e.confidence_score)
+                    ? Math.max(0, Math.min(1, e.confidence_score))
+                    : null;
+
                 await sql`
                     INSERT INTO utility_entries (
-                        request_id, category, entry_mode, display_name, raw_text, contact_phone, contact_url, meter_number, extra
+                        request_id,
+                        category,
+                        entry_mode,
+                        display_name,
+                        raw_text,
+                        canonical_id,
+                        confidence_score,
+                        contact_phone,
+                        contact_url,
+                        meter_number,
+                        extra
                     ) VALUES (
                         ${requestData.id},
                         ${typedCategory},
                         ${finalEntryMode},
                         ${e.display_name || null},
                         ${finalRawText || null},
+                        ${finalCanonicalId},
+                        ${finalConfidenceScore},
                         ${submittedPhone},
                         ${submittedUrl},
                         ${finalMeterNumber},
                         ${JSON.stringify(finalExtra)}::jsonb
                     )
                 `;
+
+                if (finalEntryMode === 'suggested_confirmed' || finalEntryMode === 'search_selected') {
+                    await markAiSuggestionSelection({
+                        requestId: requestData.id,
+                        category: typedCategory,
+                        selectedName: e.display_name || finalRawText || null,
+                        finalEntryMode,
+                        canonicalId: finalCanonicalId,
+                        confidenceScore: finalConfidenceScore,
+                    });
+                }
 
                 const providerName = String(e.display_name || e.raw_text || '').trim();
                 const hadSubmittedContact = trustSubmittedContact && hasAnyContact(e.contact_phone, e.contact_url);
@@ -650,12 +684,12 @@ export async function POST(
         await createEventLog({
             requestId: requestData.id,
             eventType: 'seller_submitted',
-            eventData: {
+            eventData: buildSellerSubmittedEventSummary({
                 ...parsedBody.data,
                 packet_mode: packetMode,
                 advanced_modules: configuredAdvancedModules,
                 advanced_module_exclusions: configuredAdvancedModuleExclusions,
-            },
+            }),
             ipAddress,
             userAgent,
         });

@@ -162,6 +162,8 @@ export function UtilityStep({
             entry_mode: 'suggested_confirmed',
             display_name: suggestion.display_name,
             raw_text: null,
+            canonical_id: suggestion.canonical_id || null,
+            confidence_score: suggestion.confidence,
             contact_phone: suggestion.contact_phone || null,
             contact_url: suggestion.contact_website || null,
         });
@@ -173,6 +175,8 @@ export function UtilityStep({
             entry_mode: 'search_selected',
             display_name: result.display_name,
             raw_text: result.display_name,
+            canonical_id: result.canonical_id || null,
+            confidence_score: result.confidence,
             contact_phone: result.contact_phone || null,
             contact_url: result.contact_website || null,
         });
@@ -184,6 +188,8 @@ export function UtilityStep({
             entry_mode: 'free_text',
             display_name: searchQuery,
             raw_text: searchQuery,
+            canonical_id: null,
+            confidence_score: null,
         });
         advanceOrShowDetails();
     };
@@ -194,6 +200,8 @@ export function UtilityStep({
             entry_mode: 'unknown',
             display_name: null,
             raw_text: null,
+            canonical_id: null,
+            confidence_score: null,
         });
         if (shouldGateTrashDetails) {
             setMode('trash_details');

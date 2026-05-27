@@ -8,10 +8,15 @@ const cacheState = vi.hoisted(() => ({ store: new Map<string, unknown>() }));
 vi.mock('@/lib/ai/gemini-client', () => ({
     isGeminiConfigured: isGeminiConfiguredMock,
     generateJSONWithMeta: generateJSONWithMetaMock,
+    getGeminiModelName: () => 'gemini-test',
 }));
 
 vi.mock('@/lib/neon/queries/provider-memory', () => ({
     getProviderMemoryCandidates: getProviderMemoryCandidatesMock,
+}));
+
+vi.mock('@/lib/neon/queries/ai-telemetry', () => ({
+    createAiSuggestionRun: vi.fn(async () => 'run_1'),
 }));
 
 vi.mock('@/lib/cache', () => ({
