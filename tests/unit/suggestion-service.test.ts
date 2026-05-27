@@ -193,6 +193,13 @@ describe('Suggestions Pipeline', () => {
                 avg_confidence: 0.7,
                 locality_score: 3,
             },
+            {
+                display_name: 'Peace River Electric',
+                normalized_name: 'peace river electric',
+                occurrences: 3,
+                avg_confidence: 0.65,
+                locality_score: 2,
+            },
         ]);
 
         const context = { requestId: 'r1', accountId: 'acct-1', organizationId: 'org-1' };
@@ -209,6 +216,9 @@ describe('Suggestions Pipeline', () => {
             limit: 10,
         });
         expect(result.some((item) => /duke/i.test(item.display_name))).toBe(true);
+        const memoryOnlySuggestion = result.find((item) => item.display_name === 'Peace River Electric');
+        expect(memoryOnlySuggestion?.rationale_short).toBe('electric provider that may serve this area');
+        expect(memoryOnlySuggestion?.rationale_short).not.toMatch(/historical|account|submission/i);
     });
 
     it('does not share search cache across account scopes', async () => {

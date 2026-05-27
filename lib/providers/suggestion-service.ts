@@ -992,7 +992,7 @@ async function runAiPass(
     };
 }
 
-function toMemorySuggestion(candidate: ProviderMemoryCandidate): ProviderSuggestion {
+function toMemorySuggestion(candidate: ProviderMemoryCandidate, category: UtilityCategory): ProviderSuggestion {
     const occurrenceBoost = Math.min(0.18, candidate.occurrences * 0.03);
     const localityBoost = candidate.locality_score >= 3 ? 0.12 : candidate.locality_score >= 2 ? 0.08 : 0.04;
     const confidence = Math.min(0.82, Math.max(0.45, occurrenceBoost + localityBoost + (candidate.avg_confidence || 0.4)));
@@ -1000,7 +1000,7 @@ function toMemorySuggestion(candidate: ProviderMemoryCandidate): ProviderSuggest
     return {
         display_name: candidate.display_name,
         confidence,
-        rationale_short: 'Frequent historical selection for similar properties in this account',
+        rationale_short: `${category} provider that may serve this area`,
     };
 }
 
@@ -1061,7 +1061,7 @@ function blendWithProviderMemory(
         const key = normalizeProviderName(candidate.display_name);
         if (!key) continue;
 
-        const memorySuggestion = toMemorySuggestion(candidate);
+        const memorySuggestion = toMemorySuggestion(candidate, category);
         const existingIndex = byName.get(key);
 
         if (existingIndex !== undefined) {
