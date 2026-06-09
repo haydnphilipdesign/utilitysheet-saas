@@ -412,7 +412,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                     value={address}
                                     onChange={handleAddressInputChange}
                                     onAddressSelected={handleAutocompleteAddressSelected}
-                                    placeholder="123 Main St, Austin, TX 78701"
+                                    placeholder="123 Sample Street, City, state, zip"
                                     data-testid="intake-address-input"
                                     className="bg-background/50 border-input text-foreground"
                                     disabled={submitting}
