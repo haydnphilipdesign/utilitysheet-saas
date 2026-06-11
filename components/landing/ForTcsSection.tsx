@@ -15,9 +15,9 @@ const painToOutcome = [
     },
     {
         icon: Bell,
-        title: 'Choose simple or advanced packet output',
-        description: 'Keep simple utility sheets fast, or collect deeper transition details with Advanced Utility Packet modules (Pro/Teams).',
-        timeSaved: 'Flexible output',
+        title: 'Collect only the details the file needs',
+        description: 'Keep standard utility sheets fast, or add transition details like lawn care, security, mailbox, and access notes when the file needs more context.',
+        timeSaved: 'Simple or advanced',
     },
     {
         icon: FileText,
@@ -53,13 +53,13 @@ export function ForTcsSection() {
                 >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-500/10 text-slate-600 text-sm font-medium mb-4">
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>Built by TCs, for TCs</span>
+                        <span>Built for TC workflows</span>
                     </div>
                     <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight mb-4">
-                        The seller-link process, built from real TC work.
+                        Utility collection that fits the TC process.
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
-                        Turn a messy, repeated task into one reusable link sellers can complete from their phone.
+                        Turn a repeated closing task into one reusable seller link, one review step, and one buyer-ready utility sheet.
                     </p>
                 </motion.div>
 
@@ -91,7 +91,7 @@ export function ForTcsSection() {
                     <Card className="border-border bg-card/40">
                         <CardHeader className="pb-4">
                             <h4 className="text-xl font-bold text-foreground">What you get</h4>
-                            <p className="text-muted-foreground">Built around real TC pain points.</p>
+                            <p className="text-muted-foreground">A repeatable seller utility handoff for every file.</p>
                         </CardHeader>
                         <CardContent className="space-y-5">
                             {painToOutcome.map((item, idx) => (

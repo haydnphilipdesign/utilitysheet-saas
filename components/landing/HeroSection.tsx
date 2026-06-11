@@ -91,7 +91,7 @@ export function HeroSection() {
                             className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-emerald-600/10 text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm font-medium mb-4 sm:mb-6 border border-emerald-600/20"
                         >
                             <Link2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
-                            <span>Your reusable seller link is ready after signup</span>
+                            <span>Utility handoff software for real estate closings</span>
                         </motion.div>
 
                         {/* Headline */}
@@ -101,9 +101,9 @@ export function HeroSection() {
 
                         {/* Value Proposition — one clean sentence */}
                         <p className="mx-auto lg:mx-0 max-w-xl text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-8 leading-relaxed">
-                            Send one link, let the seller complete it on their phone, and get a clean utility sheet PDF back after submission.
+                            Send one reusable seller link, let the seller complete it on their phone, and get a clean buyer-ready utility sheet back.
                             <span className="mt-3 block text-sm sm:text-base md:text-lg text-muted-foreground/90">
-                                Built for transaction coordinators, agents, and small real estate teams collecting utility details before closing.
+                                Built for transaction coordinators, listing admins, and real estate teams that need the same utility handoff on every file.
                             </span>
                         </p>
 
@@ -163,7 +163,7 @@ export function HeroSection() {
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                3 free requests per month
+                                Try it on 3 live files per month
                             </span>
                             <span className="flex items-center gap-1.5">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />

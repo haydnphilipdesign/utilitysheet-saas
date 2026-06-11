@@ -33,10 +33,10 @@ export function BeforeAfterSection() {
                         <span>Sound familiar?</span>
                     </div>
                     <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground tracking-tight mb-4 text-balance">
-                        Replace utility chase-downs with one seller link
+                        Replace utility chase-downs with one seller handoff workflow
                     </h2>
                     <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                        The old way is a blank form, scattered replies, and last-minute cleanup. UtilitySheet keeps the task simple: send the link, let the seller complete it, and review the finished sheet.
+                        The old way is a blank form, scattered replies, and last-minute cleanup. UtilitySheet keeps the task simple: send the link, let the seller complete it, and review the finished buyer-ready sheet.
                     </p>
                 </motion.div>
 

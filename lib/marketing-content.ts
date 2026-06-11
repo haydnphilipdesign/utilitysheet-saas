@@ -75,10 +75,10 @@ export const pricingTiers = [
     name: 'Starter',
     price: 'Free',
     description:
-      'For trying the reusable seller link on a few live files each month.',
+      'For proving the seller utility handoff workflow on a few live files each month.',
     href: '/auth/signup',
     features: [
-      '3 unlocked requests per month',
+      '3 live files per month',
       'Reusable seller link',
       'Simple Utility Sheet mode',
       'Dashboard view of submitted sheets',
@@ -91,10 +91,10 @@ export const pricingTiers = [
     name: 'Pro',
     price: '$9/month',
     description:
-      'For solo TCs and agents who want to use UtilitySheet on every transaction, clean up submissions after they come in, and send branded PDFs without UtilitySheet branding.',
+      'For solo TCs and agents who want UtilitySheet as their default utility workflow on every transaction.',
     href: '/auth/signup?plan=pro',
     features: [
-      'Unlimited requests',
+      'Use UtilitySheet on every file',
       'Advanced Utility Packet mode',
       'Edit submitted sheets after seller submission',
       'Live updates to future PDF downloads',
@@ -108,7 +108,7 @@ export const pricingTiers = [
     name: 'Teams',
     price: '$7/seat/month',
     description:
-      'For TC teams, admins, and brokerages that need shared access, shared defaults, and consistent branded output across multiple people.',
+      'For TC companies, admins, and real estate teams that need shared access, shared defaults, and consistent branded output across multiple people.',
     href: '/auth/signup?plan=teams',
     features: [
       'Everything in Pro',
@@ -137,7 +137,7 @@ export const workflowSteps = [
   },
   {
     number: '03',
-    title: 'Review, edit if needed, and share the final sheet',
+    title: 'Review, edit if needed, and share the buyer-ready sheet',
     description:
       'The finished utility sheet is ready as a web view and downloadable PDF. Add it to the file, share it with buyers or support teams, and make dashboard-side corrections on Pro and Teams.',
   },
@@ -167,7 +167,7 @@ export const featureHighlights = [
   {
     title: 'Clean web and PDF output',
     description:
-      'Create a clean utility sheet and PDF you can review, share, and send without reformatting.',
+      'Create a buyer-ready utility sheet and PDF you can review, share, and send without reformatting.',
   },
   {
     title: 'Tracking, reminders, and status visibility',

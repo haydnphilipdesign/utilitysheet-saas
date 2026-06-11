@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
 import { AuthenticatedRedirect } from '@/components/landing/AuthenticatedRedirect';
+import { ArtifactPreviewBand } from '@/components/landing/ArtifactPreviewBand';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { BeforeAfterSection } from '@/components/landing/BeforeAfterSection';
 import { HowItWorks } from '@/components/landing/HowItWorks';
@@ -23,9 +24,9 @@ import {
 } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-    title: 'Share a Seller Link and Get a Ready Utility Sheet',
+    title: 'Seller Utility Handoff Software for Real Estate Closings',
     description:
-        'UtilitySheet helps agents and transaction coordinators share one reusable seller link, collect utility details, and review a clean utility sheet and PDF after submission.',
+        'UtilitySheet helps transaction coordinators and real estate teams send one reusable seller link, collect utility details, and produce a clean buyer-ready utility sheet.',
     path: '/',
 });
 
@@ -42,7 +43,7 @@ export default function LandingPage() {
                     softwareApplicationSchema({
                         path: '/',
                         description:
-                            'Utility sheet software for transaction coordinators and real estate agents built around one reusable seller link, guided utility intake, clean web and PDF output, and dashboard-side updates after submission on paid plans.',
+                            'Seller utility handoff software for transaction coordinators and real estate teams built around one reusable seller link, guided utility intake, clean web and PDF output, and dashboard-side updates after submission on paid plans.',
                     }),
                     faqPageSchema(faqItems),
                 ]}
@@ -54,20 +55,23 @@ export default function LandingPage() {
             {/* Hero — pain-first seller-link positioning */}
             <HeroSection />
 
+            {/* Artifact preview — show the final utility handoff early */}
+            <ArtifactPreviewBand />
+
             {/* Before/After — pain vs. solution contrast */}
             <BeforeAfterSection />
 
             {/* Social Proof — testimonials land hardest right after seeing the demo in the hero */}
             <SocialProofBar />
 
+            {/* Use case content — TC workflow language */}
+            <ForTcsSection />
+
             {/* How It Works — skimmable still-image walkthrough for people who did not play the hero video */}
             <HowItWorks />
 
             {/* Features — product capabilities grid */}
             <FeatureSection />
-
-            {/* Use case content — TC workflow language */}
-            <ForTcsSection />
 
             {/* Pricing — clear tiers */}
             <PricingSection />

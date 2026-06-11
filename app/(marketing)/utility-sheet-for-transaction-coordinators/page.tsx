@@ -8,9 +8,9 @@ import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Utility Sheet Workflow for Transaction Coordinators',
+  title: 'Utility Collection for Transaction Coordinators',
   description:
-    'UtilitySheet helps transaction coordinators reuse one seller link, reduce utility follow-up, and deliver cleaner utility sheet PDFs for every file.',
+    'UtilitySheet helps transaction coordinators send one reusable seller link, reduce utility follow-up, and deliver buyer-ready utility sheet PDFs for every file.',
   path: '/utility-sheet-for-transaction-coordinators',
   keywords: [
     'utility sheet for transaction coordinators',
@@ -31,15 +31,15 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
           softwareApplicationSchema({
             path: '/utility-sheet-for-transaction-coordinators',
             description:
-              'Utility sheet software for transaction coordinators who want a repeatable seller utility collection workflow.',
+              'Seller utility handoff software for transaction coordinators who want a repeatable utility collection workflow.',
           }),
         ]}
       />
 
       <MarketingPageHero
-        eyebrow="Use Case"
-        title="UtilitySheet for transaction coordinators who need one repeatable utility workflow"
-        description="Transaction coordinators are usually the ones chasing seller utility details, cleaning up inconsistent answers, and turning that information into something buyers can actually use. UtilitySheet gives you one reusable seller link and a cleaner review step after submission."
+        eyebrow="For Transaction Coordinators"
+        title="Utility collection for transaction coordinators"
+        description="One seller link. Cleaner submissions. Buyer-ready utility sheets. UtilitySheet gives TCs a repeatable workflow for the utility handoff that usually turns into follow-up texts, blank forms, and last-minute cleanup."
       >
         <MarketingBreadcrumbs
           items={[
@@ -51,7 +51,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
 
       <MarketingSection
         title="Why TCs adopt UtilitySheet"
-        description="The job is not just collecting utility names. It is keeping the file moving while still delivering a professional handoff."
+        description="The job is not just collecting utility names. It is keeping the file moving while still delivering a professional buyer handoff."
       >
         <div className="grid gap-6 md:grid-cols-3">
           {[
@@ -60,12 +60,12 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
               copy: 'Instead of multiple follow-up emails or texts, you send one guided link and let the seller complete the form in a cleaner flow. Nearly 86% of started UtilitySheets are completed.',
             },
             {
-              title: 'More consistent files',
-              copy: 'Every transaction gets the same utility handoff structure, which helps your process feel standardized instead of improvised.',
+              title: 'One workflow on every file',
+              copy: 'Add the reusable seller link to your listing email, text template, checklist, or signature once. From there, utility collection stops feeling improvised.',
             },
             {
-              title: 'Better handoff quality',
-              copy: 'The finished utility sheet looks polished enough to share with buyers, agents, and support teams right away, and Pro/Teams can clean up submitted details before it goes out.',
+              title: 'Better buyer handoff quality',
+              copy: 'The finished utility sheet looks polished enough to share with buyers, agents, and support teams, and Pro/Teams can clean up submitted details before it goes out.',
             },
           ].map((item) => (
             <article key={item.title} className="rounded-3xl border border-border bg-card/30 p-6">
@@ -94,7 +94,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
 
       <MarketingCtaBand
         title="Make utility collection one less thing to babysit"
-        description="Start free and test UtilitySheet on a real file to see how much TC follow-up time it cuts out before you decide whether paid editing belongs in your workflow."
+        description="Start free and test UtilitySheet on a real file. If it belongs in your monthly TC workflow, Pro adds branded output, post-submission editing, and use on every transaction."
       />
     </div>
   );

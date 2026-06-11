@@ -15,7 +15,7 @@ const tiers = [
         cta: 'Create My Link',
         popular: false,
         features: [
-            '3 unlocked requests per month',
+            'Try it on 3 live files per month',
             'Reusable seller link',
             'Simple Utility Sheet mode',
             'Dashboard view of submitted sheets',
@@ -33,7 +33,7 @@ const tiers = [
         cta: 'Start Pro',
         popular: true,
         features: [
-            'Unlimited requests',
+            'Use UtilitySheet on every file',
             'Custom branded link',
             'Advanced Utility Packet mode',
             'Edit submitted sheets after seller submission',
@@ -89,10 +89,10 @@ export function PricingSection() {
                 <div className="text-center mb-10 sm:mb-16 lg:mb-20">
                     <p className="text-slate-600 font-bold text-xs sm:text-sm tracking-wider uppercase mb-2 sm:mb-3">Pricing</p>
                     <h2 className="text-2xl sm:text-3xl md:text-5xl font-bold text-foreground tracking-tight mb-3 sm:mb-4 text-balance">
-                        Pricing for reusable seller links
+                        Pricing for making UtilitySheet your default workflow
                     </h2>
                     <p className="text-muted-foreground text-sm sm:text-lg max-w-2xl mx-auto">
-                        Start with your reusable seller link. Upgrade when you need unlimited submissions, post-submission edits, custom branding, a branded link, advanced packet mode, or a shared team workspace.
+                        Start free on a few live files. Upgrade when you want UtilitySheet on every transaction, branded buyer-ready output, post-submission edits, or a shared TC team workspace.
                     </p>
                 </div>
 
@@ -156,7 +156,7 @@ export function PricingSection() {
                 </div>
 
                 <p className="mt-10 text-center text-sm text-muted-foreground">
-                    Every plan starts with a reusable seller link. Starter includes UtilitySheet branding and keeps submitted sheets read-only after seller submission; Pro and Teams add custom branding, branded links, and dashboard editing while seller and public links stay write-protected.
+                    Starter is for proving the workflow on a few files. Pro is for solo TCs and agents using UtilitySheet by default. Teams is for TC companies, admins, and real estate teams standardizing utility collection across multiple people.
                 </p>
             </div>
         </section>

@@ -5,8 +5,9 @@ test('Landing first screen explains product and shows primary CTA on mobile', as
 
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: /Utility sheet software for transaction coordinators and agents/i })).toBeVisible();
-  await expect(page.getByText(/keep current from the dashboard/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Stop chasing sellers for utility info/i })).toBeVisible();
+  await expect(page.getByText(/clean buyer-ready utility sheet back/i)).toBeVisible();
+  await expect(page.getByText(/Built for transaction coordinators, listing admins/i)).toBeVisible();
   await expect(page.getByTestId('hero-signup-cta')).toBeVisible();
   await expect(page.getByTestId('marketing-header-mobile-signup-cta')).toBeVisible();
 });
@@ -29,9 +30,9 @@ test('Sticky CTA appears on scroll and can be dismissed on mobile', async ({ pag
 test('PDF attachment value prop appears in multiple landing sections', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByText(/Completion Email \+ PDF Attachment/i)).toBeVisible();
-  await expect(page.getByText(/auto-attach the utility sheet PDF to the completion email/i)).toBeVisible();
-  await expect(page.getByText(/Optional PDF attachment on completion emails/i)).toBeVisible();
+  await expect(page.getByText(/Completion email \+ PDF attachment/i)).toBeVisible();
+  await expect(page.getByText(/The completed PDF can attach to your completion email/i)).toBeVisible();
+  await expect(page.getByText(/PDF can attach to completion emails/i)).toBeVisible();
 
   await page.getByRole('button', { name: /How does PDF delivery work/i }).click();
   await expect(page.getByText(/previously emailed attachments stay as sent snapshots/i)).toBeVisible();
@@ -42,8 +43,9 @@ test('iPad-like layout keeps nav and CTA readable', async ({ page }) => {
   await page.goto('/');
 
   const header = page.locator('header').first();
-  await expect(header.getByRole('link', { name: 'Workflow' })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'Home' })).toBeVisible();
   await expect(header.getByRole('link', { name: 'Features' })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'How It Works' })).toBeVisible();
   await expect(header.getByRole('link', { name: 'Pricing' })).toBeVisible();
   await expect(page.getByTestId('marketing-header-signup-cta')).toBeVisible();
 });
