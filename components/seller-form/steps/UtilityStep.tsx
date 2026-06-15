@@ -47,6 +47,7 @@ const TRASH_PICKUP_DAY_OPTIONS: Array<{ value: TrashPickupDay; label: string }> 
     { value: 'sat', label: 'Saturday' },
     { value: 'sun', label: 'Sunday' },
 ];
+const TRASH_WEEKDAY_OPTIONS = TRASH_PICKUP_DAY_OPTIONS.filter((option) => option.value !== 'not_sure' && option.value !== 'varies');
 
 interface UtilityStepProps {
     category: UtilityCategory;
@@ -142,6 +143,30 @@ export function UtilityStep({
 
         updateState(category, {
             extra: nextExtra,
+        });
+    };
+
+    const currentTrashPickupDays = Array.isArray(currentTrashExtra.trash_pickup_days)
+        ? currentTrashExtra.trash_pickup_days
+        : currentTrashExtra.trash_pickup_day && currentTrashExtra.trash_pickup_day !== 'not_sure' && currentTrashExtra.trash_pickup_day !== 'varies'
+            ? [currentTrashExtra.trash_pickup_day]
+            : [];
+
+    const toggleTrashPickupDay = (day: TrashPickupDay, checked: boolean) => {
+        const nextDays = checked
+            ? Array.from(new Set([...currentTrashPickupDays, day]))
+            : currentTrashPickupDays.filter((selectedDay) => selectedDay !== day);
+
+        updateTrashExtra({
+            trash_pickup_days: nextDays,
+            trash_pickup_day: nextDays[0] ?? null,
+        });
+    };
+
+    const setTrashPickupSingleValue = (day: TrashPickupDay) => {
+        updateTrashExtra({
+            trash_pickup_days: [],
+            trash_pickup_day: day,
         });
     };
 
@@ -623,20 +648,54 @@ export function UtilityStep({
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <label className="space-y-1" htmlFor="seller-trash-pickup-day">
-                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Trash pickup day</span>
-                                <select
-                                    id="seller-trash-pickup-day"
-                                    data-testid="seller-trash-pickup-day"
-                                    value={currentTrashExtra.trash_pickup_day || 'not_sure'}
-                                    onChange={(e) => updateTrashExtra({ trash_pickup_day: e.target.value as TrashPickupDay })}
-                                    className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
-                                >
-                                    {TRASH_PICKUP_DAY_OPTIONS.map((option) => (
-                                        <option key={option.value} value={option.value}>{option.label}</option>
-                                    ))}
-                                </select>
-                            </label>
+                            <div className="space-y-2">
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Trash pickup days</span>
+                                <div className="grid grid-cols-2 gap-2" data-testid="seller-trash-pickup-days">
+                                    {TRASH_WEEKDAY_OPTIONS.map((option) => {
+                                        const inputId = `seller-trash-pickup-day-${option.value}`;
+                                        const isChecked = currentTrashPickupDays.includes(option.value);
+                                        return (
+                                            <label
+                                                key={option.value}
+                                                htmlFor={inputId}
+                                                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs sm:text-sm transition-all ${isChecked
+                                                    ? 'bg-slate-600 text-white border-slate-600'
+                                                    : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
+                                                    }`}
+                                            >
+                                                <input
+                                                    id={inputId}
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={(e) => toggleTrashPickupDay(option.value, e.target.checked)}
+                                                    className="h-4 w-4 rounded border-border accent-slate-600"
+                                                />
+                                                {option.label}
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {TRASH_PICKUP_DAY_OPTIONS.slice(0, 2).map((option) => {
+                                        const isSelected = currentTrashExtra.trash_pickup_day === option.value && currentTrashPickupDays.length === 0;
+                                        return (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                aria-pressed={isSelected}
+                                                onClick={() => setTrashPickupSingleValue(option.value)}
+                                                className={`px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all ${isSelected
+                                                    ? 'bg-slate-600 text-white border-slate-600'
+                                                    : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
+                                                    }`}
+                                                data-testid={`seller-trash-pickup-${option.value}`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
 
                             {(currentTrashExtra.has_recycling === 'yes' || currentTrashExtra.has_recycling === 'not_sure') && (
                                 <label className="space-y-1" htmlFor="seller-recycling-pickup-day">

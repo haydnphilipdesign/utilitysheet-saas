@@ -15,6 +15,7 @@ import type {
 const EMPTY_TRASH_DETAILS: SubmittedSheetEditableTrashDetails = {
     hasRecycling: '',
     trashPickupDay: '',
+    trashPickupDays: [],
     recyclingPickupDay: '',
 };
 
@@ -40,6 +41,19 @@ function normalizeTrashPickupDay(value: unknown): '' | TrashPickupDay {
     return allowed.includes(normalized as TrashPickupDay) ? normalized as TrashPickupDay : '';
 }
 
+function normalizeTrashPickupDays(value: unknown): TrashPickupDay[] {
+    if (!Array.isArray(value)) return [];
+
+    const days: TrashPickupDay[] = [];
+    for (const item of value) {
+        const normalized = normalizeTrashPickupDay(item);
+        if (normalized && !days.includes(normalized)) {
+            days.push(normalized);
+        }
+    }
+    return days;
+}
+
 function normalizeTrashDetails(value: unknown): SubmittedSheetEditableTrashDetails {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
         return { ...EMPTY_TRASH_DETAILS };
@@ -50,11 +64,19 @@ function normalizeTrashDetails(value: unknown): SubmittedSheetEditableTrashDetai
         ? input.has_recycling.trim().toLowerCase()
         : '';
 
+    const trashPickupDays = normalizeTrashPickupDays(input.trash_pickup_days);
+    const legacyTrashPickupDay = normalizeTrashPickupDay(input.trash_pickup_day);
+
     return {
         hasRecycling: hasRecycling === 'yes' || hasRecycling === 'no' || hasRecycling === 'not_sure'
             ? hasRecycling
             : '',
-        trashPickupDay: normalizeTrashPickupDay(input.trash_pickup_day),
+        trashPickupDay: trashPickupDays[0] || legacyTrashPickupDay,
+        trashPickupDays: trashPickupDays.length > 0
+            ? trashPickupDays
+            : legacyTrashPickupDay
+                ? [legacyTrashPickupDay]
+                : [],
         recyclingPickupDay: normalizeTrashPickupDay(input.recycling_pickup_day),
     };
 }
@@ -103,6 +125,7 @@ function normalizeUtilityForComparison(value: SubmittedSheetEditableUtility | un
         trashDetails: {
             hasRecycling: value.trashDetails.hasRecycling,
             trashPickupDay: value.trashDetails.trashPickupDay,
+            trashPickupDays: [...value.trashDetails.trashPickupDays],
             recyclingPickupDay: value.trashDetails.hasRecycling === 'no' ? '' : value.trashDetails.recyclingPickupDay,
         },
     };
@@ -213,6 +236,7 @@ export function mergeAdvancedPacketDataPreservingExcluded({
 function hasMeaningfulTrashDetails(trashDetails: SubmittedSheetEditableTrashDetails): boolean {
     if (trashDetails.hasRecycling) return true;
     if (trashDetails.trashPickupDay) return true;
+    if (trashDetails.trashPickupDays.length > 0) return true;
     return Boolean(trashDetails.recyclingPickupDay);
 }
 
@@ -252,7 +276,10 @@ export function buildSubmittedSheetUtilityInsertRows(
             if (trashDetails.hasRecycling) {
                 extra.has_recycling = trashDetails.hasRecycling;
             }
-            if (trashDetails.trashPickupDay) {
+            if (trashDetails.trashPickupDays.length > 0) {
+                extra.trash_pickup_days = trashDetails.trashPickupDays;
+                extra.trash_pickup_day = trashDetails.trashPickupDays[0];
+            } else if (trashDetails.trashPickupDay) {
                 extra.trash_pickup_day = trashDetails.trashPickupDay;
             }
             if (trashDetails.hasRecycling === 'no') {

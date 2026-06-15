@@ -58,6 +58,7 @@ export interface PacketUtilityData {
     trash_details?: {
         has_recycling?: 'yes' | 'no' | 'not_sure' | null;
         trash_pickup_day?: TrashPickupDay | null;
+        trash_pickup_days?: TrashPickupDay[] | null;
         recycling_pickup_day?: TrashPickupDay | null;
     } | null;
 }
@@ -192,6 +193,21 @@ function normalizeTrashPickupDay(value: unknown): TrashPickupDay | null | undefi
         : undefined;
 }
 
+function normalizeTrashPickupDays(value: unknown): TrashPickupDay[] | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (!Array.isArray(value)) return undefined;
+
+    const days: TrashPickupDay[] = [];
+    for (const item of value) {
+        const normalized = normalizeTrashPickupDay(item);
+        if (normalized && !days.includes(normalized)) {
+            days.push(normalized);
+        }
+    }
+
+    return days.length > 0 ? days : undefined;
+}
+
 function normalizeTrashDetails(value: unknown): PacketUtilityData['trash_details'] {
     if (typeof value === 'string') {
         try {
@@ -214,9 +230,15 @@ function normalizeTrashDetails(value: unknown): PacketUtilityData['trash_details
         normalized.has_recycling = null;
     }
 
-    const trashPickupDay = normalizeTrashPickupDay(input.trash_pickup_day);
-    if (trashPickupDay !== undefined) {
-        normalized.trash_pickup_day = trashPickupDay;
+    const trashPickupDays = normalizeTrashPickupDays(input.trash_pickup_days);
+    if (trashPickupDays !== undefined) {
+        normalized.trash_pickup_days = trashPickupDays;
+        normalized.trash_pickup_day = trashPickupDays[0] ?? null;
+    } else {
+        const trashPickupDay = normalizeTrashPickupDay(input.trash_pickup_day);
+        if (trashPickupDay !== undefined) {
+            normalized.trash_pickup_day = trashPickupDay;
+        }
     }
 
     const recyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);

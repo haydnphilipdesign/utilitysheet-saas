@@ -90,6 +90,11 @@ export function ReviewStep({
         return dayLabels[value] || 'Not sure';
     };
 
+    const formatPickupDays = (values: string[] | null | undefined): string => {
+        if (!values || values.length === 0) return '';
+        return values.map(formatPickupDay).join(', ');
+    };
+
     const getTrashScheduleLines = (extra: TrashUtilityExtra | null): string[] => {
         if (!extra) return [];
         const lines: string[] = [];
@@ -101,7 +106,9 @@ export function ReviewStep({
                     : 'Not sure';
             lines.push(`Recycling: ${hasRecycling}`);
         }
-        if (extra.trash_pickup_day !== undefined) {
+        if (Array.isArray(extra.trash_pickup_days) && extra.trash_pickup_days.length > 0) {
+            lines.push(`Trash pickup: ${formatPickupDays(extra.trash_pickup_days)}`);
+        } else if (extra.trash_pickup_day !== undefined) {
             lines.push(`Trash pickup: ${formatPickupDay(extra.trash_pickup_day)}`);
         }
         if (extra.recycling_pickup_day !== undefined && extra.has_recycling !== 'no') {

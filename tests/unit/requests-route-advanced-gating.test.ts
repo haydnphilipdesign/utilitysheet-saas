@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
     checkRateLimitMock: vi.fn(),
     getRateLimitHeadersMock: vi.fn(),
     getOrCreateAccountMock: vi.fn(),
+    ensureAccountRecordMock: vi.fn(),
+    ensureAccountActivationMock: vi.fn(),
     getMonthlyUsageMock: vi.fn(),
     getRequestCountForAccountMock: vi.fn(),
     getDefaultBrandProfileMock: vi.fn(),
@@ -42,6 +44,7 @@ vi.mock('@/lib/neon/queries', () => ({
     createRequest: mocks.createRequestMock,
     getDashboardStats: vi.fn(),
     getOrCreateAccount: mocks.getOrCreateAccountMock,
+    ensureAccountRecord: mocks.ensureAccountRecordMock,
     getMonthlyUsage: mocks.getMonthlyUsageMock,
     getBrandProfile: vi.fn(),
     getDefaultBrandProfile: mocks.getDefaultBrandProfileMock,
@@ -49,6 +52,10 @@ vi.mock('@/lib/neon/queries', () => ({
     createEventLog: mocks.createEventLogMock,
     getRequestCountForAccount: mocks.getRequestCountForAccountMock,
     getOrganizationById: mocks.getOrganizationByIdMock,
+}));
+
+vi.mock('@/lib/activation/ensure-account-activation', () => ({
+    ensureAccountActivation: mocks.ensureAccountActivationMock,
 }));
 
 import { POST } from '@/app/api/requests/route';
@@ -63,12 +70,27 @@ describe('POST /api/requests advanced gating', () => {
         });
         mocks.checkRateLimitMock.mockResolvedValue({ success: true });
         mocks.getRateLimitHeadersMock.mockReturnValue({});
+        mocks.ensureAccountRecordMock.mockImplementation((user) => mocks.getOrCreateAccountMock(user));
         mocks.getOrCreateAccountMock.mockResolvedValue({
             id: 'acct_1',
             subscription_status: 'free',
             active_organization_id: null,
             full_name: 'Agent',
         });
+        mocks.ensureAccountActivationMock.mockImplementation(async () => ({
+            account: await mocks.getOrCreateAccountMock(),
+            organizations: [],
+            activeOrganization: null,
+            defaultBrandProfile: null,
+            activation: {
+                accountCreated: false,
+                organizationCreated: false,
+                organizationAssigned: false,
+                brandProfileCreated: false,
+                intakeLinkCreated: false,
+                defaultsProvisioned: false,
+            },
+        }));
         mocks.getMonthlyUsageMock.mockResolvedValue({ used: 0, limit: 3, plan: 'free' });
         mocks.getRequestCountForAccountMock.mockResolvedValue(0);
         mocks.getDefaultBrandProfileMock.mockResolvedValue(null);

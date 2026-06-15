@@ -5,6 +5,8 @@ import { ADVANCED_MODULE_DEFAULTS } from '@/lib/packet/modules';
 const mocks = vi.hoisted(() => ({
     getUserMock: vi.fn(),
     getOrCreateAccountMock: vi.fn(),
+    ensureAccountRecordMock: vi.fn(),
+    ensureAccountActivationMock: vi.fn(),
     getAccountOrganizationsMock: vi.fn(),
     getOrCreateIntakeLinkMock: vi.fn(),
     updateIntakeLinkPacketDefaultsMock: vi.fn(),
@@ -22,11 +24,16 @@ vi.mock('@/lib/stack/server', () => ({
 
 vi.mock('@/lib/neon/queries', () => ({
     getOrCreateAccount: mocks.getOrCreateAccountMock,
+    ensureAccountRecord: mocks.ensureAccountRecordMock,
     getAccountOrganizations: mocks.getAccountOrganizationsMock,
     getOrCreateIntakeLink: mocks.getOrCreateIntakeLinkMock,
     updateIntakeLinkPacketDefaults: mocks.updateIntakeLinkPacketDefaultsMock,
     updateIntakeLinkSlug: mocks.updateIntakeLinkSlugMock,
     propagateAdvancedModuleDefaultsToOpenRequests: mocks.propagateAdvancedModuleDefaultsToOpenRequestsMock,
+}));
+
+vi.mock('@/lib/activation/ensure-account-activation', () => ({
+    ensureAccountActivation: mocks.ensureAccountActivationMock,
 }));
 
 import { GET, POST } from '@/app/api/intake-link/route';
@@ -35,6 +42,21 @@ describe('/api/intake-link', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.getUserMock.mockResolvedValue({ id: 'user_1', primaryEmail: 'agent@example.com', displayName: 'Agent' });
+        mocks.ensureAccountRecordMock.mockImplementation((user) => mocks.getOrCreateAccountMock(user));
+        mocks.ensureAccountActivationMock.mockImplementation(async () => ({
+            account: await mocks.getOrCreateAccountMock(),
+            organizations: [],
+            activeOrganization: null,
+            defaultBrandProfile: null,
+            activation: {
+                accountCreated: false,
+                organizationCreated: false,
+                organizationAssigned: false,
+                brandProfileCreated: false,
+                intakeLinkCreated: false,
+                defaultsProvisioned: false,
+            },
+        }));
         mocks.getAccountOrganizationsMock.mockResolvedValue([]);
         mocks.getOrCreateIntakeLinkMock.mockResolvedValue({
             id: 'link_1',

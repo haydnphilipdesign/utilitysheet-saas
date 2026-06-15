@@ -238,6 +238,44 @@ describe('packet-data builder', () => {
         });
     });
 
+    it('maps multiple trash pickup days from utility entry extra', async () => {
+        (getRequestByToken as Mock).mockResolvedValue({
+            id: 'req_7',
+            account_id: 'acct_7',
+            organization_id: null,
+            brand_profile_id: null,
+            property_address: '777 Cedar St, Town, ST 00000',
+            created_at: '2026-01-01T00:00:00.000Z',
+            status: 'submitted',
+        });
+
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+        (getUtilityEntriesByRequestId as Mock).mockResolvedValue([
+            {
+                category: 'trash',
+                display_name: 'City Waste',
+                extra: {
+                    has_recycling: 'yes',
+                    trash_pickup_days: ['mon', 'thu'],
+                    trash_pickup_day: 'mon',
+                    recycling_pickup_day: 'fri',
+                },
+            },
+        ]);
+
+        const result = await getPacketDataByPublicToken('token_7');
+
+        expect(result.status).toBe('ok');
+        if (result.status !== 'ok') return;
+
+        expect(result.data.utilities[0].trash_details).toEqual({
+            has_recycling: 'yes',
+            trash_pickup_days: ['mon', 'thu'],
+            trash_pickup_day: 'mon',
+            recycling_pickup_day: 'fri',
+        });
+    });
+
     it('omits excluded advanced fields and drops advanced sections with zero included fields', async () => {
         (getRequestByToken as Mock).mockResolvedValue({
             id: 'req_6',

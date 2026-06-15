@@ -37,6 +37,7 @@ export interface PacketPdfData {
         trash_details?: {
             has_recycling?: 'yes' | 'no' | 'not_sure' | null;
             trash_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
+            trash_pickup_days?: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure'> | null;
             recycling_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
         } | null;
     }>;
@@ -147,6 +148,11 @@ function formatPickupDay(day: string | null | undefined): string {
     return dayLabels[normalized] || 'Not sure';
 }
 
+function formatPickupDays(days: string[] | null | undefined): string {
+    if (!days || days.length === 0) return 'Not sure';
+    return days.map(formatPickupDay).join(', ');
+}
+
 function formatRecyclingValue(value: string | null | undefined): string {
     if (!value) return 'Not sure';
     const normalized = value.trim().toLowerCase();
@@ -162,7 +168,9 @@ function getTrashScheduleDetailLines(trashDetails: PacketPdfData['utilities'][nu
     if (trashDetails.has_recycling !== undefined) {
         lines.push(`Recycling: ${formatRecyclingValue(trashDetails.has_recycling)}`);
     }
-    if (trashDetails.trash_pickup_day !== undefined) {
+    if (Array.isArray(trashDetails.trash_pickup_days) && trashDetails.trash_pickup_days.length > 0) {
+        lines.push(`Trash pickup: ${formatPickupDays(trashDetails.trash_pickup_days)}`);
+    } else if (trashDetails.trash_pickup_day !== undefined) {
         lines.push(`Trash pickup: ${formatPickupDay(trashDetails.trash_pickup_day)}`);
     }
     if (trashDetails.recycling_pickup_day !== undefined && trashDetails.has_recycling !== 'no') {

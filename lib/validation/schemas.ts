@@ -196,10 +196,12 @@ const trashPickupDayEnum = z.enum(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'su
 const submittedSheetEditableTrashDetailsSchema = z.object({
     hasRecycling: z.preprocess(nullToUndefined, z.union([z.literal('yes'), z.literal('no'), z.literal('not_sure'), z.literal('')]).optional()).default(''),
     trashPickupDay: z.preprocess(nullToUndefined, z.union([trashPickupDayEnum, z.literal('')]).optional()).default(''),
+    trashPickupDays: z.preprocess(nullToUndefined, z.array(trashPickupDayEnum).max(7).optional()).default([]),
     recyclingPickupDay: z.preprocess(nullToUndefined, z.union([trashPickupDayEnum, z.literal('')]).optional()).default(''),
 }).default({
     hasRecycling: '',
     trashPickupDay: '',
+    trashPickupDays: [],
     recyclingPickupDay: '',
 });
 
@@ -228,6 +230,21 @@ function normalizeTrashPickupDay(value: unknown): z.infer<typeof trashPickupDayE
         : undefined;
 }
 
+function normalizeTrashPickupDays(value: unknown): z.infer<typeof trashPickupDayEnum>[] | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (!Array.isArray(value)) return undefined;
+
+    const days: z.infer<typeof trashPickupDayEnum>[] = [];
+    for (const item of value) {
+        const normalized = normalizeTrashPickupDay(item);
+        if (normalized && !days.includes(normalized)) {
+            days.push(normalized);
+        }
+    }
+
+    return days.length > 0 ? days : undefined;
+}
+
 function normalizeTrashExtra(value: unknown): Record<string, unknown> | undefined {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
 
@@ -244,9 +261,15 @@ function normalizeTrashExtra(value: unknown): Record<string, unknown> | undefine
         normalized.has_recycling = null;
     }
 
-    const trashPickupDay = normalizeTrashPickupDay(input.trash_pickup_day);
-    if (trashPickupDay !== undefined) {
-        normalized.trash_pickup_day = trashPickupDay;
+    const trashPickupDays = normalizeTrashPickupDays(input.trash_pickup_days);
+    if (trashPickupDays !== undefined) {
+        normalized.trash_pickup_days = trashPickupDays;
+        normalized.trash_pickup_day = trashPickupDays[0] ?? null;
+    } else {
+        const trashPickupDay = normalizeTrashPickupDay(input.trash_pickup_day);
+        if (trashPickupDay !== undefined) {
+            normalized.trash_pickup_day = trashPickupDay;
+        }
     }
 
     const recyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);

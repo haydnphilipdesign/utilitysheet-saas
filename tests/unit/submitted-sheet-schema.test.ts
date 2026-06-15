@@ -42,6 +42,7 @@ describe('submittedSheetUpdateBodySchema', () => {
                     trashDetails: {
                         hasRecycling: 'no',
                         trashPickupDay: 'thu',
+                        trashPickupDays: ['thu', 'mon'],
                         recyclingPickupDay: '',
                     },
                 },
@@ -53,6 +54,7 @@ describe('submittedSheetUpdateBodySchema', () => {
         expect(parsed.data.utilities.trash.trashDetails).toEqual({
             hasRecycling: 'no',
             trashPickupDay: 'thu',
+            trashPickupDays: ['thu', 'mon'],
             recyclingPickupDay: '',
         });
     });

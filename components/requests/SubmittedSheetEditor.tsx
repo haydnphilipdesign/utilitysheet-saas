@@ -39,6 +39,9 @@ const PICKUP_DAY_OPTIONS: Array<{ value: '' | TrashPickupDay; label: string }> =
     { value: 'varies', label: 'Varies' },
     { value: 'not_sure', label: 'Not sure' },
 ];
+const PICKUP_WEEKDAY_OPTIONS = PICKUP_DAY_OPTIONS.filter((option): option is { value: TrashPickupDay; label: string } =>
+    option.value !== '' && option.value !== 'varies' && option.value !== 'not_sure'
+);
 
 const IRRIGATION_OPTIONS = [
     { value: '', label: 'Not set' },
@@ -163,6 +166,63 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                                 ...(field === 'hasRecycling' && value === 'no'
                                     ? { recyclingPickupDay: '' }
                                     : {}),
+                            },
+                        },
+                    },
+                },
+            };
+        });
+    };
+
+    const toggleTrashPickupDay = (category: UtilityCategory, day: TrashPickupDay, checked: boolean) => {
+        setData((current) => {
+            if (!current) return current;
+            const existing = current.editor.utilities[category];
+            if (!existing) return current;
+
+            const currentDays = existing.trashDetails.trashPickupDays;
+            const nextDays = checked
+                ? Array.from(new Set([...currentDays, day]))
+                : currentDays.filter((selectedDay) => selectedDay !== day);
+
+            return {
+                ...current,
+                editor: {
+                    ...current.editor,
+                    utilities: {
+                        ...current.editor.utilities,
+                        [category]: {
+                            ...existing,
+                            trashDetails: {
+                                ...existing.trashDetails,
+                                trashPickupDays: nextDays,
+                                trashPickupDay: nextDays[0] || '',
+                            },
+                        },
+                    },
+                },
+            };
+        });
+    };
+
+    const setTrashPickupSingleValue = (category: UtilityCategory, value: '' | TrashPickupDay) => {
+        setData((current) => {
+            if (!current) return current;
+            const existing = current.editor.utilities[category];
+            if (!existing) return current;
+
+            return {
+                ...current,
+                editor: {
+                    ...current.editor,
+                    utilities: {
+                        ...current.editor.utilities,
+                        [category]: {
+                            ...existing,
+                            trashDetails: {
+                                ...existing.trashDetails,
+                                trashPickupDays: [],
+                                trashPickupDay: value,
                             },
                         },
                     },
@@ -526,19 +586,35 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                                                         <option value="not_sure">Not sure</option>
                                                     </select>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-foreground">Trash pickup day</label>
-                                                    <select
-                                                        value={utility.trashDetails.trashPickupDay}
-                                                        onChange={(event) => updateTrashField(category, 'trashPickupDay', event.target.value)}
-                                                        className="w-full h-11 sm:h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                                    >
-                                                        {PICKUP_DAY_OPTIONS.map((option) => (
-                                                            <option key={option.value || 'blank'} value={option.value}>
+                                                <div className="space-y-3">
+                                                    <label className="text-sm font-medium text-foreground">Trash pickup days</label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {PICKUP_WEEKDAY_OPTIONS.map((option) => (
+                                                            <label
+                                                                key={option.value}
+                                                                className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-2 text-sm text-foreground"
+                                                            >
+                                                                <Checkbox
+                                                                    checked={utility.trashDetails.trashPickupDays.includes(option.value)}
+                                                                    onCheckedChange={(checked) => toggleTrashPickupDay(category, option.value, Boolean(checked))}
+                                                                />
                                                                 {option.label}
-                                                            </option>
+                                                            </label>
                                                         ))}
-                                                    </select>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {PICKUP_DAY_OPTIONS.filter((option) => option.value === '' || option.value === 'varies' || option.value === 'not_sure').map((option) => (
+                                                            <Button
+                                                                key={option.value || 'blank'}
+                                                                type="button"
+                                                                variant={utility.trashDetails.trashPickupDay === option.value && utility.trashDetails.trashPickupDays.length === 0 ? 'default' : 'outline'}
+                                                                size="sm"
+                                                                onClick={() => setTrashPickupSingleValue(category, option.value)}
+                                                            >
+                                                                {option.label}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </div>
 

@@ -51,6 +51,7 @@ type PacketResponse = {
         trash_details?: {
             has_recycling?: 'yes' | 'no' | 'not_sure' | null;
             trash_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
+            trash_pickup_days?: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure'> | null;
             recycling_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
         } | null;
     }>;
@@ -81,6 +82,11 @@ function formatPickupDay(day: string | null | undefined): string {
     return dayLabels[normalized] || 'Not sure';
 }
 
+function formatPickupDays(days: string[] | null | undefined): string {
+    if (!days || days.length === 0) return 'Not sure';
+    return days.map(formatPickupDay).join(', ');
+}
+
 function getTrashScheduleLines(trashDetails: PacketResponse['utilities'][number]['trash_details']): string[] {
     if (!trashDetails) return [];
     const lines: string[] = [];
@@ -93,7 +99,9 @@ function getTrashScheduleLines(trashDetails: PacketResponse['utilities'][number]
                 : 'Not sure';
         lines.push(`Recycling: ${hasRecycling}`);
     }
-    if (trashDetails.trash_pickup_day !== undefined) {
+    if (Array.isArray(trashDetails.trash_pickup_days) && trashDetails.trash_pickup_days.length > 0) {
+        lines.push(`Trash pickup: ${formatPickupDays(trashDetails.trash_pickup_days)}`);
+    } else if (trashDetails.trash_pickup_day !== undefined) {
         lines.push(`Trash pickup: ${formatPickupDay(trashDetails.trash_pickup_day)}`);
     }
     if (trashDetails.recycling_pickup_day !== undefined && trashDetails.has_recycling !== 'no') {

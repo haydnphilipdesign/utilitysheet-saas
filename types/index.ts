@@ -91,6 +91,7 @@ export interface TrashUtilityExtra {
     [key: string]: unknown;
     has_recycling?: 'yes' | 'no' | 'not_sure' | null;
     trash_pickup_day?: TrashPickupDay | null;
+    trash_pickup_days?: TrashPickupDay[] | null;
     recycling_pickup_day?: TrashPickupDay | null;
 }
 
@@ -312,6 +313,7 @@ export interface UtilityEntry {
 export interface SubmittedSheetEditableTrashDetails {
     hasRecycling: '' | 'yes' | 'no' | 'not_sure';
     trashPickupDay: '' | TrashPickupDay;
+    trashPickupDays: TrashPickupDay[];
     recyclingPickupDay: '' | TrashPickupDay;
 }
 

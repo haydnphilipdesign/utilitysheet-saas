@@ -142,7 +142,7 @@ describe('UtilityStep electric meter flow', () => {
         const onNext = vi.fn();
         render(<StatefulUtilityStep onNext={onNext} />);
 
-        fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
+        fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
 
         expect(onNext).toHaveBeenCalledTimes(1);
         expect(screen.queryByTestId('seller-electric-meter-number')).not.toBeInTheDocument();
@@ -204,7 +204,7 @@ describe('UtilityStep electric meter flow', () => {
             />
         );
 
-        fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
+        fireEvent.click(screen.getByTestId('seller-utility-skip-trash'));
 
         expect(onNext).not.toHaveBeenCalled();
         expect(screen.getByTestId('seller-trash-details-step')).toBeInTheDocument();
@@ -223,7 +223,7 @@ describe('UtilityStep electric meter flow', () => {
         fireEvent.click(screen.getByRole('button', { name: /city waste services/i }));
 
         fireEvent.click(screen.getByTestId('seller-trash-recycling-yes'));
-        fireEvent.change(screen.getByTestId('seller-trash-pickup-day'), { target: { value: 'thu' } });
+        fireEvent.click(screen.getByLabelText('Thursday'));
         fireEvent.change(screen.getByTestId('seller-recycling-pickup-day'), { target: { value: 'fri' } });
         fireEvent.click(screen.getByTestId('seller-trash-recycling-no'));
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
@@ -231,8 +231,33 @@ describe('UtilityStep electric meter flow', () => {
         const utilityState = readUtilityState();
         expect(utilityState.trash.extra).toMatchObject({
             has_recycling: 'no',
+            trash_pickup_days: ['thu'],
             trash_pickup_day: 'thu',
             recycling_pickup_day: null,
+        });
+        expect(onNext).toHaveBeenCalledTimes(1);
+    });
+
+    it('trash details allow selecting multiple pickup days', () => {
+        const onNext = vi.fn();
+        render(
+            <StatefulUtilityStep
+                category="trash"
+                onNext={onNext}
+                suggestions={[{ display_name: 'City Waste Services', confidence: 0.9 }]}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /city waste services/i }));
+
+        fireEvent.click(screen.getByLabelText('Monday'));
+        fireEvent.click(screen.getByLabelText('Thursday'));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        const utilityState = readUtilityState();
+        expect(utilityState.trash.extra).toMatchObject({
+            trash_pickup_days: ['mon', 'thu'],
+            trash_pickup_day: 'mon',
         });
         expect(onNext).toHaveBeenCalledTimes(1);
     });

@@ -82,7 +82,7 @@ function renderSimpleWizard() {
 function advanceToFirstAdvancedModule() {
     fireEvent.click(screen.getByRole('button', { name: /get started/i }));
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-    fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
+    fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
 }
 
 function advanceToReview() {
@@ -102,12 +102,12 @@ describe('SellerWizard advanced module step flow', () => {
         advanceToFirstAdvancedModule();
 
         expect(screen.getByText('Mailbox & Home Access (1 of 2)')).toBeInTheDocument();
-        expect(screen.getByText('Mailbox & Home Access')).toBeInTheDocument();
+        expect(screen.getAllByText('Mailbox & Home Access').length).toBeGreaterThan(0);
 
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));
         expect(screen.getByText('Home Service Contacts (2 of 2)')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: /back/i }));
+        fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
         expect(screen.getByText('Mailbox & Home Access (1 of 2)')).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: /continue/i }));
@@ -136,7 +136,7 @@ describe('SellerWizard advanced module step flow', () => {
         fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
 
         fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-        fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
+        fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
 
         expect(screen.getByText('Home Service Contacts (1 of 1)')).toBeInTheDocument();
         expect(screen.queryByText('Mailbox & Home Access (1 of 2)')).not.toBeInTheDocument();
@@ -166,7 +166,7 @@ describe('SellerWizard advanced module step flow', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /get started/i }));
         fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-        fireEvent.click(screen.getByRole('button', { name: "I don't know" }));
+        fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
 
         expect(screen.getByText('Review and Submit')).toBeInTheDocument();
     });

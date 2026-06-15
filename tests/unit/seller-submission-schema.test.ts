@@ -135,6 +135,35 @@ describe('sellerSubmissionBodySchema', () => {
         });
     });
 
+    it('normalizes multiple trash pickup days and keeps the first day for legacy readers', () => {
+        const parsed = sellerSubmissionBodySchema.safeParse({
+            ...basePayload,
+            utilities: {
+                trash: {
+                    entry_mode: 'search_selected',
+                    display_name: 'City Waste',
+                    raw_text: null,
+                    extra: {
+                        has_recycling: 'YES',
+                        trash_pickup_days: ['THU', 'mon', 'thu', 'nope'],
+                        trash_pickup_day: 'wed',
+                        recycling_pickup_day: 'fri',
+                    },
+                },
+            },
+        });
+
+        expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.error.issues, null, 2)).toBe(true);
+        if (!parsed.success) return;
+
+        expect(parsed.data.utilities.trash.extra).toEqual({
+            has_recycling: 'yes',
+            trash_pickup_days: ['thu', 'mon'],
+            trash_pickup_day: 'thu',
+            recycling_pickup_day: 'fri',
+        });
+    });
+
     it('clears recycling pickup day when has_recycling is no', () => {
         const parsed = sellerSubmissionBodySchema.safeParse({
             ...basePayload,
