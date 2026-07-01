@@ -345,7 +345,7 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={() => setMode('search')}
-                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
                                     Search Providers
                                 </button>
@@ -385,7 +385,7 @@ export function UtilityStep({
                                                 )}
                                             </div>
                                         </div>
-                                        <Check className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
+                                        <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
                                     </button>
                                 ))}
                             </div>
@@ -413,8 +413,8 @@ export function UtilityStep({
                         </div>
                     ) : (
                         <div className="bg-muted/50 border border-border rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center space-y-4 sm:space-y-6">
-                            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                                <Search className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-400" />
+                            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[var(--brand-accent-soft)] flex items-center justify-center">
+                                <Search className="h-6 w-6 sm:h-8 sm:w-8 text-[color:var(--brand-accent)]" />
                             </div>
                             <div>
                                 <h4 className="text-base sm:text-lg font-medium text-foreground">Help us find your provider</h4>
@@ -426,7 +426,7 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={() => setMode('search')}
-                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                                 >
                                     Search Providers
                                 </button>
@@ -481,7 +481,7 @@ export function UtilityStep({
                                 className="w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left transition-all group active:scale-[0.98]"
                             >
                                 <span className="font-medium text-foreground transition-colors text-sm sm:text-base truncate">{result.display_name}</span>
-                                <Check className="h-4 w-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
+                                <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
                             </button>
                         ))}
 
@@ -508,7 +508,7 @@ export function UtilityStep({
                                             )}
                                         </div>
                                         <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-slate-500/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
-                                            <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500" />
+                                            <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[color:var(--brand-accent)]" />
                                         </div>
                                     </button>
                                 ))}
@@ -523,7 +523,7 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={handleManualEntryFromSearch}
-                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-semibold transition-colors active:scale-[0.98] text-sm sm:text-base"
                                     data-testid="seller-provider-use-typed"
                                 >
                                     {`Use "${searchQuery}"`}
@@ -583,7 +583,7 @@ export function UtilityStep({
                         <button
                             type="button"
                             onClick={handleContinueWithMeter}
-                            className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                            className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                         >
                             Continue
                         </button>
@@ -636,7 +636,7 @@ export function UtilityStep({
                                         aria-pressed={isSelected}
                                         onClick={() => updateTrashExtra({ has_recycling: option.value })}
                                         className={`px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all ${isSelected
-                                            ? 'bg-slate-600 text-white border-slate-600'
+                                            ? 'bg-[color:var(--brand-accent)] text-white border-[color:var(--brand-accent)]'
                                             : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
                                             }`}
                                         data-testid={`seller-trash-recycling-${option.value}`}
@@ -659,7 +659,7 @@ export function UtilityStep({
                                                 key={option.value}
                                                 htmlFor={inputId}
                                                 className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs sm:text-sm transition-all ${isChecked
-                                                    ? 'bg-slate-600 text-white border-slate-600'
+                                                    ? 'bg-[color:var(--brand-accent)] text-white border-[color:var(--brand-accent)]'
                                                     : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
                                                     }`}
                                             >
@@ -668,7 +668,7 @@ export function UtilityStep({
                                                     type="checkbox"
                                                     checked={isChecked}
                                                     onChange={(e) => toggleTrashPickupDay(option.value, e.target.checked)}
-                                                    className="h-4 w-4 rounded border-border accent-slate-600"
+                                                    className="h-4 w-4 rounded border-border accent-[var(--brand-accent)]"
                                                 />
                                                 {option.label}
                                             </label>
@@ -685,7 +685,7 @@ export function UtilityStep({
                                                 aria-pressed={isSelected}
                                                 onClick={() => setTrashPickupSingleValue(option.value)}
                                                 className={`px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all ${isSelected
-                                                    ? 'bg-slate-600 text-white border-slate-600'
+                                                    ? 'bg-[color:var(--brand-accent)] text-white border-[color:var(--brand-accent)]'
                                                     : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
                                                     }`}
                                                 data-testid={`seller-trash-pickup-${option.value}`}
@@ -720,7 +720,7 @@ export function UtilityStep({
                         <button
                             type="button"
                             onClick={onNext}
-                            className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                            className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
                         >
                             Continue
                         </button>

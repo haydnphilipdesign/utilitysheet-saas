@@ -25,8 +25,8 @@ export function WelcomeStep({ address, onNext, estimatedMinutes, stepCount }: We
             exit={{ opacity: 0, y: -20 }}
             className="flex flex-col items-center justify-center flex-1 text-center space-y-6 sm:space-y-8 px-2"
         >
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center ring-1 ring-border backdrop-blur-md">
-                <Home className="h-8 w-8 sm:h-10 sm:w-10 text-emerald-400" />
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--brand-accent-soft)] flex items-center justify-center ring-1 ring-border backdrop-blur-md">
+                <Home className="h-8 w-8 sm:h-10 sm:w-10 text-[color:var(--brand-accent)]" />
             </div>
 
             <div className="space-y-3 sm:space-y-4 max-w-md">
@@ -55,7 +55,7 @@ export function WelcomeStep({ address, onNext, estimatedMinutes, stepCount }: We
             <button
                 onClick={onNext}
                 data-testid="seller-welcome-continue"
-                className="group relative inline-flex items-center justify-center px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white transition-all duration-200 bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/40 rounded-xl shadow-lg shadow-emerald-900/20 active:scale-95"
+                className="group relative inline-flex items-center justify-center px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white transition-all duration-200 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] border border-[color:var(--brand-accent-border)] rounded-xl shadow-lg active:scale-95"
             >
                 <span className="mr-2">Get Started</span>
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

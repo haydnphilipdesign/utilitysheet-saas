@@ -1,8 +1,9 @@
 'use client';
 
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, CSSProperties, useEffect, useRef, useState } from 'react';
 import { Mail, Phone, Globe, Check, Send, Loader2 } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
+import { buildBrandAccentStyle, resolveBrandColor } from '@/lib/branding/deliverable';
 
 interface BrandProfile {
     name?: string;
@@ -83,7 +84,7 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
                 type="button"
                 onClick={() => setOpen(true)}
                 data-testid="seller-save-link-open"
-                className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400 transition-colors underline-offset-2 hover:underline"
+                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors underline-offset-2 hover:underline"
             >
                 <Mail className="h-3.5 w-3.5" />
                 Email me this link to come back later
@@ -109,7 +110,7 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
                     type="button"
                     onClick={handleSend}
                     disabled={submitting}
-                    className="inline-flex items-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-3 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white text-sm font-medium px-3 disabled:opacity-50"
                     data-testid="seller-save-link-send"
                 >
                     {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -168,15 +169,16 @@ export function SellerLayout(props: SellerLayoutProps) {
         };
     }, []);
 
-    // Use brand primary color or fallback to slate blue
-    const primaryColor = brandProfile?.primary_color || '#475569';
-    // Ensure color is safe (not oklch or lab format)
-    const safePrimaryColor = primaryColor.startsWith('oklch') || primaryColor.startsWith('lab') ? '#475569' : primaryColor;
+    // Honor the agent's brand color across the whole deliverable (safe fallback
+    // to the product default). The same resolved color drives the header, the
+    // progress bar, and every step CTA/selection/checkmark via CSS variables.
+    const safePrimaryColor = resolveBrandColor(brandProfile?.primary_color);
+    const accentStyle = buildBrandAccentStyle(brandProfile?.primary_color);
     const fallbackHeaderHeight = 144;
     const mainTopPadding = (headerHeight ?? fallbackHeaderHeight) + 16;
 
     return (
-        <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+        <div className="min-h-screen bg-background text-foreground selection:bg-primary/30" style={accentStyle as CSSProperties}>
             {/* Background Gradients */}
             <div className="fixed inset-0 z-0 pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-slate-900/10 rounded-full blur-[128px]" />
@@ -254,9 +256,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                 className="h-full transition-all duration-500 ease-out"
                                 style={{
                                     width: `${progress}%`,
-                                    background: brandProfile?.primary_color
-                                        ? `linear-gradient(to right, ${safePrimaryColor}, ${safePrimaryColor}dd)`
-                                        : 'linear-gradient(to right, rgb(71, 85, 105), rgb(100, 116, 139))'
+                                    background: 'linear-gradient(to right, var(--brand-accent), var(--brand-accent-strong))',
                                 }}
                             />
                         </div>
@@ -294,7 +294,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                     step: stepName || 'unknown',
                                     location: 'seller_flow',
                                 })}
-                                className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400 transition-colors"
+                                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
                             >
                                 <Mail className="h-3.5 w-3.5" />
                                 {brandProfile.contact_email}
@@ -308,7 +308,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                     step: stepName || 'unknown',
                                     location: 'seller_flow',
                                 })}
-                                className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400 transition-colors"
+                                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
                             >
                                 <Phone className="h-3.5 w-3.5" />
                                 {brandProfile.contact_phone}
@@ -324,7 +324,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                     step: stepName || 'unknown',
                                     location: 'seller_flow',
                                 })}
-                                className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400 transition-colors"
+                                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
                             >
                                 <Globe className="h-3.5 w-3.5" />
                                 Website

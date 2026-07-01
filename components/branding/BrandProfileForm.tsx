@@ -870,7 +870,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                 {/* Right Column: Live PDF Preview */}
                 <div className="hidden lg:block">
                     <div className="sticky top-8 space-y-4">
-                        <UtilitySheetPdfPreview branding={formData} />
+                        <UtilitySheetPdfPreview branding={formData} isPro={isPro} />
                         <Button
                             variant="outline"
                             className="w-full"

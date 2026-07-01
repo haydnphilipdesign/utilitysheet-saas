@@ -467,6 +467,7 @@ export default function OnboardingPage() {
                                     show_powered_by: true,
                                     show_generation_date: true,
                                 }}
+                                isPro={account?.subscription_status === 'pro' || organization?.subscription_status === 'team'}
                             />
                             <div className="rounded-xl border border-border/70 bg-muted/25 px-4 py-3 text-xs text-muted-foreground">
                                 Everything here is optional. The fastest path is still to copy your reusable link and start sharing it.

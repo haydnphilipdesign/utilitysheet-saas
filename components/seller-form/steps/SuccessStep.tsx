@@ -214,7 +214,7 @@ export function SuccessStep({ isDemo = false, demoData, brandProfile, sellerToke
                                 type="button"
                                 onClick={handleSendConfirmation}
                                 disabled={confirmSubmitting}
-                                className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-3 disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white text-sm font-medium px-3 disabled:opacity-50"
                             >
                                 {confirmSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 Send
@@ -234,13 +234,13 @@ export function SuccessStep({ isDemo = false, demoData, brandProfile, sellerToke
                         <p className="text-xs font-medium text-foreground">Questions? Contact {brandProfile?.name || 'your agent'}:</p>
                         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
                             {brandProfile?.contact_email && (
-                                <a href={`mailto:${brandProfile.contact_email}`} className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400">
+                                <a href={`mailto:${brandProfile.contact_email}`} className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)]">
                                     <Mail className="h-3.5 w-3.5" />
                                     {brandProfile.contact_email}
                                 </a>
                             )}
                             {brandProfile?.contact_phone && (
-                                <a href={`tel:${brandProfile.contact_phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400">
+                                <a href={`tel:${brandProfile.contact_phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)]">
                                     <Phone className="h-3.5 w-3.5" />
                                     {brandProfile.contact_phone}
                                 </a>

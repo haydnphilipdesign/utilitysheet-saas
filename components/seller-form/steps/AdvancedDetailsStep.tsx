@@ -313,7 +313,7 @@ export function AdvancedDetailsStep({
                                         onClick={() => toggleWateringDay(day.value)}
                                         className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
                                             isSelected
-                                                ? 'border-slate-500/60 bg-slate-500/10 text-foreground'
+                                                ? 'border-[color:var(--brand-accent-border)] bg-[var(--brand-accent-soft)] text-[color:var(--brand-accent)]'
                                                 : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
                                         }`}
                                     >
@@ -574,7 +574,7 @@ export function AdvancedDetailsStep({
                     <button
                         type="button"
                         onClick={onNext}
-                        className="flex-[2] py-3 rounded-xl font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                        className="flex-[2] py-3 rounded-xl font-semibold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors"
                         data-testid="advanced-continue"
                     >
                         {isReviewEdit ? 'Save & Return to Review' : 'Continue'}

@@ -93,7 +93,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             {/* Water Source */}
             <div className="space-y-3 sm:space-y-4">
-                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                     <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Water Source
                 </label>
@@ -110,7 +110,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             onClick={() => updateState({ water_source: opt.id as WaterSource })}
                             aria-pressed={state.water_source === opt.id}
                             className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.water_source === opt.id
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
@@ -125,7 +125,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             {/* Sewer Type */}
             <div className="space-y-3 sm:space-y-4">
-                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                     <Waves className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Sewer Type
                 </label>
@@ -142,7 +142,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             onClick={() => updateState({ sewer_type: opt.id as SewerType })}
                             aria-pressed={state.sewer_type === opt.id}
                             className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.sewer_type === opt.id
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
@@ -158,7 +158,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {/* Heating Fuels */}
             <div className="space-y-3 sm:space-y-4">
                 <div>
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                         <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Fuel Sources
                     </label>
@@ -202,7 +202,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                 }}
                                 aria-pressed={isSelected}
                                 className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${isSelected
-                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                    ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                     : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                     }`}
                             >
@@ -221,7 +221,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     className="space-y-3 sm:space-y-4"
                 >
                     <div>
-                        <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                        <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                             <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Which is the primary heat source?
                         </label>
@@ -241,7 +241,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     onClick={() => updateState({ primary_heating_type: fuelId })}
                                     aria-pressed={state.primary_heating_type === fuelId}
                                     className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.primary_heating_type === fuelId
-                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                        ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
                                 >
@@ -264,13 +264,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {/* Optional Utilities */}
             {availableOptionalUtilities.length > 0 && (
                 <div className="space-y-3 sm:space-y-4">
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                         <span className="inline-flex -space-x-1">
                             {availableOptionalUtilities.slice(0, 3).map((u) => {
                                 const Icon = u.icon;
                                 return (
                                     <span key={u.id} className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
-                                        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
+                                        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent)]" />
                                     </span>
                                 );
                             })}
@@ -296,7 +296,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     }}
                                     aria-pressed={isSelected}
                                     className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${isSelected
-                                        ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                        ? 'bg-[var(--brand-accent-softer)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
                                 >
@@ -306,7 +306,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     </div>
                                     {/* Checkmark indicator */}
                                     <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all ${isSelected
-                                        ? 'bg-emerald-500 text-white'
+                                        ? 'bg-[color:var(--brand-accent)] text-white'
                                         : 'bg-muted/60 border border-border text-muted-foreground/50'
                                         }`}>
                                         <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
@@ -320,16 +320,16 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             {showAdvancedModuleSelector && (
                 <div className="space-y-3 sm:space-y-4">
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-emerald-400">
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                         <span className="inline-flex -space-x-1">
                             <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
-                                <Flower2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
+                                <Flower2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent)]" />
                             </span>
                             <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
-                                <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
+                                <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent)]" />
                             </span>
                             <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
-                                <Wrench className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-400" />
+                                <Wrench className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent)]" />
                             </span>
                         </span>
                         Optional handoff details
@@ -352,7 +352,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     onClick={() => toggleAdvancedModuleGroup(group.moduleKeys)}
                                     aria-pressed={isSelected}
                                     className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${isSelected
-                                        ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 shadow-lg shadow-emerald-500/10'
+                                        ? 'bg-[var(--brand-accent-softer)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
                                     data-testid={`advanced-group-${group.id}`}
@@ -365,7 +365,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                         </div>
                                     </div>
                                     <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all ${isSelected
-                                        ? 'bg-emerald-500 text-white'
+                                        ? 'bg-[color:var(--brand-accent)] text-white'
                                         : 'bg-muted/60 border border-border text-muted-foreground/50'
                                         }`}>
                                         <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
@@ -381,7 +381,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 <button
                     type="button"
                     onClick={onNext}
-                    className="w-full py-3 sm:py-4 text-center rounded-xl font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors active:scale-[0.98] text-sm sm:text-base"
+                    className="w-full py-3 sm:py-4 text-center rounded-xl font-semibold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors active:scale-[0.98] text-sm sm:text-base"
                 >
                     Continue
                 </button>

@@ -15,6 +15,7 @@ import { Download, Copy, Check, Phone, ExternalLink, Calendar, MapPin, Loader2, 
 import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
+import { resolveBrandColor, getPacketTitle, hexToRgba } from '@/lib/branding/deliverable';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
 import { trackEvent } from '@/lib/analytics/events';
@@ -41,6 +42,9 @@ type PacketResponse = {
     request: {
         property_address: string;
         created_at: string;
+        water_source?: string | null;
+        sewer_type?: string | null;
+        heating_type?: string | null;
     };
     brand: PacketBrand;
     utilities: Array<{
@@ -267,16 +271,24 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     const mode = data.mode || 'simple';
     const isAdvanced = mode === 'advanced';
     const advancedSections = data.advanced_sections || [];
-    const primaryColor = brand?.primary_color || '#10b981';
+    const primaryColor = resolveBrandColor(brand?.primary_color);
     const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
     const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
     const showGenerationDate = brand?.show_generation_date ?? true;
-    const defaultTitle = isAdvanced ? 'Advanced Utility Packet' : 'Utility Info Sheet';
-    const headerBrandName = showPoweredBy ? 'UtilitySheet' : (brand?.name || defaultTitle);
+    const packetTitle = getPacketTitle(mode);
+    const headerBrandName = showPoweredBy ? 'UtilitySheet' : (brand?.name || packetTitle);
+    const welcomeMessage = brand?.welcome_message?.trim() || '';
     const nextStepsTitle = brand?.next_steps_title || 'Buyer Next Steps';
     const buyerSteps = (brand?.buyer_next_steps && brand.buyer_next_steps.length > 0 ? brand.buyer_next_steps : DEFAULT_BUYER_STEPS)
         .map((step) => step.trim())
         .filter(Boolean);
+    const homeBasics = !isAdvanced
+        ? [
+            { label: 'Water Source', value: request.water_source },
+            { label: 'Sewer Type', value: request.sewer_type },
+            { label: 'Heating Type', value: request.heating_type },
+        ].filter((item) => item.value && String(item.value).trim())
+        : [];
 
     return (
         <div className="min-h-screen bg-background">
@@ -359,10 +371,10 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     {/* Title Section */}
                     <div className="text-center py-4 sm:py-6">
                         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-3 sm:mb-4">
-                            {defaultTitle}
+                            {packetTitle}
                         </h1>
                         <div className="inline-flex items-center gap-2 bg-muted px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg">
-                            <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500 dark:text-sky-400 shrink-0" />
+                            <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" style={{ color: primaryColor }} />
                             <span className="text-foreground font-medium text-sm sm:text-base">{request.property_address}</span>
                         </div>
                         {showGenerationDate && (
@@ -372,6 +384,41 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                             </div>
                         )}
                     </div>
+
+                    {/* Welcome Message (Pro, when provided) */}
+                    {welcomeMessage && (
+                        <div
+                            className="rounded-xl p-4 sm:p-5"
+                            style={{
+                                backgroundColor: hexToRgba(primaryColor, 0.08),
+                                border: `1px solid ${hexToRgba(primaryColor, 0.25)}`,
+                                borderLeft: `3px solid ${primaryColor}`,
+                            }}
+                        >
+                            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{welcomeMessage}</p>
+                        </div>
+                    )}
+
+                    {/* Home Basics */}
+                    {homeBasics.length > 0 && (
+                        <Card className="border-border bg-card/50">
+                            <CardHeader className="pb-2 px-4 sm:px-6">
+                                <h3 className="text-base sm:text-lg font-semibold text-foreground">Home Basics</h3>
+                            </CardHeader>
+                            <CardContent className="px-4 sm:px-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                    {homeBasics.map((item) => (
+                                        <div key={item.label}>
+                                            <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                                            <p className="text-sm sm:text-base font-medium text-foreground capitalize">
+                                                {String(item.value).replace(/_/g, ' ')}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Utility Table */}
                     <Card className="border-border bg-card/50">
@@ -492,7 +539,8 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                             {utility.provider_phone && (
                                                                 <a
                                                                     href={`tel:${utility.provider_phone}`}
-                                                                    className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-400 dark:text-sky-400 dark:hover:text-sky-300"
+                                                                    className="flex items-center gap-1 text-sm font-medium hover:opacity-80 transition-opacity"
+                                                                    style={{ color: primaryColor }}
                                                                     onClick={() => trackEvent('packet_action_clicked', { action: 'phone_tap', location: 'packet_table' })}
                                                                 >
                                                                     <Phone className="h-3 w-3" />
@@ -504,7 +552,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                                                     href={utility.provider_website}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+                                                                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
                                                                     onClick={() => trackEvent('packet_action_clicked', { action: 'website_tap', location: 'packet_table' })}
                                                                 >
                                                                     <ExternalLink className="h-3 w-3" />
@@ -571,7 +619,10 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                             <ol className="space-y-2.5 sm:space-y-3 text-muted-foreground text-sm sm:text-base">
                                 {buyerSteps.map((step, index) => (
                                     <li key={index} className="flex gap-3">
-                                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-500/20 text-slate-600 dark:bg-sky-500/20 dark:text-sky-400 flex items-center justify-center text-sm font-medium">
+                                        <span
+                                            className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium"
+                                            style={{ backgroundColor: hexToRgba(primaryColor, 0.12), color: primaryColor }}
+                                        >
                                             {index + 1}
                                         </span>
                                         <span>{step}</span>

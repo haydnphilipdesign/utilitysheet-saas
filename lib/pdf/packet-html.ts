@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { UTILITY_CATEGORIES, DEFAULT_BUYER_STEPS } from '@/lib/constants';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import { clampBrandingText } from '@/lib/branding/text';
+import { DEFAULT_BRAND_COLOR, getPacketTitle } from '@/lib/branding/deliverable';
 
 export interface PacketPdfData {
     mode?: 'simple' | 'advanced';
@@ -187,7 +188,8 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
     const showGenerationDate = brand?.show_generation_date ?? true;
 
-    const safePrimaryColor = safeHexColor(brand?.primary_color, '#10b981');
+    const safePrimaryColor = safeHexColor(brand?.primary_color, DEFAULT_BRAND_COLOR);
+    const title = escapeHtml(getPacketTitle('simple'));
     const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
     const safeBrandName = escapeHtml(clampBrandingText(brand?.name || 'UtilitySheet', BRAND_PROFILE_LIMITS.brandNameMax) || 'UtilitySheet');
     const safeBrandContactName = escapeHtml(clampBrandingText(brand?.contact_name || '', BRAND_PROFILE_LIMITS.contactNameMax));
@@ -290,9 +292,9 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
                     <td style="padding: 16px 24px;">
                         <div>
                             <div>
-                                ${safeProviderPhone ? `<span style="color: #059669; font-size: 14px; font-weight: 500;">${safeProviderPhone}</span>` : ''}
+                                ${safeProviderPhone ? `<span style="color: ${safePrimaryColor}; font-size: 14px; font-weight: 500;">${safeProviderPhone}</span>` : ''}
                                 ${safeProviderPhone && safeWebsiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
-                                ${safeWebsiteDisplay ? `<span style="color: #2563eb; font-size: 14px;">${safeWebsiteDisplay}</span>` : ''}
+                                ${safeWebsiteDisplay ? `<span style="color: #52525b; font-size: 14px;">${safeWebsiteDisplay}</span>` : ''}
                             </div>
                             ${safeMeterNumber
                     ? `<div style="margin-top: 6px; font-size: 13px; color: #3f3f46; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;"><span style="color: #52525b; font-weight: 600;">Meter #:</span> ${safeMeterNumber}</div>`
@@ -312,7 +314,7 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Utility Info Sheet</title>
+    <title>${title}</title>
 </head>
 <body style="margin: 0; padding: 0; background: #ffffff;">
     <div id="packet-pdf-root" style="width: 800px; box-sizing: border-box; padding: 48px; background: #ffffff; color: #09090b; font-family: Arial, sans-serif, system-ui; min-height: 100%;">
@@ -338,10 +340,10 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 
         <div style="text-align: center; padding: 24px 0 48px 0;">
             <h1 style="font-size: 32px; font-weight: 800; color: #09090b; margin: 0 0 16px 0; letter-spacing: -0.02em;">
-                Utility Info Sheet
+                ${title}
             </h1>
             <div style="background: #f4f4f5; padding: 12px 24px; border-radius: 12px; border: 1px solid #e4e4e7; display: inline-block; margin: 0 auto;">
-                <span style="color: #059669; margin-right: 8px; font-size: 18px; vertical-align: middle;">📍</span>
+                <span style="color: ${safePrimaryColor}; margin-right: 8px; font-size: 18px; vertical-align: middle;">📍</span>
                 <span style="color: #09090b; font-weight: 600; font-size: 18px; vertical-align: middle;">${safePropertyAddress}</span>
             </div>
             ${showGenerationDate ? `
@@ -353,8 +355,8 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         </div>
 
         ${welcomeMessage ? `
-        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px;">
-            <p style="font-size: 14px; color: #1e40af; margin: 0; line-height: 1.6; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">${welcomeMessage}</p>
+        <div style="background: ${hexToRgba(safePrimaryColor, 0.08)}; border: 1px solid ${hexToRgba(safePrimaryColor, 0.25)}; border-left: 3px solid ${safePrimaryColor}; border-radius: 10px; padding: 20px 24px; margin-bottom: 32px;">
+            <p style="font-size: 14px; color: #3f3f46; margin: 0; line-height: 1.6; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">${welcomeMessage}</p>
         </div>
         ` : ''}
 
@@ -383,7 +385,7 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             <ol style="margin: 0; padding: 0; list-style: none;">
                 ${buyerNextSteps.filter((step) => step.trim()).map((step, index) => `
                     <li style="display: flex; gap: 16px; margin-bottom: 16px; color: #3f3f46; align-items: flex-start; line-height: 1.6;">
-                        <span style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">${index + 1}</span>
+                        <span style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px; background: ${hexToRgba(safePrimaryColor, 0.12)}; color: ${safePrimaryColor}; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">${index + 1}</span>
                         <span style="flex: 1; min-width: 0; word-break: break-word; overflow-wrap: anywhere;">${escapeHtml(step)}</span>
                     </li>
                 `).join('')}
@@ -398,6 +400,15 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 
     const filename = `utility-info-sheet-${sanitizeFilenamePart(request.property_address.split(',')[0] || '')}.pdf`;
 
+    // FOLLOW-UP: the simple/free PDF still renders as a rasterized screenshot
+    // (non-selectable text), while the advanced PDF uses the crisp vector
+    // `print_pdf` strategy. Moving simple to `print_pdf` would make its text
+    // selectable and match the advanced quality, but this HTML is a fixed
+    // 800px screenshot-target layout; converting it to a flowing letter-page
+    // print document needs a print-friendly rewrite (width/margins/pagination)
+    // and real-browser verification, so it is intentionally deferred to keep
+    // this consistency pass contained. Content and branding are already unified
+    // between the two strategies via the shared helpers above.
     return {
         html,
         filename,
@@ -409,7 +420,8 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const { request, brand, utilities } = data;
     const sections = data.advanced_sections || [];
-    const safePrimaryColor = safeHexColor(brand?.primary_color, '#0f766e');
+    const safePrimaryColor = safeHexColor(brand?.primary_color, DEFAULT_BRAND_COLOR);
+    const title = escapeHtml(getPacketTitle('advanced'));
     const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
     const safeBrandName = escapeHtml(clampBrandingText(brand?.name || 'UtilitySheet', BRAND_PROFILE_LIMITS.brandNameMax) || 'UtilitySheet');
     const safeAddress = escapeHtml(clampBrandingText(request.property_address, 160));
@@ -429,6 +441,9 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         .slice(0, BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems)
         .map((step) => escapeHtml(step));
     const nextStepsTitle = escapeHtml(clampBrandingText(brand?.next_steps_title || 'Buyer Next Steps', BRAND_PROFILE_LIMITS.nextStepsTitleMax) || 'Buyer Next Steps');
+    const welcomeMessage = brand?.welcome_message
+        ? escapeHtml(clampBrandingText(brand.welcome_message, BRAND_PROFILE_LIMITS.welcomeMessageMax))
+        : '';
 
     const utilityRows = utilities.length === 0
         ? `<tr><td colspan="3" class="empty">No utility details provided.</td></tr>`
@@ -450,7 +465,7 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
                     <td><span class="utility-icon">${icon}</span> <span class="utility-name">${safeCategory}</span></td>
                     <td>${safeProviderName}</td>
                     <td>
-                        ${safeProviderPhone ? `<div>${safeProviderPhone}</div>` : ''}
+                        ${safeProviderPhone ? `<div style="color: ${safePrimaryColor}; font-weight: 600;">${safeProviderPhone}</div>` : ''}
                         ${safeWebsiteDisplay ? `<div class="muted">${safeWebsiteDisplay}</div>` : ''}
                         ${safeMeterNumber ? `<div class="meter">Meter #: ${safeMeterNumber}</div>` : ''}
                         ${trashScheduleLines
@@ -485,7 +500,7 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Utility Information Sheet</title>
+    <title>${title}</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -627,10 +642,16 @@ function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         </header>
 
         <section class="keep-together" style="margin-bottom: 20px;">
-            <h1 class="packet-title">Utility Information Sheet</h1>
+            <h1 class="packet-title">${title}</h1>
             <div class="address-chip">${safeAddress}</div>
             ${showGenerationDate ? `<div class="muted">Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</div>` : ''}
         </section>
+
+        ${welcomeMessage ? `
+        <section class="keep-together" style="background: ${hexToRgba(safePrimaryColor, 0.08)}; border: 1px solid ${hexToRgba(safePrimaryColor, 0.25)}; border-left: 3px solid ${safePrimaryColor}; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+            <p style="margin: 0; color: #334155; font-size: 10pt; line-height: 1.5;">${welcomeMessage}</p>
+        </section>
+        ` : ''}
 
         <section class="packet-section keep-together">
             <h3>Utilities</h3>

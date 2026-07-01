@@ -5,29 +5,26 @@ import type { BrandProfileFormData } from '@/types';
 import { DEFAULT_BUYER_STEPS } from '@/lib/constants';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import { clampBrandingText } from '@/lib/branding/text';
+import { getPacketTitle, hexToRgba, resolveBrandColor } from '@/lib/branding/deliverable';
 import { CalendarDays, Droplets, Flame, MapPin, Trash2, Wifi, Zap } from 'lucide-react';
 
 interface UtilitySheetPdfPreviewProps {
     branding: BrandProfileFormData;
+    /**
+     * When false, the preview applies the same plan gating the real packet
+     * applies to Free accounts (forces "Powered by", hides the welcome message,
+     * ignores custom next steps) so the preview never promises Pro-only output.
+     */
+    isPro?: boolean;
 }
 
-function hexToRgb(hex: string) {
-    const normalized = hex.replace('#', '').trim();
-    if (normalized.length !== 6) return null;
-
-    const r = parseInt(normalized.slice(0, 2), 16);
-    const g = parseInt(normalized.slice(2, 4), 16);
-    const b = parseInt(normalized.slice(4, 6), 16);
-
-    if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return null;
-    return { r, g, b };
-}
-
-function rgbaFromHex(hex: string, alpha: number) {
-    const rgb = hexToRgb(hex);
-    if (!rgb) return `rgba(16, 185, 129, ${alpha})`; // emerald-500 fallback
-    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
-}
+// Sample home-basics data for preview (mirrors the Home Basics card the simple
+// web packet and simple PDF render from real seller answers).
+const sampleHomeBasics = [
+    { label: 'Water Source', value: 'City Water' },
+    { label: 'Sewer Type', value: 'Public Sewer' },
+    { label: 'Heating Type', value: 'Natural Gas' },
+];
 
 // Sample utility data for preview
 const sampleUtilities = [
@@ -38,19 +35,23 @@ const sampleUtilities = [
     { category: 'internet', provider: 'Xfinity', phone: '(800) 555-0104', icon: Wifi },
 ];
 
-export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPreviewProps) {
+export default function UtilitySheetPdfPreview({ branding, isPro = false }: UtilitySheetPdfPreviewProps) {
     const brandName = clampBrandingText(branding.name, BRAND_PROFILE_LIMITS.brandNameMax) || 'Brand Name';
-    const primaryColor = branding.primary_color || '#10b981';
+    const primaryColor = resolveBrandColor(branding.primary_color);
     const contactName = clampBrandingText(branding.contact_name, BRAND_PROFILE_LIMITS.contactNameMax);
     const contactPhone = clampBrandingText(branding.contact_phone, BRAND_PROFILE_LIMITS.contactPhoneMax);
     const contactEmail = clampBrandingText(branding.contact_email, BRAND_PROFILE_LIMITS.contactEmailMax);
     const contactWebsite = clampBrandingText(branding.contact_website, BRAND_PROFILE_LIMITS.contactWebsiteMax);
-    const showPoweredBy = branding.show_powered_by ?? true;
-    const showGenerationDate = branding.show_generation_date ?? true;
-    const welcomeMessage = clampBrandingText(branding.welcome_message, BRAND_PROFILE_LIMITS.welcomeMessageMax);
+    // Mirror the Free/Pro gating applied in lib/packet/packet-data.ts so the
+    // preview shows exactly what the real packet will render for this plan.
+    const showPoweredBy = isPro ? (branding.show_powered_by ?? true) : true;
+    const showGenerationDate = isPro ? (branding.show_generation_date ?? true) : true;
+    const welcomeMessage = isPro ? clampBrandingText(branding.welcome_message, BRAND_PROFILE_LIMITS.welcomeMessageMax) : '';
     const disclaimerText = clampBrandingText(branding.disclaimer_text, BRAND_PROFILE_LIMITS.disclaimerTextMax);
-    const nextStepsTitle = clampBrandingText(branding.next_steps_title, BRAND_PROFILE_LIMITS.nextStepsTitleMax) || 'Buyer Next Steps';
-    const buyerSteps = (branding.buyer_next_steps || DEFAULT_BUYER_STEPS)
+    const nextStepsTitle = (isPro
+        ? clampBrandingText(branding.next_steps_title, BRAND_PROFILE_LIMITS.nextStepsTitleMax)
+        : '') || 'Buyer Next Steps';
+    const buyerSteps = ((isPro && branding.buyer_next_steps) ? branding.buyer_next_steps : DEFAULT_BUYER_STEPS)
         .map((step) => clampBrandingText(step, BRAND_PROFILE_LIMITS.buyerNextStepMax))
         .filter(Boolean)
         .slice(0, BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems);
@@ -129,8 +130,12 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
 
                 {/* Title Section */}
                 <div className="text-center py-4 px-3">
+                    {/* This is a branding preview and depicts the simple-mode
+                        layout (no advanced sections), so it uses the simple
+                        title. Advanced-mode extras are request-specific and not
+                        part of a mode-agnostic branding preview. */}
                     <h1 className="text-sm font-extrabold text-neutral-900 mb-2 tracking-tight">
-                        Utility Info Sheet
+                        {getPacketTitle('simple')}
                     </h1>
                     <div className="inline-flex items-center gap-1.5 bg-neutral-100 px-2.5 py-1.5 rounded-lg border border-neutral-200">
                         <MapPin className="h-3 w-3" style={{ color: primaryColor }} aria-hidden="true" />
@@ -146,10 +151,32 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
 
                 {/* Welcome Message */}
                 {welcomeMessage && (
-                    <div className="mx-3 mb-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                    <div
+                        className="mx-3 mb-3 p-3 rounded-lg"
+                        style={{
+                            backgroundColor: hexToRgba(primaryColor, 0.08),
+                            border: `1px solid ${hexToRgba(primaryColor, 0.25)}`,
+                            borderLeft: `3px solid ${primaryColor}`,
+                        }}
+                    >
                         <p className="text-neutral-700 text-[9px] leading-relaxed line-clamp-4">{welcomeMessage}</p>
                     </div>
                 )}
+
+                {/* Home Basics (sample) — mirrors the simple deliverable */}
+                <div className="mx-3 mb-3 border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
+                    <div className="bg-neutral-50 px-3 py-2 border-b border-neutral-200">
+                        <h3 className="font-semibold text-neutral-900 text-[11px]">Home Basics</h3>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 px-3 py-2">
+                        {sampleHomeBasics.map((item) => (
+                            <div key={item.label}>
+                                <p className="text-[8px] uppercase tracking-wide text-neutral-500">{item.label}</p>
+                                <p className="text-[9px] font-medium text-neutral-900">{item.value}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
 
                 {/* Utility Table */}
                 <div className="mx-3 mb-3 border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
@@ -203,7 +230,7 @@ export default function UtilitySheetPdfPreview({ branding }: UtilitySheetPdfPrev
                                     <span
                                         className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-semibold"
                                         style={{
-                                            backgroundColor: rgbaFromHex(primaryColor, 0.12),
+                                            backgroundColor: hexToRgba(primaryColor, 0.12),
                                             color: primaryColor,
                                         }}
                                     >

@@ -137,7 +137,7 @@ export function ReviewStep({
                         <button
                             type="button"
                             onClick={onEditBasics}
-                            className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+                            className="flex items-center gap-1 text-xs text-[color:var(--brand-accent)] hover:opacity-80 transition-opacity"
                         >
                             <Pencil className="h-3 w-3" />
                             Edit
@@ -211,8 +211,8 @@ export function ReviewStep({
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
                                             {utilState?.entry_mode !== null && (
-                                                <div className="p-1 rounded-full bg-emerald-500/10">
-                                                    <Check className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-500" />
+                                                <div className="p-1 rounded-full bg-[var(--brand-accent-soft)]">
+                                                    <Check className="h-3 w-3 sm:h-4 sm:w-4 text-[color:var(--brand-accent)]" />
                                                 </div>
                                             )}
                                             {onEditUtility && (
@@ -282,7 +282,7 @@ export function ReviewStep({
                                                 <button
                                                     type="button"
                                                     onClick={() => onEditAdvancedModule(moduleKey)}
-                                                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-emerald-400 hover:bg-muted hover:text-emerald-300 transition-colors"
+                                                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[color:var(--brand-accent)] hover:bg-muted hover:opacity-80 transition-colors"
                                                     title={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
                                                 >
                                                     <Pencil className="h-3 w-3" />
@@ -348,7 +348,7 @@ export function ReviewStep({
                     type="button"
                     onClick={onSubmit}
                     disabled={submitting}
-                    className="flex-[2] py-3 sm:py-4 text-center rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base shadow-lg shadow-emerald-900/20"
+                    className="flex-[2] py-3 sm:py-4 text-center rounded-xl font-bold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base shadow-lg"
                 >
                     {submitting ? (
                         <>
