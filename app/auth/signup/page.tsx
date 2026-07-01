@@ -251,7 +251,7 @@ export default function SignupPage() {
                             <Button
                                 type="submit"
                                 data-testid="signup-submit"
-                                className="w-full h-10 sm:h-11 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
+                                className="w-full h-10 sm:h-11 transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
                                 disabled={loading || googleLoading}
                             >
                                 {loading ? (

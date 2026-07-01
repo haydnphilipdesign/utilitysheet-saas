@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 import {
     Table,
     TableBody,
@@ -30,11 +32,7 @@ import {
     ExternalLink,
     FileText,
     FilePenLine,
-    Send,
-    Clock,
-    CheckCircle2,
     Loader2,
-    Lock,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Request } from '@/types';
@@ -42,13 +40,6 @@ import { useEffect, useState } from 'react';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
 import { trackEvent } from '@/lib/analytics/events';
-
-const statusConfig = {
-    draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
-    sent: { label: 'Sent', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: Send },
-    in_progress: { label: 'In Progress', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: Clock },
-    submitted: { label: 'Submitted', color: 'bg-sky-500/20 text-sky-600 dark:text-sky-400 border-sky-500/30', icon: CheckCircle2 },
-};
 
 export default function RequestsPage() {
     const [requests, setRequests] = useState<Request[]>([]);
@@ -131,27 +122,26 @@ export default function RequestsPage() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground">Requests</h1>
-                    <p className="text-muted-foreground mt-1">All utility sheet requests</p>
-                </div>
-                <Link href="/dashboard/requests/new">
-                    <Button
-                        data-testid="requests-new-request"
-                        className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20"
-                        onClick={() =>
-                            trackEvent('new_request_started', {
-                                source: 'requests_header_button',
-                                location: 'requests_page',
-                            })
-                        }
-                    >
-                        <Plus className="mr-2 h-4 w-4" />
-                        New Request
-                    </Button>
-                </Link>
-            </div>
+            <PageHeader
+                title="Requests"
+                description="All utility sheet requests"
+                actions={
+                    <Link href="/dashboard/requests/new">
+                        <Button
+                            data-testid="requests-new-request"
+                            onClick={() =>
+                                trackEvent('new_request_started', {
+                                    source: 'requests_header_button',
+                                    location: 'requests_page',
+                                })
+                            }
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Request
+                        </Button>
+                    </Link>
+                }
+            />
 
             {/* Filters */}
             <Card className="border-border bg-card/50">
@@ -189,26 +179,21 @@ export default function RequestsPage() {
                             <Loader2 className="h-6 w-6 animate-spin" />
                         </div>
                     ) : filteredRequests.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center text-center py-16 px-4 mx-auto max-w-md">
-                            {hasNoRequests ? (
-                                <>
-                                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                                        <FileText className="h-6 w-6 text-muted-foreground" />
-                                    </div>
-                                    <h3 className="text-lg font-semibold text-foreground mb-2">No requests yet</h3>
-                                    <p className="text-sm text-muted-foreground mb-6">
-                                        You have not created any requests yet. Share your seller link to get started.
-                                    </p>
-                                    <div className="flex flex-col sm:flex-row gap-2">
+                        hasNoRequests ? (
+                            <EmptyState
+                                icon={FileText}
+                                title="No requests yet"
+                                description="You have not created any requests yet. Share your seller link to get started."
+                                action={
+                                    <>
                                         <Link href="/dashboard">
-                                            <Button variant="outline" className="border-border text-foreground hover:bg-muted">
+                                            <Button variant="outline">
                                                 <ExternalLink className="mr-2 h-4 w-4" />
                                                 Go to your seller link
                                             </Button>
                                         </Link>
                                         <Link href="/dashboard/requests/new">
                                             <Button
-                                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white"
                                                 onClick={() =>
                                                     trackEvent('new_request_started', {
                                                         source: 'requests_empty_state',
@@ -220,25 +205,20 @@ export default function RequestsPage() {
                                                 New Request
                                             </Button>
                                         </Link>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                                        <Search className="h-6 w-6 text-muted-foreground" />
-                                    </div>
-                                    <h3 className="text-lg font-semibold text-foreground mb-2">No matching requests</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        No requests match your current search or filters. Try adjusting them.
-                                    </p>
-                                </>
-                            )}
-                        </div>
+                                    </>
+                                }
+                            />
+                        ) : (
+                            <EmptyState
+                                icon={Search}
+                                title="No matching requests"
+                                description="No requests match your current search or filters. Try adjusting them."
+                            />
+                        )
                     ) : (
                     <div className="rounded-lg border border-border overflow-x-auto">
                             <div className="space-y-3 p-3 md:hidden">
                                 {filteredRequests.map((request) => {
-                                    const status = statusConfig[request.status];
                                     const isLocked = Boolean(request.is_locked);
 
                                     return (
@@ -251,14 +231,7 @@ export default function RequestsPage() {
                                                         {request.packet_mode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
                                                     </p>
                                                 </div>
-                                                <Badge variant="outline" className={`${status.color} border text-xs px-2 py-0.5 shrink-0`}>
-                                                    {isLocked ? (
-                                                        <Lock className="mr-1 h-3.5 w-3.5" />
-                                                    ) : (
-                                                        <status.icon className="mr-1 h-3.5 w-3.5" />
-                                                    )}
-                                                    {isLocked ? 'Locked' : status.label}
-                                                </Badge>
+                                                <StatusBadge status={request.status} locked={isLocked} className="shrink-0" />
                                             </div>
                                             <div className="flex items-center justify-between">
                                                 <p className="text-xs text-muted-foreground">
@@ -304,7 +277,6 @@ export default function RequestsPage() {
                             </TableHeader>
                             <TableBody>
                                 {filteredRequests.map((request) => {
-                                        const status = statusConfig[request.status];
                                         const isLocked = Boolean(request.is_locked);
                                         return (
                                             <TableRow key={request.id} className="border-border hover:bg-muted/30">
@@ -334,18 +306,7 @@ export default function RequestsPage() {
                                                     {format(new Date(request.created_at), 'MMM d, yyyy')}
                                                 </TableCell>
                                                 <TableCell className="py-3 sm:py-4">
-                                                    <Badge
-                                                        variant="outline"
-                                                        className={`${status.color} border text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5`}
-                                                    >
-                                                        {isLocked ? (
-                                                            <Lock className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                                        ) : (
-                                                            <status.icon className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                                        )}
-                                                        <span className="hidden sm:inline">{isLocked ? 'Locked' : status.label}</span>
-                                                        <span className="sm:hidden">{isLocked ? 'Locked' : status.label.split(' ')[0]}</span>
-                                                    </Badge>
+                                                    <StatusBadge status={request.status} locked={isLocked} responsive />
                                                 </TableCell>
                                                 <TableCell className="text-right py-3 sm:py-4">
                                                     <DropdownMenu>

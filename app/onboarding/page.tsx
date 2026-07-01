@@ -264,11 +264,11 @@ export default function OnboardingPage() {
                     <span className="text-xl font-bold text-foreground">UtilitySheet</span>
                 </div>
 
-                <Card className="overflow-hidden border-emerald-500/25 bg-card/85 shadow-xl backdrop-blur">
+                <Card className="overflow-hidden border-primary/25 bg-card/85 shadow-xl backdrop-blur">
                     <CardHeader className="relative pb-4">
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.16),transparent_50%)]" />
                         <div className="relative">
-                            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                                 <Sparkles className="h-3.5 w-3.5" />
                                 Primary workflow
                             </div>
@@ -281,7 +281,7 @@ export default function OnboardingPage() {
                     <CardContent className="space-y-4">
                         <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
                             <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                                <LinkIcon className="h-4 w-4 text-emerald-600" />
+                                <LinkIcon className="h-4 w-4 text-primary" />
                                 Reusable seller link
                             </div>
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -294,10 +294,7 @@ export default function OnboardingPage() {
                                     type="button"
                                     onClick={handleCopyLink}
                                     disabled={!intakeLink?.url}
-                                    className={cn(
-                                        'bg-emerald-600 hover:bg-emerald-700 text-white sm:min-w-[132px]',
-                                        copied && 'bg-emerald-700'
-                                    )}
+                                    className="sm:min-w-[132px]"
                                 >
                                     {copied ? (
                                         <>
@@ -401,7 +398,7 @@ export default function OnboardingPage() {
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="contactName" className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                        <CheckCircle2 className="h-4 w-4 text-primary" />
                                         Your Name
                                     </Label>
                                     <Input id="contactName" value={contactName} onChange={(event) => setContactName(event.target.value)} />

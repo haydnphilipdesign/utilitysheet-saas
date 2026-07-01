@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Loader2, Mail, Download, Lock } from 'lucide-react';
 import type { Request } from '@/types';
@@ -14,13 +15,6 @@ import { toast } from 'sonner';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { ADVANCED_MODULE_DEFAULTS } from '@/lib/packet/modules';
 import { trackEvent } from '@/lib/analytics/events';
-
-const statusConfig = {
-    draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border' },
-    sent: { label: 'Sent', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-    in_progress: { label: 'In Progress', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-    submitted: { label: 'Submitted', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
-} as const;
 
 function FieldValue({ value }: { value?: string | null }) {
     if (value) {
@@ -164,7 +158,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     if (loading) {
         return (
             <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }
@@ -192,7 +186,6 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
         );
     }
 
-    const status = statusConfig[request.status] || statusConfig.draft;
     const isLocked = Boolean(request.is_locked);
     const packetMode = request.packet_mode || 'simple';
     const modeSwitchAllowed = !isLocked && (request.status === 'draft' || request.status === 'sent');
@@ -249,7 +242,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             ))}
                         </div>
                         <Button
-                            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-11 px-8"
+                            className="w-full sm:w-auto font-semibold px-8"
                             onClick={() => router.push('/dashboard/settings')}
                         >
                             Upgrade to Pro — $9/month
@@ -274,7 +267,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     </Button>
                     <h1 className="text-3xl font-bold text-foreground">{request.property_address}</h1>
                     <div className="flex items-center gap-3">
-                        <Badge className={status.color}>{status.label}</Badge>
+                        <StatusBadge status={request.status} />
                         <Badge variant="outline" className="border-border text-foreground">
                             {packetMode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
                         </Badge>
@@ -446,7 +439,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <Button
-                            className="w-full bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
+                            className="w-full"
                             onClick={handleDownloadPdf}
                             disabled={!canViewPacket || downloadingPdf}
                         >

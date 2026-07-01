@@ -659,7 +659,7 @@ export default function SettingsPage() {
             <Card className="border-border bg-card/50">
                 <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
-                        <User className="h-5 w-5 text-emerald-400" />
+                        <User className="h-5 w-5 text-primary" />
                         Profile
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
@@ -695,7 +695,7 @@ export default function SettingsPage() {
             <Card className="border-border bg-card/50">
                 <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
-                        <Bell className="h-5 w-5 text-emerald-400" />
+                        <Bell className="h-5 w-5 text-primary" />
                         Notifications
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
@@ -770,7 +770,7 @@ export default function SettingsPage() {
             <Card className="border-border bg-card/50">
                 <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
-                        <LinkIcon className="h-5 w-5 text-emerald-400" />
+                        <LinkIcon className="h-5 w-5 text-primary" />
                         Reusable Seller Link
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
@@ -880,7 +880,6 @@ export default function SettingsPage() {
                         </div>
                         <Button
                             type="button"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
                             onClick={handleSaveDefaultPacketMode}
                             disabled={
                                 intakeSaving ||
@@ -925,7 +924,6 @@ export default function SettingsPage() {
                             </div>
                             <Button
                                 type="button"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                 onClick={handleSaveIntakeSlug}
                                 disabled={!intakeCanCustomize || intakeSaving || intakeSlugDraft.trim().length < 3}
                             >
@@ -945,7 +943,7 @@ export default function SettingsPage() {
             <Card className="border-border bg-card/50">
                 <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
-                        <CreditCard className="h-5 w-5 text-emerald-400" />
+                        <CreditCard className="h-5 w-5 text-primary" />
                         Subscription
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
@@ -1021,7 +1019,7 @@ export default function SettingsPage() {
                             </Button>
                         ) : (
                             <Button
-                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20 font-bold h-11 px-8 border-none transition-all hover:scale-105 active:scale-95"
+                                className="font-bold h-11 px-8 transition-all hover:scale-105 active:scale-95"
                                 onClick={async () => {
                                     setBillingLoading(true);
                                     try {
@@ -1082,7 +1080,7 @@ export default function SettingsPage() {
             <Card className="border-border bg-card/50">
                 <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
-                        <Users className="h-5 w-5 text-emerald-400" />
+                        <Users className="h-5 w-5 text-primary" />
                         Teams
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
@@ -1231,7 +1229,6 @@ export default function SettingsPage() {
                                                 </p>
                                             </div>
                                             <Button
-                                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                                                 onClick={handleTeamCheckout}
                                                 disabled={teamBillingLoading}
                                             >
@@ -1279,7 +1276,6 @@ export default function SettingsPage() {
                                         <Button
                                             onClick={handleInvite}
                                             disabled={!orgIsAdmin || inviteLoading || !inviteEmail.trim()}
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
                                         >
                                             {inviteLoading ? (
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1404,7 +1400,7 @@ export default function SettingsPage() {
             <Card className="border-border bg-card/50">
                 <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
-                        <User className="h-5 w-5 text-emerald-400" />
+                        <User className="h-5 w-5 text-primary" />
                         Account Actions
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
@@ -1427,7 +1423,6 @@ export default function SettingsPage() {
                 <Button
                     onClick={handleSave}
                     disabled={loading}
-                    className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg"
                 >
                     {loading ? (
                         <>

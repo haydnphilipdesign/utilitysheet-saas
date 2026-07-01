@@ -171,7 +171,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                     <Card className="border-border bg-card">
                         <CardHeader>
                             <CardTitle className="text-foreground flex items-center gap-2">
-                                <Palette className="h-5 w-5 text-emerald-500" />
+                                <Palette className="h-5 w-5 text-primary" />
                                 Brand Identity
                             </CardTitle>
                             <CardDescription className="text-muted-foreground">
@@ -732,7 +732,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                     <Card className="border-border bg-card">
                         <CardHeader>
                             <CardTitle className="text-foreground flex items-center gap-2">
-                                <ListChecks className="h-5 w-5 text-emerald-500" />
+                                <ListChecks className="h-5 w-5 text-primary" />
                                 Buyer Next Steps
                                 {!isPro && (
                                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-full px-2 py-0.5">
@@ -764,7 +764,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                 <Label className="text-foreground">Steps</Label>
                                 {(formData.buyer_next_steps || DEFAULT_BUYER_STEPS).map((step, index) => (
                                     <div key={index} className="flex items-start gap-2">
-                                        <div className="flex items-center justify-center w-6 h-6 mt-2 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold flex-shrink-0">
+                                        <div className="flex items-center justify-center w-6 h-6 mt-2 rounded-full bg-primary/10 text-primary text-xs font-semibold flex-shrink-0">
                                             {index + 1}
                                         </div>
                                         <Textarea
@@ -851,7 +851,6 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                         <Button
                             onClick={handleSubmit}
                             disabled={loading || !formData.name}
-                            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                         >
                             {loading ? (
                                 <>

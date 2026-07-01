@@ -34,7 +34,6 @@ import {
     Eye,
     Download,
     Mail,
-    MessageSquare,
     ExternalLink,
     Loader2,
     Trash2,
@@ -44,7 +43,6 @@ import {
     X,
     Zap,
     Link2,
-    Check,
 } from 'lucide-react';
 import type { Request, DashboardStats } from '@/types';
 import { format } from 'date-fns';
@@ -54,13 +52,9 @@ import type { ProductUpdate } from '@/types';
 import { trackEvent } from '@/lib/analytics/events';
 import { mergeFeaturedProductUpdate } from '@/lib/product-updates';
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton';
-
-const statusConfig = {
-    draft: { label: 'Draft', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
-    sent: { label: 'Sent', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', icon: Send },
-    in_progress: { label: 'In Progress', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', icon: Clock },
-    submitted: { label: 'Submitted', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30', icon: CheckCircle2 },
-};
+import { StatusBadge } from '@/components/ui/status-badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ReusableLinkActions } from '@/components/dashboard/reusable-link-actions';
 
 const REUSABLE_LINK_NEXT_STEPS_DISMISSED_KEY = 'utilitysheet:reusable-link-next-steps-dismissed';
 
@@ -476,8 +470,8 @@ export default function DashboardPage() {
 
                     {/* First-run seller link hero */}
                     {showSetupPrompt && intakeLink?.url && (
-                        <Card className="relative overflow-hidden border-emerald-500/30 bg-card/70 backdrop-blur-sm">
-                            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
+                        <Card className="relative overflow-hidden border-primary/30 bg-card/70 backdrop-blur-sm">
+                            <div className="pointer-events-none absolute inset-0 bg-primary/[0.06]" />
                             <CardHeader className="relative pb-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
@@ -486,46 +480,19 @@ export default function DashboardPage() {
                                             Share this with a seller. They enter the property address, complete the utility details, and you get a ready-to-review sheet.
                                         </CardDescription>
                                     </div>
-                                    <Badge variant="outline" className="w-fit border-emerald-500/30 text-emerald-700 dark:text-emerald-300">
+                                    <Badge variant="outline" className="w-fit border-primary/30 text-primary">
                                         Start here
                                     </Badge>
                                 </div>
                             </CardHeader>
                             <CardContent className="relative space-y-4">
-                                <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-                                    <Input
-                                        value={intakeLink.url}
-                                        readOnly
-                                        className="bg-background/70 font-mono text-xs sm:text-sm"
-                                    />
-                                    <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
-                                        <Button
-                                            type="button"
-                                            onClick={handleCopyDashboardIntakeLink}
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                                        >
-                                            {copiedDashboardLink ? (
-                                                <>
-                                                    <Check className="mr-2 h-4 w-4" />
-                                                    Copied
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Copy className="mr-2 h-4 w-4" />
-                                                    Copy Link
-                                                </>
-                                            )}
-                                        </Button>
-                                        <Button type="button" variant="outline" onClick={handleCopyReusableLinkSms}>
-                                            <MessageSquare className="mr-2 h-4 w-4" />
-                                            Copy SMS
-                                        </Button>
-                                        <Button type="button" variant="outline" onClick={handleOpenReusableLinkEmail}>
-                                            <Mail className="mr-2 h-4 w-4" />
-                                            Open Email
-                                        </Button>
-                                    </div>
-                                </div>
+                                <ReusableLinkActions
+                                    url={intakeLink.url}
+                                    copied={copiedDashboardLink}
+                                    onCopyLink={handleCopyDashboardIntakeLink}
+                                    onCopySms={handleCopyReusableLinkSms}
+                                    onOpenEmail={handleOpenReusableLinkEmail}
+                                />
 
                                 <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
                                     <div className="rounded-lg border border-border/70 bg-background/45 px-3 py-2">Seller enters the property address</div>
@@ -548,20 +515,20 @@ export default function DashboardPage() {
                     )}
 
                     {!showSetupPrompt && (
-                    <Card className="relative overflow-hidden border-emerald-500/30 bg-card/60 backdrop-blur-sm">
-                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(16,185,129,0.12),transparent_55%)]" />
+                    <Card className="relative overflow-hidden border-primary/30 bg-card/60 backdrop-blur-sm">
+                        <div className="pointer-events-none absolute inset-0 bg-primary/[0.06]" />
                         <CardHeader className="relative px-4 sm:px-6 pb-4">
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                                 <div>
                                     <CardTitle className="text-foreground text-lg sm:text-xl flex items-center gap-2">
-                                        <Link2 className="h-5 w-5 text-emerald-500" />
+                                        <Link2 className="h-5 w-5 text-primary" />
                                         Reusable Seller Link
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground text-sm mt-1">
                                         This is your primary workflow: share one fixed link and sellers enter the property address themselves.
                                     </CardDescription>
                                 </div>
-                                <Badge className="w-fit bg-emerald-600 hover:bg-emerald-600 text-white">
+                                <Badge className="w-fit">
                                     Primary Workflow
                                 </Badge>
                             </div>
@@ -573,54 +540,14 @@ export default function DashboardPage() {
                                     Loading your reusable link...
                                 </div>
                             ) : intakeLink?.url ? (
-                                <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
-                                    <Input
-                                        value={intakeLink.url}
-                                        readOnly
-                                        className="font-mono text-xs sm:text-sm bg-background/70 border-input text-foreground"
-                                    />
-                                    <div className="flex flex-col sm:flex-row gap-2 lg:shrink-0">
-                                        <Button
-                                            type="button"
-                                            onClick={handleCopyDashboardIntakeLink}
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.98]"
-                                        >
-                                            {copiedDashboardLink ? (
-                                                <Check className="mr-2 h-4 w-4" />
-                                            ) : (
-                                                <Copy className="mr-2 h-4 w-4" />
-                                            )}
-                                            {copiedDashboardLink ? 'Copied!' : 'Copy Link'}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="border-input text-foreground hover:bg-muted active:scale-[0.98]"
-                                            onClick={handleCopyReusableLinkSms}
-                                        >
-                                            <MessageSquare className="mr-2 h-4 w-4" />
-                                            Copy SMS
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="border-input text-foreground hover:bg-muted active:scale-[0.98]"
-                                            onClick={handleOpenReusableLinkEmail}
-                                        >
-                                            <Mail className="mr-2 h-4 w-4" />
-                                            Open Email
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            className="border-input text-foreground hover:bg-muted active:scale-[0.98]"
-                                            onClick={() => window.open(intakeLink.url, '_blank', 'noopener,noreferrer')}
-                                        >
-                                            <ExternalLink className="mr-2 h-4 w-4" />
-                                            Open Link
-                                        </Button>
-                                    </div>
-                                </div>
+                                <ReusableLinkActions
+                                    url={intakeLink.url}
+                                    copied={copiedDashboardLink}
+                                    onCopyLink={handleCopyDashboardIntakeLink}
+                                    onCopySms={handleCopyReusableLinkSms}
+                                    onOpenEmail={handleOpenReusableLinkEmail}
+                                    onOpenLink={() => window.open(intakeLink.url, '_blank', 'noopener,noreferrer')}
+                                />
                             ) : (
                                 <p className="text-sm text-muted-foreground">
                                     Unable to load your reusable link right now. Refresh and try again.
@@ -647,7 +574,7 @@ export default function DashboardPage() {
                                         'Pro and Teams can edit submitted sheets after submission without reopening the seller link.',
                                     ].map((step) => (
                                         <div key={step} className="flex items-start gap-2">
-                                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-primary shrink-0" />
                                             <p className="text-xs sm:text-sm text-muted-foreground">{step}</p>
                                         </div>
                                     ))}
@@ -682,7 +609,7 @@ export default function DashboardPage() {
                                         <Button
                                             type="button"
                                             onClick={handleSaveDashboardSlug}
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white active:scale-[0.98]"
+                                            className="active:scale-[0.98]"
                                             disabled={intakeSaving || intakeSlugDraft.trim().length < 3 || intakeSlugUnchanged}
                                         >
                                             {intakeSaving ? (
@@ -714,7 +641,7 @@ export default function DashboardPage() {
                                             {intakeLink?.url || 'Loading your link...'}
                                         </p>
                                     </div>
-                                    <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
+                                    <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
                                         <p className="text-xs text-muted-foreground">Example branded link <span className="text-amber-500">(with Pro)</span></p>
                                         <p className="text-xs sm:text-sm font-mono text-foreground break-all">
                                             {intakeUrlPrefix}{intakeExampleSlug}
@@ -731,7 +658,6 @@ export default function DashboardPage() {
                                             type="button"
                                             onClick={handleStartProCheckout}
                                             disabled={checkoutLoading}
-                                            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
                                         >
                                             {checkoutLoading ? (
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -793,7 +719,7 @@ export default function DashboardPage() {
                             <Link href="/dashboard/settings" className="shrink-0">
                                 <Button
                                     size="sm"
-                                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 px-3 font-medium"
+                                    className="w-full sm:w-auto"
                                 >
                                     Upgrade to Pro
                                 </Button>
@@ -886,7 +812,6 @@ export default function DashboardPage() {
                             {filteredRequests.length > 0 && (
                                 <div className="space-y-3 md:hidden mb-4">
                                     {filteredRequests.map((request) => {
-                                        const status = statusConfig[request.status];
                                         const isLocked = Boolean(request.is_locked);
 
                                         return (
@@ -899,14 +824,7 @@ export default function DashboardPage() {
                                                             {request.packet_mode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
                                                         </p>
                                                     </div>
-                                                    <Badge variant="outline" className={`${status.color} border text-xs px-2 py-0.5 shrink-0`}>
-                                                        {isLocked ? (
-                                                            <Lock className="mr-1 h-3.5 w-3.5" />
-                                                        ) : (
-                                                            <status.icon className="mr-1 h-3.5 w-3.5" />
-                                                        )}
-                                                        {isLocked ? 'Locked' : status.label}
-                                                    </Badge>
+                                                    <StatusBadge status={request.status} locked={isLocked} className="shrink-0" />
                                                 </div>
                                                 <div className="flex items-center justify-between">
                                                     <p className="text-xs text-muted-foreground">
@@ -941,50 +859,38 @@ export default function DashboardPage() {
                                     <TableBody>
                                         {filteredRequests.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="text-center py-20 px-4">
-                                                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
-                                                        <div className="relative mb-6">
-                                                            <div className="absolute inset-0 bg-slate-600/20 blur-3xl rounded-full" />
-                                                            <img
-                                                                src="/utility_sheet_empty_state_illustration_1766440263415.png"
-                                                                alt="No requests"
-                                                                className="relative w-48 h-48 object-contain"
-                                                            />
-                                                        </div>
-                                                        <h3 className="text-lg font-semibold text-foreground mb-2">
-                                                            {searchQuery ? 'No matching requests' : 'Ready to streamline your workflow?'}
-                                                        </h3>
-                                                        <p className="text-sm text-muted-foreground mb-8">
-                                                            {searchQuery
+                                                <TableCell colSpan={5} className="px-4 py-8">
+                                                    <EmptyState
+                                                        icon={searchQuery ? Search : Link2}
+                                                        title={searchQuery ? 'No matching requests' : 'Share your seller link to get started'}
+                                                        description={
+                                                            searchQuery
                                                                 ? `We couldn't find any requests matching "${searchQuery}". Try a different search term.`
-                                                                : "You haven't created any requests yet. Start by sharing your reusable seller link so sellers can enter the property address themselves."}
-                                                        </p>
-                                                        {!searchQuery && (
-                                                            <div className="flex flex-col gap-2 sm:flex-row">
-                                                                {intakeLink?.url ? (
-                                                                    <Button
-                                                                        type="button"
-                                                                        onClick={handleCopyDashboardIntakeLink}
-                                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
-                                                                    >
-                                                                        <Copy className="mr-2 h-4 w-4" />
-                                                                        Copy Seller Link
-                                                                    </Button>
-                                                                ) : null}
-                                                                <Link href="/dashboard/requests/new">
-                                                                    <Button variant="outline" className="border-border text-foreground hover:bg-muted">
-                                                                        <Plus className="mr-2 h-4 w-4" />
-                                                                        Create Manual Request
-                                                                    </Button>
-                                                                </Link>
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                                : "You haven't created any requests yet. Share your reusable seller link so sellers can enter the property address themselves."
+                                                        }
+                                                        action={
+                                                            !searchQuery ? (
+                                                                <>
+                                                                    {intakeLink?.url ? (
+                                                                        <Button type="button" onClick={handleCopyDashboardIntakeLink}>
+                                                                            <Copy className="mr-2 h-4 w-4" />
+                                                                            Copy Seller Link
+                                                                        </Button>
+                                                                    ) : null}
+                                                                    <Link href="/dashboard/requests/new">
+                                                                        <Button variant="outline">
+                                                                            <Plus className="mr-2 h-4 w-4" />
+                                                                            Create Manual Request
+                                                                        </Button>
+                                                                    </Link>
+                                                                </>
+                                                            ) : undefined
+                                                        }
+                                                    />
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
                                             filteredRequests.map((request) => {
-                                                const status = statusConfig[request.status];
                                                 const isLocked = Boolean(request.is_locked);
                                                 return (
                                                     <TableRow key={request.id} className="border-border hover:bg-muted/30">
@@ -1009,15 +915,7 @@ export default function DashboardPage() {
                                                             }
                                                         </TableCell>
                                                         <TableCell className="py-3 sm:py-4">
-                                                            <Badge variant="outline" className={`${status.color} border text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5`}>
-                                                                {isLocked ? (
-                                                                    <Lock className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                                                ) : (
-                                                                    <status.icon className="mr-0.5 sm:mr-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                                                                )}
-                                                                <span className="hidden sm:inline">{isLocked ? 'Locked' : status.label}</span>
-                                                                <span className="sm:hidden">{isLocked ? 'Locked' : status.label.split(' ')[0]}</span>
-                                                            </Badge>
+                                                            <StatusBadge status={request.status} locked={isLocked} responsive />
                                                         </TableCell>
                                                         <TableCell className="text-right py-3 sm:py-4">
                                                             <DropdownMenu>

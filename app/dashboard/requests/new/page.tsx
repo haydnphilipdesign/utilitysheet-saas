@@ -422,10 +422,10 @@ export default function NewRequestPage() {
         <div className="w-full max-w-2xl mx-auto">
             {/* Onboarding banner */}
             {isOnboarding && (
-                <div className="mb-6 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                <div className="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/5">
                     <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-emerald-500/10">
-                            <Sparkles className="h-5 w-5 text-emerald-400" />
+                        <div className="p-2 rounded-lg bg-primary/10">
+                            <Sparkles className="h-5 w-5 text-primary" />
                         </div>
                         <div className="space-y-1">
                             <p className="font-medium text-foreground">Guided first request</p>
@@ -461,16 +461,16 @@ export default function NewRequestPage() {
             {!showOneOffForm && (
                 <>
                     {/* Recommended: Reusable Link card */}
-                    <Card className="border-emerald-500/30 bg-card/60 mb-4 relative overflow-hidden">
+                    <Card className="border-primary/30 bg-card/60 mb-4 relative overflow-hidden">
                         <div className="absolute top-3 right-3 z-10">
-                            <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-[10px] font-bold tracking-wide uppercase px-2 py-0.5">
+                            <Badge className="text-[10px] font-bold tracking-wide uppercase px-2 py-0.5">
                                 Recommended
                             </Badge>
                         </div>
 
                         <CardHeader className="pb-4 pr-24">
                             <CardTitle className="text-foreground flex items-center gap-2">
-                                <LinkIcon className="h-5 w-5 text-emerald-400 shrink-0" />
+                                <LinkIcon className="h-5 w-5 text-primary shrink-0" />
                                 Your Reusable Link
                             </CardTitle>
                             <CardDescription className="text-muted-foreground">
@@ -497,7 +497,7 @@ export default function NewRequestPage() {
                                         type="button"
                                         variant="outline"
                                         onClick={handleCopyIntakeLink}
-                                        className={`shrink-0 border-input transition-colors ${copiedIntake ? 'border-emerald-500/50 text-emerald-500' : 'text-foreground hover:bg-muted'}`}
+                                        className={`shrink-0 border-input transition-colors ${copiedIntake ? 'border-primary/50 text-primary' : 'text-foreground hover:bg-muted'}`}
                                     >
                                         {copiedIntake ? (
                                             <><Check className="mr-2 h-4 w-4" />Copied!</>
@@ -544,7 +544,7 @@ export default function NewRequestPage() {
                                     'No login required for you — the result arrives in your inbox',
                                 ].map((item) => (
                                     <div key={item} className="flex items-start gap-2">
-                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                                         <span className="text-xs text-muted-foreground">{item}</span>
                                     </div>
                                 ))}
@@ -557,7 +557,7 @@ export default function NewRequestPage() {
                                         ? 'Customize your link in Settings.'
                                         : 'Upgrade to Pro/Teams for a custom branded link.'}
                                 </p>
-                                <Link href="/dashboard/settings" className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
+                                <Link href="/dashboard/settings" className="text-xs text-primary hover:text-primary/80 transition-colors">
                                     {intakeCanCustomize ? 'Open Settings' : 'Upgrade'}
                                 </Link>
                             </div>
@@ -618,16 +618,16 @@ export default function NewRequestPage() {
                                 <div
                                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium transition-colors ${
                                         s < step
-                                            ? 'bg-emerald-500 text-white'
+                                            ? 'bg-primary text-primary-foreground'
                                             : s === step
-                                            ? 'bg-muted text-foreground border-2 border-emerald-500'
+                                            ? 'bg-muted text-foreground border-2 border-primary'
                                             : 'bg-muted text-muted-foreground'
                                     }`}
                                 >
                                     {s < step ? <Check className="h-4 w-4" /> : s}
                                 </div>
                                 {s < 4 && (
-                                    <div className={`flex-1 h-0.5 ${s < step ? 'bg-emerald-500' : 'bg-muted'}`} />
+                                    <div className={`flex-1 h-0.5 ${s < step ? 'bg-primary' : 'bg-muted'}`} />
                                 )}
                             </div>
                         ))}
@@ -638,7 +638,7 @@ export default function NewRequestPage() {
                         <Card className="border-border bg-card/50">
                             <CardHeader>
                                 <CardTitle className="text-foreground flex items-center gap-2">
-                                    <MapPin className="h-5 w-5 text-emerald-400" />
+                                    <MapPin className="h-5 w-5 text-primary" />
                                     Property Address
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground">
@@ -661,9 +661,7 @@ export default function NewRequestPage() {
                                     <Button
                                         onClick={() => setStep(2)}
                                         disabled={!isStep1Valid}
-                                        data-testid="new-request-step-1-continue"
-                                        className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
-                                    >
+                                        data-testid="new-request-step-1-continue"                                    >
                                         Continue
                                         <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
@@ -677,7 +675,7 @@ export default function NewRequestPage() {
                         <Card className="border-border bg-card/50">
                             <CardHeader>
                                 <CardTitle className="text-foreground flex items-center gap-2">
-                                    <Sparkles className="h-5 w-5 text-emerald-400" />
+                                    <Sparkles className="h-5 w-5 text-primary" />
                                     Branding Profile
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground">
@@ -691,7 +689,7 @@ export default function NewRequestPage() {
                                             <div className="text-center space-y-3">
                                                 <p className="text-sm text-muted-foreground">You don&apos;t have any brand profiles yet.</p>
                                                 <Link href="/dashboard/branding/new?returnTo=/dashboard/requests/new">
-                                                    <Button variant="outline" className="border-dashed border-2 border-emerald-500/40 hover:border-emerald-500/70 hover:bg-emerald-500/5 text-emerald-400">
+                                                    <Button variant="outline" className="border-dashed border-2 border-primary/40 hover:border-primary/70 hover:bg-primary/5 text-primary">
                                                         <Plus className="mr-2 h-4 w-4" />
                                                         Create a brand profile
                                                     </Button>
@@ -720,15 +718,15 @@ export default function NewRequestPage() {
                                                 onClick={() => updateField('brand_profile_id', brand.id)}
                                                 className={`text-left p-4 rounded-xl border transition-all ${
                                                     formData.brand_profile_id === brand.id
-                                                        ? 'bg-emerald-500/10 border-emerald-500/50 shadow-lg shadow-slate-500/5'
+                                                        ? 'bg-primary/10 border-primary/50 shadow-lg shadow-primary/5'
                                                         : 'bg-muted/50 border-border hover:border-input'
                                                 }`}
                                             >
                                                 <div className="flex items-center justify-between mb-2">
                                                     <p className="font-semibold text-foreground">{brand.name}</p>
                                                     {formData.brand_profile_id === brand.id && (
-                                                        <div className="h-4 w-4 rounded-full bg-emerald-500 flex items-center justify-center">
-                                                            <Check className="h-3 w-3 text-white" />
+                                                        <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                                                            <Check className="h-3 w-3 text-primary-foreground" />
                                                         </div>
                                                     )}
                                                 </div>
@@ -742,7 +740,7 @@ export default function NewRequestPage() {
 
                                         {isPro ? (
                                             <Link href="/dashboard/branding/new?returnTo=/dashboard/requests/new">
-                                                <Button variant="outline" className="w-full h-full min-h-[100px] border-dashed border-2 border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 text-muted-foreground hover:text-emerald-400 group">
+                                                <Button variant="outline" className="w-full h-full min-h-[100px] border-dashed border-2 border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-primary group">
                                                     <div className="flex flex-col items-center">
                                                         <Plus className="h-5 w-5 mb-1 group-hover:scale-110 transition-transform" />
                                                         <span>New Profile</span>
@@ -778,9 +776,7 @@ export default function NewRequestPage() {
                                     </Button>
                                     <Button
                                         onClick={() => setStep(3)}
-                                        disabled={brands.length > 0 && !formData.brand_profile_id}
-                                        className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
-                                    >
+                                        disabled={brands.length > 0 && !formData.brand_profile_id}                                    >
                                         Continue
                                         <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
@@ -873,9 +869,7 @@ export default function NewRequestPage() {
                                         Back
                                     </Button>
                                     <Button
-                                        onClick={() => setStep(4)}
-                                        className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
-                                    >
+                                        onClick={() => setStep(4)}                                    >
                                         Continue
                                         <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
@@ -908,7 +902,7 @@ export default function NewRequestPage() {
                                             }}
                                             className={`text-left rounded-lg border p-3 transition-colors ${
                                                 formData.packet_mode === 'simple'
-                                                    ? 'border-emerald-500/60 bg-emerald-500/10'
+                                                    ? 'border-primary/60 bg-primary/10'
                                                     : 'border-border hover:border-input'
                                             }`}
                                         >
@@ -938,7 +932,7 @@ export default function NewRequestPage() {
                                             }}
                                             className={`text-left rounded-lg border p-3 transition-colors ${
                                                 formData.packet_mode === 'advanced'
-                                                    ? 'border-emerald-500/60 bg-emerald-500/10'
+                                                    ? 'border-primary/60 bg-primary/10'
                                                     : 'border-border hover:border-input'
                                             }`}
                                         >
@@ -986,7 +980,7 @@ export default function NewRequestPage() {
                                     </span>
                                     <button
                                         onClick={toggleAllCategories}
-                                        className="text-sm font-medium text-emerald-500 hover:text-emerald-400 transition-colors"
+                                        className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                                     >
                                         {formData.utility_categories.length === UTILITY_CATEGORIES.length ? 'Deselect All' : 'Select All'}
                                     </button>
@@ -1000,13 +994,13 @@ export default function NewRequestPage() {
                                                 onClick={() => toggleCategory(category.key)}
                                                 className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-all min-w-0 ${
                                                     isSelected
-                                                        ? 'bg-emerald-500/10 border-emerald-500/50 text-foreground'
+                                                        ? 'bg-primary/10 border-primary/50 text-foreground'
                                                         : 'bg-muted/50 border-border text-muted-foreground hover:border-input'
                                                 }`}
                                             >
                                                 <span className="text-lg sm:text-xl">{category.icon}</span>
                                                 <span className="font-medium text-sm sm:text-base min-w-0 flex-1 truncate">{category.label}</span>
-                                                {isSelected && <Check className="h-4 w-4 text-emerald-400 ml-auto" />}
+                                                {isSelected && <Check className="h-4 w-4 text-primary ml-auto" />}
                                             </button>
                                         );
                                     })}
@@ -1023,9 +1017,7 @@ export default function NewRequestPage() {
                                     <Button
                                         onClick={handleCreate}
                                         disabled={!isStep3Valid || loading}
-                                        data-testid="new-request-create"
-                                        className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white"
-                                    >
+                                        data-testid="new-request-create"                                    >
                                         {loading ? (
                                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
                                         ) : (
@@ -1063,7 +1055,7 @@ export default function NewRequestPage() {
                                 <Button
                                     onClick={copyLink}
                                     variant="outline"
-                                    className={`border-input shrink-0 h-10 w-10 sm:w-auto sm:px-3 ${copied ? 'text-emerald-400 border-emerald-500' : 'text-foreground'}`}
+                                    className={`border-input shrink-0 h-10 w-10 sm:w-auto sm:px-3 ${copied ? 'text-primary border-primary' : 'text-foreground'}`}
                                 >
                                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                                 </Button>
@@ -1145,7 +1137,7 @@ export default function NewRequestPage() {
                                 <p className="text-muted-foreground text-xs mt-2">Resets the 1st of each month</p>
                             </div>
                         )}
-                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2.5">
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2.5">
                             <p className="text-sm font-semibold text-foreground">Pro plan — $9/month</p>
                             {[
                                 'Unlimited requests, no monthly cap',
@@ -1153,8 +1145,8 @@ export default function NewRequestPage() {
                                 'Custom branded link for your business',
                             ].map((benefit) => (
                                 <div key={benefit} className="flex items-start gap-2">
-                                    <div className="mt-0.5 h-4 w-4 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-                                        <Sparkles className="h-2.5 w-2.5 text-emerald-400" />
+                                    <div className="mt-0.5 h-4 w-4 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                                        <Sparkles className="h-2.5 w-2.5 text-primary" />
                                     </div>
                                     <p className="text-sm text-muted-foreground">{benefit}</p>
                                 </div>
@@ -1163,7 +1155,7 @@ export default function NewRequestPage() {
                         <div className="flex flex-col gap-2">
                             <Link href="/dashboard/settings" className="w-full">
                                 <Button
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-11"
+                                    className="w-full font-semibold h-11"
                                     onClick={() => setShowUpgradeDialog(false)}
                                 >
                                     Upgrade to Pro

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { Plus, Palette, Star, MoreHorizontal, Pencil, Trash2, Loader2, Lock } from 'lucide-react';
 import {
     DropdownMenu,
@@ -120,30 +121,30 @@ export default function BrandingPage() {
     return (
         <div className="space-y-8">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground">Branding Profiles</h1>
-                    <p className="text-muted-foreground mt-1">Customize how your utility info sheets look</p>
-                </div>
-                {isPro ? (
-                    <Link href="/dashboard/branding/new">
-                        <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20">
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Profile
+            <PageHeader
+                title="Branding Profiles"
+                description="Customize how your utility info sheets look"
+                actions={
+                    isPro ? (
+                        <Link href="/dashboard/branding/new">
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                New Profile
+                            </Button>
+                        </Link>
+                    ) : (
+                        <Button disabled variant="secondary">
+                            <Lock className="mr-2 h-4 w-4" />
+                            Upgrade to Create Profile
                         </Button>
-                    </Link>
-                ) : (
-                    <Button disabled className="bg-secondary text-muted-foreground cursor-not-allowed border border-border">
-                        <Lock className="mr-2 h-4 w-4" />
-                        Upgrade to Create Profile
-                    </Button>
-                )}
-            </div>
+                    )
+                }
+            />
 
             {brands.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-border rounded-3xl bg-card/30 backdrop-blur-sm">
                     <div className="relative mb-6">
-                        <div className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full" />
+                        <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
                         <img
                             src="/branding_empty_state_illustration_1766440299963.png"
                             alt="Branding"
@@ -156,7 +157,7 @@ export default function BrandingPage() {
                             <h3 className="text-xl font-bold text-foreground mb-2">No branding profiles yet</h3>
                             <p className="text-muted-foreground mb-6">Create your first profile to customize your utility sheets with your own logo and colors.</p>
                             <Link href="/dashboard/branding/new">
-                                <Button className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-lg shadow-slate-500/20">
+                                <Button>
                                     <Plus className="mr-2 h-4 w-4" />
                                     Create First Profile
                                 </Button>
@@ -164,8 +165,8 @@ export default function BrandingPage() {
                         </div>
                     ) : (
                         <div className="text-center max-w-md">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium mb-4">
-                                <Star className="h-3 w-3 fill-emerald-400" />
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-medium mb-4">
+                                <Star className="h-3 w-3 fill-primary" />
                                 Pro Feature
                             </div>
                             <h3 className="text-2xl font-bold text-foreground mb-2">Unlock Custom Branding</h3>
@@ -173,7 +174,7 @@ export default function BrandingPage() {
                                 Stand out from the competition. Pro users can create unlimited branding profiles with custom logos, colors, and contact information.
                             </p>
                             <Link href="/dashboard/settings">
-                                <Button className="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold h-11 px-8">
+                                <Button className="font-semibold px-8">
                                     Upgrade to Pro
                                 </Button>
                             </Link>

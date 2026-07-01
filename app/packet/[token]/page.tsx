@@ -314,7 +314,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                         <Button
                             size="sm"
                             data-testid="packet-download-pdf"
-                            className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm active:scale-[0.98]"
+                            className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm active:scale-[0.98]"
                             onClick={downloadPdf}
                             disabled={downloading}
                         >

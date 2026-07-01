@@ -40,26 +40,17 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: var(--font-figtree);
-  --color-norma-purple: #6B3FA0;
-  --color-norma-purple-light: #8B5CC0;
-  --color-norma-purple-dark: #4A2880;
-  --color-norma-lavender: #F3EEFF;
-  --color-norma-border: #D8CAF0;
-  --color-norma-text: #1A1A2E;
-  --color-norma-muted: #4A4A6A;
 }
 
 :root {
   --radius: 0.625rem;
-  --norma-purple: #6B3FA0;
-  --norma-purple-light: #8B5CC0;
-  --norma-lavender: #F3EEFF;
-  --norma-border: #D8CAF0;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
-  /* Beautiful light theme with slate blue accents */
+  /* Light theme. --primary is the single canonical brand accent (slate-blue).
+     Route primary buttons through <Button> so they inherit it. Semantic colors
+     (emerald=success, amber=warning, red=destructive) stay distinct from it. */
   --background: oklch(0.985 0.002 90);
   --foreground: oklch(0.205 0.015 265);
   --card: oklch(1 0 0);

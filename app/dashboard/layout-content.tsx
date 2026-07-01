@@ -149,7 +149,7 @@ export function DashboardLayoutContent({
                             <Link href="/dashboard/requests/new" className="hidden lg:flex">
                                 <Button
                                     data-testid="dashboard-shell-new-request"
-                                    className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20 text-sm h-9 px-3"
+                                    className="text-sm h-9 px-3"
                                     onClick={() =>
                                         trackEvent('new_request_started', {
                                             source: 'dashboard_shell_desktop_button',
@@ -165,7 +165,6 @@ export function DashboardLayoutContent({
                                     size="icon-lg"
                                     aria-label="New Request"
                                     data-testid="dashboard-shell-new-request-icon"
-                                    className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20"
                                     onClick={() =>
                                         trackEvent('new_request_started', {
                                             source: 'dashboard_shell_tablet_button',
@@ -268,7 +267,7 @@ export function DashboardLayoutContent({
                                     });
                                     setMobileMenuOpen(false);
                                 }}
-                                className="flex items-center justify-center gap-2 px-4 py-3 mt-4 text-sm font-medium rounded-lg bg-gradient-to-r from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 text-white"
+                                className="flex items-center justify-center gap-2 px-4 py-3 mt-4 text-sm font-medium rounded-lg bg-primary text-primary-foreground"
                                 data-testid="dashboard-shell-mobile-new-request"
                             >
                                 New Request
