@@ -22,6 +22,13 @@ const statusConfig = {
     submitted: { label: 'Submitted', color: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' },
 } as const;
 
+function FieldValue({ value }: { value?: string | null }) {
+    if (value) {
+        return <p className="text-foreground">{value}</p>;
+    }
+    return <p className="text-muted-foreground/70 italic">Not provided</p>;
+}
+
 export default function RequestDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const router = useRouter();
@@ -316,21 +323,19 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
                                 <p className="text-muted-foreground mb-1">Name</p>
-                                <p className="text-foreground">{request.seller_name || '—'}</p>
+                                <FieldValue value={request.seller_name} />
                             </div>
                             <div>
                                 <p className="text-muted-foreground mb-1">Email</p>
-                                <p className="text-foreground">{request.seller_email || '—'}</p>
+                                <FieldValue value={request.seller_email} />
                             </div>
                             <div>
                                 <p className="text-muted-foreground mb-1">Phone</p>
-                                <p className="text-foreground">{request.seller_phone || '—'}</p>
+                                <FieldValue value={request.seller_phone} />
                             </div>
                             <div>
                                 <p className="text-muted-foreground mb-1">Closing date</p>
-                                <p className="text-foreground">
-                                    {request.closing_date ? format(new Date(request.closing_date), 'MMM d, yyyy') : '—'}
-                                </p>
+                                <FieldValue value={request.closing_date ? format(new Date(request.closing_date), 'MMM d, yyyy') : null} />
                             </div>
                         </div>
 

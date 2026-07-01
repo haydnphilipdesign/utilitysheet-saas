@@ -11,7 +11,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Download, Copy, Check, Phone, ExternalLink, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Download, Copy, Check, Phone, ExternalLink, Calendar, MapPin, Loader2, Clock, Lock, AlertCircle } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
 import { generatePacketPdf } from '@/lib/pdf-generator';
@@ -111,12 +112,50 @@ function getTrashScheduleLines(trashDetails: PacketResponse['utilities'][number]
     return lines;
 }
 
+type PacketState = 'not_submitted' | 'locked' | 'not_found';
+
+function PacketStateScreen({
+    icon,
+    title,
+    body,
+    iconClassName,
+}: {
+    icon: ReactNode;
+    title: string;
+    body: string;
+    iconClassName: string;
+}) {
+    return (
+        <div className="min-h-screen bg-background flex flex-col">
+            <header className="border-b border-border bg-background/80 backdrop-blur-xl">
+                <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-1.5 sm:gap-2">
+                    <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shrink-0">
+                        <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    </div>
+                    <span className="font-bold text-foreground text-sm sm:text-base">UtilitySheet</span>
+                </div>
+            </header>
+            <div className="flex-1 flex items-center justify-center px-4 py-16">
+                <div className="text-center max-w-md">
+                    <div className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full ${iconClassName}`}>
+                        {icon}
+                    </div>
+                    <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2">{title}</h1>
+                    <p className="text-muted-foreground leading-relaxed">{body}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function PacketPage({ params }: { params: Promise<{ token: string }> }) {
     const resolvedParams = use(params);
     const [copied, setCopied] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [data, setData] = useState<PacketResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [packetState, setPacketState] = useState<PacketState | null>(null);
+    const [lockedMessage, setLockedMessage] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchPacket() {
@@ -125,9 +164,20 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                 if (response.ok) {
                     const result = await response.json();
                     setData(result);
+                } else {
+                    const body = await response.json().catch(() => null);
+                    if (body?.state === 'not_submitted') {
+                        setPacketState('not_submitted');
+                    } else if (body?.state === 'locked') {
+                        setPacketState('locked');
+                        setLockedMessage(typeof body?.message === 'string' ? body.message : null);
+                    } else {
+                        setPacketState('not_found');
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching packet data:', error);
+                setPacketState('not_found');
             } finally {
                 setLoading(false);
             }
@@ -180,14 +230,36 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
         );
     }
 
+    if (packetState === 'not_submitted') {
+        return (
+            <PacketStateScreen
+                icon={<Clock className="h-6 w-6 text-sky-500 dark:text-sky-400" />}
+                iconClassName="bg-sky-500/10"
+                title="This info sheet is not ready yet"
+                body="The homeowner has not submitted their utility details. Check back soon."
+            />
+        );
+    }
+
+    if (packetState === 'locked') {
+        return (
+            <PacketStateScreen
+                icon={<Lock className="h-6 w-6 text-amber-500" />}
+                iconClassName="bg-amber-500/10"
+                title="This info sheet is locked"
+                body={lockedMessage || 'Ask the agent to upgrade their plan to view this info sheet.'}
+            />
+        );
+    }
+
     if (!data) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-center">
-                    <h1 className="text-2xl font-bold text-foreground mb-2">Info Sheet Not Found</h1>
-                    <p className="text-muted-foreground">The link may be invalid or expired.</p>
-                </div>
-            </div>
+            <PacketStateScreen
+                icon={<AlertCircle className="h-6 w-6 text-muted-foreground" />}
+                iconClassName="bg-muted"
+                title="Info sheet not found"
+                body="We couldn't find an info sheet for this link. Double-check the link, or ask your agent to resend it."
+            />
         );
     }
 

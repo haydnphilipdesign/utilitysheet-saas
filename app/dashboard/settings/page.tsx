@@ -11,8 +11,17 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
-import { Link as LinkIcon, User, Bell, Check, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
+import { Link as LinkIcon, User, Bell, Check, Copy, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
     ADVANCED_MODULE_DEFAULTS,
@@ -80,8 +89,17 @@ export default function SettingsPage() {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteLoading, setInviteLoading] = useState(false);
     const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
+    const [inviteCopied, setInviteCopied] = useState(false);
     const [teamSeats, setTeamSeats] = useState(3);
     const [teamBillingLoading, setTeamBillingLoading] = useState(false);
+    const [confirmDialog, setConfirmDialog] = useState<{
+        title: string;
+        description: string;
+        confirmLabel: string;
+        destructive?: boolean;
+        onConfirm: () => Promise<void> | void;
+    } | null>(null);
+    const [confirmLoading, setConfirmLoading] = useState(false);
 
     const [intakeLink, setIntakeLink] = useState<{
         slug: string;
@@ -553,9 +571,29 @@ export default function SettingsPage() {
         }
     };
 
-    const handleRemoveMember = async (accountId: string) => {
-        if (!confirm('Remove this member from your organization?')) return;
+    const handleCopyInviteUrl = async () => {
+        if (!lastInviteUrl) return;
+        try {
+            await navigator.clipboard.writeText(lastInviteUrl);
+            setInviteCopied(true);
+            setTimeout(() => setInviteCopied(false), 2000);
+        } catch {
+            toast.error('Failed to copy invite link');
+        }
+    };
 
+    const handleConfirmDialog = async () => {
+        if (!confirmDialog) return;
+        setConfirmLoading(true);
+        try {
+            await confirmDialog.onConfirm();
+        } finally {
+            setConfirmLoading(false);
+            setConfirmDialog(null);
+        }
+    };
+
+    const performRemoveMember = async (accountId: string) => {
         try {
             const response = await fetch(`/api/organization/members/${accountId}`, { method: 'DELETE' });
             const data = await response.json().catch(() => ({}));
@@ -570,10 +608,17 @@ export default function SettingsPage() {
         }
     };
 
-    const handleToggleMemberRole = async (accountId: string, currentRole: 'admin' | 'member') => {
-        const nextRole = currentRole === 'admin' ? 'member' : 'admin';
-        if (!confirm(`Change role to ${nextRole}?`)) return;
+    const requestRemoveMember = (member: OrganizationMemberRow) => {
+        setConfirmDialog({
+            title: 'Remove member',
+            description: `Remove ${member.full_name || member.email} from your organization? They will lose access immediately.`,
+            confirmLabel: 'Remove member',
+            destructive: true,
+            onConfirm: () => performRemoveMember(member.account_id),
+        });
+    };
 
+    const performToggleMemberRole = async (accountId: string, nextRole: 'admin' | 'member') => {
         try {
             const response = await fetch(`/api/organization/members/${accountId}`, {
                 method: 'PATCH',
@@ -590,6 +635,16 @@ export default function SettingsPage() {
             console.error(error);
             toast.error(error instanceof Error ? error.message : 'Failed to update role');
         }
+    };
+
+    const requestToggleMemberRole = (member: OrganizationMemberRow) => {
+        const nextRole = member.member_role === 'admin' ? 'member' : 'admin';
+        setConfirmDialog({
+            title: nextRole === 'admin' ? 'Make admin' : 'Change to member',
+            description: `Change ${member.full_name || member.email}'s role to ${nextRole}?`,
+            confirmLabel: 'Update role',
+            onConfirm: () => performToggleMemberRole(member.account_id, nextRole),
+        });
     };
 
     return (
@@ -990,7 +1045,7 @@ export default function SettingsPage() {
                                 ) : (
                                     <Sparkles className="mr-2 h-4 w-4 fill-white animate-pulse" />
                                 )}
-                                Upgrade to Pro
+                                Upgrade to Pro, $9/mo
                             </Button>
                         )}
                     </div>
@@ -1235,8 +1290,33 @@ export default function SettingsPage() {
                                         </Button>
                                     </div>
                                     {lastInviteUrl && (
-                                        <div className="text-xs text-muted-foreground break-all">
-                                            Invite link: {lastInviteUrl}
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="inviteUrl" className="text-foreground text-xs">Invite link</Label>
+                                            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                                                <Input
+                                                    id="inviteUrl"
+                                                    value={lastInviteUrl}
+                                                    readOnly
+                                                    onFocus={(e) => e.currentTarget.select()}
+                                                    className="bg-background/60 border-input text-foreground font-mono text-xs"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="border-input text-foreground hover:bg-muted shrink-0"
+                                                    onClick={handleCopyInviteUrl}
+                                                >
+                                                    {inviteCopied ? (
+                                                        <Check className="mr-2 h-4 w-4" />
+                                                    ) : (
+                                                        <Copy className="mr-2 h-4 w-4" />
+                                                    )}
+                                                    {inviteCopied ? 'Copied' : 'Copy'}
+                                                </Button>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                Copy this link and send it to your teammate directly.
+                                            </p>
                                         </div>
                                     )}
                                 </div>
@@ -1290,7 +1370,8 @@ export default function SettingsPage() {
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     className="h-8 w-8"
-                                                                    onClick={() => handleToggleMemberRole(member.account_id, member.member_role)}
+                                                                    aria-label={member.member_role === 'admin' ? 'Change to member' : 'Make admin'}
+                                                                    onClick={() => requestToggleMemberRole(member)}
                                                                 >
                                                                     <Shield className="h-4 w-4" />
                                                                 </Button>
@@ -1298,7 +1379,8 @@ export default function SettingsPage() {
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     className="h-8 w-8 text-destructive hover:text-destructive"
-                                                                    onClick={() => handleRemoveMember(member.account_id)}
+                                                                    aria-label="Remove member"
+                                                                    onClick={() => requestRemoveMember(member)}
                                                                 >
                                                                     <Trash2 className="h-4 w-4" />
                                                                 </Button>
@@ -1360,6 +1442,36 @@ export default function SettingsPage() {
                     )}
                 </Button>
             </div>
+
+            {/* Confirmation dialog for destructive team actions */}
+            <Dialog
+                open={confirmDialog !== null}
+                onOpenChange={(open) => {
+                    if (!open && !confirmLoading) {
+                        setConfirmDialog(null);
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{confirmDialog?.title}</DialogTitle>
+                        <DialogDescription>{confirmDialog?.description}</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose render={<Button variant="outline" disabled={confirmLoading} />}>
+                            Cancel
+                        </DialogClose>
+                        <Button
+                            variant={confirmDialog?.destructive ? 'destructive' : 'default'}
+                            onClick={handleConfirmDialog}
+                            disabled={confirmLoading}
+                        >
+                            {confirmLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {confirmDialog?.confirmLabel}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
