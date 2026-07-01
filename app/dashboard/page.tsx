@@ -416,6 +416,10 @@ export default function DashboardPage() {
 
     // Check if there are new updates to show (updates not yet dismissed)
     const hasNewUpdates = updates.length > 0 && updates[0].id !== dismissedUpdateId;
+    // Treat the user as having data if either the stats fetch or the already-loaded
+    // requests list says so, so a slow or failed stats fetch never hides content for
+    // a user who clearly has requests.
+    const hasAnyRequests = stats.total_requests > 0 || requests.length > 0;
     const intakeUrlPrefix = intakeLink?.url
         ? (() => {
             try {
@@ -744,7 +748,7 @@ export default function DashboardPage() {
                     )}
 
                     {/* Stats Cards — hidden for new users with zero requests to avoid empty scroll, especially on mobile */}
-                    {stats.total_requests > 0 && (
+                    {hasAnyRequests && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         {statCards.map((stat) => (
                             <Card key={stat.label} className="border-border bg-card/50 backdrop-blur-sm">
@@ -798,7 +802,7 @@ export default function DashboardPage() {
                     )}
 
                     {/* Updates — hidden for first-use / zero-data users so it doesn't compete with the primary workflow */}
-                    {hasNewUpdates && stats.total_requests > 0 && (
+                    {hasNewUpdates && hasAnyRequests && (
                         <Card className="border-border bg-card/50 backdrop-blur-sm">
                             <CardHeader className="px-4 sm:px-6">
                                 <div className="flex items-start justify-between gap-4">
