@@ -52,6 +52,7 @@ const statusConfig = {
 
 export default function RequestsPage() {
     const [requests, setRequests] = useState<Request[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [downloadingPdfToken, setDownloadingPdfToken] = useState<string | null>(null);
@@ -59,6 +60,7 @@ export default function RequestsPage() {
 
     useEffect(() => {
         async function fetchRequests() {
+            setLoading(true);
             try {
                 const response = await fetch('/api/requests');
                 if (response.ok) {
@@ -67,6 +69,8 @@ export default function RequestsPage() {
                 }
             } catch (error) {
                 console.error('Error fetching requests:', error);
+            } finally {
+                setLoading(false);
             }
         }
 
@@ -80,6 +84,9 @@ export default function RequestsPage() {
         const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
+
+    // Distinguish a genuine zero-data state from an active search/filter that returns nothing.
+    const hasNoRequests = requests.length === 0;
 
     const copyLink = (token: string) => {
         if (!token) return;
@@ -177,8 +184,58 @@ export default function RequestsPage() {
             {/* Table */}
             <Card className="border-border bg-card/50">
                 <CardContent className="pt-6">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-16 text-muted-foreground">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                    ) : filteredRequests.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center py-16 px-4 mx-auto max-w-md">
+                            {hasNoRequests ? (
+                                <>
+                                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                                        <FileText className="h-6 w-6 text-muted-foreground" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-foreground mb-2">No requests yet</h3>
+                                    <p className="text-sm text-muted-foreground mb-6">
+                                        You have not created any requests yet. Share your seller link to get started.
+                                    </p>
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        <Link href="/dashboard">
+                                            <Button variant="outline" className="border-border text-foreground hover:bg-muted">
+                                                <ExternalLink className="mr-2 h-4 w-4" />
+                                                Go to your seller link
+                                            </Button>
+                                        </Link>
+                                        <Link href="/dashboard/requests/new">
+                                            <Button
+                                                className="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 dark:from-sky-500 dark:to-sky-600 dark:hover:from-sky-600 dark:hover:to-sky-700 text-white"
+                                                onClick={() =>
+                                                    trackEvent('new_request_started', {
+                                                        source: 'requests_empty_state',
+                                                        location: 'requests_page',
+                                                    })
+                                                }
+                                            >
+                                                <Plus className="mr-2 h-4 w-4" />
+                                                New Request
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                                        <Search className="h-6 w-6 text-muted-foreground" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-foreground mb-2">No matching requests</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        No requests match your current search or filters. Try adjusting them.
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    ) : (
                     <div className="rounded-lg border border-border overflow-x-auto">
-                        {filteredRequests.length > 0 && (
                             <div className="space-y-3 p-3 md:hidden">
                                 {filteredRequests.map((request) => {
                                     const status = statusConfig[request.status];
@@ -232,9 +289,8 @@ export default function RequestsPage() {
                                     );
                                 })}
                             </div>
-                        )}
 
-                        <div className={filteredRequests.length > 0 ? 'hidden md:block' : ''}>
+                        <div className="hidden md:block">
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-transparent">
@@ -247,14 +303,7 @@ export default function RequestsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredRequests.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                                            No requests match your filters
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredRequests.map((request) => {
+                                {filteredRequests.map((request) => {
                                         const status = statusConfig[request.status];
                                         const isLocked = Boolean(request.is_locked);
                                         return (
@@ -371,12 +420,12 @@ export default function RequestsPage() {
                                                 </TableCell>
                                             </TableRow>
                                         );
-                                    })
-                                )}
+                                    })}
                             </TableBody>
                         </Table>
                         </div>
                     </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

@@ -243,7 +243,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                         <span className="hidden sm:inline">Saved</span>
                                     </span>
                                 )}
-                                {stepNumber && stepTotal && stepNumber > 0 && stepNumber <= stepTotal && (
+                                {stepNumber != null && stepTotal != null && stepNumber > 0 && stepNumber <= stepTotal && (
                                     <span className="text-muted-foreground/80">{stepNumber} of {stepTotal}</span>
                                 )}
                                 <span>{Math.round(progress)}%</span>

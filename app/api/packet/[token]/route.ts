@@ -9,14 +9,26 @@ export async function GET(
         const { token } = await params;
         const packetResult = await getPacketDataByPublicToken(token);
 
-        if (packetResult.status === 'not_found' || packetResult.status === 'not_submitted') {
-            return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+        if (packetResult.status === 'not_submitted') {
+            // The link is valid; the seller simply has not submitted yet.
+            return NextResponse.json(
+                { error: 'Not submitted yet', state: 'not_submitted' },
+                { status: 404 }
+            );
+        }
+
+        if (packetResult.status === 'not_found') {
+            return NextResponse.json(
+                { error: 'Request not found', state: 'not_found' },
+                { status: 404 }
+            );
         }
 
         if (packetResult.status === 'locked') {
             return NextResponse.json(
                 {
                     error: 'Upgrade required',
+                    state: 'locked',
                     message: packetResult.message || PACKET_LOCKED_MESSAGE,
                 },
                 { status: 402 }

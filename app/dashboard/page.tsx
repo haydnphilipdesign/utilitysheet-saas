@@ -734,7 +734,7 @@ export default function DashboardPage() {
                                             ) : (
                                                 <Zap className="mr-2 h-4 w-4" />
                                             )}
-                                            Upgrade to Pro
+                                            Upgrade to Pro, $9/mo
                                         </Button>
                                     </div>
                                 </div>
@@ -743,7 +743,8 @@ export default function DashboardPage() {
                     </Card>
                     )}
 
-                    {/* Stats Cards */}
+                    {/* Stats Cards — hidden for new users with zero requests to avoid empty scroll, especially on mobile */}
+                    {stats.total_requests > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         {statCards.map((stat) => (
                             <Card key={stat.label} className="border-border bg-card/50 backdrop-blur-sm">
@@ -761,6 +762,7 @@ export default function DashboardPage() {
                             </Card>
                         ))}
                     </div>
+                    )}
 
                     {/* Free-tier usage nudge */}
                     {usageInfo && usageInfo.plan === 'free' && usageInfo.used >= Math.max(1, usageInfo.limit - 1) && (
@@ -795,8 +797,8 @@ export default function DashboardPage() {
                         </div>
                     )}
 
-                    {/* Updates */}
-                    {hasNewUpdates && (
+                    {/* Updates — hidden for first-use / zero-data users so it doesn't compete with the primary workflow */}
+                    {hasNewUpdates && stats.total_requests > 0 && (
                         <Card className="border-border bg-card/50 backdrop-blur-sm">
                             <CardHeader className="px-4 sm:px-6">
                                 <div className="flex items-start justify-between gap-4">
