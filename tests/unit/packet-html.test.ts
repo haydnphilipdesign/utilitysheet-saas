@@ -41,6 +41,47 @@ describe('buildPacketPdfHtml meter number rendering', () => {
         expect(result.html).toContain('page-break-inside: avoid');
     });
 
+    it('uses a repeating provider heading group without keeping the full table together', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'simple',
+            request: {
+                id: 'req_simple_pagination',
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+                water_source: 'city',
+                sewer_type: 'septic',
+                heating_type: 'electric',
+            },
+            brand: { name: 'Multimedium Team' },
+            utilities: Array.from({ length: 5 }, (_, index) => ({
+                category: ['electric', 'internet', 'propane', 'trash', 'water'][index],
+                provider_name: `Provider ${index + 1}`,
+            })),
+        });
+
+        expect(result.html).toContain('class="simple-pdf"');
+        expect(result.html).toMatch(/<thead>[\s\S]*provider-section-title[\s\S]*Utility Providers[\s\S]*provider-columns/);
+        expect(result.html).toContain('thead { display: table-header-group; }');
+        expect(result.html).toContain('.provider-row { break-inside: avoid;');
+        expect(result.html).not.toContain('provider-table keep-together');
+    });
+
+    it('keeps buyer steps atomic while allowing unusually long lists to paginate', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'simple',
+            request: {
+                id: 'req_simple_steps',
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+        });
+
+        expect(result.html).toContain('.buyer-step { break-inside: avoid;');
+        expect(result.html).toContain('class="buyer-steps-section"');
+    });
+
     it('renders meter number only for electric utility rows when provided', () => {
         const result = buildPacketPdfHtml({
             request: {
