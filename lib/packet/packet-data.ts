@@ -248,12 +248,7 @@ function normalizeTrashDetails(value: unknown): PacketUtilityData['trash_details
 
 function formatAdvancedDisplayValue(raw: unknown): string | null {
     if (raw === null || raw === undefined) return null;
-    if (Array.isArray(raw)) {
-        const value = raw.join(', ');
-        return value || null;
-    }
-
-    const value = String(raw).trim();
+    const value = Array.isArray(raw) ? raw.join(', ') : String(raw).trim();
 
     if (!value) return null;
     if (value.toLowerCase() === 'yes') return 'Yes';
