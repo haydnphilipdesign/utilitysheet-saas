@@ -227,8 +227,8 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 
     const homeBasicsHtml = request.water_source || request.sewer_type || request.heating_type
         ? `
-            <div class="keep-together" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
-                <div style="background: #f9fafb; padding: 16px 24px; border-bottom: 1px solid #e4e4e7;">
+            <div class="keep-together" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+                <div style="background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e4e4e7;">
                     <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Home Basics</h3>
                 </div>
                 <div style="padding: 20px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
@@ -309,11 +309,13 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         table { page-break-inside: auto; }
         tr { page-break-inside: avoid; break-inside: avoid; }
         thead { display: table-header-group; }
+        ol li { page-break-inside: avoid; break-inside: avoid; }
+        h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
     </style>
 </head>
 <body style="margin: 0; padding: 0; background: #ffffff;">
     <div id="packet-pdf-root" style="width: 100%; box-sizing: border-box; background: #ffffff; color: #09090b; font-family: Arial, sans-serif, system-ui;">
-        <div class="keep-together" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 2px solid #e4e4e7; margin-bottom: 32px;">
+        <div class="keep-together" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 2px solid #e4e4e7; margin-bottom: 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
                 ${safeBrandLogoUrl
             ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" style="height: 48px; width: auto;" crossorigin="anonymous" />`
@@ -333,7 +335,7 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             </div>
         </div>
 
-        <div class="keep-together" style="text-align: center; padding: 24px 0 48px 0;">
+        <div class="keep-together" style="text-align: center; padding: 8px 0 28px 0;">
             <h1 style="font-size: 32px; font-weight: 800; color: #09090b; margin: 0 0 16px 0; letter-spacing: -0.02em;">
                 ${title}
             </h1>
@@ -350,15 +352,15 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         </div>
 
         ${welcomeMessage ? `
-        <div class="keep-together" style="background: ${hexToRgba(safePrimaryColor, 0.08)}; border: 1px solid ${hexToRgba(safePrimaryColor, 0.25)}; border-left: 3px solid ${safePrimaryColor}; border-radius: 10px; padding: 20px 24px; margin-bottom: 32px;">
+        <div class="keep-together" style="background: ${hexToRgba(safePrimaryColor, 0.08)}; border: 1px solid ${hexToRgba(safePrimaryColor, 0.25)}; border-left: 3px solid ${safePrimaryColor}; border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;">
             <p style="font-size: 14px; color: #3f3f46; margin: 0; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere;">${welcomeMessage}</p>
         </div>
         ` : ''}
 
         ${homeBasicsHtml}
 
-        <div class="keep-together" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
-            <div style="background: #f9fafb; padding: 16px 24px; border-bottom: 1px solid #e4e4e7;">
+        <div style="border: 1px solid #e4e4e7; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+            <div style="background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e4e4e7; border-radius: 12px 12px 0 0;">
                 <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Utility Providers</h3>
             </div>
             <table style="width: 100%; border-collapse: collapse;">
@@ -375,8 +377,8 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             </table>
         </div>
 
-        <div class="keep-together" style="background: #f9fafb; border: 1px solid #e4e4e7; border-radius: 12px; padding: 32px; margin-bottom: 32px;">
-            <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0 0 20px 0;">${nextStepsTitle}</h3>
+        <div style="background: #f9fafb; border: 1px solid #e4e4e7; border-radius: 12px; padding: 24px; margin-bottom: 20px;">
+            <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0 0 16px 0;">${nextStepsTitle}</h3>
             <ol style="margin: 0; padding: 0; list-style: none;">
                 ${buyerNextSteps.filter((step) => step.trim()).map((step, index) => `
                     <li style="display: flex; gap: 16px; margin-bottom: 16px; color: #3f3f46; align-items: flex-start; line-height: 1.6;">
