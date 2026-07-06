@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import UtilitySheetPdfPreview from '@/components/branding/UtilitySheetPdfPreview';
 import { trackEvent } from '@/lib/analytics/events';
 import { cn } from '@/lib/utils';
-import type { Account, BrandProfile, Organization } from '@/types';
+import type { Account, BrandProfile, Organization, PacketMode } from '@/types';
 
 const BRAND_COLORS = [
     { name: 'Emerald', value: '#10b981' },
@@ -57,7 +57,7 @@ export default function OnboardingPage() {
     const [contactPhone, setContactPhone] = useState('');
     const [contactWebsite, setContactWebsite] = useState('');
     const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
-    const [intakeLink, setIntakeLink] = useState<{ slug: string; url: string; is_active: boolean } | null>(null);
+    const [intakeLink, setIntakeLink] = useState<{ slug: string; url: string; is_active: boolean; defaultPacketMode?: PacketMode } | null>(null);
 
     const secondaryColor = useMemo(() => adjustHexColor(primaryColor, -24), [primaryColor]);
     const displayFirstName = account?.full_name?.split(' ')[0] || organization?.name || 'there';
@@ -468,6 +468,7 @@ export default function OnboardingPage() {
                                     show_generation_date: true,
                                 }}
                                 isPro={account?.subscription_status === 'pro' || organization?.subscription_status === 'team'}
+                                defaultMode={intakeLink?.defaultPacketMode}
                             />
                             <div className="rounded-xl border border-border/70 bg-muted/25 px-4 py-3 text-xs text-muted-foreground">
                                 Everything here is optional. The fastest path is still to copy your reusable link and start sharing it.
