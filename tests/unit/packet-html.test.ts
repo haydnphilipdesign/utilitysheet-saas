@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildPacketPdfHtml } from '@/lib/pdf/packet-html';
+import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 
 describe('buildPacketPdfHtml meter number rendering', () => {
     it('uses the shared document shell and content blocks in advanced mode', () => {
@@ -82,6 +83,28 @@ describe('buildPacketPdfHtml meter number rendering', () => {
 
         expect(result.html).toContain('>example.com</p>');
         expect(result.html).not.toContain('https://Example.com/path');
+    });
+
+    it.each(['simple', 'advanced'] as const)('limits the normalized brand contact website in %s mode', (mode) => {
+        const hostname = `${'a'.repeat(63)}.${'b'.repeat(63)}.com`;
+        const expectedDisplay = `${hostname.slice(0, BRAND_PROFILE_LIMITS.contactWebsiteMax - 1)}…`;
+        const result = buildPacketPdfHtml({
+            mode,
+            request: {
+                id: `req_contact_website_limit_${mode}`,
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: {
+                name: 'Multimedium Team',
+                contact_website: `https://${hostname}/path`,
+            },
+            utilities: [],
+        });
+
+        expect(expectedDisplay).toHaveLength(BRAND_PROFILE_LIMITS.contactWebsiteMax);
+        expect(result.html).toContain(`>${expectedDisplay}</p>`);
+        expect(result.html).not.toContain(hostname);
     });
 
     it('uses the canonical document title for simple and advanced HTML', () => {
