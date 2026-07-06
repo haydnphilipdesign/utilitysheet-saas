@@ -337,9 +337,9 @@ describe('packet-data builder', () => {
             advanced_modules: ['smart_home_security', 'irrigation_seasonal_controls'],
             advanced_packet_data: {
                 smart_home_security: {
-                    smart_home_notes: 'Keep Existing Capitalization',
+                    smart_home_notes: '  Keep Existing Capitalization  ',
                     smart_doorbell_brand: 'Ring',
-                    security_system_brand: 'ADT',
+                    security_system_brand: 'yEs',
                     smart_thermostat_brand: 'Nest',
                 },
                 irrigation_seasonal_controls: {
@@ -370,6 +370,12 @@ describe('packet-data builder', () => {
             'Smart Thermostat Brand',
             'Smart Doorbell Brand',
             'Smart Home Notes',
+        ]);
+        expect(smartHomeFields.map((field) => field.value)).toEqual([
+            'Yes',
+            'Nest',
+            'Ring',
+            'Keep Existing Capitalization',
         ]);
 
         const irrigationField = result.data.advanced_sections
