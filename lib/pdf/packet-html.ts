@@ -132,6 +132,19 @@ function normalizeWebsiteHostname(value: string | null | undefined): string {
     }
 }
 
+function normalizeContactWebsiteHostname(value: string | null | undefined): string {
+    if (!value) return '';
+
+    const candidate = value.trim();
+    const absoluteHostname = normalizeWebsiteHostname(candidate);
+    if (absoluteHostname) return absoluteHostname;
+
+    if (/^[a-z][a-z\d+.-]*:/i.test(candidate)) return '';
+
+    const schemelessCandidate = candidate.replace(/^\/\//, '');
+    return normalizeWebsiteHostname(`https://${schemelessCandidate}`);
+}
+
 function formatPickupDay(day: string | null | undefined): string {
     if (!day) return 'Not sure';
     const normalized = day.trim().toLowerCase();
@@ -373,7 +386,7 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const safeBrandContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
     const safeBrandContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
     const safeBrandContactWebsite = escapeHtml(clampBrandingText(
-        normalizeWebsiteHostname(brand?.contact_website),
+        normalizeContactWebsiteHostname(brand?.contact_website),
         BRAND_PROFILE_LIMITS.contactWebsiteMax,
     ));
     const safePropertyAddress = escapeHtml(clampBrandingText(request.property_address, 140));

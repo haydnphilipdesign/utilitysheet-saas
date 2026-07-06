@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildPacketPdfHtml } from '@/lib/pdf/packet-html';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 
-describe('buildPacketPdfHtml meter number rendering', () => {
+describe('buildPacketPdfHtml shared packet PDF rendering', () => {
     it('uses the shared document shell and content blocks in advanced mode', () => {
         const result = buildPacketPdfHtml({
             mode: 'advanced',
@@ -83,6 +83,50 @@ describe('buildPacketPdfHtml meter number rendering', () => {
 
         expect(result.html).toContain('>example.com</p>');
         expect(result.html).not.toContain('https://Example.com/path');
+    });
+
+    it.each(['simple', 'advanced'] as const)('displays a schemeless brand contact website in %s mode', (mode) => {
+        const result = buildPacketPdfHtml({
+            mode,
+            request: {
+                id: `req_schemeless_contact_website_${mode}`,
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: {
+                name: 'Multimedium Team',
+                contact_website: 'yourrealty.com',
+            },
+            utilities: [],
+        });
+
+        expect(result.html).toContain('>yourrealty.com</p>');
+    });
+
+    it.each(['simple', 'advanced'] as const)('omits explicit non-http brand contact schemes in %s mode', (mode) => {
+        for (const contactWebsite of [
+            'javascript:alert(1)',
+            'data:text/html,unsafe',
+            'mailto:agent@example.com',
+            'ftp://example.com/file',
+        ]) {
+            const result = buildPacketPdfHtml({
+                mode,
+                request: {
+                    id: `req_unsafe_contact_website_${mode}`,
+                    property_address: '112 Morris Place, Bushkill, PA 18324',
+                    created_at: '2026-07-06T12:00:00.000Z',
+                },
+                brand: {
+                    name: 'Multimedium Team',
+                    contact_website: contactWebsite,
+                },
+                utilities: [],
+            });
+
+            expect(result.html).not.toContain(contactWebsite);
+            expect(result.html).not.toMatch(/brand-contact-line">(?:javascript|data|mailto|ftp)/);
+        }
     });
 
     it.each(['simple', 'advanced'] as const)('limits the normalized brand contact website in %s mode', (mode) => {
