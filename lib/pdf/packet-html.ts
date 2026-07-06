@@ -372,7 +372,7 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const safeBrandContactName = escapeHtml(clampBrandingText(brand?.contact_name || '', BRAND_PROFILE_LIMITS.contactNameMax));
     const safeBrandContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
     const safeBrandContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
-    const safeBrandContactWebsite = escapeHtml(clampBrandingText(brand?.contact_website || '', BRAND_PROFILE_LIMITS.contactWebsiteMax));
+    const safeBrandContactWebsite = escapeHtml(normalizeWebsiteHostname(brand?.contact_website));
     const safePropertyAddress = escapeHtml(clampBrandingText(request.property_address, 140));
 
     const rawBuyerNextSteps = brand?.buyer_next_steps && brand.buyer_next_steps.length > 0

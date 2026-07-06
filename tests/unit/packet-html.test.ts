@@ -65,6 +65,25 @@ describe('buildPacketPdfHtml meter number rendering', () => {
         }
     });
 
+    it.each(['simple', 'advanced'] as const)('normalizes the brand contact website in %s mode', (mode) => {
+        const result = buildPacketPdfHtml({
+            mode,
+            request: {
+                id: `req_contact_website_${mode}`,
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: {
+                name: 'Multimedium Team',
+                contact_website: 'https://Example.com/path',
+            },
+            utilities: [],
+        });
+
+        expect(result.html).toContain('>example.com</p>');
+        expect(result.html).not.toContain('https://Example.com/path');
+    });
+
     it('uses the canonical document title for simple and advanced HTML', () => {
         const base = {
             request: {
