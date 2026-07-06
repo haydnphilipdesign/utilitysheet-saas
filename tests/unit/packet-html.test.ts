@@ -263,6 +263,10 @@ describe('buildPacketPdfHtml shared packet PDF rendering', () => {
         expect(result.html).toContain('.provider-row { break-inside: avoid;');
         expect(result.html).toContain('.buyer-step { break-inside: avoid;');
         expect(result.html).not.toContain('packet-section keep-together');
+        expect(result.html).toMatch(
+            /\.detail-section-title th \{[^}]*border-bottom: 1px solid #e4e4e7;[^}]*\}/,
+        );
+        expect(result.html).not.toContain('.detail-row:first-child .detail-cell { border-top:');
 
         const detailTable = result.html.match(
             /<table class="detail-section-table">[\s\S]*?<\/table>/,
@@ -271,6 +275,49 @@ describe('buildPacketPdfHtml shared packet PDF rendering', () => {
         const finalDetailRow = detailRows.at(-1)?.[0] || '';
         expect(finalDetailRow.match(/<td class="detail-cell">/g)).toHaveLength(1);
         expect(finalDetailRow.match(/<td class="detail-cell detail-cell-empty">/g)).toHaveLength(1);
+    });
+
+    it('renders even and empty advanced sections with valid two-column table bodies', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'advanced',
+            request: {
+                id: 'req_advanced_field_shapes',
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+            advanced_sections: [{
+                key: 'access',
+                title: 'Access Details',
+                fields: [
+                    { key: 'garage', label: 'Garage Code', value: '1234' },
+                    { key: 'gate', label: 'Gate Code', value: '5678' },
+                    { key: 'keys', label: 'Spare Keys', value: 'Kitchen drawer' },
+                    { key: 'alarm', label: 'Alarm Code', value: '2468' },
+                ],
+            }, {
+                key: 'service_providers',
+                title: 'Service Providers',
+                fields: [],
+            }],
+        });
+
+        const detailTables = [...result.html.matchAll(
+            /<table class="detail-section-table">[\s\S]*?<\/table>/g,
+        )].map((match) => match[0]);
+        expect(detailTables).toHaveLength(2);
+
+        const evenRows = [...detailTables[0].matchAll(/<tr class="detail-row">[\s\S]*?<\/tr>/g)];
+        expect(evenRows).toHaveLength(2);
+        for (const row of evenRows) {
+            expect(row[0].match(/<td class="detail-cell">/g)).toHaveLength(2);
+            expect(row[0]).not.toContain('detail-cell-empty');
+        }
+
+        expect(detailTables[1]).toContain(
+            '<td class="detail-cell detail-empty-message" colspan="2">No details provided.</td>',
+        );
     });
 
     it('keeps buyer steps atomic while allowing unusually long lists to paginate', () => {

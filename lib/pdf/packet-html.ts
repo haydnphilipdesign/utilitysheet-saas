@@ -553,13 +553,12 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
         .detail-section-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 10px; page-break-inside: auto; }
         .detail-section-title th {
             padding: 7px 12px; text-align: left; background: #f9fafb;
-            border: 1px solid #e4e4e7; border-bottom: 0; border-left: 3px solid ${safePrimaryColor};
+            border: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7; border-left: 3px solid ${safePrimaryColor};
             border-radius: 8px 8px 0 0;
         }
         .detail-section-title h3 { margin: 0; font-size: 12px; line-height: 1.2; font-weight: 700; }
         .detail-row { break-inside: avoid; page-break-inside: avoid; }
         .detail-cell { width: 50%; padding: 8px 12px; border-bottom: 1px solid #e4e4e7; vertical-align: top; }
-        .detail-row:first-child .detail-cell { border-top: 1px solid #e4e4e7; }
         .detail-cell:first-child { border-left: 1px solid #e4e4e7; }
         .detail-cell:last-child { border-left: 1px solid #e4e4e7; border-right: 1px solid #e4e4e7; }
         .detail-row:last-child .detail-cell:first-child { border-radius: 0 0 0 8px; }
