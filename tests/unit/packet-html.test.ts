@@ -2,6 +2,23 @@ import { describe, expect, it } from 'vitest';
 import { buildPacketPdfHtml } from '@/lib/pdf/packet-html';
 
 describe('buildPacketPdfHtml meter number rendering', () => {
+    it('uses the canonical document title for simple and advanced HTML', () => {
+        const base = {
+            request: {
+                id: 'req_title',
+                property_address: '123 Main St, Town, ST 00000',
+                created_at: '2026-01-01T00:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+        };
+
+        expect(buildPacketPdfHtml({ ...base, mode: 'simple' }).html)
+            .toContain('<title>Utility Info Sheet</title>');
+        expect(buildPacketPdfHtml({ ...base, mode: 'advanced' }).html)
+            .toContain('<title>Utility Info Sheet</title>');
+    });
+
     it('uses vector print rendering for both simple and advanced mode', () => {
         const base = {
             request: {
