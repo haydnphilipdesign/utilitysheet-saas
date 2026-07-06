@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildPacketPdfHtml } from '@/lib/pdf/packet-html';
 
 describe('buildPacketPdfHtml meter number rendering', () => {
-    it('uses screenshot rendering for simple mode and print rendering for advanced mode', () => {
+    it('uses vector print rendering for both simple and advanced mode', () => {
         const base = {
             request: {
                 id: 'req_strategy',
@@ -13,8 +13,32 @@ describe('buildPacketPdfHtml meter number rendering', () => {
             utilities: [],
         };
 
-        expect(buildPacketPdfHtml(base).renderStrategy).toBe('screenshot');
+        // Default (no mode) is simple; it now matches the advanced quality bar.
+        expect(buildPacketPdfHtml(base).renderStrategy).toBe('print_pdf');
+        expect(buildPacketPdfHtml({ ...base, mode: 'simple' }).renderStrategy).toBe('print_pdf');
         expect(buildPacketPdfHtml({ ...base, mode: 'advanced' }).renderStrategy).toBe('print_pdf');
+    });
+
+    it('gives the simple PDF a fluid print layout with page-number/powered-by chrome', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'simple',
+            request: {
+                id: 'req_simple_print',
+                property_address: '123 Main St, Town, ST 00000',
+                created_at: '2026-01-01T00:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+        });
+
+        expect(result.renderStrategy).toBe('print_pdf');
+        expect(result.footerTemplate).toContain('Powered by utilitysheet.com');
+        expect(result.footerTemplate).toContain('pageNumber');
+        expect(result.footerTemplate).toContain('totalPages');
+        expect(result.headerTemplate).toBeTruthy();
+        // Fluid letter-page document, not the old fixed 800px screenshot target.
+        expect(result.html).not.toContain('width: 800px');
+        expect(result.html).toContain('page-break-inside: avoid');
     });
 
     it('renders meter number only for electric utility rows when provided', () => {

@@ -215,30 +215,19 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         ? escapeHtml(clampBrandingText(brand.disclaimer_text, BRAND_PROFILE_LIMITS.disclaimerTextMax))
         : '';
 
-    const footerText = showPoweredBy
-        ? `Powered by utilitysheet.com${safeBrandContactEmail ? ` &bull; ${safeBrandContactEmail}` : ''}`
-        : (safeBrandContactEmail ? safeBrandContactEmail : '');
-
-    const footerHtml = footerText || disclaimerText
+    const footerHtml = disclaimerText
         ? `
-            <div style="text-align: center; padding-top: 24px; border-top: 1px solid #e4e4e7;">
-                ${disclaimerText ? `
-                <p style="font-size: 11px; color: #71717a; margin: 0 0 8px 0; line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">
+            <div class="keep-together" style="text-align: center; padding-top: 24px; border-top: 1px solid #e4e4e7;">
+                <p style="font-size: 11px; color: #71717a; margin: 0; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;">
                     ${disclaimerText}
                 </p>
-                ` : ''}
-                ${footerText ? `
-                <p style="font-size: 13px; color: #71717a; margin: 0;">
-                    ${footerText}
-                </p>
-                ` : ''}
             </div>
         `
         : '';
 
     const homeBasicsHtml = request.water_source || request.sewer_type || request.heating_type
         ? `
-            <div style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+            <div class="keep-together" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
                 <div style="background: #f9fafb; padding: 16px 24px; border-bottom: 1px solid #e4e4e7;">
                     <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Home Basics</h3>
                 </div>
@@ -315,10 +304,16 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
+    <style>
+        .keep-together { page-break-inside: avoid; break-inside: avoid; }
+        table { page-break-inside: auto; }
+        tr { page-break-inside: avoid; break-inside: avoid; }
+        thead { display: table-header-group; }
+    </style>
 </head>
 <body style="margin: 0; padding: 0; background: #ffffff;">
-    <div id="packet-pdf-root" style="width: 800px; box-sizing: border-box; padding: 48px; background: #ffffff; color: #09090b; font-family: Arial, sans-serif, system-ui; min-height: 100%;">
-        <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 2px solid #e4e4e7; margin-bottom: 32px;">
+    <div id="packet-pdf-root" style="width: 100%; box-sizing: border-box; background: #ffffff; color: #09090b; font-family: Arial, sans-serif, system-ui;">
+        <div class="keep-together" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 2px solid #e4e4e7; margin-bottom: 32px;">
             <div style="display: flex; align-items: center; gap: 16px;">
                 ${safeBrandLogoUrl
             ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" style="height: 48px; width: auto;" crossorigin="anonymous" />`
@@ -338,7 +333,7 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             </div>
         </div>
 
-        <div style="text-align: center; padding: 24px 0 48px 0;">
+        <div class="keep-together" style="text-align: center; padding: 24px 0 48px 0;">
             <h1 style="font-size: 32px; font-weight: 800; color: #09090b; margin: 0 0 16px 0; letter-spacing: -0.02em;">
                 ${title}
             </h1>
@@ -355,14 +350,14 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         </div>
 
         ${welcomeMessage ? `
-        <div style="background: ${hexToRgba(safePrimaryColor, 0.08)}; border: 1px solid ${hexToRgba(safePrimaryColor, 0.25)}; border-left: 3px solid ${safePrimaryColor}; border-radius: 10px; padding: 20px 24px; margin-bottom: 32px;">
-            <p style="font-size: 14px; color: #3f3f46; margin: 0; line-height: 1.6; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; word-break: break-word; overflow-wrap: anywhere;">${welcomeMessage}</p>
+        <div class="keep-together" style="background: ${hexToRgba(safePrimaryColor, 0.08)}; border: 1px solid ${hexToRgba(safePrimaryColor, 0.25)}; border-left: 3px solid ${safePrimaryColor}; border-radius: 10px; padding: 20px 24px; margin-bottom: 32px;">
+            <p style="font-size: 14px; color: #3f3f46; margin: 0; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere;">${welcomeMessage}</p>
         </div>
         ` : ''}
 
         ${homeBasicsHtml}
 
-        <div style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+        <div class="keep-together" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 32px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
             <div style="background: #f9fafb; padding: 16px 24px; border-bottom: 1px solid #e4e4e7;">
                 <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Utility Providers</h3>
             </div>
@@ -380,7 +375,7 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             </table>
         </div>
 
-        <div style="background: #f9fafb; border: 1px solid #e4e4e7; border-radius: 12px; padding: 32px; margin-bottom: 32px;">
+        <div class="keep-together" style="background: #f9fafb; border: 1px solid #e4e4e7; border-radius: 12px; padding: 32px; margin-bottom: 32px;">
             <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0 0 20px 0;">${nextStepsTitle}</h3>
             <ol style="margin: 0; padding: 0; list-style: none;">
                 ${buyerNextSteps.filter((step) => step.trim()).map((step, index) => `
@@ -400,20 +395,34 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 
     const filename = `utility-info-sheet-${sanitizeFilenamePart(request.property_address.split(',')[0] || '')}.pdf`;
 
-    // FOLLOW-UP: the simple/free PDF still renders as a rasterized screenshot
-    // (non-selectable text), while the advanced PDF uses the crisp vector
-    // `print_pdf` strategy. Moving simple to `print_pdf` would make its text
-    // selectable and match the advanced quality, but this HTML is a fixed
-    // 800px screenshot-target layout; converting it to a flowing letter-page
-    // print document needs a print-friendly rewrite (width/margins/pagination)
-    // and real-browser verification, so it is intentionally deferred to keep
-    // this consistency pass contained. Content and branding are already unified
-    // between the two strategies via the shared helpers above.
+    // The simple/free PDF renders with the same crisp vector `print_pdf`
+    // strategy as the advanced PDF, so its text is selectable and it paginates
+    // as a real letter-page document. The layout is fluid (letter width comes
+    // from the page.pdf margins applied in packet-attachment.ts) with
+    // page-break-inside avoidance on cards/rows, and it shares the running
+    // header/footer (powered-by + page numbers) with the advanced builder.
+    // Content and branding stay unified between the two strategies via the
+    // shared helpers above.
+    const headerTemplate = `
+        <div style="width:100%; font-size:8.5px; color:#94a3b8; padding:0 0.55in; box-sizing:border-box; display:flex; justify-content:space-between; font-family:Arial, Helvetica, sans-serif;">
+            <span>${safeBrandName}</span>
+            <span>${safePropertyAddress}</span>
+        </div>
+    `;
+    const footerTemplate = `
+        <div style="width:100%; font-size:8.5px; color:#94a3b8; padding:0 0.55in; box-sizing:border-box; display:flex; justify-content:space-between; font-family:Arial, Helvetica, sans-serif;">
+            <span>${showPoweredBy ? 'Powered by utilitysheet.com' : ''}</span>
+            <span style="letter-spacing:0.02em;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+        </div>
+    `;
+
     return {
         html,
         filename,
         rootSelector: '#packet-pdf-root',
-        renderStrategy: 'screenshot',
+        renderStrategy: 'print_pdf',
+        headerTemplate,
+        footerTemplate,
     };
 }
 
