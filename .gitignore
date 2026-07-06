@@ -53,3 +53,4 @@ Screenshot_*.jpeg
 
 # local tooling preferences
 .claude/settings.local.json
+.superpowers/
