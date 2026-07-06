@@ -217,8 +217,8 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 
     const footerHtml = disclaimerText
         ? `
-            <div class="keep-together" style="text-align: center; padding-top: 24px; border-top: 1px solid #e4e4e7;">
-                <p style="font-size: 11px; color: #71717a; margin: 0; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;">
+            <div class="simple-disclaimer keep-together">
+                <p>
                     ${disclaimerText}
                 </p>
             </div>
@@ -227,36 +227,36 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 
     const homeBasicsHtml = request.water_source || request.sewer_type || request.heating_type
         ? `
-            <div class="keep-together" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 0; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
-                <div style="background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e4e4e7;">
-                    <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Home Basics</h3>
+            <section class="home-basics keep-together">
+                <div class="section-heading">
+                    <h3>Home Basics</h3>
                 </div>
-                <div style="padding: 20px 24px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                <div class="home-basics-grid">
                     ${request.water_source ? `
-                    <div>
-                        <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">Water Source</p>
-                        <p style="font-size: 16px; font-weight: 500; color: #09090b; margin: 0; text-transform: capitalize;">${escapeHtml(String(request.water_source).replace('_', ' '))}</p>
+                    <div class="home-basic">
+                        <p class="home-basic-label">Water Source</p>
+                        <p class="home-basic-value">${escapeHtml(String(request.water_source).replace('_', ' '))}</p>
                     </div>
                     ` : ''}
                     ${request.sewer_type ? `
-                    <div>
-                        <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">Sewer Type</p>
-                        <p style="font-size: 16px; font-weight: 500; color: #09090b; margin: 0; text-transform: capitalize;">${escapeHtml(String(request.sewer_type).replace('_', ' '))}</p>
+                    <div class="home-basic">
+                        <p class="home-basic-label">Sewer Type</p>
+                        <p class="home-basic-value">${escapeHtml(String(request.sewer_type).replace('_', ' '))}</p>
                     </div>
                     ` : ''}
                     ${request.heating_type ? `
-                    <div>
-                        <p style="font-size: 13px; color: #71717a; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.05em;">Heating Type</p>
-                        <p style="font-size: 16px; font-weight: 500; color: #09090b; margin: 0; text-transform: capitalize;">${escapeHtml(String(request.heating_type).replace('_', ' '))}</p>
+                    <div class="home-basic">
+                        <p class="home-basic-label">Heating Type</p>
+                        <p class="home-basic-value">${escapeHtml(String(request.heating_type).replace('_', ' '))}</p>
                     </div>
                     ` : ''}
                 </div>
-            </div>
+            </section>
         `
         : '';
 
     const utilityRowsHtml = utilities.length === 0
-        ? `<tr><td colspan="3" style="text-align: center; padding: 48px; color: #71717a;">No utility information provided yet.</td></tr>`
+        ? `<tr class="provider-row"><td colspan="3" class="provider-empty">No utility information provided yet.</td></tr>`
         : utilities.map((utility) => {
             const safeCategory = escapeHtml(String(utility.category || ''));
             const safeProviderName = escapeHtml(String(utility.provider_name || 'Not sure'));
@@ -270,26 +270,26 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
                 : [];
 
             return `
-                <tr style="border-bottom: 1px solid #e4e4e7;">
-                    <td style="padding: 16px 24px;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span style="font-size: 20px; color: #09090b;">${UTILITY_CATEGORIES.find((category) => category.key === utility.category)?.icon || '🏢'}</span>
-                            <span style="font-weight: 600; color: #09090b; text-transform: capitalize;">${safeCategory}</span>
+                <tr class="provider-row">
+                    <td>
+                        <div class="utility-label">
+                            <span class="utility-icon">${UTILITY_CATEGORIES.find((category) => category.key === utility.category)?.icon || '🏢'}</span>
+                            <span class="utility-category">${safeCategory}</span>
                         </div>
                     </td>
-                    <td style="padding: 16px 24px; color: #3f3f46; font-weight: 500;">${safeProviderName}</td>
-                    <td style="padding: 16px 24px;">
+                    <td class="provider-name">${safeProviderName}</td>
+                    <td class="provider-contact">
                         <div>
                             <div>
-                                ${safeProviderPhone ? `<span style="color: ${safePrimaryColor}; font-size: 14px; font-weight: 500;">${safeProviderPhone}</span>` : ''}
-                                ${safeProviderPhone && safeWebsiteDisplay ? '<span style="color: #d4d4d8; margin: 0 8px;">|</span>' : ''}
-                                ${safeWebsiteDisplay ? `<span style="color: #52525b; font-size: 14px;">${safeWebsiteDisplay}</span>` : ''}
+                                ${safeProviderPhone ? `<span class="provider-phone">${safeProviderPhone}</span>` : ''}
+                                ${safeProviderPhone && safeWebsiteDisplay ? '<span class="contact-divider">|</span>' : ''}
+                                ${safeWebsiteDisplay ? `<span class="provider-website">${safeWebsiteDisplay}</span>` : ''}
                             </div>
                             ${safeMeterNumber
-                    ? `<div style="margin-top: 6px; font-size: 13px; color: #3f3f46; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;"><span style="color: #52525b; font-weight: 600;">Meter #:</span> ${safeMeterNumber}</div>`
+                    ? `<div class="provider-detail"><strong>Meter #:</strong> ${safeMeterNumber}</div>`
                     : ''}
                             ${trashScheduleLines
-                    .map((line) => `<div style="margin-top: 6px; font-size: 13px; color: #3f3f46; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;">${escapeHtml(line)}</div>`)
+                    .map((line) => `<div class="provider-detail">${escapeHtml(line)}</div>`)
                     .join('')}
                         </div>
                     </td>
@@ -305,89 +305,179 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
     <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: #ffffff; }
+        .simple-pdf {
+            width: 100%;
+            color: #18181b;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10pt;
+            line-height: 1.35;
+            -webkit-font-smoothing: antialiased;
+        }
         .keep-together { page-break-inside: avoid; break-inside: avoid; }
-        table { page-break-inside: auto; }
-        tr { page-break-inside: avoid; break-inside: avoid; }
-        thead { display: table-header-group; }
-        ol li { page-break-inside: avoid; break-inside: avoid; }
         h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
+        .brand-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e4e4e7;
+            margin-bottom: 10px;
+        }
+        .brand-identity { display: flex; align-items: center; gap: 10px; }
+        .brand-logo { height: 36px; width: auto; }
+        .brand-mark {
+            height: 36px; width: 36px; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            color: #ffffff; font-weight: 700; font-size: 13px;
+        }
+        .brand-name { margin: 0; font-size: 15px; line-height: 1.15; font-weight: 700; }
+        .brand-contact-name { margin: 2px 0 0; color: #3f3f46; font-size: 10px; font-weight: 500; }
+        .brand-contact-line { margin: 2px 0 0; color: #71717a; font-size: 9px; }
+        .brand-contact-right { text-align: right; }
+        .title-block { text-align: center; padding: 2px 0 12px; }
+        .title-block h1 { margin: 0 0 7px; font-size: 23px; line-height: 1.1; letter-spacing: -0.02em; }
+        .address-chip {
+            display: inline-block; margin: 0 auto; padding: 6px 13px;
+            border: 1px solid #e4e4e7; border-radius: 8px; background: #f4f4f5;
+            color: #09090b; font-size: 12px; font-weight: 600;
+        }
+        .address-pin { color: ${safePrimaryColor}; margin-right: 5px; font-size: 12px; vertical-align: middle; }
+        .generation-date { margin-top: 6px; color: #52525b; font-size: 9px; }
+        .welcome-message {
+            margin-bottom: 10px; padding: 9px 12px;
+            border: 1px solid ${hexToRgba(safePrimaryColor, 0.25)};
+            border-left: 3px solid ${safePrimaryColor}; border-radius: 7px;
+            background: ${hexToRgba(safePrimaryColor, 0.08)};
+        }
+        .welcome-message p { margin: 0; color: #3f3f46; font-size: 9.5pt; line-height: 1.35; overflow-wrap: anywhere; }
+        .home-basics {
+            margin-bottom: 10px; overflow: hidden;
+            border: 1px solid #e4e4e7; border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+        }
+        .section-heading { padding: 7px 12px; border-bottom: 1px solid #e4e4e7; background: #f9fafb; }
+        .section-heading h3 { margin: 0; font-size: 12px; line-height: 1.2; font-weight: 700; }
+        .home-basics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 8px 12px 9px; }
+        .home-basic-label { margin: 0 0 2px; color: #71717a; font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .home-basic-value { margin: 0; color: #09090b; font-size: 10.5px; font-weight: 500; text-transform: capitalize; }
+        .provider-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 10px; page-break-inside: auto; }
+        thead { display: table-header-group; }
+        .provider-section-title th {
+            padding: 7px 12px; text-align: left; background: #f9fafb;
+            border: 1px solid #e4e4e7; border-bottom: 0;
+            border-radius: 8px 8px 0 0;
+        }
+        .provider-section-title h3 { margin: 0; font-size: 12px; line-height: 1.2; font-weight: 700; }
+        .provider-columns th {
+            padding: 6px 12px; text-align: left; color: #52525b; background: #ffffff;
+            border-top: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7;
+            font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .provider-columns th:first-child, .provider-row td:first-child { border-left: 1px solid #e4e4e7; }
+        .provider-columns th:last-child, .provider-row td:last-child { border-right: 1px solid #e4e4e7; }
+        .provider-row { break-inside: avoid; page-break-inside: avoid; }
+        .provider-row td { padding: 7px 12px; border-bottom: 1px solid #e4e4e7; vertical-align: middle; }
+        .provider-row:last-child td:first-child { border-radius: 0 0 0 8px; }
+        .provider-row:last-child td:last-child { border-radius: 0 0 8px 0; }
+        .utility-label { display: flex; align-items: center; gap: 7px; }
+        .utility-icon { color: #09090b; font-size: 13px; }
+        .utility-category { color: #09090b; font-size: 9.5pt; font-weight: 600; text-transform: capitalize; }
+        .provider-name { color: #3f3f46; font-size: 9.5pt; font-weight: 500; }
+        .provider-contact { color: #52525b; font-size: 8.5pt; }
+        .provider-phone { color: ${safePrimaryColor}; font-weight: 600; }
+        .contact-divider { margin: 0 6px; color: #d4d4d8; }
+        .provider-detail { margin-top: 3px; color: #3f3f46; font-size: 8pt; line-height: 1.25; overflow-wrap: anywhere; }
+        .provider-detail strong { color: #52525b; }
+        .provider-empty { padding: 14px !important; color: #71717a; text-align: center; }
+        .buyer-steps-section {
+            margin-bottom: 10px; padding: 10px 12px;
+            border: 1px solid #e4e4e7; border-radius: 8px; background: #f9fafb;
+        }
+        .buyer-steps-section h3 { margin: 0 0 7px; font-size: 12px; line-height: 1.2; font-weight: 700; }
+        .buyer-steps { margin: 0; padding: 0; list-style: none; }
+        .buyer-step { break-inside: avoid; page-break-inside: avoid; display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; color: #3f3f46; line-height: 1.3; }
+        .buyer-step:last-child { margin-bottom: 0; }
+        .step-number {
+            flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: ${hexToRgba(safePrimaryColor, 0.12)}; color: ${safePrimaryColor};
+            font-size: 8px; font-weight: 700;
+        }
+        .step-text { flex: 1; min-width: 0; font-size: 9pt; overflow-wrap: anywhere; }
+        .simple-disclaimer { padding-top: 8px; border-top: 1px solid #e4e4e7; text-align: center; }
+        .simple-disclaimer p { margin: 0; color: #71717a; font-size: 7.5pt; line-height: 1.3; overflow-wrap: anywhere; }
     </style>
 </head>
-<body style="margin: 0; padding: 0; background: #ffffff;">
-    <div id="packet-pdf-root" style="width: 100%; box-sizing: border-box; background: #ffffff; color: #09090b; font-family: Arial, sans-serif, system-ui;">
-        <div class="keep-together" style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 2px solid #e4e4e7; margin-bottom: 24px;">
-            <div style="display: flex; align-items: center; gap: 16px;">
+<body>
+    <div id="packet-pdf-root" class="simple-pdf">
+        <div class="brand-header keep-together">
+            <div class="brand-identity">
                 ${safeBrandLogoUrl
-            ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" style="height: 48px; width: auto;" crossorigin="anonymous" />`
-            : `<div style="height: 48px; width: 48px; border-radius: 8px; background: ${safePrimaryColor}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">
+            ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" class="brand-logo" crossorigin="anonymous" />`
+            : `<div class="brand-mark" style="background: ${safePrimaryColor};">
                     ${escapeHtml(brand?.name ? String(brand.name).split(' ').map((word) => word[0] || '').join('').slice(0, 2) : 'US')}
                 </div>`
         }
                 <div>
-                    <h2 style="font-weight: 700; color: #09090b; margin: 0; font-size: 20px;">${safeBrandName}</h2>
-                    ${safeBrandContactName ? `<p style="font-size: 14px; color: #3f3f46; margin: 4px 0 0 0; font-weight: 500;">${safeBrandContactName}</p>` : ''}
-                    ${safeBrandContactPhone ? `<p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${safeBrandContactPhone}</p>` : ''}
+                    <h2 class="brand-name">${safeBrandName}</h2>
+                    ${safeBrandContactName ? `<p class="brand-contact-name">${safeBrandContactName}</p>` : ''}
+                    ${safeBrandContactPhone ? `<p class="brand-contact-line">${safeBrandContactPhone}</p>` : ''}
                 </div>
             </div>
-            <div style="text-align: right;">
-                <p style="font-size: 14px; color: #71717a; margin: 0;">${safeBrandContactEmail}</p>
-                <p style="font-size: 14px; color: #71717a; margin: 4px 0 0 0;">${safeBrandContactWebsite}</p>
+            <div class="brand-contact-right">
+                ${safeBrandContactEmail ? `<p class="brand-contact-line">${safeBrandContactEmail}</p>` : ''}
+                ${safeBrandContactWebsite ? `<p class="brand-contact-line">${safeBrandContactWebsite}</p>` : ''}
             </div>
         </div>
 
-        <div class="keep-together" style="text-align: center; padding: 8px 0 28px 0;">
-            <h1 style="font-size: 32px; font-weight: 800; color: #09090b; margin: 0 0 16px 0; letter-spacing: -0.02em;">
-                ${title}
-            </h1>
-            <div style="background: #f4f4f5; padding: 12px 24px; border-radius: 12px; border: 1px solid #e4e4e7; display: inline-block; margin: 0 auto;">
-                <span style="color: ${safePrimaryColor}; margin-right: 8px; font-size: 18px; vertical-align: middle;">📍</span>
-                <span style="color: #09090b; font-weight: 600; font-size: 18px; vertical-align: middle;">${safePropertyAddress}</span>
+        <div class="title-block keep-together">
+            <h1>${title}</h1>
+            <div class="address-chip">
+                <span class="address-pin">📍</span>
+                <span>${safePropertyAddress}</span>
             </div>
             ${showGenerationDate ? `
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; font-size: 14px; color: #52525b;">
-                <span>📅</span>
-                <span>Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</span>
-            </div>
+            <div class="generation-date">Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</div>
             ` : ''}
         </div>
 
         ${welcomeMessage ? `
-        <div class="keep-together" style="background: ${hexToRgba(safePrimaryColor, 0.08)}; border: 1px solid ${hexToRgba(safePrimaryColor, 0.25)}; border-left: 3px solid ${safePrimaryColor}; border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;">
-            <p style="font-size: 14px; color: #3f3f46; margin: 0; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere;">${welcomeMessage}</p>
+        <div class="welcome-message keep-together">
+            <p>${welcomeMessage}</p>
         </div>
         ` : ''}
 
         ${homeBasicsHtml}
 
-        <div style="border: 1px solid #e4e4e7; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
-            <div style="background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e4e4e7; border-radius: 12px 12px 0 0;">
-                <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0;">Utility Providers</h3>
-            </div>
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="border-bottom: 1px solid #e4e4e7; background: #ffffff;">
-                        <th style="text-align: left; padding: 16px 24px; color: #52525b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Utility</th>
-                        <th style="text-align: left; padding: 16px 24px; color: #52525b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Provider</th>
-                        <th style="text-align: left; padding: 16px 24px; color: #52525b; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">Contact</th>
-                    </tr>
-                </thead>
-                <tbody style="background: #ffffff;">
-                    ${utilityRowsHtml}
-                </tbody>
-            </table>
-        </div>
+        <table class="provider-table">
+            <thead>
+                <tr class="provider-section-title">
+                    <th colspan="3"><h3>Utility Providers</h3></th>
+                </tr>
+                <tr class="provider-columns">
+                    <th>Utility</th>
+                    <th>Provider</th>
+                    <th>Contact</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${utilityRowsHtml}
+            </tbody>
+        </table>
 
-        <div style="background: #f9fafb; border: 1px solid #e4e4e7; border-radius: 12px; padding: 24px; margin-bottom: 20px;">
-            <h3 style="font-size: 18px; font-weight: 600; color: #09090b; margin: 0 0 16px 0;">${nextStepsTitle}</h3>
-            <ol style="margin: 0; padding: 0; list-style: none;">
+        <section class="buyer-steps-section">
+            <h3>${nextStepsTitle}</h3>
+            <ol class="buyer-steps">
                 ${buyerNextSteps.filter((step) => step.trim()).map((step, index) => `
-                    <li style="display: flex; gap: 16px; margin-bottom: 16px; color: #3f3f46; align-items: flex-start; line-height: 1.6;">
-                        <span style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 12px; background: ${hexToRgba(safePrimaryColor, 0.12)}; color: ${safePrimaryColor}; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600;">${index + 1}</span>
-                        <span style="flex: 1; min-width: 0; word-break: break-word; overflow-wrap: anywhere;">${escapeHtml(step)}</span>
+                    <li class="buyer-step">
+                        <span class="step-number">${index + 1}</span>
+                        <span class="step-text">${escapeHtml(step)}</span>
                     </li>
                 `).join('')}
             </ol>
-        </div>
+        </section>
 
         ${footerHtml}
     </div>
