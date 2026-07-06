@@ -232,6 +232,47 @@ describe('buildPacketPdfHtml shared packet PDF rendering', () => {
         expect(result.html).not.toContain('provider-table keep-together');
     });
 
+    it('renders advanced details as a page-aware table with an empty partner for odd fields', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'advanced',
+            request: {
+                id: 'req_advanced_pagination',
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: { name: 'Multimedium Team' },
+            utilities: [{ category: 'electric', provider_name: 'PPL Electric' }],
+            advanced_sections: [{
+                key: 'access',
+                title: 'Mailbox & Home Access',
+                fields: [
+                    { key: 'mailbox', label: 'Mailbox Location', value: 'End of driveway' },
+                    { key: 'garage', label: 'Garage Code', value: '1234' },
+                    { key: 'gate', label: 'Gate Code', value: '5678' },
+                    { key: 'keys', label: 'Spare Keys', value: 'Kitchen drawer' },
+                    { key: 'alarm', label: 'Alarm Code', value: '2468' },
+                ],
+            }],
+        });
+
+        expect(result.html).toMatch(
+            /<table class="detail-section-table">[\s\S]*?<thead>[\s\S]*?Mailbox &amp; Home Access[\s\S]*?<\/thead>/,
+        );
+        expect(result.html).toContain('thead { display: table-header-group; }');
+        expect(result.html).toContain('.detail-row { break-inside: avoid;');
+        expect(result.html).toContain('.provider-row { break-inside: avoid;');
+        expect(result.html).toContain('.buyer-step { break-inside: avoid;');
+        expect(result.html).not.toContain('packet-section keep-together');
+
+        const detailTable = result.html.match(
+            /<table class="detail-section-table">[\s\S]*?<\/table>/,
+        )?.[0] || '';
+        const detailRows = [...detailTable.matchAll(/<tr class="detail-row">[\s\S]*?<\/tr>/g)];
+        const finalDetailRow = detailRows.at(-1)?.[0] || '';
+        expect(finalDetailRow.match(/<td class="detail-cell">/g)).toHaveLength(1);
+        expect(finalDetailRow.match(/<td class="detail-cell detail-cell-empty">/g)).toHaveLength(1);
+    });
+
     it('keeps buyer steps atomic while allowing unusually long lists to paginate', () => {
         const result = buildPacketPdfHtml({
             mode: 'simple',

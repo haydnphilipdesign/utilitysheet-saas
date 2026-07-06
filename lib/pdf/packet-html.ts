@@ -342,19 +342,26 @@ function buildUtilitiesMarkup(utilities: PacketPdfData['utilities']): string {
 
 function buildAdvancedSectionsMarkup(sections: NonNullable<PacketPdfData['advanced_sections']>): string {
     return sections.map((section) => `
-        <section class="advanced-section keep-together">
-            <div class="section-heading accent-heading"><h3>${escapeHtml(section.title)}</h3></div>
-            ${section.fields.length === 0
-        ? '<p class="provider-empty">No details provided.</p>'
-        : `<div class="detail-grid">${chunkFields(section.fields).map(([left, right]) => `
-                <div class="detail-pair">
-                    ${[left, right].filter((field): field is typeof left => Boolean(field)).map((field) => `
-                        <div class="detail-row">
-                            <div class="detail-label">${escapeHtml(field.label)}</div>
-                            <div class="detail-value">${escapeHtml(field.value)}</div>
-                        </div>`).join('')}
-                </div>`).join('')}</div>`}
-        </section>`).join('');
+        <table class="detail-section-table">
+            <thead>
+                <tr class="detail-section-title">
+                    <th colspan="2"><h3>${escapeHtml(section.title)}</h3></th>
+                </tr>
+            </thead>
+            <tbody>${section.fields.length === 0
+        ? '<tr class="detail-row"><td class="detail-cell detail-empty-message" colspan="2">No details provided.</td></tr>'
+        : chunkFields(section.fields).map(([left, right]) => `
+                <tr class="detail-row">
+                    <td class="detail-cell">
+                        <div class="detail-label">${escapeHtml(left.label)}</div>
+                        <div class="detail-value">${escapeHtml(left.value)}</div>
+                    </td>
+                    ${right ? `<td class="detail-cell">
+                        <div class="detail-label">${escapeHtml(right.label)}</div>
+                        <div class="detail-value">${escapeHtml(right.value)}</div>
+                    </td>` : '<td class="detail-cell detail-cell-empty"></td>'}
+                </tr>`).join('')}</tbody>
+        </table>`).join('');
 }
 
 function buildBuyerNextStepsMarkup(title: string, steps: string[]): string {
@@ -543,16 +550,23 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
             font-size: 8px; font-weight: 700;
         }
         .step-text { flex: 1; min-width: 0; font-size: 9pt; overflow-wrap: anywhere; }
-        .advanced-section {
-            margin-bottom: 10px; overflow: hidden;
-            border: 1px solid #e4e4e7; border-radius: 8px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        .detail-section-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 10px; page-break-inside: auto; }
+        .detail-section-title th {
+            padding: 7px 12px; text-align: left; background: #f9fafb;
+            border: 1px solid #e4e4e7; border-bottom: 0; border-left: 3px solid ${safePrimaryColor};
+            border-radius: 8px 8px 0 0;
         }
-        .detail-grid { display: block; }
-        .detail-pair { display: grid; grid-template-columns: 1fr 1fr; }
-        .detail-row { padding: 8px 12px; border-bottom: 1px solid #e4e4e7; }
-        .detail-row + .detail-row { border-left: 1px solid #e4e4e7; }
-        .detail-pair:last-child .detail-row { border-bottom: 0; }
+        .detail-section-title h3 { margin: 0; font-size: 12px; line-height: 1.2; font-weight: 700; }
+        .detail-row { break-inside: avoid; page-break-inside: avoid; }
+        .detail-cell { width: 50%; padding: 8px 12px; border-bottom: 1px solid #e4e4e7; vertical-align: top; }
+        .detail-row:first-child .detail-cell { border-top: 1px solid #e4e4e7; }
+        .detail-cell:first-child { border-left: 1px solid #e4e4e7; }
+        .detail-cell:last-child { border-left: 1px solid #e4e4e7; border-right: 1px solid #e4e4e7; }
+        .detail-row:last-child .detail-cell:first-child { border-radius: 0 0 0 8px; }
+        .detail-row:last-child .detail-cell:last-child { border-radius: 0 0 8px 0; }
+        .detail-cell-empty { background: #ffffff; }
+        .detail-row:last-child .detail-cell.detail-empty-message { border-radius: 0 0 8px 8px; }
+        .detail-empty-message { color: #71717a; text-align: center; }
         .detail-label { margin-bottom: 2px; color: #71717a; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
         .detail-value { color: #18181b; font-size: 9.5pt; overflow-wrap: anywhere; }
         .simple-disclaimer { padding-top: 8px; border-top: 1px solid #e4e4e7; text-align: center; }
