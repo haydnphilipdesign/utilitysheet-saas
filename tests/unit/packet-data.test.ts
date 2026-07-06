@@ -323,4 +323,74 @@ describe('packet-data builder', () => {
         expect(fieldKeys).toContain('hvac_provider_phone');
         expect(fieldKeys).not.toContain('service_provider_notes');
     });
+
+    it('normalizes advanced fields in metadata order with canonical labels and values', async () => {
+        (getRequestByToken as Mock).mockResolvedValue({
+            id: 'req_advanced_order',
+            account_id: 'acct_advanced_order',
+            organization_id: null,
+            brand_profile_id: null,
+            property_address: '888 Maple St, Town, ST 00000',
+            created_at: '2026-01-01T00:00:00.000Z',
+            status: 'submitted',
+            packet_mode: 'advanced',
+            advanced_modules: ['smart_home_security', 'irrigation_seasonal_controls'],
+            advanced_packet_data: {
+                smart_home_security: {
+                    smart_home_notes: '  Keep Existing Capitalization  ',
+                    smart_doorbell_brand: 'Ring',
+                    security_system_brand: 'yEs',
+                    smart_thermostat_brand: 'Nest',
+                },
+                irrigation_seasonal_controls: {
+                    has_irrigation_system: 'no',
+                    watering_days: [' Monday ', 'THURSDAY'],
+                    irrigation_notes: ['no'],
+                },
+            },
+        });
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+
+        const result = await getPacketDataByPublicToken('token_advanced_order');
+
+        expect(result.status).toBe('ok');
+        if (result.status !== 'ok') return;
+
+        const smartHomeFields = result.data.advanced_sections
+            ?.find((section) => section.key === 'smart_home_security')
+            ?.fields ?? [];
+        expect(smartHomeFields.map((field) => field.key)).toEqual([
+            'security_system_brand',
+            'smart_thermostat_brand',
+            'smart_doorbell_brand',
+            'smart_home_notes',
+        ]);
+        expect(smartHomeFields.map((field) => field.label)).toEqual([
+            'Security System Brand',
+            'Smart Thermostat Brand',
+            'Smart Doorbell Brand',
+            'Smart Home Notes',
+        ]);
+        expect(smartHomeFields.map((field) => field.value)).toEqual([
+            'Yes',
+            'Nest',
+            'Ring',
+            'Keep Existing Capitalization',
+        ]);
+
+        const irrigationField = result.data.advanced_sections
+            ?.find((section) => section.key === 'irrigation_seasonal_controls')
+            ?.fields.find((field) => field.key === 'has_irrigation_system');
+        expect(irrigationField?.value).toBe('No');
+
+        const wateringDaysField = result.data.advanced_sections
+            ?.find((section) => section.key === 'irrigation_seasonal_controls')
+            ?.fields.find((field) => field.key === 'watering_days');
+        expect(wateringDaysField?.value).toBe(' Monday , THURSDAY');
+
+        const irrigationNotesField = result.data.advanced_sections
+            ?.find((section) => section.key === 'irrigation_seasonal_controls')
+            ?.fields.find((field) => field.key === 'irrigation_notes');
+        expect(irrigationNotesField?.value).toBe('No');
+    });
 });

@@ -68,7 +68,8 @@ export function darkenHex(hex: string, amount: number): string {
  * packet and both PDF renderers so the same request never shows two names.
  */
 export function getPacketTitle(mode?: PacketMode | null): string {
-    return mode === 'advanced' ? 'Utility Information Sheet' : 'Utility Info Sheet';
+    void mode;
+    return 'Utility Info Sheet';
 }
 
 /**

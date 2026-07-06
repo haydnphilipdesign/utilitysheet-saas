@@ -1,7 +1,173 @@
 import { describe, expect, it } from 'vitest';
 import { buildPacketPdfHtml } from '@/lib/pdf/packet-html';
+import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 
-describe('buildPacketPdfHtml meter number rendering', () => {
+describe('buildPacketPdfHtml shared packet PDF rendering', () => {
+    it('uses the shared document shell and content blocks in advanced mode', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'advanced',
+            request: {
+                id: 'req_shared_advanced',
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+                water_source: 'city',
+                sewer_type: 'septic',
+                heating_type: 'electric',
+            },
+            brand: {
+                name: 'Multimedium Team',
+                contact_name: 'Haydn Watkins',
+            },
+            utilities: [{ category: 'electric', provider_name: 'PPL Electric' }],
+            advanced_sections: [{
+                key: 'access',
+                title: 'Access Details',
+                fields: [{ key: 'garage', label: 'Garage Code', value: '1234' }],
+            }],
+        });
+
+        expect(result.html).toContain('class="packet-pdf"');
+        expect(result.html).toMatch(/class="brand-mark"[^>]*>\s*MT\s*</);
+        expect(result.html).toContain('Haydn Watkins');
+        expect(result.html).toContain('Home Basics');
+        expect(result.html).toContain('class="section-heading accent-heading"');
+        expect(result.html).toContain('Utility Providers');
+        expect(result.html).toContain('Buyer Next Steps');
+        expect(result.html).not.toContain('font-family: "Georgia"');
+    });
+
+    it.each(['simple', 'advanced'] as const)('uses shared shell classes in %s mode', (mode) => {
+        const result = buildPacketPdfHtml({
+            mode,
+            request: {
+                id: `req_shared_${mode}`,
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+                water_source: 'city',
+            },
+            brand: { name: 'Multimedium Team' },
+            utilities: [{ category: 'water', provider_name: 'Town Water' }],
+            advanced_sections: mode === 'advanced' ? [{
+                key: 'access',
+                title: 'Access Details',
+                fields: [{ key: 'garage', label: 'Garage Code', value: '1234' }],
+            }] : [],
+        });
+
+        for (const className of [
+            'packet-pdf',
+            'brand-header',
+            'title-block',
+            'accent-heading',
+            'provider-table',
+            'buyer-steps-section',
+        ]) {
+            expect(result.html).toContain(className);
+        }
+    });
+
+    it.each(['simple', 'advanced'] as const)('normalizes the brand contact website in %s mode', (mode) => {
+        const result = buildPacketPdfHtml({
+            mode,
+            request: {
+                id: `req_contact_website_${mode}`,
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: {
+                name: 'Multimedium Team',
+                contact_website: 'https://Example.com/path',
+            },
+            utilities: [],
+        });
+
+        expect(result.html).toContain('>example.com</p>');
+        expect(result.html).not.toContain('https://Example.com/path');
+    });
+
+    it.each(['simple', 'advanced'] as const)('displays a schemeless brand contact website in %s mode', (mode) => {
+        const result = buildPacketPdfHtml({
+            mode,
+            request: {
+                id: `req_schemeless_contact_website_${mode}`,
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: {
+                name: 'Multimedium Team',
+                contact_website: 'yourrealty.com',
+            },
+            utilities: [],
+        });
+
+        expect(result.html).toContain('>yourrealty.com</p>');
+    });
+
+    it.each(['simple', 'advanced'] as const)('omits explicit non-http brand contact schemes in %s mode', (mode) => {
+        for (const contactWebsite of [
+            'javascript:alert(1)',
+            'data:text/html,unsafe',
+            'mailto:agent@example.com',
+            'ftp://example.com/file',
+        ]) {
+            const result = buildPacketPdfHtml({
+                mode,
+                request: {
+                    id: `req_unsafe_contact_website_${mode}`,
+                    property_address: '112 Morris Place, Bushkill, PA 18324',
+                    created_at: '2026-07-06T12:00:00.000Z',
+                },
+                brand: {
+                    name: 'Multimedium Team',
+                    contact_website: contactWebsite,
+                },
+                utilities: [],
+            });
+
+            expect(result.html).not.toContain(contactWebsite);
+            expect(result.html).not.toMatch(/brand-contact-line">(?:javascript|data|mailto|ftp)/);
+        }
+    });
+
+    it.each(['simple', 'advanced'] as const)('limits the normalized brand contact website in %s mode', (mode) => {
+        const hostname = `${'a'.repeat(63)}.${'b'.repeat(63)}.com`;
+        const expectedDisplay = `${hostname.slice(0, BRAND_PROFILE_LIMITS.contactWebsiteMax - 1)}…`;
+        const result = buildPacketPdfHtml({
+            mode,
+            request: {
+                id: `req_contact_website_limit_${mode}`,
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: {
+                name: 'Multimedium Team',
+                contact_website: `https://${hostname}/path`,
+            },
+            utilities: [],
+        });
+
+        expect(expectedDisplay).toHaveLength(BRAND_PROFILE_LIMITS.contactWebsiteMax);
+        expect(result.html).toContain(`>${expectedDisplay}</p>`);
+        expect(result.html).not.toContain(hostname);
+    });
+
+    it('uses the canonical document title for simple and advanced HTML', () => {
+        const base = {
+            request: {
+                id: 'req_title',
+                property_address: '123 Main St, Town, ST 00000',
+                created_at: '2026-01-01T00:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+        };
+
+        expect(buildPacketPdfHtml({ ...base, mode: 'simple' }).html)
+            .toContain('<title>Utility Info Sheet</title>');
+        expect(buildPacketPdfHtml({ ...base, mode: 'advanced' }).html)
+            .toContain('<title>Utility Info Sheet</title>');
+    });
+
     it('uses vector print rendering for both simple and advanced mode', () => {
         const base = {
             request: {
@@ -59,11 +225,99 @@ describe('buildPacketPdfHtml meter number rendering', () => {
             })),
         });
 
-        expect(result.html).toContain('class="simple-pdf"');
+        expect(result.html).toContain('class="packet-pdf"');
         expect(result.html).toMatch(/<thead>[\s\S]*provider-section-title[\s\S]*Utility Providers[\s\S]*provider-columns/);
         expect(result.html).toContain('thead { display: table-header-group; }');
         expect(result.html).toContain('.provider-row { break-inside: avoid;');
         expect(result.html).not.toContain('provider-table keep-together');
+    });
+
+    it('renders advanced details as a page-aware table with an empty partner for odd fields', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'advanced',
+            request: {
+                id: 'req_advanced_pagination',
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: { name: 'Multimedium Team' },
+            utilities: [{ category: 'electric', provider_name: 'PPL Electric' }],
+            advanced_sections: [{
+                key: 'access',
+                title: 'Mailbox & Home Access',
+                fields: [
+                    { key: 'mailbox', label: 'Mailbox Location', value: 'End of driveway' },
+                    { key: 'garage', label: 'Garage Code', value: '1234' },
+                    { key: 'gate', label: 'Gate Code', value: '5678' },
+                    { key: 'keys', label: 'Spare Keys', value: 'Kitchen drawer' },
+                    { key: 'alarm', label: 'Alarm Code', value: '2468' },
+                ],
+            }],
+        });
+
+        expect(result.html).toMatch(
+            /<table class="detail-section-table">[\s\S]*?<thead>[\s\S]*?Mailbox &amp; Home Access[\s\S]*?<\/thead>/,
+        );
+        expect(result.html).toContain('thead { display: table-header-group; }');
+        expect(result.html).toContain('.detail-row { break-inside: avoid;');
+        expect(result.html).toContain('.provider-row { break-inside: avoid;');
+        expect(result.html).toContain('.buyer-step { break-inside: avoid;');
+        expect(result.html).not.toContain('packet-section keep-together');
+        expect(result.html).toMatch(
+            /\.detail-section-title th \{[^}]*border-bottom: 1px solid #e4e4e7;[^}]*\}/,
+        );
+        expect(result.html).not.toContain('.detail-row:first-child .detail-cell { border-top:');
+
+        const detailTable = result.html.match(
+            /<table class="detail-section-table">[\s\S]*?<\/table>/,
+        )?.[0] || '';
+        const detailRows = [...detailTable.matchAll(/<tr class="detail-row">[\s\S]*?<\/tr>/g)];
+        const finalDetailRow = detailRows.at(-1)?.[0] || '';
+        expect(finalDetailRow.match(/<td class="detail-cell">/g)).toHaveLength(1);
+        expect(finalDetailRow.match(/<td class="detail-cell detail-cell-empty">/g)).toHaveLength(1);
+    });
+
+    it('renders even and empty advanced sections with valid two-column table bodies', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'advanced',
+            request: {
+                id: 'req_advanced_field_shapes',
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+            advanced_sections: [{
+                key: 'access',
+                title: 'Access Details',
+                fields: [
+                    { key: 'garage', label: 'Garage Code', value: '1234' },
+                    { key: 'gate', label: 'Gate Code', value: '5678' },
+                    { key: 'keys', label: 'Spare Keys', value: 'Kitchen drawer' },
+                    { key: 'alarm', label: 'Alarm Code', value: '2468' },
+                ],
+            }, {
+                key: 'service_providers',
+                title: 'Service Providers',
+                fields: [],
+            }],
+        });
+
+        const detailTables = [...result.html.matchAll(
+            /<table class="detail-section-table">[\s\S]*?<\/table>/g,
+        )].map((match) => match[0]);
+        expect(detailTables).toHaveLength(2);
+
+        const evenRows = [...detailTables[0].matchAll(/<tr class="detail-row">[\s\S]*?<\/tr>/g)];
+        expect(evenRows).toHaveLength(2);
+        for (const row of evenRows) {
+            expect(row[0].match(/<td class="detail-cell">/g)).toHaveLength(2);
+            expect(row[0]).not.toContain('detail-cell-empty');
+        }
+
+        expect(detailTables[1]).toContain(
+            '<td class="detail-cell detail-empty-message" colspan="2">No details provided.</td>',
+        );
     });
 
     it('keeps buyer steps atomic while allowing unusually long lists to paginate', () => {

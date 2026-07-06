@@ -15,6 +15,7 @@ import type {
     TrashPickupDay,
 } from '@/types';
 import {
+    ADVANCED_MODULE_FIELD_METADATA,
     ADVANCED_MODULE_LABELS,
     filterAdvancedPacketDataByExclusions,
     getEffectiveAdvancedModules,
@@ -174,14 +175,6 @@ function normalizeObject(value: unknown): Record<string, unknown> {
     return {};
 }
 
-function toLabel(key: string): string {
-    return key
-        .replaceAll('_', ' ')
-        .split(' ')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-}
-
 function normalizeTrashPickupDay(value: unknown): TrashPickupDay | null | undefined {
     if (value === undefined) return undefined;
     if (value === null) return null;
@@ -253,20 +246,29 @@ function normalizeTrashDetails(value: unknown): PacketUtilityData['trash_details
     return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
+function formatAdvancedDisplayValue(raw: unknown): string | null {
+    if (raw === null || raw === undefined) return null;
+    const value = Array.isArray(raw) ? raw.join(', ') : String(raw).trim();
+
+    if (!value) return null;
+    if (value.toLowerCase() === 'yes') return 'Yes';
+    if (value.toLowerCase() === 'no') return 'No';
+    return value;
+}
+
 function normalizeAdvancedSections(
     modules: AdvancedModuleKey[],
     data: Record<string, unknown>
 ): PacketAdvancedSection[] {
     return modules.map((moduleKey) => {
         const sectionData = normalizeObject(data[moduleKey]);
-        const fields: PacketAdvancedField[] = Object.entries(sectionData)
-            .flatMap(([key, raw]) => {
-                if (raw === null || raw === undefined) return [];
-                const value = Array.isArray(raw) ? raw.join(', ') : String(raw).trim();
-                if (!value) return [];
+        const fields: PacketAdvancedField[] = ADVANCED_MODULE_FIELD_METADATA[moduleKey]
+            .flatMap(({ key, label }) => {
+                const value = formatAdvancedDisplayValue(sectionData[key]);
+                if (value === null) return [];
                 return [{
                     key,
-                    label: toLabel(key),
+                    label,
                     value,
                 }];
             });

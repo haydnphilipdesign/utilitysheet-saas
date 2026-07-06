@@ -132,6 +132,19 @@ function normalizeWebsiteHostname(value: string | null | undefined): string {
     }
 }
 
+function normalizeContactWebsiteHostname(value: string | null | undefined): string {
+    if (!value) return '';
+
+    const candidate = value.trim();
+    const absoluteHostname = normalizeWebsiteHostname(candidate);
+    if (absoluteHostname) return absoluteHostname;
+
+    if (/^[a-z][a-z\d+.-]*:/i.test(candidate)) return '';
+
+    const schemelessCandidate = candidate.replace(/^\/\//, '');
+    return normalizeWebsiteHostname(`https://${schemelessCandidate}`);
+}
+
 function formatPickupDay(day: string | null | undefined): string {
     if (!day) return 'Not sure';
     const normalized = day.trim().toLowerCase();
@@ -181,7 +194,191 @@ function getTrashScheduleDetailLines(trashDetails: PacketPdfData['utilities'][nu
     return lines;
 }
 
-function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
+function getBrandInitials(name: string | null | undefined): string {
+    const initials = (name || '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((word) => word[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+
+    return initials || 'US';
+}
+
+function chunkFields<T>(fields: T[]): Array<[T, T?]> {
+    const chunks: Array<[T, T?]> = [];
+    for (let index = 0; index < fields.length; index += 2) {
+        chunks.push([fields[index], fields[index + 1]]);
+    }
+    return chunks;
+}
+
+interface SharedMarkupContext {
+    data: PacketPdfData;
+    safePrimaryColor: string;
+    safeBrandLogoUrl: string | null;
+    safeBrandName: string;
+    safeBrandContactName: string;
+    safeBrandContactPhone: string;
+    safeBrandContactEmail: string;
+    safeBrandContactWebsite: string;
+    safePropertyAddress: string;
+}
+
+function buildBrandHeaderMarkup(context: SharedMarkupContext): string {
+    const {
+        data,
+        safePrimaryColor,
+        safeBrandLogoUrl,
+        safeBrandName,
+        safeBrandContactName,
+        safeBrandContactPhone,
+        safeBrandContactEmail,
+        safeBrandContactWebsite,
+    } = context;
+
+    return `
+        <div class="brand-header keep-together">
+            <div class="brand-identity">
+                ${safeBrandLogoUrl
+        ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" class="brand-logo" crossorigin="anonymous" />`
+        : `<div class="brand-mark" style="background: ${safePrimaryColor};">${escapeHtml(getBrandInitials(data.brand?.name))}</div>`}
+                <div>
+                    <h2 class="brand-name">${safeBrandName}</h2>
+                    ${safeBrandContactName ? `<p class="brand-contact-name">${safeBrandContactName}</p>` : ''}
+                    ${safeBrandContactPhone ? `<p class="brand-contact-line">${safeBrandContactPhone}</p>` : ''}
+                </div>
+            </div>
+            <div class="brand-contact-right">
+                ${safeBrandContactEmail ? `<p class="brand-contact-line">${safeBrandContactEmail}</p>` : ''}
+                ${safeBrandContactWebsite ? `<p class="brand-contact-line">${safeBrandContactWebsite}</p>` : ''}
+            </div>
+        </div>`;
+}
+
+function buildTitleBlockMarkup(context: SharedMarkupContext, title: string, showGenerationDate: boolean): string {
+    return `
+        <div class="title-block keep-together">
+            <h1>${title}</h1>
+            <div class="address-chip">
+                <span class="address-pin">📍</span>
+                <span>${context.safePropertyAddress}</span>
+            </div>
+            ${showGenerationDate
+        ? `<div class="generation-date">Generated on ${format(new Date(context.data.request.created_at), 'MMMM d, yyyy')}</div>`
+        : ''}
+        </div>`;
+}
+
+function buildHomeBasicsMarkup(request: PacketPdfData['request']): string {
+    const basics = [
+        ['Water Source', request.water_source],
+        ['Sewer Type', request.sewer_type],
+        ['Heating Type', request.heating_type],
+    ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+
+    if (basics.length === 0) return '';
+
+    return `
+        <section class="home-basics keep-together">
+            <div class="section-heading accent-heading"><h3>Home Basics</h3></div>
+            <div class="home-basics-grid">
+                ${basics.map(([label, value]) => `
+                    <div class="home-basic">
+                        <p class="home-basic-label">${label}</p>
+                        <p class="home-basic-value">${escapeHtml(value.replaceAll('_', ' '))}</p>
+                    </div>`).join('')}
+            </div>
+        </section>`;
+}
+
+function buildUtilitiesMarkup(utilities: PacketPdfData['utilities']): string {
+    const rows = utilities.length === 0
+        ? `<tr class="provider-row"><td colspan="3" class="provider-empty">No utility information provided yet.</td></tr>`
+        : utilities.map((utility) => {
+            const safeCategory = escapeHtml(String(utility.category || '').replaceAll('_', ' '));
+            const safeProviderName = escapeHtml(String(utility.provider_name || 'Not sure'));
+            const safeProviderPhone = utility.provider_phone ? escapeHtml(String(utility.provider_phone)) : '';
+            const safeWebsiteDisplay = escapeHtml(normalizeWebsiteHostname(utility.provider_website));
+            const safeMeterNumber = utility.category === 'electric' && utility.meter_number
+                ? escapeHtml(String(utility.meter_number).trim())
+                : '';
+            const trashScheduleLines = utility.category === 'trash'
+                ? getTrashScheduleDetailLines(utility.trash_details)
+                : [];
+
+            return `
+                <tr class="provider-row">
+                    <td><div class="utility-label">
+                        <span class="utility-icon">${UTILITY_CATEGORIES.find((category) => category.key === utility.category)?.icon || '🏢'}</span>
+                        <span class="utility-category">${safeCategory}</span>
+                    </div></td>
+                    <td class="provider-name">${safeProviderName}</td>
+                    <td class="provider-contact"><div>
+                        <div>
+                            ${safeProviderPhone ? `<span class="provider-phone">${safeProviderPhone}</span>` : ''}
+                            ${safeProviderPhone && safeWebsiteDisplay ? '<span class="contact-divider">|</span>' : ''}
+                            ${safeWebsiteDisplay ? `<span class="provider-website">${safeWebsiteDisplay}</span>` : ''}
+                        </div>
+                        ${safeMeterNumber ? `<div class="provider-detail"><strong>Meter #:</strong> ${safeMeterNumber}</div>` : ''}
+                        ${trashScheduleLines.map((line) => `<div class="provider-detail">${escapeHtml(line)}</div>`).join('')}
+                    </div></td>
+                </tr>`;
+        }).join('');
+
+    return `
+        <table class="provider-table">
+            <thead>
+                <tr class="provider-section-title">
+                    <th colspan="3"><div class="section-heading accent-heading"><h3>Utility Providers</h3></div></th>
+                </tr>
+                <tr class="provider-columns"><th>Utility</th><th>Provider</th><th>Contact</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+}
+
+function buildAdvancedSectionsMarkup(sections: NonNullable<PacketPdfData['advanced_sections']>): string {
+    return sections.map((section) => `
+        <table class="detail-section-table">
+            <thead>
+                <tr class="detail-section-title">
+                    <th colspan="2"><h3>${escapeHtml(section.title)}</h3></th>
+                </tr>
+            </thead>
+            <tbody>${section.fields.length === 0
+        ? '<tr class="detail-row"><td class="detail-cell detail-empty-message" colspan="2">No details provided.</td></tr>'
+        : chunkFields(section.fields).map(([left, right]) => `
+                <tr class="detail-row">
+                    <td class="detail-cell">
+                        <div class="detail-label">${escapeHtml(left.label)}</div>
+                        <div class="detail-value">${escapeHtml(left.value)}</div>
+                    </td>
+                    ${right ? `<td class="detail-cell">
+                        <div class="detail-label">${escapeHtml(right.label)}</div>
+                        <div class="detail-value">${escapeHtml(right.value)}</div>
+                    </td>` : '<td class="detail-cell detail-cell-empty"></td>'}
+                </tr>`).join('')}</tbody>
+        </table>`).join('');
+}
+
+function buildBuyerNextStepsMarkup(title: string, steps: string[]): string {
+    return `
+        <section class="buyer-steps-section">
+            <div class="section-heading accent-heading"><h3>${title}</h3></div>
+            <ol class="buyer-steps">
+                ${steps.filter((step) => step.trim()).map((step, index) => `
+                    <li class="buyer-step">
+                        <span class="step-number">${index + 1}</span>
+                        <span class="step-text">${escapeHtml(step)}</span>
+                    </li>`).join('')}
+            </ol>
+        </section>`;
+}
+
+function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const { request, brand, utilities } = data;
 
     const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
@@ -195,7 +392,10 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const safeBrandContactName = escapeHtml(clampBrandingText(brand?.contact_name || '', BRAND_PROFILE_LIMITS.contactNameMax));
     const safeBrandContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
     const safeBrandContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
-    const safeBrandContactWebsite = escapeHtml(clampBrandingText(brand?.contact_website || '', BRAND_PROFILE_LIMITS.contactWebsiteMax));
+    const safeBrandContactWebsite = escapeHtml(clampBrandingText(
+        normalizeContactWebsiteHostname(brand?.contact_website),
+        BRAND_PROFILE_LIMITS.contactWebsiteMax,
+    ));
     const safePropertyAddress = escapeHtml(clampBrandingText(request.property_address, 140));
 
     const rawBuyerNextSteps = brand?.buyer_next_steps && brand.buyer_next_steps.length > 0
@@ -214,6 +414,20 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const disclaimerText = brand?.disclaimer_text
         ? escapeHtml(clampBrandingText(brand.disclaimer_text, BRAND_PROFILE_LIMITS.disclaimerTextMax))
         : '';
+    const context: SharedMarkupContext = {
+        data,
+        safePrimaryColor,
+        safeBrandLogoUrl,
+        safeBrandName,
+        safeBrandContactName,
+        safeBrandContactPhone,
+        safeBrandContactEmail,
+        safeBrandContactWebsite,
+        safePropertyAddress,
+    };
+    const advancedSectionsHtml = data.mode === 'advanced'
+        ? buildAdvancedSectionsMarkup(data.advanced_sections || [])
+        : '';
 
     const footerHtml = disclaimerText
         ? `
@@ -225,78 +439,6 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         `
         : '';
 
-    const homeBasicsHtml = request.water_source || request.sewer_type || request.heating_type
-        ? `
-            <section class="home-basics keep-together">
-                <div class="section-heading">
-                    <h3>Home Basics</h3>
-                </div>
-                <div class="home-basics-grid">
-                    ${request.water_source ? `
-                    <div class="home-basic">
-                        <p class="home-basic-label">Water Source</p>
-                        <p class="home-basic-value">${escapeHtml(String(request.water_source).replace('_', ' '))}</p>
-                    </div>
-                    ` : ''}
-                    ${request.sewer_type ? `
-                    <div class="home-basic">
-                        <p class="home-basic-label">Sewer Type</p>
-                        <p class="home-basic-value">${escapeHtml(String(request.sewer_type).replace('_', ' '))}</p>
-                    </div>
-                    ` : ''}
-                    ${request.heating_type ? `
-                    <div class="home-basic">
-                        <p class="home-basic-label">Heating Type</p>
-                        <p class="home-basic-value">${escapeHtml(String(request.heating_type).replace('_', ' '))}</p>
-                    </div>
-                    ` : ''}
-                </div>
-            </section>
-        `
-        : '';
-
-    const utilityRowsHtml = utilities.length === 0
-        ? `<tr class="provider-row"><td colspan="3" class="provider-empty">No utility information provided yet.</td></tr>`
-        : utilities.map((utility) => {
-            const safeCategory = escapeHtml(String(utility.category || ''));
-            const safeProviderName = escapeHtml(String(utility.provider_name || 'Not sure'));
-            const safeProviderPhone = utility.provider_phone ? escapeHtml(String(utility.provider_phone)) : '';
-            const safeWebsiteDisplay = escapeHtml(normalizeWebsiteHostname(utility.provider_website));
-            const safeMeterNumber = utility.category === 'electric' && utility.meter_number
-                ? escapeHtml(String(utility.meter_number).trim())
-                : '';
-            const trashScheduleLines = utility.category === 'trash'
-                ? getTrashScheduleDetailLines(utility.trash_details)
-                : [];
-
-            return `
-                <tr class="provider-row">
-                    <td>
-                        <div class="utility-label">
-                            <span class="utility-icon">${UTILITY_CATEGORIES.find((category) => category.key === utility.category)?.icon || '🏢'}</span>
-                            <span class="utility-category">${safeCategory}</span>
-                        </div>
-                    </td>
-                    <td class="provider-name">${safeProviderName}</td>
-                    <td class="provider-contact">
-                        <div>
-                            <div>
-                                ${safeProviderPhone ? `<span class="provider-phone">${safeProviderPhone}</span>` : ''}
-                                ${safeProviderPhone && safeWebsiteDisplay ? '<span class="contact-divider">|</span>' : ''}
-                                ${safeWebsiteDisplay ? `<span class="provider-website">${safeWebsiteDisplay}</span>` : ''}
-                            </div>
-                            ${safeMeterNumber
-                    ? `<div class="provider-detail"><strong>Meter #:</strong> ${safeMeterNumber}</div>`
-                    : ''}
-                            ${trashScheduleLines
-                    .map((line) => `<div class="provider-detail">${escapeHtml(line)}</div>`)
-                    .join('')}
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-
     const html = `
 <!DOCTYPE html>
 <html>
@@ -307,7 +449,7 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #ffffff; }
-        .simple-pdf {
+        .packet-pdf {
             width: 100%;
             color: #18181b;
             font-family: Arial, Helvetica, sans-serif;
@@ -358,6 +500,7 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
         }
         .section-heading { padding: 7px 12px; border-bottom: 1px solid #e4e4e7; background: #f9fafb; }
+        .accent-heading { border-left: 3px solid ${safePrimaryColor}; }
         .section-heading h3 { margin: 0; font-size: 12px; line-height: 1.2; font-weight: 700; }
         .home-basics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 8px 12px 9px; }
         .home-basic-label { margin: 0 0 2px; color: #71717a; font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -392,11 +535,12 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         .provider-detail strong { color: #52525b; }
         .provider-empty { padding: 14px !important; color: #71717a; text-align: center; }
         .buyer-steps-section {
-            margin-bottom: 10px; padding: 10px 12px;
+            margin-bottom: 10px;
             border: 1px solid #e4e4e7; border-radius: 8px; background: #f9fafb;
+            overflow: hidden;
         }
-        .buyer-steps-section h3 { margin: 0 0 7px; font-size: 12px; line-height: 1.2; font-weight: 700; }
-        .buyer-steps { margin: 0; padding: 0; list-style: none; }
+        .buyer-steps-section h3 { margin: 0; font-size: 12px; line-height: 1.2; font-weight: 700; }
+        .buyer-steps { margin: 0; padding: 10px 12px; list-style: none; }
         .buyer-step { break-inside: avoid; page-break-inside: avoid; display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; color: #3f3f46; line-height: 1.3; }
         .buyer-step:last-child { margin-bottom: 0; }
         .step-number {
@@ -406,42 +550,32 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
             font-size: 8px; font-weight: 700;
         }
         .step-text { flex: 1; min-width: 0; font-size: 9pt; overflow-wrap: anywhere; }
+        .detail-section-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 10px; page-break-inside: auto; }
+        .detail-section-title th {
+            padding: 7px 12px; text-align: left; background: #f9fafb;
+            border: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7; border-left: 3px solid ${safePrimaryColor};
+            border-radius: 8px 8px 0 0;
+        }
+        .detail-section-title h3 { margin: 0; font-size: 12px; line-height: 1.2; font-weight: 700; }
+        .detail-row { break-inside: avoid; page-break-inside: avoid; }
+        .detail-cell { width: 50%; padding: 8px 12px; border-bottom: 1px solid #e4e4e7; vertical-align: top; }
+        .detail-cell:first-child { border-left: 1px solid #e4e4e7; }
+        .detail-cell:last-child { border-left: 1px solid #e4e4e7; border-right: 1px solid #e4e4e7; }
+        .detail-row:last-child .detail-cell:first-child { border-radius: 0 0 0 8px; }
+        .detail-row:last-child .detail-cell:last-child { border-radius: 0 0 8px 0; }
+        .detail-cell-empty { background: #ffffff; }
+        .detail-row:last-child .detail-cell.detail-empty-message { border-radius: 0 0 8px 8px; }
+        .detail-empty-message { color: #71717a; text-align: center; }
+        .detail-label { margin-bottom: 2px; color: #71717a; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .detail-value { color: #18181b; font-size: 9.5pt; overflow-wrap: anywhere; }
         .simple-disclaimer { padding-top: 8px; border-top: 1px solid #e4e4e7; text-align: center; }
         .simple-disclaimer p { margin: 0; color: #71717a; font-size: 7.5pt; line-height: 1.3; overflow-wrap: anywhere; }
     </style>
 </head>
 <body>
-    <div id="packet-pdf-root" class="simple-pdf">
-        <div class="brand-header keep-together">
-            <div class="brand-identity">
-                ${safeBrandLogoUrl
-            ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" class="brand-logo" crossorigin="anonymous" />`
-            : `<div class="brand-mark" style="background: ${safePrimaryColor};">
-                    ${escapeHtml(brand?.name ? String(brand.name).split(' ').map((word) => word[0] || '').join('').slice(0, 2) : 'US')}
-                </div>`
-        }
-                <div>
-                    <h2 class="brand-name">${safeBrandName}</h2>
-                    ${safeBrandContactName ? `<p class="brand-contact-name">${safeBrandContactName}</p>` : ''}
-                    ${safeBrandContactPhone ? `<p class="brand-contact-line">${safeBrandContactPhone}</p>` : ''}
-                </div>
-            </div>
-            <div class="brand-contact-right">
-                ${safeBrandContactEmail ? `<p class="brand-contact-line">${safeBrandContactEmail}</p>` : ''}
-                ${safeBrandContactWebsite ? `<p class="brand-contact-line">${safeBrandContactWebsite}</p>` : ''}
-            </div>
-        </div>
-
-        <div class="title-block keep-together">
-            <h1>${title}</h1>
-            <div class="address-chip">
-                <span class="address-pin">📍</span>
-                <span>${safePropertyAddress}</span>
-            </div>
-            ${showGenerationDate ? `
-            <div class="generation-date">Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</div>
-            ` : ''}
-        </div>
+    <div id="packet-pdf-root" class="packet-pdf">
+        ${buildBrandHeaderMarkup(context)}
+        ${buildTitleBlockMarkup(context, title, showGenerationDate)}
 
         ${welcomeMessage ? `
         <div class="welcome-message keep-together">
@@ -449,35 +583,10 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
         </div>
         ` : ''}
 
-        ${homeBasicsHtml}
-
-        <table class="provider-table">
-            <thead>
-                <tr class="provider-section-title">
-                    <th colspan="3"><h3>Utility Providers</h3></th>
-                </tr>
-                <tr class="provider-columns">
-                    <th>Utility</th>
-                    <th>Provider</th>
-                    <th>Contact</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${utilityRowsHtml}
-            </tbody>
-        </table>
-
-        <section class="buyer-steps-section">
-            <h3>${nextStepsTitle}</h3>
-            <ol class="buyer-steps">
-                ${buyerNextSteps.filter((step) => step.trim()).map((step, index) => `
-                    <li class="buyer-step">
-                        <span class="step-number">${index + 1}</span>
-                        <span class="step-text">${escapeHtml(step)}</span>
-                    </li>
-                `).join('')}
-            </ol>
-        </section>
+        ${buildHomeBasicsMarkup(request)}
+        ${buildUtilitiesMarkup(utilities)}
+        ${advancedSectionsHtml}
+        ${buildBuyerNextStepsMarkup(nextStepsTitle, buyerNextSteps)}
 
         ${footerHtml}
     </div>
@@ -485,16 +594,8 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
 </html>
     `.trim();
 
-    const filename = `utility-info-sheet-${sanitizeFilenamePart(request.property_address.split(',')[0] || '')}.pdf`;
-
-    // The simple/free PDF renders with the same crisp vector `print_pdf`
-    // strategy as the advanced PDF, so its text is selectable and it paginates
-    // as a real letter-page document. The layout is fluid (letter width comes
-    // from the page.pdf margins applied in packet-attachment.ts) with
-    // page-break-inside avoidance on cards/rows, and it shares the running
-    // header/footer (powered-by + page numbers) with the advanced builder.
-    // Content and branding stay unified between the two strategies via the
-    // shared helpers above.
+    const filenamePrefix = data.mode === 'advanced' ? 'seller-transition-packet' : 'utility-info-sheet';
+    const filename = `${filenamePrefix}-${sanitizeFilenamePart(request.property_address.split(',')[0] || '')}.pdf`;
     const headerTemplate = `
         <div style="width:100%; font-size:8.5px; color:#94a3b8; padding:0 0.55in; box-sizing:border-box; display:flex; justify-content:space-between; font-family:Arial, Helvetica, sans-serif;">
             <span>${safeBrandName}</span>
@@ -518,302 +619,6 @@ function buildSimplePacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
     };
 }
 
-function buildAdvancedPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
-    const { request, brand, utilities } = data;
-    const sections = data.advanced_sections || [];
-    const safePrimaryColor = safeHexColor(brand?.primary_color, DEFAULT_BRAND_COLOR);
-    const title = escapeHtml(getPacketTitle('advanced'));
-    const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
-    const safeBrandName = escapeHtml(clampBrandingText(brand?.name || 'UtilitySheet', BRAND_PROFILE_LIMITS.brandNameMax) || 'UtilitySheet');
-    const safeAddress = escapeHtml(clampBrandingText(request.property_address, 160));
-    const safeContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
-    const safeContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
-    const safeContactWebsite = escapeHtml(normalizeWebsiteHostname(brand?.contact_website));
-    const safePrimaryColorLight = hexToRgba(safePrimaryColor, 0.08);
-    const showGenerationDate = brand?.show_generation_date ?? true;
-    const forceShowPoweredBy = data.meta?.show_powered_by ?? true;
-    const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
-    const rawBuyerNextSteps = brand?.buyer_next_steps && brand.buyer_next_steps.length > 0
-        ? brand.buyer_next_steps
-        : DEFAULT_BUYER_STEPS;
-    const buyerNextSteps = rawBuyerNextSteps
-        .map((step) => clampBrandingText(step, BRAND_PROFILE_LIMITS.buyerNextStepMax))
-        .filter(Boolean)
-        .slice(0, BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems)
-        .map((step) => escapeHtml(step));
-    const nextStepsTitle = escapeHtml(clampBrandingText(brand?.next_steps_title || 'Buyer Next Steps', BRAND_PROFILE_LIMITS.nextStepsTitleMax) || 'Buyer Next Steps');
-    const welcomeMessage = brand?.welcome_message
-        ? escapeHtml(clampBrandingText(brand.welcome_message, BRAND_PROFILE_LIMITS.welcomeMessageMax))
-        : '';
-
-    const utilityRows = utilities.length === 0
-        ? `<tr><td colspan="3" class="empty">No utility details provided.</td></tr>`
-        : utilities.map((utility) => {
-            const icon = UTILITY_CATEGORIES.find((category) => category.key === utility.category)?.icon || '🏢';
-            const safeCategory = escapeHtml(String(utility.category || '').replaceAll('_', ' '));
-            const safeProviderName = escapeHtml(String(utility.provider_name || 'Not sure'));
-            const safeProviderPhone = utility.provider_phone ? escapeHtml(String(utility.provider_phone)) : '';
-            const safeWebsiteDisplay = escapeHtml(normalizeWebsiteHostname(utility.provider_website));
-            const safeMeterNumber = utility.category === 'electric' && utility.meter_number
-                ? escapeHtml(String(utility.meter_number).trim())
-                : '';
-            const trashScheduleLines = utility.category === 'trash'
-                ? getTrashScheduleDetailLines(utility.trash_details)
-                : [];
-
-            return `
-                <tr>
-                    <td><span class="utility-icon">${icon}</span> <span class="utility-name">${safeCategory}</span></td>
-                    <td>${safeProviderName}</td>
-                    <td>
-                        ${safeProviderPhone ? `<div style="color: ${safePrimaryColor}; font-weight: 600;">${safeProviderPhone}</div>` : ''}
-                        ${safeWebsiteDisplay ? `<div class="muted">${safeWebsiteDisplay}</div>` : ''}
-                        ${safeMeterNumber ? `<div class="meter">Meter #: ${safeMeterNumber}</div>` : ''}
-                        ${trashScheduleLines
-                    .map((line) => `<div class="meter">${escapeHtml(line)}</div>`)
-                    .join('')}
-                    </td>
-                </tr>
-            `;
-        }).join('');
-
-    const sectionHtml = sections.map((section) => {
-        const rows = section.fields.length === 0
-            ? '<p class="empty-note">No details provided.</p>'
-            : `<div class="detail-grid">${section.fields.map((field) => `
-                    <div class="detail-row">
-                        <div class="detail-label">${escapeHtml(field.label)}</div>
-                        <div class="detail-value">${escapeHtml(field.value)}</div>
-                    </div>
-                `).join('')}</div>`;
-
-        return `
-            <section class="packet-section keep-together">
-                <h3>${escapeHtml(section.title)}</h3>
-                ${rows}
-            </section>
-        `;
-    }).join('');
-
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${title}</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            color: #1e293b;
-            font-family: "Georgia", "Times New Roman", serif;
-            font-size: 10.5pt;
-            line-height: 1.45;
-            -webkit-font-smoothing: antialiased;
-        }
-        #packet-pdf-root { width: 100%; }
-        .packet-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 14px;
-            margin-bottom: 22px;
-        }
-        .brand-left { display: flex; align-items: center; gap: 12px; }
-        .brand-mark {
-            width: 40px; height: 40px; border-radius: 6px;
-            background: ${safePrimaryColor}; color: #ffffff;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 13pt;
-            font-family: Arial, Helvetica, sans-serif;
-            letter-spacing: -0.02em;
-        }
-        .brand-name { margin: 0; font-size: 15pt; font-weight: 700; color: #0f172a; }
-        .brand-contact { margin: 0; color: #4b5563; font-size: 9.5pt; line-height: 1.3; text-align: right; }
-        .packet-title {
-            margin: 0 0 8px;
-            font-size: 20pt;
-            letter-spacing: -0.01em;
-            font-weight: 700;
-            color: #0f172a;
-        }
-        .address-chip {
-            background: #f8fafc; border: 1px solid #e2e8f0;
-            border-radius: 6px; padding: 8px 16px; display: inline-block;
-            margin-bottom: 10px; font-size: 10pt;
-            font-weight: 500; color: #1e293b; letter-spacing: 0.01em;
-        }
-        .packet-section {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-        }
-        .packet-section > h3 {
-            margin: 0;
-            padding: 10px 14px 10px 16px;
-            border-bottom: 1px solid #e2e8f0;
-            background: #f8fafc;
-            font-size: 11pt;
-            font-weight: 700;
-            letter-spacing: 0.01em;
-            border-left: 3px solid ${safePrimaryColor};
-        }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
-        th { text-align: left; font-size: 8pt; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; font-family: Arial, Helvetica, sans-serif; }
-        tbody tr:nth-child(even) { background: #f8fafc; }
-        .utility-icon { margin-right: 8px; }
-        .utility-name { text-transform: capitalize; font-weight: 600; }
-        .muted { color: #64748b; font-size: 9pt; }
-        .meter { margin-top: 4px; font-size: 9pt; color: #1f2937; }
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0;
-            padding: 0;
-        }
-        .detail-row {
-            padding: 10px 14px;
-            background: #ffffff;
-            border-bottom: 1px solid #f1f5f9;
-            border-right: 1px solid #f1f5f9;
-        }
-        .detail-row:nth-child(even) { border-right: none; }
-        .detail-row:nth-last-child(-n+2) { border-bottom: none; }
-        .detail-label {
-            color: #64748b;
-            font-size: 7.5pt;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 2px;
-            font-weight: 600;
-            font-family: Arial, Helvetica, sans-serif;
-        }
-        .detail-value { font-size: 10pt; line-height: 1.4; color: #1e293b; }
-        .empty-note, .empty { color: #6b7280; text-align: center; padding: 14px; }
-        .next-steps { padding: 14px 16px; margin: 0; }
-        .next-step-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            margin-bottom: 10px;
-            line-height: 1.5;
-        }
-        .next-step-item:last-child { margin-bottom: 0; }
-        .step-badge {
-            flex-shrink: 0;
-            width: 22px; height: 22px;
-            border-radius: 50%;
-            background: ${safePrimaryColorLight};
-            color: ${safePrimaryColor};
-            display: flex; align-items: center; justify-content: center;
-            font-size: 8.5pt; font-weight: 700;
-            font-family: Arial, Helvetica, sans-serif;
-            margin-top: 1px;
-        }
-        .step-text {
-            flex: 1; min-width: 0;
-            word-break: break-word; overflow-wrap: anywhere;
-            font-size: 10pt;
-        }
-        .keep-together { page-break-inside: avoid; break-inside: avoid; }
-    </style>
-</head>
-<body>
-    <div id="packet-pdf-root">
-        <header class="packet-header keep-together">
-            <div class="brand-left">
-                ${safeBrandLogoUrl
-                    ? `<img src="${escapeHtml(safeBrandLogoUrl)}" alt="${safeBrandName}" style="height: 40px; width: auto;" />`
-                    : `<div class="brand-mark">${escapeHtml(brand?.name ? String(brand.name).slice(0, 2).toUpperCase() : 'US')}</div>`
-                }
-                <div>
-                    <h2 class="brand-name">${safeBrandName}</h2>
-                    ${safeContactPhone ? `<p class="brand-contact" style="text-align:left;">${safeContactPhone}</p>` : ''}
-                </div>
-            </div>
-            <div>
-                ${safeContactEmail ? `<p class="brand-contact">${safeContactEmail}</p>` : ''}
-                ${safeContactWebsite ? `<p class="brand-contact">${safeContactWebsite}</p>` : ''}
-            </div>
-        </header>
-
-        <section class="keep-together" style="margin-bottom: 20px;">
-            <h1 class="packet-title">${title}</h1>
-            <div class="address-chip">${safeAddress}</div>
-            ${showGenerationDate ? `<div class="muted">Generated on ${format(new Date(request.created_at), 'MMMM d, yyyy')}</div>` : ''}
-        </section>
-
-        ${welcomeMessage ? `
-        <section class="keep-together" style="background: ${hexToRgba(safePrimaryColor, 0.08)}; border: 1px solid ${hexToRgba(safePrimaryColor, 0.25)}; border-left: 3px solid ${safePrimaryColor}; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
-            <p style="margin: 0; color: #334155; font-size: 10pt; line-height: 1.5;">${welcomeMessage}</p>
-        </section>
-        ` : ''}
-
-        <section class="packet-section keep-together">
-            <h3>Utilities</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Utility</th>
-                        <th>Provider</th>
-                        <th>Contact</th>
-                    </tr>
-                </thead>
-                <tbody>${utilityRows}</tbody>
-            </table>
-        </section>
-
-        ${sectionHtml}
-
-        <section class="packet-section keep-together">
-            <h3>${nextStepsTitle}</h3>
-            <div class="next-steps">
-                ${buyerNextSteps.map((step, index) => `
-                    <div class="next-step-item">
-                        <span class="step-badge">${index + 1}</span>
-                        <span class="step-text">${step}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </section>
-
-    </div>
-</body>
-</html>
-    `.trim();
-
-    const filename = `seller-transition-packet-${sanitizeFilenamePart(request.property_address.split(',')[0] || '')}.pdf`;
-    const headerTemplate = `
-        <div style="width:100%; font-size:8.5px; color:#94a3b8; padding:0 0.55in; box-sizing:border-box; display:flex; justify-content:space-between; font-family:Arial, Helvetica, sans-serif;">
-            <span>${safeBrandName}</span>
-            <span>${safeAddress}</span>
-        </div>
-    `;
-    const footerTemplate = `
-        <div style="width:100%; font-size:8.5px; color:#94a3b8; padding:0 0.55in; box-sizing:border-box; display:flex; justify-content:space-between; font-family:Arial, Helvetica, sans-serif;">
-            <span>${showPoweredBy ? 'Powered by utilitysheet.com' : ''}</span>
-            <span style="letter-spacing:0.02em;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
-        </div>
-    `;
-
-    return {
-        html,
-        filename,
-        rootSelector: '#packet-pdf-root',
-        renderStrategy: 'print_pdf',
-        headerTemplate,
-        footerTemplate,
-    };
-}
-
 export function buildPacketPdfHtml(data: PacketPdfData): PacketPdfHtmlResult {
-    if (data.mode === 'advanced') {
-        return buildAdvancedPacketPdfHtml(data);
-    }
-    return buildSimplePacketPdfHtml(data);
+    return buildPacketPdfDocumentHtml(data);
 }
