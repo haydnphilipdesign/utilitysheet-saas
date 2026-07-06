@@ -2,6 +2,69 @@ import { describe, expect, it } from 'vitest';
 import { buildPacketPdfHtml } from '@/lib/pdf/packet-html';
 
 describe('buildPacketPdfHtml meter number rendering', () => {
+    it('uses the shared document shell and content blocks in advanced mode', () => {
+        const result = buildPacketPdfHtml({
+            mode: 'advanced',
+            request: {
+                id: 'req_shared_advanced',
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+                water_source: 'city',
+                sewer_type: 'septic',
+                heating_type: 'electric',
+            },
+            brand: {
+                name: 'Multimedium Team',
+                contact_name: 'Haydn Watkins',
+            },
+            utilities: [{ category: 'electric', provider_name: 'PPL Electric' }],
+            advanced_sections: [{
+                key: 'access',
+                title: 'Access Details',
+                fields: [{ key: 'garage', label: 'Garage Code', value: '1234' }],
+            }],
+        });
+
+        expect(result.html).toContain('class="packet-pdf"');
+        expect(result.html).toMatch(/class="brand-mark"[^>]*>\s*MT\s*</);
+        expect(result.html).toContain('Haydn Watkins');
+        expect(result.html).toContain('Home Basics');
+        expect(result.html).toContain('class="section-heading accent-heading"');
+        expect(result.html).toContain('Utility Providers');
+        expect(result.html).toContain('Buyer Next Steps');
+        expect(result.html).not.toContain('font-family: "Georgia"');
+    });
+
+    it.each(['simple', 'advanced'] as const)('uses shared shell classes in %s mode', (mode) => {
+        const result = buildPacketPdfHtml({
+            mode,
+            request: {
+                id: `req_shared_${mode}`,
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+                water_source: 'city',
+            },
+            brand: { name: 'Multimedium Team' },
+            utilities: [{ category: 'water', provider_name: 'Town Water' }],
+            advanced_sections: mode === 'advanced' ? [{
+                key: 'access',
+                title: 'Access Details',
+                fields: [{ key: 'garage', label: 'Garage Code', value: '1234' }],
+            }] : [],
+        });
+
+        for (const className of [
+            'packet-pdf',
+            'brand-header',
+            'title-block',
+            'accent-heading',
+            'provider-table',
+            'buyer-steps-section',
+        ]) {
+            expect(result.html).toContain(className);
+        }
+    });
+
     it('uses the canonical document title for simple and advanced HTML', () => {
         const base = {
             request: {
@@ -76,7 +139,7 @@ describe('buildPacketPdfHtml meter number rendering', () => {
             })),
         });
 
-        expect(result.html).toContain('class="simple-pdf"');
+        expect(result.html).toContain('class="packet-pdf"');
         expect(result.html).toMatch(/<thead>[\s\S]*provider-section-title[\s\S]*Utility Providers[\s\S]*provider-columns/);
         expect(result.html).toContain('thead { display: table-header-group; }');
         expect(result.html).toContain('.provider-row { break-inside: avoid;');
