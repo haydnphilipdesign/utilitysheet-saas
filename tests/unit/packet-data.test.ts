@@ -344,6 +344,7 @@ describe('packet-data builder', () => {
                 },
                 irrigation_seasonal_controls: {
                     has_irrigation_system: 'no',
+                    watering_days: [' Monday ', 'THURSDAY'],
                 },
             },
         });
@@ -374,5 +375,10 @@ describe('packet-data builder', () => {
             ?.find((section) => section.key === 'irrigation_seasonal_controls')
             ?.fields.find((field) => field.key === 'has_irrigation_system');
         expect(irrigationField?.value).toBe('No');
+
+        const wateringDaysField = result.data.advanced_sections
+            ?.find((section) => section.key === 'irrigation_seasonal_controls')
+            ?.fields.find((field) => field.key === 'watering_days');
+        expect(wateringDaysField?.value).toBe(' Monday , THURSDAY');
     });
 });
