@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
-import { Plus, Palette, Star, MoreHorizontal, Pencil, Trash2, Loader2, Lock } from 'lucide-react';
+import { Plus, Star, MoreHorizontal, Pencil, Trash2, Loader2, Lock } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,6 +20,7 @@ export default function BrandingPage() {
     const [brands, setBrands] = useState<BrandProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [isPro, setIsPro] = useState(false);
+    const [organizationName, setOrganizationName] = useState<string | null>(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -39,6 +40,7 @@ export default function BrandingPage() {
             if (accountResponse.ok) {
                 const data = await accountResponse.json();
                 setIsPro(data.account.subscription_status === 'pro' || data.activeOrganization?.subscription_status === 'team');
+                setOrganizationName(data.activeOrganization?.name || null);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -85,16 +87,14 @@ export default function BrandingPage() {
         }
 
         try {
-            // We use the update endpoint to set as default
+            // Partial update: only flip the default flag. Sending the whole
+            // profile would rewrite every field with the list snapshot.
             const response = await fetch(`/api/branding/${profile.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    ...profile,
-                    is_default: true
-                }),
+                body: JSON.stringify({ is_default: true }),
             });
 
             if (response.ok) {
@@ -113,7 +113,7 @@ export default function BrandingPage() {
     if (loading) {
         return (
             <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
@@ -123,7 +123,11 @@ export default function BrandingPage() {
             {/* Header */}
             <PageHeader
                 title="Branding Profiles"
-                description="Customize how your utility info sheets look"
+                description={
+                    organizationName
+                        ? `Brand your PDFs, seller forms, and emails. Profiles are shared with everyone in ${organizationName}.`
+                        : 'Brand your PDFs, seller forms, and emails. The default profile is used for new requests.'
+                }
                 actions={
                     isPro ? (
                         <Link href="/dashboard/branding/new">
@@ -274,17 +278,12 @@ export default function BrandingPage() {
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground">Colors</span>
-                                    <div className="flex gap-1">
-                                        <div
-                                            className="w-6 h-6 rounded border border-border"
-                                            style={{ backgroundColor: brand.primary_color }}
-                                        />
-                                        <div
-                                            className="w-6 h-6 rounded border border-border"
-                                            style={{ backgroundColor: brand.secondary_color }}
-                                        />
-                                    </div>
+                                    <span className="text-muted-foreground">Accent color</span>
+                                    <div
+                                        className="w-6 h-6 rounded border border-border"
+                                        style={{ backgroundColor: brand.primary_color }}
+                                        title={brand.primary_color}
+                                    />
                                 </div>
                             </div>
                             <div className="mt-4 pt-4 border-t border-border">

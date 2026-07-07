@@ -13,6 +13,7 @@ function NewBrandingPageContent() {
     const returnTo = searchParams.get('returnTo');
     const [loading, setLoading] = useState(true);
     const [isPro, setIsPro] = useState(false);
+    const [scopeLabel, setScopeLabel] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -22,6 +23,11 @@ function NewBrandingPageContent() {
                     const data = await response.json();
                     const hasPaidAccess = data.account.subscription_status === 'pro' || data.activeOrganization?.subscription_status === 'team';
                     setIsPro(hasPaidAccess);
+                    setScopeLabel(
+                        data.activeOrganization
+                            ? `Team profile · ${data.activeOrganization.name}`
+                            : 'Personal profile'
+                    );
                     if (!hasPaidAccess) {
                         toast.error('Upgrade to Pro to create custom branding');
                         router.push('/dashboard/branding');
@@ -57,26 +63,27 @@ function NewBrandingPageContent() {
             router.refresh();
         } catch (error) {
             console.error('Error creating profile:', error);
-            toast.error('Failed to create brand profile');
+            toast.error(error instanceof Error ? error.message : 'Failed to create brand profile');
+            throw error;
         }
     };
 
     if (loading) {
         return (
             <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
-    return <BrandProfileForm onSubmit={handleSubmit} isPro={isPro} />;
+    return <BrandProfileForm onSubmit={handleSubmit} isPro={isPro} scopeLabel={scopeLabel} />;
 }
 
 export default function NewBrandingPage() {
     return (
         <Suspense fallback={
             <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         }>
             <NewBrandingPageContent />

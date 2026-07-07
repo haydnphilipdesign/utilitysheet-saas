@@ -13,6 +13,7 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
     const [initialData, setInitialData] = useState<BrandProfileFormData | null>(null);
     const [loading, setLoading] = useState(true);
     const [isPro, setIsPro] = useState(false);
+    const [scopeLabel, setScopeLabel] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -22,9 +23,11 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
                     fetch('/api/account'),
                 ]);
 
+                let organizationName: string | undefined;
                 if (accountResponse.ok) {
                     const accountData = await accountResponse.json().catch(() => ({}));
                     setIsPro(accountData?.account?.subscription_status === 'pro' || accountData?.activeOrganization?.subscription_status === 'team');
+                    organizationName = accountData?.activeOrganization?.name || undefined;
                 }
 
                 if (!profileResponse.ok) {
@@ -34,6 +37,11 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
                 }
 
                 const data = await profileResponse.json();
+                setScopeLabel(
+                    data?.organization_id
+                        ? `Team profile${organizationName ? ` · ${organizationName}` : ''}`
+                        : 'Personal profile'
+                );
                 setInitialData(data);
             } catch (error) {
                 console.error('Error fetching profile:', error);
@@ -67,14 +75,15 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
             router.refresh();
         } catch (error) {
             console.error('Error updating profile:', error);
-            toast.error('Failed to update brand profile');
+            toast.error(error instanceof Error ? error.message : 'Failed to update brand profile');
+            throw error;
         }
     };
 
     if (loading) {
         return (
             <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
@@ -87,6 +96,7 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
             onSubmit={handleSubmit}
             isEditing={true}
             isPro={isPro}
+            scopeLabel={scopeLabel}
         />
     );
 }

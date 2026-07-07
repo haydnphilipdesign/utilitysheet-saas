@@ -89,22 +89,22 @@ export async function createBrandProfile(data: {
     accountId: string;
     organizationId?: string;
     name: string;
-    logoUrl?: string;
+    logoUrl?: string | null;
     primaryColor?: string;
     secondaryColor?: string;
-    contactName?: string;
-    contactPhone?: string;
-    contactEmail?: string;
-    contactWebsite?: string;
-    disclaimerText?: string;
+    contactName?: string | null;
+    contactPhone?: string | null;
+    contactEmail?: string | null;
+    contactWebsite?: string | null;
+    disclaimerText?: string | null;
     messageTemplates?: MessageTemplates;
     isDefault?: boolean;
     // Advanced customization
-    buyerNextSteps?: string[];
-    nextStepsTitle?: string;
+    buyerNextSteps?: string[] | null;
+    nextStepsTitle?: string | null;
     showPoweredBy?: boolean;
     showGenerationDate?: boolean;
-    welcomeMessage?: string;
+    welcomeMessage?: string | null;
 }): Promise<BrandProfile | null> {
     if (!sql) return null;
 
@@ -174,7 +174,16 @@ export async function createBrandProfile(data: {
 }
 
 /**
- * Update a brand profile
+ * Update a brand profile.
+ *
+ * Field semantics (shared with the branding API):
+ * - key absent (undefined) -> the stored value is left unchanged
+ * - explicit null          -> the stored value is cleared (SQL NULL)
+ * - value                  -> the stored value is replaced
+ *
+ * This is implemented with per-field `CASE WHEN <provided> THEN <value> ELSE <current> END`
+ * clauses instead of COALESCE, because COALESCE cannot distinguish "not sent"
+ * from "clear this value" (the historical remove-logo / reset-steps bug).
  */
 export async function updateBrandProfile(
     id: string,
@@ -220,34 +229,34 @@ export async function updateBrandProfile(
         }
     }
 
-    // Serialize buyer_next_steps if provided
-    const buyerNextStepsJson = data.buyer_next_steps !== undefined
-        ? (data.buyer_next_steps ? JSON.stringify(data.buyer_next_steps) : null)
-        : undefined;
-
+    // Serialize jsonb payloads. A provided-but-empty custom list clears to NULL
+    // (product defaults); message templates always store an object.
+    const buyerNextStepsJson = data.buyer_next_steps
+        ? JSON.stringify(data.buyer_next_steps)
+        : null;
     const messageTemplatesJson = data.message_templates !== undefined
         ? JSON.stringify(data.message_templates || {})
-        : undefined;
+        : null;
 
     const result = await sql`
         UPDATE brand_profiles
         SET
-            name = COALESCE(${data.name}, name),
-            logo_url = COALESCE(${data.logo_url}, logo_url),
-            primary_color = COALESCE(${data.primary_color}, primary_color),
-            secondary_color = COALESCE(${data.secondary_color}, secondary_color),
-            contact_name = COALESCE(${data.contact_name}, contact_name),
-            contact_phone = COALESCE(${data.contact_phone}, contact_phone),
-            contact_email = COALESCE(${data.contact_email}, contact_email),
-            contact_website = COALESCE(${data.contact_website}, contact_website),
-            disclaimer_text = COALESCE(${data.disclaimer_text}, disclaimer_text),
-            message_templates = COALESCE(${messageTemplatesJson}::jsonb, message_templates),
-            is_default = COALESCE(${data.is_default}, is_default),
-            buyer_next_steps = COALESCE(${buyerNextStepsJson}::jsonb, buyer_next_steps),
-            next_steps_title = COALESCE(${data.next_steps_title}, next_steps_title),
-            show_powered_by = COALESCE(${data.show_powered_by}, show_powered_by),
-            show_generation_date = COALESCE(${data.show_generation_date}, show_generation_date),
-            welcome_message = COALESCE(${data.welcome_message}, welcome_message)
+            name = CASE WHEN ${data.name !== undefined} THEN ${data.name ?? null}::text ELSE name END,
+            logo_url = CASE WHEN ${data.logo_url !== undefined} THEN ${data.logo_url ?? null}::text ELSE logo_url END,
+            primary_color = CASE WHEN ${data.primary_color !== undefined} THEN ${data.primary_color ?? null}::text ELSE primary_color END,
+            secondary_color = CASE WHEN ${data.secondary_color !== undefined} THEN ${data.secondary_color ?? null}::text ELSE secondary_color END,
+            contact_name = CASE WHEN ${data.contact_name !== undefined} THEN ${data.contact_name ?? null}::text ELSE contact_name END,
+            contact_phone = CASE WHEN ${data.contact_phone !== undefined} THEN ${data.contact_phone ?? null}::text ELSE contact_phone END,
+            contact_email = CASE WHEN ${data.contact_email !== undefined} THEN ${data.contact_email ?? null}::text ELSE contact_email END,
+            contact_website = CASE WHEN ${data.contact_website !== undefined} THEN ${data.contact_website ?? null}::text ELSE contact_website END,
+            disclaimer_text = CASE WHEN ${data.disclaimer_text !== undefined} THEN ${data.disclaimer_text ?? null}::text ELSE disclaimer_text END,
+            message_templates = CASE WHEN ${data.message_templates !== undefined} THEN ${messageTemplatesJson}::jsonb ELSE message_templates END,
+            is_default = CASE WHEN ${data.is_default !== undefined} THEN ${data.is_default ?? null}::boolean ELSE is_default END,
+            buyer_next_steps = CASE WHEN ${data.buyer_next_steps !== undefined} THEN ${buyerNextStepsJson}::jsonb ELSE buyer_next_steps END,
+            next_steps_title = CASE WHEN ${data.next_steps_title !== undefined} THEN ${data.next_steps_title ?? null}::text ELSE next_steps_title END,
+            show_powered_by = CASE WHEN ${data.show_powered_by !== undefined} THEN ${data.show_powered_by ?? null}::boolean ELSE show_powered_by END,
+            show_generation_date = CASE WHEN ${data.show_generation_date !== undefined} THEN ${data.show_generation_date ?? null}::boolean ELSE show_generation_date END,
+            welcome_message = CASE WHEN ${data.welcome_message !== undefined} THEN ${data.welcome_message ?? null}::text ELSE welcome_message END
         WHERE id = ${id}
         RETURNING *
     `;

@@ -23,7 +23,7 @@ describe('Brand profile schemas', () => {
             extra_field: 'should be removed',
         };
 
-        const parsed = brandProfileCreateBodySchema.parse(input) as any;
+        const parsed = brandProfileCreateBodySchema.parse(input) as Record<string, unknown>;
         expect(parsed.name).toBe('My Brand');
         expect(parsed.extra_field).toBeUndefined();
     });
@@ -57,9 +57,66 @@ describe('Brand profile schemas', () => {
             unknown_key: 'ignored',
         };
 
-        const parsed = brandProfileUpdateBodySchema.parse(input) as any;
+        const parsed = brandProfileUpdateBodySchema.parse(input) as Record<string, unknown>;
         expect(parsed.welcome_message).toBe('Updated welcome');
         expect(parsed.unknown_key).toBeUndefined();
+    });
+
+    describe('explicit clear semantics on update', () => {
+        it('keeps omitted fields undefined (leave unchanged)', () => {
+            const parsed = brandProfileUpdateBodySchema.parse({ name: 'Acme' }) as Record<string, unknown>;
+            expect('logo_url' in parsed).toBe(false);
+            expect('buyer_next_steps' in parsed).toBe(false);
+        });
+
+        it('passes explicit null through for clearable fields (clear this value)', () => {
+            const parsed = brandProfileUpdateBodySchema.parse({
+                logo_url: null,
+                contact_website: null,
+                disclaimer_text: null,
+                next_steps_title: null,
+                welcome_message: null,
+                buyer_next_steps: null,
+            }) as Record<string, unknown>;
+
+            expect(parsed.logo_url).toBeNull();
+            expect(parsed.contact_website).toBeNull();
+            expect(parsed.disclaimer_text).toBeNull();
+            expect(parsed.next_steps_title).toBeNull();
+            expect(parsed.welcome_message).toBeNull();
+            expect(parsed.buyer_next_steps).toBeNull();
+        });
+
+        it('normalizes empty and whitespace-only strings to null (clear)', () => {
+            const parsed = brandProfileUpdateBodySchema.parse({
+                contact_name: '',
+                contact_phone: '   ',
+                welcome_message: '',
+            }) as Record<string, unknown>;
+
+            expect(parsed.contact_name).toBeNull();
+            expect(parsed.contact_phone).toBeNull();
+            expect(parsed.welcome_message).toBeNull();
+        });
+
+        it('treats an empty or all-blank buyer steps list as a reset to defaults', () => {
+            expect((brandProfileUpdateBodySchema.parse({ buyer_next_steps: [] }) as Record<string, unknown>).buyer_next_steps).toBeNull();
+            expect((brandProfileUpdateBodySchema.parse({ buyer_next_steps: ['  ', ''] }) as Record<string, unknown>).buyer_next_steps).toBeNull();
+        });
+
+        it('trims and keeps non-empty buyer steps', () => {
+            const parsed = brandProfileUpdateBodySchema.parse({
+                buyer_next_steps: ['  Call the utility  ', '', 'Confirm service'],
+            }) as Record<string, unknown>;
+            expect(parsed.buyer_next_steps).toEqual(['Call the utility', 'Confirm service']);
+        });
+
+        it('still rejects overlong values after trimming', () => {
+            const result = brandProfileUpdateBodySchema.safeParse({
+                buyer_next_steps: ['x'.repeat(BRAND_PROFILE_LIMITS.buyerNextStepMax + 1)],
+            });
+            expect(result.success).toBe(false);
+        });
     });
 });
 

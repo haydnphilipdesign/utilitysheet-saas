@@ -456,24 +456,26 @@ export interface CreateRequestFormData {
 }
 
 // Brand Profile Form
+// Optional fields use explicit update semantics shared with the branding API:
+// key absent = leave unchanged, null = clear the stored value, value = set it.
 export interface BrandProfileFormData {
     name: string;
-    logo_url?: string;
+    logo_url?: string | null;
     primary_color: string;
     secondary_color: string;
-    contact_name?: string;
-    contact_phone?: string;
-    contact_email?: string;
-    contact_website?: string;
-    disclaimer_text?: string;
+    contact_name?: string | null;
+    contact_phone?: string | null;
+    contact_email?: string | null;
+    contact_website?: string | null;
+    disclaimer_text?: string | null;
     message_templates?: MessageTemplates;
     is_default: boolean;
     // Advanced customization fields
-    buyer_next_steps?: string[];
-    next_steps_title?: string;
+    buyer_next_steps?: string[] | null;
+    next_steps_title?: string | null;
     show_powered_by?: boolean;
     show_generation_date?: boolean;
-    welcome_message?: string;
+    welcome_message?: string | null;
 }
 
 // Dashboard Stats

@@ -73,11 +73,40 @@ const optionalNullableText = (maxLength: number) =>
         z.string().max(maxLength).nullable()
     );
 
+/**
+ * Branding profile fields use explicit update semantics:
+ * - key absent (undefined)  -> leave the stored value unchanged
+ * - null or empty string    -> clear the stored value (falls back to product default)
+ * - value                   -> store the trimmed value
+ */
+const clearableLimitedString = (maxLength: number) =>
+    z.preprocess(
+        (val) => {
+            if (val === undefined || val === null) return val;
+            if (typeof val !== 'string') return val;
+            const trimmed = val.trim();
+            return trimmed.length === 0 ? null : trimmed;
+        },
+        z.string().max(maxLength).nullable().optional()
+    );
+
 const buyerNextStepsSchema = z.preprocess(
-    nullToUndefined,
+    (val) => {
+        if (val === undefined || val === null) return val;
+        if (Array.isArray(val)) {
+            const cleaned = val
+                .filter((step): step is string => typeof step === 'string')
+                .map((step) => step.trim())
+                .filter(Boolean);
+            // An empty custom list means "use the product defaults".
+            return cleaned.length === 0 ? null : cleaned;
+        }
+        return val;
+    },
     z
-        .array(z.string().trim().min(1).max(BRAND_PROFILE_LIMITS.buyerNextStepMax))
+        .array(z.string().min(1).max(BRAND_PROFILE_LIMITS.buyerNextStepMax))
         .max(BRAND_PROFILE_LIMITS.buyerNextStepsMaxItems)
+        .nullable()
         .optional()
 );
 
@@ -127,22 +156,22 @@ const messageTemplatesSchema = z.preprocess(
 export const brandProfileCreateBodySchema = z
     .object({
         name: z.string().trim().min(1).max(BRAND_PROFILE_LIMITS.brandNameMax),
-        logo_url: optionalLimitedString(2048),
+        logo_url: clearableLimitedString(2048),
         primary_color: hexColorSchema,
         secondary_color: hexColorSchema,
-        contact_name: optionalLimitedString(BRAND_PROFILE_LIMITS.contactNameMax),
-        contact_phone: optionalLimitedString(BRAND_PROFILE_LIMITS.contactPhoneMax),
-        contact_email: optionalLimitedString(BRAND_PROFILE_LIMITS.contactEmailMax),
-        contact_website: optionalLimitedString(BRAND_PROFILE_LIMITS.contactWebsiteMax),
-        disclaimer_text: optionalLimitedString(BRAND_PROFILE_LIMITS.disclaimerTextMax),
+        contact_name: clearableLimitedString(BRAND_PROFILE_LIMITS.contactNameMax),
+        contact_phone: clearableLimitedString(BRAND_PROFILE_LIMITS.contactPhoneMax),
+        contact_email: clearableLimitedString(BRAND_PROFILE_LIMITS.contactEmailMax),
+        contact_website: clearableLimitedString(BRAND_PROFILE_LIMITS.contactWebsiteMax),
+        disclaimer_text: clearableLimitedString(BRAND_PROFILE_LIMITS.disclaimerTextMax),
         message_templates: messageTemplatesSchema,
         is_default: z.preprocess(nullToUndefined, z.boolean().optional()),
         // Advanced customization
         buyer_next_steps: buyerNextStepsSchema,
-        next_steps_title: optionalLimitedString(BRAND_PROFILE_LIMITS.nextStepsTitleMax),
+        next_steps_title: clearableLimitedString(BRAND_PROFILE_LIMITS.nextStepsTitleMax),
         show_powered_by: z.preprocess(nullToUndefined, z.boolean().optional()),
         show_generation_date: z.preprocess(nullToUndefined, z.boolean().optional()),
-        welcome_message: optionalLimitedString(BRAND_PROFILE_LIMITS.welcomeMessageMax),
+        welcome_message: clearableLimitedString(BRAND_PROFILE_LIMITS.welcomeMessageMax),
     })
     .strip();
 

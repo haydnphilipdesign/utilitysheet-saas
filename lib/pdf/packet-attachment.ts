@@ -198,6 +198,16 @@ async function createPacketPdfAttachment(data: PacketPdfData): Promise<PacketPdf
     };
 }
 
+/**
+ * Render a PDF from caller-supplied packet data through the exact production
+ * browser pipeline (Chromium page.pdf(), page settings, running header and
+ * footer). Used by the Branding Profile test-PDF endpoint so test downloads
+ * cannot drift from real Simple/Advanced output.
+ */
+export async function createPacketPdfAttachmentFromData(data: PacketPdfData): Promise<PacketPdfAttachment> {
+    return createPacketPdfAttachment(data);
+}
+
 export async function createPacketPdfAttachmentForRequest(requestId: string): Promise<PacketPdfAttachmentResult> {
     try {
         const packetResult = await getPacketDataByRequestId(requestId);

@@ -1,6 +1,6 @@
 'use client';
 
-function extractFilenameFromContentDisposition(headerValue: string | null): string | null {
+export function extractFilenameFromContentDisposition(headerValue: string | null): string | null {
     if (!headerValue) return null;
 
     const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(headerValue);
