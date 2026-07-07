@@ -56,6 +56,34 @@ describe('submittedSheetUpdateBodySchema', () => {
             trashPickupDay: 'thu',
             trashPickupDays: ['thu', 'mon'],
             recyclingPickupDay: '',
+            recyclingPickupDays: [],
         });
+    });
+
+    it('accepts multiple recycling pickup days', () => {
+        const parsed = submittedSheetUpdateBodySchema.safeParse({
+            updatedAt: '2026-03-31T12:00:00.000Z',
+            propertyAddress: '123 Main St, Austin, TX 78701',
+            advanced: {},
+            utilities: {
+                trash: {
+                    providerName: '',
+                    contactPhone: '',
+                    contactUrl: '',
+                    meterNumber: '',
+                    trashDetails: {
+                        hasRecycling: 'yes',
+                        trashPickupDay: 'thu',
+                        trashPickupDays: ['thu'],
+                        recyclingPickupDay: 'mon',
+                        recyclingPickupDays: ['mon', 'fri'],
+                    },
+                },
+            },
+        });
+
+        expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.error.issues, null, 2)).toBe(true);
+        if (!parsed.success) return;
+        expect(parsed.data.utilities.trash.trashDetails.recyclingPickupDays).toEqual(['mon', 'fri']);
     });
 });

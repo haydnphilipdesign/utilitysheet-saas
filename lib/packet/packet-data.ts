@@ -61,6 +61,7 @@ export interface PacketUtilityData {
         trash_pickup_day?: TrashPickupDay | null;
         trash_pickup_days?: TrashPickupDay[] | null;
         recycling_pickup_day?: TrashPickupDay | null;
+        recycling_pickup_days?: TrashPickupDay[] | null;
     } | null;
 }
 
@@ -234,13 +235,20 @@ function normalizeTrashDetails(value: unknown): PacketUtilityData['trash_details
         }
     }
 
-    const recyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);
-    if (recyclingPickupDay !== undefined) {
-        normalized.recycling_pickup_day = recyclingPickupDay;
+    const recyclingPickupDays = normalizeTrashPickupDays(input.recycling_pickup_days);
+    if (recyclingPickupDays !== undefined) {
+        normalized.recycling_pickup_days = recyclingPickupDays;
+        normalized.recycling_pickup_day = recyclingPickupDays[0] ?? null;
+    } else {
+        const recyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);
+        if (recyclingPickupDay !== undefined) {
+            normalized.recycling_pickup_day = recyclingPickupDay;
+        }
     }
 
     if (normalized.has_recycling === 'no') {
         normalized.recycling_pickup_day = null;
+        delete normalized.recycling_pickup_days;
     }
 
     return Object.keys(normalized).length > 0 ? normalized : null;

@@ -17,6 +17,7 @@ const EMPTY_TRASH_DETAILS: SubmittedSheetEditableTrashDetails = {
     trashPickupDay: '',
     trashPickupDays: [],
     recyclingPickupDay: '',
+    recyclingPickupDays: [],
 };
 
 export function createEmptySubmittedSheetUtility(): SubmittedSheetEditableUtility {
@@ -66,6 +67,8 @@ function normalizeTrashDetails(value: unknown): SubmittedSheetEditableTrashDetai
 
     const trashPickupDays = normalizeTrashPickupDays(input.trash_pickup_days);
     const legacyTrashPickupDay = normalizeTrashPickupDay(input.trash_pickup_day);
+    const recyclingPickupDays = normalizeTrashPickupDays(input.recycling_pickup_days);
+    const legacyRecyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);
 
     return {
         hasRecycling: hasRecycling === 'yes' || hasRecycling === 'no' || hasRecycling === 'not_sure'
@@ -77,7 +80,12 @@ function normalizeTrashDetails(value: unknown): SubmittedSheetEditableTrashDetai
             : legacyTrashPickupDay
                 ? [legacyTrashPickupDay]
                 : [],
-        recyclingPickupDay: normalizeTrashPickupDay(input.recycling_pickup_day),
+        recyclingPickupDay: recyclingPickupDays[0] || legacyRecyclingPickupDay,
+        recyclingPickupDays: recyclingPickupDays.length > 0
+            ? recyclingPickupDays
+            : legacyRecyclingPickupDay
+                ? [legacyRecyclingPickupDay]
+                : [],
     };
 }
 
@@ -127,6 +135,7 @@ function normalizeUtilityForComparison(value: SubmittedSheetEditableUtility | un
             trashPickupDay: value.trashDetails.trashPickupDay,
             trashPickupDays: [...value.trashDetails.trashPickupDays],
             recyclingPickupDay: value.trashDetails.hasRecycling === 'no' ? '' : value.trashDetails.recyclingPickupDay,
+            recyclingPickupDays: value.trashDetails.hasRecycling === 'no' ? [] : [...value.trashDetails.recyclingPickupDays],
         },
     };
 }
@@ -237,6 +246,7 @@ function hasMeaningfulTrashDetails(trashDetails: SubmittedSheetEditableTrashDeta
     if (trashDetails.hasRecycling) return true;
     if (trashDetails.trashPickupDay) return true;
     if (trashDetails.trashPickupDays.length > 0) return true;
+    if (trashDetails.recyclingPickupDays.length > 0) return true;
     return Boolean(trashDetails.recyclingPickupDay);
 }
 
@@ -284,6 +294,9 @@ export function buildSubmittedSheetUtilityInsertRows(
             }
             if (trashDetails.hasRecycling === 'no') {
                 extra.recycling_pickup_day = null;
+            } else if (trashDetails.recyclingPickupDays.length > 0) {
+                extra.recycling_pickup_days = trashDetails.recyclingPickupDays;
+                extra.recycling_pickup_day = trashDetails.recyclingPickupDays[0];
             } else if (trashDetails.recyclingPickupDay) {
                 extra.recycling_pickup_day = trashDetails.recyclingPickupDay;
             }

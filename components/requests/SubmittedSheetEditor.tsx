@@ -164,7 +164,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                                 ...existing.trashDetails,
                                 [field]: value,
                                 ...(field === 'hasRecycling' && value === 'no'
-                                    ? { recyclingPickupDay: '' }
+                                    ? { recyclingPickupDay: '' as const, recyclingPickupDays: [] }
                                     : {}),
                             },
                         },
@@ -174,16 +174,26 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
         });
     };
 
-    const toggleTrashPickupDay = (category: UtilityCategory, day: TrashPickupDay, checked: boolean) => {
+    const togglePickupDay = (
+        category: UtilityCategory,
+        target: 'trash' | 'recycling',
+        day: TrashPickupDay,
+        checked: boolean
+    ) => {
         setData((current) => {
             if (!current) return current;
             const existing = current.editor.utilities[category];
             if (!existing) return current;
 
-            const currentDays = existing.trashDetails.trashPickupDays;
+            const currentDays = target === 'trash'
+                ? existing.trashDetails.trashPickupDays
+                : existing.trashDetails.recyclingPickupDays;
             const nextDays = checked
                 ? Array.from(new Set([...currentDays, day]))
                 : currentDays.filter((selectedDay) => selectedDay !== day);
+            const nextFields = target === 'trash'
+                ? { trashPickupDays: nextDays, trashPickupDay: nextDays[0] || ('' as const) }
+                : { recyclingPickupDays: nextDays, recyclingPickupDay: nextDays[0] || ('' as const) };
 
             return {
                 ...current,
@@ -195,8 +205,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                             ...existing,
                             trashDetails: {
                                 ...existing.trashDetails,
-                                trashPickupDays: nextDays,
-                                trashPickupDay: nextDays[0] || '',
+                                ...nextFields,
                             },
                         },
                     },
@@ -205,11 +214,19 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
         });
     };
 
-    const setTrashPickupSingleValue = (category: UtilityCategory, value: '' | TrashPickupDay) => {
+    const setPickupSingleValue = (
+        category: UtilityCategory,
+        target: 'trash' | 'recycling',
+        value: '' | TrashPickupDay
+    ) => {
         setData((current) => {
             if (!current) return current;
             const existing = current.editor.utilities[category];
             if (!existing) return current;
+
+            const nextFields = target === 'trash'
+                ? { trashPickupDays: [], trashPickupDay: value }
+                : { recyclingPickupDays: [], recyclingPickupDay: value };
 
             return {
                 ...current,
@@ -221,8 +238,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                             ...existing,
                             trashDetails: {
                                 ...existing.trashDetails,
-                                trashPickupDays: [],
-                                trashPickupDay: value,
+                                ...nextFields,
                             },
                         },
                     },
@@ -572,22 +588,53 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                                     {category === 'trash' ? (
                                         <>
                                             <Separator className="bg-border" />
-                                            <div className="grid gap-4 sm:grid-cols-2">
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium text-foreground">Recycling available</label>
-                                                    <select
-                                                        value={utility.trashDetails.hasRecycling}
-                                                        onChange={(event) => updateTrashField(category, 'hasRecycling', event.target.value)}
-                                                        className="w-full h-11 sm:h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                                    >
-                                                        <option value="">Not set</option>
-                                                        <option value="yes">Yes</option>
-                                                        <option value="no">No</option>
-                                                        <option value="not_sure">Not sure</option>
-                                                    </select>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-foreground">Recycling available</label>
+                                                <select
+                                                    value={utility.trashDetails.hasRecycling}
+                                                    onChange={(event) => updateTrashField(category, 'hasRecycling', event.target.value)}
+                                                    className="w-full h-11 sm:h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                                >
+                                                    <option value="">Not set</option>
+                                                    <option value="yes">Yes</option>
+                                                    <option value="no">No</option>
+                                                    <option value="not_sure">Not sure</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <label className="text-sm font-medium text-foreground">Trash pickup days</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {PICKUP_WEEKDAY_OPTIONS.map((option) => (
+                                                        <label
+                                                            key={option.value}
+                                                            className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-2 text-sm text-foreground"
+                                                        >
+                                                            <Checkbox
+                                                                checked={utility.trashDetails.trashPickupDays.includes(option.value)}
+                                                                onCheckedChange={(checked) => togglePickupDay(category, 'trash', option.value, Boolean(checked))}
+                                                            />
+                                                            {option.label}
+                                                        </label>
+                                                    ))}
                                                 </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {PICKUP_DAY_OPTIONS.filter((option) => option.value === '' || option.value === 'varies' || option.value === 'not_sure').map((option) => (
+                                                        <Button
+                                                            key={option.value || 'blank'}
+                                                            type="button"
+                                                            variant={utility.trashDetails.trashPickupDay === option.value && utility.trashDetails.trashPickupDays.length === 0 ? 'default' : 'outline'}
+                                                            size="sm"
+                                                            onClick={() => setPickupSingleValue(category, 'trash', option.value)}
+                                                        >
+                                                            {option.label}
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {utility.trashDetails.hasRecycling !== 'no' ? (
                                                 <div className="space-y-3">
-                                                    <label className="text-sm font-medium text-foreground">Trash pickup days</label>
+                                                    <label className="text-sm font-medium text-foreground">Recycling pickup days</label>
                                                     <div className="flex flex-wrap gap-2">
                                                         {PICKUP_WEEKDAY_OPTIONS.map((option) => (
                                                             <label
@@ -595,8 +642,8 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                                                                 className="flex items-center gap-2 rounded-md border border-border bg-background/50 px-3 py-2 text-sm text-foreground"
                                                             >
                                                                 <Checkbox
-                                                                    checked={utility.trashDetails.trashPickupDays.includes(option.value)}
-                                                                    onCheckedChange={(checked) => toggleTrashPickupDay(category, option.value, Boolean(checked))}
+                                                                    checked={utility.trashDetails.recyclingPickupDays.includes(option.value)}
+                                                                    onCheckedChange={(checked) => togglePickupDay(category, 'recycling', option.value, Boolean(checked))}
                                                                 />
                                                                 {option.label}
                                                             </label>
@@ -607,32 +654,16 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                                                             <Button
                                                                 key={option.value || 'blank'}
                                                                 type="button"
-                                                                variant={utility.trashDetails.trashPickupDay === option.value && utility.trashDetails.trashPickupDays.length === 0 ? 'default' : 'outline'}
+                                                                variant={utility.trashDetails.recyclingPickupDay === option.value && utility.trashDetails.recyclingPickupDays.length === 0 ? 'default' : 'outline'}
                                                                 size="sm"
-                                                                onClick={() => setTrashPickupSingleValue(category, option.value)}
+                                                                onClick={() => setPickupSingleValue(category, 'recycling', option.value)}
                                                             >
                                                                 {option.label}
                                                             </Button>
                                                         ))}
                                                     </div>
                                                 </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-foreground">Recycling pickup day</label>
-                                                <select
-                                                    value={utility.trashDetails.recyclingPickupDay}
-                                                    onChange={(event) => updateTrashField(category, 'recyclingPickupDay', event.target.value)}
-                                                    disabled={utility.trashDetails.hasRecycling === 'no'}
-                                                    className="w-full h-11 sm:h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
-                                                >
-                                                    {PICKUP_DAY_OPTIONS.map((option) => (
-                                                        <option key={option.value || 'blank'} value={option.value}>
-                                                            {option.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
+                                            ) : null}
                                         </>
                                     ) : null}
                                 </CardContent>

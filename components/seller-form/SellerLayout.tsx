@@ -84,7 +84,7 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
                 type="button"
                 onClick={() => setOpen(true)}
                 data-testid="seller-save-link-open"
-                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors underline-offset-2 hover:underline"
+                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors underline-offset-2 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
                 <Mail className="h-3.5 w-3.5" />
                 Email me this link to come back later
@@ -103,14 +103,14 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
                     placeholder="you@example.com"
                     onChange={(e) => { setEmail(e.target.value); setError(null); }}
                     disabled={submitting}
-                    className="flex-1 h-9 rounded-md border border-border bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground"
+                    className="flex-1 h-9 rounded-md border border-border bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent-border)]"
                     data-testid="seller-save-link-email"
                 />
                 <button
                     type="button"
                     onClick={handleSend}
                     disabled={submitting}
-                    className="inline-flex items-center gap-1 rounded-md bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white text-sm font-medium px-3 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white text-sm font-medium px-3 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     data-testid="seller-save-link-send"
                 >
                     {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

@@ -7,6 +7,7 @@ import { WizardState } from '../SellerWizard';
 import { AdvancedModuleKey, AdvancedPacketData, TrashUtilityExtra, UtilityCategory } from '@/types';
 import { ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
+import { wizardFocusRing, wizardTextInput } from '../wizard-ui';
 
 // Category-specific icons (same as UtilityStep)
 const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }> = {
@@ -111,8 +112,12 @@ export function ReviewStep({
         } else if (extra.trash_pickup_day !== undefined) {
             lines.push(`Trash pickup: ${formatPickupDay(extra.trash_pickup_day)}`);
         }
-        if (extra.recycling_pickup_day !== undefined && extra.has_recycling !== 'no') {
-            lines.push(`Recycling pickup: ${formatPickupDay(extra.recycling_pickup_day)}`);
+        if (extra.has_recycling !== 'no') {
+            if (Array.isArray(extra.recycling_pickup_days) && extra.recycling_pickup_days.length > 0) {
+                lines.push(`Recycling pickup: ${formatPickupDays(extra.recycling_pickup_days)}`);
+            } else if (extra.recycling_pickup_day !== undefined) {
+                lines.push(`Recycling pickup: ${formatPickupDay(extra.recycling_pickup_day)}`);
+            }
         }
         return lines;
     };
@@ -137,7 +142,7 @@ export function ReviewStep({
                         <button
                             type="button"
                             onClick={onEditBasics}
-                            className="flex items-center gap-1 text-xs text-[color:var(--brand-accent)] hover:opacity-80 transition-opacity"
+                            className={`flex items-center gap-1 text-xs text-[color:var(--brand-accent)] hover:opacity-80 transition-opacity rounded-md px-1 py-0.5 ${wizardFocusRing}`}
                         >
                             <Pencil className="h-3 w-3" />
                             Edit
@@ -219,7 +224,7 @@ export function ReviewStep({
                                                 <button
                                                     type="button"
                                                     onClick={() => onEditUtility(index)}
-                                                    className="p-1.5 sm:p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                                    className={`p-1.5 sm:p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors ${wizardFocusRing}`}
                                                     title={`Edit ${label}`}
                                                 >
                                                     <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -239,7 +244,7 @@ export function ReviewStep({
                                                 maxLength={64}
                                                 onChange={(e) => updateUtility?.(cat, { meter_number: e.target.value })}
                                                 placeholder="Enter electric meter number"
-                                                className="w-full bg-muted/40 border border-border rounded-lg py-2 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
+                                                className={`py-2 px-3 text-sm rounded-lg ${wizardTextInput}`}
                                                 data-testid="review-electric-meter-number"
                                             />
                                         </div>
@@ -282,7 +287,7 @@ export function ReviewStep({
                                                 <button
                                                     type="button"
                                                     onClick={() => onEditAdvancedModule(moduleKey)}
-                                                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[color:var(--brand-accent)] hover:bg-muted hover:opacity-80 transition-colors"
+                                                    className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[color:var(--brand-accent)] hover:bg-muted hover:opacity-80 transition-colors ${wizardFocusRing}`}
                                                     title={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
                                                 >
                                                     <Pencil className="h-3 w-3" />
@@ -325,7 +330,7 @@ export function ReviewStep({
                                 type="button"
                                 onClick={onRetry}
                                 disabled={submitting}
-                                className="inline-flex items-center gap-1.5 mt-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-100 px-3 py-1.5 text-sm font-medium transition-colors"
+                                className={`inline-flex items-center gap-1.5 mt-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-100 px-3 py-1.5 text-sm font-medium transition-colors ${wizardFocusRing}`}
                                 data-testid="review-submit-retry"
                             >
                                 Retry
@@ -339,7 +344,7 @@ export function ReviewStep({
                 <button
                     type="button"
                     onClick={onBack}
-                    className="flex-1 py-3 sm:py-4 text-center rounded-xl font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm sm:text-base"
+                    className={`flex-1 py-3 sm:py-4 text-center rounded-xl font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm sm:text-base ${wizardFocusRing}`}
                     disabled={submitting}
                 >
                     Back
@@ -348,7 +353,7 @@ export function ReviewStep({
                     type="button"
                     onClick={onSubmit}
                     disabled={submitting}
-                    className="flex-[2] py-3 sm:py-4 text-center rounded-xl font-bold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base shadow-lg"
+                    className={`flex-[2] py-3 sm:py-4 text-center rounded-xl font-bold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base shadow-lg ${wizardFocusRing}`}
                 >
                     {submitting ? (
                         <>

@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
+import { GooglePlacesAddressInput } from '@/components/address/GooglePlacesAddressInput';
 import {
     Dialog,
     DialogContent,
@@ -204,7 +205,7 @@ export default function NewRequestPage() {
         const brand = getDefaultBrand();
         const agentName = brand?.contact_name?.trim() || '';
         const link = intakeLink?.url || '';
-        return `Hi, please use this link to fill in the utility providers for your property. It takes about 2 minutes — no account needed: ${link}${agentName ? `\n\nThank you,\n${agentName}` : ''}`;
+        return `Hi, please use this link to fill in the utility providers for your property. It takes about 2 minutes and no account is needed: ${link}${agentName ? `\n\nThank you,\n${agentName}` : ''}`;
     };
 
     const handleCopyIntakeSms = async () => {
@@ -648,14 +649,22 @@ export default function NewRequestPage() {
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="address" className="text-foreground">Full Address *</Label>
-                                    <Input
+                                    <GooglePlacesAddressInput
                                         id="address"
                                         placeholder="123 Main Street, City, State, ZIP"
                                         value={formData.property_address}
-                                        onChange={(e) => updateField('property_address', e.target.value)}
+                                        onChange={(value) => updateField('property_address', value)}
+                                        onAddressSelected={(address) => {
+                                            if (address.full) {
+                                                updateField('property_address', address.full);
+                                            }
+                                        }}
                                         data-testid="new-request-address-input"
                                         className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
                                     />
+                                    <p className="text-xs text-muted-foreground">
+                                        Include street, city, state, and ZIP so provider suggestions match the right area.
+                                    </p>
                                 </div>
                                 <div className="flex justify-end">
                                     <Button

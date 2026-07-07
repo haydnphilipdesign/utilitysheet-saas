@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { ArrowRight, Home, Save } from 'lucide-react';
+import { wizardFocusRing } from '../wizard-ui';
 
 interface WelcomeStepProps {
     address: string;
@@ -53,9 +54,10 @@ export function WelcomeStep({ address, onNext, estimatedMinutes, stepCount }: We
             </div>
 
             <button
+                type="button"
                 onClick={onNext}
                 data-testid="seller-welcome-continue"
-                className="group relative inline-flex items-center justify-center px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white transition-all duration-200 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] border border-[color:var(--brand-accent-border)] rounded-xl shadow-lg active:scale-95"
+                className={`group relative inline-flex items-center justify-center px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white transition-all duration-200 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] border border-[color:var(--brand-accent-border)] rounded-xl shadow-lg active:scale-95 ${wizardFocusRing}`}
             >
                 <span className="mr-2">Get Started</span>
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

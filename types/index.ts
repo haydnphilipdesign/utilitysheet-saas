@@ -93,6 +93,7 @@ export interface TrashUtilityExtra {
     trash_pickup_day?: TrashPickupDay | null;
     trash_pickup_days?: TrashPickupDay[] | null;
     recycling_pickup_day?: TrashPickupDay | null;
+    recycling_pickup_days?: TrashPickupDay[] | null;
 }
 
 export type ActorType = 'agent' | 'seller' | 'system';
@@ -315,6 +316,7 @@ export interface SubmittedSheetEditableTrashDetails {
     trashPickupDay: '' | TrashPickupDay;
     trashPickupDays: TrashPickupDay[];
     recyclingPickupDay: '' | TrashPickupDay;
+    recyclingPickupDays: TrashPickupDay[];
 }
 
 export interface SubmittedSheetEditableUtility {

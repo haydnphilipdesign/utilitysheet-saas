@@ -208,13 +208,13 @@ export function SuccessStep({ isDemo = false, demoData, brandProfile, sellerToke
                                 placeholder="you@example.com"
                                 onChange={(e) => { setConfirmEmail(e.target.value); setConfirmError(null); }}
                                 disabled={confirmSubmitting}
-                                className="flex-1 h-10 rounded-md border border-border bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground"
+                                className="flex-1 h-10 rounded-md border border-border bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent-border)]"
                             />
                             <button
                                 type="button"
                                 onClick={handleSendConfirmation}
                                 disabled={confirmSubmitting}
-                                className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white text-sm font-medium px-3 disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white text-sm font-medium px-3 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                             >
                                 {confirmSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 Send

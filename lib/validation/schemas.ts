@@ -227,11 +227,13 @@ const submittedSheetEditableTrashDetailsSchema = z.object({
     trashPickupDay: z.preprocess(nullToUndefined, z.union([trashPickupDayEnum, z.literal('')]).optional()).default(''),
     trashPickupDays: z.preprocess(nullToUndefined, z.array(trashPickupDayEnum).max(7).optional()).default([]),
     recyclingPickupDay: z.preprocess(nullToUndefined, z.union([trashPickupDayEnum, z.literal('')]).optional()).default(''),
+    recyclingPickupDays: z.preprocess(nullToUndefined, z.array(trashPickupDayEnum).max(7).optional()).default([]),
 }).default({
     hasRecycling: '',
     trashPickupDay: '',
     trashPickupDays: [],
     recyclingPickupDay: '',
+    recyclingPickupDays: [],
 });
 
 const submittedSheetEditableUtilitySchema = z.object({
@@ -301,13 +303,20 @@ function normalizeTrashExtra(value: unknown): Record<string, unknown> | undefine
         }
     }
 
-    const recyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);
-    if (recyclingPickupDay !== undefined) {
-        normalized.recycling_pickup_day = recyclingPickupDay;
+    const recyclingPickupDays = normalizeTrashPickupDays(input.recycling_pickup_days);
+    if (recyclingPickupDays !== undefined) {
+        normalized.recycling_pickup_days = recyclingPickupDays;
+        normalized.recycling_pickup_day = recyclingPickupDays[0] ?? null;
+    } else {
+        const recyclingPickupDay = normalizeTrashPickupDay(input.recycling_pickup_day);
+        if (recyclingPickupDay !== undefined) {
+            normalized.recycling_pickup_day = recyclingPickupDay;
+        }
     }
 
     if (normalized.has_recycling === 'no') {
         normalized.recycling_pickup_day = null;
+        delete normalized.recycling_pickup_days;
     }
 
     return Object.keys(normalized).length > 0 ? normalized : undefined;

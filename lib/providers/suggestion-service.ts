@@ -12,6 +12,7 @@ import { resolveParsedLocation } from '@/lib/address/location-verifier';
 import { createHash } from 'crypto';
 import { getProviderMemoryCandidates, type ProviderMemoryCandidate } from '@/lib/neon/queries/provider-memory';
 import { createAiSuggestionRun, type AiTelemetryFeature, type AiTelemetryStatus } from '@/lib/neon/queries/ai-telemetry';
+import { canonicalProviderKey, dedupeProviderSuggestions } from '@/lib/providers/canonicalize';
 
 // Cache TTL: 30 days in seconds
 const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -19,8 +20,10 @@ const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 // Search cache TTL: 7 days in seconds (queries change more often)
 const SEARCH_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
 const PROVIDER_MEMORY_CACHE_TTL_SECONDS = 6 * 60 * 60;
-const SUGGESTION_CACHE_VERSION = 'v5';
-const SEARCH_CACHE_VERSION = 'v5';
+// v6: canonical dedup layer (state-abbreviation + alias aware) — bumping
+// invalidates caches that may still hold near-duplicate suggestion lists.
+const SUGGESTION_CACHE_VERSION = 'v6';
+const SEARCH_CACHE_VERSION = 'v6';
 const PROVIDER_MEMORY_CACHE_VERSION = 'v1';
 const SUGGESTION_PROMPT_VERSION = 'provider-suggestions-v1';
 const SEARCH_PROMPT_VERSION = 'provider-search-v1';
@@ -459,22 +462,11 @@ function normalizeAndRankSuggestions(
     category: UtilityCategory,
     maxItems: number
 ): ProviderSuggestion[] {
-    const deduped = new Map<string, ProviderSuggestion>();
+    const cleaned = suggestions
+        .map((raw) => validateSuggestion(raw, category))
+        .filter((item) => item.display_name);
 
-    for (const raw of suggestions) {
-        const cleaned = validateSuggestion(raw, category);
-        if (!cleaned.display_name) continue;
-
-        const dedupeKey = normalizeProviderName(cleaned.display_name);
-        if (!dedupeKey) continue;
-
-        const existing = deduped.get(dedupeKey);
-        if (!existing || cleaned.confidence > existing.confidence) {
-            deduped.set(dedupeKey, cleaned);
-        }
-    }
-
-    return Array.from(deduped.values())
+    return dedupeProviderSuggestions(cleaned)
         .sort((a, b) => b.confidence - a.confidence || a.display_name.localeCompare(b.display_name))
         .slice(0, maxItems);
 }
@@ -1136,12 +1128,12 @@ function blendWithProviderMemory(
     const working = [...suggestions];
     const byName = new Map<string, number>();
     for (let i = 0; i < working.length; i++) {
-        byName.set(normalizeProviderName(working[i].display_name), i);
+        byName.set(canonicalProviderKey(working[i].display_name), i);
     }
 
     let usedMemory = false;
     for (const candidate of memoryCandidates) {
-        const key = normalizeProviderName(candidate.display_name);
+        const key = canonicalProviderKey(candidate.display_name);
         if (!key) continue;
 
         const memorySuggestion = toMemorySuggestion(candidate, category);

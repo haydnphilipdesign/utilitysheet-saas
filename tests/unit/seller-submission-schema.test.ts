@@ -164,6 +164,63 @@ describe('sellerSubmissionBodySchema', () => {
         });
     });
 
+    it('normalizes multiple recycling pickup days and keeps the first day for legacy readers', () => {
+        const parsed = sellerSubmissionBodySchema.safeParse({
+            ...basePayload,
+            utilities: {
+                trash: {
+                    entry_mode: 'search_selected',
+                    display_name: 'City Waste',
+                    raw_text: null,
+                    extra: {
+                        has_recycling: 'yes',
+                        trash_pickup_day: 'wed',
+                        recycling_pickup_days: ['FRI', 'mon', 'fri', 'nope'],
+                        recycling_pickup_day: 'sun',
+                    },
+                },
+            },
+        });
+
+        expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.error.issues, null, 2)).toBe(true);
+        if (!parsed.success) return;
+
+        expect(parsed.data.utilities.trash.extra).toEqual({
+            has_recycling: 'yes',
+            trash_pickup_day: 'wed',
+            recycling_pickup_days: ['fri', 'mon'],
+            recycling_pickup_day: 'fri',
+        });
+    });
+
+    it('clears recycling pickup days when has_recycling is no', () => {
+        const parsed = sellerSubmissionBodySchema.safeParse({
+            ...basePayload,
+            utilities: {
+                trash: {
+                    entry_mode: 'search_selected',
+                    display_name: 'City Waste',
+                    raw_text: null,
+                    extra: {
+                        has_recycling: 'no',
+                        trash_pickup_day: 'wed',
+                        recycling_pickup_days: ['fri', 'mon'],
+                        recycling_pickup_day: 'fri',
+                    },
+                },
+            },
+        });
+
+        expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.error.issues, null, 2)).toBe(true);
+        if (!parsed.success) return;
+
+        expect(parsed.data.utilities.trash.extra).toEqual({
+            has_recycling: 'no',
+            trash_pickup_day: 'wed',
+            recycling_pickup_day: null,
+        });
+    });
+
     it('clears recycling pickup day when has_recycling is no', () => {
         const parsed = sellerSubmissionBodySchema.safeParse({
             ...basePayload,

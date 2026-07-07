@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft,
@@ -22,6 +22,9 @@ import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import { UtilityCategory, ProviderSuggestion, TrashPickupDay, TrashUtilityExtra } from '@/types';
 import { trackEvent } from '@/lib/analytics/events';
+import { dedupeProviderSuggestions } from '@/lib/providers/canonicalize';
+import { PickupDaySelector, type PickupDaySpecial } from '../PickupDaySelector';
+import { wizardFocusRing, wizardGhostButton, wizardPrimaryButton, wizardSecondaryButton, wizardTextInput } from '../wizard-ui';
 
 // Category-specific icons
 const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }> = {
@@ -36,18 +39,14 @@ const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }
     cable: { icon: Tv, color: 'text-indigo-500' },
 };
 
-const TRASH_PICKUP_DAY_OPTIONS: Array<{ value: TrashPickupDay; label: string }> = [
-    { value: 'not_sure', label: 'Not sure' },
-    { value: 'varies', label: 'Varies' },
-    { value: 'mon', label: 'Monday' },
-    { value: 'tue', label: 'Tuesday' },
-    { value: 'wed', label: 'Wednesday' },
-    { value: 'thu', label: 'Thursday' },
-    { value: 'fri', label: 'Friday' },
-    { value: 'sat', label: 'Saturday' },
-    { value: 'sun', label: 'Sunday' },
-];
-const TRASH_WEEKDAY_OPTIONS = TRASH_PICKUP_DAY_OPTIONS.filter((option) => option.value !== 'not_sure' && option.value !== 'varies');
+function toWeekdays(days: TrashPickupDay[] | null | undefined): TrashPickupDay[] {
+    if (!Array.isArray(days)) return [];
+    return days.filter((day) => day !== 'not_sure' && day !== 'varies');
+}
+
+function toSpecial(day: TrashPickupDay | null | undefined): PickupDaySpecial | null {
+    return day === 'not_sure' || day === 'varies' ? day : null;
+}
 
 interface UtilityStepProps {
     category: UtilityCategory;
@@ -79,20 +78,23 @@ export function UtilityStep({
 }: UtilityStepProps) {
     const [mode, setMode] = useState<'view' | 'search' | 'meter' | 'trash_details'>('view');
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<ProviderSuggestion[]>([]);
+    const [rawSearchResults, setRawSearchResults] = useState<ProviderSuggestion[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
-    const alternativeSuggestions = suggestions || [];
+    // Belt-and-braces dedupe in the client so sellers never see near-duplicate
+    // providers even if a cached API response predates the server-side layer.
+    const dedupedSuggestions = useMemo(() => dedupeProviderSuggestions(suggestions || []), [suggestions]);
+    const searchResults = useMemo(() => dedupeProviderSuggestions(rawSearchResults), [rawSearchResults]);
 
     useEffect(() => {
         setMode('view');
         setSearchQuery('');
-        setSearchResults([]);
+        setRawSearchResults([]);
     }, [category]);
 
     useEffect(() => {
         if (!searchQuery || searchQuery.length < 2) {
-            setSearchResults([]);
+            setRawSearchResults([]);
             return;
         }
 
@@ -104,9 +106,9 @@ export function UtilityStep({
                     signal: controller.signal,
                 });
                 if (res.ok) {
-                    setSearchResults(await res.json());
+                    setRawSearchResults(await res.json());
                 } else {
-                    setSearchResults([]);
+                    setRawSearchResults([]);
                 }
             } catch (e) {
                 if (!(e instanceof DOMException && e.name === 'AbortError')) {
@@ -139,6 +141,7 @@ export function UtilityStep({
         };
         if (nextExtra.has_recycling === 'no') {
             nextExtra.recycling_pickup_day = null;
+            nextExtra.recycling_pickup_days = [];
         }
 
         updateState(category, {
@@ -146,27 +149,37 @@ export function UtilityStep({
         });
     };
 
-    const currentTrashPickupDays = Array.isArray(currentTrashExtra.trash_pickup_days)
-        ? currentTrashExtra.trash_pickup_days
-        : currentTrashExtra.trash_pickup_day && currentTrashExtra.trash_pickup_day !== 'not_sure' && currentTrashExtra.trash_pickup_day !== 'varies'
-            ? [currentTrashExtra.trash_pickup_day]
-            : [];
+    // Weekday selections live in the *_days arrays; "Not sure"/"Varies" live in
+    // the single legacy field so downstream normalizers and old records agree.
+    const trashDays = toWeekdays(
+        Array.isArray(currentTrashExtra.trash_pickup_days) && currentTrashExtra.trash_pickup_days.length > 0
+            ? currentTrashExtra.trash_pickup_days
+            : currentTrashExtra.trash_pickup_day
+                ? [currentTrashExtra.trash_pickup_day]
+                : []
+    );
+    const trashSpecial = trashDays.length === 0 ? toSpecial(currentTrashExtra.trash_pickup_day) : null;
 
-    const toggleTrashPickupDay = (day: TrashPickupDay, checked: boolean) => {
-        const nextDays = checked
-            ? Array.from(new Set([...currentTrashPickupDays, day]))
-            : currentTrashPickupDays.filter((selectedDay) => selectedDay !== day);
+    const recyclingDays = toWeekdays(
+        Array.isArray(currentTrashExtra.recycling_pickup_days) && currentTrashExtra.recycling_pickup_days.length > 0
+            ? currentTrashExtra.recycling_pickup_days
+            : currentTrashExtra.recycling_pickup_day
+                ? [currentTrashExtra.recycling_pickup_day]
+                : []
+    );
+    const recyclingSpecial = recyclingDays.length === 0 ? toSpecial(currentTrashExtra.recycling_pickup_day) : null;
 
+    const handleTrashDaysChange = (next: { days: TrashPickupDay[]; special: PickupDaySpecial | null }) => {
         updateTrashExtra({
-            trash_pickup_days: nextDays,
-            trash_pickup_day: nextDays[0] ?? null,
+            trash_pickup_days: next.days,
+            trash_pickup_day: next.days[0] ?? next.special ?? null,
         });
     };
 
-    const setTrashPickupSingleValue = (day: TrashPickupDay) => {
+    const handleRecyclingDaysChange = (next: { days: TrashPickupDay[]; special: PickupDaySpecial | null }) => {
         updateTrashExtra({
-            trash_pickup_days: [],
-            trash_pickup_day: day,
+            recycling_pickup_days: next.days,
+            recycling_pickup_day: next.days[0] ?? next.special ?? null,
         });
     };
 
@@ -311,7 +324,7 @@ export function UtilityStep({
                     type="button"
                     onClick={handleBackPress}
                     aria-label={mode === 'meter' || mode === 'search' || mode === 'trash_details' ? 'Back to providers' : 'Back'}
-                    className="p-2 -ml-2 rounded-full hover:bg-muted text-muted-foreground transition-colors active:scale-95"
+                    className={`p-2 -ml-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors active:scale-95 ${wizardFocusRing}`}
                 >
                     <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
@@ -333,7 +346,7 @@ export function UtilityStep({
             {mode === 'view' && (
                 <div className="space-y-4 sm:space-y-6">
                     {loadingSuggestions ? (
-                        <div className="bg-muted/50 border border-border rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center space-y-4 sm:space-y-6">
+                        <div className="bg-muted/50 border border-border rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center space-y-4 sm:space-y-6" role="status">
                             <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted flex items-center justify-center">
                                 <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground animate-spin" />
                             </div>
@@ -345,30 +358,30 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={() => setMode('search')}
-                                    className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className={`w-full py-3 text-sm sm:text-base ${wizardPrimaryButton}`}
                                 >
                                     Search Providers
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleSkip}
-                                    className="w-full py-3 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className={`w-full py-3 text-sm sm:text-base ${wizardSecondaryButton}`}
                                 >
                                     I&apos;m not sure
                                 </button>
                             </div>
                         </div>
-                    ) : suggestions.length > 0 ? (
+                    ) : dedupedSuggestions.length > 0 ? (
                         <div className="space-y-3 sm:space-y-4">
                             <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider font-semibold">Suggested for your area</p>
 
                             <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                                {suggestions.slice(0, 3).map((suggestion) => (
+                                {dedupedSuggestions.slice(0, 3).map((suggestion) => (
                                     <button
                                         type="button"
                                         key={suggestion.display_name}
                                         onClick={() => handleConfirmSuggestion(suggestion)}
-                                        className="w-full flex items-center justify-between p-3 sm:p-4 bg-muted/50 hover:bg-muted border border-border rounded-xl text-left transition-all group active:scale-[0.98]"
+                                        className={`w-full flex items-center justify-between p-3 sm:p-4 bg-muted/50 hover:bg-muted border border-border hover:border-ring rounded-xl text-left transition-all group active:scale-[0.98] ${wizardFocusRing}`}
                                     >
                                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                                             <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -385,7 +398,7 @@ export function UtilityStep({
                                                 )}
                                             </div>
                                         </div>
-                                        <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
+                                        <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
                                     </button>
                                 ))}
                             </div>
@@ -394,7 +407,7 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={() => setMode('search')}
-                                    className="py-3 sm:py-3.5 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-sm active:scale-[0.98]"
+                                    className={`py-3 sm:py-3.5 text-sm ${wizardSecondaryButton}`}
                                 >
                                     Search for another
                                 </button>
@@ -402,7 +415,7 @@ export function UtilityStep({
                                     type="button"
                                     onClick={handleSkip}
                                     data-testid={`seller-utility-skip-${category}`}
-                                    className="py-3 sm:py-3.5 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-sm active:scale-[0.98]"
+                                    className={`py-3 sm:py-3.5 text-sm ${wizardSecondaryButton}`}
                                 >
                                     I&apos;m not sure
                                 </button>
@@ -426,7 +439,7 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={() => setMode('search')}
-                                    className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className={`w-full py-3 text-sm sm:text-base ${wizardPrimaryButton}`}
                                 >
                                     Search Providers
                                 </button>
@@ -434,7 +447,7 @@ export function UtilityStep({
                                     type="button"
                                     onClick={handleSkip}
                                     data-testid={`seller-utility-skip-${category}`}
-                                    className="w-full py-3 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className={`w-full py-3 text-sm sm:text-base ${wizardSecondaryButton}`}
                                 >
                                     I&apos;m not sure, my agent can fill this in
                                 </button>
@@ -452,17 +465,19 @@ export function UtilityStep({
                             autoFocus
                             type="text"
                             inputMode="search"
+                            aria-label={`Search ${categoryLabel} providers`}
                             placeholder={`Search ${categoryLabel} providers...`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-muted/50 border border-border rounded-xl py-3 sm:py-4 pl-10 sm:pl-12 pr-10 sm:pr-12 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
+                            className={`py-3 sm:py-4 pl-10 sm:pl-12 pr-10 sm:pr-12 text-base sm:text-sm ${wizardTextInput}`}
                             data-testid="seller-provider-search-input"
                         />
                         {searchQuery && (
                             <button
                                 type="button"
                                 onClick={() => setSearchQuery('')}
-                                className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full text-muted-foreground"
+                                aria-label="Clear search"
+                                className={`absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full text-muted-foreground ${wizardFocusRing}`}
                             >
                                 <X className="h-4 w-4" />
                             </button>
@@ -470,7 +485,10 @@ export function UtilityStep({
                     </div>
                     <div className="space-y-2 max-h-[280px] sm:max-h-[350px] overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
                         {isSearching && (
-                            <div className="p-4 text-center text-muted-foreground text-xs sm:text-sm">Searching...</div>
+                            <div className="p-4 flex items-center justify-center gap-2 text-muted-foreground text-xs sm:text-sm" role="status">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Searching...
+                            </div>
                         )}
 
                         {!isSearching && searchQuery.length >= 2 && searchResults.map((result) => (
@@ -478,24 +496,24 @@ export function UtilityStep({
                                 type="button"
                                 key={result.display_name}
                                 onClick={() => handleSelectResult(result)}
-                                className="w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left transition-all group active:scale-[0.98]"
+                                className={`w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border hover:border-ring rounded-xl text-left transition-all group active:scale-[0.98] ${wizardFocusRing}`}
                             >
                                 <span className="font-medium text-foreground transition-colors text-sm sm:text-base truncate">{result.display_name}</span>
-                                <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
+                                <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
                             </button>
                         ))}
 
-                        {!isSearching && (!searchQuery || searchQuery.length < 2) && alternativeSuggestions.length > 0 && (
+                        {!isSearching && (!searchQuery || searchQuery.length < 2) && dedupedSuggestions.length > 0 && (
                             <>
                                 <div className="px-1 pt-2 pb-1">
                                     <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Suggested for your area</p>
                                 </div>
-                                {alternativeSuggestions.map((suggestion) => (
+                                {dedupedSuggestions.map((suggestion) => (
                                     <button
                                         type="button"
                                         key={suggestion.display_name}
                                         onClick={() => handleConfirmSuggestion(suggestion)}
-                                        className="w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border rounded-xl text-left transition-all group active:scale-[0.98]"
+                                        className={`w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border hover:border-ring rounded-xl text-left transition-all group active:scale-[0.98] ${wizardFocusRing}`}
                                     >
                                         <div className="min-w-0">
                                             <span className="font-medium text-foreground transition-colors block text-sm sm:text-base truncate">
@@ -507,9 +525,7 @@ export function UtilityStep({
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-slate-500/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2">
-                                            <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[color:var(--brand-accent)]" />
-                                        </div>
+                                        <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
                                     </button>
                                 ))}
                             </>
@@ -523,7 +539,7 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={handleManualEntryFromSearch}
-                                    className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-semibold transition-colors active:scale-[0.98] text-sm sm:text-base"
+                                    className={`w-full py-3 text-sm sm:text-base font-semibold ${wizardPrimaryButton}`}
                                     data-testid="seller-provider-use-typed"
                                 >
                                     {`Use "${searchQuery}"`}
@@ -531,7 +547,7 @@ export function UtilityStep({
                                 <button
                                     type="button"
                                     onClick={() => setSearchQuery('')}
-                                    className="w-full py-2.5 bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors text-sm active:scale-[0.98]"
+                                    className={`w-full py-2.5 text-sm ${wizardSecondaryButton}`}
                                 >
                                     Search again
                                 </button>
@@ -542,7 +558,7 @@ export function UtilityStep({
                     <button
                         type="button"
                         onClick={() => setMode('view')}
-                        className="w-full py-2.5 sm:py-3 text-muted-foreground hover:text-foreground transition-colors text-xs sm:text-sm active:scale-[0.98]"
+                        className={`w-full py-2.5 sm:py-3 text-xs sm:text-sm ${wizardGhostButton}`}
                     >
                         Cancel Search
                     </button>
@@ -571,7 +587,7 @@ export function UtilityStep({
                             onChange={(e) => updateState(category, { meter_number: e.target.value })}
                             placeholder="Enter the electric meter number"
                             maxLength={64}
-                            className="w-full bg-background/70 border border-border rounded-lg py-2.5 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
+                            className={`py-2.5 px-3 text-sm rounded-lg ${wizardTextInput}`}
                             data-testid="seller-electric-meter-number"
                         />
                         <p className="text-[11px] sm:text-xs text-muted-foreground mt-1.5">
@@ -583,14 +599,14 @@ export function UtilityStep({
                         <button
                             type="button"
                             onClick={handleContinueWithMeter}
-                            className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                            className={`w-full py-3 text-sm sm:text-base ${wizardPrimaryButton}`}
                         >
                             Continue
                         </button>
                         <button
                             type="button"
                             onClick={handleContinueWithoutMeter}
-                            className="w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                            className={`w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base ${wizardFocusRing}`}
                         >
                             Continue without meter number
                         </button>
@@ -599,7 +615,7 @@ export function UtilityStep({
                     <button
                         type="button"
                         onClick={() => setMode('view')}
-                        className="w-full py-2.5 sm:py-3 text-muted-foreground hover:text-foreground transition-colors text-xs sm:text-sm active:scale-[0.98]"
+                        className={`w-full py-2.5 sm:py-3 text-xs sm:text-sm ${wizardGhostButton}`}
                     >
                         Change provider
                     </button>
@@ -617,12 +633,25 @@ export function UtilityStep({
                         </p>
                     </div>
 
-                    <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-4">
+                    <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
                         <div>
-                            <p className="text-xs sm:text-sm font-medium text-foreground">Recycling at this home (optional)</p>
-                            <p className="text-xs text-muted-foreground mt-1">Tell us if recycling pickup is available.</p>
+                            <p className="text-xs sm:text-sm font-medium text-foreground">Which days is trash picked up?</p>
+                            <p className="text-xs text-muted-foreground mt-1">Pick all that apply. &quot;Not sure&quot; is fine.</p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <PickupDaySelector
+                            idPrefix="seller-trash-pickup"
+                            days={trashDays}
+                            special={trashSpecial}
+                            onChange={handleTrashDaysChange}
+                        />
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
+                        <div>
+                            <p className="text-xs sm:text-sm font-medium text-foreground">Is there recycling pickup at this home?</p>
+                            <p className="text-xs text-muted-foreground mt-1">Optional. This helps the buyer plan ahead.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
                             {[
                                 { value: 'yes' as const, label: 'Yes' },
                                 { value: 'no' as const, label: 'No' },
@@ -635,9 +664,9 @@ export function UtilityStep({
                                         type="button"
                                         aria-pressed={isSelected}
                                         onClick={() => updateTrashExtra({ has_recycling: option.value })}
-                                        className={`px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all ${isSelected
+                                        className={`px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all active:scale-[0.97] ${wizardFocusRing} ${isSelected
                                             ? 'bg-[color:var(--brand-accent)] text-white border-[color:var(--brand-accent)]'
-                                            : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
+                                            : 'bg-muted/50 border-border text-muted-foreground hover:border-ring hover:text-foreground'
                                             }`}
                                         data-testid={`seller-trash-recycling-${option.value}`}
                                     >
@@ -647,80 +676,24 @@ export function UtilityStep({
                             })}
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Trash pickup days</span>
-                                <div className="grid grid-cols-2 gap-2" data-testid="seller-trash-pickup-days">
-                                    {TRASH_WEEKDAY_OPTIONS.map((option) => {
-                                        const inputId = `seller-trash-pickup-day-${option.value}`;
-                                        const isChecked = currentTrashPickupDays.includes(option.value);
-                                        return (
-                                            <label
-                                                key={option.value}
-                                                htmlFor={inputId}
-                                                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs sm:text-sm transition-all ${isChecked
-                                                    ? 'bg-[color:var(--brand-accent)] text-white border-[color:var(--brand-accent)]'
-                                                    : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
-                                                    }`}
-                                            >
-                                                <input
-                                                    id={inputId}
-                                                    type="checkbox"
-                                                    checked={isChecked}
-                                                    onChange={(e) => toggleTrashPickupDay(option.value, e.target.checked)}
-                                                    className="h-4 w-4 rounded border-border accent-[var(--brand-accent)]"
-                                                />
-                                                {option.label}
-                                            </label>
-                                        );
-                                    })}
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {TRASH_PICKUP_DAY_OPTIONS.slice(0, 2).map((option) => {
-                                        const isSelected = currentTrashExtra.trash_pickup_day === option.value && currentTrashPickupDays.length === 0;
-                                        return (
-                                            <button
-                                                key={option.value}
-                                                type="button"
-                                                aria-pressed={isSelected}
-                                                onClick={() => setTrashPickupSingleValue(option.value)}
-                                                className={`px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all ${isSelected
-                                                    ? 'bg-[color:var(--brand-accent)] text-white border-[color:var(--brand-accent)]'
-                                                    : 'bg-muted/50 border-border text-muted-foreground hover:border-ring'
-                                                    }`}
-                                                data-testid={`seller-trash-pickup-${option.value}`}
-                                            >
-                                                {option.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                        {(currentTrashExtra.has_recycling === 'yes' || currentTrashExtra.has_recycling === 'not_sure') && (
+                            <div className="space-y-2 pt-1">
+                                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Recycling pickup days</p>
+                                <PickupDaySelector
+                                    idPrefix="seller-recycling-pickup"
+                                    days={recyclingDays}
+                                    special={recyclingSpecial}
+                                    onChange={handleRecyclingDaysChange}
+                                />
                             </div>
-
-                            {(currentTrashExtra.has_recycling === 'yes' || currentTrashExtra.has_recycling === 'not_sure') && (
-                                <label className="space-y-1" htmlFor="seller-recycling-pickup-day">
-                                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Recycling pickup day</span>
-                                    <select
-                                        id="seller-recycling-pickup-day"
-                                        data-testid="seller-recycling-pickup-day"
-                                        value={currentTrashExtra.recycling_pickup_day || 'not_sure'}
-                                        onChange={(e) => updateTrashExtra({ recycling_pickup_day: e.target.value as TrashPickupDay })}
-                                        className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
-                                    >
-                                        {TRASH_PICKUP_DAY_OPTIONS.map((option) => (
-                                            <option key={option.value} value={option.value}>{option.label}</option>
-                                        ))}
-                                    </select>
-                                </label>
-                            )}
-                        </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 gap-2 sm:gap-3">
                         <button
                             type="button"
                             onClick={onNext}
-                            className="w-full py-3 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base"
+                            className={`w-full py-3 text-sm sm:text-base ${wizardPrimaryButton}`}
                         >
                             Continue
                         </button>
@@ -729,7 +702,7 @@ export function UtilityStep({
                     <button
                         type="button"
                         onClick={() => setMode('view')}
-                        className="w-full py-2.5 sm:py-3 text-muted-foreground hover:text-foreground transition-colors text-xs sm:text-sm active:scale-[0.98]"
+                        className={`w-full py-2.5 sm:py-3 text-xs sm:text-sm ${wizardGhostButton}`}
                     >
                         Change provider
                     </button>

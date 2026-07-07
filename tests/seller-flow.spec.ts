@@ -43,8 +43,10 @@ test.describe('Seller Wizard Flow', () => {
 
         await page.goto(`/s/${FAKE_TOKEN}`);
 
-        // Verify Welcome Screen
-        await expect(page.getByText('123 Test Lane')).toBeVisible();
+        // Verify Welcome Screen (address appears in both the header and the
+        // welcome body, and the header copy is hidden on mobile, so scope to
+        // the first visible match)
+        await expect(page.getByText('123 Test Lane').filter({ visible: true }).first()).toBeVisible();
         await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible();
     });
 });

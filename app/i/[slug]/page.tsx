@@ -358,8 +358,8 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                 <div className="w-full max-w-xl mx-auto space-y-6">
                     <div className="rounded-2xl border border-border bg-card/50 p-6 sm:p-8 space-y-5">
                         <div className="flex items-start gap-3">
-                            <div className="mt-0.5 rounded-xl bg-emerald-500/10 p-2">
-                                <ShieldCheck className="h-5 w-5 text-emerald-400" />
+                            <div className="mt-0.5 rounded-xl bg-[var(--brand-accent-soft)] p-2">
+                                <ShieldCheck className="h-5 w-5 text-[color:var(--brand-accent)]" />
                             </div>
                             <div className="space-y-1">
                                 <h1 className="text-xl font-semibold text-foreground">
@@ -381,7 +381,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                 {brandProfile.contact_email && (
                                     <a
                                         href={`mailto:${brandProfile.contact_email}`}
-                                        className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400 transition-colors"
+                                        className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
                                     >
                                         <Mail className="h-3.5 w-3.5" />
                                         {brandProfile.contact_email}
@@ -390,7 +390,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                 {brandProfile.contact_phone && (
                                     <a
                                         href={`tel:${brandProfile.contact_phone.replace(/[^0-9+]/g, '')}`}
-                                        className="inline-flex items-center gap-1 text-foreground hover:text-emerald-400 transition-colors"
+                                        className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
                                     >
                                         <Phone className="h-3.5 w-3.5" />
                                         {brandProfile.contact_phone}
@@ -412,7 +412,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                     value={address}
                                     onChange={handleAddressInputChange}
                                     onAddressSelected={handleAutocompleteAddressSelected}
-                                    placeholder="123 Sample Street, City, state, zip"
+                                    placeholder="123 Main Street, City, State, ZIP"
                                     data-testid="intake-address-input"
                                     className="bg-background/50 border-input text-foreground"
                                     disabled={submitting}
@@ -576,17 +576,17 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
 
                         <div className="mt-6 flex items-center justify-end">
                             <Button
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                className="bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white"
                                 onClick={handleStart}
                                 disabled={!canStart}
                                 data-testid="intake-continue"
                             >
-                                {submitting ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <ArrowRight className="mr-2 h-4 w-4" />
-                                )}
                                 {showConfirmAddress ? 'Confirm and Continue' : 'Continue'}
+                                {submitting ? (
+                                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                )}
                             </Button>
                         </div>
                     </div>

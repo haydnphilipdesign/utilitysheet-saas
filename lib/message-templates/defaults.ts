@@ -36,7 +36,7 @@ export const DEFAULT_SELLER_REMINDER_EMAIL_SUBJECT_TEMPLATE =
 export const DEFAULT_SELLER_REMINDER_EMAIL_BODY_TEMPLATE =
     `Hi{{seller_first_name_with_space}},
 
-Quick reminder — when you have a moment, please fill out the utility information for {{property_address}}.
+Quick reminder: when you have a moment, please fill out the utility information for {{property_address}}.
 
 If you already completed it, you can ignore this email. Thank you!`;
 

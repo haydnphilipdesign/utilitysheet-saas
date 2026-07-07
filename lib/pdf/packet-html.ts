@@ -40,6 +40,7 @@ export interface PacketPdfData {
             trash_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
             trash_pickup_days?: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure'> | null;
             recycling_pickup_day?: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure' | null;
+            recycling_pickup_days?: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' | 'varies' | 'not_sure'> | null;
         } | null;
     }>;
     advanced_sections?: Array<{
@@ -187,8 +188,12 @@ function getTrashScheduleDetailLines(trashDetails: PacketPdfData['utilities'][nu
     } else if (trashDetails.trash_pickup_day !== undefined) {
         lines.push(`Trash pickup: ${formatPickupDay(trashDetails.trash_pickup_day)}`);
     }
-    if (trashDetails.recycling_pickup_day !== undefined && trashDetails.has_recycling !== 'no') {
-        lines.push(`Recycling pickup: ${formatPickupDay(trashDetails.recycling_pickup_day)}`);
+    if (trashDetails.has_recycling !== 'no') {
+        if (Array.isArray(trashDetails.recycling_pickup_days) && trashDetails.recycling_pickup_days.length > 0) {
+            lines.push(`Recycling pickup: ${formatPickupDays(trashDetails.recycling_pickup_days)}`);
+        } else if (trashDetails.recycling_pickup_day !== undefined) {
+            lines.push(`Recycling pickup: ${formatPickupDay(trashDetails.recycling_pickup_day)}`);
+        }
     }
 
     return lines;

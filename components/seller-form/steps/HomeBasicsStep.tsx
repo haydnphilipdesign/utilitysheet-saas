@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import type { AdvancedModuleKey, SewerType, UtilityCategory, WaterSource } from '@/types';
 import { ADVANCED_MODULE_KEYS } from '@/lib/packet/modules';
+import { wizardFocusRing, wizardPrimaryButton } from '../wizard-ui';
 
 interface HomeBasicsStepProps {
     state: WizardState;
@@ -109,7 +110,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             type="button"
                             onClick={() => updateState({ water_source: opt.id as WaterSource })}
                             aria-pressed={state.water_source === opt.id}
-                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.water_source === opt.id
+                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.water_source === opt.id
                                 ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
@@ -141,7 +142,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             type="button"
                             onClick={() => updateState({ sewer_type: opt.id as SewerType })}
                             aria-pressed={state.sewer_type === opt.id}
-                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.sewer_type === opt.id
+                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.sewer_type === opt.id
                                 ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
@@ -201,7 +202,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     });
                                 }}
                                 aria-pressed={isSelected}
-                                className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${isSelected
+                                className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${isSelected
                                     ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                     : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                     }`}
@@ -240,7 +241,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     type="button"
                                     onClick={() => updateState({ primary_heating_type: fuelId })}
                                     aria-pressed={state.primary_heating_type === fuelId}
-                                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${state.primary_heating_type === fuelId
+                                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.primary_heating_type === fuelId
                                         ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
@@ -295,7 +296,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                         updateState({ optional_utilities: next });
                                     }}
                                     aria-pressed={isSelected}
-                                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${isSelected
+                                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${wizardFocusRing} ${isSelected
                                         ? 'bg-[var(--brand-accent-softer)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
@@ -351,7 +352,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     type="button"
                                     onClick={() => toggleAdvancedModuleGroup(group.moduleKeys)}
                                     aria-pressed={isSelected}
-                                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${isSelected
+                                    className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${wizardFocusRing} ${isSelected
                                         ? 'bg-[var(--brand-accent-softer)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
@@ -381,7 +382,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 <button
                     type="button"
                     onClick={onNext}
-                    className="w-full py-3 sm:py-4 text-center rounded-xl font-semibold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors active:scale-[0.98] text-sm sm:text-base"
+                    className={`w-full py-3 sm:py-4 text-center font-semibold text-sm sm:text-base ${wizardPrimaryButton}`}
                 >
                     Continue
                 </button>

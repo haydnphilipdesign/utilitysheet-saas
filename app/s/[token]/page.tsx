@@ -44,15 +44,10 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
     const handleRetry = () => {
         setLoading(true);
         setError(null);
-        // Force re-fetch by toggling a key or similar, but simplified:
-        // In a real app we might use SWR/React Query.
-        // Here we just re-run the effect by unmounting/remounting essentially, 
-        // or we extract the fetch into a function we can call.
-        loadRequestDataRef();
+        loadRequestData();
     };
 
-    // Extract fetch logic to reuse
-    const loadRequestDataRef = async () => {
+    const loadRequestData = async () => {
         try {
             const response = await fetch(`/api/seller/${resolvedParams.token}`);
 
@@ -92,7 +87,8 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
     };
 
     useEffect(() => {
-        loadRequestDataRef();
+        loadRequestData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [resolvedParams.token]);
 
     if (loading) {
@@ -101,22 +97,27 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
 
     if (error || !requestData) {
         return (
-            <div className="min-h-screen bg-black flex items-center justify-center p-4">
-                <div className="max-w-md w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 text-center">
-                    <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-500/10 flex items-center justify-center">
+            <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-card/60 border border-border rounded-2xl p-8 text-center space-y-5">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
                         <AlertTriangle className="h-8 w-8 text-red-400" />
                     </div>
-                    <h1 className="text-xl font-bold text-white mb-2">Unavailable</h1>
-                    <p className="text-zinc-400 mb-6 text-sm">
-                        {error || 'Something went wrong. Please check your link and try again.'}
-                    </p>
+                    <div className="space-y-2">
+                        <h1 className="text-xl font-bold text-foreground">Unavailable</h1>
+                        <p className="text-muted-foreground text-sm">
+                            {error || 'Something went wrong. Please check your link and try again.'}
+                        </p>
+                    </div>
                     <button
                         onClick={handleRetry}
                         data-testid="seller-retry"
-                        className="px-6 py-2 bg-white text-black font-medium rounded-full text-sm hover:bg-zinc-200 transition-colors"
+                        className="px-6 py-2.5 bg-foreground text-background font-medium rounded-full text-sm hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                         Try Again
                     </button>
+                    <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+                        If this link was sent to you by your real estate agent, please ask them to resend it.
+                    </p>
                 </div>
             </div>
         );

@@ -210,7 +210,7 @@ describe('UtilityStep electric meter flow', () => {
         expect(screen.getByTestId('seller-trash-details-step')).toBeInTheDocument();
     });
 
-    it('trash details persist and recycling day clears when recycling is set to no', () => {
+    it('trash details persist and recycling days clear when recycling is set to no', () => {
         const onNext = vi.fn();
         render(
             <StatefulUtilityStep
@@ -223,8 +223,8 @@ describe('UtilityStep electric meter flow', () => {
         fireEvent.click(screen.getByRole('button', { name: /city waste services/i }));
 
         fireEvent.click(screen.getByTestId('seller-trash-recycling-yes'));
-        fireEvent.click(screen.getByLabelText('Thursday'));
-        fireEvent.change(screen.getByTestId('seller-recycling-pickup-day'), { target: { value: 'fri' } });
+        fireEvent.click(screen.getByTestId('seller-trash-pickup-day-thu'));
+        fireEvent.click(screen.getByTestId('seller-recycling-pickup-day-fri'));
         fireEvent.click(screen.getByTestId('seller-trash-recycling-no'));
         fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
@@ -234,6 +234,57 @@ describe('UtilityStep electric meter flow', () => {
             trash_pickup_days: ['thu'],
             trash_pickup_day: 'thu',
             recycling_pickup_day: null,
+            recycling_pickup_days: [],
+        });
+        expect(onNext).toHaveBeenCalledTimes(1);
+    });
+
+    it('recycling pickup supports multiple days with the shared day picker', () => {
+        const onNext = vi.fn();
+        render(
+            <StatefulUtilityStep
+                category="trash"
+                onNext={onNext}
+                suggestions={[{ display_name: 'City Waste Services', confidence: 0.9 }]}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /city waste services/i }));
+
+        fireEvent.click(screen.getByTestId('seller-trash-recycling-yes'));
+        fireEvent.click(screen.getByTestId('seller-recycling-pickup-day-fri'));
+        fireEvent.click(screen.getByTestId('seller-recycling-pickup-day-mon'));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        const utilityState = readUtilityState();
+        expect(utilityState.trash.extra).toMatchObject({
+            has_recycling: 'yes',
+            recycling_pickup_days: ['mon', 'fri'],
+            recycling_pickup_day: 'mon',
+        });
+        expect(onNext).toHaveBeenCalledTimes(1);
+    });
+
+    it('"Not sure" is exclusive with weekday selections for trash pickup', () => {
+        const onNext = vi.fn();
+        render(
+            <StatefulUtilityStep
+                category="trash"
+                onNext={onNext}
+                suggestions={[{ display_name: 'City Waste Services', confidence: 0.9 }]}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /city waste services/i }));
+
+        fireEvent.click(screen.getByTestId('seller-trash-pickup-day-mon'));
+        fireEvent.click(screen.getByTestId('seller-trash-pickup-not_sure'));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+        const utilityState = readUtilityState();
+        expect(utilityState.trash.extra).toMatchObject({
+            trash_pickup_days: [],
+            trash_pickup_day: 'not_sure',
         });
         expect(onNext).toHaveBeenCalledTimes(1);
     });
