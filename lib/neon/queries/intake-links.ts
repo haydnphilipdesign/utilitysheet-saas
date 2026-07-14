@@ -85,6 +85,18 @@ export async function getIntakeLinkBySlug(slug: string): Promise<IntakeLink | nu
     return (result[0] as IntakeLink) || null;
 }
 
+export async function getIntakeLinkByAccountId(accountId: string): Promise<IntakeLink | null> {
+    if (!sql) return null;
+
+    const result = await sql`
+        SELECT * FROM intake_links
+        WHERE account_id = ${accountId}
+        LIMIT 1
+    `;
+
+    return (result[0] as IntakeLink) || null;
+}
+
 export async function getOrCreateIntakeLink(accountId: string): Promise<IntakeLink | null> {
     const result = await ensureIntakeLink(accountId);
     return result?.intakeLink || null;

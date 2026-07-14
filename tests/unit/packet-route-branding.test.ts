@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
     getRequestByToken: vi.fn(),
@@ -8,6 +8,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getDefaultBrandProfile: vi.fn(),
     getAccountById: vi.fn(),
     getOrganizationById: vi.fn(),
+    getIntakeLinkByAccountId: vi.fn(),
 }));
 
 import { GET } from '@/app/api/packet/[token]/route';
@@ -15,13 +16,14 @@ import {
     getAccountById,
     getBrandProfile,
     getDefaultBrandProfile,
+    getIntakeLinkByAccountId,
     getRequestByToken,
     getUtilityEntriesByRequestId,
 } from '@/lib/neon/queries';
 
 describe('GET /api/packet/[token]', () => {
     it('returns advanced branding fields for Pro accounts', async () => {
-        (getRequestByToken as any).mockResolvedValue({
+        (getRequestByToken as Mock).mockResolvedValue({
             id: 'req_1',
             account_id: 'acct_1',
             organization_id: null,
@@ -31,7 +33,7 @@ describe('GET /api/packet/[token]', () => {
             status: 'submitted',
         });
 
-        (getBrandProfile as any).mockResolvedValue({
+        (getBrandProfile as Mock).mockResolvedValue({
             id: 'brand_1',
             account_id: 'acct_1',
             organization_id: null,
@@ -49,9 +51,10 @@ describe('GET /api/packet/[token]', () => {
             welcome_message: 'Hi!',
         });
 
-        (getDefaultBrandProfile as any).mockResolvedValue(null);
-        (getUtilityEntriesByRequestId as any).mockResolvedValue([]);
-        (getAccountById as any).mockResolvedValue({ subscription_status: 'pro' });
+        (getDefaultBrandProfile as Mock).mockResolvedValue(null);
+        (getUtilityEntriesByRequestId as Mock).mockResolvedValue([]);
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+        (getIntakeLinkByAccountId as Mock).mockResolvedValue(null);
 
         const response = await GET(new Request('http://localhost/api/packet/token_1'), {
             params: Promise.resolve({ token: 'token_1' }),
@@ -69,7 +72,7 @@ describe('GET /api/packet/[token]', () => {
     });
 
     it('forces powered-by and generation date for non-Pro accounts', async () => {
-        (getRequestByToken as any).mockResolvedValue({
+        (getRequestByToken as Mock).mockResolvedValue({
             id: 'req_2',
             account_id: 'acct_2',
             organization_id: null,
@@ -79,7 +82,7 @@ describe('GET /api/packet/[token]', () => {
             status: 'submitted',
         });
 
-        (getBrandProfile as any).mockResolvedValue({
+        (getBrandProfile as Mock).mockResolvedValue({
             id: 'brand_2',
             account_id: 'acct_2',
             organization_id: null,
@@ -97,9 +100,10 @@ describe('GET /api/packet/[token]', () => {
             welcome_message: 'Custom welcome',
         });
 
-        (getDefaultBrandProfile as any).mockResolvedValue(null);
-        (getUtilityEntriesByRequestId as any).mockResolvedValue([]);
-        (getAccountById as any).mockResolvedValue({ subscription_status: 'free' });
+        (getDefaultBrandProfile as Mock).mockResolvedValue(null);
+        (getUtilityEntriesByRequestId as Mock).mockResolvedValue([]);
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'free' });
+        (getIntakeLinkByAccountId as Mock).mockResolvedValue({ slug: 'route-team' });
 
         const response = await GET(new Request('http://localhost/api/packet/token_2'), {
             params: Promise.resolve({ token: 'token_2' }),
@@ -110,6 +114,7 @@ describe('GET /api/packet/[token]', () => {
 
         expect(body.brand.show_powered_by).toBe(true);
         expect(body.meta.show_powered_by).toBe(true);
+        expect(body.meta.referral_code).toBe('route-team');
         expect(body.brand.show_generation_date).toBe(true);
         expect(body.brand.buyer_next_steps).toBe(null);
         expect(body.brand.next_steps_title).toBe(null);

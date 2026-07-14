@@ -8,6 +8,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getUtilityEntriesByRequestId: vi.fn(),
     getAccountById: vi.fn(),
     getOrganizationById: vi.fn(),
+    getIntakeLinkByAccountId: vi.fn(),
 }));
 
 import {
@@ -20,6 +21,7 @@ import {
     getBrandProfile,
     getDefaultBrandProfile,
     getOrganizationById,
+    getIntakeLinkByAccountId,
     getRequestById,
     getRequestByToken,
     getUtilityEntriesByRequestId,
@@ -30,6 +32,7 @@ beforeEach(() => {
     (getOrganizationById as Mock).mockResolvedValue(null);
     (getDefaultBrandProfile as Mock).mockResolvedValue(null);
     (getUtilityEntriesByRequestId as Mock).mockResolvedValue([]);
+    (getIntakeLinkByAccountId as Mock).mockResolvedValue(null);
 });
 
 describe('packet-data builder', () => {
@@ -77,6 +80,8 @@ describe('packet-data builder', () => {
         expect(result.data.brand?.show_powered_by).toBe(false);
         expect(result.data.brand?.disclaimer_text).toBe('My disclaimer');
         expect(result.data.meta.show_powered_by).toBe(false);
+        expect(result.data.meta.referral_code).toBeNull();
+        expect(getIntakeLinkByAccountId).not.toHaveBeenCalled();
     });
 
     it('forces powered-by and strips advanced fields for non-Pro accounts', async () => {
@@ -108,6 +113,7 @@ describe('packet-data builder', () => {
         });
 
         (getAccountById as Mock).mockResolvedValue({ subscription_status: 'free' });
+        (getIntakeLinkByAccountId as Mock).mockResolvedValue({ slug: 'tc-team' });
 
         const result = await getPacketDataByPublicToken('token_2');
 
@@ -116,6 +122,7 @@ describe('packet-data builder', () => {
 
         expect(result.data.brand?.show_powered_by).toBe(true);
         expect(result.data.meta.show_powered_by).toBe(true);
+        expect(result.data.meta.referral_code).toBe('tc-team');
         expect(result.data.brand?.show_generation_date).toBe(true);
         expect(result.data.brand?.buyer_next_steps).toBe(null);
         expect(result.data.brand?.next_steps_title).toBe(null);

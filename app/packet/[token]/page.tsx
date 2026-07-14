@@ -20,6 +20,7 @@ import { generatePacketPdf } from '@/lib/pdf-generator';
 import { toast } from 'sonner';
 import { trackEvent } from '@/lib/analytics/events';
 import type { UtilityCategory } from '@/types';
+import { TransactionReferralCta } from '@/components/packet/transaction-referral-cta';
 
 type PacketBrand = {
     name?: string;
@@ -67,6 +68,7 @@ type PacketResponse = {
     }>;
     meta?: {
         show_powered_by?: boolean;
+        referral_code?: string | null;
     };
 };
 
@@ -661,6 +663,9 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                 <span>{brand.contact_email}</span>
                             ) : null}
                         </p>
+                        {forceShowPoweredBy ? (
+                            <TransactionReferralCta referralCode={data.meta?.referral_code || null} />
+                        ) : null}
                     </div>
                 </div>
             </main>

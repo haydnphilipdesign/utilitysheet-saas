@@ -2,6 +2,7 @@ import {
     getAccountById,
     getBrandProfile,
     getDefaultBrandProfile,
+    getIntakeLinkByAccountId,
     getOrganizationById,
     getRequestById,
     getRequestByToken,
@@ -73,6 +74,7 @@ export interface PacketDataPayload {
     advanced_sections?: PacketAdvancedSection[];
     meta: {
         show_powered_by: boolean;
+        referral_code: string | null;
     };
 }
 
@@ -315,6 +317,9 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
     }
 
     const forceShowPoweredBy = !isPro;
+    const intakeLink = forceShowPoweredBy
+        ? await getIntakeLinkByAccountId(requestData.account_id)
+        : null;
     const buyerNextSteps = isPro ? normalizeSteps(brandProfile?.buyer_next_steps) : null;
 
     const publicBrandProfile: PacketBrandData | null = brandProfile
@@ -389,6 +394,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
             advanced_sections: advancedSections,
             meta: {
                 show_powered_by: forceShowPoweredBy,
+                referral_code: intakeLink?.slug || null,
             },
         },
     };

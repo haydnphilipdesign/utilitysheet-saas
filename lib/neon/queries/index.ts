@@ -104,6 +104,7 @@ export {
 export {
     ensureIntakeLink,
     getOrCreateIntakeLink,
+    getIntakeLinkByAccountId,
     getIntakeLinkBySlug,
     updateIntakeLinkSlug,
     updateIntakeLinkPacketDefaults,

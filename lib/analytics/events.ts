@@ -139,6 +139,10 @@ type AnalyticsEventMap = {
   packet_action_clicked: BasePayload & {
     action: "copy_link" | "download_pdf" | "phone_tap" | "website_tap";
   };
+  packet_referral_cta_clicked: BasePayload & {
+    source: "packet_share_page";
+    has_referral_code: boolean;
+  };
   dashboard_reusable_link_copied: BasePayload & {
     location: string;
   };
