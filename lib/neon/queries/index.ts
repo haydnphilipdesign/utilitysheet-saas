@@ -116,3 +116,5 @@ export {
     getDueActivationOutreachCandidates,
     recordActivationOutreachAttempt,
 } from './activation-outreach';
+
+export { saveFirstTouchGrowthAttribution } from './growth-attribution';

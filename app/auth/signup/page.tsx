@@ -16,6 +16,7 @@ import {
     rememberPendingSignupVerification,
     trackActivationResponse,
 } from '@/lib/analytics/activation';
+import { persistPendingGrowthAttribution } from '@/lib/growth/attribution';
 
 export default function SignupPage() {
     const router = useRouter();
@@ -35,21 +36,23 @@ export default function SignupPage() {
 
     const getPostAuthRoute = useCallback(async (source: string): Promise<string | null> => {
         const safeNext = getSafeNext();
-        if (safeNext) return safeNext;
         try {
             const response = await fetch('/api/account');
             if (response.status === 401) return null;
-            if (!response.ok) return '/dashboard';
+            if (!response.ok) return safeNext || '/dashboard';
 
             const data = await response.json().catch(() => ({}));
             trackActivationResponse(data, source);
             if (consumePendingSignupVerification()) {
                 trackEvent('signup_verified', { source });
             }
-            return '/dashboard';
+            await persistPendingGrowthAttribution().catch((error) => {
+                console.warn('Growth attribution persistence failed', error);
+            });
+            return safeNext || '/dashboard';
         } catch (e) {
             console.error(e);
-            return '/dashboard';
+            return safeNext || '/dashboard';
         }
     }, [getSafeNext]);
 

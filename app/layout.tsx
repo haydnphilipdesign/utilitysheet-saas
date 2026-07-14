@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { StackAuthProvider } from '@/components/providers/stack-auth-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
+import { GrowthAttributionCapture } from '@/components/growth/growth-attribution-capture';
 import { getSiteUrl, siteConfig } from '@/lib/seo/site';
 import './globals.css';
 
@@ -94,6 +95,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <StackAuthProvider>
+            <GrowthAttributionCapture />
             {children}
           </StackAuthProvider>
           <Toaster
