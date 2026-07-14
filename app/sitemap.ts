@@ -14,6 +14,7 @@ const marketingRoutes = [
   '/utility-sheet-for-real-estate-agents',
   '/seller-utility-information-form',
   '/real-estate-closing-utility-checklist',
+  '/tc-utility-handoff-kit',
   '/privacy',
   '/terms',
   '/cookie-policy',
