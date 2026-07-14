@@ -4,7 +4,7 @@ import { Overview } from '@/components/admin/Overview';
 import { RecentActivity } from '@/components/admin/RecentActivity';
 import { Users, FileText, Building2, Activity, ClipboardCheck, Link2, TriangleAlert } from 'lucide-react';
 import { AdminPageHeader } from '@/components/admin/primitives';
-import { getActivationFunnelStats } from '@/lib/admin/activation-funnel';
+import { getActivationFunnelStats, getGrowthSourceStats } from '@/lib/admin/activation-funnel';
 import { formatAdminDate } from '@/lib/admin/date-format';
 import { getLatestRequestsForUsers } from '@/lib/admin';
 
@@ -22,6 +22,7 @@ async function getStats() {
         requestsByStatus,
         recentRequests,
         activationFunnel,
+        growthSources,
     ] = await Promise.all([
         sql`SELECT count(*) as count FROM accounts`,
         sql`SELECT count(*) as count FROM requests`,
@@ -36,6 +37,7 @@ async function getStats() {
             LIMIT 5
         `,
         getActivationFunnelStats(),
+        getGrowthSourceStats(),
     ]);
 
     const latestRequestsByUser = await getLatestRequestsForUsers(
@@ -64,6 +66,7 @@ async function getStats() {
             latestRequests: r.account_id ? latestRequestsByUser[r.account_id] || [] : [],
         })),
         activationFunnel,
+        growthSources,
     };
 }
 
@@ -142,6 +145,72 @@ export default async function AdminDashboardPage() {
                             icon={TriangleAlert}
                             trend="down"
                         />
+                    </div>
+                </div>
+            )}
+
+            {stats.activationFunnel && (
+                <div className="space-y-3">
+                    <div>
+                        <h2 className="text-lg font-semibold">Growth Funnel</h2>
+                        <p className="text-sm text-muted-foreground">
+                            Live seller submissions, repeat use, paid adoption, and first-touch sources.
+                        </p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <StatsCard
+                            title="Activated Accounts"
+                            value={stats.activationFunnel.firstLiveSubmission.toString()}
+                            description={`${stats.activationFunnel.signupToActivationRate}% received a live seller submission`}
+                            icon={ClipboardCheck}
+                        />
+                        <StatsCard
+                            title="Activated This Week"
+                            value={stats.activationFunnel.firstLiveSubmissionLast7d.toString()}
+                            description="first live submissions in the last 7 days"
+                            icon={Activity}
+                        />
+                        <StatsCard
+                            title="Habitual Accounts"
+                            value={stats.activationFunnel.habitualAccounts.toString()}
+                            description={`${stats.activationFunnel.activationToHabitRate}% of activated accounts reached 3 submissions in 30 days`}
+                            icon={FileText}
+                        />
+                        <StatsCard
+                            title="Paying Accounts"
+                            value={stats.activationFunnel.paidAccounts.toString()}
+                            description="Pro accounts and active Team members"
+                            icon={Building2}
+                        />
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-border/70">
+                        <table className="w-full text-sm">
+                            <thead className="bg-muted/40 text-left">
+                                <tr>
+                                    <th className="px-4 py-3 font-medium">Acquisition source</th>
+                                    <th className="px-4 py-3 text-right font-medium">Signups</th>
+                                    <th className="px-4 py-3 text-right font-medium">Activated</th>
+                                    <th className="px-4 py-3 text-right font-medium">Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.growthSources.map((row) => (
+                                    <tr key={row.source} className="border-t border-border/70">
+                                        <td className="px-4 py-3">{row.source}</td>
+                                        <td className="px-4 py-3 text-right">{row.signups}</td>
+                                        <td className="px-4 py-3 text-right">{row.activated}</td>
+                                        <td className="px-4 py-3 text-right">{row.activationRate}%</td>
+                                    </tr>
+                                ))}
+                                {stats.growthSources.length === 0 && (
+                                    <tr className="border-t border-border/70">
+                                        <td className="px-4 py-6 text-center text-muted-foreground" colSpan={4}>
+                                            No attributed signups in the last 90 days.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}
