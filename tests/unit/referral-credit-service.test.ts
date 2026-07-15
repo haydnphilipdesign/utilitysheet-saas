@@ -176,6 +176,16 @@ describe('applyEarnedReferralCredits', () => {
         expect(mocks.createBalanceTransaction.mock.invocationCallOrder[1]).toBeGreaterThan(
             mocks.markReferralCreditApplied.mock.invocationCallOrder[0]
         );
+        expect(mocks.markReferralCreditApplied).toHaveBeenNthCalledWith(
+            1,
+            'credit_1',
+            'cbtxn_1'
+        );
+        expect(mocks.markReferralCreditApplied).toHaveBeenNthCalledWith(
+            2,
+            'credit_2',
+            'cbtxn_2'
+        );
     });
 
     it('omits a credit when the conditional applied update returns null', async () => {
