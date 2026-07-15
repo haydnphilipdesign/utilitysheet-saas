@@ -1,7 +1,12 @@
 import 'server-only';
 
+import { after } from 'next/server';
 import { awardReferralCreditForActivation } from '@/lib/neon/queries';
 import { applyEarnedReferralCredits } from '@/lib/referrals/referral-credit-service';
+
+export function scheduleReferralCreditAward(referredAccountId: string): void {
+    after(() => awardAndRedeemReferralCredit(referredAccountId));
+}
 
 export async function awardAndRedeemReferralCredit(
     referredAccountId: string
