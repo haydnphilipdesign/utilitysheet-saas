@@ -10,6 +10,7 @@ import { getClientIpOrNull } from '@/lib/network/client-ip';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { markAiSuggestionSelection } from '@/lib/neon/queries/ai-telemetry';
 import { buildSellerSubmittedEventSummary } from '@/lib/telemetry/seller-submission';
+import { awardAndRedeemReferralCredit } from '@/lib/referrals/award-referral-credit';
 import {
     filterAdvancedPacketDataByExclusions,
     getAdvancedModuleVisibleFieldKeys,
@@ -538,6 +539,8 @@ export async function POST(
             locked_at = CASE WHEN ${shouldLock} THEN COALESCE(locked_at, NOW()) ELSE locked_at END
             WHERE id = ${requestData.id}
         `;
+
+        await awardAndRedeemReferralCredit(requestData.account_id);
 
         // Delete existing entries and insert new ones
         await sql`DELETE FROM utility_entries WHERE request_id = ${requestData.id}`;
