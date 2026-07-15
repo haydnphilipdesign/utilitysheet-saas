@@ -7,6 +7,7 @@ import {
     getOrganizationByStripeCustomerId,
     updateOrganizationSubscription,
 } from '@/lib/neon/queries';
+import { applyEarnedReferralCredits } from '@/lib/referrals/referral-credit-service';
 import Stripe from 'stripe';
 
 function isPaidStripeStatus(status: Stripe.Subscription.Status) {
@@ -57,6 +58,9 @@ export async function POST(request: Request) {
                             subscriptionStatus: 'pro',
                             subscriptionId: subscriptionResponse.id,
                             subscriptionEndsAt: periodEnd ? new Date(periodEnd * 1000) : null,
+                        });
+                        await applyEarnedReferralCredits(account.id, {
+                            requireActiveSubscription: false,
                         });
                         console.log(`Activated Pro subscription for account ${account.id}`);
                         break;
