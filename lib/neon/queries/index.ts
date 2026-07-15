@@ -122,3 +122,16 @@ export { saveFirstTouchGrowthAttribution } from './growth-attribution';
 
 export type { GrowthReferralEventType, GrowthReferralSurface } from './growth-referral-events';
 export { recordGrowthReferralEvent } from './growth-referral-events';
+
+export type {
+    AwardedReferralCredit,
+    ReferralCredit,
+    ReferralCreditStatus,
+} from './referral-credits';
+export {
+    awardReferralCreditForActivation,
+    getEarnedReferralCredits,
+    getReferralCreditsForAccount,
+    getValidReferralReferrerAccountId,
+    markReferralCreditApplied,
+} from './referral-credits';
