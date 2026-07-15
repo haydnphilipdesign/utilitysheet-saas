@@ -50,7 +50,6 @@ const EXCLUDE_EMAILS = new Set([
     'haydnpwatkins@gmail.com',
     'lucasbennett994@gmail.com',
     'utilitysheet1@gmail.com',
-    'homewifi20222023@gmail.com',
     'multimediumclients@gmail.com',
     'haydnphilipdesign@gmail.com',
 ].map(normalizeEmail));
