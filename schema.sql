@@ -264,6 +264,17 @@ CREATE TABLE IF NOT EXISTS growth_attributions (
     CHECK (char_length(landing_path) <= 200)
 );
 
+CREATE TABLE IF NOT EXISTS referral_credits (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    referrer_account_id UUID NOT NULL REFERENCES accounts(id),
+    referred_account_id UUID NOT NULL REFERENCES accounts(id) UNIQUE,
+    amount_cents INT NOT NULL DEFAULT 900,
+    status TEXT NOT NULL DEFAULT 'earned' CHECK (status IN ('earned', 'applied')),
+    stripe_balance_transaction_id TEXT,
+    earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    applied_at TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS growth_referral_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_type TEXT NOT NULL CHECK (event_type IN ('impression', 'click')),
@@ -324,6 +335,8 @@ CREATE INDEX IF NOT EXISTS idx_activation_outreach_logs_account_campaign_stage O
 CREATE INDEX IF NOT EXISTS idx_activation_outreach_logs_sent_at ON activation_outreach_logs(sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_growth_attributions_source ON growth_attributions(source, captured_at DESC);
 CREATE INDEX IF NOT EXISTS idx_growth_attributions_referral_code ON growth_attributions(referral_code) WHERE referral_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_referral_credits_referrer_account_id ON referral_credits(referrer_account_id);
+CREATE INDEX IF NOT EXISTS idx_referral_credits_earned ON referral_credits(referrer_account_id, earned_at) WHERE status = 'earned';
 CREATE INDEX IF NOT EXISTS idx_growth_referral_events_type_time ON growth_referral_events(event_type, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS idx_growth_referral_events_referral_code ON growth_referral_events(referral_code) WHERE referral_code IS NOT NULL;
 
