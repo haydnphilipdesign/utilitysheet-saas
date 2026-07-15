@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { stripe, STRIPE_PRO_PRICE_ID } from '@/lib/stripe/client';
 import { stackServerApp } from '@/lib/stack/server';
 import { getOrCreateAccount, updateAccountStripeCustomer } from '@/lib/neon/queries';
+import { qualifiesForReferralTrial } from '@/lib/referrals/referral-trial';
 
 export async function POST() {
     try {
@@ -34,6 +35,19 @@ export async function POST() {
             await updateAccountStripeCustomer(account.id, stripeCustomerId);
         }
 
+        const qualifiesForTrial = await qualifiesForReferralTrial(account.id, stripeCustomerId);
+        const referralTrialOptions = qualifiesForTrial
+            ? {
+                payment_method_collection: 'if_required' as const,
+                subscription_data: {
+                    trial_period_days: 30,
+                    trial_settings: {
+                        end_behavior: { missing_payment_method: 'cancel' as const },
+                    },
+                },
+            }
+            : {};
+
         // Create checkout session
         const session = await stripe.checkout.sessions.create({
             customer: stripeCustomerId,
@@ -49,6 +63,7 @@ export async function POST() {
             metadata: {
                 account_id: account.id,
             },
+            ...referralTrialOptions,
         });
 
         return NextResponse.json({ url: session.url });
