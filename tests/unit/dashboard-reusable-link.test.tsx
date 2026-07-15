@@ -139,7 +139,7 @@ describe('dashboard reusable seller link', () => {
 
         render(<DashboardPage />);
 
-        await screen.findByText('Your seller intake link is ready');
+        await screen.findByText('Your seller link is ready');
         expect(screen.queryByText('Reusable Seller Link')).not.toBeInTheDocument();
         await waitFor(() => {
             expect(trackEventMock).toHaveBeenCalledWith('dashboard_first_run_link_viewed', {
