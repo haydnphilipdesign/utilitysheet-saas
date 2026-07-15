@@ -22,6 +22,20 @@ function callSqlText(call: unknown[]): string {
     return Array.from(strings).join('');
 }
 
+function expectCandidateIdentityAndActivation(queryText: string): void {
+    expect(queryText).toContain('FROM growth_attributions ga');
+    expect(queryText).toContain('JOIN intake_links il ON ga.referral_code = il.slug');
+    expect(queryText).toContain('WHERE ga.account_id = ');
+    expect(queryText).toContain('il.account_id <> ga.account_id');
+    expect(queryText).toContain("status = 'submitted'");
+    expect(queryText).toContain('deleted_at IS NULL');
+    expect(queryText).toContain('COALESCE(is_demo, FALSE) = FALSE');
+    expect(queryText).toContain('= 1');
+    expect(queryText).toContain("NOW() - INTERVAL '365 days'");
+    expect(queryText).toContain('< 12');
+    expect(queryText).not.toContain('existing_credit.status');
+}
+
 const awardedCredit = {
     id: 'credit_1',
     referrer_account_id: 'account_referrer',
@@ -56,15 +70,9 @@ describe('referral credit queries', () => {
         const lockSql = callSqlText(sqlTagMock.mock.calls[0]);
         const insertSql = callSqlText(sqlTagMock.mock.calls[1]);
 
-        expect(lockSql).toContain('FOR UPDATE OF referrer');
-        expect(lockSql).toContain('il.account_id <> ga.account_id');
-        expect(insertSql).toContain("status = 'submitted'");
-        expect(insertSql).toContain('deleted_at IS NULL');
-        expect(insertSql).toContain('COALESCE(is_demo, FALSE) = FALSE');
-        expect(insertSql).toContain('= 1');
-        expect(insertSql).toContain("NOW() - INTERVAL '365 days'");
-        expect(insertSql).toContain('< 12');
-        expect(insertSql).not.toContain('existing_credit.status');
+        expectCandidateIdentityAndActivation(lockSql);
+        expectCandidateIdentityAndActivation(insertSql);
+        expect(lockSql).toContain('FOR UPDATE OF referrer, il');
         expect(insertSql).toContain('ON CONFLICT (referred_account_id) DO NOTHING');
         expect(result).toEqual(awardedCredit);
     });

@@ -46,7 +46,7 @@ export async function awardReferralCreditForActivation(
                   WHERE existing_credit.referrer_account_id = il.account_id
                     AND existing_credit.earned_at >= NOW() - INTERVAL '365 days'
               ) < 12
-            FOR UPDATE OF referrer
+            FOR UPDATE OF referrer, il
         `,
         sql`
             WITH eligible_candidate AS (
