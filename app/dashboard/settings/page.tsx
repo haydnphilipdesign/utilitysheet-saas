@@ -22,6 +22,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
+import { PageHeader } from '@/components/ui/page-header';
 import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
 import { Link as LinkIcon, User, Bell, Check, Copy, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
@@ -675,11 +676,7 @@ export default function SettingsPage() {
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 pb-10">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-                <p className="text-muted-foreground mt-1">Manage your account and preferences</p>
-            </div>
+            <PageHeader title="Settings" description="Manage your account and preferences" />
 
             <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <div className="overflow-x-auto">
@@ -710,6 +707,7 @@ export default function SettingsPage() {
                             <Label htmlFor="fullName" className="text-foreground">Full Name</Label>
                             <Input
                                 id="fullName"
+                                autoComplete="name"
                                 value={profile.full_name}
                                 onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                                 className="bg-background/50 border-input text-foreground"
@@ -744,7 +742,7 @@ export default function SettingsPage() {
                             {loading ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Saving...
+                                    Saving…
                                 </>
                             ) : (
                                 <>
@@ -1036,7 +1034,7 @@ export default function SettingsPage() {
                             </p>
                             <p className="text-sm text-muted-foreground">
                                 {orgIsTeam
-                                    ? `Unlimited requests • ${orgSeatUsage.used}/${activeOrganization?.seat_quantity || '?'} seats used`
+                                    ? `Unlimited requests • ${orgSeatUsage.used}/${activeOrganization?.seat_quantity ?? '—'} seats used`
                                     : usage.plan === 'pro'
                                         ? 'Unlimited requests'
                                         : `${usage.limit} requests per month`}
@@ -1135,8 +1133,8 @@ export default function SettingsPage() {
                             </div>
                             <div className="w-full h-3 bg-background rounded-full overflow-hidden border border-border shadow-inner">
                                 <div
-                                    className={`h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(16,185,129,0.3)] ${usage.used >= usage.limit
-                                        ? 'bg-red-500'
+                                    className={`h-full rounded-full transition-all duration-1000 ease-out ${usage.used >= usage.limit
+                                        ? 'bg-destructive'
                                         : usage.used >= usage.limit * 0.8
                                             ? 'bg-amber-500'
                                             : 'bg-emerald-500'
@@ -1145,7 +1143,7 @@ export default function SettingsPage() {
                                 />
                             </div>
                             {usage.used >= usage.limit && (
-                                <p className="text-sm text-red-400 mt-2">
+                                <p className="text-sm text-destructive mt-2">
                                     You&apos;ve reached your monthly limit. Upgrade to continue creating requests.
                                 </p>
                             )}
@@ -1187,7 +1185,7 @@ export default function SettingsPage() {
                                     </div>
                                     <p className="text-sm text-muted-foreground">
                                         {orgIsTeam
-                                            ? `Seats: ${orgSeatUsage.used}/${activeOrganization?.seat_quantity || '?'} used (${orgSeatUsage.pendingInvites} pending invite${orgSeatUsage.pendingInvites === 1 ? '' : 's'})`
+                                            ? `Seats: ${orgSeatUsage.used}/${activeOrganization?.seat_quantity ?? '—'} used (${orgSeatUsage.pendingInvites} pending invite${orgSeatUsage.pendingInvites === 1 ? '' : 's'})`
                                             : 'Upgrade to Teams to invite additional members.'}
                                     </p>
                                 </div>
@@ -1230,15 +1228,15 @@ export default function SettingsPage() {
                                             <AccordionContent>
                                                 <ul className="space-y-1.5">
                                                     <li className="flex items-start gap-2">
-                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-primary" />
                                                         Everything in Pro, including submitted-sheet editing
                                                     </li>
                                                     <li className="flex items-start gap-2">
-                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-primary" />
                                                         Shared organization workspace with admin + member roles
                                                     </li>
                                                     <li className="flex items-start gap-2">
-                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-primary" />
                                                         Centralized billing + seat management (1 seat = 1 active user; pending invites count toward the limit)
                                                     </li>
                                                 </ul>
@@ -1322,8 +1320,18 @@ export default function SettingsPage() {
                                             <Label htmlFor="inviteEmail" className="text-foreground">Email</Label>
                                             <Input
                                                 id="inviteEmail"
+                                                type="email"
+                                                inputMode="email"
+                                                autoComplete="off"
+                                                spellCheck={false}
                                                 value={inviteEmail}
                                                 onChange={(e) => setInviteEmail(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && orgIsAdmin && !inviteLoading && inviteEmail.trim()) {
+                                                        e.preventDefault();
+                                                        handleInvite();
+                                                    }
+                                                }}
                                                 placeholder="teammate@company.com"
                                                 className="bg-background/50 border-input text-foreground"
                                                 disabled={!orgIsAdmin || inviteLoading}
