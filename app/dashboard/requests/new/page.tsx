@@ -472,7 +472,7 @@ export default function NewRequestPage() {
                         <CardHeader className="pb-4 pr-24">
                             <CardTitle className="text-foreground flex items-center gap-2">
                                 <LinkIcon className="h-5 w-5 text-primary shrink-0" />
-                                Your Reusable Link
+                                Your Reusable Seller Link
                             </CardTitle>
                             <CardDescription className="text-muted-foreground">
                                 One permanent link for every property — sellers enter the address themselves.
@@ -485,7 +485,7 @@ export default function NewRequestPage() {
                             {intakeLinkLoading ? (
                                 <div className="flex items-center gap-2 h-10 text-muted-foreground">
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span className="text-sm">Loading your link...</span>
+                                    <span className="text-sm">Loading your link…</span>
                                 </div>
                             ) : intakeLink?.url ? (
                                 <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -1028,7 +1028,7 @@ export default function NewRequestPage() {
                                         disabled={!isStep3Valid || loading}
                                         data-testid="new-request-create"                                    >
                                         {loading ? (
-                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
+                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
                                         ) : (
                                             <>Create Request<Check className="ml-2 h-4 w-4" /></>
                                         )}
@@ -1064,6 +1064,7 @@ export default function NewRequestPage() {
                                 <Button
                                     onClick={copyLink}
                                     variant="outline"
+                                    aria-label={copied ? 'Link copied' : 'Copy seller link'}
                                     className={`border-input shrink-0 h-10 w-10 sm:w-auto sm:px-3 ${copied ? 'text-primary border-primary' : 'text-foreground'}`}
                                 >
                                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -1141,7 +1142,7 @@ export default function NewRequestPage() {
                                     <span className="text-foreground font-medium">{usageInfo.used} / {usageInfo.limit} requests</span>
                                 </div>
                                 <div className="w-full bg-muted rounded-full h-2">
-                                    <div className="bg-red-500 h-2 rounded-full" style={{ width: '100%' }} />
+                                    <div className="bg-destructive h-2 rounded-full" style={{ width: '100%' }} />
                                 </div>
                                 <p className="text-muted-foreground text-xs mt-2">Resets the 1st of each month</p>
                             </div>

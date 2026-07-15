@@ -104,8 +104,8 @@ export function DashboardLayoutContent({
                         {/* Logo */}
                         <div className="flex flex-1 min-w-0 items-center gap-4 sm:gap-8 overflow-hidden">
                             <Link href="/dashboard" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-                                <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shadow-lg shadow-slate-500/20 dark:shadow-sky-500/20">
-                                    <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-4 w-4 sm:h-5 sm:w-5" />
+                                <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
+                                    <img src="/logo-sm.png" alt="UtilitySheet Logo" width={20} height={20} className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </div>
                                 <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-2">
                                     <span className="shrink-0 text-base sm:text-xl font-bold text-foreground">UtilitySheet</span>
@@ -178,7 +178,7 @@ export function DashboardLayoutContent({
 
                             {/* User Menu */}
                             <DropdownMenu>
-                                <DropdownMenuTrigger className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-secondary">
+                                <DropdownMenuTrigger aria-label="Account menu" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                     <Avatar className="h-9 w-9 border-2 border-border">
                                         <AvatarFallback className="bg-secondary text-muted-foreground text-sm">
                                             {getInitials(account?.full_name || user?.displayName, user?.primaryEmail)}
@@ -228,6 +228,8 @@ export function DashboardLayoutContent({
                                 size="icon"
                                 className="lg:hidden text-muted-foreground hover:text-foreground"
                                 data-testid="dashboard-mobile-menu-toggle"
+                                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                                aria-expanded={mobileMenuOpen}
                                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             >
                                 {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

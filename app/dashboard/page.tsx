@@ -431,11 +431,12 @@ export default function DashboardPage() {
         ? intakeCompanyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'your-name'
         : 'your-name';
 
+    // Icon colors follow the STATUS_STYLES semantics: pending=blue, completed=emerald (success), attention=amber.
     const statCards = [
         { label: 'Total Requests', value: stats.total_requests, icon: FileText, color: 'text-muted-foreground' },
-        { label: 'Pending', value: stats.sent + stats.in_progress, icon: Clock, color: 'text-blue-400' },
-        { label: 'Completed', value: stats.submitted, icon: CheckCircle2, color: 'text-slate-500' },
-        { label: 'Needs Attention', value: stats.needs_attention, icon: AlertCircle, color: 'text-amber-400' },
+        { label: 'Pending', value: stats.sent + stats.in_progress, icon: Clock, color: 'text-blue-600 dark:text-blue-400' },
+        { label: 'Completed', value: stats.submitted, icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400' },
+        { label: 'Needs Attention', value: stats.needs_attention, icon: AlertCircle, color: 'text-amber-600 dark:text-amber-400' },
     ];
 
     return (
@@ -477,7 +478,7 @@ export default function DashboardPage() {
                             <CardHeader className="relative pb-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
-                                        <CardTitle className="text-foreground text-xl sm:text-2xl">Your seller intake link is ready</CardTitle>
+                                        <CardTitle className="text-foreground text-xl sm:text-2xl">Your seller link is ready</CardTitle>
                                         <CardDescription className="mt-2 max-w-2xl text-sm">
                                             Share this with a seller. They enter the property address, complete the utility details, and you get a ready-to-review sheet.
                                         </CardDescription>
@@ -539,7 +540,7 @@ export default function DashboardPage() {
                             {intakeLinkLoading ? (
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading your reusable link...
+                                    Loading your reusable link…
                                 </div>
                             ) : intakeLink?.url ? (
                                 <ReusableLinkActions
@@ -640,7 +641,7 @@ export default function DashboardPage() {
                                     <div className="rounded-md border border-border bg-background/60 px-3 py-2">
                                         <p className="text-xs text-muted-foreground">Your current link</p>
                                         <p className="text-xs sm:text-sm font-mono text-foreground break-all">
-                                            {intakeLink?.url || 'Loading your link...'}
+                                            {intakeLink?.url || 'Loading your link…'}
                                         </p>
                                     </div>
                                     <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
@@ -689,7 +690,7 @@ export default function DashboardPage() {
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="min-w-0">
                                             <p className="text-xs sm:text-sm text-muted-foreground truncate">{stat.label}</p>
-                                            <p className="text-2xl sm:text-3xl font-bold text-foreground mt-0.5 sm:mt-1">{stat.value}</p>
+                                            <p className="text-2xl sm:text-3xl font-bold tabular-nums text-foreground mt-0.5 sm:mt-1">{stat.value}</p>
                                         </div>
                                         <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl bg-muted/50 shrink-0 ${stat.color}`}>
                                             <stat.icon className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -767,7 +768,7 @@ export default function DashboardPage() {
                                 {updatesLoading ? (
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Loading updates...
+                                        Loading updates…
                                     </div>
                                 ) : updates.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">No updates yet.</p>
@@ -805,7 +806,7 @@ export default function DashboardPage() {
                                 <div className="relative w-full sm:w-72">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search by address or name..."
+                                        placeholder="Search by address or name…"
                                         inputMode="search"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -840,7 +841,7 @@ export default function DashboardPage() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        onClick={() => window.open(`/dashboard/requests/${request.id}`, '_self')}
+                                                        render={<Link href={`/dashboard/requests/${request.id}`} />}
                                                     >
                                                         <Eye className="mr-1.5 h-4 w-4" />
                                                         View
@@ -926,7 +927,7 @@ export default function DashboardPage() {
                                                         </TableCell>
                                                         <TableCell className="text-right py-3 sm:py-4">
                                                             <DropdownMenu>
-                                                                <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted">
+                                                                <DropdownMenuTrigger aria-label="Request actions" className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                                                     <MoreHorizontal className="h-4 w-4" />
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="bg-popover border-border">
@@ -974,7 +975,7 @@ export default function DashboardPage() {
                                                                                 ) : (
                                                                                     <Download className="mr-2 h-4 w-4" />
                                                                                 )}
-                                                                                {downloadingPdfToken === request.public_token ? 'Generating...' : 'Download PDF'}
+                                                                                {downloadingPdfToken === request.public_token ? 'Generating…' : 'Download PDF'}
                                                                             </DropdownMenuItem>
                                                                         </>
                                                                     )}
@@ -989,12 +990,12 @@ export default function DashboardPage() {
                                                                             ) : (
                                                                                 <Mail className="mr-2 h-4 w-4" />
                                                                             )}
-                                                                            {sendingReminderId === request.id ? 'Sending...' : 'Send reminder'}
+                                                                            {sendingReminderId === request.id ? 'Sending…' : 'Send reminder'}
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     <Separator className="my-1 bg-border" />
                                                                     <DropdownMenuItem
-                                                                        className="text-red-400 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
+                                                                        className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
                                                                         disabled={deletingId === request.id}
                                                                         onClick={() => handleDeleteRequest(request.id)}
                                                                     >
@@ -1003,7 +1004,7 @@ export default function DashboardPage() {
                                                                         ) : (
                                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                                         )}
-                                                                        {deletingId === request.id ? 'Deleting...' : 'Delete request'}
+                                                                        {deletingId === request.id ? 'Deleting…' : 'Delete request'}
                                                                     </DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
@@ -1044,8 +1045,9 @@ export default function DashboardPage() {
                                                         key={pageNum}
                                                         variant={currentPage === pageNum ? "secondary" : "ghost"}
                                                         size="sm"
+                                                        aria-current={currentPage === pageNum ? 'page' : undefined}
                                                         onClick={() => setCurrentPage(pageNum)}
-                                                        className={`w-8 h-8 p-0 ${currentPage === pageNum ? 'bg-slate-600/10 text-slate-500 border border-slate-500/30' : 'text-muted-foreground'}`}
+                                                        className={`w-8 h-8 p-0 tabular-nums ${currentPage === pageNum ? 'bg-primary/10 text-primary border border-primary/30' : 'text-muted-foreground'}`}
                                                     >
                                                         {pageNum}
                                                     </Button>

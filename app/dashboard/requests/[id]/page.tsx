@@ -234,8 +234,8 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                 'Unlimited requests going forward — no monthly cap',
                             ].map((item) => (
                                 <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <div className="h-4 w-4 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-                                        <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500" />
+                                    <div className="h-4 w-4 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                                        <CheckCircle2 className="h-2.5 w-2.5 text-primary" />
                                     </div>
                                     {item}
                                 </div>
@@ -255,8 +255,8 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1 min-w-0">
                     <Button
                         variant="ghost"
                         className="text-muted-foreground hover:text-foreground px-0"
@@ -265,8 +265,8 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Requests
                     </Button>
-                    <h1 className="text-3xl font-bold text-foreground">{request.property_address}</h1>
-                    <div className="flex items-center gap-3">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">{request.property_address}</h1>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                         <StatusBadge status={request.status} />
                         <Badge variant="outline" className="border-border text-foreground">
                             {packetMode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
@@ -298,7 +298,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             ) : (
                                 <Mail className="mr-2 h-4 w-4" />
                             )}
-                            {sendingReminder ? 'Sending...' : 'Send Reminder'}
+                            {sendingReminder ? 'Sending…' : 'Send Reminder'}
                         </Button>
                     )}
                 </div>
@@ -347,6 +347,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                             size="sm"
                                             variant="outline"
                                             className="border-input"
+                                            aria-label="Copy seller form link"
                                             onClick={() => copyToClipboard(sellerLink, 'Seller link copied')}
                                         >
                                             <Copy className="h-4 w-4" />
@@ -355,6 +356,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                             size="sm"
                                             variant="outline"
                                             className="border-input"
+                                            aria-label="Open seller form in new tab"
                                             onClick={() => window.open(sellerLink, '_blank')}
                                         >
                                             <ExternalLink className="h-4 w-4" />
@@ -374,6 +376,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                             size="sm"
                                             variant="outline"
                                             className="border-input"
+                                            aria-label="Copy info sheet link"
                                             onClick={() => copyToClipboard(packetLink, 'Info sheet link copied')}
                                             disabled={!canViewPacket}
                                         >
@@ -383,6 +386,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                             size="sm"
                                             variant="outline"
                                             className="border-input"
+                                            aria-label="Open info sheet in new tab"
                                             onClick={() => window.open(packetLink, '_blank')}
                                             disabled={!canViewPacket}
                                         >
@@ -401,9 +405,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                     <Button
                                         size="sm"
                                         variant={packetMode === 'simple' ? 'default' : 'outline'}
-                                        className={packetMode === 'simple'
-                                            ? 'bg-slate-700 hover:bg-slate-600 text-white'
-                                            : 'border-input text-foreground'}
+                                        className={packetMode === 'simple' ? undefined : 'border-input text-foreground'}
                                         disabled={updatingMode || packetMode === 'simple'}
                                         onClick={() => handleSwitchMode('simple')}
                                     >
@@ -412,9 +414,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                     <Button
                                         size="sm"
                                         variant={packetMode === 'advanced' ? 'default' : 'outline'}
-                                        className={packetMode === 'advanced'
-                                            ? 'bg-slate-700 hover:bg-slate-600 text-white'
-                                            : 'border-input text-foreground'}
+                                        className={packetMode === 'advanced' ? undefined : 'border-input text-foreground'}
                                         disabled={updatingMode || packetMode === 'advanced'}
                                         onClick={() => handleSwitchMode('advanced')}
                                     >
@@ -448,7 +448,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             ) : (
                                 <Download className="mr-2 h-4 w-4" />
                             )}
-                            {downloadingPdf ? 'Generating...' : 'Download PDF'}
+                            {downloadingPdf ? 'Generating…' : 'Download PDF'}
                         </Button>
 
                         {canViewPacket ? (

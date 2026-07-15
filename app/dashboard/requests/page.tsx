@@ -150,7 +150,8 @@ export default function RequestsPage() {
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search by address or seller..."
+                                placeholder="Search by address or seller…"
+                                inputMode="search"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-10 bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
@@ -159,7 +160,8 @@ export default function RequestsPage() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="w-full sm:w-[180px] h-11 sm:h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 dark:focus:ring-sky-500"
+                            aria-label="Filter by status"
+                            className="w-full sm:w-[180px] h-11 sm:h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         >
                             <option value="all">All Statuses</option>
                             <option value="draft">Draft</option>
@@ -242,7 +244,7 @@ export default function RequestsPage() {
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            onClick={() => window.open(`/dashboard/requests/${request.id}/edit`, '_self')}
+                                                            render={<Link href={`/dashboard/requests/${request.id}/edit`} />}
                                                         >
                                                             <FilePenLine className="mr-1.5 h-4 w-4" />
                                                             Edit
@@ -251,7 +253,7 @@ export default function RequestsPage() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        onClick={() => window.open(`/dashboard/requests/${request.id}`, '_self')}
+                                                        render={<Link href={`/dashboard/requests/${request.id}`} />}
                                                     >
                                                         <Eye className="mr-1.5 h-4 w-4" />
                                                         View
@@ -310,7 +312,7 @@ export default function RequestsPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right py-3 sm:py-4">
                                                     <DropdownMenu>
-                                                        <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted">
+                                                        <DropdownMenuTrigger aria-label="Request actions" className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                                                             <MoreHorizontal className="h-4 w-4" />
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="bg-popover border-border">
@@ -358,7 +360,7 @@ export default function RequestsPage() {
                                                                         ) : (
                                                                             <Download className="mr-2 h-4 w-4" />
                                                                         )}
-                                                                        {downloadingPdfToken === request.public_token ? 'Generating...' : 'Download PDF'}
+                                                                        {downloadingPdfToken === request.public_token ? 'Generating…' : 'Download PDF'}
                                                                     </DropdownMenuItem>
                                                                 </>
                                                             )}
@@ -373,7 +375,7 @@ export default function RequestsPage() {
                                                                     ) : (
                                                                         <Mail className="mr-2 h-4 w-4" />
                                                                     )}
-                                                                    {sendingReminderRequestId === request.id ? 'Sending...' : 'Send reminder'}
+                                                                    {sendingReminderRequestId === request.id ? 'Sending…' : 'Send reminder'}
                                                                 </DropdownMenuItem>
                                                             )}
                                                         </DropdownMenuContent>
