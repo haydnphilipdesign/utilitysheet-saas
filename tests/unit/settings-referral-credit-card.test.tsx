@@ -80,6 +80,10 @@ function makeFetchMock() {
     });
 }
 
+async function openReferralsTab() {
+    fireEvent.click(await screen.findByRole('tab', { name: 'Referrals' }));
+}
+
 describe('settings referral credit card', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -101,6 +105,7 @@ describe('settings referral credit card', () => {
                 <SettingsPage />
             </StrictMode>
         );
+        await openReferralsTab();
 
         expect(await screen.findByText('Give a month of Pro, get a month of Pro')).toBeInTheDocument();
         expect(fetchMock.mock.calls.filter(([url]) => url === '/api/referrals')).toHaveLength(1);
@@ -114,12 +119,13 @@ describe('settings referral credit card', () => {
 
     it('renders the referral summary and tracks its view exactly once', async () => {
         render(<SettingsPage />);
+        await openReferralsTab();
 
         expect(await screen.findByText('Give a month of Pro, get a month of Pro')).toBeInTheDocument();
         const input = screen.getByDisplayValue('https://utilitysheet.com/auth/signup?ref=referrer-slug');
         expect(input).toHaveAttribute('readonly');
-        expect(screen.getByText('2 available')).toBeInTheDocument();
-        expect(screen.getByText('1 applied')).toBeInTheDocument();
+        expect(screen.getByText('2 months of Pro earned')).toBeInTheDocument();
+        expect(screen.getByText('1 month applied')).toBeInTheDocument();
 
         await waitFor(() => {
             expect(trackEventMock).toHaveBeenCalledTimes(1);
@@ -138,6 +144,7 @@ describe('settings referral credit card', () => {
             value: { writeText },
         });
         render(<SettingsPage />);
+        await openReferralsTab();
 
         fireEvent.click(await screen.findByRole('button', { name: 'Copy referral link' }));
 
@@ -157,6 +164,7 @@ describe('settings referral credit card', () => {
             value: { writeText },
         });
         render(<SettingsPage />);
+        await openReferralsTab();
 
         fireEvent.click(await screen.findByRole('button', { name: 'Copy referral link' }));
 
@@ -190,6 +198,7 @@ describe('settings referral credit card', () => {
         }));
 
         const { rerender } = render(<SettingsPage />);
+        await openReferralsTab();
         expect(await screen.findByDisplayValue('https://utilitysheet.com/auth/signup?ref=user-a')).toBeInTheDocument();
         await waitFor(() => expect(trackEventMock).toHaveBeenCalledWith('referral_credit_card_viewed', {
             location: 'dashboard_settings',
@@ -256,6 +265,7 @@ describe('settings referral credit card', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         const { rerender } = render(<SettingsPage />);
+        await openReferralsTab();
         await waitFor(() => expect(referralCallCount).toBe(1));
 
         authState.user = {
@@ -274,8 +284,8 @@ describe('settings referral credit card', () => {
             }));
         });
         expect(await screen.findByDisplayValue('https://utilitysheet.com/auth/signup?ref=user-b')).toBeInTheDocument();
-        expect(screen.getByText('1 available')).toBeInTheDocument();
-        expect(screen.getByText('3 applied')).toBeInTheDocument();
+        expect(screen.getByText('1 month of Pro earned')).toBeInTheDocument();
+        expect(screen.getByText('3 months applied')).toBeInTheDocument();
 
         await act(async () => {
             resolveUserA(jsonResponse({
@@ -284,7 +294,7 @@ describe('settings referral credit card', () => {
             }));
         });
         expect(screen.queryByDisplayValue('https://utilitysheet.com/auth/signup?ref=user-a')).not.toBeInTheDocument();
-        expect(screen.queryByText('8 available')).not.toBeInTheDocument();
+        expect(screen.queryByText('8 months of Pro earned')).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Copy referral link' }));
         await waitFor(() => {

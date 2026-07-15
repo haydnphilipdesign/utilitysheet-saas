@@ -17,6 +17,8 @@ export interface AwardedReferralCredit extends ReferralCredit {
     referrer_stripe_customer_id: string | null;
     referrer_subscription_id: string | null;
     referrer_subscription_status: string;
+    referrer_email: string | null;
+    referrer_full_name: string | null;
 }
 
 export type ReferralCreditCounts = {
@@ -93,7 +95,9 @@ export async function awardReferralCreditForActivation(
                 inserted_credit.*,
                 referrer.stripe_customer_id AS referrer_stripe_customer_id,
                 referrer.subscription_id AS referrer_subscription_id,
-                referrer.subscription_status AS referrer_subscription_status
+                referrer.subscription_status AS referrer_subscription_status,
+                referrer.email AS referrer_email,
+                referrer.full_name AS referrer_full_name
             FROM inserted_credit
             JOIN accounts referrer ON referrer.id = inserted_credit.referrer_account_id
         `,

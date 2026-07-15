@@ -87,4 +87,18 @@ describe('sendTCCompletionNotificationEmail referral footer', () => {
         const html = sendEmailMock.mock.calls[0][0].html as string;
         expect(html).not.toContain('/from-a-closing');
     });
+
+    it('always includes the owner-facing referral program promo', async () => {
+        await sendTCCompletionNotificationEmail({
+            tcEmail: 'tc@example.com',
+            propertyAddress: '123 Main St',
+            requestId: 'req_promo',
+            attachPdf: false,
+            showReferralFooter: false,
+        });
+
+        const html = sendEmailMock.mock.calls[0][0].html as string;
+        expect(html).toContain('Give a month of Pro, get a month of Pro.');
+        expect(html).toContain('/dashboard/settings?tab=referrals');
+    });
 });

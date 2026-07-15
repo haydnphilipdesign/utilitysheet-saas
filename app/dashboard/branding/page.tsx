@@ -177,7 +177,7 @@ export default function BrandingPage() {
                             <p className="text-muted-foreground mb-8">
                                 Stand out from the competition. Pro users can create unlimited branding profiles with custom logos, colors, and contact information.
                             </p>
-                            <Link href="/dashboard/settings">
+                            <Link href="/dashboard/settings?tab=billing">
                                 <Button className="font-semibold px-8">
                                     Upgrade to Pro
                                 </Button>

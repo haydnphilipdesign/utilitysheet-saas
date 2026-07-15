@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Copy, Gift } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import { trackEvent } from '@/lib/analytics/events';
 type ReferralSummary = {
     referralLink: string;
     counts: { earned: number; applied: number };
+    isSubscribed?: boolean;
 };
 
 type LoadedReferralSummary = {
@@ -54,7 +56,19 @@ function getReferralSummary(userId: string): Promise<ReferralSummary | null> {
     return request;
 }
 
-export function ReferralCreditCard({ userId }: { userId?: string | null }) {
+function pluralMonths(count: number): string {
+    return count === 1 ? 'month' : 'months';
+}
+
+export function ReferralCreditCard({
+    userId,
+    location = 'dashboard_settings',
+    compact = false,
+}: {
+    userId?: string | null;
+    location?: string;
+    compact?: boolean;
+}) {
     const [loadedSummary, setLoadedSummary] = useState<LoadedReferralSummary | null>(null);
     const requestSequenceRef = useRef(0);
     const viewedUserIdRef = useRef<string | null>(null);
@@ -83,18 +97,18 @@ export function ReferralCreditCard({ userId }: { userId?: string | null }) {
 
         viewedUserIdRef.current = userId;
         trackEvent('referral_credit_card_viewed', {
-            location: 'dashboard_settings',
+            location,
             earned_count: referralSummary.counts.earned,
             applied_count: referralSummary.counts.applied,
         });
-    }, [referralSummary, userId]);
+    }, [referralSummary, userId, location]);
 
     const handleCopyReferralLink = async () => {
         if (!referralSummary) return;
         try {
             await navigator.clipboard.writeText(referralSummary.referralLink);
             trackEvent('referral_credit_link_copied', {
-                location: 'dashboard_settings',
+                location,
             });
             toast.success('Referral link copied');
         } catch {
@@ -104,15 +118,19 @@ export function ReferralCreditCard({ userId }: { userId?: string | null }) {
 
     if (!referralSummary) return null;
 
+    const { earned, applied } = referralSummary.counts;
+    const hasCredits = earned > 0 || applied > 0;
+    const showUpgradeNudge = earned > 0 && referralSummary.isSubscribed === false;
+
     return (
         <Card className="border-primary/20 bg-card/50">
-            <CardHeader>
+            <CardHeader className={compact ? 'pb-3' : undefined}>
                 <CardTitle className="flex items-center gap-2 text-foreground">
                     <Gift className="h-5 w-5 text-primary" />
                     Give a month of Pro, get a month of Pro
                 </CardTitle>
                 <CardDescription className="text-muted-foreground">
-                    Share your referral link. You earn a Pro credit after the referred user receives their first real seller submission.
+                    Share your referral link with another TC or agent. When they receive their first real seller submission, you earn a free month of Pro.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -133,18 +151,35 @@ export function ReferralCreditCard({ userId }: { userId?: string | null }) {
                         Copy
                     </Button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg border border-border bg-muted/50 p-3">
-                        <p className="text-sm font-semibold text-foreground">
-                            {referralSummary.counts.earned} available
-                        </p>
+                {hasCredits ? (
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-lg border border-border bg-muted/50 p-3">
+                            <p className="text-sm font-semibold text-foreground">
+                                {earned} {pluralMonths(earned)} of Pro earned
+                            </p>
+                            <p className="text-xs text-muted-foreground">Waiting to apply</p>
+                        </div>
+                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
+                            <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                                {applied} {pluralMonths(applied)} applied
+                            </p>
+                            <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Credited to your bill</p>
+                        </div>
                     </div>
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
-                        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                            {referralSummary.counts.applied} applied
-                        </p>
-                    </div>
-                </div>
+                ) : !compact ? (
+                    <p className="text-sm text-muted-foreground">
+                        Credits show up here after someone you refer gets their first real seller submission.
+                    </p>
+                ) : null}
+                {showUpgradeNudge && (
+                    <p className="text-sm text-foreground">
+                        You have {earned} free {pluralMonths(earned)} of Pro waiting.{' '}
+                        <Link href="/dashboard/settings?tab=billing" className="font-semibold text-primary hover:underline">
+                            Upgrade to Pro
+                        </Link>{' '}
+                        and it applies to your bill automatically.
+                    </p>
+                )}
             </CardContent>
         </Card>
     );

@@ -95,6 +95,7 @@ describe('settings reusable link mode', () => {
 
         vi.stubGlobal('fetch', fetchMock);
         render(<SettingsPage />);
+        fireEvent.click(await screen.findByRole('tab', { name: 'Seller Link' }));
 
         await screen.findByText('Reusable link default mode');
         expect(screen.getAllByText('Simple Utility Sheet').length).toBeGreaterThan(0);
@@ -160,6 +161,7 @@ describe('settings reusable link mode', () => {
 
         vi.stubGlobal('fetch', fetchMock);
         render(<SettingsPage />);
+        fireEvent.click(await screen.findByRole('tab', { name: 'Seller Link' }));
 
         await screen.findByText(/read-only on Free/i);
         const modeSelect = screen.getByLabelText('Reusable link default mode') as HTMLSelectElement;

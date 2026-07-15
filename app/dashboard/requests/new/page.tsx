@@ -558,7 +558,7 @@ export default function NewRequestPage() {
                                         ? 'Customize your link in Settings.'
                                         : 'Upgrade to Pro/Teams for a custom branded link.'}
                                 </p>
-                                <Link href="/dashboard/settings" className="text-xs text-primary hover:text-primary/80 transition-colors">
+                                <Link href={intakeCanCustomize ? '/dashboard/settings?tab=link' : '/dashboard/settings?tab=billing'} className="text-xs text-primary hover:text-primary/80 transition-colors">
                                     {intakeCanCustomize ? 'Open Settings' : 'Upgrade'}
                                 </Link>
                             </div>
@@ -1162,7 +1162,7 @@ export default function NewRequestPage() {
                             ))}
                         </div>
                         <div className="flex flex-col gap-2">
-                            <Link href="/dashboard/settings" className="w-full">
+                            <Link href="/dashboard/settings?tab=billing" className="w-full">
                                 <Button
                                     className="w-full font-semibold h-11"
                                     onClick={() => setShowUpgradeDialog(false)}

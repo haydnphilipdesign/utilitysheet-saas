@@ -37,6 +37,7 @@ describe('GET /api/referrals', () => {
 
     it('returns the exact referral link and current credit counts', async () => {
         vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://utilitysheet.com/base/path');
+        ensureAccountActivation.mockResolvedValue({ account: { id: 'account_1', subscription_id: 'sub_123' } });
         getReferralCreditCountsForAccount.mockResolvedValue({ earned: 2, applied: 1 });
 
         const response = await GET();
@@ -45,6 +46,7 @@ describe('GET /api/referrals', () => {
         await expect(response.json()).resolves.toEqual({
             referralLink: 'https://utilitysheet.com/auth/signup?ref=referrer-slug',
             counts: { earned: 2, applied: 1 },
+            isSubscribed: true,
         });
         expect(ensureAccountActivation).toHaveBeenCalledWith({
             id: 'auth_1',
@@ -84,6 +86,7 @@ describe('GET /api/referrals', () => {
         await expect(response.json()).resolves.toEqual({
             referralLink: 'https://preview.example.com/auth/signup?ref=referrer-slug',
             counts: { earned: 0, applied: 0 },
+            isSubscribed: false,
         });
     });
 

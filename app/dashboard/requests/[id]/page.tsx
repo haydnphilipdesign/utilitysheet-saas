@@ -243,7 +243,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         </div>
                         <Button
                             className="w-full sm:w-auto font-semibold px-8"
-                            onClick={() => router.push('/dashboard/settings')}
+                            onClick={() => router.push('/dashboard/settings?tab=billing')}
                         >
                             Upgrade to Pro — $9/month
                         </Button>

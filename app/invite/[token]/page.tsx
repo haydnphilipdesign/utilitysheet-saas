@@ -87,7 +87,7 @@ export default function InvitePage() {
                     </div>
 
                     {status === 'error' && (
-                        <Button className="w-full" onClick={() => router.push('/dashboard/settings')}>
+                        <Button className="w-full" onClick={() => router.push('/dashboard/settings?tab=billing')}>
                             Go to Settings
                         </Button>
                     )}

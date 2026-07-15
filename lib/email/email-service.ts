@@ -873,6 +873,7 @@ export async function sendTCCompletionNotificationEmail({
         referralFooterUrl: showReferralFooter
             ? buildCompletionReferralFooterUrl(baseUrl, referralCode)
             : null,
+        referralProgramUrl: `${baseUrl}/dashboard/settings?tab=referrals`,
     });
 
     try {
@@ -959,6 +960,7 @@ interface GenerateTCCompletionHtmlParams {
     sellerName?: string;
     dashboardUrl: string;
     referralFooterUrl?: string | null;
+    referralProgramUrl?: string | null;
 }
 
 function generateTCCompletionNotificationHtml({
@@ -967,6 +969,7 @@ function generateTCCompletionNotificationHtml({
     sellerName,
     dashboardUrl,
     referralFooterUrl = null,
+    referralProgramUrl = null,
 }: GenerateTCCompletionHtmlParams): string {
     const greeting = tcName ? `Hi ${tcName},` : 'Hello,';
     const sellerMention = sellerName ? `${sellerName} has` : 'The seller has';
@@ -977,6 +980,17 @@ function generateTCCompletionNotificationHtml({
                                 Coordinating a closing?
                                 <a href="${referralFooterUrl}" style="color: #475569; font-weight: 600;">Create your own free seller utility link</a>.
                             </p>`
+        : '';
+    const referralProgramHtml = referralProgramUrl
+        ? `
+                            <div style="margin: 28px 0 0; padding: 14px 18px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                                <p style="margin: 0; color: #475569; font-size: 13px; line-height: 1.6;">
+                                    <strong>Give a month of Pro, get a month of Pro.</strong>
+                                    Know another TC or agent who still chases utility info?
+                                    <a href="${referralProgramUrl}" style="color: #475569; font-weight: 600;">Share your referral link</a>
+                                    and you both get a free month when their first seller submission arrives.
+                                </p>
+                            </div>`
         : '';
 
     return `
@@ -1051,13 +1065,174 @@ function generateTCCompletionNotificationHtml({
                             <p style="margin: 32px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
                                 If the button doesn't work, copy and paste this link into your browser:<br>
                                 <a href="${dashboardUrl}" style="color: #10b981; word-break: break-all;">${dashboardUrl}</a>
-                            </p>
+                            </p>${referralProgramHtml}
                         </td>
                     </tr>
-                    
+
                     <!-- Footer -->
                     <tr>
                         <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">${referralFooterHtml}
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                                This email was sent by UtilitySheet.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    `.trim();
+}
+
+// =============================================================================
+// REFERRAL CREDIT EARNED EMAIL
+// =============================================================================
+
+export type ReferralCreditEarnedStatus = 'applied' | 'waiting_for_upgrade' | 'saved';
+
+interface SendReferralCreditEarnedEmailParams {
+    toEmail: string;
+    toName?: string;
+    /**
+     * applied: credit already landed on the referrer's Stripe balance.
+     * waiting_for_upgrade: referrer has no subscription; credit applies once they upgrade.
+     * saved: referrer is subscribed but the credit could not be applied yet (it retries automatically).
+     */
+    creditStatus: ReferralCreditEarnedStatus;
+}
+
+/**
+ * Tells a referrer their referral just activated and they earned a free month
+ * of Pro. Sent at most once per referred account (the award query only returns
+ * a credit on first insert).
+ */
+export async function sendReferralCreditEarnedEmail({
+    toEmail,
+    toName,
+    creditStatus,
+}: SendReferralCreditEarnedEmailParams): Promise<{ success: boolean; error?: string }> {
+    const baseUrl = getAppBaseUrl();
+    const referralSettingsUrl = `${baseUrl}/dashboard/settings?tab=referrals`;
+    const emailHtml = generateReferralCreditEarnedHtml({
+        toName,
+        creditStatus,
+        referralSettingsUrl,
+    });
+
+    try {
+        const resend = getResend();
+        const { data, error } = await resend.emails.send({
+            from: 'UtilitySheet <noreply@utilitysheet.com>',
+            to: getDemoEmailRecipient(toEmail),
+            subject: 'You earned a free month of Pro',
+            html: emailHtml,
+        });
+
+        if (error) {
+            console.error('Resend API returned error:', error.message);
+            return { success: false, error: error.message };
+        }
+
+        console.log('Referral credit earned email sent successfully:', data?.id);
+        return { success: true };
+    } catch (error) {
+        console.error('Exception in sendReferralCreditEarnedEmail:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        };
+    }
+}
+
+function generateReferralCreditEarnedHtml({
+    toName,
+    creditStatus,
+    referralSettingsUrl,
+}: {
+    toName?: string;
+    creditStatus: ReferralCreditEarnedStatus;
+    referralSettingsUrl: string;
+}): string {
+    const greeting = toName ? `Hi ${toName},` : 'Hello,';
+    const statusCopy = creditStatus === 'applied'
+        ? 'Your credit has been applied to your subscription. You will see it on your next invoice.'
+        : creditStatus === 'waiting_for_upgrade'
+            ? 'Your free month is saved to your account. Upgrade to Pro and it applies to your bill automatically.'
+            : 'Your free month is saved to your account and will be applied to your subscription automatically.';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You earned a free month of Pro</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 40px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">UtilitySheet</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Badge -->
+                    <tr>
+                        <td style="padding: 32px 40px 0; text-align: center;">
+                            <div style="display: inline-block; background-color: #d1fae5; color: #065f46; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;">
+                                Referral activated
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 24px 40px 40px;">
+                            <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                                ${greeting}
+                            </p>
+
+                            <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                                Someone you referred just received their first real seller submission. That earns you one free month of Pro.
+                            </p>
+
+                            <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
+                                ${statusCopy}
+                            </p>
+
+                            <!-- CTA Button -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        ${renderBulletproofButton({
+        href: referralSettingsUrl,
+        label: 'View Your Referral Credits',
+        backgroundColor: '#059669',
+        borderRadius: 8,
+        fontWeight: 600,
+        paddingX: 32,
+        paddingY: 14,
+        minWidth: 240,
+    })}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 32px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                                Keep sharing your referral link to stack more free months. You can earn up to 12 per year.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; color: #9ca3af; font-size: 12px;">
                                 This email was sent by UtilitySheet.
                             </p>

@@ -89,7 +89,7 @@ function UpgradeHint() {
     return (
         <p className="text-xs text-muted-foreground">
             Available on Pro.{' '}
-            <Link href="/dashboard/settings" className="underline underline-offset-2 hover:text-foreground">
+            <Link href="/dashboard/settings?tab=billing" className="underline underline-offset-2 hover:text-foreground">
                 Upgrade
             </Link>{' '}
             to customize this.

@@ -38,6 +38,10 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
+async function openTab(name: string) {
+    fireEvent.click(await screen.findByRole('tab', { name }));
+}
+
 describe('settings notification preferences', () => {
     it('merges seller_submission_pdf_attachment from API and auto-saves after toggles', async () => {
         const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -84,6 +88,7 @@ describe('settings notification preferences', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         render(<SettingsPage />);
+        await openTab('Notifications');
 
         const toggleLabel = await screen.findByText('Attach PDF to submission emails');
         const toggleRow = toggleLabel.closest('div')?.parentElement;
@@ -96,6 +101,7 @@ describe('settings notification preferences', () => {
         fireEvent.click(checkbox);
         expect(checkbox.checked).toBe(true);
 
+        await openTab('Seller Link');
         const meterToggleLabel = await screen.findByText('Collect electric meter number');
         const meterToggleRow = meterToggleLabel.closest('div')?.parentElement;
         expect(meterToggleRow).not.toBeNull();
@@ -165,6 +171,7 @@ describe('settings notification preferences', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         render(<SettingsPage />);
+        await openTab('Seller Link');
 
         const meterToggleLabel = await screen.findByText('Collect electric meter number');
         const meterToggleRow = meterToggleLabel.closest('div')?.parentElement;

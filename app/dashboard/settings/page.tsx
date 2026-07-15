@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -60,8 +61,22 @@ type OrganizationMemberRow = {
     member_role: 'admin' | 'member';
 };
 
+const SETTINGS_TABS = ['account', 'link', 'notifications', 'billing', 'referrals'] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number];
+
+function isSettingsTab(value: string | null): value is SettingsTab {
+    return value !== null && (SETTINGS_TABS as readonly string[]).includes(value);
+}
+
+function getInitialSettingsTab(): SettingsTab {
+    if (typeof window === 'undefined') return 'account';
+    const param = new URLSearchParams(window.location.search).get('tab');
+    return isSettingsTab(param) ? param : 'account';
+}
+
 export default function SettingsPage() {
     const stackUser = useUser();
+    const [activeTab, setActiveTab] = useState<SettingsTab>(getInitialSettingsTab);
     const [accountId, setAccountId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [profile, setProfile] = useState({
@@ -583,6 +598,16 @@ export default function SettingsPage() {
         }
     };
 
+    const handleTabChange = (value: unknown) => {
+        if (typeof value !== 'string' || !isSettingsTab(value)) return;
+        setActiveTab(value);
+        if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', value);
+            window.history.replaceState(null, '', url.toString());
+        }
+    };
+
     const handleConfirmDialog = async () => {
         if (!confirmDialog) return;
         setConfirmLoading(true);
@@ -649,13 +674,25 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto space-y-8 pb-10">
+        <div className="max-w-3xl mx-auto space-y-6 pb-10">
             {/* Header */}
             <div>
                 <h1 className="text-3xl font-bold text-foreground">Settings</h1>
                 <p className="text-muted-foreground mt-1">Manage your account and preferences</p>
             </div>
 
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
+                <div className="overflow-x-auto">
+                    <TabsList className="w-max">
+                        <TabsTrigger value="account">Account</TabsTrigger>
+                        <TabsTrigger value="link">Seller Link</TabsTrigger>
+                        <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                        <TabsTrigger value="billing">Billing &amp; Team</TabsTrigger>
+                        <TabsTrigger value="referrals">Referrals</TabsTrigger>
+                    </TabsList>
+                </div>
+
+                <TabsContent value="account" className="mt-2 space-y-6 text-base">
             {/* Profile Section */}
             <Card className="border-border bg-card/50">
                 <CardHeader>
@@ -689,9 +726,39 @@ export default function SettingsPage() {
                             />
                         </div>
                     </div>
+
+                    <Separator className="bg-border" />
+
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <Button
+                            variant="outline"
+                            onClick={handleSignOut}
+                            className="border-input text-foreground hover:bg-muted"
+                        >
+                            Sign Out
+                        </Button>
+                        <Button
+                            onClick={handleSave}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="mr-2 h-4 w-4" />
+                                    Save Changes
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
+                </TabsContent>
 
+                <TabsContent value="notifications" className="mt-2 space-y-6 text-base">
             {/* Notifications Section */}
             <Card className="border-border bg-card/50">
                 <CardHeader>
@@ -700,7 +767,7 @@ export default function SettingsPage() {
                         Notifications
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                        Email notification preferences
+                        Email notification preferences. Changes save automatically.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -724,17 +791,6 @@ export default function SettingsPage() {
                             <Switch
                                 checked={notifications.seller_submission_pdf_attachment}
                                 onCheckedChange={(checked) => handleNotificationToggle('seller_submission_pdf_attachment', checked)}
-                            />
-                        </div>
-                        <Separator className="bg-border" />
-                        <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <p className="text-foreground text-sm font-medium">Collect electric meter number</p>
-                                <p className="text-sm text-muted-foreground">Show an optional meter number field for electric utility entries</p>
-                            </div>
-                            <Switch
-                                checked={notifications.collect_electric_meter_number}
-                                onCheckedChange={(checked) => handleNotificationToggle('collect_electric_meter_number', checked)}
                             />
                         </div>
                         <Separator className="bg-border" />
@@ -766,7 +822,9 @@ export default function SettingsPage() {
                     </div>
                 </CardContent>
             </Card>
+                </TabsContent>
 
+                <TabsContent value="link" className="mt-2 space-y-6 text-base">
             {/* Reusable Link Section */}
             <Card className="border-border bg-card/50">
                 <CardHeader>
@@ -937,11 +995,28 @@ export default function SettingsPage() {
                             </Button>
                         </div>
                     </div>
+
+                    <Separator className="bg-border" />
+
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-foreground text-sm font-medium">Collect electric meter number</p>
+                            <p className="text-sm text-muted-foreground">Show an optional meter number field for electric utility entries. Saves automatically.</p>
+                        </div>
+                        <Switch
+                            checked={notifications.collect_electric_meter_number}
+                            onCheckedChange={(checked) => handleNotificationToggle('collect_electric_meter_number', checked)}
+                        />
+                    </div>
                 </CardContent>
             </Card>
+                </TabsContent>
 
-            <ReferralCreditCard userId={stackUser?.id} />
+                <TabsContent value="referrals" className="mt-2 space-y-6 text-base">
+                    <ReferralCreditCard userId={stackUser?.id} />
+                </TabsContent>
 
+                <TabsContent value="billing" className="mt-2 space-y-6 text-base">
             {/* Subscription Section */}
             <Card className="border-border bg-card/50">
                 <CardHeader>
@@ -1022,7 +1097,7 @@ export default function SettingsPage() {
                             </Button>
                         ) : (
                             <Button
-                                className="font-bold h-11 px-8 transition-all hover:scale-105 active:scale-95"
+                                className="font-semibold px-6"
                                 onClick={async () => {
                                     setBillingLoading(true);
                                     try {
@@ -1044,7 +1119,7 @@ export default function SettingsPage() {
                                 {billingLoading ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
-                                    <Sparkles className="mr-2 h-4 w-4 fill-white animate-pulse" />
+                                    <Sparkles className="mr-2 h-4 w-4" />
                                 )}
                                 Upgrade to Pro, $9/mo
                             </Button>
@@ -1149,48 +1224,26 @@ export default function SettingsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="grid gap-4 sm:grid-cols-2">
-                                        <div className="space-y-2">
-                                            <p className="text-xs font-medium text-foreground">What you get</p>
-                                            <ul className="space-y-1.5 text-xs text-muted-foreground">
-                                                <li className="flex items-start gap-2">
-                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
-                                                    Everything in Pro, including submitted-sheet editing
-                                                </li>
-                                                <li className="flex items-start gap-2">
-                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
-                                                    Shared organization workspace
-                                                </li>
-                                                <li className="flex items-start gap-2">
-                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
-                                                    Invite members with admin + member roles
-                                                </li>
-                                                <li className="flex items-start gap-2">
-                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
-                                                    Centralized billing + seat management
-                                                </li>
-                                            </ul>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <p className="text-xs font-medium text-foreground">How seats work</p>
-                                            <ul className="space-y-1.5 text-xs text-muted-foreground">
-                                                <li className="flex items-start gap-2">
-                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
-                                                    1 seat = 1 active user in the organization
-                                                </li>
-                                                <li className="flex items-start gap-2">
-                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
-                                                    Pending invites count toward your seat limit
-                                                </li>
-                                                <li className="flex items-start gap-2">
-                                                    <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
-                                                    Start with at least {TEAM_MIN_SEATS} seats and adjust later
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </div>
-
                                     <Accordion className="border-border bg-background/20">
+                                        <AccordionItem value="included">
+                                            <AccordionTrigger>What&apos;s included in Teams?</AccordionTrigger>
+                                            <AccordionContent>
+                                                <ul className="space-y-1.5">
+                                                    <li className="flex items-start gap-2">
+                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                        Everything in Pro, including submitted-sheet editing
+                                                    </li>
+                                                    <li className="flex items-start gap-2">
+                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                        Shared organization workspace with admin + member roles
+                                                    </li>
+                                                    <li className="flex items-start gap-2">
+                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-emerald-400" />
+                                                        Centralized billing + seat management (1 seat = 1 active user; pending invites count toward the limit)
+                                                    </li>
+                                                </ul>
+                                            </AccordionContent>
+                                        </AccordionItem>
                                         <AccordionItem value="billing">
                                             <AccordionTrigger>How does Teams billing work?</AccordionTrigger>
                                             <AccordionContent>
@@ -1238,7 +1291,7 @@ export default function SettingsPage() {
                                                 {teamBillingLoading ? (
                                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                                 ) : (
-                                                    <Sparkles className="mr-2 h-4 w-4 fill-white animate-pulse" />
+                                                    <Sparkles className="mr-2 h-4 w-4" />
                                                 )}
                                                 Start Teams
                                             </Button>
@@ -1398,48 +1451,8 @@ export default function SettingsPage() {
                     )}
                 </CardContent>
             </Card>
-
-            {/* Account Actions Section */}
-            <Card className="border-border bg-card/50">
-                <CardHeader>
-                    <CardTitle className="text-foreground flex items-center gap-2">
-                        <User className="h-5 w-5 text-primary" />
-                        Account Actions
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground">
-                        Manage your session
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button
-                        variant="destructive"
-                        onClick={handleSignOut}
-                        className="w-full sm:w-auto"
-                    >
-                        Sign Out
-                    </Button>
-                </CardContent>
-            </Card>
-
-            {/* Save Button */}
-            <div className="flex justify-end sticky bottom-4">
-                <Button
-                    onClick={handleSave}
-                    disabled={loading}
-                >
-                    {loading ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Saving...
-                        </>
-                    ) : (
-                        <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Changes
-                        </>
-                    )}
-                </Button>
-            </div>
+                </TabsContent>
+            </Tabs>
 
             {/* Confirmation dialog for destructive team actions */}
             <Dialog

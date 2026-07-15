@@ -98,8 +98,8 @@ export async function POST(request: Request) {
                     quantity: seats,
                 },
             ],
-            success_url: `${baseUrl}/dashboard/settings?team_checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${baseUrl}/dashboard/settings?team_checkout=cancel`,
+            success_url: `${baseUrl}/dashboard/settings?tab=billing&team_checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/dashboard/settings?tab=billing&team_checkout=cancel`,
             metadata: {
                 organization_id: organizationId,
                 seats: String(seats),

@@ -35,6 +35,7 @@ export async function GET() {
         return NextResponse.json({
             referralLink: referralUrl.toString(),
             counts,
+            isSubscribed: Boolean(activationState.account.subscription_id),
         });
     } catch (error) {
         console.error('Error fetching referral summary:', error);

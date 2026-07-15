@@ -8,6 +8,14 @@ vi.mock('@/lib/pdf-generator', () => ({
     generatePacketPdf: vi.fn(),
 }));
 
+vi.mock('@stackframe/stack', () => ({
+    useUser: () => ({
+        id: 'user_dash',
+        displayName: 'Dash User',
+        primaryEmail: 'dash@example.com',
+    }),
+}));
+
 const { trackEventMock, toastSuccessMock, toastErrorMock } = vi.hoisted(() => ({
     trackEventMock: vi.fn(),
     toastSuccessMock: vi.fn(),
@@ -133,8 +141,10 @@ describe('dashboard reusable seller link', () => {
 
         await screen.findByText('Your seller intake link is ready');
         expect(screen.queryByText('Reusable Seller Link')).not.toBeInTheDocument();
-        expect(trackEventMock).toHaveBeenCalledWith('dashboard_first_run_link_viewed', {
-            source: 'dashboard_first_run_card',
+        await waitFor(() => {
+            expect(trackEventMock).toHaveBeenCalledWith('dashboard_first_run_link_viewed', {
+                source: 'dashboard_first_run_card',
+            });
         });
 
         fireEvent.click(screen.getByRole('button', { name: /^copy link$/i }));

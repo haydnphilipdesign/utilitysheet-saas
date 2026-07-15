@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useUser } from '@stackframe/stack';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +27,6 @@ import {
     Clock,
     CheckCircle2,
     AlertCircle,
-    Send,
     Plus,
     Search,
     MoreHorizontal,
@@ -55,10 +55,12 @@ import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ReusableLinkActions } from '@/components/dashboard/reusable-link-actions';
+import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
 
 const REUSABLE_LINK_NEXT_STEPS_DISMISSED_KEY = 'utilitysheet:reusable-link-next-steps-dismissed';
 
 export default function DashboardPage() {
+    const stackUser = useUser();
     const firstRunLinkViewedRef = useRef(false);
     const [requests, setRequests] = useState<Array<Request & { can_edit_submitted_sheet?: boolean }>>([]);
     const [meta, setMeta] = useState({
@@ -716,7 +718,7 @@ export default function DashboardPage() {
                                     </p>
                                 </div>
                             </div>
-                            <Link href="/dashboard/settings" className="shrink-0">
+                            <Link href="/dashboard/settings?tab=billing" className="shrink-0">
                                 <Button
                                     size="sm"
                                     className="w-full sm:w-auto"
@@ -1062,6 +1064,11 @@ export default function DashboardPage() {
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Referral program — shown once the user has real usage worth sharing */}
+                    {hasAnyRequests && (
+                        <ReferralCreditCard userId={stackUser?.id} location="dashboard" compact />
+                    )}
                 </>
             )}
         </div>

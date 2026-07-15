@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     after: vi.fn(),
     applyEarnedReferralCredits: vi.fn(),
     awardReferralCreditForActivation: vi.fn(),
+    sendReferralCreditEarnedEmail: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -20,6 +21,10 @@ vi.mock('@/lib/neon/queries', () => ({
 
 vi.mock('@/lib/referrals/referral-credit-service', () => ({
     applyEarnedReferralCredits: mocks.applyEarnedReferralCredits,
+}));
+
+vi.mock('@/lib/email/email-service', () => ({
+    sendReferralCreditEarnedEmail: mocks.sendReferralCreditEarnedEmail,
 }));
 
 import { scheduleReferralCreditAward } from '@/lib/referrals/award-referral-credit';
@@ -96,6 +101,95 @@ describe('scheduleReferralCreditAward', () => {
 
         expect(consoleErrorSpy).toHaveBeenCalledWith(
             'Failed to award or redeem referral credit:',
+            error
+        );
+    });
+
+    it('emails the referrer with applied status when the new credit was redeemed', async () => {
+        mocks.awardReferralCreditForActivation.mockResolvedValue({
+            id: 'credit_9',
+            referrer_account_id: 'account_referrer',
+            referrer_subscription_id: 'sub_1',
+            referrer_email: 'referrer@example.com',
+            referrer_full_name: 'Riley Referrer',
+        });
+        mocks.applyEarnedReferralCredits.mockResolvedValue(['credit_9']);
+        mocks.sendReferralCreditEarnedEmail.mockResolvedValue({ success: true });
+
+        const callback = scheduleAndCaptureCallback();
+        await expect(callback()).resolves.toBeUndefined();
+
+        expect(mocks.sendReferralCreditEarnedEmail).toHaveBeenCalledWith({
+            toEmail: 'referrer@example.com',
+            toName: 'Riley Referrer',
+            creditStatus: 'applied',
+        });
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    it('emails a waiting-for-upgrade status when the referrer has no subscription', async () => {
+        mocks.awardReferralCreditForActivation.mockResolvedValue({
+            id: 'credit_10',
+            referrer_account_id: 'account_referrer',
+            referrer_subscription_id: null,
+            referrer_email: 'referrer@example.com',
+            referrer_full_name: null,
+        });
+        mocks.applyEarnedReferralCredits.mockResolvedValue([]);
+        mocks.sendReferralCreditEarnedEmail.mockResolvedValue({ success: true });
+
+        const callback = scheduleAndCaptureCallback();
+        await expect(callback()).resolves.toBeUndefined();
+
+        expect(mocks.sendReferralCreditEarnedEmail).toHaveBeenCalledWith({
+            toEmail: 'referrer@example.com',
+            toName: undefined,
+            creditStatus: 'waiting_for_upgrade',
+        });
+    });
+
+    it('emails a saved status when a subscribed referrer credit could not be applied yet', async () => {
+        mocks.awardReferralCreditForActivation.mockResolvedValue({
+            id: 'credit_11',
+            referrer_account_id: 'account_referrer',
+            referrer_subscription_id: 'sub_1',
+            referrer_email: 'referrer@example.com',
+            referrer_full_name: 'Riley Referrer',
+        });
+        mocks.applyEarnedReferralCredits.mockRejectedValue(new Error('Stripe unavailable'));
+        mocks.sendReferralCreditEarnedEmail.mockResolvedValue({ success: true });
+
+        const callback = scheduleAndCaptureCallback();
+        await expect(callback()).resolves.toBeUndefined();
+
+        expect(mocks.sendReferralCreditEarnedEmail).toHaveBeenCalledWith({
+            toEmail: 'referrer@example.com',
+            toName: 'Riley Referrer',
+            creditStatus: 'saved',
+        });
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Failed to award or redeem referral credit:',
+            expect.any(Error)
+        );
+    });
+
+    it('swallows and logs earned-email failures', async () => {
+        const error = new Error('Resend unavailable');
+        mocks.awardReferralCreditForActivation.mockResolvedValue({
+            id: 'credit_12',
+            referrer_account_id: 'account_referrer',
+            referrer_subscription_id: null,
+            referrer_email: 'referrer@example.com',
+            referrer_full_name: null,
+        });
+        mocks.applyEarnedReferralCredits.mockResolvedValue([]);
+        mocks.sendReferralCreditEarnedEmail.mockRejectedValue(error);
+
+        const callback = scheduleAndCaptureCallback();
+        await expect(callback()).resolves.toBeUndefined();
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            'Failed to send referral credit earned email:',
             error
         );
     });

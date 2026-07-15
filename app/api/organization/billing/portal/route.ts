@@ -39,7 +39,7 @@ export async function POST() {
             return NextResponse.json({ error: 'No billing customer found for organization' }, { status: 400 });
         }
 
-        const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings`;
+        const returnUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?tab=billing`;
 
         const session = await stripe.billingPortal.sessions.create({
             customer: stripeCustomerId,

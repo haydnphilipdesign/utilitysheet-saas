@@ -72,8 +72,8 @@ describe('POST /api/billing/checkout referral trial', () => {
                 customer: 'cus_existing',
                 mode: 'subscription',
                 line_items: [{ price: 'price_pro', quantity: 1 }],
-                success_url: 'https://app.utility-sheet.test/dashboard/settings?session_id={CHECKOUT_SESSION_ID}',
-                cancel_url: 'https://app.utility-sheet.test/dashboard/settings',
+                success_url: 'https://app.utility-sheet.test/dashboard/settings?tab=billing&session_id={CHECKOUT_SESSION_ID}',
+                cancel_url: 'https://app.utility-sheet.test/dashboard/settings?tab=billing',
                 metadata: { account_id: 'account_referred' },
                 payment_method_collection: 'if_required',
                 subscription_data: {
@@ -128,8 +128,8 @@ describe('POST /api/billing/checkout referral trial', () => {
             customer: 'cus_new',
             mode: 'subscription',
             line_items: [{ price: 'price_pro', quantity: 1 }],
-            success_url: 'https://app.utility-sheet.test/dashboard/settings?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url: 'https://app.utility-sheet.test/dashboard/settings',
+            success_url: 'https://app.utility-sheet.test/dashboard/settings?tab=billing&session_id={CHECKOUT_SESSION_ID}',
+            cancel_url: 'https://app.utility-sheet.test/dashboard/settings?tab=billing',
             metadata: { account_id: 'account_referred' },
         });
     });
