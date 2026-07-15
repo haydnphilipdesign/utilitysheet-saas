@@ -180,8 +180,8 @@ export default function SignupPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background px-4 py-8 sm:p-4">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-slate-500/10 rounded-full blur-3xl" />
-                <div className="absolute bottom-1/4 right-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-blue-500/10 rounded-full blur-3xl" />
+                <div className="absolute top-1/4 left-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-primary/10 rounded-full blur-3xl" />
+                <div className="absolute bottom-1/4 right-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-primary/5 rounded-full blur-3xl" />
             </div>
 
             <div className="relative z-10 w-full max-w-md">
@@ -203,7 +203,7 @@ export default function SignupPage() {
                     <form onSubmit={handleSignup} data-testid="signup-form">
                         <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
                             {error && (
-                                <div className="p-2.5 sm:p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                <div role="alert" className="p-2.5 sm:p-3 text-xs sm:text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
                                     {error}
                                 </div>
                             )}
@@ -212,33 +212,37 @@ export default function SignupPage() {
                                 <Label htmlFor="fullName" className="text-foreground text-sm">Full Name</Label>
                                 <Input
                                     id="fullName"
+                                    name="name"
                                     type="text"
                                     autoComplete="name"
                                     placeholder="Jane Smith"
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
                                     required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20 h-10 sm:h-11 text-base"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
                                 />
                             </div>
                             <div className="space-y-1.5 sm:space-y-2">
                                 <Label htmlFor="email" className="text-foreground text-sm">Email</Label>
                                 <Input
                                     id="email"
+                                    name="email"
                                     type="email"
                                     inputMode="email"
                                     autoComplete="email"
+                                    spellCheck={false}
                                     placeholder="agent@realty.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20 h-10 sm:h-11 text-base"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
                                 />
                             </div>
                             <div className="space-y-1.5 sm:space-y-2">
                                 <Label htmlFor="password" className="text-foreground text-sm">Password</Label>
                                 <Input
                                     id="password"
+                                    name="new-password"
                                     type="password"
                                     autoComplete="new-password"
                                     placeholder="Min. 8 characters"
@@ -246,7 +250,7 @@ export default function SignupPage() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     minLength={8}
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20 h-10 sm:h-11 text-base"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
                                 />
                             </div>
                         </CardContent>
@@ -313,7 +317,7 @@ export default function SignupPage() {
 
                             <p className="text-xs sm:text-sm text-muted-foreground text-center">
                                 Already have an account?{' '}
-                                <Link href="/auth/login" className="text-slate-500 hover:text-slate-400 font-medium transition-colors">
+                                <Link href="/auth/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
                                     Sign in
                                 </Link>
                             </p>
@@ -321,8 +325,15 @@ export default function SignupPage() {
                     </form>
                 </Card>
 
+                <p className="mt-6 sm:mt-8 text-center text-xs sm:text-sm text-muted-foreground px-4">
+                    By continuing, you agree to our{' '}
+                    <Link href="/terms" className="text-muted-foreground hover:text-foreground underline">Terms of Service</Link>
+                    {' '}and{' '}
+                    <Link href="/privacy" className="text-muted-foreground hover:text-foreground underline">Privacy Policy</Link>
+                </p>
+
                 {/* Features */}
-                <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-3 sm:gap-4 text-center px-2">
+                <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4 text-center px-2">
                     <div className="space-y-1 sm:space-y-2">
                         <div className="text-xl sm:text-2xl">⚡</div>
                         <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Seller link first</p>

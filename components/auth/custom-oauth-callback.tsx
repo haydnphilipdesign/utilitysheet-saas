@@ -40,14 +40,14 @@ export function CustomOAuthCallback() {
                         </p>
                         <Link
                             href="/auth/login"
-                            className="mt-2 inline-flex items-center justify-center rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                            className="mt-2 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/80"
                         >
                             Back to sign in
                         </Link>
                     </>
                 ) : (
                     <>
-                        <div className="w-8 h-8 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         <p className="text-muted-foreground text-sm">Signing you in…</p>
                         <Link href="/dashboard" className="text-xs text-muted-foreground underline-offset-4 hover:underline">
                             Taking too long? Go to your dashboard

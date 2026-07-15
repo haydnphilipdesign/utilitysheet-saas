@@ -14,7 +14,7 @@ export default function InvitePage() {
     const token = params?.token;
 
     const [status, setStatus] = useState<InviteStatus>('loading');
-    const [message, setMessage] = useState<string>('Accepting invite...');
+    const [message, setMessage] = useState<string>('Accepting invite…');
 
     useEffect(() => {
         let cancelled = false;
@@ -23,7 +23,7 @@ export default function InvitePage() {
             if (!token) return;
 
             setStatus('loading');
-            setMessage('Accepting invite...');
+            setMessage('Accepting invite…');
 
             try {
                 const response = await fetch('/api/organization/invites/accept', {
@@ -45,7 +45,7 @@ export default function InvitePage() {
 
                 if (cancelled) return;
                 setStatus('success');
-                setMessage('Invite accepted! Redirecting to your dashboard...');
+                setMessage('Invite accepted! Redirecting to your dashboard…');
 
                 setTimeout(() => {
                     router.push('/dashboard');

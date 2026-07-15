@@ -327,7 +327,7 @@ export default function OnboardingPage() {
                             {finishing ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Saving...
+                                    Saving…
                                 </>
                             ) : (
                                 <>
@@ -346,7 +346,7 @@ export default function OnboardingPage() {
                     <Card className="border-border/70 bg-card/80">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-foreground">
-                                <Palette className="h-5 w-5 text-slate-600 dark:text-sky-400" />
+                                <Palette className="h-5 w-5 text-primary" />
                                 Optional setup
                             </CardTitle>
                             <CardDescription>
@@ -382,12 +382,11 @@ export default function OnboardingPage() {
                                     type="button"
                                     onClick={handleSaveBranding}
                                     disabled={savingBranding || !brandProfileId}
-                                    className="bg-slate-700 hover:bg-slate-800 text-white"
                                 >
                                     {savingBranding ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Saving...
+                                            Saving…
                                         </>
                                     ) : (
                                         'Save Branding'
@@ -435,7 +434,7 @@ export default function OnboardingPage() {
                                 {savingContact ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
+                                        Saving…
                                     </>
                                 ) : (
                                     'Save Contact Details'

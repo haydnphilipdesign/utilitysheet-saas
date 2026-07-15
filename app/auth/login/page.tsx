@@ -7,7 +7,7 @@ import { stackClientApp } from '@/lib/stack/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import {
@@ -110,22 +110,22 @@ export default function LoginPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-secondary via-background to-background px-4 py-8 sm:p-4">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-slate-500/10 rounded-full blur-3xl" />
-                <div className="absolute bottom-1/4 right-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-blue-500/10 rounded-full blur-3xl" />
+                <div className="absolute top-1/4 left-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-primary/10 rounded-full blur-3xl" />
+                <div className="absolute bottom-1/4 right-1/4 w-64 sm:w-96 h-64 sm:h-96 bg-primary/5 rounded-full blur-3xl" />
             </div>
 
             <div className="relative z-10 w-full max-w-md">
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
                     <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
-                        <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-6 w-6 sm:h-8 sm:w-8" />
+                        <img src="/logo-sm.png" alt="UtilitySheet Logo" width={32} height={32} className="h-6 w-6 sm:h-8 sm:w-8" />
                     </div>
                     <span className="text-2xl sm:text-3xl font-bold text-foreground">UtilitySheet</span>
                 </div>
 
                 <Card className="border-border bg-card/80 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="space-y-1 px-4 sm:px-6 pt-4 sm:pt-6">
-                        <CardTitle className="text-xl sm:text-2xl text-center text-foreground">Welcome back</CardTitle>
+                        <h1 className="text-xl sm:text-2xl font-medium text-center text-foreground">Welcome back</h1>
                         <CardDescription className="text-center text-muted-foreground text-sm">
                             Sign in to your account to continue
                         </CardDescription>
@@ -133,7 +133,7 @@ export default function LoginPage() {
                     <form onSubmit={handleLogin} data-testid="login-form">
                         <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
                             {error && (
-                                <div className="p-2.5 sm:p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                <div role="alert" className="p-2.5 sm:p-3 text-xs sm:text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
                                     {error}
                                 </div>
                             )}
@@ -142,26 +142,29 @@ export default function LoginPage() {
                                 <Label htmlFor="email" className="text-foreground text-sm">Email</Label>
                                 <Input
                                     id="email"
+                                    name="email"
                                     type="email"
                                     inputMode="email"
                                     autoComplete="email"
+                                    spellCheck={false}
                                     placeholder="agent@realty.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20 h-10 sm:h-11 text-base"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
                                 />
                             </div>
                             <div className="space-y-1.5 sm:space-y-2">
                                 <Label htmlFor="password" className="text-foreground text-sm">Password</Label>
                                 <Input
                                     id="password"
+                                    name="password"
                                     type="password"
                                     autoComplete="current-password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-slate-500 focus:ring-slate-500/20 h-10 sm:h-11 text-base"
+                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
                                 />
                             </div>
                         </CardContent>
@@ -175,7 +178,7 @@ export default function LoginPage() {
                                 {loading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Signing in...
+                                        Signing in…
                                     </>
                                 ) : (
                                     'Sign In'
@@ -228,7 +231,7 @@ export default function LoginPage() {
 
                             <p className="text-xs sm:text-sm text-muted-foreground text-center">
                                 Don&apos;t have an account?{' '}
-                                <Link href="/auth/signup" className="text-slate-500 hover:text-slate-400 font-medium transition-colors">
+                                <Link href="/auth/signup" className="text-primary hover:text-primary/80 font-medium transition-colors">
                                     Sign up
                                 </Link>
                             </p>
