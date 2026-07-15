@@ -94,6 +94,11 @@ type AnalyticsEventMap = {
   seller_link_email_opened: BasePayload & {
     source: string;
   };
+  referral_credit_card_viewed: BasePayload & {
+    earned_count: number;
+    applied_count: number;
+  };
+  referral_credit_link_copied: BasePayload;
   setup_dismissed: BasePayload & {
     source: string;
     destination: string;
