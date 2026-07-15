@@ -19,6 +19,11 @@ export interface AwardedReferralCredit extends ReferralCredit {
     referrer_subscription_status: string;
 }
 
+export type ReferralCreditCounts = {
+    earned: number;
+    applied: number;
+};
+
 export async function awardReferralCreditForActivation(
     referredAccountId: string
 ): Promise<AwardedReferralCredit | null> {
@@ -108,6 +113,24 @@ export async function getReferralCreditsForAccount(accountId: string): Promise<R
     `;
 
     return result as ReferralCredit[];
+}
+
+export async function getReferralCreditCountsForAccount(accountId: string): Promise<ReferralCreditCounts> {
+    if (!sql) return { earned: 0, applied: 0 };
+
+    const result = await sql`
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'earned')::int AS earned,
+            COUNT(*) FILTER (WHERE status = 'applied')::int AS applied
+        FROM referral_credits
+        WHERE referrer_account_id = ${accountId}
+    `;
+    const row = result[0];
+
+    return {
+        earned: Number(row?.earned) || 0,
+        applied: Number(row?.applied) || 0,
+    };
 }
 
 export async function getEarnedReferralCredits(accountId: string): Promise<ReferralCredit[]> {

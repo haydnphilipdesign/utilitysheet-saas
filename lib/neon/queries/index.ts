@@ -126,11 +126,13 @@ export { recordGrowthReferralEvent } from './growth-referral-events';
 export type {
     AwardedReferralCredit,
     ReferralCredit,
+    ReferralCreditCounts,
     ReferralCreditStatus,
 } from './referral-credits';
 export {
     awardReferralCreditForActivation,
     getEarnedReferralCredits,
+    getReferralCreditCountsForAccount,
     getReferralCreditsForAccount,
     getValidReferralReferrerAccountId,
     markReferralCreditApplied,

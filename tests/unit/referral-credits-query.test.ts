@@ -12,6 +12,7 @@ vi.mock('@/lib/neon/db', () => ({
 import {
     awardReferralCreditForActivation,
     getEarnedReferralCredits,
+    getReferralCreditCountsForAccount,
     getReferralCreditsForAccount,
     getValidReferralReferrerAccountId,
     markReferralCreditApplied,
@@ -112,6 +113,21 @@ describe('referral credit queries', () => {
         expect(allSql).toContain('ORDER BY earned_at DESC, id DESC');
         expect(earnedSql).toContain("status = 'earned'");
         expect(earnedSql).toContain('ORDER BY earned_at DESC, id DESC');
+    });
+
+    it('returns constant-size earned and applied counts for an account', async () => {
+        sqlTagMock.mockResolvedValue([{ earned: 2, applied: 1 }]);
+
+        await expect(getReferralCreditCountsForAccount('account_referrer')).resolves.toEqual({
+            earned: 2,
+            applied: 1,
+        });
+
+        const queryText = callSqlText(sqlTagMock.mock.calls[0]);
+        expect(queryText).toContain("COUNT(*) FILTER (WHERE status = 'earned')");
+        expect(queryText).toContain("COUNT(*) FILTER (WHERE status = 'applied')");
+        expect(queryText).toContain('WHERE referrer_account_id = ');
+        expect(queryText).not.toContain('SELECT *');
     });
 
     it('marks only an earned credit as applied and returns the updated row', async () => {

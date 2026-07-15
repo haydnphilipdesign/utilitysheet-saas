@@ -21,7 +21,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
-import { Link as LinkIcon, User, Bell, Check, Copy, CreditCard, ExternalLink, Gift, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
+import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
+import { Link as LinkIcon, User, Bell, Check, Copy, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
     ADVANCED_MODULE_DEFAULTS,
@@ -115,11 +116,6 @@ export default function SettingsPage() {
     const [intakeAdvancedModules, setIntakeAdvancedModules] = useState<AdvancedModuleKey[]>([...ADVANCED_MODULE_DEFAULTS]);
     const [intakeAdvancedModuleExclusions, setIntakeAdvancedModuleExclusions] = useState<AdvancedModuleExclusions>({});
     const [intakeSaving, setIntakeSaving] = useState(false);
-    const [referralSummary, setReferralSummary] = useState<{
-        referralLink: string;
-        counts: { earned: number; applied: number };
-    } | null>(null);
-    const referralCardViewedRef = useRef(false);
 
     const TEAM_MIN_SEATS = 3;
     const TEAM_PRICE_PER_SEAT_USD = 7;
@@ -209,42 +205,6 @@ export default function SettingsPage() {
             fetchIntakeLink();
         }
     }, [stackUser]);
-
-    useEffect(() => {
-        const fetchReferralSummary = async () => {
-            try {
-                const response = await fetch('/api/referrals');
-                if (!response.ok) return;
-
-                const data = await response.json().catch(() => null);
-                if (
-                    data &&
-                    typeof data.referralLink === 'string' &&
-                    typeof data.counts?.earned === 'number' &&
-                    typeof data.counts?.applied === 'number'
-                ) {
-                    setReferralSummary(data);
-                }
-            } catch (error) {
-                console.error('Error fetching referral summary:', error);
-            }
-        };
-
-        if (stackUser) {
-            fetchReferralSummary();
-        }
-    }, [stackUser]);
-
-    useEffect(() => {
-        if (!referralSummary || referralCardViewedRef.current) return;
-
-        referralCardViewedRef.current = true;
-        trackEvent('referral_credit_card_viewed', {
-            location: 'dashboard_settings',
-            earned_count: referralSummary.counts.earned,
-            applied_count: referralSummary.counts.applied,
-        });
-    }, [referralSummary]);
 
     const orgIsTeam = useMemo(() => activeOrganization?.subscription_status === 'team', [activeOrganization]);
     const orgIsAdmin = useMemo(() => activeOrganization?.role === 'admin', [activeOrganization]);
@@ -422,19 +382,6 @@ export default function SettingsPage() {
             toast.success('Link copied');
         } catch {
             toast.error('Failed to copy link');
-        }
-    };
-
-    const handleCopyReferralLink = async () => {
-        if (!referralSummary) return;
-        try {
-            await navigator.clipboard.writeText(referralSummary.referralLink);
-            trackEvent('referral_credit_link_copied', {
-                location: 'dashboard_settings',
-            });
-            toast.success('Referral link copied');
-        } catch {
-            toast.error('Failed to copy referral link');
         }
     };
 
@@ -993,50 +940,7 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
 
-            {referralSummary && (
-                <Card className="border-primary/20 bg-card/50">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-foreground">
-                            <Gift className="h-5 w-5 text-primary" />
-                            Give a month of Pro, get a month of Pro
-                        </CardTitle>
-                        <CardDescription className="text-muted-foreground">
-                            Share your referral link. You earn a Pro credit after the referred user receives their first real seller submission.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                            <Input
-                                value={referralSummary.referralLink}
-                                readOnly
-                                aria-label="Referral link"
-                                className="bg-muted border-input text-muted-foreground"
-                            />
-                            <Button
-                                type="button"
-                                aria-label="Copy referral link"
-                                onClick={handleCopyReferralLink}
-                                className="shrink-0"
-                            >
-                                <Copy className="mr-2 h-4 w-4" />
-                                Copy
-                            </Button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="rounded-lg border border-border bg-muted/50 p-3">
-                                <p className="text-sm font-semibold text-foreground">
-                                    {referralSummary.counts.earned} available
-                                </p>
-                            </div>
-                            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
-                                <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                                    {referralSummary.counts.applied} applied
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+            <ReferralCreditCard userId={stackUser?.id} />
 
             {/* Subscription Section */}
             <Card className="border-border bg-card/50">
