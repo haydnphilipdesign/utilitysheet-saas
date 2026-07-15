@@ -675,6 +675,11 @@ export default function DashboardPage() {
                     </Card>
                     )}
 
+                    {/* Referral program — shown once the user has real usage worth sharing */}
+                    {hasAnyRequests && (
+                        <ReferralCreditCard userId={stackUser?.id} location="dashboard" compact />
+                    )}
+
                     {/* Stats Cards — hidden for new users with zero requests to avoid empty scroll, especially on mobile */}
                     {hasAnyRequests && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -1064,11 +1069,6 @@ export default function DashboardPage() {
                             )}
                         </CardContent>
                     </Card>
-
-                    {/* Referral program — shown once the user has real usage worth sharing */}
-                    {hasAnyRequests && (
-                        <ReferralCreditCard userId={stackUser?.id} location="dashboard" compact />
-                    )}
                 </>
             )}
         </div>
