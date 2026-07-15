@@ -30,6 +30,8 @@ export async function POST() {
                 metadata: {
                     account_id: account.id,
                 },
+            }, {
+                idempotencyKey: `account-stripe-customer-${account.id}`,
             });
             stripeCustomerId = customer.id;
             await updateAccountStripeCustomer(account.id, stripeCustomerId);
@@ -48,10 +50,9 @@ export async function POST() {
             }
             : {};
 
-        // Create checkout session
-        const session = await stripe.checkout.sessions.create({
+        const checkoutSessionParams = {
             customer: stripeCustomerId,
-            mode: 'subscription',
+            mode: 'subscription' as const,
             line_items: [
                 {
                     price: STRIPE_PRO_PRICE_ID,
@@ -64,7 +65,15 @@ export async function POST() {
                 account_id: account.id,
             },
             ...referralTrialOptions,
-        });
+        };
+
+        // Stripe collapses concurrent/retried trial starts within its idempotency window;
+        // after that window expires, an abandoned checkout can be replaced by a fresh session.
+        const session = qualifiesForTrial
+            ? await stripe.checkout.sessions.create(checkoutSessionParams, {
+                idempotencyKey: `referral-trial-checkout-${account.id}-${STRIPE_PRO_PRICE_ID}`,
+            })
+            : await stripe.checkout.sessions.create(checkoutSessionParams);
 
         return NextResponse.json({ url: session.url });
     } catch (error) {

@@ -67,21 +67,26 @@ describe('POST /api/billing/checkout referral trial', () => {
             'cus_existing'
         );
         expect(mocks.createSession).toHaveBeenCalledTimes(1);
-        expect(mocks.createSession.mock.calls[0][0]).toEqual({
-            customer: 'cus_existing',
-            mode: 'subscription',
-            line_items: [{ price: 'price_pro', quantity: 1 }],
-            success_url: 'https://app.utility-sheet.test/dashboard/settings?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url: 'https://app.utility-sheet.test/dashboard/settings',
-            metadata: { account_id: 'account_referred' },
-            payment_method_collection: 'if_required',
-            subscription_data: {
-                trial_period_days: 30,
-                trial_settings: {
-                    end_behavior: { missing_payment_method: 'cancel' },
+        expect(mocks.createSession.mock.calls[0]).toEqual([
+            {
+                customer: 'cus_existing',
+                mode: 'subscription',
+                line_items: [{ price: 'price_pro', quantity: 1 }],
+                success_url: 'https://app.utility-sheet.test/dashboard/settings?session_id={CHECKOUT_SESSION_ID}',
+                cancel_url: 'https://app.utility-sheet.test/dashboard/settings',
+                metadata: { account_id: 'account_referred' },
+                payment_method_collection: 'if_required',
+                subscription_data: {
+                    trial_period_days: 30,
+                    trial_settings: {
+                        end_behavior: { missing_payment_method: 'cancel' },
+                    },
                 },
             },
-        });
+            {
+                idempotencyKey: 'referral-trial-checkout-account_referred-price_pro',
+            },
+        ]);
     });
 
     it('creates a customer and omits all trial fields when the account is not qualified', async () => {
@@ -97,11 +102,16 @@ describe('POST /api/billing/checkout referral trial', () => {
         await expect(response.json()).resolves.toEqual({
             url: 'https://checkout.stripe.test/session',
         });
-        expect(mocks.createCustomer).toHaveBeenCalledWith({
-            email: 'buyer@example.com',
-            name: 'Buyer',
-            metadata: { account_id: 'account_referred' },
-        });
+        expect(mocks.createCustomer).toHaveBeenCalledWith(
+            {
+                email: 'buyer@example.com',
+                name: 'Buyer',
+                metadata: { account_id: 'account_referred' },
+            },
+            {
+                idempotencyKey: 'account-stripe-customer-account_referred',
+            }
+        );
         expect(mocks.updateAccountStripeCustomer).toHaveBeenCalledWith(
             'account_referred',
             'cus_new'
@@ -113,6 +123,7 @@ describe('POST /api/billing/checkout referral trial', () => {
 
         const payload = mocks.createSession.mock.calls[0][0];
         expect(mocks.createSession).toHaveBeenCalledTimes(1);
+        expect(mocks.createSession.mock.calls[0]).toHaveLength(1);
         expect(payload).toEqual({
             customer: 'cus_new',
             mode: 'subscription',
@@ -121,5 +132,120 @@ describe('POST /api/billing/checkout referral trial', () => {
             cancel_url: 'https://app.utility-sheet.test/dashboard/settings',
             metadata: { account_id: 'account_referred' },
         });
+    });
+
+    it('reuses one trial session for concurrent qualified existing-customer requests', async () => {
+        const sessionsByIdempotencyKey = new Map<string, { url: string }>();
+        let logicalSessionCreates = 0;
+        mocks.qualifiesForReferralTrial.mockResolvedValue(true);
+        mocks.createSession.mockImplementation(async (_payload, options) => {
+            const idempotencyKey = options?.idempotencyKey;
+            if (!idempotencyKey) {
+                throw new Error('Expected a Checkout Session idempotency key');
+            }
+
+            let session = sessionsByIdempotencyKey.get(idempotencyKey);
+            if (!session) {
+                logicalSessionCreates += 1;
+                session = { url: `https://checkout.stripe.test/session-${logicalSessionCreates}` };
+                sessionsByIdempotencyKey.set(idempotencyKey, session);
+            }
+            return session;
+        });
+
+        const responses = await Promise.all([POST(), POST()]);
+        const bodies = await Promise.all(responses.map((response) => response.json()));
+
+        expect(bodies).toEqual([
+            { url: 'https://checkout.stripe.test/session-1' },
+            { url: 'https://checkout.stripe.test/session-1' },
+        ]);
+        expect(logicalSessionCreates).toBe(1);
+        expect(mocks.createSession).toHaveBeenCalledTimes(2);
+        expect(mocks.createSession.mock.calls.map((call) => call[1])).toEqual([
+            { idempotencyKey: 'referral-trial-checkout-account_referred-price_pro' },
+            { idempotencyKey: 'referral-trial-checkout-account_referred-price_pro' },
+        ]);
+    });
+
+    it('reuses one customer and trial session for concurrent qualified new-customer requests', async () => {
+        const customersByIdempotencyKey = new Map<string, { id: string }>();
+        const sessionsByIdempotencyKey = new Map<string, { url: string }>();
+        let logicalCustomerCreates = 0;
+        let logicalSessionCreates = 0;
+        mocks.getOrCreateAccount.mockResolvedValue({
+            id: 'account_referred',
+            stripe_customer_id: null,
+        });
+        mocks.qualifiesForReferralTrial.mockResolvedValue(true);
+        mocks.createCustomer.mockImplementation(async (_params, options) => {
+            const idempotencyKey = options?.idempotencyKey;
+            if (!idempotencyKey) {
+                throw new Error('Expected a Customer idempotency key');
+            }
+
+            let customer = customersByIdempotencyKey.get(idempotencyKey);
+            if (!customer) {
+                logicalCustomerCreates += 1;
+                customer = { id: `cus_new_${logicalCustomerCreates}` };
+                customersByIdempotencyKey.set(idempotencyKey, customer);
+            }
+            return customer;
+        });
+        mocks.createSession.mockImplementation(async (_payload, options) => {
+            const idempotencyKey = options?.idempotencyKey;
+            if (!idempotencyKey) {
+                throw new Error('Expected a Checkout Session idempotency key');
+            }
+
+            let session = sessionsByIdempotencyKey.get(idempotencyKey);
+            if (!session) {
+                logicalSessionCreates += 1;
+                session = { url: `https://checkout.stripe.test/session-${logicalSessionCreates}` };
+                sessionsByIdempotencyKey.set(idempotencyKey, session);
+            }
+            return session;
+        });
+
+        const responses = await Promise.all([POST(), POST()]);
+        const bodies = await Promise.all(responses.map((response) => response.json()));
+
+        expect(bodies).toEqual([
+            { url: 'https://checkout.stripe.test/session-1' },
+            { url: 'https://checkout.stripe.test/session-1' },
+        ]);
+        expect(logicalCustomerCreates).toBe(1);
+        expect(logicalSessionCreates).toBe(1);
+        expect(mocks.createCustomer).toHaveBeenCalledTimes(2);
+        expect(mocks.createCustomer.mock.calls.map((call) => call[1])).toEqual([
+            { idempotencyKey: 'account-stripe-customer-account_referred' },
+            { idempotencyKey: 'account-stripe-customer-account_referred' },
+        ]);
+        expect(mocks.updateAccountStripeCustomer).toHaveBeenCalledTimes(2);
+        expect(mocks.updateAccountStripeCustomer).toHaveBeenNthCalledWith(
+            1,
+            'account_referred',
+            'cus_new_1'
+        );
+        expect(mocks.updateAccountStripeCustomer).toHaveBeenNthCalledWith(
+            2,
+            'account_referred',
+            'cus_new_1'
+        );
+        expect(mocks.createSession.mock.calls.map((call) => call[1])).toEqual([
+            { idempotencyKey: 'referral-trial-checkout-account_referred-price_pro' },
+            { idempotencyKey: 'referral-trial-checkout-account_referred-price_pro' },
+        ]);
+    });
+
+    it('omits trial fields and a stable session key when prior history is unqualified', async () => {
+        mocks.qualifiesForReferralTrial.mockResolvedValue(false);
+
+        await POST();
+
+        expect(mocks.createSession).toHaveBeenCalledTimes(1);
+        expect(mocks.createSession.mock.calls[0]).toHaveLength(1);
+        expect(mocks.createSession.mock.calls[0][0]).not.toHaveProperty('payment_method_collection');
+        expect(mocks.createSession.mock.calls[0][0]).not.toHaveProperty('subscription_data');
     });
 });
