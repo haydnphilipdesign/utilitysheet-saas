@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, getOrganizationById, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, getOrganizationById, getIntakeLinkByAccountId, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import { hasValidContact, resolveContact } from '@/lib/providers/contact-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
@@ -721,6 +721,13 @@ export async function POST(
             if (notificationPrefs.seller_submissions !== false) {
                 const shouldAttachPdf = !accessLocked && notificationPrefs.seller_submission_pdf_attachment !== false;
                 try {
+                    // Mirrors the packet page's white-label rule: only free-plan
+                    // workspaces carry the UtilitySheet referral footer.
+                    const showReferralFooter = !isPaid;
+                    const intakeLink = showReferralFooter
+                        ? await getIntakeLinkByAccountId(requestData.account_id).catch(() => null)
+                        : null;
+
                     await sendTCCompletionNotificationEmail({
                         tcEmail: account.email,
                         tcName: account.full_name || undefined,
@@ -728,6 +735,8 @@ export async function POST(
                         sellerName: accessLocked ? undefined : requestData.seller_name || undefined,
                         requestId: requestData.id,
                         attachPdf: shouldAttachPdf,
+                        showReferralFooter,
+                        referralCode: intakeLink?.slug || null,
                     });
                 } catch (emailError) {
                     console.error('Failed to send TC completion notification email:', emailError);

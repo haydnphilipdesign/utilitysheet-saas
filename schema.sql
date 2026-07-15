@@ -264,6 +264,16 @@ CREATE TABLE IF NOT EXISTS growth_attributions (
     CHECK (char_length(landing_path) <= 200)
 );
 
+CREATE TABLE IF NOT EXISTS growth_referral_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_type TEXT NOT NULL CHECK (event_type IN ('impression', 'click')),
+    surface TEXT NOT NULL DEFAULT 'packet_share_page',
+    referral_code TEXT,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (char_length(surface) <= 40),
+    CHECK (char_length(referral_code) <= 60)
+);
+
 CREATE TABLE IF NOT EXISTS testimonial_outreach_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
@@ -314,6 +324,8 @@ CREATE INDEX IF NOT EXISTS idx_activation_outreach_logs_account_campaign_stage O
 CREATE INDEX IF NOT EXISTS idx_activation_outreach_logs_sent_at ON activation_outreach_logs(sent_at DESC);
 CREATE INDEX IF NOT EXISTS idx_growth_attributions_source ON growth_attributions(source, captured_at DESC);
 CREATE INDEX IF NOT EXISTS idx_growth_attributions_referral_code ON growth_attributions(referral_code) WHERE referral_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_growth_referral_events_type_time ON growth_referral_events(event_type, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_growth_referral_events_referral_code ON growth_referral_events(referral_code) WHERE referral_code IS NOT NULL;
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

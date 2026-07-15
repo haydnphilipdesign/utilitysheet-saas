@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { toActivationFunnelStats, toGrowthSourceStats } from '@/lib/admin/activation-funnel';
+import { toActivationFunnelStats, toGrowthSourceStats, toReferralLoopStats } from '@/lib/admin/activation-funnel';
 
 describe('activation funnel summary', () => {
     it('computes conversion counts and rates from aggregate rows', () => {
@@ -61,5 +61,34 @@ describe('activation funnel summary', () => {
             { source: 'facebook', signups: 20, activated: 8, activationRate: 40 },
             { source: 'unknown', signups: 5, activated: 1, activationRate: 20 },
         ]);
+    });
+
+    it('computes referral loop conversion rates stage by stage', () => {
+        expect(toReferralLoopStats({
+            impressions: 500,
+            clicks: 12,
+            signups: 3,
+            activated: 1,
+        })).toEqual({
+            impressions: 500,
+            clicks: 12,
+            signups: 3,
+            activated: 1,
+            clickRate: 2,
+            signupRate: 25,
+            activationRate: 33,
+        });
+    });
+
+    it('handles an empty referral loop without dividing by zero', () => {
+        expect(toReferralLoopStats({})).toEqual({
+            impressions: 0,
+            clicks: 0,
+            signups: 0,
+            activated: 0,
+            clickRate: 0,
+            signupRate: 0,
+            activationRate: 0,
+        });
     });
 });

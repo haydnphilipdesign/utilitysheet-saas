@@ -119,3 +119,6 @@ export {
 } from './activation-outreach';
 
 export { saveFirstTouchGrowthAttribution } from './growth-attribution';
+
+export type { GrowthReferralEventType, GrowthReferralSurface } from './growth-referral-events';
+export { recordGrowthReferralEvent } from './growth-referral-events';

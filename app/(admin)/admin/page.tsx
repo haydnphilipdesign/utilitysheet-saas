@@ -2,9 +2,9 @@ import { sql } from '@/lib/neon/db';
 import { StatsCard } from '@/components/admin/StatsCard';
 import { Overview } from '@/components/admin/Overview';
 import { RecentActivity } from '@/components/admin/RecentActivity';
-import { Users, FileText, Building2, Activity, ClipboardCheck, Link2, TriangleAlert } from 'lucide-react';
+import { Users, FileText, Building2, Activity, ClipboardCheck, Eye, Link2, MousePointerClick, TriangleAlert, UserPlus } from 'lucide-react';
 import { AdminPageHeader } from '@/components/admin/primitives';
-import { getActivationFunnelStats, getGrowthSourceStats } from '@/lib/admin/activation-funnel';
+import { getActivationFunnelStats, getGrowthSourceStats, getReferralLoopStats } from '@/lib/admin/activation-funnel';
 import { formatAdminDate } from '@/lib/admin/date-format';
 import { getLatestRequestsForUsers } from '@/lib/admin';
 
@@ -23,6 +23,7 @@ async function getStats() {
         recentRequests,
         activationFunnel,
         growthSources,
+        referralLoop,
     ] = await Promise.all([
         sql`SELECT count(*) as count FROM accounts`,
         sql`SELECT count(*) as count FROM requests`,
@@ -38,6 +39,7 @@ async function getStats() {
         `,
         getActivationFunnelStats(),
         getGrowthSourceStats(),
+        getReferralLoopStats(),
     ]);
 
     const latestRequestsByUser = await getLatestRequestsForUsers(
@@ -67,6 +69,7 @@ async function getStats() {
         })),
         activationFunnel,
         growthSources,
+        referralLoop,
     };
 }
 
@@ -211,6 +214,43 @@ export default async function AdminDashboardPage() {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {stats.referralLoop && (
+                <div className="space-y-3">
+                    <div>
+                        <h2 className="text-lg font-semibold">Closing Exposure Loop</h2>
+                        <p className="text-sm text-muted-foreground">
+                            Last 90 days of packet-page referral impressions, clicks, referred signups, and activations.
+                        </p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <StatsCard
+                            title="CTA Impressions"
+                            value={stats.referralLoop.impressions.toString()}
+                            description="referral CTA views on free packet pages"
+                            icon={Eye}
+                        />
+                        <StatsCard
+                            title="CTA Clicks"
+                            value={stats.referralLoop.clicks.toString()}
+                            description={`${stats.referralLoop.clickRate}% of impressions clicked through`}
+                            icon={MousePointerClick}
+                        />
+                        <StatsCard
+                            title="Referred Signups"
+                            value={stats.referralLoop.signups.toString()}
+                            description={`${stats.referralLoop.signupRate}% of clicks became accounts`}
+                            icon={UserPlus}
+                        />
+                        <StatsCard
+                            title="Referred Activated"
+                            value={stats.referralLoop.activated.toString()}
+                            description={`${stats.referralLoop.activationRate}% of referred signups received a live submission`}
+                            icon={ClipboardCheck}
+                        />
                     </div>
                 </div>
             )}

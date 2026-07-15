@@ -837,6 +837,13 @@ interface SendTCCompletionNotificationEmailParams {
     sellerName?: string;
     requestId: string;
     attachPdf?: boolean;
+    /**
+     * Renders the "collected with UtilitySheet" referral footer. Only enabled for
+     * free-plan workspaces so paid white-label output stays free of UtilitySheet
+     * branding when these emails are forwarded across a closing.
+     */
+    showReferralFooter?: boolean;
+    referralCode?: string | null;
 }
 
 /**
@@ -849,6 +856,8 @@ export async function sendTCCompletionNotificationEmail({
     sellerName,
     requestId,
     attachPdf = false,
+    showReferralFooter = false,
+    referralCode = null,
 }: SendTCCompletionNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
     // Construct the dashboard URL to view the completed request
     const baseUrl = getAppBaseUrl();
@@ -861,6 +870,9 @@ export async function sendTCCompletionNotificationEmail({
         propertyAddress,
         sellerName,
         dashboardUrl,
+        referralFooterUrl: showReferralFooter
+            ? buildCompletionReferralFooterUrl(baseUrl, referralCode)
+            : null,
     });
 
     try {
@@ -928,11 +940,25 @@ export async function sendTCCompletionNotificationEmail({
     }
 }
 
+function buildCompletionReferralFooterUrl(baseUrl: string, referralCode: string | null): string {
+    const params = new URLSearchParams({
+        utm_source: 'utilitysheet_email',
+        utm_medium: 'product_referral',
+        utm_campaign: 'transaction_exposure',
+        utm_content: 'completion-email',
+    });
+    if (referralCode) {
+        params.set('ref', referralCode);
+    }
+    return `${baseUrl}/from-a-closing?${params.toString()}`;
+}
+
 interface GenerateTCCompletionHtmlParams {
     tcName?: string;
     propertyAddress: string;
     sellerName?: string;
     dashboardUrl: string;
+    referralFooterUrl?: string | null;
 }
 
 function generateTCCompletionNotificationHtml({
@@ -940,9 +966,18 @@ function generateTCCompletionNotificationHtml({
     propertyAddress,
     sellerName,
     dashboardUrl,
+    referralFooterUrl = null,
 }: GenerateTCCompletionHtmlParams): string {
     const greeting = tcName ? `Hi ${tcName},` : 'Hello,';
     const sellerMention = sellerName ? `${sellerName} has` : 'The seller has';
+    const referralFooterHtml = referralFooterUrl
+        ? `
+                            <p style="margin: 0 0 8px; color: #6b7280; font-size: 12px; line-height: 1.6;">
+                                This utility sheet was collected automatically with UtilitySheet.
+                                Coordinating a closing?
+                                <a href="${referralFooterUrl}" style="color: #475569; font-weight: 600;">Create your own free seller utility link</a>.
+                            </p>`
+        : '';
 
     return `
 <!DOCTYPE html>
@@ -1022,7 +1057,7 @@ function generateTCCompletionNotificationHtml({
                     
                     <!-- Footer -->
                     <tr>
-                        <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+                        <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">${referralFooterHtml}
                             <p style="margin: 0; color: #9ca3af; font-size: 12px;">
                                 This email was sent by UtilitySheet.
                             </p>

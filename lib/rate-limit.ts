@@ -171,6 +171,24 @@ export const brandingUploadRatelimit: RateLimitPolicy = {
     prefix: 'ratelimit:branding-upload',
 };
 
+/**
+ * Rate limiter for anonymous growth referral events (packet page impressions/clicks)
+ * Limit: 30 events per minute per identifier (typically IP)
+ */
+export const growthReferralEventRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(30, "60 s"),
+            analytics: true,
+            prefix: "ratelimit:growth-referral",
+        })
+        : null,
+    limit: 30,
+    windowMs: 60 * 1000,
+    prefix: 'ratelimit:growth-referral',
+};
+
 const memoryRateLimit = new Map<string, { count: number; resetAt: number }>();
 
 /**

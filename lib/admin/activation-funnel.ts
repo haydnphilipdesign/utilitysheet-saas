@@ -22,6 +22,13 @@ type GrowthSourceAggregateRow = {
     activated?: number | string | null;
 };
 
+type ReferralLoopAggregateRow = {
+    impressions?: number | string | null;
+    clicks?: number | string | null;
+    signups?: number | string | null;
+    activated?: number | string | null;
+};
+
 export type ActivationFunnelStats = {
     totalAccounts: number;
     dashboardReady: number;
@@ -46,6 +53,16 @@ export type GrowthSourceStats = {
     source: string;
     signups: number;
     activated: number;
+    activationRate: number;
+};
+
+export type ReferralLoopStats = {
+    impressions: number;
+    clicks: number;
+    signups: number;
+    activated: number;
+    clickRate: number;
+    signupRate: number;
     activationRate: number;
 };
 
@@ -104,6 +121,23 @@ export function toGrowthSourceStats(rows: GrowthSourceAggregateRow[]): GrowthSou
             activationRate: percent(activated, signups),
         };
     });
+}
+
+export function toReferralLoopStats(row: ReferralLoopAggregateRow): ReferralLoopStats {
+    const impressions = asCount(row.impressions);
+    const clicks = asCount(row.clicks);
+    const signups = asCount(row.signups);
+    const activated = asCount(row.activated);
+
+    return {
+        impressions,
+        clicks,
+        signups,
+        activated,
+        clickRate: percent(clicks, impressions),
+        signupRate: percent(signups, clicks),
+        activationRate: percent(activated, signups),
+    };
 }
 
 export async function getActivationFunnelStats(): Promise<ActivationFunnelStats | null> {
@@ -208,4 +242,52 @@ export async function getGrowthSourceStats(): Promise<GrowthSourceStats[]> {
     `;
 
     return toGrowthSourceStats(result);
+}
+
+export async function getReferralLoopStats(): Promise<ReferralLoopStats | null> {
+    if (!sql) return null;
+
+    try {
+        const result = await sql`
+            WITH events AS (
+                SELECT
+                    COUNT(*) FILTER (WHERE event_type = 'impression')::int AS impressions,
+                    COUNT(*) FILTER (WHERE event_type = 'click')::int AS clicks
+                FROM growth_referral_events
+                WHERE occurred_at >= NOW() - INTERVAL '90 days'
+            ),
+            referred_accounts AS (
+                SELECT ga.account_id
+                FROM growth_attributions ga
+                JOIN accounts a ON a.id = ga.account_id
+                WHERE ga.medium = 'product_referral'
+                  AND a.role = 'user'
+                  AND a.created_at >= NOW() - INTERVAL '90 days'
+            ),
+            activated_accounts AS (
+                SELECT DISTINCT account_id
+                FROM requests
+                WHERE status = 'submitted'
+                  AND deleted_at IS NULL
+                  AND COALESCE(is_demo, FALSE) = FALSE
+            )
+            SELECT
+                e.impressions,
+                e.clicks,
+                (SELECT COUNT(*)::int FROM referred_accounts) AS signups,
+                (
+                    SELECT COUNT(*)::int
+                    FROM referred_accounts ra
+                    JOIN activated_accounts aa ON aa.account_id = ra.account_id
+                ) AS activated
+            FROM events e
+        `;
+
+        return toReferralLoopStats(result[0] || {});
+    } catch (error) {
+        // The growth_referral_events table may not exist until its migration runs;
+        // the admin dashboard should render without this panel rather than fail.
+        console.error('Failed to load referral loop stats:', error);
+        return null;
+    }
 }
