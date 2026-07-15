@@ -864,6 +864,44 @@ export default function SettingsPage() {
 
                     <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
+                            <Label htmlFor="intakeSlug" className="text-foreground">Branded link</Label>
+                            {!intakeCanCustomize && (
+                                <Badge variant="outline">Pro / Teams</Badge>
+                            )}
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div className="flex-1 space-y-1">
+                                <Input
+                                    id="intakeSlug"
+                                    value={intakeSlugDraft}
+                                    onChange={(e) => setIntakeSlugDraft(e.target.value)}
+                                    placeholder="your-name"
+                                    className="bg-background/50 border-input text-foreground"
+                                    disabled={!intakeCanCustomize || intakeSaving}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Lowercase letters, numbers, and dashes only.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                onClick={handleSaveIntakeSlug}
+                                disabled={!intakeCanCustomize || intakeSaving || intakeSlugDraft.trim().length < 3}
+                            >
+                                {intakeSaving ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Save className="mr-2 h-4 w-4" />
+                                )}
+                                Save
+                            </Button>
+                        </div>
+                    </div>
+
+                    <Separator className="bg-border" />
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
                             <Label htmlFor="defaultPacketMode" className="text-foreground">Reusable link default mode</Label>
                             {!intakeCanCustomize && <Badge variant="outline">Pro / Teams</Badge>}
                         </div>
@@ -956,44 +994,6 @@ export default function SettingsPage() {
                             )}
                             Save Mode Settings
                         </Button>
-                    </div>
-
-                    <Separator className="bg-border" />
-
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                            <Label htmlFor="intakeSlug" className="text-foreground">Branded link</Label>
-                            {!intakeCanCustomize && (
-                                <Badge variant="outline">Pro / Teams</Badge>
-                            )}
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                            <div className="flex-1 space-y-1">
-                                <Input
-                                    id="intakeSlug"
-                                    value={intakeSlugDraft}
-                                    onChange={(e) => setIntakeSlugDraft(e.target.value)}
-                                    placeholder="your-name"
-                                    className="bg-background/50 border-input text-foreground"
-                                    disabled={!intakeCanCustomize || intakeSaving}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Lowercase letters, numbers, and dashes only.
-                                </p>
-                            </div>
-                            <Button
-                                type="button"
-                                onClick={handleSaveIntakeSlug}
-                                disabled={!intakeCanCustomize || intakeSaving || intakeSlugDraft.trim().length < 3}
-                            >
-                                {intakeSaving ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Save className="mr-2 h-4 w-4" />
-                                )}
-                                Save
-                            </Button>
-                        </div>
                     </div>
 
                     <Separator className="bg-border" />
