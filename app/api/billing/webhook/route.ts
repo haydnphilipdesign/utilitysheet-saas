@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe/client';
-import { STRIPE_TEAMS_PRICE_ID } from '@/lib/stripe/client';
+import { stripe, STRIPE_TEAMS_PRICE_ID } from '@/lib/stripe/client';
 import {
     updateAccountSubscription,
     getAccountByStripeCustomerId,
@@ -14,10 +13,29 @@ function isPaidStripeStatus(status: Stripe.Subscription.Status) {
     return status === 'active' || status === 'trialing';
 }
 
-function getSeatQuantityFromSubscription(subscription: Stripe.Subscription) {
+function getExpandableId(value: string | { id: string } | null): string | null {
+    if (typeof value === 'string') {
+        return value || null;
+    }
+
+    return value?.id || null;
+}
+
+function getRelevantSubscriptionItem(
+    subscription: Stripe.Subscription,
+    priceId = ''
+): Stripe.SubscriptionItem | undefined {
     const items = subscription.items?.data || [];
-    const match = STRIPE_TEAMS_PRICE_ID ? items.find((i) => i.price?.id === STRIPE_TEAMS_PRICE_ID) : items[0];
-    const qty = match?.quantity;
+    return priceId ? items.find((item) => item.price?.id === priceId) : items[0];
+}
+
+function getSubscriptionEndsAt(subscription: Stripe.Subscription, priceId = ''): Date | null {
+    const periodEnd = getRelevantSubscriptionItem(subscription, priceId)?.current_period_end;
+    return periodEnd ? new Date(periodEnd * 1000) : null;
+}
+
+function getSeatQuantityFromSubscription(subscription: Stripe.Subscription) {
+    const qty = getRelevantSubscriptionItem(subscription, STRIPE_TEAMS_PRICE_ID)?.quantity;
     return typeof qty === 'number' ? qty : null;
 }
 
@@ -37,27 +55,29 @@ export async function POST(request: Request) {
         let event: Stripe.Event;
         try {
             event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-        } catch (err: any) {
-            console.error('Webhook signature verification failed:', err.message);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown verification error';
+            console.error('Webhook signature verification failed:', message);
             return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
         }
 
         switch (event.type) {
             case 'checkout.session.completed': {
                 const session = event.data.object as Stripe.Checkout.Session;
-                if (session.mode === 'subscription' && session.customer) {
-                    const customerId = typeof session.customer === 'string'
-                        ? session.customer
-                        : session.customer.id;
+                if (session.mode === 'subscription') {
+                    const customerId = getExpandableId(session.customer);
+                    const subscriptionId = getExpandableId(session.subscription);
+                    if (!customerId || !subscriptionId) {
+                        throw new Error('Subscription checkout session is missing customer or subscription ID');
+                    }
 
                     const account = await getAccountByStripeCustomerId(customerId);
                     if (account) {
-                        const subscriptionResponse = await stripe.subscriptions.retrieve(session.subscription as string);
-                        const periodEnd = (subscriptionResponse as any).current_period_end;
+                        const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId);
                         await updateAccountSubscription(account.id, {
                             subscriptionStatus: 'pro',
                             subscriptionId: subscriptionResponse.id,
-                            subscriptionEndsAt: periodEnd ? new Date(periodEnd * 1000) : null,
+                            subscriptionEndsAt: getSubscriptionEndsAt(subscriptionResponse),
                         });
                         await applyEarnedReferralCredits(account.id, {
                             requireActiveSubscription: false,
@@ -68,14 +88,16 @@ export async function POST(request: Request) {
 
                     const organization = await getOrganizationByStripeCustomerId(customerId);
                     if (organization) {
-                        const subscriptionResponse = await stripe.subscriptions.retrieve(session.subscription as string);
-                        const periodEnd = (subscriptionResponse as any).current_period_end;
+                        const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId);
                         const seatQuantity = getSeatQuantityFromSubscription(subscriptionResponse);
 
                         await updateOrganizationSubscription(organization.id, {
                             subscriptionStatus: isPaidStripeStatus(subscriptionResponse.status) ? 'team' : 'free',
                             subscriptionId: subscriptionResponse.id,
-                            subscriptionEndsAt: periodEnd ? new Date(periodEnd * 1000) : null,
+                            subscriptionEndsAt: getSubscriptionEndsAt(
+                                subscriptionResponse,
+                                STRIPE_TEAMS_PRICE_ID
+                            ),
                             seatQuantity,
                         });
                         console.log(`Activated Teams subscription for organization ${organization.id}`);
@@ -95,11 +117,10 @@ export async function POST(request: Request) {
                     // Map Stripe status to our Plan type ('free' | 'pro')
                     const status = isPaidStripeStatus(subscription.status) ? 'pro' : 'free';
 
-                    const periodEnd = (subscription as any).current_period_end;
                     await updateAccountSubscription(account.id, {
                         subscriptionStatus: status,
                         subscriptionId: subscription.id,
-                        subscriptionEndsAt: periodEnd ? new Date(periodEnd * 1000) : null,
+                        subscriptionEndsAt: getSubscriptionEndsAt(subscription),
                     });
                     console.log(`Updated subscription status to ${status} for account ${account.id}`);
                     break;
@@ -108,13 +129,15 @@ export async function POST(request: Request) {
                 const organization = await getOrganizationByStripeCustomerId(customerId);
                 if (organization) {
                     const status = isPaidStripeStatus(subscription.status) ? 'team' : 'free';
-                    const periodEnd = (subscription as any).current_period_end;
                     const seatQuantity = getSeatQuantityFromSubscription(subscription);
 
                     await updateOrganizationSubscription(organization.id, {
                         subscriptionStatus: status,
                         subscriptionId: subscription.id,
-                        subscriptionEndsAt: periodEnd ? new Date(periodEnd * 1000) : null,
+                        subscriptionEndsAt: getSubscriptionEndsAt(
+                            subscription,
+                            STRIPE_TEAMS_PRICE_ID
+                        ),
                         seatQuantity,
                     });
                     console.log(`Updated Teams subscription status to ${status} for organization ${organization.id}`);

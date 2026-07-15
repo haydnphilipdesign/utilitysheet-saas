@@ -65,9 +65,19 @@ const checkoutEvent = {
 const subscription = {
     id: 'sub_checkout',
     status: 'active',
-    current_period_end: 1_800_000_000,
     items: {
-        data: [{ price: { id: 'price_teams' }, quantity: 7 }],
+        data: [
+            {
+                current_period_end: 1_800_000_000,
+                price: { id: 'price_pro' },
+                quantity: 1,
+            },
+            {
+                current_period_end: 1_900_000_000,
+                price: { id: 'price_teams' },
+                quantity: 7,
+            },
+        ],
     },
 };
 
@@ -127,7 +137,7 @@ describe('POST /api/billing/webhook referral credits', () => {
         expect(mocks.updateOrganizationSubscription).toHaveBeenCalledWith('organization_1', {
             subscriptionStatus: 'team',
             subscriptionId: 'sub_checkout',
-            subscriptionEndsAt: new Date(1_800_000_000 * 1000),
+            subscriptionEndsAt: new Date(1_900_000_000 * 1000),
             seatQuantity: 7,
         });
         expect(mocks.applyEarnedReferralCredits).not.toHaveBeenCalled();
@@ -145,6 +155,57 @@ describe('POST /api/billing/webhook referral credits', () => {
             'account_1',
             { requireActiveSubscription: false }
         );
+    });
+
+    it('normalizes expanded checkout customer and subscription objects to IDs', async () => {
+        mocks.constructEvent.mockReturnValue({
+            type: 'checkout.session.completed',
+            data: {
+                object: {
+                    mode: 'subscription',
+                    customer: { id: 'cus_expanded' },
+                    subscription: { id: 'sub_expanded' },
+                },
+            },
+        });
+        mocks.retrieveSubscription.mockResolvedValue({
+            ...subscription,
+            id: 'sub_expanded',
+        });
+
+        const response = await POST(makeWebhookRequest());
+
+        expect(response.status).toBe(200);
+        expect(mocks.getAccountByStripeCustomerId).toHaveBeenCalledWith('cus_expanded');
+        expect(mocks.retrieveSubscription).toHaveBeenCalledWith('sub_expanded');
+        expect(mocks.updateAccountSubscription).toHaveBeenCalledWith('account_1', {
+            subscriptionStatus: 'pro',
+            subscriptionId: 'sub_expanded',
+            subscriptionEndsAt: new Date(1_800_000_000 * 1000),
+        });
+    });
+
+    it.each([
+        ['customer', { customer: null, subscription: 'sub_checkout' }],
+        ['subscription', { customer: 'cus_checkout', subscription: null }],
+    ])('returns 500 when subscription checkout is missing its %s ID', async (_field, ids) => {
+        mocks.constructEvent.mockReturnValue({
+            type: 'checkout.session.completed',
+            data: {
+                object: {
+                    mode: 'subscription',
+                    ...ids,
+                },
+            },
+        });
+
+        const response = await POST(makeWebhookRequest());
+
+        expect(response.status).toBe(500);
+        await expect(response.json()).resolves.toEqual({ error: 'Webhook handler failed' });
+        expect(mocks.getAccountByStripeCustomerId).not.toHaveBeenCalled();
+        expect(mocks.retrieveSubscription).not.toHaveBeenCalled();
+        expect(mocks.applyEarnedReferralCredits).not.toHaveBeenCalled();
     });
 
     it.each(['customer.subscription.updated', 'customer.subscription.deleted']) (
