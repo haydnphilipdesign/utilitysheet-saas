@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
     createCustomer: vi.fn(),
@@ -35,6 +35,7 @@ import { POST } from '@/app/api/billing/checkout/route';
 describe('POST /api/billing/checkout referral trial', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.utility-sheet.test');
         mocks.getUser.mockResolvedValue({
             id: 'user_1',
             primaryEmail: 'buyer@example.com',
@@ -46,6 +47,10 @@ describe('POST /api/billing/checkout referral trial', () => {
         });
         mocks.qualifiesForReferralTrial.mockResolvedValue(false);
         mocks.createSession.mockResolvedValue({ url: 'https://checkout.stripe.test/session' });
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
     });
 
     it('adds the exact referral trial settings for a qualified existing customer', async () => {
@@ -61,8 +66,14 @@ describe('POST /api/billing/checkout referral trial', () => {
             'account_referred',
             'cus_existing'
         );
-        expect(mocks.createSession).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mocks.createSession).toHaveBeenCalledTimes(1);
+        expect(mocks.createSession.mock.calls[0][0]).toEqual({
             customer: 'cus_existing',
+            mode: 'subscription',
+            line_items: [{ price: 'price_pro', quantity: 1 }],
+            success_url: 'https://app.utility-sheet.test/dashboard/settings?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url: 'https://app.utility-sheet.test/dashboard/settings',
+            metadata: { account_id: 'account_referred' },
             payment_method_collection: 'if_required',
             subscription_data: {
                 trial_period_days: 30,
@@ -70,7 +81,7 @@ describe('POST /api/billing/checkout referral trial', () => {
                     end_behavior: { missing_payment_method: 'cancel' },
                 },
             },
-        }));
+        });
     });
 
     it('creates a customer and omits all trial fields when the account is not qualified', async () => {
@@ -101,12 +112,13 @@ describe('POST /api/billing/checkout referral trial', () => {
         );
 
         const payload = mocks.createSession.mock.calls[0][0];
-        expect(payload).not.toHaveProperty('payment_method_collection');
-        expect(payload).not.toHaveProperty('subscription_data');
-        expect(payload).toMatchObject({
+        expect(mocks.createSession).toHaveBeenCalledTimes(1);
+        expect(payload).toEqual({
             customer: 'cus_new',
             mode: 'subscription',
             line_items: [{ price: 'price_pro', quantity: 1 }],
+            success_url: 'https://app.utility-sheet.test/dashboard/settings?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url: 'https://app.utility-sheet.test/dashboard/settings',
             metadata: { account_id: 'account_referred' },
         });
     });
