@@ -317,7 +317,10 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
     }
 
     const forceShowPoweredBy = !isPro;
-    const intakeLink = forceShowPoweredBy
+    // Paid accounts can voluntarily keep UtilitySheet branding on their
+    // deliverable; when they do, their packet carries the referral path too.
+    const showsPoweredByVoluntarily = !forceShowPoweredBy && Boolean(brandProfile?.show_powered_by);
+    const intakeLink = forceShowPoweredBy || showsPoweredByVoluntarily
         ? await getIntakeLinkByAccountId(requestData.account_id)
         : null;
     const buyerNextSteps = isPro ? normalizeSteps(brandProfile?.buyer_next_steps) : null;

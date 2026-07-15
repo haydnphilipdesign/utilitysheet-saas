@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, getOrganizationById, getIntakeLinkByAccountId, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getIntakeLinkByAccountId, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import { hasValidContact, resolveContact } from '@/lib/providers/contact-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
@@ -721,9 +721,18 @@ export async function POST(
             if (notificationPrefs.seller_submissions !== false) {
                 const shouldAttachPdf = !accessLocked && notificationPrefs.seller_submission_pdf_attachment !== false;
                 try {
-                    // Mirrors the packet page's white-label rule: only free-plan
-                    // workspaces carry the UtilitySheet referral footer.
-                    const showReferralFooter = !isPaid;
+                    // Mirrors the packet page's rule: free-plan workspaces carry the
+                    // UtilitySheet referral footer, and paid workspaces carry it only
+                    // when their brand profile voluntarily keeps powered-by branding.
+                    let showReferralFooter = !isPaid;
+                    if (!showReferralFooter) {
+                        const requestBrandProfile = requestData.brand_profile_id
+                            ? await getBrandProfile(requestData.brand_profile_id).catch(() => null)
+                            : null;
+                        const resolvedBrandProfile = requestBrandProfile
+                            || await getDefaultBrandProfile(requestData.account_id, requestData.organization_id ?? undefined).catch(() => null);
+                        showReferralFooter = Boolean(resolvedBrandProfile?.show_powered_by);
+                    }
                     const intakeLink = showReferralFooter
                         ? await getIntakeLinkByAccountId(requestData.account_id).catch(() => null)
                         : null;

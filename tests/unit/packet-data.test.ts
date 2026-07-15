@@ -130,6 +130,49 @@ describe('packet-data builder', () => {
         expect(result.data.brand?.disclaimer_text).toBe('Non-pro disclaimer');
     });
 
+    it('carries the referral code for paid accounts that voluntarily keep powered-by', async () => {
+        (getRequestByToken as Mock).mockResolvedValue({
+            id: 'req_optin',
+            account_id: 'acct_optin',
+            organization_id: null,
+            brand_profile_id: 'brand_optin',
+            property_address: '321 Elm St, Town, ST 00000',
+            created_at: '2026-01-01T00:00:00.000Z',
+            status: 'submitted',
+        });
+
+        (getBrandProfile as Mock).mockResolvedValue({
+            id: 'brand_optin',
+            name: 'My Brand',
+            logo_url: null,
+            primary_color: '#10b981',
+            contact_name: 'Taylor Agent',
+            contact_email: 'me@example.com',
+            contact_phone: '555-555-5555',
+            contact_website: 'https://example.com',
+            disclaimer_text: null,
+            buyer_next_steps: null,
+            next_steps_title: null,
+            show_powered_by: true,
+            show_generation_date: true,
+            welcome_message: null,
+        });
+
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+        (getIntakeLinkByAccountId as Mock).mockResolvedValue({ slug: 'pro-team' });
+
+        const result = await getPacketDataByPublicToken('token_optin');
+
+        expect(result.status).toBe('ok');
+        if (result.status !== 'ok') return;
+
+        // Not forced (the account is paid), but voluntarily shown by the brand.
+        expect(result.data.meta.show_powered_by).toBe(false);
+        expect(result.data.brand?.show_powered_by).toBe(true);
+        expect(result.data.meta.referral_code).toBe('pro-team');
+        expect(getIntakeLinkByAccountId).toHaveBeenCalledWith('acct_optin');
+    });
+
     it('returns locked when request is overage-locked and user is not paid', async () => {
         (getRequestById as Mock).mockResolvedValue({
             id: 'req_locked',

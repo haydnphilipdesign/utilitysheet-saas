@@ -663,7 +663,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                 <span>{brand.contact_email}</span>
                             ) : null}
                         </p>
-                        {forceShowPoweredBy ? (
+                        {showPoweredBy ? (
                             <TransactionReferralCta referralCode={data.meta?.referral_code || null} />
                         ) : null}
                     </div>
