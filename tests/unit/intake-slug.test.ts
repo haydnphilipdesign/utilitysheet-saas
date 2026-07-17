@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { slugifyIntakeSlug, validateIntakeSlug } from '@/lib/neon/queries/intake-links';
+import {
+    normalizeIntakeUtilityCategories,
+    slugifyIntakeSlug,
+    validateIntakeSlug,
+} from '@/lib/neon/queries/intake-links';
 
 describe('intake link slug helpers', () => {
     it('slugifyIntakeSlug lowercases and dashes', () => {
@@ -21,5 +25,22 @@ describe('intake link slug helpers', () => {
         expect(() => validateIntakeSlug('api')).toThrow(/reserved/i);
         expect(() => validateIntakeSlug('dashboard')).toThrow(/reserved/i);
         expect(() => validateIntakeSlug('login')).toThrow(/reserved/i);
+    });
+});
+
+describe('intake link utility defaults', () => {
+    it('falls back to all canonical categories for missing or unusable legacy data', () => {
+        const expected = ['electric', 'gas', 'propane', 'oil', 'water', 'sewer', 'trash', 'internet', 'cable'];
+
+        expect(normalizeIntakeUtilityCategories(undefined)).toEqual(expected);
+        expect(normalizeIntakeUtilityCategories([])).toEqual(expected);
+        expect(normalizeIntakeUtilityCategories(['unknown'])).toEqual(expected);
+    });
+
+    it('filters unknown values, removes duplicates, and restores canonical order', () => {
+        expect(normalizeIntakeUtilityCategories(['water', 'electric', 'water', 'unknown'])).toEqual([
+            'electric',
+            'water',
+        ]);
     });
 });

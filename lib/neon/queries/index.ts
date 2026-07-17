@@ -49,7 +49,9 @@ export {
 export {
     getBrandProfiles,
     getBrandProfile,
+    getBrandProfileForScope,
     getDefaultBrandProfile,
+    getIntakeBrandProfile,
     createBrandProfile,
     updateBrandProfile,
     deleteBrandProfile,
@@ -107,7 +109,9 @@ export {
     getIntakeLinkByAccountId,
     getIntakeLinkBySlug,
     updateIntakeLinkSlug,
+    updateIntakeLinkSellerFormDefaults,
     updateIntakeLinkPacketDefaults,
+    normalizeIntakeUtilityCategories,
     slugifyIntakeSlug,
     validateIntakeSlug,
 } from './intake-links';

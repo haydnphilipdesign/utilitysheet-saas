@@ -31,6 +31,25 @@ export const createRequestBodySchema = z.object({
     isDemo: z.boolean().optional(),
 }).strict();
 
+export const intakeLinkUpdateBodySchema = z.object({
+    slug: z.string().trim().min(1).max(60).optional(),
+    isActive: z.boolean().optional(),
+    defaultBrandProfileId: z.string().uuid().nullable().optional(),
+    defaultUtilityCategories: z
+        .array(utilityCategoryEnum)
+        .min(1)
+        .max(UTILITY_CATEGORY_KEYS.length)
+        .refine((categories) => new Set(categories).size === categories.length, 'Utility categories must be unique')
+        .optional(),
+    defaultPacketMode: z.enum(PACKET_MODES as ['simple', 'advanced']).optional(),
+    advancedModules: z.array(
+        z.enum(ADVANCED_MODULE_KEYS as ['lawn_exterior', 'irrigation_seasonal_controls', 'mailbox_access', 'smart_home_security', 'service_providers'])
+    ).optional(),
+    advancedModuleExclusions: z.record(z.string(), z.array(z.string())).optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one seller form setting is required',
+});
+
 const waterSourceEnum = z.enum(['city', 'well', 'hoa', 'not_sure']);
 const sewerTypeEnum = z.enum(['public', 'septic', 'hoa', 'not_sure']);
 const heatingTypeEnum = z.enum(['natural_gas', 'propane', 'oil', 'electric', 'not_sure']);

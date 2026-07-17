@@ -101,7 +101,7 @@ describe('settings notification preferences', () => {
         fireEvent.click(checkbox);
         expect(checkbox.checked).toBe(true);
 
-        await openTab('Seller Link');
+        await openTab('Seller Form');
         const meterToggleLabel = await screen.findByText('Collect electric meter number');
         const meterToggleRow = meterToggleLabel.closest('div')?.parentElement;
         expect(meterToggleRow).not.toBeNull();
@@ -171,7 +171,7 @@ describe('settings notification preferences', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         render(<SettingsPage />);
-        await openTab('Seller Link');
+        await openTab('Seller Form');
 
         const meterToggleLabel = await screen.findByText('Collect electric meter number');
         const meterToggleRow = meterToggleLabel.closest('div')?.parentElement;

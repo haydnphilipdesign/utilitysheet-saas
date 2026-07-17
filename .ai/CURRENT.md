@@ -6,48 +6,68 @@
 
 ## Session Metadata
 
-- Task: Remove the unintended vertical scrollbar from the Settings tab strip while preserving horizontal overflow on narrow screens.
-- Status: Completed; no required work remains.
+- Task: Implement the first Settings audit slice: a coherent reusable Seller Form Defaults experience.
+- Status: Completed; no required implementation or validation work remains in the authorized scope.
 - Current or last agent: OpenAI Codex
 - Branch: `main`
 - Last updated: 2026-07-17
-- Relevant plan: None; tiny, low-risk UI fix.
+- Relevant plan: `.ai/plans/2026-07-17-seller-form-defaults-first-slice.md`
+- Source audit: `.ai/plans/2026-07-17-settings-branding-configurability-audit.md`
 - Related issue or PR: None known.
 
 ## Verified State
 
-- The worktree was clean at task start.
-- Authenticated Chrome QA on `http://localhost:3005/dashboard/settings` reproduced the issue.
-- The tab wrapper used only `overflow-x-auto`; CSS computed `overflow-y: auto`, and the wrapper measured 28px client height versus 29px scroll height.
+- Existing uncommitted changes are the completed audit update to this file and the untracked audit plan; preserve them.
+- Only the root `AGENTS.md` applies; no nested repository guidance exists.
+- Settings uses the stable `link` tab key and `/api/intake-link`; visible copy can change without changing those URLs/contracts.
+- One `intake_links` row exists per account. `is_active` is already enforced as a generic 404 by both public metadata and start routes but is not currently editable in Settings.
+- Reusable starts currently use the active workspace default Branding Profile and all canonical utility categories.
+- Branding Profiles are scoped to the active organization, or to the account when no active organization exists.
+- Packet mode and advanced modules are already persisted on `intake_links` and paid-gated in the authenticated API and public start route.
+- The meter-number preference is stored in account notification preferences and consumed by the seller route; this slice will relocate its UI without changing that persistence boundary.
 - No concurrent editing warning is known.
 
-## Outcome
+## Approved Approach
 
-- Added `overflow-y-hidden` to the Settings tab wrapper so horizontal scrolling remains available without the accidental vertical scrollbar.
-- No shared tab styles or unrelated Settings behavior changed.
+- Add nullable `default_brand_profile_id` and non-empty/default-all `default_utility_categories` fields to `intake_links` through a focused root migration mirrored in `schema.sql`.
+- Treat null Branding Profile as “follow the workspace default” so existing accounts retain current effective behavior.
+- Validate authenticated updates with Zod and enforce account/organization scope before accepting a Branding Profile ID.
+- Apply saved defaults only when a reusable-form start creates a new request; preserve cookie resume and existing request behavior.
+- Keep inactive public responses generic and keep existing packet/module plan gating unchanged.
+
+## Work Completed
+
+- Read repository guidance, the current handoff, the completed audit plan, current diff/status, relevant untracked files, and recent commits.
+- Traced Settings state and controls, intake-link queries/API, public metadata/start routes, request creation, Branding Profile scope queries/API, schemas, seller meter preference, focused unit tests, schema snapshot, migrations, and Playwright configuration.
+- Created the focused implementation plan and recorded acceptance criteria, files, validation, risks, and non-goals.
+- Added an additive intake-link migration and mirrored schema fields for nullable selected Branding Profile and default-all utility categories.
+- Added canonical utility-category normalization, seller-form default persistence, scoped Branding Profile resolution, and barrel exports.
+- Added Zod validation and authenticated API support for form status, Branding Profile, and utility defaults without changing slug or packet/module entitlements.
+- Updated public metadata/start routes to use saved defaults and preserve generic inactive-link 404 behavior.
+- Reworked the Settings `link` tab into “Seller Form Defaults,” including active/paused state, URL, Branding Profile, categories, relocated meter field, and a separately labeled packet-defaults section.
+- Added focused route, normalizer, public-path, and Settings interaction coverage.
 
 ## Validation
 
-- Authenticated Chrome QA passed on `http://localhost:3005/dashboard/settings`.
-- Before the fix, the wrapper computed to `overflow-y: auto` and reproduced the visible up/down scrollbar.
-- After the fix, the desktop screenshot showed no vertical scrollbar and computed `overflow-y: hidden`; the tab list remained fully visible.
-- At a 390px viewport, the wrapper retained horizontal overflow (`369px` scroll width inside `366px` client width) while vertical overflow stayed hidden.
-- Referrals tab interaction passed and updated the URL/panel as expected; the original Account view was restored afterward.
-- Browser warning/error console was empty and no framework error overlay appeared.
-- Focused Vitest: 3 files, 10 tests passed.
-- Task-scoped ESLint passed.
-- `git diff --check` passed.
+- Combined focused Vitest passed: 6 files and 28 tests, covering authenticated API authorization/validation, public metadata/start behavior, inactive privacy, legacy defaults, category normalization, and Settings interactions.
+- Changed-file ESLint passed.
+- `npm exec tsc -- --noEmit` passed.
+- `npm run build` passed; output contained only the repository's existing browser-baseline and Edge-runtime warnings.
+- Authenticated Chrome QA passed on Seller Form Settings at desktop and 390px widths. The layout remained usable with no horizontal overflow or console errors.
+- Public active reusable-form QA passed at desktop and 390px widths with the expected scoped branding and no console errors.
+- Paused-link private 404 behavior passed focused metadata and start-route tests. The configured hosted database was inspected read-only and does not yet contain the new columns, so no state-changing browser save/pause action was attempted.
+- `git diff --check` passed; only line-ending conversion warnings were emitted.
+- No migration, commit, push, deployment, or production-data action occurred.
 
-## Required Remaining Work
+## Remaining Required Work
 
-None.
+- None in the authorized implementation scope.
+- Before any environment can save the new defaults, apply `migrations-intake-link-seller-form-defaults.sql` through a separately authorized migration workflow.
 
-## Repository State and Constraints
+## Concurrent Editing Warnings
 
-- The only task changes are `app/dashboard/settings/page.tsx` and this handoff file.
-- No commit, push, deploy, migration, or production-data action occurred.
-- No concurrent editing warning remains.
+- None known; this implementation session is complete.
 
 ## Recommended Next Action
 
-Review the two-file diff. Commit or deployment actions require separate explicit authorization.
+Review the focused diff. If approved, separately authorize the database migration and deployment workflow; neither was performed in this task.

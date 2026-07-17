@@ -33,7 +33,8 @@ import {
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
-import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode } from '@/types';
+import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode, UtilityCategory } from '@/types';
 import { trackEvent } from '@/lib/analytics/events';
 
 type NotificationPreferences = {
@@ -62,6 +63,12 @@ type OrganizationMemberRow = {
     member_role: 'admin' | 'member';
 };
 
+type BrandProfileSummary = {
+    id: string;
+    name: string;
+    isDefault: boolean;
+};
+
 const SETTINGS_TABS = ['account', 'link', 'notifications', 'billing', 'referrals'] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
@@ -73,6 +80,13 @@ function getInitialSettingsTab(): SettingsTab {
     if (typeof window === 'undefined') return 'account';
     const param = new URLSearchParams(window.location.search).get('tab');
     return isSettingsTab(param) ? param : 'account';
+}
+
+function normalizeSettingsUtilityCategories(value: unknown): UtilityCategory[] {
+    if (!Array.isArray(value)) return [...UTILITY_CATEGORY_KEYS];
+    const selected = new Set(value.filter((candidate): candidate is string => typeof candidate === 'string'));
+    const normalized = UTILITY_CATEGORY_KEYS.filter((category) => selected.has(category));
+    return normalized.length > 0 ? normalized : [...UTILITY_CATEGORY_KEYS];
 }
 
 export default function SettingsPage() {
@@ -122,12 +136,17 @@ export default function SettingsPage() {
         slug: string;
         url: string;
         is_active: boolean;
+        defaultBrandProfileId?: string | null;
+        defaultUtilityCategories?: UtilityCategory[];
         defaultPacketMode?: PacketMode;
         advancedModules?: AdvancedModuleKey[];
         advancedModuleExclusions?: AdvancedModuleExclusions;
     } | null>(null);
     const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
+    const [intakeBrandProfiles, setIntakeBrandProfiles] = useState<BrandProfileSummary[]>([]);
     const [intakeSlugDraft, setIntakeSlugDraft] = useState('');
+    const [intakeDefaultBrandProfileId, setIntakeDefaultBrandProfileId] = useState('');
+    const [intakeUtilityCategories, setIntakeUtilityCategories] = useState<UtilityCategory[]>([...UTILITY_CATEGORY_KEYS]);
     const [intakeDefaultPacketMode, setIntakeDefaultPacketMode] = useState<PacketMode>('simple');
     const [intakeAdvancedModules, setIntakeAdvancedModules] = useState<AdvancedModuleKey[]>([...ADVANCED_MODULE_DEFAULTS]);
     const [intakeAdvancedModuleExclusions, setIntakeAdvancedModuleExclusions] = useState<AdvancedModuleExclusions>({});
@@ -202,6 +221,8 @@ export default function SettingsPage() {
                         : [...ADVANCED_MODULE_DEFAULTS];
                     setIntakeLink(data.intakeLink);
                     setIntakeSlugDraft(data.intakeLink.slug || '');
+                    setIntakeDefaultBrandProfileId(data.intakeLink.defaultBrandProfileId || '');
+                    setIntakeUtilityCategories(normalizeSettingsUtilityCategories(data.intakeLink.defaultUtilityCategories));
                     setIntakeDefaultPacketMode(data.intakeLink.defaultPacketMode || 'simple');
                     setIntakeAdvancedModules(nextModules);
                     setIntakeAdvancedModuleExclusions(
@@ -211,6 +232,7 @@ export default function SettingsPage() {
                         )
                     );
                 }
+                setIntakeBrandProfiles(Array.isArray(data.brandProfiles) ? data.brandProfiles : []);
                 setIntakeCanCustomize(Boolean(data.canCustomize));
             } catch (error) {
                 console.error('Error fetching intake link:', error);
@@ -256,6 +278,12 @@ export default function SettingsPage() {
         intakeSavedAdvancedModuleExclusions,
         intakeSavedAdvancedModules,
     ]);
+    const intakeFormDefaultsUnchanged = useMemo(() => {
+        if (!intakeLink) return true;
+        const savedCategories = normalizeSettingsUtilityCategories(intakeLink.defaultUtilityCategories);
+        return intakeDefaultBrandProfileId === (intakeLink.defaultBrandProfileId || '')
+            && intakeUtilityCategories.join('|') === savedCategories.join('|');
+    }, [intakeDefaultBrandProfileId, intakeLink, intakeUtilityCategories]);
     const intakeHasAdvancedModuleWithNoFields = useMemo(() => (
         intakeAdvancedModules.some((moduleKey) => getAdvancedModuleIncludedFieldCount(moduleKey, intakeAdvancedModuleExclusions) === 0)
     ), [intakeAdvancedModuleExclusions, intakeAdvancedModules]);
@@ -395,9 +423,83 @@ export default function SettingsPage() {
             trackEvent('seller_link_copied', {
                 source: 'settings_reusable_link',
             });
-            toast.success('Link copied');
+            toast.success('Form URL copied');
         } catch {
-            toast.error('Failed to copy link');
+            toast.error('Failed to copy form URL');
+        }
+    };
+
+    const updateIntakeLinkFromResponse = (nextIntakeLink: typeof intakeLink) => {
+        if (!nextIntakeLink) return;
+        const nextModules = Array.isArray(nextIntakeLink.advancedModules) && nextIntakeLink.advancedModules.length > 0
+            ? normalizeAdvancedModules(nextIntakeLink.advancedModules)
+            : [...ADVANCED_MODULE_DEFAULTS];
+        setIntakeLink(nextIntakeLink);
+        setIntakeSlugDraft(nextIntakeLink.slug || '');
+        setIntakeDefaultBrandProfileId(nextIntakeLink.defaultBrandProfileId || '');
+        setIntakeUtilityCategories(normalizeSettingsUtilityCategories(nextIntakeLink.defaultUtilityCategories));
+        setIntakeDefaultPacketMode(nextIntakeLink.defaultPacketMode || 'simple');
+        setIntakeAdvancedModules(nextModules);
+        setIntakeAdvancedModuleExclusions(
+            normalizeAdvancedModuleExclusions(nextIntakeLink.advancedModuleExclusions || {}, nextModules)
+        );
+    };
+
+    const handleToggleIntakeActive = async (isActive: boolean) => {
+        setIntakeSaving(true);
+        try {
+            const response = await fetch('/api/intake-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isActive }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.message || data?.error || 'Failed to update seller form status');
+            }
+            updateIntakeLinkFromResponse(data.intakeLink || null);
+            toast.success(isActive ? 'Seller form reactivated' : 'Seller form paused');
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Failed to update seller form status');
+        } finally {
+            setIntakeSaving(false);
+        }
+    };
+
+    const toggleIntakeUtilityCategory = (category: UtilityCategory) => {
+        setIntakeUtilityCategories((current) => (
+            current.includes(category)
+                ? current.filter((candidate) => candidate !== category)
+                : UTILITY_CATEGORY_KEYS.filter((candidate) => candidate === category || current.includes(candidate))
+        ));
+    };
+
+    const handleSaveSellerFormDefaults = async () => {
+        if (intakeUtilityCategories.length === 0) {
+            toast.error('Select at least one utility category.');
+            return;
+        }
+
+        setIntakeSaving(true);
+        try {
+            const response = await fetch('/api/intake-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    defaultBrandProfileId: intakeDefaultBrandProfileId || null,
+                    defaultUtilityCategories: intakeUtilityCategories,
+                }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.message || data?.error || 'Failed to update seller form defaults');
+            }
+            updateIntakeLinkFromResponse(data.intakeLink || null);
+            toast.success('Seller form defaults updated');
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Failed to update seller form defaults');
+        } finally {
+            setIntakeSaving(false);
         }
     };
 
@@ -414,16 +516,15 @@ export default function SettingsPage() {
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data?.message || data?.error || 'Failed to update link');
+                throw new Error(data?.message || data?.error || 'Failed to update form URL');
             }
             if (data.intakeLink) {
-                setIntakeLink(data.intakeLink);
-                setIntakeSlugDraft(data.intakeLink.slug || slug);
+                updateIntakeLinkFromResponse(data.intakeLink);
             }
-            toast.success('Branded link updated');
+            toast.success('Custom form URL updated');
         } catch (error: unknown) {
             console.error(error);
-            const message = error instanceof Error ? error.message : 'Failed to update link';
+            const message = error instanceof Error ? error.message : 'Failed to update form URL';
             toast.error(message);
         } finally {
             setIntakeSaving(false);
@@ -487,20 +588,9 @@ export default function SettingsPage() {
                 throw new Error(data?.message || data?.error || 'Failed to update default mode');
             }
             if (data.intakeLink) {
-                const nextModules = Array.isArray(data.intakeLink.advancedModules) && data.intakeLink.advancedModules.length > 0
-                    ? normalizeAdvancedModules(data.intakeLink.advancedModules)
-                    : [...ADVANCED_MODULE_DEFAULTS];
-                setIntakeLink(data.intakeLink);
-                setIntakeDefaultPacketMode(data.intakeLink.defaultPacketMode || intakeDefaultPacketMode);
-                setIntakeAdvancedModules(nextModules);
-                setIntakeAdvancedModuleExclusions(
-                    normalizeAdvancedModuleExclusions(
-                        data.intakeLink.advancedModuleExclusions || {},
-                        nextModules
-                    )
-                );
+                updateIntakeLinkFromResponse(data.intakeLink);
             }
-            toast.success('Reusable link mode settings updated');
+            toast.success('Packet defaults updated');
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Failed to update default mode';
             toast.error(message);
@@ -676,13 +766,13 @@ export default function SettingsPage() {
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 pb-10">
-            <PageHeader title="Settings" description="Manage your account and preferences" />
+            <PageHeader title="Settings" description="Manage your account, seller form, notifications, and billing" />
 
             <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <div className="overflow-x-auto overflow-y-hidden">
                     <TabsList className="w-max">
                         <TabsTrigger value="account">Account</TabsTrigger>
-                        <TabsTrigger value="link">Seller Link</TabsTrigger>
+                        <TabsTrigger value="link">Seller Form</TabsTrigger>
                         <TabsTrigger value="notifications">Notifications</TabsTrigger>
                         <TabsTrigger value="billing">Billing &amp; Team</TabsTrigger>
                         <TabsTrigger value="referrals">Referrals</TabsTrigger>
@@ -823,21 +913,48 @@ export default function SettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="link" className="mt-2 space-y-6 text-base">
-            {/* Reusable Link Section */}
+            {/* Reusable Seller Form Section */}
             <Card className="border-border bg-card/50">
                 <CardHeader>
                     <CardTitle className="text-foreground flex items-center gap-2">
                         <LinkIcon className="h-5 w-5 text-primary" />
-                        Reusable Seller Link
+                        Seller Form Defaults
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                        Share one fixed link; sellers enter the property address at the start.
+                        Control who can start your reusable form and what each new seller request includes.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    <section className="space-y-4 rounded-xl border border-border bg-muted/20 p-4" aria-labelledby="seller-form-access-heading">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h3 id="seller-form-access-heading" className="text-sm font-semibold text-foreground">Form availability</h3>
+                                    <Badge variant={intakeLink?.is_active === false ? 'outline' : 'default'}>
+                                        {intakeLink?.is_active === false ? 'Paused' : 'Active'}
+                                    </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Pause new starts without changing your form URL or existing request links.
+                                </p>
+                            </div>
+                            <Switch
+                                aria-label="Accept new seller form starts"
+                                checked={intakeLink?.is_active !== false}
+                                onCheckedChange={handleToggleIntakeActive}
+                                disabled={!intakeLink || intakeSaving}
+                            />
+                        </div>
+
+                        {intakeLink?.is_active === false && (
+                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+                                This form is paused. Visitors receive an unavailable response and cannot create new requests until you reactivate it.
+                            </div>
+                        )}
+
                     {intakeLink?.url ? (
                         <div className="space-y-2">
-                            <Label className="text-foreground">Your link</Label>
+                            <Label className="text-foreground">Seller form URL</Label>
                             <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                                 <Input
                                     value={intakeLink.url}
@@ -858,11 +975,13 @@ export default function SettingsPage() {
                         <p className="text-sm text-muted-foreground">Loading…</p>
                     )}
 
+                    </section>
+
                     <Separator className="bg-border" />
 
                     <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
-                            <Label htmlFor="intakeSlug" className="text-foreground">Branded link</Label>
+                            <Label htmlFor="intakeSlug" className="text-foreground">Custom form URL</Label>
                             {!intakeCanCustomize && (
                                 <Badge variant="outline">Pro / Teams</Badge>
                             )}
@@ -898,9 +1017,103 @@ export default function SettingsPage() {
 
                     <Separator className="bg-border" />
 
+                    <section className="space-y-4" aria-labelledby="seller-form-fields-heading">
+                        <div className="space-y-1">
+                            <h3 id="seller-form-fields-heading" className="text-sm font-semibold text-foreground">Seller form fields and presentation</h3>
+                            <p className="text-sm text-muted-foreground">
+                                These defaults are copied into each new request started from your reusable form.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="defaultBrandProfile" className="text-foreground">Default Branding Profile</Label>
+                            <select
+                                id="defaultBrandProfile"
+                                value={intakeDefaultBrandProfileId}
+                                onChange={(event) => setIntakeDefaultBrandProfileId(event.target.value)}
+                                className="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm text-foreground"
+                                disabled={intakeSaving}
+                            >
+                                <option value="">Use workspace default</option>
+                                {intakeBrandProfiles.map((profile) => (
+                                    <option key={profile.id} value={profile.id}>
+                                        {profile.name}{profile.isDefault ? ' (workspace default)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-muted-foreground">
+                                “Use workspace default” follows whichever Branding Profile is currently marked default.
+                            </p>
+                        </div>
+
+                        <fieldset className="space-y-2">
+                            <legend className="text-sm font-medium text-foreground">Utility categories</legend>
+                            <p className="text-xs text-muted-foreground">Choose which utility sections sellers see on new requests.</p>
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {UTILITY_CATEGORIES.map((category) => {
+                                    const checked = intakeUtilityCategories.includes(category.key);
+                                    return (
+                                        <label
+                                            key={category.key}
+                                            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/40"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => toggleIntakeUtilityCategory(category.key)}
+                                                disabled={intakeSaving}
+                                                className="h-4 w-4 rounded border-input accent-primary"
+                                            />
+                                            <span aria-hidden="true">{category.icon}</span>
+                                            <span>{category.label}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {intakeUtilityCategories.length === 0 && (
+                                <p className="text-xs text-destructive">Select at least one utility category.</p>
+                            )}
+                        </fieldset>
+
+                        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/20 p-4">
+                            <div>
+                                <p className="text-foreground text-sm font-medium">Collect electric meter number</p>
+                                <p className="text-sm text-muted-foreground">Show an optional meter-number field when Electric is included.</p>
+                            </div>
+                            <Switch
+                                aria-label="Collect electric meter number"
+                                checked={notifications.collect_electric_meter_number}
+                                onCheckedChange={(checked) => handleNotificationToggle('collect_electric_meter_number', checked)}
+                            />
+                        </div>
+
+                        <div className="flex justify-end">
+                            <Button
+                                type="button"
+                                onClick={handleSaveSellerFormDefaults}
+                                disabled={intakeSaving || intakeFormDefaultsUnchanged || intakeUtilityCategories.length === 0}
+                            >
+                                {intakeSaving ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Save className="mr-2 h-4 w-4" />
+                                )}
+                                Save Form Defaults
+                            </Button>
+                        </div>
+                    </section>
+
+                    <Separator className="bg-border" />
+
+                    <section className="space-y-4" aria-labelledby="packet-defaults-heading">
+                        <div className="space-y-1">
+                            <h3 id="packet-defaults-heading" className="text-sm font-semibold text-foreground">Completed packet defaults</h3>
+                            <p className="text-sm text-muted-foreground">Choose the output mode and advanced questions for new seller-form requests.</p>
+                        </div>
+
                     <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
-                            <Label htmlFor="defaultPacketMode" className="text-foreground">Reusable link default mode</Label>
+                            <Label htmlFor="defaultPacketMode" className="text-foreground">Default packet mode</Label>
                             {!intakeCanCustomize && <Badge variant="outline">Pro / Teams</Badge>}
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -935,7 +1148,7 @@ export default function SettingsPage() {
                                 </div>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Controls which mode sellers get when they start from your reusable link.
+                                Controls which mode sellers get when they start from your reusable form.
                             </p>
                             {!intakeCanCustomize && (
                                 <p className="text-xs text-amber-500">
@@ -990,22 +1203,10 @@ export default function SettingsPage() {
                             ) : (
                                 <Save className="mr-2 h-4 w-4" />
                             )}
-                            Save Mode Settings
+                            Save Packet Defaults
                         </Button>
                     </div>
-
-                    <Separator className="bg-border" />
-
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <p className="text-foreground text-sm font-medium">Collect electric meter number</p>
-                            <p className="text-sm text-muted-foreground">Show an optional meter number field for electric utility entries. Saves automatically.</p>
-                        </div>
-                        <Switch
-                            checked={notifications.collect_electric_meter_number}
-                            onCheckedChange={(checked) => handleNotificationToggle('collect_electric_meter_number', checked)}
-                        />
-                    </div>
+                    </section>
                 </CardContent>
             </Card>
                 </TabsContent>

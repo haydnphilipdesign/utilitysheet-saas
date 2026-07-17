@@ -125,6 +125,8 @@ CREATE TABLE IF NOT EXISTS intake_links (
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     slug TEXT UNIQUE NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    default_brand_profile_id UUID REFERENCES brand_profiles(id) ON DELETE SET NULL,
+    default_utility_categories TEXT[] NOT NULL DEFAULT ARRAY['electric', 'gas', 'propane', 'oil', 'water', 'sewer', 'trash', 'internet', 'cable']::text[],
     default_packet_mode TEXT NOT NULL DEFAULT 'simple' CHECK (default_packet_mode IN ('simple', 'advanced')),
     advanced_modules TEXT[] NOT NULL DEFAULT '{}'::text[],
     advanced_module_exclusions JSONB NOT NULL DEFAULT '{}'::jsonb,

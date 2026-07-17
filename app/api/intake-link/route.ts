@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
 import {
     getAccountOrganizations,
+    getBrandProfiles,
     getOrCreateIntakeLink,
+    normalizeIntakeUtilityCategories,
     propagateAdvancedModuleDefaultsToOpenRequests,
     updateIntakeLinkPacketDefaults,
+    updateIntakeLinkSellerFormDefaults,
     updateIntakeLinkSlug,
 } from '@/lib/neon/queries';
+import type { IntakeLink } from '@/lib/neon/queries/intake-links';
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { stackServerApp } from '@/lib/stack/server';
 import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode } from '@/types';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
+import { intakeLinkUpdateBodySchema } from '@/lib/validation/schemas';
+import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -25,6 +31,29 @@ function canCustomizeSlug(subscriptionStatus: string, activeOrgStatus?: string |
     if (subscriptionStatus === 'pro') return true;
     if (activeOrgStatus === 'team') return true;
     return false;
+}
+
+function serializeIntakeLink(intakeLink: IntakeLink, allowedBrandProfileIds?: Set<string>) {
+    const advancedModules = normalizeAdvancedModules(intakeLink.advanced_modules);
+    const advancedModuleExclusions = normalizeAdvancedModuleExclusions(
+        intakeLink.advanced_module_exclusions,
+        advancedModules
+    );
+    const baseUrl = getAppBaseUrl();
+
+    return {
+        slug: intakeLink.slug,
+        url: `${baseUrl}/i/${intakeLink.slug}`,
+        is_active: intakeLink.is_active,
+        defaultBrandProfileId: intakeLink.default_brand_profile_id
+            && (!allowedBrandProfileIds || allowedBrandProfileIds.has(intakeLink.default_brand_profile_id))
+            ? intakeLink.default_brand_profile_id
+            : null,
+        defaultUtilityCategories: normalizeIntakeUtilityCategories(intakeLink.default_utility_categories),
+        defaultPacketMode: intakeLink.default_packet_mode || 'simple',
+        advancedModules,
+        advancedModuleExclusions,
+    };
 }
 
 export async function GET() {
@@ -50,24 +79,17 @@ export async function GET() {
             (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) ||
             null;
 
-        const baseUrl = getAppBaseUrl();
-        const url = `${baseUrl}/i/${intakeLink.slug}`;
         const canCustomize = canCustomizeSlug(account.subscription_status, activeOrg?.subscription_status);
-        const advancedModules = normalizeAdvancedModules(intakeLink.advanced_modules);
-        const advancedModuleExclusions = normalizeAdvancedModuleExclusions(
-            intakeLink.advanced_module_exclusions,
-            advancedModules
-        );
+        const brandProfiles = await getBrandProfiles(account.id, activeOrg?.id);
+        const allowedBrandProfileIds = new Set(brandProfiles.map((profile) => profile.id));
 
         return NextResponse.json({
-            intakeLink: {
-                slug: intakeLink.slug,
-                url,
-                is_active: intakeLink.is_active,
-                defaultPacketMode: intakeLink.default_packet_mode || 'simple',
-                advancedModules,
-                advancedModuleExclusions,
-            },
+            intakeLink: serializeIntakeLink(intakeLink, allowedBrandProfileIds),
+            brandProfiles: brandProfiles.map((profile) => ({
+                id: profile.id,
+                name: profile.name,
+                isDefault: profile.is_default,
+            })),
             canCustomize,
             companyName: account.company_name || '',
         });
@@ -98,21 +120,30 @@ export async function POST(request: Request) {
         const allowed = canCustomizeSlug(account.subscription_status, activeOrg?.subscription_status);
 
         const body = await request.json().catch(() => ({}));
-        const slug = typeof body?.slug === 'string' ? body.slug.trim() : '';
-        const defaultPacketMode = body?.defaultPacketMode as PacketMode | undefined;
-        const hasAdvancedModulesPayload = Object.prototype.hasOwnProperty.call(body || {}, 'advancedModules');
-        const hasAdvancedModuleExclusionsPayload = Object.prototype.hasOwnProperty.call(body || {}, 'advancedModuleExclusions');
-        const advancedModulesInput = Array.isArray(body?.advancedModules)
-            ? body.advancedModules.filter((candidate: unknown): candidate is string => typeof candidate === 'string')
-            : undefined;
-        const advancedModuleExclusionsInput = body?.advancedModuleExclusions;
+        const parsedBody = intakeLinkUpdateBodySchema.safeParse(body);
+        if (!parsedBody.success) {
+            return invalidRequestBodyResponse('INVALID_INTAKE_LINK_UPDATE', 'Invalid seller form settings');
+        }
+        const payload = parsedBody.data;
+        const slug = payload.slug || '';
+        const defaultPacketMode = payload.defaultPacketMode as PacketMode | undefined;
+        const hasIsActivePayload = Object.prototype.hasOwnProperty.call(payload, 'isActive');
+        const hasDefaultBrandProfilePayload = Object.prototype.hasOwnProperty.call(payload, 'defaultBrandProfileId');
+        const hasDefaultUtilityCategoriesPayload = Object.prototype.hasOwnProperty.call(payload, 'defaultUtilityCategories');
+        const hasAdvancedModulesPayload = Object.prototype.hasOwnProperty.call(payload, 'advancedModules');
+        const hasAdvancedModuleExclusionsPayload = Object.prototype.hasOwnProperty.call(payload, 'advancedModuleExclusions');
+        const advancedModulesInput = payload.advancedModules;
+        const advancedModuleExclusionsInput = payload.advancedModuleExclusions;
         const isModeUpdate = defaultPacketMode === 'simple' || defaultPacketMode === 'advanced';
         const isSlugUpdate = slug.length > 0;
+        const isSellerFormDefaultsUpdate = hasIsActivePayload
+            || hasDefaultBrandProfilePayload
+            || hasDefaultUtilityCategoriesPayload;
         const isPacketDefaultsUpdate = isModeUpdate || hasAdvancedModulesPayload || hasAdvancedModuleExclusionsPayload;
 
-        if (!isPacketDefaultsUpdate && !isSlugUpdate) {
+        if (!isPacketDefaultsUpdate && !isSlugUpdate && !isSellerFormDefaultsUpdate) {
             return NextResponse.json(
-                { error: 'Invalid request', message: 'Provide a slug, defaultPacketMode, advancedModules, and/or advancedModuleExclusions.' },
+                { error: 'Invalid request', message: 'Provide at least one seller form setting.' },
                 { status: 400 }
             );
         }
@@ -132,6 +163,31 @@ export async function POST(request: Request) {
             updated = await updateIntakeLinkSlug(account.id, slug);
             if (!updated) {
                 return NextResponse.json({ error: 'Failed to update intake link slug' }, { status: 500 });
+            }
+        }
+
+        if (isSellerFormDefaultsUpdate) {
+            if (hasDefaultBrandProfilePayload && payload.defaultBrandProfileId) {
+                const profiles = await getBrandProfiles(account.id, activeOrg?.id);
+                if (!profiles.some((profile) => profile.id === payload.defaultBrandProfileId)) {
+                    return NextResponse.json(
+                        { error: 'Invalid Branding Profile', message: 'Choose a Branding Profile from the active workspace.' },
+                        { status: 400 }
+                    );
+                }
+            }
+
+            updated = await updateIntakeLinkSellerFormDefaults(account.id, {
+                isActive: hasIsActivePayload ? Boolean(payload.isActive) : updated.is_active,
+                defaultBrandProfileId: hasDefaultBrandProfilePayload
+                    ? (payload.defaultBrandProfileId || null)
+                    : (updated.default_brand_profile_id || null),
+                defaultUtilityCategories: hasDefaultUtilityCategoriesPayload
+                    ? normalizeIntakeUtilityCategories(payload.defaultUtilityCategories)
+                    : normalizeIntakeUtilityCategories(updated.default_utility_categories),
+            });
+            if (!updated) {
+                return NextResponse.json({ error: 'Failed to update seller form defaults' }, { status: 500 });
             }
         }
 
@@ -198,23 +254,12 @@ export async function POST(request: Request) {
             }
         }
 
-        const baseUrl = getAppBaseUrl();
-        const url = `${baseUrl}/i/${updated.slug}`;
-        const advancedModules = normalizeAdvancedModules(updated.advanced_modules);
-        const advancedModuleExclusions = normalizeAdvancedModuleExclusions(
-            updated.advanced_module_exclusions,
-            advancedModules
-        );
-
+        const responseBrandProfiles = await getBrandProfiles(account.id, activeOrg?.id);
         return NextResponse.json({
-            intakeLink: {
-                slug: updated.slug,
-                url,
-                is_active: updated.is_active,
-                defaultPacketMode: updated.default_packet_mode || 'simple',
-                advancedModules,
-                advancedModuleExclusions,
-            },
+            intakeLink: serializeIntakeLink(
+                updated,
+                new Set(responseBrandProfiles.map((profile) => profile.id))
+            ),
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Internal server error';

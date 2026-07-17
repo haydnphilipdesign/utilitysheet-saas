@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getIntakeLinkBySlug, getAccountById, getAccountOrganizations, getDefaultBrandProfile, getRequestBySellerToken, createRequest, createEventLog, getMonthlyUsage } from '@/lib/neon/queries';
+import {
+    createEventLog,
+    createRequest,
+    getAccountById,
+    getAccountOrganizations,
+    getIntakeBrandProfile,
+    getIntakeLinkBySlug,
+    getMonthlyUsage,
+    getRequestBySellerToken,
+    normalizeIntakeUtilityCategories,
+} from '@/lib/neon/queries';
 import { intakeStartRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
-import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { getClientIp } from '@/lib/network/client-ip';
 import { formatCanonicalIntakeAddress, hasIntakeStreetNumber, validateIntakeAddress } from '@/lib/address/intake-validation';
@@ -162,7 +171,12 @@ export async function POST(
             }
         }
 
-        const defaultBrand = await getDefaultBrandProfile(account.id, activeOrg?.id);
+        const defaultBrand = await getIntakeBrandProfile(
+            account.id,
+            activeOrg?.id,
+            intakeLink.default_brand_profile_id
+        );
+        const utilityCategories = normalizeIntakeUtilityCategories(intakeLink.default_utility_categories);
         const structuredPropertyAddress = await buildStructuredPropertyAddress(canonicalPropertyAddress);
         const packetMode = isPaid && intakeLink.default_packet_mode === 'advanced' ? 'advanced' : 'simple';
         const advancedModules = packetMode === 'advanced'
@@ -178,7 +192,7 @@ export async function POST(
             brandProfileId: defaultBrand?.id,
             propertyAddress: canonicalPropertyAddress,
             propertyAddressStructured: structuredPropertyAddress,
-            utilityCategories: UTILITY_CATEGORY_KEYS,
+            utilityCategories,
             status: 'draft',
             meteredAt: null,
             packetMode,
@@ -202,7 +216,7 @@ export async function POST(
                 canonical_property_address: canonicalPropertyAddress,
                 address_was_canonicalized: parsed.data.propertyAddress !== canonicalPropertyAddress,
                 street_has_number: hasIntakeStreetNumber(intakeValidation.parsed.street),
-                utility_categories: UTILITY_CATEGORY_KEYS,
+                utility_categories: utilityCategories,
                 packet_mode: packetMode,
                 advanced_modules: advancedModules,
                 advanced_module_exclusions: advancedModuleExclusions,

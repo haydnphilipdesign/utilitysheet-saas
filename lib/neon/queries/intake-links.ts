@@ -2,18 +2,29 @@
  * Intake link queries (reusable seller URL per account)
  */
 import { sql, generateToken } from '@/lib/neon/db';
-import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode } from '@/types';
+import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode, UtilityCategory } from '@/types';
 
 export interface IntakeLink {
     id: string;
     account_id: string;
     slug: string;
     is_active: boolean;
+    default_brand_profile_id: string | null;
+    default_utility_categories: UtilityCategory[];
     default_packet_mode: PacketMode;
     advanced_modules: AdvancedModuleKey[];
     advanced_module_exclusions: AdvancedModuleExclusions;
     created_at: string;
     updated_at: string;
+}
+
+export function normalizeIntakeUtilityCategories(value: unknown): UtilityCategory[] {
+    if (!Array.isArray(value)) return [...UTILITY_CATEGORY_KEYS];
+
+    const selected = new Set(value.filter((candidate): candidate is string => typeof candidate === 'string'));
+    const normalized = UTILITY_CATEGORY_KEYS.filter((category) => selected.has(category));
+    return normalized.length > 0 ? normalized : [...UTILITY_CATEGORY_KEYS];
 }
 
 const RESERVED_SLUGS = new Set([
@@ -164,6 +175,58 @@ export async function updateIntakeLinkSlug(accountId: string, slug: string): Pro
             advanced_module_exclusions
         )
         VALUES (${accountId}, ${uniqueSlug}, TRUE, 'simple', '{}'::text[], '{}'::jsonb)
+        RETURNING *
+    `;
+
+    return (created[0] as IntakeLink) || null;
+}
+
+export async function updateIntakeLinkSellerFormDefaults(
+    accountId: string,
+    defaults: {
+        isActive: boolean;
+        defaultBrandProfileId: string | null;
+        defaultUtilityCategories: UtilityCategory[];
+    }
+): Promise<IntakeLink | null> {
+    if (!sql) return null;
+
+    const normalizedCategories = normalizeIntakeUtilityCategories(defaults.defaultUtilityCategories);
+    const result = await sql`
+        UPDATE intake_links
+        SET
+            is_active = ${defaults.isActive},
+            default_brand_profile_id = ${defaults.defaultBrandProfileId},
+            default_utility_categories = ${normalizedCategories}::text[],
+            updated_at = NOW()
+        WHERE account_id = ${accountId}
+        RETURNING *
+    `;
+
+    if (result.length > 0) return result[0] as IntakeLink;
+
+    const seededSlug = await getUniqueIntakeSlug(generateToken().slice(0, 10));
+    const created = await sql`
+        INSERT INTO intake_links (
+            account_id,
+            slug,
+            is_active,
+            default_brand_profile_id,
+            default_utility_categories,
+            default_packet_mode,
+            advanced_modules,
+            advanced_module_exclusions
+        )
+        VALUES (
+            ${accountId},
+            ${seededSlug},
+            ${defaults.isActive},
+            ${defaults.defaultBrandProfileId},
+            ${normalizedCategories}::text[],
+            'simple',
+            '{}'::text[],
+            '{}'::jsonb
+        )
         RETURNING *
     `;
 

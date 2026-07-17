@@ -8,7 +8,14 @@ const mocks = vi.hoisted(() => ({
     ensureAccountRecordMock: vi.fn(),
     ensureAccountActivationMock: vi.fn(),
     getAccountOrganizationsMock: vi.fn(),
+    getBrandProfilesMock: vi.fn(),
     getOrCreateIntakeLinkMock: vi.fn(),
+    normalizeIntakeUtilityCategoriesMock: vi.fn((value: unknown) => (
+        Array.isArray(value) && value.length > 0
+            ? value
+            : ['electric', 'gas', 'propane', 'oil', 'water', 'sewer', 'trash', 'internet', 'cable']
+    )),
+    updateIntakeLinkSellerFormDefaultsMock: vi.fn(),
     updateIntakeLinkPacketDefaultsMock: vi.fn(),
     updateIntakeLinkSlugMock: vi.fn(),
     propagateAdvancedModuleDefaultsToOpenRequestsMock: vi.fn(),
@@ -26,7 +33,10 @@ vi.mock('@/lib/neon/queries', () => ({
     getOrCreateAccount: mocks.getOrCreateAccountMock,
     ensureAccountRecord: mocks.ensureAccountRecordMock,
     getAccountOrganizations: mocks.getAccountOrganizationsMock,
+    getBrandProfiles: mocks.getBrandProfilesMock,
     getOrCreateIntakeLink: mocks.getOrCreateIntakeLinkMock,
+    normalizeIntakeUtilityCategories: mocks.normalizeIntakeUtilityCategoriesMock,
+    updateIntakeLinkSellerFormDefaults: mocks.updateIntakeLinkSellerFormDefaultsMock,
     updateIntakeLinkPacketDefaults: mocks.updateIntakeLinkPacketDefaultsMock,
     updateIntakeLinkSlug: mocks.updateIntakeLinkSlugMock,
     propagateAdvancedModuleDefaultsToOpenRequests: mocks.propagateAdvancedModuleDefaultsToOpenRequestsMock,
@@ -58,6 +68,10 @@ describe('/api/intake-link', () => {
             },
         }));
         mocks.getAccountOrganizationsMock.mockResolvedValue([]);
+        mocks.getBrandProfilesMock.mockResolvedValue([
+            { id: '00000000-0000-4000-8000-000000000001', name: 'ACME Realty', is_default: true },
+            { id: '00000000-0000-4000-8000-000000000002', name: 'Agent Brand', is_default: false },
+        ]);
         mocks.getOrCreateIntakeLinkMock.mockResolvedValue({
             id: 'link_1',
             account_id: 'acct_1',
@@ -67,6 +81,17 @@ describe('/api/intake-link', () => {
             advanced_modules: [],
             advanced_module_exclusions: {},
         });
+        mocks.updateIntakeLinkSellerFormDefaultsMock.mockImplementation(async (_accountId, defaults) => ({
+            id: 'link_1',
+            account_id: 'acct_1',
+            slug: 'agent-link',
+            is_active: defaults.isActive,
+            default_brand_profile_id: defaults.defaultBrandProfileId,
+            default_utility_categories: defaults.defaultUtilityCategories,
+            default_packet_mode: 'simple',
+            advanced_modules: [],
+            advanced_module_exclusions: {},
+        }));
     });
 
     it('returns normalized advanced module defaults on GET when stored list is empty', async () => {
@@ -91,6 +116,88 @@ describe('/api/intake-link', () => {
         const body = await response.json();
         expect(body.intakeLink.defaultPacketMode).toBe('advanced');
         expect(body.intakeLink.advancedModules).toEqual(ADVANCED_MODULE_DEFAULTS);
+        expect(body.intakeLink.defaultBrandProfileId).toBeNull();
+        expect(body.intakeLink.defaultUtilityCategories).toEqual([
+            'electric',
+            'gas',
+            'propane',
+            'oil',
+            'water',
+            'sewer',
+            'trash',
+            'internet',
+            'cable',
+        ]);
+        expect(body.brandProfiles).toEqual([
+            { id: '00000000-0000-4000-8000-000000000001', name: 'ACME Realty', isDefault: true },
+            { id: '00000000-0000-4000-8000-000000000002', name: 'Agent Brand', isDefault: false },
+        ]);
+    });
+
+    it('allows free users to pause the seller form and save scoped form defaults', async () => {
+        mocks.getOrCreateAccountMock.mockResolvedValue({
+            id: 'acct_1',
+            subscription_status: 'free',
+            active_organization_id: null,
+        });
+
+        const response = await POST(new Request('http://localhost/api/intake-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                isActive: false,
+                defaultBrandProfileId: '00000000-0000-4000-8000-000000000002',
+                defaultUtilityCategories: ['electric', 'water', 'internet'],
+            }),
+        }));
+
+        expect(response.status).toBe(200);
+        expect(mocks.updateIntakeLinkSellerFormDefaultsMock).toHaveBeenCalledWith('acct_1', {
+            isActive: false,
+            defaultBrandProfileId: '00000000-0000-4000-8000-000000000002',
+            defaultUtilityCategories: ['electric', 'water', 'internet'],
+        });
+        expect(mocks.updateIntakeLinkPacketDefaultsMock).not.toHaveBeenCalled();
+        const body = await response.json();
+        expect(body.intakeLink).toEqual(expect.objectContaining({
+            is_active: false,
+            defaultBrandProfileId: '00000000-0000-4000-8000-000000000002',
+            defaultUtilityCategories: ['electric', 'water', 'internet'],
+        }));
+    });
+
+    it('rejects a Branding Profile outside the active account scope', async () => {
+        mocks.getOrCreateAccountMock.mockResolvedValue({
+            id: 'acct_1',
+            subscription_status: 'pro',
+            active_organization_id: null,
+        });
+
+        const response = await POST(new Request('http://localhost/api/intake-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ defaultBrandProfileId: '00000000-0000-4000-8000-000000000099' }),
+        }));
+
+        expect(response.status).toBe(400);
+        expect(mocks.updateIntakeLinkSellerFormDefaultsMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects an empty utility-category default', async () => {
+        mocks.getOrCreateAccountMock.mockResolvedValue({
+            id: 'acct_1',
+            subscription_status: 'pro',
+            active_organization_id: null,
+        });
+
+        const response = await POST(new Request('http://localhost/api/intake-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ defaultUtilityCategories: [] }),
+        }));
+
+        expect(response.status).toBe(400);
+        expect(mocks.updateIntakeLinkSellerFormDefaultsMock).not.toHaveBeenCalled();
     });
 
     it('saves mode and module defaults together for paid users', async () => {

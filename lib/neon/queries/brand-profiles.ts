@@ -41,6 +41,28 @@ export async function getBrandProfile(id: string): Promise<BrandProfile | null> 
     return (result[0] as BrandProfile) || null;
 }
 
+export async function getBrandProfileForScope(
+    id: string,
+    accountId: string,
+    organizationId?: string
+): Promise<BrandProfile | null> {
+    if (!sql) return null;
+
+    const result = organizationId
+        ? await sql`
+            SELECT * FROM brand_profiles
+            WHERE id = ${id} AND organization_id = ${organizationId}
+            LIMIT 1
+        `
+        : await sql`
+            SELECT * FROM brand_profiles
+            WHERE id = ${id} AND account_id = ${accountId} AND organization_id IS NULL
+            LIMIT 1
+        `;
+
+    return (result[0] as BrandProfile) || null;
+}
+
 /**
  * Get the default brand profile for an account or organization
  */
@@ -80,6 +102,19 @@ export async function getDefaultBrandProfile(accountId: string, organizationId?:
         LIMIT 1
     `;
     return (fallbackResult[0] as BrandProfile) || null;
+}
+
+export async function getIntakeBrandProfile(
+    accountId: string,
+    organizationId?: string,
+    selectedProfileId?: string | null
+): Promise<BrandProfile | null> {
+    if (selectedProfileId) {
+        const selected = await getBrandProfileForScope(selectedProfileId, accountId, organizationId);
+        if (selected) return selected;
+    }
+
+    return getDefaultBrandProfile(accountId, organizationId);
 }
 
 /**

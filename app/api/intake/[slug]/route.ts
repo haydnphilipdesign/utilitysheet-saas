@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getIntakeLinkBySlug, getAccountById, getAccountOrganizations, getDefaultBrandProfile } from '@/lib/neon/queries';
-import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import {
+    getAccountById,
+    getAccountOrganizations,
+    getIntakeBrandProfile,
+    getIntakeLinkBySlug,
+    normalizeIntakeUtilityCategories,
+} from '@/lib/neon/queries';
 
 type OrganizationSummary = { id: string; subscription_status?: string | null };
 
@@ -23,7 +28,11 @@ export async function GET(
         const organizations = await getAccountOrganizations(account.id);
         const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
 
-        const brandProfile = await getDefaultBrandProfile(account.id, activeOrg?.id);
+        const brandProfile = await getIntakeBrandProfile(
+            account.id,
+            activeOrg?.id,
+            intakeLink.default_brand_profile_id
+        );
         const publicBrandProfile = brandProfile
             ? {
                 name: brandProfile.name,
@@ -38,7 +47,7 @@ export async function GET(
         return NextResponse.json({
             accepting: true,
             brandProfile: publicBrandProfile,
-            utility_categories: UTILITY_CATEGORY_KEYS,
+            utility_categories: normalizeIntakeUtilityCategories(intakeLink.default_utility_categories),
         });
     } catch (error) {
         console.error('Error fetching intake link:', error);

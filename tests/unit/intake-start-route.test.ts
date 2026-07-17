@@ -5,7 +5,12 @@ vi.mock('@/lib/neon/queries', () => ({
     getAccountById: vi.fn(),
     getAccountOrganizations: vi.fn(),
     getMonthlyUsage: vi.fn(),
-    getDefaultBrandProfile: vi.fn(),
+    getIntakeBrandProfile: vi.fn(),
+    normalizeIntakeUtilityCategories: vi.fn((value: unknown) => (
+        Array.isArray(value) && value.length > 0
+            ? value
+            : ['electric', 'gas', 'propane', 'oil', 'water', 'sewer', 'trash', 'internet', 'cable']
+    )),
     getRequestBySellerToken: vi.fn(),
     createRequest: vi.fn(),
     createEventLog: vi.fn(),
@@ -32,7 +37,7 @@ import {
     createRequest,
     getAccountById,
     getAccountOrganizations,
-    getDefaultBrandProfile,
+    getIntakeBrandProfile,
     getIntakeLinkBySlug,
     getMonthlyUsage,
     getRequestBySellerToken,
@@ -69,7 +74,7 @@ describe('POST /api/intake/[slug]/start', () => {
             limit: 3,
             plan: 'free',
         } as never);
-        vi.mocked(getDefaultBrandProfile).mockResolvedValue(null);
+        vi.mocked(getIntakeBrandProfile).mockResolvedValue(null);
         vi.mocked(getRequestBySellerToken).mockResolvedValue(null);
         vi.mocked(buildStructuredPropertyAddress).mockResolvedValue({
             street: '123 Main St',
@@ -150,6 +155,61 @@ describe('POST /api/intake/[slug]/start', () => {
                 street_has_number: true,
             }),
         }));
+    });
+
+    it('uses saved Branding Profile and utility-category defaults for a new request', async () => {
+        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+            slug: 'test-slug',
+            account_id: 'acct-1',
+            is_active: true,
+            default_brand_profile_id: 'brand-2',
+            default_utility_categories: ['electric', 'water', 'internet'],
+            default_packet_mode: 'simple',
+            advanced_modules: [],
+            advanced_module_exclusions: {},
+        } as never);
+        vi.mocked(getIntakeBrandProfile).mockResolvedValue({ id: 'brand-2' } as never);
+
+        const request = new Request('http://localhost/api/intake/test-slug/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }),
+        });
+
+        const response = await POST(request, { params: Promise.resolve({ slug: 'test-slug' }) });
+
+        expect(response.status).toBe(200);
+        expect(getIntakeBrandProfile).toHaveBeenCalledWith('acct-1', undefined, 'brand-2');
+        expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
+            brandProfileId: 'brand-2',
+            utilityCategories: ['electric', 'water', 'internet'],
+        }));
+        expect(createEventLog).toHaveBeenCalledWith(expect.objectContaining({
+            eventData: expect.objectContaining({
+                utility_categories: ['electric', 'water', 'internet'],
+            }),
+        }));
+    });
+
+    it('returns a generic 404 for an inactive reusable form', async () => {
+        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+            slug: 'test-slug',
+            account_id: 'acct-1',
+            is_active: false,
+        } as never);
+
+        const request = new Request('http://localhost/api/intake/test-slug/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }),
+        });
+
+        const response = await POST(request, { params: Promise.resolve({ slug: 'test-slug' }) });
+
+        expect(response.status).toBe(404);
+        expect(await response.json()).toEqual({ error: 'Not found' });
+        expect(getAccountById).not.toHaveBeenCalled();
+        expect(createRequest).not.toHaveBeenCalled();
     });
 
     it('accepts a complete no-comma address after parser normalization', async () => {
