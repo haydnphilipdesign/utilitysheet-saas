@@ -50,7 +50,10 @@ export function FeedbackDialog() {
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50">
+            <DialogTrigger
+                aria-label="Send feedback"
+                className="flex min-h-9 min-w-9 items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary/50 hover:text-foreground sm:px-3"
+            >
                 <MessageSquare className="h-4 w-4" />
                 <span className="hidden md:inline">Feedback</span>
             </DialogTrigger>

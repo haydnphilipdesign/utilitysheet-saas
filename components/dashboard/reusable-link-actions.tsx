@@ -7,13 +7,8 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 /**
- * The readonly seller-link field plus its action buttons (Copy Link / Copy SMS
- * / Open Email / Open Link). This is the block that was duplicated across the
- * onboarding card and the two dashboard reusable-link cards. The primary
- * "Copy Link" action routes through the shared <Button> (default = primary
- * accent); the secondary actions are outline. Pass only the callbacks you want
- * rendered, so a minimal surface (just Copy) and the full four-button surface
- * share one implementation.
+ * Compact readonly seller-link share bar. Pass only the callbacks that should
+ * be rendered so onboarding and dashboard surfaces can share the same actions.
  */
 export function ReusableLinkActions({
     url,
@@ -35,29 +30,62 @@ export function ReusableLinkActions({
     className?: string;
 }) {
     return (
-        <div className={cn('flex flex-col gap-2 lg:flex-row lg:items-center', className)}>
-            <Input value={url} readOnly className="bg-background/70 font-mono text-xs sm:text-sm" />
-            <div className="flex flex-col gap-2 sm:flex-row lg:shrink-0">
-                <Button type="button" onClick={onCopyLink} disabled={disabled} className="active:scale-[0.98]">
+        <div className={cn('flex flex-col gap-2 xl:flex-row xl:items-center', className)}>
+            <Input
+                value={url}
+                readOnly
+                aria-label="Reusable seller link"
+                className="min-w-0 bg-background/70 font-mono text-xs sm:text-sm xl:flex-1"
+            />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:flex xl:shrink-0">
+                <Button
+                    type="button"
+                    size="sm"
+                    aria-label="Copy reusable seller link"
+                    onClick={onCopyLink}
+                    disabled={disabled}
+                    className="active:scale-[0.98]"
+                >
                     {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-                    {copied ? 'Copied' : 'Copy Link'}
+                    {copied ? 'Copied' : 'Copy'}
                 </Button>
                 {onCopySms ? (
-                    <Button type="button" variant="outline" onClick={onCopySms} className="active:scale-[0.98]">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        aria-label="Copy reusable seller link SMS message"
+                        onClick={onCopySms}
+                        className="active:scale-[0.98]"
+                    >
                         <MessageSquare className="mr-2 h-4 w-4" />
-                        Copy SMS
+                        SMS
                     </Button>
                 ) : null}
                 {onOpenEmail ? (
-                    <Button type="button" variant="outline" onClick={onOpenEmail} className="active:scale-[0.98]">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        aria-label="Open email with reusable seller link"
+                        onClick={onOpenEmail}
+                        className="active:scale-[0.98]"
+                    >
                         <Mail className="mr-2 h-4 w-4" />
-                        Open Email
+                        Email
                     </Button>
                 ) : null}
                 {onOpenLink ? (
-                    <Button type="button" variant="outline" onClick={onOpenLink} className="active:scale-[0.98]">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        aria-label="Open reusable seller link"
+                        onClick={onOpenLink}
+                        className="active:scale-[0.98]"
+                    >
                         <ExternalLink className="mr-2 h-4 w-4" />
-                        Open Link
+                        Open
                     </Button>
                 ) : null}
             </div>

@@ -6,105 +6,87 @@
 
 ## Session Metadata
 
-- Task: Implement a professional, data-correct Requests workspace at `/dashboard/requests`.
-- Status: Completed — implementation and validation finished; no required work remains.
+- Task: Refine `/dashboard` into a professional, action-oriented customer home page.
+- Status: Paused — implementation and code-level validation are complete; authenticated browser QA is waiting for user sign-in on localhost.
 - Current or last agent: OpenAI Codex
-- Branch: `main` (tracking `origin/main`)
+- Branch: `main` (tracking `origin/main`, currently one commit ahead)
 - Last updated: 2026-07-17
-- Relevant plan: `.ai/plans/2026-07-17-requests-workspace.md` (Completed)
+- Relevant plan: `.ai/plans/2026-07-17-dashboard-home-refinement.md` (In progress)
 - Related issue or PR: None known.
 
 ## Goal
 
-Make request pagination, search, filters, Needs Attention, and sorting operate over the complete authenticated account/organization dataset; store list state in the URL; and provide a responsive, action-complete Requests workspace without adding new backend behavior.
+Prioritize the reusable seller-link workflow, requests needing attention, and recently submitted work on `/dashboard`; keep metrics and promotion subordinate to active customer work; preserve existing backend, billing, authorization, and responsive behavior.
 
-## Current Repository State
+## Verified Repository State
 
-- The Requests API and query now perform pagination, search, status/attention filtering, deterministic sorting, totals, and page clamping over the full authenticated account/organization scope.
-- The workspace is URL-driven and renders a compact responsive list with pagination, intentional states, navigable addresses, and existing status-specific actions.
-- Dashboard stats, weekly summaries, and the request list share the implemented Needs Attention threshold: `sent` for more than three days. No canonical system-failure request flag exists, despite narrower future PRD language.
-- No schema, migration, billing, authorization, token-boundary, rate-limit, or server-side plan-enforcement change was made.
-- Pre-existing modified product files are present in `app/i/[slug]/page.tsx`, `app/packet/[token]/page.tsx`, `app/s/[token]/page.tsx`, and `components/seller-form/SellerLayout.tsx`.
-- Pre-existing untracked local audit artifacts are present at `.audit-overflow.mjs`, `.audit-shots.mjs`, and `playwright-report/`.
+- The worktree was clean before this task began. `HEAD` is `1bf3819` on `main`, one commit ahead of `origin/main`.
+- The ahead commit contains the completed Requests pagination/filtering workspace plus coordination files and other UI work. Do not rewrite, revert, commit, or push it.
+- `.ai/plans/2026-07-17-requests-workspace.md` is completed and current code supports server-side `status=needs_attention` and `status=submitted` filters with authenticated scope, sorting, pagination, and locked-row protections.
+- Settings already includes reusable-link slug editing backed by `/api/intake-link`; the dashboard should link to Settings rather than duplicate the editor.
+- `/api/account` returns current monthly usage. Show only finite, meaningful usage context.
+- The implemented Needs Attention definition remains `sent` for more than three days. No broader canonical failure state exists.
 
 ## Work Completed
 
-- Read the applicable repository instructions, `.ai/CURRENT.md`, completed prior plan, current diff, relevant untracked artifacts, recent commits, request schema, API/query/UI paths, action routes, tests, and audit screenshots.
-- Confirmed the user-provided pagination/search defect in current code.
-- Verified the implemented Needs Attention rule and the absence of a schema-backed system-failure flag.
-- Verified there is no general draft editor; draft Continue will use the existing request detail/configuration surface.
-- Chosen a server-owned list contract with URL-owned client state, deterministic schema-backed sorts, filtered count metadata, out-of-range page clamping, and locked-row search protection.
+- Read the repository instructions, prior/current handoff, completed Requests plan, current git status, ahead commit contents, dashboard code, Settings reusable-link code, request filters/actions, focused tests, and reference screenshot.
+- Confirmed the requested dashboard direction can be implemented entirely with existing routes and APIs.
+- Chosen a compact share bar followed by canonical Needs Attention and Submitted work lists, then compact linked summaries, usage context, referral, and product updates.
+- Chosen to remove dashboard slug editing and upgrade merchandising in favor of the existing Settings destination.
 - Created the active implementation-ready plan.
-- Added normalized request-list parameters and the centralized three-day Needs Attention threshold in `lib/requests/listing.ts`.
-- Implemented account-scoped database search, status/attention filters, deterministic schema-backed sorts, filtered counts, canonical page clamping, and previous/next metadata.
-- Updated the API to pass only authenticated account/organization scope and paid locked-detail access into the list query.
-- Protected locked-row details from unpaid search-based inference.
-- Rebuilt the Requests workspace around URL-owned search, filter, sort, and page state with stale-request cancellation and out-of-range URL canonicalization.
-- Added the connected toolbar, counts, clear filters, pagination, loading/error/no-data/filtered-zero states, and linked property addresses.
-- Added a focused action component that reuses existing draft/detail, seller-link, reminder, submitted review/edit, packet, and PDF capabilities on desktop and mobile.
-- Added query, route, and component coverage for server list behavior, authorization scope, metadata, URL state, states, navigation, and responsive actions.
-- Performed authenticated read-only browser QA at 1440px and emulated 390px. The pass verified 22-row pagination, URL-backed Needs Attention and sorting, browser history, mobile action parity, no horizontal overflow, and a clean console.
-- Fixed one QA-discovered responsive search-input padding conflict (`sm:pl-9`) and reran focused validation.
-- Removed the temporary localhost authentication cookies and viewport override and stopped the temporary QA server.
+- Rebuilt the dashboard around one compact reusable-link share bar with Copy, SMS, Email, and Open actions.
+- Added canonical Needs Attention and Submitted work feeds using the completed Requests API filters, with navigable rows and existing request actions.
+- Replaced inventory metrics with three compact filtered links and finite monthly usage context.
+- Moved referral and product updates below active work, removed the duplicate page-level New Request CTA, and moved ongoing help into a disclosure.
+- Added deliberate loading, empty, partial-error, and first-run states.
+- Added an accessible name and mobile touch target to the Feedback trigger.
+- Added focused dashboard and feedback tests; the current focused run passes 2 files and 5 tests.
+- Completed the broader focused regression set: dashboard, feedback, Requests workspace/route, and Settings reusable-link tests pass 5 files and 17 tests.
+- Completed task-scoped ESLint, TypeScript, production build, and diff validation successfully.
+- Attempted browser QA in the in-app browser and Chrome. The in-app browser redirected to `/auth/login`; Chrome control timed out before yielding a usable local page.
+- Did not create an impersonation session, copy authentication cookies, use credentials, or weaken the dashboard auth boundary.
 
-## Files Changed by This Task
+## Files Being Changed
 
 - `.ai/CURRENT.md`
-- `.ai/plans/2026-07-17-requests-workspace.md`
-- `lib/requests/listing.ts`
-- `lib/neon/queries/requests.ts`
-- `app/api/requests/route.ts`
-- `tests/unit/requests-list-query.test.ts`
-- `tests/unit/requests-list-route.test.ts`
-- `tests/unit/requests-workspace.test.tsx`
-- `components/requests/RequestListActions.tsx`
-- `app/dashboard/requests/page.tsx`
-- `types/index.ts`
+- `.ai/plans/2026-07-17-dashboard-home-refinement.md`
+- `app/dashboard/page.tsx`
+- `components/dashboard/reusable-link-actions.tsx`
+- `components/feedback-dialog.tsx`
+- `components/ui/dashboard-skeleton.tsx`
+- `tests/unit/dashboard-reusable-link.test.tsx`
+- `tests/unit/feedback-dialog.test.tsx`
 
-## Decisions and Rationale
+## Constraints and Risks
 
-- Preserve and centralize the existing three-day sent-request Needs Attention behavior because no implemented canonical system-failure field exists; document the limitation instead of inventing a broader rule.
-- Use only schema-backed sort keys: last activity, closing date, created date, and status, with deterministic tie-breakers and null closing dates last.
-- Keep list authorization inside the existing account/organization query scope. For unpaid accounts, search must not match hidden locked-row address or seller details because totals could otherwise leak a match.
-- Do not create a durable decision record: these are task-scoped list-contract choices, not a new long-term architecture or security model.
+- Preserve request-list authorization, locked-row behavior, token boundaries, rate limits, plan gating, billing behavior, and existing request actions.
+- Do not invent analytics, reminders, statuses, lifecycle automations, or usage data.
+- Do not send reminders, emails, downloads, checkout requests, or other live mutations during browser QA.
+- No commit, push, deploy, migration, schema change, or production-data modification is authorized.
+- Full repository lint previously had unrelated baseline errors; rerun and isolate any current failures.
 
-## Verified Repository State and Constraints
+## Validation Status
 
-- The coordination files are currently untracked and contain intentional prior setup work.
-- Existing unrelated product changes and local audit artifacts remain outside this task and must be preserved.
-- No schema change is required or authorized.
-- No commit, push, deployment, migration, reminder/email, download, packet/edit navigation, or other live mutation was performed.
-
-## Commands and Validation Performed
-
-- Combined focused Requests tests — passed, 3 files and 16 tests.
-- Final focused workspace test after the browser-found spacing fix — passed, 1 file and 5 tests.
-- Full `npm test -- --run` — passed, 88 files and 475 tests.
-- Task-scoped ESLint for all changed Requests source/tests — passed.
+- `npm test -- tests/unit/dashboard-reusable-link.test.tsx tests/unit/feedback-dialog.test.tsx` — passed, 2 files and 5 tests.
+- `npm test -- tests/unit/dashboard-reusable-link.test.tsx tests/unit/feedback-dialog.test.tsx tests/unit/requests-workspace.test.tsx tests/unit/requests-list-route.test.ts tests/unit/settings-reusable-link-mode.test.tsx` — passed, 5 files and 17 tests.
+- Task-scoped ESLint — passed.
 - `npm exec tsc -- --noEmit` — passed.
 - `npm run build` — passed.
-- `git diff --check` — passed; only LF-to-CRLF working-copy notices were emitted.
-- Full `npm run lint` — failed only on pre-existing unrelated `no-explicit-any` errors in `app/invite/[token]/page.tsx`, `components/admin/AuditLogTable.tsx`, `components/admin/EventLogTable.tsx`, `components/email-verification-banner.tsx`, and `tests/unit/updates-route.test.ts`.
-- Authenticated read-only browser QA — passed at 1440px and 390px. Page 2 showed rows 21–22 of 22; attention filtering, created-oldest sorting, URL history, zero-result state, mobile actions, layout width, and console were verified.
-- QA screenshots: `C:\Users\haydn\.codex\visualizations\2026\07\17\019f70b6-6bd2-7a62-bfa7-047e0576a464\requests-workspace-desktop-1440.png` and `requests-workspace-mobile-390.png`.
+- `git diff --check` — passed with only LF-to-CRLF working-copy notices.
+- Full `npm run lint` — failed only on pre-existing unrelated `no-explicit-any` errors in `app/invite/[token]/page.tsx`, `components/admin/AuditLogTable.tsx`, `components/admin/EventLogTable.tsx`, `components/email-verification-banner.tsx`, and two errors in `tests/unit/updates-route.test.ts`. Changed dashboard files are clean.
+- Browser QA — blocked pending authentication. The local dev server is running at `http://localhost:3005`; the in-app browser is on the sign-in page.
 
 ## Remaining Work
 
-- None required.
-- Optional future product work: define and persist a canonical system-failure Needs Attention signal before changing the retained three-day sent-request rule.
-
-## Known Bugs, Blockers, Risks, or Uncertainties
-
-- The PRD's system-failure-only Needs Attention concept is not backed by a current request field; this implementation intentionally retains the existing three-day sent rule.
-- Draft Continue opens request details/configuration because no current general draft-resume editor exists.
-- Full-repository lint remains red on unrelated pre-existing files listed above; task-scoped lint is clean.
-- The exact purpose and ownership of the pre-existing UI edits and local audit artifacts remain unknown.
+- User signs into `http://localhost:3005` in the available browser and tells the agent to resume.
+- Run non-mutating responsive browser QA at approximately 390px, 768px, and 1440px, capture screenshots, compare against the reference, then mark the plan completed and finalize this handoff.
 
 ## Concurrent Editing Warnings
 
-- Do not edit or revert the four pre-existing modified product files or the untracked audit artifacts.
-- No Requests file remains actively owned by this completed session.
+- No concurrent uncommitted work was present at startup.
+- Preserve all contents of the existing ahead commit unless a file is intentionally changed for this dashboard task.
+- Do not edit the dashboard files concurrently while responsive browser QA remains outstanding.
 
 ## Recommended Next Action
 
-Review the uncommitted Requests diff. No commit, push, deploy, or migration has been performed.
+Sign into the local UtilitySheet app at `http://localhost:3005`, then resume this task for the final 390px, 768px, and 1440px browser QA pass. Do not create an impersonation session or reuse production cookies.
