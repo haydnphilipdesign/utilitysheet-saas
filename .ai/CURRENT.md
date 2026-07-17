@@ -6,56 +6,48 @@
 
 ## Session Metadata
 
-- Task: Harden Admin Customer Outreach, Product Updates, deletion, publishing, and Audit Log workflows.
+- Task: Remove the unintended vertical scrollbar from the Settings tab strip while preserving horizontal overflow on narrow screens.
 - Status: Completed; no required work remains.
 - Current or last agent: OpenAI Codex
-- Branch: `main` (tracking `origin/main`, three commits ahead at task start)
+- Branch: `main`
 - Last updated: 2026-07-17
-- Relevant plan: `.ai/plans/2026-07-17-admin-sensitive-workflows-hardening.md` (Completed)
+- Relevant plan: None; tiny, low-risk UI fix.
 - Related issue or PR: None known.
+
+## Verified State
+
+- The worktree was clean at task start.
+- Authenticated Chrome QA on `http://localhost:3005/dashboard/settings` reproduced the issue.
+- The tab wrapper used only `overflow-x-auto`; CSS computed `overflow-y: auto`, and the wrapper measured 28px client height versus 29px scroll height.
+- No concurrent editing warning is known.
 
 ## Outcome
 
-- Renamed the operational surface to Customer Outreach while preserving `/admin/testimonial-candidates`.
-- Replaced direct testimonial sends with accessible review dialogs showing recipient, selection rationale, exact subject/body, required reason, resend context, and explicit confirmation.
-- Bound server sends to the reviewed recipient/message, added provider idempotency keys, and preserved Admin authorization, `ADMIN_WRITES_DISABLED`, eligibility, resend gating, send-attempt records, and audit logging.
-- Made Product Update creation draft-only and separated publication/deletion into reasoned, audited, explicitly confirmed actions with exact previews, pending/error/success states, duplicate-submit protection, and restrained destructive styling.
-- Rebuilt Audit Logs around human summaries, prominent timezone-aware timestamps, actor/affected-record links, visible reasons, action/date filters, and collapsed sanitized technical evidence.
-- Preserved stored raw metadata while redacting secret-like keys only in the rendered view. Historical create-and-publish records are distinguished from new draft-created records.
-- Updated `ADMIN.md`; no scoped exception to the reason-and-audit policy remains.
+- Added `overflow-y-hidden` to the Settings tab wrapper so horizontal scrolling remains available without the accidental vertical scrollbar.
+- No shared tab styles or unrelated Settings behavior changed.
 
 ## Validation
 
-- Focused Vitest: 10 files, 34 tests passed.
-- Task-scoped ESLint: passed.
-- Full `npm run lint`: failed only on three pre-existing out-of-scope `no-explicit-any` errors:
-  - `app/invite/[token]/page.tsx:54`
-  - `components/admin/EventLogTable.tsx:6`
-  - `components/email-verification-banner.tsx:26`
-  Baseline warnings also remain.
-- `npm exec tsc -- --noEmit`: passed.
-- `npm run build`: passed.
-- `git diff --check`: passed.
-- Direct secret-pattern inspection: only intentional dummy test values were found.
-- Authenticated Chrome QA passed on `/admin/testimonial-candidates`, `/admin/updates`, and `/admin/audit-logs`: meaningful render, named controls, dialog focus, preview content, reason/confirmation gating, date/action filtering, collapsed technical evidence, and empty warning/error console. No write was submitted.
-- Publish preview/confirmation was exercised through focused component tests because no draft existed in the connected data and browser QA was prohibited from creating one.
-
-## Repository State and Constraints
-
-- The worktree was clean before this task. Current uncommitted changes belong to this completed Admin refinement and must be preserved.
-- No commit, push, deploy, migration, production-data mutation, real testimonial email, Product Update publication, or deletion occurred.
-- No schema change or migration is required.
-- No concurrent editing warning remains from this session. Preserve the three prior local commits and unrelated repository work.
+- Authenticated Chrome QA passed on `http://localhost:3005/dashboard/settings`.
+- Before the fix, the wrapper computed to `overflow-y: auto` and reproduced the visible up/down scrollbar.
+- After the fix, the desktop screenshot showed no vertical scrollbar and computed `overflow-y: hidden`; the tab list remained fully visible.
+- At a 390px viewport, the wrapper retained horizontal overflow (`369px` scroll width inside `366px` client width) while vertical overflow stayed hidden.
+- Referrals tab interaction passed and updated the URL/panel as expected; the original Account view was restored afterward.
+- Browser warning/error console was empty and no framework error overlay appeared.
+- Focused Vitest: 3 files, 10 tests passed.
+- Task-scoped ESLint passed.
+- `git diff --check` passed.
 
 ## Required Remaining Work
 
 None.
 
-## Optional Follow-up
+## Repository State and Constraints
 
-- Clean up the unrelated repository lint baseline in a separately scoped task.
-- Run an additional responsive/browser matrix only if requested.
+- The only task changes are `app/dashboard/settings/page.tsx` and this handoff file.
+- No commit, push, deploy, migration, or production-data action occurred.
+- No concurrent editing warning remains.
 
 ## Recommended Next Action
 
-Review the completed diff. Commit or deployment actions require separate explicit authorization.
+Review the two-file diff. Commit or deployment actions require separate explicit authorization.

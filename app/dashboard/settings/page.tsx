@@ -679,7 +679,7 @@ export default function SettingsPage() {
             <PageHeader title="Settings" description="Manage your account and preferences" />
 
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-hidden">
                     <TabsList className="w-max">
                         <TabsTrigger value="account">Account</TabsTrigger>
                         <TabsTrigger value="link">Seller Link</TabsTrigger>
