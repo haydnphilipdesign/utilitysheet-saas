@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ComponentType } from 'react';
-import { format } from 'date-fns';
 import {
     ArrowUpDown,
     Ban,
@@ -22,6 +21,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AdminDataTableShell, AdminFilterBar, AdminPageHeader, AdminPagination } from '@/components/admin/primitives';
+import {
+    buildAuditLogPresentation,
+    getAuditActionLabel,
+    parseAuditDateFilter,
+} from '@/lib/admin/audit-log-presentation';
+import { formatAdminDateTime } from '@/lib/admin/date-format';
 import {
     DEFAULT_PAGE_SIZE,
     buildAdminHref,
@@ -51,13 +56,13 @@ const adminActionFilters = [
     'testimonial_test_sent',
     'user_updated',
     'product_update_created',
+    'product_update_published',
     'product_update_deleted',
 ] as const satisfies readonly AdminAction[];
 
 function isAdminAction(value: string): value is AdminAction {
     return (adminActionFilters as readonly string[]).includes(value);
 }
-
 type ActionIcon = ComponentType<{ className?: string }>;
 
 const actionIcons: Partial<Record<AdminAction, ActionIcon>> = {
@@ -74,49 +79,27 @@ const actionIcons: Partial<Record<AdminAction, ActionIcon>> = {
     testimonial_test_sent: Mail,
     user_updated: User,
     product_update_created: Megaphone,
+    product_update_published: Megaphone,
     product_update_deleted: Trash2,
 };
 
 const actionColors: Partial<Record<AdminAction, string>> = {
-    impersonation_started: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-    impersonation_ended: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
-    user_banned: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
-    user_unbanned: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
-    role_changed: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
-    plan_changed: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
-    request_status_changed: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
-    request_seller_updated: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20',
-    request_reminder_sent: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-    testimonial_request_sent: 'bg-teal-500/10 text-teal-700 dark:text-teal-400 border-teal-500/20',
-    testimonial_test_sent: 'bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20',
-    user_updated: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20',
-    product_update_created: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/20',
-    product_update_deleted: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20',
+    impersonation_started: 'border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+    impersonation_ended: 'border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300',
+    user_banned: 'border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-300',
+    user_unbanned: 'border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300',
+    role_changed: 'border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300',
+    plan_changed: 'border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300',
+    request_status_changed: 'border-indigo-500/20 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300',
+    request_seller_updated: 'border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-300',
+    request_reminder_sent: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+    testimonial_request_sent: 'border-teal-500/20 bg-teal-500/10 text-teal-700 dark:text-teal-300',
+    testimonial_test_sent: 'border-slate-500/20 bg-slate-500/10 text-slate-700 dark:text-slate-300',
+    user_updated: 'border-gray-500/20 bg-gray-500/10 text-gray-700 dark:text-gray-300',
+    product_update_created: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300',
+    product_update_published: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+    product_update_deleted: 'border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300',
 };
-
-function renderMetadata(metadata: Record<string, unknown> | null) {
-    if (!metadata || Object.keys(metadata).length === 0) return null;
-
-    const entries = Object.entries(metadata).slice(0, 8);
-    return (
-        <div className="mt-2 space-y-2">
-            <div className="flex flex-wrap gap-1.5">
-                {entries.map(([key, value]) => (
-                    <Badge key={key} variant="outline" className="bg-secondary/50 text-[11px] font-normal">
-                        <span className="text-muted-foreground">{key}:</span>
-                        <span className="ml-1 max-w-[200px] truncate text-foreground">{String(value)}</span>
-                    </Badge>
-                ))}
-            </div>
-            <details className="rounded-md border border-border/70 bg-secondary/20 p-2">
-                <summary className="cursor-pointer text-xs text-muted-foreground">Raw metadata</summary>
-                <pre className="mt-2 overflow-x-auto text-[11px] text-muted-foreground">
-                    {JSON.stringify(metadata, null, 2)}
-                </pre>
-            </details>
-        </div>
-    );
-}
 
 export default async function AuditLogsPage({ searchParams }: { searchParams: AuditLogsSearchParams }) {
     const sp = await resolveSearchParams(searchParams);
@@ -128,75 +111,114 @@ export default async function AuditLogsPage({ searchParams }: { searchParams: Au
     const query = (getParam(sp, 'q') || '').trim();
     const actionRaw = getParam(sp, 'action');
     const action = actionRaw && isAdminAction(actionRaw) ? actionRaw : undefined;
+    const rawFromDate = getParam(sp, 'from');
+    const rawToDate = getParam(sp, 'to');
+    const parsedFromDate = parseAuditDateFilter(rawFromDate);
+    const parsedToDate = parseAuditDateFilter(rawToDate);
+    const dateOrderInvalid = Boolean(parsedFromDate && parsedToDate && parsedFromDate > parsedToDate);
+    const fromDate = dateOrderInvalid ? undefined : parsedFromDate;
+    const toDate = dateOrderInvalid ? undefined : parsedToDate;
     const offset = (page - 1) * pageSize;
 
-    const { logs, total } = await searchAuditLogs({ limit: pageSize, offset, query, action });
+    const { logs, total } = await searchAuditLogs({
+        limit: pageSize,
+        offset,
+        query,
+        action,
+        fromDate,
+        toDate,
+    });
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const canonicalPage = clampPage(page, totalPages);
 
     const baseValues = {
         q: query || undefined,
         action,
+        from: fromDate,
+        to: toDate,
         pageSize,
     };
 
-    const buildPageHref = (targetPage: number) =>
-        buildAdminHref('/admin/audit-logs', {
-            ...baseValues,
-            page: targetPage,
-        });
+    const buildPageHref = (targetPage: number) => buildAdminHref('/admin/audit-logs', {
+        ...baseValues,
+        page: targetPage,
+    });
 
     if (shouldCanonicalizePage({ rawPage, rawPageSize, page, canonicalPage, pageSize })) {
         redirect(buildPageHref(canonicalPage));
     }
 
+    const filtersActive = Boolean(query || action || rawFromDate || rawToDate);
+
     return (
         <div className="space-y-4">
             <AdminPageHeader
                 title="Audit Logs"
-                description={`Track admin changes and security-sensitive actions (${total.toLocaleString()}).`}
+                description={`Understand who changed what, when, and why while retaining technical evidence (${total.toLocaleString()}).`}
             />
 
             <AdminFilterBar>
-                <form method="GET" action="/admin/audit-logs" className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <form method="GET" action="/admin/audit-logs" className="space-y-3">
                     <input type="hidden" name="page" value="1" />
                     <input type="hidden" name="pageSize" value={pageSize} />
 
-                    <div className="flex flex-1 items-center gap-2">
-                        <Input
-                            name="q"
-                            placeholder="Search action, admin, target, metadata..."
-                            defaultValue={query}
-                            className="w-full"
-                        />
-                        <Button type="submit" variant="outline" size="sm">
-                            <Search className="mr-1 h-4 w-4" />
-                            Search
-                        </Button>
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                            <label htmlFor="audit-search" className="text-xs font-medium text-muted-foreground">Search audit evidence</label>
+                            <Input
+                                id="audit-search"
+                                name="q"
+                                placeholder="Action, actor, affected user, reason, or record ID"
+                                defaultValue={query}
+                            />
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3 xl:w-[38rem]">
+                            <div className="space-y-1.5">
+                                <label htmlFor="audit-action" className="text-xs font-medium text-muted-foreground">Action</label>
+                                <select
+                                    id="audit-action"
+                                    name="action"
+                                    defaultValue={action || ''}
+                                    className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground sm:h-8"
+                                >
+                                    <option value="">All actions</option>
+                                    {adminActionFilters.map((filter) => (
+                                        <option key={filter} value={filter}>{getAuditActionLabel(filter)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label htmlFor="audit-from" className="text-xs font-medium text-muted-foreground">From date</label>
+                                <Input id="audit-from" name="from" type="date" defaultValue={parsedFromDate || rawFromDate || ''} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label htmlFor="audit-to" className="text-xs font-medium text-muted-foreground">Through date</label>
+                                <Input id="audit-to" name="to" type="date" defaultValue={parsedToDate || rawToDate || ''} />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Button type="submit" variant="outline">
+                                <Search className="h-4 w-4" />
+                                Apply filters
+                            </Button>
+                            {filtersActive ? (
+                                <Link
+                                    href={buildAdminHref('/admin/audit-logs', { page: 1, pageSize })}
+                                    className="text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                    Reset
+                                </Link>
+                            ) : null}
+                        </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        <select
-                            name="action"
-                            defaultValue={action || ''}
-                            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
-                        >
-                            <option value="">All actions</option>
-                            {adminActionFilters.map((filter) => (
-                                <option key={filter} value={filter}>
-                                    {filter.replace(/_/g, ' ')}
-                                </option>
-                            ))}
-                        </select>
-                        {(query || action) ? (
-                            <Link
-                                href={buildAdminHref('/admin/audit-logs', { page: 1, pageSize })}
-                                className="text-xs text-muted-foreground hover:text-foreground"
-                            >
-                                Reset
-                            </Link>
-                        ) : null}
-                    </div>
+                    {dateOrderInvalid ? (
+                        <p role="alert" className="text-sm text-destructive">
+                            The from date must be on or before the through date. Date filtering was not applied.
+                        </p>
+                    ) : null}
                 </form>
             </AdminFilterBar>
 
@@ -211,32 +233,82 @@ export default async function AuditLogsPage({ searchParams }: { searchParams: Au
                         {logs.map((log) => {
                             const logAction = log.action as AdminAction;
                             const Icon = actionIcons[logAction] || FileText;
-                            const colorClass = actionColors[logAction] || 'bg-gray-500/10 text-gray-600 border-gray-500/20';
+                            const colorClass = actionColors[logAction] || 'border-gray-500/20 bg-gray-500/10 text-gray-700';
+                            const presentation = buildAuditLogPresentation(log);
+                            const hasTechnicalEvidence = Boolean(
+                                log.ip_address
+                                || presentation.userAgent
+                                || Object.keys(presentation.metadata).length
+                            );
 
                             return (
-                                <article key={log.id} className="p-4 transition-colors hover:bg-secondary/30">
-                                    <div className="flex items-start gap-4">
-                                        <div className={`rounded-lg border p-2 ${colorClass}`}>
+                                <article key={log.id} className="p-4 transition-colors hover:bg-secondary/20">
+                                    <div className="flex items-start gap-3 sm:gap-4">
+                                        <div className={`rounded-lg border p-2 ${colorClass}`} aria-hidden="true">
                                             <Icon className="h-4 w-4" />
                                         </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <Badge variant="outline" className={colorClass}>
-                                                    {String(log.action).replace(/_/g, ' ')}
-                                                </Badge>
-                                                <span className="text-sm text-muted-foreground">
-                                                    by <span className="font-medium text-foreground">{log.admin_name || log.admin_email || 'Unknown'}</span>
-                                                </span>
-                                                {log.target_email ? (
-                                                    <span className="text-sm text-muted-foreground">
-                                                        → <span className="font-medium text-foreground">{log.target_name || log.target_email}</span>
-                                                    </span>
-                                                ) : null}
+                                        <div className="min-w-0 flex-1 space-y-3">
+                                            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <Badge variant="outline" className={colorClass}>{presentation.label}</Badge>
+                                                        {log.metadata?.blocked === true ? <Badge variant="outline">Blocked by policy</Badge> : null}
+                                                    </div>
+                                                    <p className="mt-2 text-sm font-medium text-foreground">{presentation.summary}</p>
+                                                </div>
+                                                <time dateTime={log.created_at} className="shrink-0 text-sm font-semibold text-foreground">
+                                                    {formatAdminDateTime(log.created_at)}
+                                                </time>
                                             </div>
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                                {format(new Date(log.created_at), 'MMM d, yyyy h:mm a')}
-                                            </p>
-                                            {renderMetadata(log.metadata)}
+
+                                            <dl className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+                                                <div>
+                                                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Actor</dt>
+                                                    <dd className="mt-1">
+                                                        <Link href={`/admin/users/${log.admin_id}`} className="font-medium text-foreground hover:underline">
+                                                            {log.admin_name || log.admin_email || 'Unknown Admin'}
+                                                        </Link>
+                                                    </dd>
+                                                </div>
+                                                <div>
+                                                    <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Affected record</dt>
+                                                    <dd className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                                                        {presentation.relatedRecords.length ? presentation.relatedRecords.map((record) => (
+                                                            <Link key={`${record.href}-${record.label}`} href={record.href} className="font-medium text-foreground hover:underline">
+                                                                {record.label}
+                                                            </Link>
+                                                        )) : <span className="text-muted-foreground">No linked Admin record</span>}
+                                                    </dd>
+                                                </div>
+                                            </dl>
+
+                                            {presentation.reason ? (
+                                                <div className="rounded-md border border-border/70 bg-secondary/20 px-3 py-2 text-sm">
+                                                    <span className="font-medium text-foreground">Reason:</span>{' '}
+                                                    <span className="text-muted-foreground">{presentation.reason}</span>
+                                                </div>
+                                            ) : null}
+
+                                            {hasTechnicalEvidence ? (
+                                                <details className="rounded-md border border-border/70 bg-secondary/10 p-3">
+                                                    <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                                                        Technical evidence
+                                                    </summary>
+                                                    <div className="mt-3 space-y-3 text-xs text-muted-foreground">
+                                                        {log.ip_address ? (
+                                                            <p><span className="font-medium text-foreground">IP address:</span> {log.ip_address}</p>
+                                                        ) : null}
+                                                        {presentation.userAgent ? (
+                                                            <p className="break-words"><span className="font-medium text-foreground">User agent:</span> {presentation.userAgent}</p>
+                                                        ) : null}
+                                                        {Object.keys(presentation.metadata).length ? (
+                                                            <pre className="overflow-x-auto rounded-md bg-background p-3 text-[11px]">
+                                                                {JSON.stringify(presentation.metadata, null, 2)}
+                                                            </pre>
+                                                        ) : null}
+                                                    </div>
+                                                </details>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </article>
@@ -252,13 +324,11 @@ export default async function AuditLogsPage({ searchParams }: { searchParams: Au
                     totalPages={totalPages}
                     prevHref={buildPageHref(Math.max(1, canonicalPage - 1))}
                     nextHref={buildPageHref(Math.min(totalPages, canonicalPage + 1))}
-                    buildPageSizeHref={(size) =>
-                        buildAdminHref('/admin/audit-logs', {
-                            ...baseValues,
-                            page: 1,
-                            pageSize: size,
-                        })
-                    }
+                    buildPageSizeHref={(size) => buildAdminHref('/admin/audit-logs', {
+                        ...baseValues,
+                        page: 1,
+                        pageSize: size,
+                    })}
                 />
             </AdminDataTableShell>
         </div>

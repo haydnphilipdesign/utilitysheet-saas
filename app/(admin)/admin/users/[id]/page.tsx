@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatAdminDate } from '@/lib/admin/date-format';
-import type { AdminAuditLog, AdminUserRow, EffectivePlan, Request } from '@/types';
+import type { AdminAuditLogRow } from '@/lib/admin';
+import type { AdminUserRow, EffectivePlan, Request } from '@/types';
 
 async function getUserData(userId: string) {
     if (!sql) return null;
@@ -27,9 +28,15 @@ async function getUserData(userId: string) {
         `,
         sql`SELECT * FROM requests WHERE account_id = ${userId} ORDER BY created_at DESC`,
         sql`
-            SELECT l.*, a.email as admin_email
+            SELECT
+                l.*,
+                a.email as admin_email,
+                a.full_name as admin_name,
+                t.email as target_email,
+                t.full_name as target_name
             FROM admin_audit_logs l
             LEFT JOIN accounts a ON l.admin_id = a.id
+            LEFT JOIN accounts t ON l.target_user_id = t.id
             WHERE target_user_id = ${userId}
             ORDER BY created_at DESC
         `,
@@ -152,7 +159,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                     <RequestsTable requests={requests as unknown as Request[]} />
                 </TabsContent>
                 <TabsContent value="log" className="mt-4">
-                    <AuditLogTable logs={logs as unknown as AdminAuditLog[]} />
+                    <AuditLogTable logs={logs as unknown as AdminAuditLogRow[]} />
                 </TabsContent>
             </Tabs>
         </div>

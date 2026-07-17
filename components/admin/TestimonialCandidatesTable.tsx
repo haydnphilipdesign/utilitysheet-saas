@@ -157,7 +157,10 @@ export function TestimonialCandidatesTable({
                                         <div className="flex justify-end gap-2">
                                             <TestimonialOutreachButton
                                                 userId={candidate.id}
+                                                recipientName={candidate.fullName}
                                                 recipientEmail={candidate.email}
+                                                businessName={candidate.businessName}
+                                                selectionReasons={candidate.reasons}
                                                 alreadySent={candidate.latestTestimonialOutreach?.status === 'sent'}
                                             />
                                             <Link href={`/admin/users/${candidate.id}`}>

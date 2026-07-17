@@ -25,7 +25,7 @@ const adminNavigationSections = [
     {
         name: 'Growth & Content',
         items: [
-            { name: 'Top Users', href: '/admin/testimonial-candidates', icon: Sparkles },
+            { name: 'Customer Outreach', href: '/admin/testimonial-candidates', icon: Sparkles },
             { name: 'Updates', href: '/admin/updates', icon: Megaphone },
         ],
     },

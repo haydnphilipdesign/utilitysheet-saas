@@ -43,7 +43,7 @@ export async function createProductUpdate(data: {
 }): Promise<ProductUpdate | null> {
     if (!sql) return null;
 
-    const isPublished = data.isPublished ?? true;
+    const isPublished = data.isPublished ?? false;
     const publishedAt = data.publishedAt ? data.publishedAt.toISOString() : null;
 
     const result = await sql`
@@ -68,15 +68,30 @@ export async function createProductUpdate(data: {
     return (result[0] as ProductUpdate) || null;
 }
 
-export async function deleteProductUpdate(id: string): Promise<boolean> {
-    if (!sql) return false;
+export async function publishProductUpdate(id: string): Promise<ProductUpdate | null> {
+    if (!sql) return null;
+
+    const result = await sql`
+        UPDATE product_updates
+        SET
+            is_published = TRUE,
+            published_at = NOW()
+        WHERE id = ${id}::uuid
+            AND is_published = FALSE
+        RETURNING *
+    `;
+
+    return (result[0] as ProductUpdate) || null;
+}
+
+export async function deleteProductUpdate(id: string): Promise<ProductUpdate | null> {
+    if (!sql) return null;
 
     const result = await sql`
         DELETE FROM product_updates
         WHERE id = ${id}::uuid
-        RETURNING id
+        RETURNING *
     `;
 
-    return result.length > 0;
+    return (result[0] as ProductUpdate) || null;
 }
-

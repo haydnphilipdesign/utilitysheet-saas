@@ -71,6 +71,12 @@ export function assertAdminActionReason(reason: string) {
     }
 }
 
+export function assertAdminActionConfirmed(confirmed: boolean) {
+    if (confirmed !== true) {
+        throw new Error('Admin action requires explicit confirmation');
+    }
+}
+
 export async function getRequestContext() {
     const headersList = await headers();
     const ipAddress =
@@ -507,6 +513,8 @@ export async function searchAuditLogs(params: {
     offset?: number;
     query?: string;
     action?: AdminAction;
+    fromDate?: string;
+    toDate?: string;
 }): Promise<{ logs: AdminAuditLogRow[]; total: number }> {
     if (!sql) return { logs: [], total: 0 };
 
@@ -520,6 +528,14 @@ export async function searchAuditLogs(params: {
 
     if (params.action) {
         whereClause = sql`${whereClause} AND al.action = ${params.action}`;
+    }
+
+    if (params.fromDate) {
+        whereClause = sql`${whereClause} AND al.created_at >= ${params.fromDate}::date`;
+    }
+
+    if (params.toDate) {
+        whereClause = sql`${whereClause} AND al.created_at < (${params.toDate}::date + INTERVAL '1 day')`;
     }
 
     if (q) {

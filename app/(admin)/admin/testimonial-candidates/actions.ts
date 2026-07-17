@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import {
+    assertAdminActionConfirmed,
+    assertAdminActionReason,
     assertAdminWritesEnabled,
     createAuditLogWithContext,
     requireAdmin,
@@ -13,6 +15,7 @@ import {
     sendTestimonialOutreachTestEmail,
     validateTestimonialOutreachRecipient,
 } from '@/lib/admin/testimonial-outreach';
+import { buildTestimonialOutreachEmail } from '@/lib/admin/testimonial-outreach-content';
 
 type ActionResult =
     | { success: true; dryRun?: boolean }
@@ -20,11 +23,27 @@ type ActionResult =
 
 export async function sendTestimonialRequestAdminAction(
     userId: string,
-    options: { allowResend?: boolean } = {}
+    options: {
+        reason: string;
+        confirmed: boolean;
+        idempotencyKey: string;
+        expectedRecipientEmail: string;
+        expectedSubject: string;
+        expectedBody: string;
+        allowResend?: boolean;
+    }
 ): Promise<ActionResult> {
     try {
         const { account } = await requireAdmin();
         assertAdminWritesEnabled();
+        assertAdminActionReason(options.reason);
+        assertAdminActionConfirmed(options.confirmed);
+
+        const reason = options.reason.trim();
+        const idempotencyKey = options.idempotencyKey.trim();
+        if (idempotencyKey.length < 8) {
+            return { success: false, error: 'A valid outreach confirmation is required' };
+        }
 
         const recipient = await getTestimonialOutreachRecipient(userId);
         if (!recipient) {
@@ -36,6 +55,21 @@ export async function sendTestimonialRequestAdminAction(
             return { success: false, error: validationError };
         }
 
+        const currentPreview = buildTestimonialOutreachEmail({
+            recipientName: recipient.fullName,
+            businessName: recipient.businessName,
+        });
+        if (
+            recipient.email !== options.expectedRecipientEmail
+            || currentPreview.subject !== options.expectedSubject
+            || currentPreview.text !== options.expectedBody
+        ) {
+            return {
+                success: false,
+                error: 'Recipient details or message content changed. Close this review and open it again before sending.',
+            };
+        }
+
         const alreadySent = await hasSuccessfulTestimonialOutreach(userId);
         if (alreadySent && !options.allowResend) {
             return { success: false, error: 'A testimonial request has already been sent. Confirm Send again to resend.' };
@@ -44,6 +78,7 @@ export async function sendTestimonialRequestAdminAction(
         const result = await sendTestimonialOutreachEmail({
             recipient,
             sentByAdminId: account.id,
+            idempotencyKey,
         });
 
         await createAuditLogWithContext({
@@ -51,6 +86,7 @@ export async function sendTestimonialRequestAdminAction(
             targetUserId: recipient.id,
             action: 'testimonial_request_sent',
             metadata: {
+                reason,
                 recipientEmail: recipient.email,
                 result: result.success ? (result.dryRun ? 'dry_run' : 'sent') : 'failed',
                 resendEmailId: result.success ? result.resendEmailId || null : null,
@@ -70,10 +106,22 @@ export async function sendTestimonialRequestAdminAction(
     }
 }
 
-export async function sendTestimonialRequestTestToSelfAdminAction(): Promise<ActionResult> {
+export async function sendTestimonialRequestTestToSelfAdminAction(options: {
+    reason: string;
+    confirmed: boolean;
+    idempotencyKey: string;
+}): Promise<ActionResult> {
     try {
         const { account, user } = await requireAdmin();
         assertAdminWritesEnabled();
+        assertAdminActionReason(options.reason);
+        assertAdminActionConfirmed(options.confirmed);
+
+        const reason = options.reason.trim();
+        const idempotencyKey = options.idempotencyKey.trim();
+        if (idempotencyKey.length < 8) {
+            return { success: false, error: 'A valid outreach confirmation is required' };
+        }
 
         const toEmail = account.email || user.primaryEmail;
         if (!toEmail) {
@@ -84,6 +132,7 @@ export async function sendTestimonialRequestTestToSelfAdminAction(): Promise<Act
             toEmail,
             toName: account.full_name || user.displayName || null,
             sentByAdminId: account.id,
+            idempotencyKey,
         });
 
         await createAuditLogWithContext({
@@ -91,6 +140,7 @@ export async function sendTestimonialRequestTestToSelfAdminAction(): Promise<Act
             targetUserId: account.id,
             action: 'testimonial_test_sent',
             metadata: {
+                reason,
                 recipientEmail: toEmail,
                 result: result.success ? (result.dryRun ? 'dry_run' : 'sent') : 'failed',
                 resendEmailId: result.success ? result.resendEmailId || null : null,

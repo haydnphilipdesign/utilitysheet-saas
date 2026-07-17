@@ -29,6 +29,8 @@ describe('AdminLayoutContent', () => {
 
         expect(screen.getByRole('link', { name: /seller progress/i })).toHaveAttribute('href', '/admin/abandonment');
         expect(screen.getByRole('link', { name: /workspaces/i })).toHaveAttribute('href', '/admin/organizations');
+        expect(screen.getByRole('link', { name: /customer outreach/i })).toHaveAttribute('href', '/admin/testimonial-candidates');
+        expect(screen.queryByRole('link', { name: /top users/i })).not.toBeInTheDocument();
         expect(screen.getByRole('link', { name: /workspaces/i })).toHaveAttribute('aria-current', 'page');
     });
 

@@ -155,6 +155,7 @@ export type AdminAction =
     | 'testimonial_test_sent'
     | 'user_updated'
     | 'product_update_created'
+    | 'product_update_published'
     | 'product_update_deleted';
 
 // Entities

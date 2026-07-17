@@ -147,8 +147,8 @@ export default async function TestimonialCandidatesPage({ searchParams }: { sear
     return (
         <div className="space-y-4">
             <AdminPageHeader
-                title="Testimonial Candidates"
-                description={`Rank paying customers by UtilitySheet activity, recency, consistency, setup health, and data quality (${total.toLocaleString()}).`}
+                title="Customer Outreach"
+                description={`Identify strong customer advocacy candidates using UtilitySheet activity, recency, consistency, setup health, and data quality (${total.toLocaleString()}).`}
             />
             <div className="flex justify-end">
                 <TestimonialOutreachTestButton />
