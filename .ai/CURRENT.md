@@ -7,8 +7,8 @@
 ## Session Metadata
 
 - Task: Branding Profiles improvements from the completed Settings/Branding configurability audit.
-- Status: Phases A, B, and C COMPLETE and validated. Committing + pushing to `main` and running the
-  migration live (all user-authorized) is the final step.
+- Status: Phases A, B, and C COMPLETE, validated, committed (`eb4dfb0`), pushed to `main`, and the
+  identity migration has been APPLIED to the live database and verified (all 5 columns present).
 - Current or last agent: Claude Code
 - Branch: `main`
 - Last updated: 2026-07-17
@@ -46,11 +46,12 @@
 
 ## Remaining
 
-- Commit, push to `main`, and run `migrations-brand-profile-identity.sql` live (user-authorized this
-  session). Migration is idempotent (`ADD COLUMN IF NOT EXISTS`).
-- Recommended follow-up: authenticated browser QA of the branding editor (Professional identity
+- Done: commit (`eb4dfb0`), push to `main`, and the live migration
+  (`migrations-brand-profile-identity.sql`, idempotent, applied and verified against the DB in
+  `.env.local`). No required work remains.
+- Recommended follow-up only: authenticated browser QA of the branding editor (Professional identity
   card, template preview/validation, Send test email), the web packet, and a rendered PDF; plus a
-  visual PDF regression pass.
+  visual PDF regression pass for the header/compliance additions.
 
 ## Concurrent Editing Warnings
 
