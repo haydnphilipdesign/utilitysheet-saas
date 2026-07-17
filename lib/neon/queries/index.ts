@@ -52,6 +52,7 @@ export {
     getBrandProfileForScope,
     getDefaultBrandProfile,
     getIntakeBrandProfile,
+    getBrandProfileRequestCounts,
     createBrandProfile,
     updateBrandProfile,
     deleteBrandProfile,

@@ -44,6 +44,11 @@ export interface PacketBrandData {
     contact_phone: string | null;
     contact_website: string | null;
     disclaimer_text: string | null;
+    company_name: string | null;
+    professional_title: string | null;
+    license_number: string | null;
+    license_state: string | null;
+    compliance_line: string | null;
     buyer_next_steps: string[] | null;
     next_steps_title: string | null;
     show_powered_by: boolean;
@@ -335,6 +340,13 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
             contact_phone: brandProfile.contact_phone,
             contact_website: brandProfile.contact_website,
             disclaimer_text: brandProfile.disclaimer_text ?? null,
+            // Structured identity/compliance fields pass through on every plan,
+            // like the core contact fields and disclaimer.
+            company_name: brandProfile.company_name ?? null,
+            professional_title: brandProfile.professional_title ?? null,
+            license_number: brandProfile.license_number ?? null,
+            license_state: brandProfile.license_state ?? null,
+            compliance_line: brandProfile.compliance_line ?? null,
             buyer_next_steps: buyerNextSteps,
             next_steps_title: isPro ? (brandProfile.next_steps_title ?? null) : null,
             show_powered_by: forceShowPoweredBy ? true : Boolean(brandProfile.show_powered_by),

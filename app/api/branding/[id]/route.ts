@@ -114,6 +114,11 @@ export async function PUT(
             contact_email: payload.contact_email,
             contact_website: payload.contact_website,
             disclaimer_text: payload.disclaimer_text,
+            company_name: payload.company_name,
+            professional_title: payload.professional_title,
+            license_number: payload.license_number,
+            license_state: payload.license_state,
+            compliance_line: payload.compliance_line,
             ...(payload.message_templates !== undefined ? { message_templates: normalizeMessageTemplates(payload.message_templates) } : {}),
             ...(isPro ? { is_default: payload.is_default } : {}),
             // Advanced customization (Pro only)

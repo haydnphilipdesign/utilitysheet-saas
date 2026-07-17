@@ -53,6 +53,10 @@ interface SendSellerNotificationEmailParams {
         | 'contact_name'
         | 'contact_email'
         | 'contact_phone'
+        | 'company_name'
+        | 'license_number'
+        | 'license_state'
+        | 'compliance_line'
         | 'message_templates'
     >;
     sellerToken: string;
@@ -74,6 +78,28 @@ function safeExternalUrl(value: string | null | undefined): string | null {
     } catch {
         return null;
     }
+}
+
+/**
+ * The verified profile contact email, usable as a reply-to. Sellers who reply
+ * reach the agent directly; the authenticated sending domain
+ * (noreply@utilitysheet.com) is unchanged. Returns null for missing/malformed
+ * addresses so the send simply omits reply-to.
+ */
+function safeReplyToEmail(value: string | null | undefined): string | null {
+    if (!value) return null;
+    const trimmed = value.trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : null;
+}
+
+/** Combine a license number and state into one display line, or null. */
+function buildLicenseLine(licenseNumber?: string | null, licenseState?: string | null): string | null {
+    const num = licenseNumber?.trim();
+    const state = licenseState?.trim();
+    if (num && state) return `License #${num} · ${state}`;
+    if (num) return `License #${num}`;
+    if (state) return `Licensed in ${state}`;
+    return null;
 }
 
 function renderBulletproofButton(params: {
@@ -148,6 +174,9 @@ function generateSellerRequestEmailHtml(params: {
     agentName?: string;
     agentEmail?: string | null;
     agentPhone?: string | null;
+    agentCompany?: string | null;
+    agentLicenseLine?: string | null;
+    complianceLine?: string | null;
 }): string {
     const safeBrandName = escapeHtml(params.brandName);
     const safeBrandLogoUrl = params.brandLogoUrl ? escapeHtml(params.brandLogoUrl) : null;
@@ -174,6 +203,14 @@ function generateSellerRequestEmailHtml(params: {
         safeAgentName && agentContactParts.length > 0
             ? `<p style="margin: 12px 0 0; color: #6b7280; font-size: 12px; line-height: 1.6;">Questions? Contact ${safeAgentName}${agentContactParts.length > 0 ? ` — ${agentContactParts.join(' · ')}` : ''}.</p>`
             : '';
+
+    const safeAgentCompany = params.agentCompany ? escapeHtml(params.agentCompany) : null;
+    const safeAgentLicenseLine = params.agentLicenseLine ? escapeHtml(params.agentLicenseLine) : null;
+    const safeComplianceLine = params.complianceLine ? escapeHtml(params.complianceLine) : null;
+    const identityLines = [safeAgentCompany, safeAgentLicenseLine, safeComplianceLine].filter(Boolean);
+    const identityLinesHtml = identityLines.length > 0
+        ? `<p style="margin: 8px 0 0; color: #9ca3af; font-size: 11px; line-height: 1.6;">${identityLines.join('<br />')}</p>`
+        : '';
 
     return `
 <!DOCTYPE html>
@@ -238,6 +275,7 @@ function generateSellerRequestEmailHtml(params: {
                         <td style="background-color: #f9fafb; padding: 18px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; color: #9ca3af; font-size: 12px;">Sent via UtilitySheet.</p>
                             ${agentContactLine}
+                            ${identityLinesHtml}
                         </td>
                     </tr>
                 </table>
@@ -334,7 +372,12 @@ export async function sendSellerNotificationEmail({
         agentName: effectiveAgentName,
         agentEmail: brandProfile?.contact_email || null,
         agentPhone: brandProfile?.contact_phone || null,
+        agentCompany: brandProfile?.company_name || null,
+        agentLicenseLine: buildLicenseLine(brandProfile?.license_number, brandProfile?.license_state),
+        complianceLine: brandProfile?.compliance_line || null,
     });
+
+    const replyTo = safeReplyToEmail(brandProfile?.contact_email);
 
     try {
         const { data, error } = await getResend().emails.send({
@@ -342,6 +385,7 @@ export async function sendSellerNotificationEmail({
             to: sellerEmail,
             subject,
             html: emailHtml,
+            ...(replyTo ? { replyTo } : {}),
         });
 
         if (error) {
@@ -442,7 +486,12 @@ export async function sendSellerReminderEmail({
         agentName: effectiveAgentName,
         agentEmail: brandProfile?.contact_email || null,
         agentPhone: brandProfile?.contact_phone || null,
+        agentCompany: brandProfile?.company_name || null,
+        agentLicenseLine: buildLicenseLine(brandProfile?.license_number, brandProfile?.license_state),
+        complianceLine: brandProfile?.compliance_line || null,
     });
+
+    const replyTo = safeReplyToEmail(brandProfile?.contact_email);
 
     try {
         const { data, error } = await getResend().emails.send({
@@ -450,6 +499,7 @@ export async function sendSellerReminderEmail({
             to: sellerEmail,
             subject,
             html: emailHtml,
+            ...(replyTo ? { replyTo } : {}),
         });
 
         if (error) {

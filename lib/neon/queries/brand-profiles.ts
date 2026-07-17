@@ -118,6 +118,28 @@ export async function getIntakeBrandProfile(
 }
 
 /**
+ * Count the requests referencing each of the given brand profiles.
+ * Returns a map of brand_profile_id -> request count; profiles with no
+ * requests are simply absent from the map.
+ */
+export async function getBrandProfileRequestCounts(profileIds: string[]): Promise<Record<string, number>> {
+    if (!sql || profileIds.length === 0) return {};
+
+    const result = await sql`
+        SELECT brand_profile_id, COUNT(*)::int AS request_count
+        FROM requests
+        WHERE brand_profile_id = ANY(${profileIds}::uuid[])
+        GROUP BY brand_profile_id
+    `;
+
+    const counts: Record<string, number> = {};
+    for (const row of result as Array<{ brand_profile_id: string; request_count: number }>) {
+        counts[row.brand_profile_id] = Number(row.request_count);
+    }
+    return counts;
+}
+
+/**
  * Create a new brand profile
  */
 export async function createBrandProfile(data: {
@@ -132,6 +154,11 @@ export async function createBrandProfile(data: {
     contactEmail?: string | null;
     contactWebsite?: string | null;
     disclaimerText?: string | null;
+    companyName?: string | null;
+    professionalTitle?: string | null;
+    licenseNumber?: string | null;
+    licenseState?: string | null;
+    complianceLine?: string | null;
     messageTemplates?: MessageTemplates;
     isDefault?: boolean;
     // Advanced customization
@@ -175,6 +202,11 @@ export async function createBrandProfile(data: {
             contact_email,
             contact_website,
             disclaimer_text,
+            company_name,
+            professional_title,
+            license_number,
+            license_state,
+            compliance_line,
             message_templates,
             is_default,
             buyer_next_steps,
@@ -194,6 +226,11 @@ export async function createBrandProfile(data: {
             ${data.contactEmail || null},
             ${data.contactWebsite || null},
             ${data.disclaimerText || null},
+            ${data.companyName || null},
+            ${data.professionalTitle || null},
+            ${data.licenseNumber || null},
+            ${data.licenseState || null},
+            ${data.complianceLine || null},
             ${messageTemplatesJson}::jsonb,
             ${data.isDefault || false},
             ${data.buyerNextSteps ? JSON.stringify(data.buyerNextSteps) : null},
@@ -285,6 +322,11 @@ export async function updateBrandProfile(
             contact_email = CASE WHEN ${data.contact_email !== undefined} THEN ${data.contact_email ?? null}::text ELSE contact_email END,
             contact_website = CASE WHEN ${data.contact_website !== undefined} THEN ${data.contact_website ?? null}::text ELSE contact_website END,
             disclaimer_text = CASE WHEN ${data.disclaimer_text !== undefined} THEN ${data.disclaimer_text ?? null}::text ELSE disclaimer_text END,
+            company_name = CASE WHEN ${data.company_name !== undefined} THEN ${data.company_name ?? null}::text ELSE company_name END,
+            professional_title = CASE WHEN ${data.professional_title !== undefined} THEN ${data.professional_title ?? null}::text ELSE professional_title END,
+            license_number = CASE WHEN ${data.license_number !== undefined} THEN ${data.license_number ?? null}::text ELSE license_number END,
+            license_state = CASE WHEN ${data.license_state !== undefined} THEN ${data.license_state ?? null}::text ELSE license_state END,
+            compliance_line = CASE WHEN ${data.compliance_line !== undefined} THEN ${data.compliance_line ?? null}::text ELSE compliance_line END,
             message_templates = CASE WHEN ${data.message_templates !== undefined} THEN ${messageTemplatesJson}::jsonb ELSE message_templates END,
             is_default = CASE WHEN ${data.is_default !== undefined} THEN ${data.is_default ?? null}::boolean ELSE is_default END,
             buyer_next_steps = CASE WHEN ${data.buyer_next_steps !== undefined} THEN ${buyerNextStepsJson}::jsonb ELSE buyer_next_steps END,

@@ -183,6 +183,12 @@ export const brandProfileCreateBodySchema = z
         contact_email: clearableLimitedString(BRAND_PROFILE_LIMITS.contactEmailMax),
         contact_website: clearableLimitedString(BRAND_PROFILE_LIMITS.contactWebsiteMax),
         disclaimer_text: clearableLimitedString(BRAND_PROFILE_LIMITS.disclaimerTextMax),
+        // Structured professional identity (optional, free-form)
+        company_name: clearableLimitedString(BRAND_PROFILE_LIMITS.companyNameMax),
+        professional_title: clearableLimitedString(BRAND_PROFILE_LIMITS.professionalTitleMax),
+        license_number: clearableLimitedString(BRAND_PROFILE_LIMITS.licenseNumberMax),
+        license_state: clearableLimitedString(BRAND_PROFILE_LIMITS.licenseStateMax),
+        compliance_line: clearableLimitedString(BRAND_PROFILE_LIMITS.complianceLineMax),
         message_templates: messageTemplatesSchema,
         is_default: z.preprocess(nullToUndefined, z.boolean().optional()),
         // Advanced customization

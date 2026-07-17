@@ -6,73 +6,57 @@
 
 ## Session Metadata
 
-- Task: Implement the Notifications + immediate Settings quality slice from the completed configurability audit (accessible switches, PDF-attachment dependency, weekly-summary decision, personal-vs-workspace scoping, and the approved team notification-routing model).
-- Status: Implementation complete and validated (except live authenticated browser QA). Uncommitted on `main`. Awaits separate authorization to commit and to run the migration live.
+- Task: Branding Profiles improvements from the completed Settings/Branding configurability audit.
+- Status: Phases A, B, and C COMPLETE and validated. Committing + pushing to `main` and running the
+  migration live (all user-authorized) is the final step.
 - Current or last agent: Claude Code
 - Branch: `main`
 - Last updated: 2026-07-17
-- Relevant plan: `.ai/plans/2026-07-17-notifications-settings-quality-slice.md`
+- Relevant plan: `.ai/plans/2026-07-17-branding-profiles-improvements.md`
 - Source audit: `.ai/plans/2026-07-17-settings-branding-configurability-audit.md`
-- Prior completed task: Workspace & Team Settings separation (`.ai/plans/2026-07-17-workspace-team-settings.md`).
-- Related issue or PR: None known.
 
-## Active Task: Notifications Quality Slice — COMPLETE
+## What shipped
 
-- Product-decision gate resolved: **Model B approved** (workspace admin routing toggle, membership-derived
-  recipients, defaults OFF). Implemented as described in the active plan's Implementation Record.
-- Phase 1 (accessibility/dependency) and Phase 2 (Model B routing) are both implemented.
-- Weekly summary remains intentionally unavailable. Verified blocker: `/api/cron/weekly-summary` is not
-  registered in `vercel.json` (only activation crons are). The old commented-out toggle was removed and
-  replaced with a code comment documenting the blocker. Do not enable the cron until a dependable weekly
-  schedule is wired.
-- Non-blocking rule preserved: all submission-notification sends run in `Promise.allSettled` inside a
-  try/catch in `app/api/seller/[token]/route.ts`; no send can block the seller response.
-- Scoping preserved: personal per-account `notification_preferences` (each recipient's own gate) are
-  distinct from workspace-level `organizations.notification_settings` (who is eligible).
-
-## Files Changed (uncommitted)
-
-- `app/dashboard/settings/page.tsx`: accessible switch names; nested/disabled PDF-attachment dependency;
-  weekly-summary blocker comment; Team notifications card + toggle wired to the new endpoint.
-- `app/api/seller/[token]/route.ts`: owner + live-admin recipient fan-out via `buildSubmissionRecipients`
-  and `Promise.allSettled` (non-blocking); contact-resolution alerts kept owner-only.
-- `app/api/organization/notifications/route.ts` (new): admin-only, active-org-scoped PATCH.
-- `lib/notifications/workspace-routing.ts` (new): setting key, normalizer, pure recipient builder.
-- `lib/neon/queries/organizations.ts`, `lib/neon/queries/index.ts`: `updateOrganizationNotificationSettings`,
-  `getOrganizationAdminRecipients`, exports.
-- `lib/validation/schemas.ts`: `organizationNotificationSettingsBodySchema`.
-- `schema.sql` + `migrations-organization-notification-settings.sql` (new): `organizations.notification_settings`
-  JSONB, default `{}` (backward compatible → routing off).
-- New tests: `tests/unit/workspace-notification-routing.test.ts`,
-  `tests/unit/organization-notifications-route.test.ts`,
-  `tests/unit/organization-notification-queries.test.ts`,
-  `tests/unit/settings-notifications-accessibility.test.tsx`.
+- Phase A: `POST /api/branding/[id]/duplicate`; usage annotation on `GET /api/branding`
+  (`request_count`, `is_intake_default`, additive); list-page usage context, Duplicate action,
+  in-product delete Dialog with real fallback copy, accessible overflow trigger.
+- Phase B: five optional structured identity columns on `brand_profiles` (`company_name`,
+  `professional_title`, `license_number`, `license_state`, `compliance_line`). Rendered on the PDF
+  header + compliance line, the web packet header + footer, and request/reminder email footers
+  (title omitted from email per the matrix). Seller form unchanged. Fields pass through on all
+  plans; absent fields render nothing. Migration `migrations-brand-profile-identity.sql` + schema.sql
+  mirror.
+- Phase C: automatic Resend `replyTo` = profile contact email on seller request/reminder emails
+  (from-address/domain unchanged); templates editor variable-insertion chips + unknown/malformed
+  `{{token}}` validation + resolved sample previews (`lib/message-templates/variables.ts`);
+  `POST /api/branding/test-email` (auth, rate-limited, sends only to the caller's own verified
+  email) with a "Send test email" button in the Messages tab.
 
 ## Validation
 
-- Focused Vitest: 25/25 across new + related settings suites; 42/42 seller/email regression suites.
-- Changed-file ESLint clean; `npm exec tsc -- --noEmit` clean; `npm run build` succeeded; `git diff --check`
-  clean.
-- Accessibility verified at component level through the accessibility tree (role/accessible-name queries)
-  plus the disabled PDF-dependency and admin-only toggle behavior.
-- NOT DONE: live authenticated desktop/mobile browser QA (no credentialed browser in this non-interactive
-  session). The `settings-notifications-accessibility` and `settings-workspace-team` component tests
-  substitute at the component level, but a live pass on the Team workspace toggle and end-to-end admin
-  submission fan-out is still recommended.
+- Full Vitest: 584/584 passing (114 files). New suites: `branding-duplicate-route`,
+  `branding-list-page`, `branding-test-email-route`, `message-template-variables`,
+  `packet-html-identity`.
+- Changed-file ESLint: 0 errors (only pre-existing `no-img-element` warnings). `tsc --noEmit` clean.
+  `npm run build` succeeded.
+- PDF guardrails preserved: identity additions live inside keep-together blocks (brand header and a
+  new `.compliance-line` block before the disclaimer); no changes to tables, buyer steps, filenames,
+  page chrome, or plan gating. Live Chromium PDF visual inspection was NOT run in this
+  non-interactive session and is a recommended follow-up for the header/compliance visual polish.
 
-## Remaining Required Work
+## Remaining
 
-- None for implementation. Before this ships: (1) run authenticated desktop/mobile QA of the Notifications
-  tab and the Team notifications toggle; (2) apply `migrations-organization-notification-settings.sql`
-  to the target database (separately authorized) before or with deploy; (3) commit (separately authorized).
+- Commit, push to `main`, and run `migrations-brand-profile-identity.sql` live (user-authorized this
+  session). Migration is idempotent (`ADD COLUMN IF NOT EXISTS`).
+- Recommended follow-up: authenticated browser QA of the branding editor (Professional identity
+  card, template preview/validation, Send test email), the web packet, and a rendered PDF; plus a
+  visual PDF regression pass.
 
 ## Concurrent Editing Warnings
 
-- Changes are limited to the files listed above. Preserve any unrelated untracked coordination files.
-- The migration is created but NOT applied. Do not run it live without explicit authorization.
+- None outstanding. This task touched the files listed in the plan; prior notification-slice work is
+  committed (`cb7630f`).
 
 ## Recommended Next Action
 
-Run authenticated desktop/mobile QA of the Notifications tab (accessible switches, PDF-attachment
-dependency) and, on a Team workspace, the new "Team notifications" admin toggle. Then, when separately
-authorized, apply `migrations-organization-notification-settings.sql` and commit the slice.
+Confirm the deployed migration and run live authenticated QA of the new branding surfaces.

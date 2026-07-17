@@ -64,6 +64,11 @@ const defaultFormData: BrandProfileFormData = {
     contact_email: '',
     contact_website: '',
     disclaimer_text: '',
+    company_name: '',
+    professional_title: '',
+    license_number: '',
+    license_state: '',
+    compliance_line: '',
     is_default: false,
     // null = use the product-default buyer steps (explicit API semantics)
     buyer_next_steps: null,
@@ -107,6 +112,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [generatingPdf, setGeneratingPdf] = useState(false);
+    const [sendingTestEmail, setSendingTestEmail] = useState(false);
     const [previewMode, setPreviewMode] = useState<PacketMode>('simple');
     const [nameTouched, setNameTouched] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -195,6 +201,28 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
             console.error('Error submitting form:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSendTestEmail = async () => {
+        setSendingTestEmail(true);
+        try {
+            const response = await fetch('/api/branding/test-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ branding: formData, kind: 'request' }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) {
+                toast.success(`Test email sent to ${data.sentTo || 'your inbox'}`);
+            } else {
+                toast.error(data.error || 'Failed to send test email');
+            }
+        } catch (error) {
+            console.error('Error sending test email:', error);
+            toast.error('Failed to send test email');
+        } finally {
+            setSendingTestEmail(false);
         }
     };
 
@@ -499,6 +527,88 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                             />
                                             <p className="text-xs text-muted-foreground">PDFs show the plain domain, e.g. yourrealty.com.</p>
                                         </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-border bg-card">
+                                <CardHeader>
+                                    <CardTitle className="text-foreground flex items-center gap-2">
+                                        <Building2 className="h-5 w-5 text-primary" aria-hidden="true" />
+                                        Professional identity
+                                    </CardTitle>
+                                    <CardDescription className="text-muted-foreground">
+                                        Optional. Company, role, and license details for the document header, web packet,
+                                        and emails. Anything you leave blank is simply omitted.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="companyName" className="text-foreground">Company / brokerage</Label>
+                                            <Input
+                                                id="companyName"
+                                                placeholder="Acme Realty Group"
+                                                value={formData.company_name || ''}
+                                                onChange={(e) => updateField('company_name', e.target.value)}
+                                                maxLength={BRAND_PROFILE_LIMITS.companyNameMax}
+                                                className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="professionalTitle" className="text-foreground">Role / title</Label>
+                                            <Input
+                                                id="professionalTitle"
+                                                placeholder="REALTOR®, Transaction Coordinator"
+                                                value={formData.professional_title || ''}
+                                                onChange={(e) => updateField('professional_title', e.target.value)}
+                                                maxLength={BRAND_PROFILE_LIMITS.professionalTitleMax}
+                                                className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="licenseNumber" className="text-foreground">License number</Label>
+                                            <Input
+                                                id="licenseNumber"
+                                                placeholder="e.g., 01234567"
+                                                value={formData.license_number || ''}
+                                                onChange={(e) => updateField('license_number', e.target.value)}
+                                                maxLength={BRAND_PROFILE_LIMITS.licenseNumberMax}
+                                                className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="licenseState" className="text-foreground">License state</Label>
+                                            <Input
+                                                id="licenseState"
+                                                placeholder="e.g., TX"
+                                                value={formData.license_state || ''}
+                                                onChange={(e) => updateField('license_state', e.target.value)}
+                                                maxLength={BRAND_PROFILE_LIMITS.licenseStateMax}
+                                                className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-baseline justify-between gap-2">
+                                            <Label htmlFor="complianceLine" className="text-foreground">Office address / compliance line</Label>
+                                            <span className="text-[11px] tabular-nums text-muted-foreground">
+                                                {(formData.compliance_line || '').length}/{BRAND_PROFILE_LIMITS.complianceLineMax}
+                                            </span>
+                                        </div>
+                                        <Input
+                                            id="complianceLine"
+                                            placeholder="Brokered by Acme Realty · 100 Main St, Austin, TX"
+                                            value={formData.compliance_line || ''}
+                                            onChange={(e) => updateField('compliance_line', e.target.value)}
+                                            maxLength={BRAND_PROFILE_LIMITS.complianceLineMax}
+                                            className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            One short line. This is separate from the disclaimer and appears with your contact details.
+                                        </p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -807,7 +917,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         Reset
                                     </Button>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="space-y-4">
                                     <MessageTemplatesEditor
                                         templates={formData.message_templates || {}}
                                         onChange={(updater) =>
@@ -817,6 +927,31 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                             }))
                                         }
                                     />
+                                    <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <p className="text-xs text-muted-foreground">
+                                            Send the automatic request email to yourself to see exactly what a seller receives.
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="shrink-0"
+                                            onClick={handleSendTestEmail}
+                                            disabled={sendingTestEmail}
+                                        >
+                                            {sendingTestEmail ? (
+                                                <>
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    Sending...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Mail className="mr-2 h-4 w-4" />
+                                                    Send test email
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>

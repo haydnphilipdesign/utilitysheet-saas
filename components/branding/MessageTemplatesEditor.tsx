@@ -1,16 +1,142 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Mail, MessageSquare } from 'lucide-react';
+import { AlertTriangle, Eye, Mail, MessageSquare } from 'lucide-react';
 import type { MessageTemplates } from '@/types';
-import { DEFAULT_MESSAGE_TEMPLATES } from '@/lib/message-templates';
+import {
+    DEFAULT_MESSAGE_TEMPLATES,
+    MESSAGE_TEMPLATE_VARIABLES,
+    analyzeMessageTemplate,
+    renderMessageTemplatePreview,
+} from '@/lib/message-templates';
 
 interface MessageTemplatesEditorProps {
     templates: MessageTemplates;
     onChange: (updater: (prev: MessageTemplates) => MessageTemplates) => void;
+}
+
+interface TemplateFieldProps {
+    id: string;
+    label: string;
+    value: string;
+    placeholder: string;
+    onChange: (value: string) => void;
+    maxLength: number;
+    multiline?: boolean;
+}
+
+/**
+ * One editable template field with variable-insertion chips, inline validation
+ * of unknown/malformed {{tokens}}, and a resolved preview using safe sample
+ * data. Insertion happens at the caret so it composes with hand-typed text.
+ */
+function TemplateField({ id, label, value, placeholder, onChange, maxLength, multiline = false }: TemplateFieldProps) {
+    const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
+
+    const insertVariable = (key: string) => {
+        const token = `{{${key}}}`;
+        const el = inputRef.current;
+        if (!el) {
+            onChange(value + token);
+            return;
+        }
+        const start = el.selectionStart ?? value.length;
+        const end = el.selectionEnd ?? value.length;
+        const next = value.slice(0, start) + token + value.slice(end);
+        if (next.length > maxLength) return;
+        onChange(next);
+        requestAnimationFrame(() => {
+            el.focus();
+            const caret = start + token.length;
+            el.setSelectionRange(caret, caret);
+        });
+    };
+
+    const analysis = analyzeMessageTemplate(value);
+    const hasIssues = analysis.unknownVariables.length > 0 || analysis.malformedTokens.length > 0;
+    const effectiveTemplate = value.trim() ? value : placeholder;
+    const previewText = renderMessageTemplatePreview(effectiveTemplate);
+
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={id} className="text-foreground text-sm">{label}</Label>
+            {multiline ? (
+                <Textarea
+                    id={id}
+                    ref={inputRef as React.Ref<HTMLTextAreaElement>}
+                    value={value}
+                    placeholder={placeholder}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[120px]"
+                    maxLength={maxLength}
+                    aria-invalid={hasIssues}
+                />
+            ) : (
+                <Input
+                    id={id}
+                    ref={inputRef as React.Ref<HTMLInputElement>}
+                    value={value}
+                    placeholder={placeholder}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+                    maxLength={maxLength}
+                    aria-invalid={hasIssues}
+                />
+            )}
+
+            <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground mr-1">Insert:</span>
+                {MESSAGE_TEMPLATE_VARIABLES.map((variable) => (
+                    <button
+                        key={variable.key}
+                        type="button"
+                        // Keep focus on the field so insertion lands at the caret.
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => insertVariable(variable.key)}
+                        className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/40"
+                    >
+                        {variable.label}
+                    </button>
+                ))}
+                <button
+                    type="button"
+                    onClick={() => setShowPreview((prev) => !prev)}
+                    aria-expanded={showPreview}
+                    className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                    <Eye className="h-3 w-3" aria-hidden="true" />
+                    {showPreview ? 'Hide preview' : 'Preview'}
+                </button>
+            </div>
+
+            {hasIssues && (
+                <p className="flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400" role="alert">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" aria-hidden="true" />
+                    <span>
+                        {analysis.unknownVariables.length > 0 && (
+                            <>Unknown variable{analysis.unknownVariables.length > 1 ? 's' : ''}: {analysis.unknownVariables.map((v) => `{{${v}}}`).join(', ')}. </>
+                        )}
+                        {analysis.malformedTokens.length > 0 && (
+                            <>Check these tokens: {analysis.malformedTokens.join(', ')}. </>
+                        )}
+                        They will be removed when the message is sent.
+                    </span>
+                </p>
+            )}
+
+            {showPreview && (
+                <div className="rounded-lg border border-border bg-muted/30 p-2.5">
+                    <p className="text-[11px] font-medium text-muted-foreground mb-1">Preview with sample data{value.trim() ? '' : ' (default template)'}:</p>
+                    <p className="text-xs text-foreground whitespace-pre-wrap break-words">{previewText}</p>
+                </div>
+            )}
+        </div>
+    );
 }
 
 /**
@@ -37,13 +163,9 @@ export default function MessageTemplatesEditor({ templates, onChange }: MessageT
         <div className="space-y-5">
             <div className="rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-xs text-muted-foreground">
-                    Available variables:{' '}
-                    <span className="font-mono">
-                        {'{{seller_first_name_with_space}}'} {'{{seller_name}}'} {'{{agent_name}}'} {'{{property_address}}'} {'{{closing_date}}'} {'{{link}}'}
-                    </span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                    Leave a field blank to use the default template (shown in gray).
+                    Use the insert buttons to add variables like{' '}
+                    <span className="font-mono">{'{{property_address}}'}</span>. Leave a field blank to use the default
+                    template (shown in gray). Preview shows how a message looks with sample data.
                 </p>
             </div>
 
@@ -58,18 +180,16 @@ export default function MessageTemplatesEditor({ templates, onChange }: MessageT
                     <div className="space-y-2">
                         <div className="flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                            <Label htmlFor="templateRequestSms" className="text-foreground">Text message (copy &amp; share)</Label>
+                            <Label className="text-foreground">Text message (copy &amp; share)</Label>
                         </div>
-                        <Textarea
+                        <TemplateField
                             id="templateRequestSms"
+                            label="Message"
+                            multiline
                             value={templates.seller_request?.sms || ''}
                             placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.sms || ''}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                setSellerRequest((prev) => ({ ...prev, sms: value }));
-                            }}
-                            className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[80px]"
                             maxLength={500}
+                            onChange={(value) => setSellerRequest((prev) => ({ ...prev, sms: value }))}
                         />
                     </div>
 
@@ -79,40 +199,23 @@ export default function MessageTemplatesEditor({ templates, onChange }: MessageT
                             <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                             <Label className="text-foreground">Email you send yourself (opens in your mail app)</Label>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="templateRequestMailtoSubject" className="text-foreground text-sm">Subject</Label>
-                            <Input
-                                id="templateRequestMailtoSubject"
-                                value={templates.seller_request?.mailto?.subject || ''}
-                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.mailto?.subject || ''}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    setSellerRequest((prev) => ({
-                                        ...prev,
-                                        mailto: { ...(prev.mailto || {}), subject: value },
-                                    }));
-                                }}
-                                className="bg-background border-input text-foreground placeholder:text-muted-foreground"
-                                maxLength={200}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="templateRequestMailtoBody" className="text-foreground text-sm">Body</Label>
-                            <Textarea
-                                id="templateRequestMailtoBody"
-                                value={templates.seller_request?.mailto?.body || ''}
-                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.mailto?.body || ''}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    setSellerRequest((prev) => ({
-                                        ...prev,
-                                        mailto: { ...(prev.mailto || {}), body: value },
-                                    }));
-                                }}
-                                className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[160px]"
-                                maxLength={6000}
-                            />
-                        </div>
+                        <TemplateField
+                            id="templateRequestMailtoSubject"
+                            label="Subject"
+                            value={templates.seller_request?.mailto?.subject || ''}
+                            placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.mailto?.subject || ''}
+                            maxLength={200}
+                            onChange={(value) => setSellerRequest((prev) => ({ ...prev, mailto: { ...(prev.mailto || {}), subject: value } }))}
+                        />
+                        <TemplateField
+                            id="templateRequestMailtoBody"
+                            label="Body"
+                            multiline
+                            value={templates.seller_request?.mailto?.body || ''}
+                            placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.mailto?.body || ''}
+                            maxLength={6000}
+                            onChange={(value) => setSellerRequest((prev) => ({ ...prev, mailto: { ...(prev.mailto || {}), body: value } }))}
+                        />
                     </div>
 
                     {/* Automatic email */}
@@ -122,58 +225,32 @@ export default function MessageTemplatesEditor({ templates, onChange }: MessageT
                             <Label className="text-foreground">Email UtilitySheet sends automatically</Label>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="templateRequestEmailSubject" className="text-foreground text-sm">Subject</Label>
-                                <Input
-                                    id="templateRequestEmailSubject"
-                                    value={templates.seller_request?.email?.subject || ''}
-                                    placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.subject || ''}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setSellerRequest((prev) => ({
-                                            ...prev,
-                                            email: { ...(prev.email || {}), subject: value },
-                                        }));
-                                    }}
-                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
-                                    maxLength={200}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="templateRequestEmailButton" className="text-foreground text-sm">Button text</Label>
-                                <Input
-                                    id="templateRequestEmailButton"
-                                    value={templates.seller_request?.email?.button_text || ''}
-                                    placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.button_text || ''}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setSellerRequest((prev) => ({
-                                            ...prev,
-                                            email: { ...(prev.email || {}), button_text: value },
-                                        }));
-                                    }}
-                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
-                                    maxLength={80}
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="templateRequestEmailBody" className="text-foreground text-sm">Body</Label>
-                            <Textarea
-                                id="templateRequestEmailBody"
-                                value={templates.seller_request?.email?.body || ''}
-                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.body || ''}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    setSellerRequest((prev) => ({
-                                        ...prev,
-                                        email: { ...(prev.email || {}), body: value },
-                                    }));
-                                }}
-                                className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[180px]"
-                                maxLength={12000}
+                            <TemplateField
+                                id="templateRequestEmailSubject"
+                                label="Subject"
+                                value={templates.seller_request?.email?.subject || ''}
+                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.subject || ''}
+                                maxLength={200}
+                                onChange={(value) => setSellerRequest((prev) => ({ ...prev, email: { ...(prev.email || {}), subject: value } }))}
+                            />
+                            <TemplateField
+                                id="templateRequestEmailButton"
+                                label="Button text"
+                                value={templates.seller_request?.email?.button_text || ''}
+                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.button_text || ''}
+                                maxLength={80}
+                                onChange={(value) => setSellerRequest((prev) => ({ ...prev, email: { ...(prev.email || {}), button_text: value } }))}
                             />
                         </div>
+                        <TemplateField
+                            id="templateRequestEmailBody"
+                            label="Body"
+                            multiline
+                            value={templates.seller_request?.email?.body || ''}
+                            placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_request?.email?.body || ''}
+                            maxLength={12000}
+                            onChange={(value) => setSellerRequest((prev) => ({ ...prev, email: { ...(prev.email || {}), body: value } }))}
+                        />
                     </div>
                 </TabsContent>
 
@@ -184,58 +261,32 @@ export default function MessageTemplatesEditor({ templates, onChange }: MessageT
                             <Label className="text-foreground">Reminder email UtilitySheet sends automatically</Label>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="templateReminderEmailSubject" className="text-foreground text-sm">Subject</Label>
-                                <Input
-                                    id="templateReminderEmailSubject"
-                                    value={templates.seller_reminder?.email?.subject || ''}
-                                    placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.subject || ''}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setSellerReminder((prev) => ({
-                                            ...prev,
-                                            email: { ...(prev.email || {}), subject: value },
-                                        }));
-                                    }}
-                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
-                                    maxLength={200}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="templateReminderEmailButton" className="text-foreground text-sm">Button text</Label>
-                                <Input
-                                    id="templateReminderEmailButton"
-                                    value={templates.seller_reminder?.email?.button_text || ''}
-                                    placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.button_text || ''}
-                                    onChange={(e) => {
-                                        const value = e.target.value;
-                                        setSellerReminder((prev) => ({
-                                            ...prev,
-                                            email: { ...(prev.email || {}), button_text: value },
-                                        }));
-                                    }}
-                                    className="bg-background border-input text-foreground placeholder:text-muted-foreground"
-                                    maxLength={80}
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="templateReminderEmailBody" className="text-foreground text-sm">Body</Label>
-                            <Textarea
-                                id="templateReminderEmailBody"
-                                value={templates.seller_reminder?.email?.body || ''}
-                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.body || ''}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    setSellerReminder((prev) => ({
-                                        ...prev,
-                                        email: { ...(prev.email || {}), body: value },
-                                    }));
-                                }}
-                                className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[180px]"
-                                maxLength={12000}
+                            <TemplateField
+                                id="templateReminderEmailSubject"
+                                label="Subject"
+                                value={templates.seller_reminder?.email?.subject || ''}
+                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.subject || ''}
+                                maxLength={200}
+                                onChange={(value) => setSellerReminder((prev) => ({ ...prev, email: { ...(prev.email || {}), subject: value } }))}
+                            />
+                            <TemplateField
+                                id="templateReminderEmailButton"
+                                label="Button text"
+                                value={templates.seller_reminder?.email?.button_text || ''}
+                                placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.button_text || ''}
+                                maxLength={80}
+                                onChange={(value) => setSellerReminder((prev) => ({ ...prev, email: { ...(prev.email || {}), button_text: value } }))}
                             />
                         </div>
+                        <TemplateField
+                            id="templateReminderEmailBody"
+                            label="Body"
+                            multiline
+                            value={templates.seller_reminder?.email?.body || ''}
+                            placeholder={DEFAULT_MESSAGE_TEMPLATES.seller_reminder?.email?.body || ''}
+                            maxLength={12000}
+                            onChange={(value) => setSellerReminder((prev) => ({ ...prev, email: { ...(prev.email || {}), body: value } }))}
+                        />
                     </div>
                 </TabsContent>
             </Tabs>

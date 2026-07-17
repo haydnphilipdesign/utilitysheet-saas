@@ -237,6 +237,12 @@ export interface BrandProfile {
     contact_email: string | null;
     contact_website: string | null;
     disclaimer_text: string | null;
+    // Structured professional identity (optional, free-form)
+    company_name: string | null;
+    professional_title: string | null;
+    license_number: string | null;
+    license_state: string | null;
+    compliance_line: string | null;
     message_templates: MessageTemplates | null;
     is_default: boolean;
     // Advanced customization fields
@@ -246,6 +252,15 @@ export interface BrandProfile {
     show_generation_date: boolean;
     welcome_message: string | null;
     created_at: string;
+}
+
+/**
+ * Brand profile as returned by GET /api/branding: annotated with usage
+ * context so the list can show what each profile is actually used for.
+ */
+export interface BrandProfileWithUsage extends BrandProfile {
+    request_count: number;
+    is_intake_default: boolean;
 }
 
 export interface PropertyAddressStructured {
@@ -473,6 +488,12 @@ export interface BrandProfileFormData {
     contact_email?: string | null;
     contact_website?: string | null;
     disclaimer_text?: string | null;
+    // Structured professional identity (optional, free-form)
+    company_name?: string | null;
+    professional_title?: string | null;
+    license_number?: string | null;
+    license_state?: string | null;
+    compliance_line?: string | null;
     message_templates?: MessageTemplates;
     is_default: boolean;
     // Advanced customization fields

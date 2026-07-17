@@ -107,6 +107,12 @@ export function buildBrandingPreviewPacketData(
             contact_phone: branding.contact_phone || null,
             contact_website: branding.contact_website || null,
             disclaimer_text: branding.disclaimer_text || null,
+            // Structured identity fields pass through on every plan.
+            company_name: branding.company_name || null,
+            professional_title: branding.professional_title || null,
+            license_number: branding.license_number || null,
+            license_state: branding.license_state || null,
+            compliance_line: branding.compliance_line || null,
             // Free plans always get product defaults and forced display options,
             // matching the server-side gating in lib/packet/packet-data.ts.
             buyer_next_steps: isPro ? customSteps : null,

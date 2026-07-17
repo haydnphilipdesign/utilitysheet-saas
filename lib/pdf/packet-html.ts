@@ -23,6 +23,11 @@ export interface PacketPdfData {
         contact_phone?: string | null;
         contact_website?: string | null;
         disclaimer_text?: string | null;
+        company_name?: string | null;
+        professional_title?: string | null;
+        license_number?: string | null;
+        license_state?: string | null;
+        compliance_line?: string | null;
         buyer_next_steps?: string[] | null;
         next_steps_title?: string | null;
         show_powered_by?: boolean;
@@ -226,10 +231,24 @@ interface SharedMarkupContext {
     safeBrandLogoUrl: string | null;
     safeBrandName: string;
     safeBrandContactName: string;
+    safeBrandNameTitleLine: string;
+    safeBrandCompanyName: string;
+    safeBrandLicenseLine: string;
     safeBrandContactPhone: string;
     safeBrandContactEmail: string;
     safeBrandContactWebsite: string;
     safePropertyAddress: string;
+}
+
+/**
+ * Combine an already-clamped license number and state into one human line.
+ * Returns '' when neither is present so nothing renders.
+ */
+function formatLicenseLine(licenseNumber: string, licenseState: string): string {
+    if (licenseNumber && licenseState) return `License #${licenseNumber} · ${licenseState}`;
+    if (licenseNumber) return `License #${licenseNumber}`;
+    if (licenseState) return `Licensed in ${licenseState}`;
+    return '';
 }
 
 function buildBrandHeaderMarkup(context: SharedMarkupContext): string {
@@ -238,7 +257,9 @@ function buildBrandHeaderMarkup(context: SharedMarkupContext): string {
         safePrimaryColor,
         safeBrandLogoUrl,
         safeBrandName,
-        safeBrandContactName,
+        safeBrandNameTitleLine,
+        safeBrandCompanyName,
+        safeBrandLicenseLine,
         safeBrandContactPhone,
         safeBrandContactEmail,
         safeBrandContactWebsite,
@@ -252,8 +273,10 @@ function buildBrandHeaderMarkup(context: SharedMarkupContext): string {
         : `<div class="brand-mark" style="background: ${safePrimaryColor};">${escapeHtml(getBrandInitials(data.brand?.name))}</div>`}
                 <div>
                     <h2 class="brand-name">${safeBrandName}</h2>
-                    ${safeBrandContactName ? `<p class="brand-contact-name">${safeBrandContactName}</p>` : ''}
+                    ${safeBrandNameTitleLine ? `<p class="brand-contact-name">${safeBrandNameTitleLine}</p>` : ''}
+                    ${safeBrandCompanyName ? `<p class="brand-contact-line">${safeBrandCompanyName}</p>` : ''}
                     ${safeBrandContactPhone ? `<p class="brand-contact-line">${safeBrandContactPhone}</p>` : ''}
+                    ${safeBrandLicenseLine ? `<p class="brand-contact-line">${safeBrandLicenseLine}</p>` : ''}
                 </div>
             </div>
             <div class="brand-contact-right">
@@ -395,6 +418,14 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
     const safeBrandLogoUrl = safeExternalUrl(brand?.logo_url);
     const safeBrandName = escapeHtml(clampBrandingText(brand?.name || 'UtilitySheet', BRAND_PROFILE_LIMITS.brandNameMax) || 'UtilitySheet');
     const safeBrandContactName = escapeHtml(clampBrandingText(brand?.contact_name || '', BRAND_PROFILE_LIMITS.contactNameMax));
+    const safeBrandProfessionalTitle = escapeHtml(clampBrandingText(brand?.professional_title || '', BRAND_PROFILE_LIMITS.professionalTitleMax));
+    const safeBrandNameTitleLine = [safeBrandContactName, safeBrandProfessionalTitle].filter(Boolean).join(' · ');
+    const safeBrandCompanyName = escapeHtml(clampBrandingText(brand?.company_name || '', BRAND_PROFILE_LIMITS.companyNameMax));
+    const safeBrandLicenseLine = escapeHtml(formatLicenseLine(
+        clampBrandingText(brand?.license_number || '', BRAND_PROFILE_LIMITS.licenseNumberMax),
+        clampBrandingText(brand?.license_state || '', BRAND_PROFILE_LIMITS.licenseStateMax),
+    ));
+    const safeBrandComplianceLine = escapeHtml(clampBrandingText(brand?.compliance_line || '', BRAND_PROFILE_LIMITS.complianceLineMax));
     const safeBrandContactPhone = escapeHtml(clampBrandingText(brand?.contact_phone || '', BRAND_PROFILE_LIMITS.contactPhoneMax));
     const safeBrandContactEmail = escapeHtml(clampBrandingText(brand?.contact_email || '', BRAND_PROFILE_LIMITS.contactEmailMax));
     const safeBrandContactWebsite = escapeHtml(clampBrandingText(
@@ -425,6 +456,9 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
         safeBrandLogoUrl,
         safeBrandName,
         safeBrandContactName,
+        safeBrandNameTitleLine,
+        safeBrandCompanyName,
+        safeBrandLicenseLine,
         safeBrandContactPhone,
         safeBrandContactEmail,
         safeBrandContactWebsite,
@@ -432,6 +466,10 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
     };
     const advancedSectionsHtml = data.mode === 'advanced'
         ? buildAdvancedSectionsMarkup(data.advanced_sections || [])
+        : '';
+
+    const complianceLineHtml = safeBrandComplianceLine
+        ? `<div class="compliance-line keep-together"><p>${safeBrandComplianceLine}</p></div>`
         : '';
 
     const footerHtml = disclaimerText
@@ -573,6 +611,9 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
         .detail-empty-message { color: #71717a; text-align: center; }
         .detail-label { margin-bottom: 2px; color: #71717a; font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
         .detail-value { color: #18181b; font-size: 9.5pt; overflow-wrap: anywhere; }
+        .compliance-line { margin-top: 4px; text-align: center; }
+        .compliance-line p { margin: 0; color: #52525b; font-size: 8pt; line-height: 1.3; overflow-wrap: anywhere; }
+        .compliance-line + .simple-disclaimer { padding-top: 6px; }
         .simple-disclaimer { padding-top: 8px; border-top: 1px solid #e4e4e7; text-align: center; }
         .simple-disclaimer p { margin: 0; color: #71717a; font-size: 7.5pt; line-height: 1.3; overflow-wrap: anywhere; }
     </style>
@@ -593,6 +634,7 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
         ${advancedSectionsHtml}
         ${buildBuyerNextStepsMarkup(nextStepsTitle, buyerNextSteps)}
 
+        ${complianceLineHtml}
         ${footerHtml}
     </div>
 </body>

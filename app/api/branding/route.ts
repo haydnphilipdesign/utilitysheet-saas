@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createBrandProfile, getBrandProfiles, getOrganizationById } from '@/lib/neon/queries';
+import { createBrandProfile, getBrandProfileRequestCounts, getBrandProfiles, getIntakeLinkByAccountId, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileCreateBodySchema } from '@/lib/validation/schemas';
 import { normalizeMessageTemplates } from '@/lib/message-templates';
@@ -50,7 +50,19 @@ export async function GET() {
             }
         }
 
-        return NextResponse.json(profiles);
+        // Additive usage context; the response stays an array of profiles.
+        const [requestCounts, intakeLink] = await Promise.all([
+            getBrandProfileRequestCounts(profiles.map((profile) => profile.id)),
+            getIntakeLinkByAccountId(accountId),
+        ]);
+
+        const profilesWithUsage = profiles.map((profile) => ({
+            ...profile,
+            request_count: requestCounts[profile.id] ?? 0,
+            is_intake_default: intakeLink?.default_brand_profile_id === profile.id,
+        }));
+
+        return NextResponse.json(profilesWithUsage);
     } catch (error) {
         console.error('Error fetching brand profiles:', error);
         return NextResponse.json({ error: 'Failed to fetch brand profiles' }, { status: 500 });
@@ -102,6 +114,11 @@ export async function POST(request: Request) {
             contactEmail: payload.contact_email,
             contactWebsite: payload.contact_website,
             disclaimerText: payload.disclaimer_text,
+            companyName: payload.company_name,
+            professionalTitle: payload.professional_title,
+            licenseNumber: payload.license_number,
+            licenseState: payload.license_state,
+            complianceLine: payload.compliance_line,
             messageTemplates: normalizeMessageTemplates(payload.message_templates),
             isDefault: payload.is_default,
             buyerNextSteps: payload.buyer_next_steps,

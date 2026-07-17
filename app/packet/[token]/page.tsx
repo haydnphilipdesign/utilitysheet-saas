@@ -26,10 +26,16 @@ type PacketBrand = {
     name?: string;
     logo_url?: string;
     primary_color?: string;
+    contact_name?: string | null;
     contact_email?: string;
     contact_phone?: string;
     contact_website?: string;
     disclaimer_text?: string | null;
+    company_name?: string | null;
+    professional_title?: string | null;
+    license_number?: string | null;
+    license_state?: string | null;
+    compliance_line?: string | null;
     // Advanced customization
     buyer_next_steps?: string[] | null;
     next_steps_title?: string | null;
@@ -280,6 +286,18 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     const packetTitle = getPacketTitle(mode);
     const headerBrandName = showPoweredBy ? 'UtilitySheet' : (brand?.name || packetTitle);
     const welcomeMessage = brand?.welcome_message?.trim() || '';
+    const professionalTitle = brand?.professional_title?.trim() || '';
+    const companyName = brand?.company_name?.trim() || '';
+    const complianceLine = brand?.compliance_line?.trim() || '';
+    const licenseNumber = brand?.license_number?.trim() || '';
+    const licenseState = brand?.license_state?.trim() || '';
+    const licenseLine = licenseNumber && licenseState
+        ? `License #${licenseNumber} · ${licenseState}`
+        : licenseNumber
+            ? `License #${licenseNumber}`
+            : licenseState
+                ? `Licensed in ${licenseState}`
+                : '';
     const nextStepsTitle = brand?.next_steps_title || 'Buyer Next Steps';
     const buyerSteps = (brand?.buyer_next_steps && brand.buyer_next_steps.length > 0 ? brand.buyer_next_steps : DEFAULT_BUYER_STEPS)
         .map((step) => step.trim())
@@ -363,7 +381,14 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                             )}
                             <div>
                                 <h2 className="font-semibold text-foreground text-sm sm:text-base">{brand?.name || 'UtilitySheet'}</h2>
-                                <p className="text-xs sm:text-sm text-muted-foreground">{brand?.contact_phone || ''}</p>
+                                {(brand?.contact_name || professionalTitle) ? (
+                                    <p className="text-xs sm:text-sm text-muted-foreground">
+                                        {[brand?.contact_name, professionalTitle].filter(Boolean).join(' · ')}
+                                    </p>
+                                ) : null}
+                                {companyName ? <p className="text-xs sm:text-sm text-muted-foreground">{companyName}</p> : null}
+                                {brand?.contact_phone ? <p className="text-xs sm:text-sm text-muted-foreground">{brand.contact_phone}</p> : null}
+                                {licenseLine ? <p className="text-xs sm:text-sm text-muted-foreground">{licenseLine}</p> : null}
                             </div>
                         </div>
                         <div className="text-left sm:text-right">
@@ -638,6 +663,11 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
 
                     {/* Footer */}
                     <div className="text-center pt-6 border-t border-border">
+                        {complianceLine ? (
+                            <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-2">
+                                {complianceLine}
+                            </p>
+                        ) : null}
                         {brand?.disclaimer_text ? (
                             <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-2">
                                 {brand.disclaimer_text}

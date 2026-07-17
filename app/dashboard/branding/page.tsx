@@ -6,19 +6,30 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
-import { Plus, Star, MoreHorizontal, Pencil, Trash2, Loader2, Lock } from 'lucide-react';
+import { Plus, Star, MoreHorizontal, Pencil, Trash2, Loader2, Lock, Copy, Link2 } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { BrandProfile } from '@/types';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import type { BrandProfileWithUsage } from '@/types';
 import { toast } from 'sonner';
 
 export default function BrandingPage() {
-    const [brands, setBrands] = useState<BrandProfile[]>([]);
+    const [brands, setBrands] = useState<BrandProfileWithUsage[]>([]);
     const [loading, setLoading] = useState(true);
+    const [deleteTarget, setDeleteTarget] = useState<BrandProfileWithUsage | null>(null);
+    const [deleting, setDeleting] = useState(false);
+    const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
     const [isPro, setIsPro] = useState(false);
     const [organizationName, setOrganizationName] = useState<string | null>(null);
 
@@ -54,21 +65,18 @@ export default function BrandingPage() {
         fetchData();
     }, []);
 
-    const handleDelete = async (id: string) => {
-        if (!isPro) {
-            toast.error('Upgrade to Pro to manage branding profiles');
-            return;
-        }
+    const handleConfirmDelete = async () => {
+        if (!deleteTarget) return;
 
-        if (!confirm('Are you sure you want to delete this profile?')) return;
-
+        setDeleting(true);
         try {
-            const response = await fetch(`/api/branding/${id}`, {
+            const response = await fetch(`/api/branding/${deleteTarget.id}`, {
                 method: 'DELETE',
             });
 
             if (response.ok) {
                 toast.success('Profile deleted successfully');
+                setDeleteTarget(null);
                 fetchData();
             } else {
                 const error = await response.json();
@@ -77,10 +85,39 @@ export default function BrandingPage() {
         } catch (error) {
             console.error('Error deleting profile:', error);
             toast.error('Error deleting profile');
+        } finally {
+            setDeleting(false);
         }
     };
 
-    const handleSetDefault = async (profile: BrandProfile) => {
+    const handleDuplicate = async (profile: BrandProfileWithUsage) => {
+        if (!isPro) {
+            toast.error('Upgrade to Pro to manage branding profiles');
+            return;
+        }
+
+        setDuplicatingId(profile.id);
+        try {
+            const response = await fetch(`/api/branding/${profile.id}/duplicate`, {
+                method: 'POST',
+            });
+
+            if (response.ok) {
+                toast.success(`Duplicated "${profile.name}"`);
+                fetchData();
+            } else {
+                const error = await response.json();
+                toast.error(error.error || 'Failed to duplicate profile');
+            }
+        } catch (error) {
+            console.error('Error duplicating profile:', error);
+            toast.error('Error duplicating profile');
+        } finally {
+            setDuplicatingId(null);
+        }
+    };
+
+    const handleSetDefault = async (profile: BrandProfileWithUsage) => {
         if (!isPro) {
             toast.error('Upgrade to Pro to manage branding profiles');
             return;
@@ -210,6 +247,12 @@ export default function BrandingPage() {
                                                     Default
                                                 </Badge>
                                             )}
+                                            {brand.is_intake_default && (
+                                                <Badge variant="outline" className="text-xs">
+                                                    <Link2 className="h-3 w-3 mr-1" />
+                                                    Seller form
+                                                </Badge>
+                                            )}
                                         </CardTitle>
                                         <CardDescription className="text-muted-foreground truncate">
                                             {brand.contact_name || 'No contact name'}
@@ -217,8 +260,11 @@ export default function BrandingPage() {
                                     </div>
                                 </div>
                                 <DropdownMenu>
-                                    <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary">
-                                        <MoreHorizontal className="h-4 w-4" />
+                                    <DropdownMenuTrigger
+                                        aria-label={`Actions for ${brand.name}`}
+                                        className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-secondary"
+                                    >
+                                        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <Link href={`/dashboard/branding/${brand.id}`}>
@@ -227,6 +273,22 @@ export default function BrandingPage() {
                                                 Edit
                                             </DropdownMenuItem>
                                         </Link>
+
+                                        {isPro ? (
+                                            <DropdownMenuItem
+                                                className="cursor-pointer"
+                                                disabled={duplicatingId === brand.id}
+                                                onClick={() => handleDuplicate(brand)}
+                                            >
+                                                <Copy className="mr-2 h-4 w-4" />
+                                                Duplicate
+                                            </DropdownMenuItem>
+                                        ) : (
+                                            <DropdownMenuItem disabled className="text-muted-foreground cursor-not-allowed">
+                                                <Lock className="mr-2 h-4 w-4" />
+                                                Duplicate (Pro Only)
+                                            </DropdownMenuItem>
+                                        )}
 
                                         {!brand.is_default && (
                                             isPro ? (
@@ -248,7 +310,7 @@ export default function BrandingPage() {
                                         {isPro ? (
                                             <DropdownMenuItem
                                                 className="text-destructive focus:text-destructive cursor-pointer"
-                                                onClick={() => handleDelete(brand.id)}
+                                                onClick={() => setDeleteTarget(brand)}
                                             >
                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                 Delete
@@ -286,7 +348,14 @@ export default function BrandingPage() {
                                     />
                                 </div>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-border">
+                            <div className="mt-4 pt-4 border-t border-border space-y-3">
+                                <p className="text-xs text-muted-foreground">
+                                    {[
+                                        brand.request_count === 1 ? 'Used by 1 request' : `Used by ${brand.request_count} requests`,
+                                        brand.is_default ? 'preselected for new requests' : null,
+                                        brand.is_intake_default ? 'used by your reusable seller form' : null,
+                                    ].filter(Boolean).join(' · ')}
+                                </p>
                                 <Link href={`/dashboard/branding/${brand.id}`}>
                                     <Button
                                         variant="outline"
@@ -316,6 +385,68 @@ export default function BrandingPage() {
                     </Link>
                 )}
             </div>
+
+            {/* Delete confirmation with real fallback behavior */}
+            <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete &quot;{deleteTarget?.name}&quot;?</DialogTitle>
+                        <DialogDescription>
+                            This permanently removes the profile. It cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {deleteTarget && (
+                        <ul className="list-disc pl-4 space-y-1.5 text-xs text-muted-foreground">
+                            {deleteTarget.request_count > 0 && (
+                                <li>
+                                    {deleteTarget.request_count === 1
+                                        ? '1 request uses this profile. Its'
+                                        : `${deleteTarget.request_count} requests use this profile. Their`}{' '}
+                                    future PDFs and packet pages will use your default profile instead.
+                                </li>
+                            )}
+                            {deleteTarget.is_intake_default && (
+                                <li>Your reusable seller form uses this profile and will switch to your default profile.</li>
+                            )}
+                            {deleteTarget.is_default && brands.length > 1 && (
+                                <li>This is your default profile. Your oldest remaining profile will take over as the fallback until you pick a new default.</li>
+                            )}
+                            {brands.length === 1 && (
+                                <li>This is your only profile. A basic profile will be recreated automatically from your account details.</li>
+                            )}
+                            {deleteTarget.request_count === 0 && !deleteTarget.is_intake_default && !deleteTarget.is_default && (
+                                <li>Nothing currently uses this profile.</li>
+                            )}
+                        </ul>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeleteTarget(null)}
+                            disabled={deleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleConfirmDelete}
+                            disabled={deleting}
+                        >
+                            {deleting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete profile
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
