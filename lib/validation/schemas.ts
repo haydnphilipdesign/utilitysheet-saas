@@ -273,6 +273,10 @@ export const organizationUpdateBodySchema = z.object({
     name: z.string().trim().min(2).max(100),
 }).strict();
 
+export const organizationNotificationSettingsBodySchema = z.object({
+    notify_admins_on_submission: z.boolean(),
+}).strict();
+
 function normalizeTrashPickupDay(value: unknown): z.infer<typeof trashPickupDayEnum> | null | undefined {
     if (value === undefined) return undefined;
     if (value === null) return null;

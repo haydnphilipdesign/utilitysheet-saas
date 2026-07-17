@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getIntakeLinkByAccountId, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getIntakeLinkByAccountId, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
+import { NOTIFY_ADMINS_ON_SUBMISSION, buildSubmissionRecipients, normalizeWorkspaceNotificationSettings } from '@/lib/notifications/workspace-routing';
+import type { SubmissionRecipientCandidate } from '@/lib/notifications/workspace-routing';
 import { sql } from '@/lib/neon/db';
 import { hasValidContact, resolveContact } from '@/lib/providers/contact-service';
 import { sendTCCompletionNotificationEmail, sendContactResolutionAlertEmail } from '@/lib/email/email-service';
@@ -719,58 +721,86 @@ export async function POST(
 
         scheduleReferralCreditAward(requestData.account_id);
 
-        if (account?.email) {
-            // Send TC completion notification (if enabled, defaults to true)
-            if (notificationPrefs.seller_submissions !== false) {
-                const shouldAttachPdf = !accessLocked && notificationPrefs.seller_submission_pdf_attachment !== false;
-                try {
-                    // Mirrors the packet page's rule: free-plan workspaces carry the
-                    // UtilitySheet referral footer, and paid workspaces carry it only
-                    // when their brand profile voluntarily keeps powered-by branding.
-                    let showReferralFooter = !isPaid;
-                    if (!showReferralFooter) {
-                        const requestBrandProfile = requestData.brand_profile_id
-                            ? await getBrandProfile(requestData.brand_profile_id).catch(() => null)
-                            : null;
-                        const resolvedBrandProfile = requestBrandProfile
-                            || await getDefaultBrandProfile(requestData.account_id, requestData.organization_id ?? undefined).catch(() => null);
-                        showReferralFooter = Boolean(resolvedBrandProfile?.show_powered_by);
-                    }
-                    const intakeLink = showReferralFooter
-                        ? await getIntakeLinkByAccountId(requestData.account_id).catch(() => null)
-                        : null;
+        // Assemble submission-notification recipients. The request owner is always
+        // the first candidate; when the workspace enables admin routing, the
+        // organization's current admins are appended. Admins are derived live from
+        // membership, so removed members are never notified. Personal-preference
+        // and dedup handling lives in buildSubmissionRecipients.
+        const recipientCandidates: SubmissionRecipientCandidate[] = [
+            { email: account?.email, name: account?.full_name, prefs: notificationPrefs },
+        ];
 
-                    await sendTCCompletionNotificationEmail({
-                        tcEmail: account.email,
-                        tcName: account.full_name || undefined,
-                        propertyAddress: accessLocked ? 'Locked — upgrade to view' : requestData.property_address,
-                        sellerName: accessLocked ? undefined : requestData.seller_name || undefined,
-                        requestId: requestData.id,
-                        attachPdf: shouldAttachPdf,
-                        showReferralFooter,
-                        referralCode: intakeLink?.slug || null,
+        if (organization?.id) {
+            const workspaceSettings = normalizeWorkspaceNotificationSettings(organization.notification_settings);
+            if (workspaceSettings[NOTIFY_ADMINS_ON_SUBMISSION]) {
+                const admins = await getOrganizationAdminRecipients(organization.id).catch(() => []);
+                for (const admin of admins) {
+                    recipientCandidates.push({
+                        email: admin.email,
+                        name: admin.full_name,
+                        prefs: admin.notification_preferences,
                     });
-                } catch (emailError) {
-                    console.error('Failed to send TC completion notification email:', emailError);
                 }
             }
+        }
 
-            // Send contact resolution alert (if enabled and there are unresolved entries)
-            if (!accessLocked && notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
-                try {
-                    await sendContactResolutionAlertEmail({
-                        tcEmail: account.email,
-                        tcName: account.full_name || undefined,
-                        propertyAddress: requestData.property_address,
-                        unresolvedEntries,
-                        requestId: requestData.id,
-                    });
-                } catch (alertError) {
-                    console.error('Failed to send contact resolution alert:', alertError);
+        const submissionRecipients = buildSubmissionRecipients(recipientCandidates, { accessLocked });
+
+        if (submissionRecipients.length > 0) {
+            try {
+                // Mirrors the packet page's rule: free-plan workspaces carry the
+                // UtilitySheet referral footer, and paid workspaces carry it only
+                // when their brand profile voluntarily keeps powered-by branding.
+                let showReferralFooter = !isPaid;
+                if (!showReferralFooter) {
+                    const requestBrandProfile = requestData.brand_profile_id
+                        ? await getBrandProfile(requestData.brand_profile_id).catch(() => null)
+                        : null;
+                    const resolvedBrandProfile = requestBrandProfile
+                        || await getDefaultBrandProfile(requestData.account_id, requestData.organization_id ?? undefined).catch(() => null);
+                    showReferralFooter = Boolean(resolvedBrandProfile?.show_powered_by);
                 }
+                const intakeLink = showReferralFooter
+                    ? await getIntakeLinkByAccountId(requestData.account_id).catch(() => null)
+                    : null;
+
+                // Per-recipient sends are independent: one failure must not block
+                // the others, and none can block the seller submission response.
+                await Promise.allSettled(
+                    submissionRecipients.map((recipient) =>
+                        sendTCCompletionNotificationEmail({
+                            tcEmail: recipient.email,
+                            tcName: recipient.name,
+                            propertyAddress: accessLocked ? 'Locked — upgrade to view' : requestData.property_address,
+                            sellerName: accessLocked ? undefined : requestData.seller_name || undefined,
+                            requestId: requestData.id,
+                            attachPdf: recipient.attachPdf,
+                            showReferralFooter,
+                            referralCode: intakeLink?.slug || null,
+                        })
+                    )
+                );
+            } catch (emailError) {
+                console.error('Failed to send TC completion notification email:', emailError);
             }
         } else {
-            console.warn('TC notification skipped: no account email found');
+            console.warn('TC notification skipped: no eligible recipients');
+        }
+
+        // Contact resolution alerts remain owner-only (they concern the owner's
+        // provider-memory workflow).
+        if (account?.email && !accessLocked && notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
+            try {
+                await sendContactResolutionAlertEmail({
+                    tcEmail: account.email,
+                    tcName: account.full_name || undefined,
+                    propertyAddress: requestData.property_address,
+                    unresolvedEntries,
+                    requestId: requestData.id,
+                });
+            } catch (alertError) {
+                console.error('Failed to send contact resolution alert:', alertError);
+            }
         }
 
         return NextResponse.json({ success: true });

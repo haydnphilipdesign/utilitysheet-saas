@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     subscription_id TEXT,
     subscription_ends_at TIMESTAMPTZ,
     seat_quantity INT NOT NULL DEFAULT 0,
+    notification_settings JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -65,6 +65,8 @@ export {
     updateOrganizationStripeCustomer,
     updateOrganizationSubscription,
     updateOrganization,
+    updateOrganizationNotificationSettings,
+    getOrganizationAdminRecipients,
     getAccountOrganizations,
     setActiveOrganization,
     getOrganizationMemberRole,

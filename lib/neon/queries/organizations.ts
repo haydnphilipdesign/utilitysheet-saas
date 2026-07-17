@@ -142,6 +142,58 @@ export async function updateOrganization(organizationId: string, name: string) {
 }
 
 /**
+ * Update workspace-level notification routing settings.
+ * Settings are stored as a JSONB map of boolean flags on the organization.
+ */
+export async function updateOrganizationNotificationSettings(
+    organizationId: string,
+    settings: Record<string, boolean>
+) {
+    if (!sql) return null;
+
+    const result = await sql`
+        UPDATE organizations
+        SET notification_settings = ${JSON.stringify(settings)}::jsonb,
+            updated_at = NOW()
+        WHERE id = ${organizationId}
+        RETURNING *
+    `;
+
+    return result[0] || null;
+}
+
+/**
+ * Get the current members of an organization who are admins, along with the
+ * account email and personal notification preferences needed to decide whether
+ * to route a workspace notification to them. Recipients are derived live from
+ * membership, so removed members are never returned.
+ */
+export async function getOrganizationAdminRecipients(organizationId: string) {
+    if (!sql) return [];
+
+    const result = await sql`
+        SELECT
+            a.id AS account_id,
+            a.email,
+            a.full_name,
+            a.notification_preferences
+        FROM organization_members om
+        JOIN accounts a ON a.id = om.account_id
+        WHERE om.organization_id = ${organizationId}
+            AND om.role = 'admin'
+            AND a.email IS NOT NULL
+        ORDER BY om.created_at ASC
+    `;
+
+    return result as Array<{
+        account_id: string;
+        email: string | null;
+        full_name: string | null;
+        notification_preferences: Record<string, unknown> | null;
+    }>;
+}
+
+/**
  * Get all organizations an account is a member of
  */
 export async function getAccountOrganizations(accountId: string) {

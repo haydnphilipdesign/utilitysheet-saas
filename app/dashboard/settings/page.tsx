@@ -53,6 +53,7 @@ type ActiveOrganization = {
     subscription_id?: string | null;
     subscription_ends_at?: string | null;
     seat_quantity?: number | null;
+    notification_settings?: Record<string, unknown> | null;
 };
 
 type OrganizationMemberRow = {
@@ -126,6 +127,8 @@ export default function SettingsPage() {
     const [orgLoading, setOrgLoading] = useState(false);
     const [workspaceName, setWorkspaceName] = useState('');
     const [workspaceSaving, setWorkspaceSaving] = useState(false);
+    const [notifyAdminsOnSubmission, setNotifyAdminsOnSubmission] = useState(false);
+    const [workspaceNotificationsSaving, setWorkspaceNotificationsSaving] = useState(false);
     const [pendingInvites, setPendingInvites] = useState<PendingOrganizationInvite[]>([]);
     const [pendingInviteAction, setPendingInviteAction] = useState<string | null>(null);
     const [inviteEmail, setInviteEmail] = useState('');
@@ -199,6 +202,9 @@ export default function SettingsPage() {
                         }
                         setActiveOrganization(data.activeOrganization || null);
                         setWorkspaceName(data.activeOrganization?.name || '');
+                        setNotifyAdminsOnSubmission(
+                            data.activeOrganization?.notification_settings?.notify_admins_on_submission === true
+                        );
                         return;
                     }
                 }
@@ -657,6 +663,38 @@ export default function SettingsPage() {
         }
     };
 
+    const handleToggleAdminNotifications = async (checked: boolean) => {
+        const previous = notifyAdminsOnSubmission;
+        // Optimistic update; revert on failure.
+        setNotifyAdminsOnSubmission(checked);
+        setWorkspaceNotificationsSaving(true);
+        try {
+            const response = await fetch('/api/organization/notifications', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notify_admins_on_submission: checked }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to update team notifications');
+            }
+
+            const nextValue = data?.notification_settings?.notify_admins_on_submission === true;
+            setNotifyAdminsOnSubmission(nextValue);
+            setActiveOrganization((current) =>
+                current
+                    ? { ...current, notification_settings: data?.notification_settings ?? current.notification_settings }
+                    : current
+            );
+            toast.success('Team notification settings updated');
+        } catch (error: unknown) {
+            setNotifyAdminsOnSubmission(previous);
+            toast.error(error instanceof Error ? error.message : 'Failed to update team notifications');
+        } finally {
+            setWorkspaceNotificationsSaving(false);
+        }
+    };
+
     const handleResendInvite = async (invite: PendingOrganizationInvite) => {
         setPendingInviteAction(`resend:${invite.id}`);
         try {
@@ -970,51 +1008,54 @@ export default function SettingsPage() {
                     <div className="space-y-4">
                         <div className="flex items-center justify-between gap-4">
                             <div>
-                                <p className="text-foreground text-sm font-medium">Seller submissions</p>
-                                <p className="text-sm text-muted-foreground">Get notified when a seller completes a form</p>
+                                <p id="notif-seller-submissions-label" className="text-foreground text-sm font-medium">Seller submissions</p>
+                                <p id="notif-seller-submissions-desc" className="text-sm text-muted-foreground">Get notified when a seller completes a form</p>
                             </div>
                             <Switch
+                                aria-labelledby="notif-seller-submissions-label"
+                                aria-describedby="notif-seller-submissions-desc"
                                 checked={notifications.seller_submissions}
                                 onCheckedChange={(checked) => handleNotificationToggle('seller_submissions', checked)}
                             />
                         </div>
-                        <Separator className="bg-border" />
-                        <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <p className="text-foreground text-sm font-medium">Attach PDF to submission emails</p>
-                                <p className="text-sm text-muted-foreground">Automatically include the current utility sheet PDF. Later dashboard edits update the live sheet and future downloads, but already-sent attachments stay unchanged.</p>
+                        {/* PDF attachment is nested under and dependent on submission emails:
+                            no submission email is sent when Seller submissions is off, so no PDF can be attached. */}
+                        <div className="ml-4 border-l border-border pl-4">
+                            <div className={`flex items-center justify-between gap-4 ${notifications.seller_submissions ? '' : 'opacity-50'}`}>
+                                <div>
+                                    <p id="notif-pdf-attachment-label" className="text-foreground text-sm font-medium">Attach PDF to submission emails</p>
+                                    <p id="notif-pdf-attachment-desc" className="text-sm text-muted-foreground">
+                                        {notifications.seller_submissions
+                                            ? 'Automatically include the current utility sheet PDF. Later dashboard edits update the live sheet and future downloads, but already-sent attachments stay unchanged.'
+                                            : 'Turn on Seller submissions to attach the utility sheet PDF to those emails.'}
+                                    </p>
+                                </div>
+                                <Switch
+                                    aria-labelledby="notif-pdf-attachment-label"
+                                    aria-describedby="notif-pdf-attachment-desc"
+                                    disabled={!notifications.seller_submissions}
+                                    checked={notifications.seller_submissions && notifications.seller_submission_pdf_attachment}
+                                    onCheckedChange={(checked) => handleNotificationToggle('seller_submission_pdf_attachment', checked)}
+                                />
                             </div>
-                            <Switch
-                                checked={notifications.seller_submission_pdf_attachment}
-                                onCheckedChange={(checked) => handleNotificationToggle('seller_submission_pdf_attachment', checked)}
-                            />
                         </div>
                         <Separator className="bg-border" />
                         <div className="flex items-center justify-between gap-4">
                             <div>
-                                <p className="text-foreground text-sm font-medium">Contact resolution alerts</p>
-                                <p className="text-sm text-muted-foreground">Get notified about unresolved provider contacts</p>
+                                <p id="notif-contact-resolution-label" className="text-foreground text-sm font-medium">Contact resolution alerts</p>
+                                <p id="notif-contact-resolution-desc" className="text-sm text-muted-foreground">Get notified about unresolved provider contacts</p>
                             </div>
                             <Switch
+                                aria-labelledby="notif-contact-resolution-label"
+                                aria-describedby="notif-contact-resolution-desc"
                                 checked={notifications.contact_resolution}
                                 onCheckedChange={(checked) => handleNotificationToggle('contact_resolution', checked)}
                             />
                         </div>
-                        {/* Weekly summary disabled - requires Vercel cron upgrade
-                        <Separator className="bg-border" />
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-foreground">Weekly summary</p>
-                                <p className="text-sm text-muted-foreground">Receive a weekly activity report</p>
-                            </div>
-                            <input
-                                type="checkbox"
-                                checked={notifications.weekly_summary}
-                                onChange={(e) => setNotifications({ ...notifications, weekly_summary: e.target.checked })}
-                                className="h-5 w-5 rounded bg-background border-input text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background"
-                            />
-                        </div>
-                        */}
+                        {/* Weekly summary is intentionally not exposed. The cron route, query, and email
+                            exist, but /api/cron/weekly-summary is not registered in vercel.json (only the
+                            activation crons are), so no scheduling infrastructure runs it. Do not surface
+                            this preference until a dependable weekly schedule is wired. */}
                     </div>
                 </CardContent>
             </Card>
@@ -1398,6 +1439,39 @@ export default function SettingsPage() {
                             )}
                         </CardContent>
                     </Card>
+
+                    {activeOrganization && orgIsTeam && (
+                        <Card className="border-border bg-card/50">
+                            <CardHeader>
+                                <CardTitle className="text-foreground flex items-center gap-2">
+                                    <Bell className="h-5 w-5 text-primary" />
+                                    Team notifications
+                                </CardTitle>
+                                <CardDescription className="text-muted-foreground">
+                                    Workspace-level routing for seller submissions. This is separate from each member&apos;s personal notification preferences.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className={`flex items-center justify-between gap-4 ${orgIsAdmin ? '' : 'opacity-70'}`}>
+                                    <div>
+                                        <p id="workspace-notify-admins-label" className="text-foreground text-sm font-medium">Notify workspace admins of all team submissions</p>
+                                        <p id="workspace-notify-admins-desc" className="text-sm text-muted-foreground">
+                                            {orgIsAdmin
+                                                ? 'When on, every seller submission in this workspace also emails its current admins, in addition to the member who owns the request. Each admin still honors their personal Seller submissions preference.'
+                                                : 'Only workspace administrators can change team notification routing.'}
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        aria-labelledby="workspace-notify-admins-label"
+                                        aria-describedby="workspace-notify-admins-desc"
+                                        disabled={!orgIsAdmin || workspaceNotificationsSaving}
+                                        checked={notifyAdminsOnSubmission}
+                                        onCheckedChange={handleToggleAdminNotifications}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     <Card className="border-border bg-card/50">
                         <CardHeader>
