@@ -44,7 +44,7 @@ export function ReusableLinkActions({
                     aria-label="Copy reusable seller link"
                     onClick={onCopyLink}
                     disabled={disabled}
-                    className="active:scale-[0.98]"
+                    className="min-h-11 active:scale-[0.98] sm:min-h-0"
                 >
                     {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
                     {copied ? 'Copied' : 'Copy'}
@@ -56,7 +56,7 @@ export function ReusableLinkActions({
                         variant="outline"
                         aria-label="Copy reusable seller link SMS message"
                         onClick={onCopySms}
-                        className="active:scale-[0.98]"
+                        className="min-h-11 active:scale-[0.98] sm:min-h-0"
                     >
                         <MessageSquare className="mr-2 h-4 w-4" />
                         SMS
@@ -69,7 +69,7 @@ export function ReusableLinkActions({
                         variant="outline"
                         aria-label="Open email with reusable seller link"
                         onClick={onOpenEmail}
-                        className="active:scale-[0.98]"
+                        className="min-h-11 active:scale-[0.98] sm:min-h-0"
                     >
                         <Mail className="mr-2 h-4 w-4" />
                         Email
@@ -82,7 +82,7 @@ export function ReusableLinkActions({
                         variant="outline"
                         aria-label="Open reusable seller link"
                         onClick={onOpenLink}
-                        className="active:scale-[0.98]"
+                        className="min-h-11 active:scale-[0.98] sm:min-h-0"
                     >
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Open

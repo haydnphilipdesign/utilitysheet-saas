@@ -4,7 +4,12 @@ import { vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { toActivationFunnelStats, toGrowthSourceStats, toReferralLoopStats } from '@/lib/admin/activation-funnel';
+import {
+    hasReferralLoopObservations,
+    toActivationFunnelStats,
+    toGrowthSourceStats,
+    toReferralLoopStats,
+} from '@/lib/admin/activation-funnel';
 
 describe('activation funnel summary', () => {
     it('computes conversion counts and rates from aggregate rows', () => {
@@ -81,7 +86,9 @@ describe('activation funnel summary', () => {
     });
 
     it('handles an empty referral loop without dividing by zero', () => {
-        expect(toReferralLoopStats({})).toEqual({
+        const emptyStats = toReferralLoopStats({});
+
+        expect(emptyStats).toEqual({
             impressions: 0,
             clicks: 0,
             signups: 0,
@@ -90,5 +97,11 @@ describe('activation funnel summary', () => {
             signupRate: 0,
             activationRate: 0,
         });
+        expect(hasReferralLoopObservations(emptyStats)).toBe(false);
+        expect(hasReferralLoopObservations(null)).toBe(false);
+    });
+
+    it('detects when referral instrumentation has observations', () => {
+        expect(hasReferralLoopObservations(toReferralLoopStats({ impressions: 1 }))).toBe(true);
     });
 });

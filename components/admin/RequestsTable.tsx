@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { AdminAccountPreview } from "@/components/admin/AdminAccountPreview";
 import { formatAdminDate } from "@/lib/admin/date-format";
 import type { UserLatestRequest } from "@/lib/admin";
@@ -24,6 +23,10 @@ interface Request {
 interface RequestsTableProps {
     requests: Request[];
     latestRequests?: Record<string, UserLatestRequest[]>;
+}
+
+function formatStatus(status: string) {
+    return status.replace(/_/g, ' ');
 }
 
 export function RequestsTable({ requests, latestRequests = {} }: RequestsTableProps) {
@@ -74,15 +77,18 @@ export function RequestsTable({ requests, latestRequests = {} }: RequestsTablePr
                                         request.status === 'in_progress' ? 'secondary' :
                                             'outline'
                                 }>
-                                    {request.status}
+                                    {formatStatus(request.status)}
                                 </Badge>
                             </td>
                             <td className="p-4 text-muted-foreground">{formatAdminDate(request.created_at)}</td>
                             <td className="p-4 text-right">
-                                <Link href={`/admin/requests/${request.id}`}>
-                                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                                        <Eye className="h-4 w-4" />
-                                    </Button>
+                                <Link
+                                    href={`/admin/requests/${request.id}`}
+                                    aria-label={`Inspect request for ${request.property_address}`}
+                                    title="Inspect request"
+                                    className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8 sm:w-8"
+                                >
+                                    <Eye className="h-4 w-4" />
                                 </Link>
                             </td>
                         </tr>

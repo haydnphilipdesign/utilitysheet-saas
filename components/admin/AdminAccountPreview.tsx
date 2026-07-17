@@ -158,9 +158,9 @@ export function AdminAccountPreview({ account, children, className, align = "lef
                         </section>
 
                         <section>
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Admin Actions</h3>
+                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Account controls</h3>
                             <p className="text-sm text-muted-foreground">
-                                Use the full profile for plan changes, access changes, enforcement, request history, and audited account actions.
+                                Use the full profile for entitlement overrides, access changes, enforcement, request history, and audited account actions.
                             </p>
                             <Link href={`/admin/users/${account.id}`} className="mt-3 inline-flex">
                                 <Button size="sm">

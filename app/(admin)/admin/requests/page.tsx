@@ -154,8 +154,8 @@ export default async function RequestsPage({ searchParams }: { searchParams: Req
     return (
         <div className="space-y-4">
             <AdminPageHeader
-                title="Request Inspector"
-                description={`View and triage all utility requests (${total.toLocaleString()}).`}
+                title="Request inspection"
+                description={`Search ${total.toLocaleString()} seller flows by address, seller, account, lifecycle state, or ID.`}
             />
 
             <AdminFilterBar>

@@ -66,6 +66,11 @@ export type ReferralLoopStats = {
     activationRate: number;
 };
 
+export function hasReferralLoopObservations(stats: ReferralLoopStats | null | undefined): boolean {
+    if (!stats) return false;
+    return stats.impressions + stats.clicks + stats.signups + stats.activated > 0;
+}
+
 function asCount(value: number | string | null | undefined) {
     return Number(value || 0);
 }

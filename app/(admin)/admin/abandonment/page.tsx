@@ -1,14 +1,15 @@
 import Link from 'next/link';
-import { TrendingDown, Clock, Inbox, AlertCircle } from 'lucide-react';
+import { Activity, AlertCircle, Clock, ExternalLink, Inbox } from 'lucide-react';
 import { sql } from '@/lib/neon/db';
 import { Badge } from '@/components/ui/badge';
 import {
     AdminDataTableShell,
+    AdminEmptyState,
     AdminPageHeader,
     AdminStatStrip,
-    AdminEmptyState,
 } from '@/components/admin/primitives';
 import { formatAdminDate } from '@/lib/admin/date-format';
+import { describeSellerProgressEvent } from '@/lib/admin/seller-progress';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,18 +28,18 @@ type LastEventRow = {
     hours_since_last_event: number | null;
 };
 
-type AbandonmentData = {
+type SellerProgressData = {
     totalRequests: number;
     inProgressCount: number;
-    abandoned24h: number;
-    abandoned7d: number;
-    abandonedOver7d: number;
+    active24h: number;
+    inactive1To7d: number;
+    inactiveOver7d: number;
     byLastEvent: Array<{ event_type: string; count: number }>;
     byLastCategory: Array<{ category: string; count: number }>;
     rows: LastEventRow[];
 };
 
-async function getAbandonmentData(): Promise<AbandonmentData | null> {
+async function getSellerProgressData(): Promise<SellerProgressData | null> {
     if (!sql) return null;
 
     const [totalsRes, agedRes, byEventRes, byCategoryRes, rowsRes] = await Promise.all([
@@ -52,13 +53,14 @@ async function getAbandonmentData(): Promise<AbandonmentData | null> {
             SELECT
                 COUNT(*) FILTER (
                     WHERE COALESCE(last_activity_at, created_at) >= NOW() - INTERVAL '24 hours'
-                )::int AS last_24h,
+                )::int AS active_24h,
                 COUNT(*) FILTER (
-                    WHERE COALESCE(last_activity_at, created_at) >= NOW() - INTERVAL '7 days'
-                )::int AS last_7d,
+                    WHERE COALESCE(last_activity_at, created_at) < NOW() - INTERVAL '24 hours'
+                      AND COALESCE(last_activity_at, created_at) >= NOW() - INTERVAL '7 days'
+                )::int AS inactive_1_to_7d,
                 COUNT(*) FILTER (
                     WHERE COALESCE(last_activity_at, created_at) < NOW() - INTERVAL '7 days'
-                )::int AS over_7d
+                )::int AS inactive_over_7d
             FROM requests
             WHERE status = 'in_progress'
         `,
@@ -131,122 +133,109 @@ async function getAbandonmentData(): Promise<AbandonmentData | null> {
     return {
         totalRequests: Number(totalsRes[0]?.total_requests || 0),
         inProgressCount: Number(totalsRes[0]?.in_progress_count || 0),
-        abandoned24h: Number(agedRes[0]?.last_24h || 0),
-        abandoned7d: Number(agedRes[0]?.last_7d || 0),
-        abandonedOver7d: Number(agedRes[0]?.over_7d || 0),
-        byLastEvent: byEventRes.map((r) => ({
-            event_type: String(r.event_type ?? 'unknown'),
-            count: Number(r.count || 0),
+        active24h: Number(agedRes[0]?.active_24h || 0),
+        inactive1To7d: Number(agedRes[0]?.inactive_1_to_7d || 0),
+        inactiveOver7d: Number(agedRes[0]?.inactive_over_7d || 0),
+        byLastEvent: byEventRes.map((row) => ({
+            event_type: String(row.event_type ?? 'unknown'),
+            count: Number(row.count || 0),
         })),
-        byLastCategory: byCategoryRes.map((r) => ({
-            category: String(r.category ?? 'unknown'),
-            count: Number(r.count || 0),
+        byLastCategory: byCategoryRes.map((row) => ({
+            category: String(row.category ?? 'unknown'),
+            count: Number(row.count || 0),
         })),
         rows: rowsRes as unknown as LastEventRow[],
     };
 }
 
-function formatHours(hours: number | null): string {
-    if (hours == null) return '—';
+function formatElapsed(hours: number | null): string {
+    if (hours == null) return 'No tracked activity';
     if (hours < 1) return `${Math.round(hours * 60)}m ago`;
     if (hours < 24) return `${Math.round(hours)}h ago`;
-    const days = Math.round(hours / 24);
-    return `${days}d ago`;
+    return `${Math.round(hours / 24)}d ago`;
 }
 
-function describeLastStep(eventType: string | null, eventData: Record<string, unknown> | null): string {
-    if (!eventType) return 'Never opened';
-    if (eventType === 'seller_opened') return 'Opened, never engaged';
-    if (eventType === 'suggestions_fetched') {
-        const cats = Array.isArray(eventData?.categories) ? (eventData.categories as string[]) : [];
-        if (cats.length > 0) return `Reached ${cats.join(', ')}`;
-        return 'Reached a utility step';
-    }
-    if (eventType === 'suggestions_search') {
-        const cat = typeof eventData?.category === 'string' ? eventData.category : null;
-        return cat ? `Searched provider on ${cat}` : 'Searched for provider';
-    }
-    if (eventType === 'request_created') return 'Created, never opened';
-    if (eventType === 'reminder_sent') return 'Reminded, no response';
-    return eventType;
+function formatCategory(category: string) {
+    return category.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export default async function AbandonmentPage() {
-    const data = await getAbandonmentData();
+export default async function SellerProgressPage() {
+    const data = await getSellerProgressData();
 
-    if (!data) {
-        return <div className="p-8">Database not configured</div>;
-    }
+    if (!data) return <div className="p-8">Database not configured</div>;
 
-    const abandonmentRate = data.totalRequests > 0
+    const inProgressRate = data.totalRequests > 0
         ? ((data.inProgressCount / data.totalRequests) * 100).toFixed(1)
         : '0.0';
-
-    const topCliff = data.byLastCategory[0];
+    const topCategory = data.byLastCategory[0];
+    const categoryObservationCount = data.byLastCategory.reduce((total, row) => total + row.count, 0);
 
     return (
         <div className="space-y-6">
             <AdminPageHeader
-                title="Abandonment Analysis"
-                description="Where sellers stop in the utility form before submitting."
+                title="Seller progress monitoring"
+                description="Inspect where in-progress seller forms last recorded activity and open a request when support follow-up is appropriate."
             />
 
             <AdminStatStrip
                 stats={[
                     {
-                        label: 'In Progress',
+                        label: 'In progress',
                         value: data.inProgressCount.toLocaleString(),
-                        hint: `${abandonmentRate}% of all ${data.totalRequests.toLocaleString()} requests`,
+                        hint: `${inProgressRate}% of ${data.totalRequests.toLocaleString()} requests`,
                         icon: Inbox,
                     },
                     {
-                        label: 'Last 24 hours',
-                        value: data.abandoned24h.toLocaleString(),
-                        hint: 'Recently active, may still convert',
+                        label: 'Active in 24 hours',
+                        value: data.active24h.toLocaleString(),
+                        hint: 'Recent tracked seller activity',
+                        icon: Activity,
+                    },
+                    {
+                        label: 'Inactive 1–7 days',
+                        value: data.inactive1To7d.toLocaleString(),
+                        hint: 'No tracked activity in the last 24 hours',
                         icon: Clock,
                     },
                     {
-                        label: 'Last 7 days',
-                        value: data.abandoned7d.toLocaleString(),
-                        hint: 'Still warm, worth a reminder',
-                        icon: TrendingDown,
-                    },
-                    {
-                        label: 'Older than 7 days',
-                        value: data.abandonedOver7d.toLocaleString(),
-                        hint: 'Likely lost',
+                        label: 'Inactive 7+ days',
+                        value: data.inactiveOver7d.toLocaleString(),
+                        hint: 'Review request context before follow-up',
                         icon: AlertCircle,
                     },
                 ]}
             />
 
             <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-border/70 bg-card/70 p-6 shadow-sm backdrop-blur">
+                <div className="rounded-xl border border-border/70 bg-card p-6 shadow-sm">
                     <div className="mb-4">
-                        <h3 className="text-lg font-medium">Last event before abandonment</h3>
+                        <h2 className="text-lg font-medium">Last tracked seller stage</h2>
                         <p className="text-sm text-muted-foreground">
-                            What every in-progress seller did last. <code>seller_opened</code> means they loaded the form and bailed; <code>suggestions_fetched</code> means they advanced to a utility step.
+                            Human-readable summary of the most recent event on each in-progress request.
                         </p>
                     </div>
                     {data.byLastEvent.length === 0 ? (
-                        <AdminEmptyState title="No data yet" description="No in-progress requests with event history." />
+                        <AdminEmptyState title="No stage data" description="No in-progress requests have event history yet." />
                     ) : (
-                        <ul className="space-y-2">
+                        <ul className="space-y-3">
                             {data.byLastEvent.map((row) => {
                                 const pct = data.inProgressCount > 0 ? (row.count / data.inProgressCount) * 100 : 0;
+                                const stage = describeSellerProgressEvent(row.event_type, null);
                                 return (
-                                    <li key={row.event_type} className="space-y-1">
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="font-mono text-xs text-foreground">{row.event_type}</span>
-                                            <span className="text-muted-foreground">
-                                                {row.count} ({pct.toFixed(0)}%)
-                                            </span>
+                                    <li key={row.event_type} className="space-y-1.5">
+                                        <div className="flex items-start justify-between gap-3 text-sm">
+                                            <div>
+                                                <p className="font-medium text-foreground">{stage.label}</p>
+                                                <p className="text-xs text-muted-foreground">{stage.description}</p>
+                                                <details className="mt-1 text-xs text-muted-foreground">
+                                                    <summary className="cursor-pointer hover:text-foreground">Technical event</summary>
+                                                    <code className="mt-1 block">{row.event_type}</code>
+                                                </details>
+                                            </div>
+                                            <span className="shrink-0 text-muted-foreground">{row.count} ({pct.toFixed(0)}%)</span>
                                         </div>
-                                        <div className="h-2 overflow-hidden rounded-full bg-muted">
-                                            <div
-                                                className="h-full bg-red-500/70"
-                                                style={{ width: `${pct}%` }}
-                                            />
+                                        <div className="h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                                            <div className="h-full bg-red-500/65" style={{ width: `${pct}%` }} />
                                         </div>
                                     </li>
                                 );
@@ -255,39 +244,31 @@ export default async function AbandonmentPage() {
                     )}
                 </div>
 
-                <div className="rounded-xl border border-border/70 bg-card/70 p-6 shadow-sm backdrop-blur">
+                <div className="rounded-xl border border-border/70 bg-card p-6 shadow-sm">
                     <div className="mb-4">
-                        <h3 className="text-lg font-medium">Drop-off by utility category</h3>
+                        <h2 className="text-lg font-medium">Last observed utility category</h2>
                         <p className="text-sm text-muted-foreground">
-                            For sellers who got into the form, which utility category was the last one they saw before quitting.
-                            {topCliff ? (
-                                <> Top cliff: <strong className="text-foreground">{topCliff.category}</strong> ({topCliff.count} requests).</>
-                            ) : null}
+                            Utility categories recorded when provider suggestions were last loaded.
+                            {topCategory ? <> Most observed: <strong className="text-foreground">{formatCategory(topCategory.category)}</strong> ({topCategory.count}).</> : null}
                         </p>
                     </div>
                     {data.byLastCategory.length === 0 ? (
                         <AdminEmptyState
-                            title="No category data"
-                            description="No in-progress requests have advanced past the opening screen yet."
+                            title="No category observations"
+                            description="No in-progress requests have a recorded utility suggestion step."
                         />
                     ) : (
-                        <ul className="space-y-2">
+                        <ul className="space-y-3" aria-label={`Utility category summary from ${categoryObservationCount} observations`}>
                             {data.byLastCategory.map((row) => {
-                                const total = data.byLastCategory.reduce((acc, r) => acc + r.count, 0);
-                                const pct = total > 0 ? (row.count / total) * 100 : 0;
+                                const pct = categoryObservationCount > 0 ? (row.count / categoryObservationCount) * 100 : 0;
                                 return (
                                     <li key={row.category} className="space-y-1">
                                         <div className="flex items-center justify-between text-sm">
-                                            <span className="font-medium capitalize">{row.category}</span>
-                                            <span className="text-muted-foreground">
-                                                {row.count} ({pct.toFixed(0)}%)
-                                            </span>
+                                            <span className="font-medium">{formatCategory(row.category)}</span>
+                                            <span className="text-muted-foreground">{row.count} ({pct.toFixed(0)}%)</span>
                                         </div>
-                                        <div className="h-2 overflow-hidden rounded-full bg-muted">
-                                            <div
-                                                className="h-full bg-amber-500/70"
-                                                style={{ width: `${pct}%` }}
-                                            />
+                                        <div className="h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                                            <div className="h-full bg-amber-500/70" style={{ width: `${pct}%` }} />
                                         </div>
                                     </li>
                                 );
@@ -299,64 +280,60 @@ export default async function AbandonmentPage() {
 
             <AdminDataTableShell>
                 <div className="border-b border-border/70 p-4">
-                    <h3 className="text-lg font-medium">In-progress requests (most recent activity first)</h3>
+                    <h2 className="text-lg font-medium">In-progress requests</h2>
                     <p className="text-sm text-muted-foreground">
-                        Showing up to 200. Click a row to inspect the full event log.
+                        Most recent activity first, up to 200 requests. Open request inspection to review the event history or use existing audited recovery actions.
                     </p>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[900px]">
+                    <table className="w-full min-w-[980px] text-sm">
                         <thead>
                             <tr className="border-b bg-muted/40 text-left">
                                 <th className="p-3 font-medium">Address</th>
-                                <th className="p-3 font-medium">User</th>
-                                <th className="p-3 font-medium">Last step reached</th>
+                                <th className="p-3 font-medium">Account</th>
+                                <th className="p-3 font-medium">Last tracked stage</th>
                                 <th className="p-3 font-medium">Last activity</th>
                                 <th className="p-3 font-medium">Created</th>
+                                <th className="p-3 text-right font-medium">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {data.rows.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                                        No in-progress requests.
-                                    </td>
-                                </tr>
-                            ) : (
-                                data.rows.map((row) => {
-                                    const hours = row.hours_since_last_event != null ? Number(row.hours_since_last_event) : null;
-                                    const isStale = hours != null && hours > 24 * 7;
-                                    return (
-                                        <tr key={row.request_id} className="border-b last:border-0 hover:bg-muted/40">
-                                            <td className="p-3">
-                                                <Link
-                                                    href={`/admin/requests/${row.request_id}`}
-                                                    className="font-medium text-foreground hover:underline"
-                                                >
-                                                    {row.property_address}
-                                                </Link>
-                                            </td>
-                                            <td className="p-3">
-                                                <div className="text-foreground">{row.user_name || '—'}</div>
-                                                <div className="text-xs text-muted-foreground">{row.user_email || ''}</div>
-                                            </td>
-                                            <td className="p-3">
-                                                <Badge variant={row.last_event_type === 'seller_opened' ? 'outline' : 'secondary'}>
-                                                    {describeLastStep(row.last_event_type, row.last_event_data)}
-                                                </Badge>
-                                            </td>
-                                            <td className="p-3">
-                                                <span className={isStale ? 'text-muted-foreground' : 'text-foreground'}>
-                                                    {formatHours(hours)}
-                                                </span>
-                                            </td>
-                                            <td className="p-3 text-xs text-muted-foreground">
-                                                {formatAdminDate(row.request_created_at)}
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
+                                <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No in-progress requests.</td></tr>
+                            ) : data.rows.map((row) => {
+                                const hours = row.hours_since_last_event != null ? Number(row.hours_since_last_event) : null;
+                                const stage = describeSellerProgressEvent(row.last_event_type, row.last_event_data);
+                                return (
+                                    <tr key={row.request_id} className="border-b last:border-0 hover:bg-muted/40">
+                                        <td className="p-3 font-medium text-foreground">{row.property_address}</td>
+                                        <td className="p-3">
+                                            <div className="text-foreground">{row.user_name || 'Unknown account'}</div>
+                                            <div className="text-xs text-muted-foreground">{row.user_email || ''}</div>
+                                        </td>
+                                        <td className="p-3">
+                                            <Badge variant={row.last_event_type === 'seller_opened' ? 'outline' : 'secondary'}>{stage.label}</Badge>
+                                            <p className="mt-1 max-w-[320px] text-xs text-muted-foreground">{stage.description}</p>
+                                            {row.last_event_type ? (
+                                                <details className="mt-1 text-xs text-muted-foreground">
+                                                    <summary className="cursor-pointer hover:text-foreground">Technical event</summary>
+                                                    <code className="mt-1 block">{row.last_event_type}</code>
+                                                </details>
+                                            ) : null}
+                                        </td>
+                                        <td className="p-3 text-foreground">{formatElapsed(hours)}</td>
+                                        <td className="p-3 text-xs text-muted-foreground">{formatAdminDate(row.request_created_at)}</td>
+                                        <td className="p-3 text-right">
+                                            <Link
+                                                href={`/admin/requests/${row.request_id}`}
+                                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            >
+                                                Inspect request
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

@@ -75,9 +75,10 @@ describe('UsersTable admin access controls', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /manage/i }));
 
-        expect(screen.getByText('Latest Admin Activity')).toBeInTheDocument();
+        expect(screen.getByText(/latest admin activity/i)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /promote to admin/i })).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /upgrade plan to pro/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /set pro entitlement/i })).toBeInTheDocument();
+        expect(screen.getByText(/does not create, cancel, or modify a stripe subscription/i)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /ban user/i })).toBeInTheDocument();
     });
 });

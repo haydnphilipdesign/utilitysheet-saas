@@ -16,6 +16,7 @@ import {
     resolveSearchParams,
     shouldCanonicalizePage,
 } from '@/lib/admin/list-query';
+import { classifyAdminWorkspace, type AdminWorkspaceKind } from '@/lib/admin/workspace-classification';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,7 @@ type AdminOrgRow = {
     member_count: number;
     admin_names: string[];
     admin_count: number;
+    workspace_kind: AdminWorkspaceKind;
 };
 
 async function getOrgs(params: { query?: string; limit: number; offset: number }) {
@@ -74,17 +76,24 @@ async function getOrgs(params: { query?: string; limit: number; offset: number }
         LIMIT ${params.limit} OFFSET ${params.offset}
     `;
 
-    return (data as unknown as Array<AdminOrgRow & {
+    return (data as unknown as Array<Omit<AdminOrgRow, 'workspace_kind'> & {
         member_count: string | number;
         admin_count: string | number;
         seat_quantity: string | number;
-    }>).map((org) => ({
-        ...org,
-        member_count: Number(org.member_count || 0),
-        admin_count: Number(org.admin_count || 0),
-        seat_quantity: Number(org.seat_quantity || 0),
-        admin_names: org.admin_names || [],
-    }));
+    }>).map((org) => {
+        const memberCount = Number(org.member_count || 0);
+        return {
+            ...org,
+            member_count: memberCount,
+            admin_count: Number(org.admin_count || 0),
+            seat_quantity: Number(org.seat_quantity || 0),
+            admin_names: org.admin_names || [],
+            workspace_kind: classifyAdminWorkspace({
+                subscriptionStatus: org.subscription_status,
+                memberCount,
+            }),
+        };
+    });
 }
 
 async function getOrgsCount(params: { query?: string }) {
@@ -142,8 +151,8 @@ export default async function OrgsPage({ searchParams }: { searchParams: OrgsSea
     return (
         <div className="space-y-4">
             <AdminPageHeader
-                title="Organizations"
-                description={`Manage B2B accounts and team workspaces (${total.toLocaleString()}).`}
+                title="Workspaces"
+                description={`Inspect ${total.toLocaleString()} account workspaces. Team organizations are identified by Team entitlement, not workspace creation alone.`}
             />
 
             <AdminFilterBar>

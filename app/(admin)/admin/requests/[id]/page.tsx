@@ -4,6 +4,7 @@ import { UtilityEntriesTable } from '@/components/admin/UtilityEntriesTable';
 import { EventLogTable } from '@/components/admin/EventLogTable';
 import { RequestAdminActions } from '@/components/admin/RequestAdminActions';
 import { AdminAccountPreview } from '@/components/admin/AdminAccountPreview';
+import { AdminPageHeader } from '@/components/admin/primitives';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -45,20 +46,18 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     const latestRequests = request.account_id ? await getLatestRequestsForUsers([request.account_id]) : {};
 
     return (
-        <div className="space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Request Details</h2>
-                    <p className="text-muted-foreground">ID: {request.id}</p>
-                </div>
-                <Badge className="text-lg px-4 py-1" variant={
+        <div className="space-y-6">
+            <AdminPageHeader
+                title={request.property_address}
+                description={`Request ${request.id}`}
+                action={<Badge className="px-3 py-1 capitalize" variant={
                     request.status === 'submitted' ? 'default' :
                         request.status === 'in_progress' ? 'secondary' :
                             'outline'
                 }>
-                    {request.status}
-                </Badge>
-            </div>
+                    {String(request.status).replace(/_/g, ' ')}
+                </Badge>}
+            />
 
             <RequestAdminActions
                 request={{
@@ -76,7 +75,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-sm font-medium">Property Info</CardTitle>
+                        <CardTitle className="text-sm font-medium">Property and workflow</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                         <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Address</span> {request.property_address}</div>
@@ -89,7 +88,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-sm font-medium">Seller & User Info</CardTitle>
+                        <CardTitle className="text-sm font-medium">Seller and account</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                         <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Seller Name</span> {request.seller_name || 'N/A'}</div>
@@ -125,7 +124,8 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
             </div>
 
             <div>
-                <h3 className="text-lg font-medium mb-4">Event Logs</h3>
+                <h3 className="text-lg font-medium mb-1">Technical event history</h3>
+                <p className="mb-4 text-sm text-muted-foreground">Raw lifecycle events for support diagnosis.</p>
                 <EventLogTable logs={logs as unknown as EventLog[]} />
             </div>
         </div>

@@ -7,6 +7,8 @@ import { AdminAccountPreview } from '@/components/admin/AdminAccountPreview';
 import { formatAdminDate } from '@/lib/admin/date-format';
 import { getLatestRequestsForUsers } from '@/lib/admin';
 import { Building2, CreditCard, Users } from 'lucide-react';
+import { AdminPageHeader } from '@/components/admin/primitives';
+import { classifyAdminWorkspace, getAdminWorkspaceKindLabel } from '@/lib/admin/workspace-classification';
 
 type OrganizationRow = {
     id: string;
@@ -64,25 +66,42 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
 
     const { org, members } = data;
     const orgAdmins = members.filter((member) => member.role === 'admin');
+    const workspaceKind = classifyAdminWorkspace({
+        subscriptionStatus: org.subscription_status,
+        memberCount: members.length,
+    });
     const latestRequests = await getLatestRequestsForUsers(members.map((member) => member.account_id));
 
     return (
-        <div className="space-y-8">
-            <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
+        <div className="space-y-6">
+            <AdminPageHeader
+                title={org.name}
+                description={`Workspace slug: ${org.slug}`}
+                action={(
+                    <Badge variant={workspaceKind === 'team_organization' ? 'default' : 'secondary'}>
+                        {getAdminWorkspaceKindLabel(workspaceKind)}
+                    </Badge>
+                )}
+            />
+
+            <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-card p-4 shadow-sm">
+                <Avatar className="h-12 w-12">
                     <AvatarImage src={org.logo_url || undefined} />
-                    <AvatarFallback className="text-xl"><Building2 className="h-10 w-10" /></AvatarFallback>
+                    <AvatarFallback><Building2 className="h-6 w-6" /></AvatarFallback>
                 </Avatar>
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">{org.name}</h2>
-                    <p className="text-muted-foreground">slug: {org.slug}</p>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                    {workspaceKind === 'team_organization'
+                        ? 'This workspace has Team entitlement and is counted as Team adoption.'
+                        : workspaceKind === 'shared_workspace'
+                            ? 'This workspace has multiple members but no Team entitlement, so it is not counted as a Team organization.'
+                            : 'This is a personal/default account workspace and is not counted as Team adoption.'}
+                </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-sm font-medium">Organization Info</CardTitle>
+                        <CardTitle className="text-sm font-medium">Workspace information</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                         <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">ID</span> {org.id}</div>

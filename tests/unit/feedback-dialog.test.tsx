@@ -8,6 +8,6 @@ describe('FeedbackDialog', () => {
     it('gives the icon-only trigger a clear accessible name', () => {
         render(<FeedbackDialog />);
 
-        expect(screen.getByRole('button', { name: 'Send feedback' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Send feedback' })).toHaveClass('min-h-11', 'min-w-11');
     });
 });

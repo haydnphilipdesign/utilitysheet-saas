@@ -1,15 +1,16 @@
 import { notFound } from 'next/navigation';
+import { Building2, Mail } from 'lucide-react';
 import { sql } from '@/lib/neon/db';
 import { RequestsTable } from '@/components/admin/RequestsTable';
 import { AuditLogTable } from '@/components/admin/AuditLogTable';
+import { AdminUserControls } from '@/components/admin/AdminUserControls';
+import { AdminPageHeader } from '@/components/admin/primitives';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Mail, Building } from 'lucide-react';
-import type { Request, EffectivePlan } from '@/types';
-import type { AdminAuditLog } from '@/types';
+import { formatAdminDate } from '@/lib/admin/date-format';
+import type { AdminAuditLog, AdminUserRow, EffectivePlan, Request } from '@/types';
 
 async function getUserData(userId: string) {
     if (!sql) return null;
@@ -26,20 +27,20 @@ async function getUserData(userId: string) {
         `,
         sql`SELECT * FROM requests WHERE account_id = ${userId} ORDER BY created_at DESC`,
         sql`
-            SELECT l.*, a.email as admin_email 
-            FROM admin_audit_logs l 
-            LEFT JOIN accounts a ON l.admin_id = a.id 
-            WHERE target_user_id = ${userId} 
+            SELECT l.*, a.email as admin_email
+            FROM admin_audit_logs l
+            LEFT JOIN accounts a ON l.admin_id = a.id
+            WHERE target_user_id = ${userId}
             ORDER BY created_at DESC
-        `
+        `,
     ]);
 
     if (!userRes[0]) return null;
 
     return {
-        user: userRes[0],
+        user: userRes[0] as unknown as AdminUserRow,
         requests: requestsRes,
-        logs: logsRes
+        logs: logsRes,
     };
 }
 
@@ -47,122 +48,105 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     const { id } = await params;
     const data = await getUserData(id);
 
-    if (!data) {
-        notFound();
-    }
+    if (!data) notFound();
 
     const { user, requests, logs } = data;
-    const effectivePlan: EffectivePlan =
-        user.active_organization_subscription_status === 'team'
-            ? 'team'
-            : (user.subscription_status || 'free');
+    const effectivePlan: EffectivePlan = user.active_organization_subscription_status === 'team'
+        ? 'team'
+        : (user.subscription_status || 'free');
+    const managedUser: AdminUserRow = { ...user, effective_subscription_status: effectivePlan };
     const initials = user.full_name
-        ? user.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+        ? user.full_name.split(' ').map((name) => name[0]).join('').slice(0, 2).toUpperCase()
         : user.email.slice(0, 2).toUpperCase();
 
     return (
-        <div className="space-y-8">
-            {/* Header: Profile & Actions */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-4">
-                    <Avatar className="h-20 w-20">
-                        <AvatarFallback className="text-xl">{initials}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                            {user.full_name || 'No Name'}
-                            <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="ml-2">
-                                {user.role}
-                            </Badge>
-                            {effectivePlan === 'pro' && (
-                                <Badge className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white border-0">
-                                    PRO
-                                </Badge>
-                            )}
-                            {effectivePlan === 'team' && (
-                                <Badge className="bg-gradient-to-r from-sky-500 to-indigo-500 text-white border-0">
-                                    TEAM
-                                </Badge>
-                            )}
-                        </h2>
-                        <div className="flex flex-col gap-1 mt-1 text-muted-foreground">
-                            <div className="flex items-center gap-2 text-sm">
-                                <Mail className="h-4 w-4" /> {user.email}
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="font-mono text-xs opacity-50">ID: {user.id}</span>
-                            </div>
-                        </div>
+        <div className="space-y-6">
+            <AdminPageHeader
+                title={user.full_name || user.email}
+                description="Account context, requests, and the same audited controls available from User Management."
+                action={(
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={user.role === 'admin' ? 'default' : user.role === 'banned' ? 'destructive' : 'secondary'}>
+                            {user.role}
+                        </Badge>
+                        <Badge variant="outline">{effectivePlan}</Badge>
                     </div>
-                </div>
+                )}
+            />
+
+            <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+                <Card className="border-border/70 bg-card shadow-sm">
+                    <CardContent className="flex items-start gap-4 p-5">
+                        <Avatar className="h-16 w-16">
+                            <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Mail className="h-4 w-4 shrink-0" />
+                                <span className="truncate">{user.email}</span>
+                            </div>
+                            <p className="break-all font-mono text-xs text-muted-foreground">ID: {user.id}</p>
+                            <p className="text-xs text-muted-foreground">Joined {formatAdminDate(user.created_at)}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-border/70 bg-card shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-base">Account controls</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Every write requires a reason and remains subject to server authorization, policy checks, audit logging, and the Admin write safety catch.
+                        </p>
+                    </CardHeader>
+                    <CardContent>
+                        <AdminUserControls user={managedUser} />
+                    </CardContent>
+                </Card>
             </div>
 
-            <Separator />
-
-            {/* Details Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium">Contact Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        <div className="flex justify-between py-1 border-b last:border-0 border-border/50">
-                            <span className="text-muted-foreground text-sm">Phone</span>
-                            <span className="font-medium text-sm">{user.phone || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b last:border-0 border-border/50">
-                            <span className="text-muted-foreground text-sm">Company</span>
-                            <span className="font-medium text-sm">{user.company_name || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between py-1 border-b last:border-0 border-border/50">
-                            <span className="text-muted-foreground text-sm">Joined</span>
-                            <span className="font-medium text-sm">{new Date(user.created_at).toLocaleDateString()}</span>
-                        </div>
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card className="border-border/70 bg-card shadow-sm">
+                    <CardHeader><CardTitle className="text-sm font-medium">Contact information</CardTitle></CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                        <div><span className="block text-xs text-muted-foreground">Phone</span>{user.phone || 'Not provided'}</div>
+                        <div><span className="block text-xs text-muted-foreground">Company</span>{user.company_name || 'Not provided'}</div>
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium">Subscription</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                        <div className="flex justify-between py-1 border-b last:border-0 border-border/50">
-                            <span className="text-muted-foreground text-sm">Plan</span>
-                            <span className="font-medium text-sm capitalize">{effectivePlan}</span>
+                <Card className="border-border/70 bg-card shadow-sm">
+                    <CardHeader><CardTitle className="text-sm font-medium">UtilitySheet entitlement</CardTitle></CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                        <div><span className="block text-xs text-muted-foreground">Effective access</span><span className="capitalize">{effectivePlan}</span></div>
+                        <div>
+                            <span className="block text-xs text-muted-foreground">Account override</span>
+                            <span className="capitalize">{user.subscription_status}</span>
                         </div>
-                        <div className="flex justify-between py-1 border-b last:border-0 border-border/50">
-                            <span className="text-muted-foreground text-sm">Status</span>
-                            <span className="font-medium text-sm capitalize">
-                                {effectivePlan === 'canceled' ? 'Canceled' : 'Active'}
-                            </span>
-                        </div>
+                        <p className="text-xs leading-relaxed text-muted-foreground">Account entitlement is not a statement of Stripe subscription state.</p>
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium">Organization</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
+                <Card className="border-border/70 bg-card shadow-sm">
+                    <CardHeader><CardTitle className="text-sm font-medium">Active workspace</CardTitle></CardHeader>
+                    <CardContent>
                         {user.active_organization_id ? (
-                            <div className="flex items-center gap-2">
-                                <Building className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm">
-                                    {user.active_organization_name || 'Organization'} ({user.active_organization_id})
-                                </span>
+                            <div className="flex items-start gap-2 text-sm">
+                                <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                                <div className="min-w-0">
+                                    <p className="font-medium text-foreground">{user.active_organization_name || 'Workspace'}</p>
+                                    <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{user.active_organization_id}</p>
+                                </div>
                             </div>
                         ) : (
-                            <div className="text-sm text-muted-foreground">No active organization</div>
+                            <p className="text-sm text-muted-foreground">No active workspace.</p>
                         )}
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Tabs: Requests & History */}
             <Tabs defaultValue="requests" className="w-full">
                 <TabsList>
                     <TabsTrigger value="requests">Requests ({requests.length})</TabsTrigger>
-                    <TabsTrigger value="log">Audit Log ({logs.length})</TabsTrigger>
+                    <TabsTrigger value="log">Audit log ({logs.length})</TabsTrigger>
                 </TabsList>
                 <TabsContent value="requests" className="mt-4">
                     <RequestsTable requests={requests as unknown as Request[]} />

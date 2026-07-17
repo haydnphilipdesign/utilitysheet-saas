@@ -22,7 +22,7 @@ interface RecentActivityProps {
 
 export function RecentActivity({ items }: RecentActivityProps) {
     return (
-        <div className="space-y-8">
+        <div className="space-y-5">
             {items.map((item) => (
                 <div key={item.id} className="flex items-center">
                     <Avatar className="h-9 w-9">

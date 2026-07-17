@@ -82,17 +82,17 @@ export function RequestAdminActions({ request }: RequestAdminActionsProps) {
     const reminderReasonOk = reminderReason.trim().length >= 3;
 
     return (
-        <Card className="border border-border bg-card/50 backdrop-blur-sm">
+        <Card className="border border-border/70 bg-card shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-medium">Admin Actions</CardTitle>
+                <CardTitle className="text-sm font-medium">Support actions</CardTitle>
                 <div className="flex items-center gap-2">
                     <Badge variant={getStatusBadgeVariant(request.status)}>
                         {formatStatusLabel(request.status)}
                     </Badge>
-                    <Link href={sellerLinkPath} target="_blank" className="inline-flex">
+                    <Link href={sellerLinkPath} target="_blank" rel="noreferrer" className="inline-flex">
                         <Button size="sm" variant="outline">
                             <ExternalLink className="h-4 w-4 mr-2" />
-                            Seller Link
+                            Open seller flow
                         </Button>
                     </Link>
                 </div>
@@ -101,7 +101,7 @@ export function RequestAdminActions({ request }: RequestAdminActionsProps) {
             <CardContent className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-xs text-muted-foreground">
-                        Status updates, seller info edits, and reminders are audited.
+                        Status corrections, seller contact edits, and reminder sends are live Admin writes and are audited.
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <Button
@@ -142,7 +142,7 @@ export function RequestAdminActions({ request }: RequestAdminActionsProps) {
                             disabled={isPending || !request.seller_email}
                         >
                             <Mail className="h-4 w-4 mr-2" />
-                            Send Reminder
+                            Send seller reminder
                         </Button>
                     </div>
                 </div>

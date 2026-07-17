@@ -2,7 +2,7 @@
 
 ## Status
 
-Paused as of 2026-07-17. Phases 1 through 3 and all code-level validation are complete. Authenticated browser QA is waiting for a user-authenticated localhost session; no auth bypass or impersonation session was created.
+Completed as of 2026-07-17. All implementation, focused validation, and authenticated responsive browser QA are complete. No required work remains.
 
 ## Objective
 
@@ -78,12 +78,20 @@ Acceptance criteria:
 Current validation result:
 
 - Focused dashboard/Requests/Settings tests pass: 5 files and 17 tests.
+- The final touch-target regression run passes: 2 files and 5 tests.
 - Task-scoped ESLint passes.
 - `npm exec tsc -- --noEmit` passes.
 - `npm run build` passes.
 - `git diff --check` passes.
 - Full `npm run lint` remains blocked only by six pre-existing unrelated `no-explicit-any` errors documented in `.ai/CURRENT.md`.
-- Browser QA attempted the in-app browser and Chrome. The in-app browser redirected to `/auth/login`; Chrome control did not establish a usable local tab. The repository explicitly gates impersonation, so browser QA is paused until the user signs into `http://localhost:3005` and asks the agent to resume.
+- Authenticated read-only browser QA passed at 1440×900, 768×900, and 390×844 using the named QA audit account and an explicitly authorized 30-minute impersonation session.
+- The page had no horizontal overflow at any tested width; the share workflow stayed compact; Needs Attention and Recently Submitted preceded referral content; the desktop shell exposed exactly one New Request action; and the mobile menu exposed New Request.
+- Copy, SMS, Email, Open, and Feedback all had accessible names. Browser QA found the mobile Feedback target at 36×36 and the share actions at 40px high; they were corrected to 44px minimum and reverified at 390px.
+- A safe Ready to review summary interaction navigated to `/dashboard/requests?status=submitted` and browser back returned to `/dashboard`.
+- Console inspection found no warnings or errors. Local analytics/Speed Insights blocking appeared only as development-level log messages.
+- The QA account's first-run state deliberately showed the short three-step explanation. Loading, work-section error, populated-row, completed-onboarding help-disclosure, and canonical action behavior remain covered by focused tests.
+- The temporary localhost cookies were removed, the temporary Stack session was revoked, the viewport override was reset, and the browser tab was closed after QA.
+- Browser screenshots are stored outside the repository under `C:\Users\haydn\.codex\visualizations\2026\07\17\019f70d0-9fed-73e0-8f2f-72a50081c32d\dashboard-qa`.
 
 ## Expected Files
 

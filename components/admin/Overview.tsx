@@ -4,11 +4,12 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 
 interface OverviewProps {
     data: { name: string; total: number }[];
+    height?: number;
 }
 
-export function Overview({ data }: OverviewProps) {
+export function Overview({ data, height = 350 }: OverviewProps) {
     return (
-        <ResponsiveContainer width="100%" height={350}>
+        <ResponsiveContainer width="100%" height={height}>
             <BarChart data={data}>
                 <XAxis
                     dataKey="name"

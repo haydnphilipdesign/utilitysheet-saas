@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Eye, Building2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatAdminDate } from "@/lib/admin/date-format";
+import { getAdminWorkspaceKindLabel, type AdminWorkspaceKind } from "@/lib/admin/workspace-classification";
 
 interface Organization {
     id: string;
@@ -18,6 +18,7 @@ interface Organization {
     member_count: number;
     admin_names?: string[];
     admin_count?: number;
+    workspace_kind: AdminWorkspaceKind;
 }
 
 interface OrgTableProps {
@@ -26,17 +27,18 @@ interface OrgTableProps {
 
 export function OrgTable({ orgs }: OrgTableProps) {
     if (orgs.length === 0) {
-        return <div className="py-8 text-center text-muted-foreground">No organizations found.</div>;
+        return <div className="py-8 text-center text-muted-foreground">No workspaces found.</div>;
     }
 
     return (
         <div className="overflow-x-auto rounded-lg border border-border/70">
-            <table className="min-w-[760px] w-full text-sm">
+            <table className="min-w-[920px] w-full text-sm">
                 <thead>
                     <tr className="border-b border-border/70 bg-secondary/40 text-left">
                         <th className="p-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Name</th>
                         <th className="p-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Slug</th>
-                        <th className="p-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Billing</th>
+                        <th className="p-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Workspace type</th>
+                        <th className="p-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Entitlement</th>
                         <th className="p-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Admins</th>
                         <th className="p-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Members</th>
                         <th className="p-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Created</th>
@@ -57,6 +59,11 @@ export function OrgTable({ orgs }: OrgTableProps) {
                             </td>
                             <td className="p-4 text-muted-foreground">{org.slug}</td>
                             <td className="p-4">
+                                <Badge variant={org.workspace_kind === 'team_organization' ? 'default' : 'secondary'}>
+                                    {getAdminWorkspaceKindLabel(org.workspace_kind)}
+                                </Badge>
+                            </td>
+                            <td className="p-4">
                                 <div className="flex flex-col gap-1">
                                     <Badge variant={org.subscription_status === "team" ? "default" : "outline"} className="w-fit">
                                         {org.subscription_status || "free"}
@@ -75,10 +82,13 @@ export function OrgTable({ orgs }: OrgTableProps) {
                             <td className="p-4">{org.member_count}</td>
                             <td className="p-4 text-muted-foreground">{formatAdminDate(org.created_at)}</td>
                             <td className="p-4 text-right">
-                                <Link href={`/admin/organizations/${org.id}`}>
-                                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                                        <Eye className="h-4 w-4" />
-                                    </Button>
+                                <Link
+                                    href={`/admin/organizations/${org.id}`}
+                                    aria-label={`Inspect workspace ${org.name}`}
+                                    title="Inspect workspace"
+                                    className="inline-flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8 sm:w-8"
+                                >
+                                    <Eye className="h-4 w-4" />
                                 </Link>
                             </td>
                         </tr>

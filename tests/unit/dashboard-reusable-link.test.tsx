@@ -177,12 +177,20 @@ describe('dashboard customer home', () => {
         expect(screen.getByText('Loading dashboard…')).toBeInTheDocument();
         await screen.findByRole('heading', { name: 'Your seller link is ready' });
 
-        expect(screen.getByRole('button', { name: /copy reusable seller link$/i })).toHaveTextContent('Copy');
-        expect(screen.getByRole('button', { name: /copy reusable seller link sms message/i })).toHaveTextContent('SMS');
-        expect(screen.getByRole('button', { name: /open email with reusable seller link/i })).toHaveTextContent('Email');
-        expect(screen.getByRole('button', { name: /open reusable seller link$/i })).toHaveTextContent('Open');
+        const copyLinkButton = screen.getByRole('button', { name: /copy reusable seller link$/i });
+        const smsButton = screen.getByRole('button', { name: /copy reusable seller link sms message/i });
+        const emailButton = screen.getByRole('button', { name: /open email with reusable seller link/i });
+        const openButton = screen.getByRole('button', { name: /open reusable seller link$/i });
 
-        fireEvent.click(screen.getByRole('button', { name: /copy reusable seller link$/i }));
+        expect(copyLinkButton).toHaveTextContent('Copy');
+        expect(smsButton).toHaveTextContent('SMS');
+        expect(emailButton).toHaveTextContent('Email');
+        expect(openButton).toHaveTextContent('Open');
+        for (const action of [copyLinkButton, smsButton, emailButton, openButton]) {
+            expect(action).toHaveClass('min-h-11');
+        }
+
+        fireEvent.click(copyLinkButton);
         await waitFor(() => {
             expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://www.utilitysheet.com/i/free-slug-123');
         });

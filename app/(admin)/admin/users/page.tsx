@@ -6,7 +6,7 @@ import { UsersTable } from './users-table';
 import { AuthReconciliationCard } from './auth-reconciliation-card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { AdminDataTableShell, AdminFilterBar, AdminPageHeader, AdminPagination, AdminStatStrip } from '@/components/admin/primitives';
+import { AdminDataTableShell, AdminFilterBar, AdminPageHeader, AdminPagination } from '@/components/admin/primitives';
 import {
     DEFAULT_PAGE_SIZE,
     buildAdminHref,
@@ -112,17 +112,26 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
         <div className="space-y-4">
             <AdminPageHeader
                 title="User Management"
-                description={`Control access, plans, and enforcement for ${total} accounts.`}
+                description={`Search ${total.toLocaleString()} accounts, inspect activity, and apply audited access or entitlement controls.`}
             />
 
-            <AdminStatStrip
-                stats={[
-                    { label: 'Total Users', value: stats.total.toLocaleString(), icon: Users },
-                    { label: 'Admins', value: stats.admins.toLocaleString(), icon: Shield },
-                    { label: 'Banned', value: stats.banned.toLocaleString(), icon: Ban },
-                    { label: 'Pro / Team', value: `${stats.pro} / ${stats.team}`, hint: `${stats.canceled} canceled`, icon: Sparkles },
-                ]}
-            />
+            <div className="grid overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                    { label: 'Accounts', value: stats.total.toLocaleString(), detail: 'matching current filters', icon: Users },
+                    { label: 'Admins', value: stats.admins.toLocaleString(), detail: 'privileged accounts', icon: Shield },
+                    { label: 'Restricted', value: stats.banned.toLocaleString(), detail: 'banned accounts', icon: Ban },
+                    { label: 'Paid access', value: `${stats.pro} Pro · ${stats.team} Team`, detail: `${stats.canceled} canceled overrides`, icon: Sparkles },
+                ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-3 border-b border-border/70 p-3 last:border-b-0 sm:[&:nth-child(odd)]:border-r xl:border-b-0 xl:border-r xl:last:border-r-0">
+                        <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                            <p className="truncate text-sm font-semibold text-foreground">{item.value}</p>
+                            <p className="truncate text-xs text-muted-foreground">{item.detail}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
 
             <AuthReconciliationCard />
 
@@ -159,7 +168,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                                 defaultValue={plan || ''}
                                 className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
                             >
-                                <option value="">All plans</option>
+                                <option value="">All entitlements</option>
                                 <option value="free">Free</option>
                                 <option value="pro">Pro</option>
                                 <option value="team">Team</option>
