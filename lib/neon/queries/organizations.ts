@@ -449,6 +449,93 @@ export async function getOrganizationInvites(organizationId: string) {
     return result;
 }
 
+export async function getPendingOrganizationInvites(organizationId: string) {
+    if (!sql) return [];
+
+    const result = await sql`
+        SELECT
+            id,
+            email,
+            role,
+            invited_by_account_id,
+            expires_at,
+            created_at,
+            updated_at
+        FROM organization_invitations
+        WHERE organization_id = ${organizationId}
+            AND accepted_at IS NULL
+            AND expires_at > NOW()
+        ORDER BY created_at DESC
+    `;
+
+    return result;
+}
+
+export async function getOrganizationInviteForOrganization(inviteId: string, organizationId: string) {
+    if (!sql) return null;
+
+    const result = await sql`
+        SELECT
+            id,
+            organization_id,
+            email,
+            role,
+            invited_by_account_id,
+            expires_at,
+            created_at,
+            updated_at
+        FROM organization_invitations
+        WHERE id = ${inviteId}
+            AND organization_id = ${organizationId}
+            AND accepted_at IS NULL
+            AND expires_at > NOW()
+        LIMIT 1
+    `;
+
+    return result[0] || null;
+}
+
+export async function refreshPendingOrganizationInvite(data: {
+    inviteId: string;
+    organizationId: string;
+    token: string;
+    invitedByAccountId: string;
+    expiresAt: Date;
+}) {
+    if (!sql) return null;
+
+    const result = await sql`
+        UPDATE organization_invitations
+        SET
+            token = ${data.token},
+            invited_by_account_id = ${data.invitedByAccountId},
+            expires_at = ${data.expiresAt.toISOString()},
+            updated_at = NOW()
+        WHERE id = ${data.inviteId}
+            AND organization_id = ${data.organizationId}
+            AND accepted_at IS NULL
+            AND expires_at > NOW()
+        RETURNING *
+    `;
+
+    return result[0] || null;
+}
+
+export async function cancelPendingOrganizationInvite(inviteId: string, organizationId: string) {
+    if (!sql) return false;
+
+    const result = await sql`
+        DELETE FROM organization_invitations
+        WHERE id = ${inviteId}
+            AND organization_id = ${organizationId}
+            AND accepted_at IS NULL
+            AND expires_at > NOW()
+        RETURNING id
+    `;
+
+    return result.length > 0;
+}
+
 export async function acceptOrganizationInvite(inviteId: string) {
     if (!sql) return null;
 

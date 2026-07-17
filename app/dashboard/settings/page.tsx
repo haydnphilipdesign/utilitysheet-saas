@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUser } from '@stackframe/stack';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +23,7 @@ import {
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
 import { PageHeader } from '@/components/ui/page-header';
 import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
-import { Link as LinkIcon, User, Bell, Check, Copy, CreditCard, ExternalLink, Loader2, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
+import { Link as LinkIcon, User, Bell, Check, Copy, CreditCard, ExternalLink, Loader2, RefreshCw, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
     ADVANCED_MODULE_DEFAULTS,
@@ -63,13 +62,21 @@ type OrganizationMemberRow = {
     member_role: 'admin' | 'member';
 };
 
+type PendingOrganizationInvite = {
+    id: string;
+    email: string;
+    role: 'admin' | 'member';
+    expires_at: string;
+    created_at?: string;
+};
+
 type BrandProfileSummary = {
     id: string;
     name: string;
     isDefault: boolean;
 };
 
-const SETTINGS_TABS = ['account', 'link', 'notifications', 'billing', 'referrals'] as const;
+const SETTINGS_TABS = ['account', 'link', 'notifications', 'workspace', 'billing', 'referrals'] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 function isSettingsTab(value: string | null): value is SettingsTab {
@@ -117,6 +124,10 @@ export default function SettingsPage() {
     const [orgMembers, setOrgMembers] = useState<OrganizationMemberRow[]>([]);
     const [orgSeatUsage, setOrgSeatUsage] = useState<{ used: number; pendingInvites: number }>({ used: 0, pendingInvites: 0 });
     const [orgLoading, setOrgLoading] = useState(false);
+    const [workspaceName, setWorkspaceName] = useState('');
+    const [workspaceSaving, setWorkspaceSaving] = useState(false);
+    const [pendingInvites, setPendingInvites] = useState<PendingOrganizationInvite[]>([]);
+    const [pendingInviteAction, setPendingInviteAction] = useState<string | null>(null);
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteLoading, setInviteLoading] = useState(false);
     const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
@@ -187,6 +198,7 @@ export default function SettingsPage() {
                             setUsage(data.usage);
                         }
                         setActiveOrganization(data.activeOrganization || null);
+                        setWorkspaceName(data.activeOrganization?.name || '');
                         return;
                     }
                 }
@@ -310,6 +322,7 @@ export default function SettingsPage() {
                     ...data.organization,
                     role: data.role || prev?.role,
                 }));
+                setWorkspaceName(data.organization.name || '');
             }
             if (Array.isArray(data.members)) {
                 setOrgMembers(data.members);
@@ -320,6 +333,16 @@ export default function SettingsPage() {
                     pendingInvites: Number(data.seatUsage.pendingInvites) || 0,
                 });
             }
+
+            if (data.role === 'admin') {
+                const inviteResponse = await fetch('/api/organization/invites');
+                const inviteData = await inviteResponse.json().catch(() => ({})) as {
+                    invites?: PendingOrganizationInvite[];
+                };
+                setPendingInvites(inviteResponse.ok && Array.isArray(inviteData.invites) ? inviteData.invites : []);
+            } else {
+                setPendingInvites([]);
+            }
         } catch (error) {
             console.error('Error fetching organization:', error);
         } finally {
@@ -329,10 +352,14 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (activeOrganization?.id) {
+            setOrgMembers([]);
+            setPendingInvites([]);
             refreshOrganization();
         } else {
             setOrgMembers([]);
             setOrgSeatUsage({ used: 0, pendingInvites: 0 });
+            setPendingInvites([]);
+            setWorkspaceName('');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeOrganization?.id]);
@@ -599,6 +626,86 @@ export default function SettingsPage() {
         }
     };
 
+    const handleSaveWorkspaceName = async () => {
+        const name = workspaceName.trim();
+        if (name.length < 2 || name.length > 100) {
+            toast.error('Workspace name must be between 2 and 100 characters');
+            return;
+        }
+
+        setWorkspaceSaving(true);
+        try {
+            const response = await fetch('/api/organization', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to update workspace name');
+            }
+
+            if (data.organization) {
+                setActiveOrganization((current) => current ? { ...current, ...data.organization } : data.organization);
+                setWorkspaceName(data.organization.name || name);
+            }
+            toast.success('Workspace name updated');
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Failed to update workspace name');
+        } finally {
+            setWorkspaceSaving(false);
+        }
+    };
+
+    const handleResendInvite = async (invite: PendingOrganizationInvite) => {
+        setPendingInviteAction(`resend:${invite.id}`);
+        try {
+            const response = await fetch(`/api/organization/invites/${invite.id}`, { method: 'PATCH' });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to resend invitation');
+            }
+
+            if (data.inviteUrl) {
+                setLastInviteUrl(data.inviteUrl);
+            }
+            toast.success(data.emailSent ? 'Invitation resent' : 'Invitation refreshed; copy the new link to send it manually');
+            await refreshOrganization();
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Failed to resend invitation');
+        } finally {
+            setPendingInviteAction(null);
+        }
+    };
+
+    const performCancelInvite = async (invite: PendingOrganizationInvite) => {
+        setPendingInviteAction(`cancel:${invite.id}`);
+        try {
+            const response = await fetch(`/api/organization/invites/${invite.id}`, { method: 'DELETE' });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to cancel invitation');
+            }
+
+            toast.success('Invitation cancelled');
+            await refreshOrganization();
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : 'Failed to cancel invitation');
+        } finally {
+            setPendingInviteAction(null);
+        }
+    };
+
+    const requestCancelInvite = (invite: PendingOrganizationInvite) => {
+        setConfirmDialog({
+            title: 'Cancel invitation',
+            description: `Cancel the pending invitation for ${invite.email}? The reserved Team seat will become available immediately.`,
+            confirmLabel: 'Cancel invitation',
+            destructive: true,
+            onConfirm: () => performCancelInvite(invite),
+        });
+    };
+
     const handleTeamCheckout = async () => {
         setTeamBillingLoading(true);
         try {
@@ -766,7 +873,7 @@ export default function SettingsPage() {
 
     return (
         <div className="max-w-3xl mx-auto space-y-6 pb-10">
-            <PageHeader title="Settings" description="Manage your account, seller form, notifications, and billing" />
+            <PageHeader title="Settings" description="Manage your account, seller form, workspace, notifications, and billing" />
 
             <Tabs value={activeTab} onValueChange={handleTabChange}>
                 <div className="overflow-x-auto overflow-y-hidden">
@@ -774,7 +881,8 @@ export default function SettingsPage() {
                         <TabsTrigger value="account">Account</TabsTrigger>
                         <TabsTrigger value="link">Seller Form</TabsTrigger>
                         <TabsTrigger value="notifications">Notifications</TabsTrigger>
-                        <TabsTrigger value="billing">Billing &amp; Team</TabsTrigger>
+                        <TabsTrigger value="workspace">Workspace &amp; Team</TabsTrigger>
+                        <TabsTrigger value="billing">Billing</TabsTrigger>
                         <TabsTrigger value="referrals">Referrals</TabsTrigger>
                     </TabsList>
                 </div>
@@ -1211,6 +1319,327 @@ export default function SettingsPage() {
             </Card>
                 </TabsContent>
 
+                <TabsContent value="workspace" className="mt-2 space-y-6 text-base">
+                    <Card className="border-border bg-card/50">
+                        <CardHeader>
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <Users className="h-5 w-5 text-primary" />
+                                Workspace details
+                            </CardTitle>
+                            <CardDescription className="text-muted-foreground">
+                                Manage the shared workspace identity and understand who can administer it.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {!activeOrganization ? (
+                                <p className="text-sm text-muted-foreground">No active workspace found.</p>
+                            ) : (
+                                <>
+                                    <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-4 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="space-y-2">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="font-medium text-foreground">{activeOrganization.name}</p>
+                                                <Badge variant={orgIsAdmin ? 'secondary' : 'outline'}>
+                                                    {orgIsAdmin ? 'Admin' : 'Member'}
+                                                </Badge>
+                                                <Badge variant={orgIsTeam ? 'default' : 'outline'}>
+                                                    {orgIsTeam ? 'Teams' : 'Single-seat'}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                {orgIsTeam
+                                                    ? `${orgSeatUsage.used + orgSeatUsage.pendingInvites}/${activeOrganization.seat_quantity ?? '—'} seats reserved: ${orgSeatUsage.used} active member${orgSeatUsage.used === 1 ? '' : 's'} and ${orgSeatUsage.pendingInvites} pending invitation${orgSeatUsage.pendingInvites === 1 ? '' : 's'}.`
+                                                    : 'Upgrade this workspace to Teams from Billing before inviting additional members.'}
+                                            </p>
+                                            {orgIsTeam && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Active members and pending invitations each reserve one Team seat.
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Button type="button" variant="outline" onClick={() => handleTabChange('billing')}>
+                                            <CreditCard className="mr-2 h-4 w-4" />
+                                            Open Billing
+                                        </Button>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="workspaceName" className="text-foreground">Workspace name</Label>
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                            <Input
+                                                id="workspaceName"
+                                                value={workspaceName}
+                                                onChange={(event) => setWorkspaceName(event.target.value)}
+                                                maxLength={100}
+                                                disabled={!orgIsAdmin || workspaceSaving}
+                                                className="bg-background/50 border-input text-foreground"
+                                            />
+                                            <Button
+                                                type="button"
+                                                onClick={handleSaveWorkspaceName}
+                                                disabled={!orgIsAdmin || workspaceSaving || workspaceName.trim() === (activeOrganization.name || '')}
+                                                className="shrink-0"
+                                            >
+                                                {workspaceSaving ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Save className="mr-2 h-4 w-4" />
+                                                )}
+                                                Save workspace name
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {orgIsAdmin
+                                                ? 'Renaming also refreshes the workspace slug used internally; existing seller and packet links are unchanged.'
+                                                : 'Only workspace administrators can rename the workspace.'}
+                                        </p>
+                                    </div>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-border bg-card/50">
+                        <CardHeader>
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <UserPlus className="h-5 w-5 text-primary" />
+                                Invitations
+                            </CardTitle>
+                            <CardDescription className="text-muted-foreground">
+                                Invite teammates and manage each active pending invitation.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {!activeOrganization ? (
+                                <p className="text-sm text-muted-foreground">No active workspace found.</p>
+                            ) : !orgIsTeam ? (
+                                <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <p className="text-sm text-muted-foreground">
+                                        Team invitations are available after an administrator starts a Teams subscription in Billing.
+                                    </p>
+                                    <Button type="button" variant="outline" onClick={() => handleTabChange('billing')}>
+                                        View Teams billing
+                                    </Button>
+                                </div>
+                            ) : !orgIsAdmin ? (
+                                <div className="rounded-lg border border-border bg-muted/30 p-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        Workspace administrators manage invitations. Pending invitation details are visible only to administrators.
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                            <div className="flex-1 space-y-2">
+                                                <Label htmlFor="inviteEmail" className="text-foreground">Email</Label>
+                                                <Input
+                                                    id="inviteEmail"
+                                                    type="email"
+                                                    inputMode="email"
+                                                    autoComplete="off"
+                                                    spellCheck={false}
+                                                    value={inviteEmail}
+                                                    onChange={(event) => setInviteEmail(event.target.value)}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === 'Enter' && !inviteLoading && inviteEmail.trim()) {
+                                                            event.preventDefault();
+                                                            handleInvite();
+                                                        }
+                                                    }}
+                                                    placeholder="teammate@company.com"
+                                                    disabled={inviteLoading}
+                                                    className="bg-background/50 border-input text-foreground"
+                                                />
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                onClick={handleInvite}
+                                                disabled={inviteLoading || !inviteEmail.trim()}
+                                            >
+                                                {inviteLoading ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <UserPlus className="mr-2 h-4 w-4" />
+                                                )}
+                                                Invite
+                                            </Button>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Active members and pending invitations each reserve one Team seat. Cancelling a pending invitation releases its seat immediately.
+                                        </p>
+                                        {lastInviteUrl && (
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="inviteUrl" className="text-foreground text-xs">Latest invite link</Label>
+                                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                                    <Input
+                                                        id="inviteUrl"
+                                                        value={lastInviteUrl}
+                                                        readOnly
+                                                        onFocus={(event) => event.currentTarget.select()}
+                                                        className="bg-background/60 border-input text-foreground font-mono text-xs"
+                                                    />
+                                                    <Button type="button" variant="outline" onClick={handleCopyInviteUrl} className="shrink-0">
+                                                        {inviteCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                                                        {inviteCopied ? 'Copied' : 'Copy'}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-medium text-foreground">Pending invitations</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {pendingInvites.length} active invitation{pendingInvites.length === 1 ? '' : 's'} reserving a seat.
+                                                </p>
+                                            </div>
+                                            {orgLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                        </div>
+
+                                        {pendingInvites.length === 0 ? (
+                                            <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                                                No pending invitations.
+                                            </p>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {pendingInvites.map((invite) => {
+                                                    const isResending = pendingInviteAction === `resend:${invite.id}`;
+                                                    const isCancelling = pendingInviteAction === `cancel:${invite.id}`;
+                                                    return (
+                                                        <div key={invite.id} className="flex flex-col gap-3 rounded-lg border border-border bg-background/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                                            <div className="min-w-0 space-y-1">
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    <p className="break-all text-sm font-medium text-foreground">{invite.email}</p>
+                                                                    <Badge variant="outline">{invite.role === 'admin' ? 'Admin' : 'Member'}</Badge>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    Expires {new Date(invite.expires_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2 sm:justify-end">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    aria-label={`Resend invitation to ${invite.email}`}
+                                                                    onClick={() => handleResendInvite(invite)}
+                                                                    disabled={pendingInviteAction !== null}
+                                                                >
+                                                                    {isResending ? (
+                                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                    ) : (
+                                                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                                                    )}
+                                                                    Resend
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="text-destructive hover:text-destructive"
+                                                                    aria-label={`Cancel invitation to ${invite.email}`}
+                                                                    onClick={() => requestCancelInvite(invite)}
+                                                                    disabled={pendingInviteAction !== null}
+                                                                >
+                                                                    {isCancelling ? (
+                                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                                    )}
+                                                                    Cancel
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-border bg-card/50">
+                        <CardHeader>
+                            <CardTitle className="text-foreground flex items-center gap-2">
+                                <Shield className="h-5 w-5 text-primary" />
+                                Members and roles
+                            </CardTitle>
+                            <CardDescription className="text-muted-foreground">
+                                Preserve workspace access and administrator responsibilities.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {orgMembers.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">No members found.</p>
+                            ) : (
+                                <div className="overflow-x-auto rounded-md border border-border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Member</TableHead>
+                                                <TableHead>Email</TableHead>
+                                                <TableHead>Role</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {orgMembers.map((member) => (
+                                                <TableRow key={member.account_id}>
+                                                    <TableCell className="font-medium">{member.full_name || member.email}</TableCell>
+                                                    <TableCell className="text-muted-foreground">{member.email}</TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={member.member_role === 'admin' ? 'secondary' : 'outline'}>
+                                                            {member.member_role === 'admin' ? (
+                                                                <><Shield className="mr-1 h-3 w-3" />Admin</>
+                                                            ) : 'Member'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {orgIsAdmin && member.account_id !== accountId ? (
+                                                            <div className="flex justify-end gap-1">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8"
+                                                                    aria-label={member.member_role === 'admin' ? 'Change to member' : 'Make admin'}
+                                                                    onClick={() => requestToggleMemberRole(member)}
+                                                                >
+                                                                    <Shield className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                                                    aria-label="Remove member"
+                                                                    onClick={() => requestRemoveMember(member)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-muted-foreground">—</span>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                                Ownership transfer and leaving a workspace are not available because the current membership model does not yet support those actions safely.
+                            </p>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
                 <TabsContent value="referrals" className="mt-2 space-y-6 text-base">
                     <ReferralCreditCard userId={stackUser?.id} />
                 </TabsContent>
@@ -1224,7 +1653,7 @@ export default function SettingsPage() {
                         Subscription
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                        Manage your plan and billing
+                        Manage subscriptions, invoices, payment methods, and Team seat quantity through Stripe.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1325,6 +1754,12 @@ export default function SettingsPage() {
                         )}
                     </div>
 
+                    {(orgIsTeam || usage.plan === 'pro') && (
+                        <p className="text-xs text-muted-foreground">
+                            The Stripe customer portal is the source of truth for invoices, payment methods, subscription changes, and Team seat quantity.
+                        </p>
+                    )}
+
                     {/* Usage Progress - only show for free plan */}
                     {!orgIsTeam && usage.plan === 'free' && (
                         <div className="p-4 bg-muted/50 rounded-lg border border-border">
@@ -1353,313 +1788,68 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
 
-            {/* Team Section */}
-            <Card className="border-border bg-card/50">
-                <CardHeader>
-                    <CardTitle className="text-foreground flex items-center gap-2">
-                        <Users className="h-5 w-5 text-primary" />
-                        Teams
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground">
-                        Invite teammates, manage seats, and learn how Teams billing works
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {!activeOrganization ? (
-                        <p className="text-sm text-muted-foreground">No active organization found.</p>
-                    ) : (
-                        <>
-                            <div className="flex items-start justify-between gap-4 p-4 bg-muted/50 rounded-lg border border-border">
-                                <div className="space-y-2">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <p className="text-foreground font-medium">{activeOrganization.name}</p>
-                                        {orgIsAdmin ? (
-                                            <Badge variant="secondary">Admin</Badge>
-                                        ) : (
-                                            <Badge variant="outline">Member</Badge>
-                                        )}
-                                        {orgIsTeam ? (
-                                            <Badge>Teams</Badge>
-                                        ) : (
-                                            <Badge variant="outline">Single-seat</Badge>
-                                        )}
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        {orgIsTeam
-                                            ? `Seats: ${orgSeatUsage.used}/${activeOrganization?.seat_quantity ?? '—'} used (${orgSeatUsage.pendingInvites} pending invite${orgSeatUsage.pendingInvites === 1 ? '' : 's'})`
-                                            : 'Upgrade to Teams to invite additional members.'}
+            {!orgIsTeam && activeOrganization && (
+                <Card className="border-border bg-card/50">
+                    <CardHeader>
+                        <CardTitle className="text-foreground flex items-center gap-2">
+                            <Users className="h-5 w-5 text-primary" />
+                            Teams subscription
+                        </CardTitle>
+                        <CardDescription className="text-muted-foreground">
+                            Start centralized, seat-based billing for a shared workspace. Workspace members and invitations are managed separately in Workspace &amp; Team.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-medium text-foreground">Teams (multi-seat)</p>
+                                <Badge variant="secondary">{usdNoCents.format(TEAM_PRICE_PER_SEAT_USD)}/seat/mo</Badge>
+                                <Badge variant="outline">{TEAM_MIN_SEATS} seat minimum</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Includes the Pro feature set, shared workspace access, admin/member roles, and Stripe-managed seat billing.
+                            </p>
+                        </div>
+
+                        {orgIsAdmin ? (
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                <div className="flex-1 space-y-2">
+                                    <Label htmlFor="teamSeats" className="text-foreground">Seats (users)</Label>
+                                    <Input
+                                        id="teamSeats"
+                                        type="number"
+                                        min={TEAM_MIN_SEATS}
+                                        step={1}
+                                        value={teamSeatCount}
+                                        onChange={(event) => {
+                                            const parsed = Number.parseInt(event.target.value, 10);
+                                            setTeamSeats(Number.isFinite(parsed) ? Math.max(TEAM_MIN_SEATS, parsed) : TEAM_MIN_SEATS);
+                                        }}
+                                        disabled={teamBillingLoading}
+                                        className="bg-background/50 border-input text-foreground"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Estimated {usdNoCents.format(teamsMonthlyTotal)}/mo. Pending invitations reserve seats after the subscription is active.
                                     </p>
                                 </div>
-                                {orgIsAdmin && orgIsTeam && (
-                                    <Button
-                                        variant="outline"
-                                        className="border-input text-foreground hover:bg-muted"
-                                        onClick={handleTeamPortal}
-                                        disabled={teamBillingLoading}
-                                    >
-                                        {teamBillingLoading ? (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <ExternalLink className="mr-2 h-4 w-4" />
-                                        )}
-                                        Manage Seats
-                                    </Button>
-                                )}
-                            </div>
-
-                            {!orgIsTeam && (
-                                <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-4">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="space-y-1">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <p className="text-sm font-medium text-foreground">Teams (multi-seat)</p>
-                                                <Badge variant="secondary">{usdNoCents.format(TEAM_PRICE_PER_SEAT_USD)}/seat/mo</Badge>
-                                                <Badge variant="outline">{TEAM_MIN_SEATS} seat minimum</Badge>
-                                                {!orgIsAdmin && <Badge variant="outline">Admin only</Badge>}
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">
-                                                Best for 3+ users who want one shared organization, centralized billing, and teammate access to submitted-sheet editing. (Pro is single-seat.)
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <Accordion className="border-border bg-background/20">
-                                        <AccordionItem value="included">
-                                            <AccordionTrigger>What&apos;s included in Teams?</AccordionTrigger>
-                                            <AccordionContent>
-                                                <ul className="space-y-1.5">
-                                                    <li className="flex items-start gap-2">
-                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-primary" />
-                                                        Everything in Pro, including submitted-sheet editing
-                                                    </li>
-                                                    <li className="flex items-start gap-2">
-                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-primary" />
-                                                        Shared organization workspace with admin + member roles
-                                                    </li>
-                                                    <li className="flex items-start gap-2">
-                                                        <Check className="mt-0.5 h-3.5 w-3.5 text-primary" />
-                                                        Centralized billing + seat management (1 seat = 1 active user; pending invites count toward the limit)
-                                                    </li>
-                                                </ul>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                        <AccordionItem value="billing">
-                                            <AccordionTrigger>How does Teams billing work?</AccordionTrigger>
-                                            <AccordionContent>
-                                                <p>
-                                                    Teams is billed monthly per seat. Your estimated total is{' '}
-                                                    <span className="font-medium text-foreground">{usdNoCents.format(teamsMonthlyTotal)}/mo</span>{' '}
-                                                    for <span className="font-medium text-foreground">{teamSeatCount}</span> seat{teamSeatCount === 1 ? '' : 's'}.
-                                                </p>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                        <AccordionItem value="change-seats">
-                                            <AccordionTrigger>Can I change seats later?</AccordionTrigger>
-                                            <AccordionContent>
-                                                <p>Yes. Admins can manage seats any time from the Teams billing portal.</p>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    </Accordion>
-
-                                    {orgIsAdmin ? (
-                                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                                            <div className="flex-1 space-y-2">
-                                                <Label htmlFor="teamSeats" className="text-foreground">Seats (users)</Label>
-                                                <Input
-                                                    id="teamSeats"
-                                                    type="number"
-                                                    min={TEAM_MIN_SEATS}
-                                                    step={1}
-                                                    value={teamSeatCount}
-                                                    onChange={(e) => {
-                                                        const parsed = Number.parseInt(e.target.value, 10);
-                                                        setTeamSeats(Number.isFinite(parsed) ? Math.max(TEAM_MIN_SEATS, parsed) : TEAM_MIN_SEATS);
-                                                    }}
-                                                    className="bg-background/50 border-input text-foreground"
-                                                    disabled={teamBillingLoading}
-                                                />
-                                                <p className="text-xs text-muted-foreground">
-                                                    {usdNoCents.format(TEAM_PRICE_PER_SEAT_USD)}/seat/mo • Estimated{' '}
-                                                    <span className="text-foreground">{usdNoCents.format(teamsMonthlyTotal)}/mo</span>
-                                                </p>
-                                            </div>
-                                            <Button
-                                                onClick={handleTeamCheckout}
-                                                disabled={teamBillingLoading}
-                                            >
-                                                {teamBillingLoading ? (
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Sparkles className="mr-2 h-4 w-4" />
-                                                )}
-                                                Start Teams
-                                            </Button>
-                                        </div>
+                                <Button type="button" onClick={handleTeamCheckout} disabled={teamBillingLoading}>
+                                    {teamBillingLoading ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     ) : (
-                                        <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background/20 p-3">
-                                            <p className="text-xs text-muted-foreground">
-                                                Only organization admins can start Teams. Ask an admin to upgrade and set seat quantity.
-                                            </p>
-                                            <Button variant="outline" className="border-input text-muted-foreground" disabled>
-                                                Managed by Admin
-                                            </Button>
-                                        </div>
+                                        <Sparkles className="mr-2 h-4 w-4" />
                                     )}
-                                </div>
-                            )}
-
-                            {orgIsTeam && (
-                                <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-sm font-medium text-foreground">Invite members</p>
-                                        {!orgIsAdmin && (
-                                            <Badge variant="outline">Admin only</Badge>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                                        <div className="flex-1 space-y-2">
-                                            <Label htmlFor="inviteEmail" className="text-foreground">Email</Label>
-                                            <Input
-                                                id="inviteEmail"
-                                                type="email"
-                                                inputMode="email"
-                                                autoComplete="off"
-                                                spellCheck={false}
-                                                value={inviteEmail}
-                                                onChange={(e) => setInviteEmail(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' && orgIsAdmin && !inviteLoading && inviteEmail.trim()) {
-                                                        e.preventDefault();
-                                                        handleInvite();
-                                                    }
-                                                }}
-                                                placeholder="teammate@company.com"
-                                                className="bg-background/50 border-input text-foreground"
-                                                disabled={!orgIsAdmin || inviteLoading}
-                                            />
-                                        </div>
-                                        <Button
-                                            onClick={handleInvite}
-                                            disabled={!orgIsAdmin || inviteLoading || !inviteEmail.trim()}
-                                        >
-                                            {inviteLoading ? (
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <UserPlus className="mr-2 h-4 w-4" />
-                                            )}
-                                            Invite
-                                        </Button>
-                                    </div>
-                                    {lastInviteUrl && (
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="inviteUrl" className="text-foreground text-xs">Invite link</Label>
-                                            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                                                <Input
-                                                    id="inviteUrl"
-                                                    value={lastInviteUrl}
-                                                    readOnly
-                                                    onFocus={(e) => e.currentTarget.select()}
-                                                    className="bg-background/60 border-input text-foreground font-mono text-xs"
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    className="border-input text-foreground hover:bg-muted shrink-0"
-                                                    onClick={handleCopyInviteUrl}
-                                                >
-                                                    {inviteCopied ? (
-                                                        <Check className="mr-2 h-4 w-4" />
-                                                    ) : (
-                                                        <Copy className="mr-2 h-4 w-4" />
-                                                    )}
-                                                    {inviteCopied ? 'Copied' : 'Copy'}
-                                                </Button>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">
-                                                Copy this link and send it to your teammate directly.
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <Separator />
-
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm font-medium text-foreground">Members</p>
-                                {orgLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                    Start Teams
+                                </Button>
                             </div>
+                        ) : (
+                            <p className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                                Only a workspace administrator can start a Teams subscription and choose its seat quantity.
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
-                            {orgMembers.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No members found.</p>
-                            ) : (
-                                <div className="rounded-md border border-border overflow-hidden">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Member</TableHead>
-                                                <TableHead>Email</TableHead>
-                                                <TableHead>Role</TableHead>
-                                                <TableHead className="text-right">Actions</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {orgMembers.map((member) => (
-                                                <TableRow key={member.account_id}>
-                                                    <TableCell className="font-medium">
-                                                        {member.full_name || member.email}
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground">
-                                                        {member.email}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant={member.member_role === 'admin' ? 'secondary' : 'outline'}>
-                                                            {member.member_role === 'admin' ? (
-                                                                <>
-                                                                    <Shield className="mr-1 h-3 w-3" />
-                                                                    Admin
-                                                                </>
-                                                            ) : (
-                                                                'Member'
-                                                            )}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        {orgIsAdmin && member.account_id !== accountId ? (
-                                                            <div className="flex justify-end gap-1">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8"
-                                                                    aria-label={member.member_role === 'admin' ? 'Change to member' : 'Make admin'}
-                                                                    onClick={() => requestToggleMemberRole(member)}
-                                                                >
-                                                                    <Shield className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                                                    aria-label="Remove member"
-                                                                    onClick={() => requestRemoveMember(member)}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-xs text-muted-foreground">—</span>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </CardContent>
-            </Card>
                 </TabsContent>
             </Tabs>
 

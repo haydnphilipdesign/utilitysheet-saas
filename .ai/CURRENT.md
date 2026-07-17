@@ -6,68 +6,86 @@
 
 ## Session Metadata
 
-- Task: Implement the first Settings audit slice: a coherent reusable Seller Form Defaults experience.
-- Status: Completed; no required implementation or validation work remains in the authorized scope.
+- Task: Separate Workspace & Team administration from Billing and add workspace rename plus pending-invitation management.
+- Status: Completed; no required implementation or validation work remains.
 - Current or last agent: OpenAI Codex
 - Branch: `main`
 - Last updated: 2026-07-17
-- Relevant plan: `.ai/plans/2026-07-17-seller-form-defaults-first-slice.md`
+- Relevant plan: `.ai/plans/2026-07-17-workspace-team-settings.md`
 - Source audit: `.ai/plans/2026-07-17-settings-branding-configurability-audit.md`
 - Related issue or PR: None known.
 
 ## Verified State
 
-- Existing uncommitted changes are the completed audit update to this file and the untracked audit plan; preserve them.
-- Only the root `AGENTS.md` applies; no nested repository guidance exists.
-- Settings uses the stable `link` tab key and `/api/intake-link`; visible copy can change without changing those URLs/contracts.
-- One `intake_links` row exists per account. `is_active` is already enforced as a generic 404 by both public metadata and start routes but is not currently editable in Settings.
-- Reusable starts currently use the active workspace default Branding Profile and all canonical utility categories.
-- Branding Profiles are scoped to the active organization, or to the account when no active organization exists.
-- Packet mode and advanced modules are already persisted on `intake_links` and paid-gated in the authenticated API and public start route.
-- The meter-number preference is stored in account notification preferences and consumed by the seller route; this slice will relocate its UI without changing that persistence boundary.
-- No concurrent editing warning is known.
+- The worktree was clean on `main` at `fab994d` before this task began; the Seller Form Defaults slice is already in repository history.
+- Only the root `AGENTS.md` applies; no nested repository guidance exists outside dependencies.
+- Settings previously combined Stripe subscription controls, Team checkout/portal links, workspace identity, invitations, and members in the `billing` tab.
+- Active organization, role, Team plan, seat quantity, and membership are available from authenticated server-side account/organization queries.
+- Pending invitations count toward `getOrganizationSeatUsage` and atomic invite creation.
+- Existing invite creation reuses a pending invite but does not resend it; no cancel endpoint exists.
+- `updateOrganization` already safely generates a unique slug, but Settings does not expose a dedicated workspace rename route.
+- No ownership-transfer or leave-workspace behavior exists in the current model; do not invent it.
+- During this task, a separate completed coordination file appeared at `.ai/plans/2026-07-17-seller-form-defaults-live-migration.md`. It records an authorized Seller Form Defaults Neon migration performed by another chat. That file was preserved and did not overlap this implementation.
 
 ## Approved Approach
 
-- Add nullable `default_brand_profile_id` and non-empty/default-all `default_utility_categories` fields to `intake_links` through a focused root migration mirrored in `schema.sql`.
-- Treat null Branding Profile as “follow the workspace default” so existing accounts retain current effective behavior.
-- Validate authenticated updates with Zod and enforce account/organization scope before accepting a Branding Profile ID.
-- Apply saved defaults only when a reusable-form start creates a new request; preserve cookie resume and existing request behavior.
-- Keep inactive public responses generic and keep existing packet/module plan gating unchanged.
+- Add a URL-addressable `workspace` Settings tab and keep Billing limited to subscription, checkout, invoices/payment methods, and Stripe seat management.
+- Use authenticated active-organization and membership queries for every action; never accept client authority for organization, role, plan, membership, or seats.
+- Add a scoped workspace rename route using the existing organization query.
+- Add pending-only invite listing plus invite-by-ID resend/cancel routes scoped to the active organization.
+- Rotate invite token and expiry on resend; preserve rate limiting, Team gating, and email failure tolerance.
+- Keep current member roles/removal rules and record ownership transfer/leave workspace as future work.
 
 ## Work Completed
 
-- Read repository guidance, the current handoff, the completed audit plan, current diff/status, relevant untracked files, and recent commits.
-- Traced Settings state and controls, intake-link queries/API, public metadata/start routes, request creation, Branding Profile scope queries/API, schemas, seller meter preference, focused unit tests, schema snapshot, migrations, and Playwright configuration.
-- Created the focused implementation plan and recorded acceptance criteria, files, validation, risks, and non-goals.
-- Added an additive intake-link migration and mirrored schema fields for nullable selected Branding Profile and default-all utility categories.
-- Added canonical utility-category normalization, seller-form default persistence, scoped Branding Profile resolution, and barrel exports.
-- Added Zod validation and authenticated API support for form status, Branding Profile, and utility defaults without changing slug or packet/module entitlements.
-- Updated public metadata/start routes to use saved defaults and preserve generic inactive-link 404 behavior.
-- Reworked the Settings `link` tab into “Seller Form Defaults,” including active/paused state, URL, Branding Profile, categories, relocated meter field, and a separately labeled packet-defaults section.
-- Added focused route, normalizer, public-path, and Settings interaction coverage.
+- Read repository guidance, the prior handoff, completed Settings audit, prior completed implementation plan, current clean status/diff, recent commits, Settings Billing/Team UI, organization queries/APIs, invite tests, and schema.
+- Confirmed there is no active unfinished implementation plan or concurrent worktree edit.
+- Created the focused implementation plan with phases, acceptance criteria, expected files, validation, risks, and non-goals.
+- Added strict Zod validation and an authenticated, active-workspace admin-only rename route.
+- Added pending-only invitation listing plus organization-scoped resend/cancel queries and routes.
+- Resend rotates token and expiry, preserves rate limiting and Team gating, and tolerates email delivery failure without losing the refreshed link.
+- Added a dedicated Workspace & Team Settings tab with workspace rename, seat-reservation copy, individual pending-invite actions, and existing member-role controls.
+- Reduced Billing to subscription/Stripe management and Team checkout/seat selection; workspace administration is no longer rendered there.
+- Added focused authorization, client-authority rejection, organization-isolation, invite lifecycle, and Settings separation tests.
+- Preserved Billing subscription, checkout, portal, invoice/payment-method, and Stripe seat-management behavior; no Stripe route or webhook logic changed.
+- Confirmed no schema change was required. Ownership transfer and leave-workspace remain explicit future work rather than invented behavior.
+
+## Files Changed
+
+- `.ai/plans/2026-07-17-workspace-team-settings.md`: completed implementation plan and validation record.
+- `.ai/CURRENT.md`: final durable handoff.
+- `app/dashboard/settings/page.tsx`: separate Workspace & Team and Billing tabs, rename UI, pending-invite actions, seat copy, and preserved member controls.
+- `app/api/organization/route.ts`: active-workspace admin-only rename endpoint.
+- `app/api/organization/invites/route.ts`: admin-only pending-invite listing.
+- `app/api/organization/invites/[inviteId]/route.ts`: organization-scoped resend and cancel endpoints.
+- `lib/neon/queries/organizations.ts` and `lib/neon/queries/index.ts`: pending-invite queries and exports.
+- `lib/validation/schemas.ts`: strict workspace-name payload schema.
+- `tests/unit/organization-route.test.ts`, `tests/unit/organization-invite-actions-route.test.ts`, `tests/unit/organization-invite-queries.test.ts`, `tests/unit/organization-invites-route.test.ts`, and `tests/unit/settings-workspace-team.test.tsx`: focused authorization, isolation, lifecycle, and information-architecture coverage.
 
 ## Validation
 
-- Combined focused Vitest passed: 6 files and 28 tests, covering authenticated API authorization/validation, public metadata/start behavior, inactive privacy, legacy defaults, category normalization, and Settings interactions.
-- Changed-file ESLint passed.
+- Focused Vitest passed: 9 files, 38 tests.
+- Changed-file ESLint passed with no warnings or errors.
 - `npm exec tsc -- --noEmit` passed.
-- `npm run build` passed; output contained only the repository's existing browser-baseline and Edge-runtime warnings.
-- Authenticated Chrome QA passed on Seller Form Settings at desktop and 390px widths. The layout remained usable with no horizontal overflow or console errors.
-- Public active reusable-form QA passed at desktop and 390px widths with the expected scoped branding and no console errors.
-- Paused-link private 404 behavior passed focused metadata and start-route tests. The configured hosted database was inspected read-only and does not yet contain the new columns, so no state-changing browser save/pause action was attempted.
-- `git diff --check` passed; only line-ending conversion warnings were emitted.
-- No migration, commit, push, deployment, or production-data action occurred.
+- `npm run build` passed with only the repository's existing baseline-browser-mapping notice and Edge Runtime static-generation warning.
+- Authenticated Chrome QA passed on `http://localhost:3005/dashboard/settings` at desktop width and a 390px mobile viewport. Billing was subscription/Stripe-focused and excluded workspace administration. Workspace & Team rendered workspace identity, invitation guidance, and members without document-level horizontal overflow; its tab strip and member table used local overflow containers. No console warnings or errors were observed.
+- `git diff --check` passed.
+- The authenticated workspace available for QA was single-seat, so live Team pending-invitation rows and mutating resend/cancel actions were not exercised. Focused component and route/query tests cover the Team pending state, authorization, resend/cancel behavior, and organization isolation.
 
 ## Remaining Required Work
 
-- None in the authorized implementation scope.
-- Before any environment can save the new defaults, apply `migrations-intake-link-seller-form-defaults.sql` through a separately authorized migration workflow.
+- None.
+
+## Optional Follow-up
+
+- If a non-production Teams workspace with pending invitations becomes available, manually exercise resend and cancel end to end. This is optional because the server/query/component behavior is covered by focused tests.
+- Design ownership transfer and leave-workspace only as a future, separately approved data-model and authorization project.
 
 ## Concurrent Editing Warnings
 
-- None known; this implementation session is complete.
+- Preserve the unrelated untracked `.ai/plans/2026-07-17-seller-form-defaults-live-migration.md` coordination file created by another chat.
+- This task's changes are limited to organization queries/routes, focused tests, Settings, the implementation plan, and this handoff.
 
 ## Recommended Next Action
 
-Review the focused diff. If approved, separately authorize the database migration and deployment workflow; neither was performed in this task.
+Review and commit this completed slice only if separately authorized. Do not include or remove the unrelated Seller Form Defaults live-migration coordination file without confirming its intended ownership.

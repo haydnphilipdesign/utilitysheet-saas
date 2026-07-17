@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
     getClientIpOrNullMock: vi.fn(),
     getOrCreateAccountMock: vi.fn(),
     getOrganizationByIdMock: vi.fn(),
-    getOrganizationInvitesMock: vi.fn(),
+    getPendingOrganizationInvitesMock: vi.fn(),
     getOrganizationMemberRoleMock: vi.fn(),
     getOrganizationSeatUsageMock: vi.fn(),
     isOrganizationMemberByEmailMock: vi.fn(),
@@ -47,7 +47,7 @@ vi.mock('@/lib/rate-limit', () => ({
 vi.mock('@/lib/neon/queries', () => ({
     createOrganizationInviteWithSeatGuard: mocks.createOrganizationInviteWithSeatGuardMock,
     getOrganizationById: mocks.getOrganizationByIdMock,
-    getOrganizationInvites: mocks.getOrganizationInvitesMock,
+    getPendingOrganizationInvites: mocks.getPendingOrganizationInvitesMock,
     getOrganizationMemberRole: mocks.getOrganizationMemberRoleMock,
     getOrganizationSeatUsage: mocks.getOrganizationSeatUsageMock,
     getOrCreateAccount: mocks.getOrCreateAccountMock,
@@ -100,7 +100,7 @@ describe('/api/organization/invites', () => {
         });
         mocks.getRateLimitHeadersMock.mockReturnValue({});
         mocks.isRateLimitUnavailableMock.mockReturnValue(false);
-        mocks.getOrganizationInvitesMock.mockResolvedValue([]);
+        mocks.getPendingOrganizationInvitesMock.mockResolvedValue([]);
     });
 
     it('GET requires admin org role', async () => {
@@ -108,7 +108,21 @@ describe('/api/organization/invites', () => {
 
         const response = await GET();
         expect(response.status).toBe(403);
-        expect(mocks.getOrganizationInvitesMock).not.toHaveBeenCalled();
+        expect(mocks.getPendingOrganizationInvitesMock).not.toHaveBeenCalled();
+    });
+
+    it('GET lists pending invitations only for the authenticated active organization', async () => {
+        mocks.getPendingOrganizationInvitesMock.mockResolvedValue([
+            { id: 'inv_1', email: 'pending@example.com', role: 'member' },
+        ]);
+
+        const response = await GET();
+
+        expect(response.status).toBe(200);
+        expect(mocks.getPendingOrganizationInvitesMock).toHaveBeenCalledWith('org_1');
+        expect(await response.json()).toEqual({
+            invites: [{ id: 'inv_1', email: 'pending@example.com', role: 'member' }],
+        });
     });
 
     it('reuses existing pending invite for same email', async () => {

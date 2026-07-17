@@ -269,6 +269,10 @@ const submittedSheetEditableUtilitySchema = z.object({
     trashDetails: submittedSheetEditableTrashDetailsSchema,
 }).strict();
 
+export const organizationUpdateBodySchema = z.object({
+    name: z.string().trim().min(2).max(100),
+}).strict();
+
 function normalizeTrashPickupDay(value: unknown): z.infer<typeof trashPickupDayEnum> | null | undefined {
     if (value === undefined) return undefined;
     if (value === null) return null;
