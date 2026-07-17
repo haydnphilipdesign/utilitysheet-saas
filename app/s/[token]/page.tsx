@@ -99,8 +99,8 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
         return (
             <div className="min-h-screen bg-background flex items-center justify-center p-4">
                 <div className="max-w-md w-full bg-card/60 border border-border rounded-2xl p-8 text-center space-y-5">
-                    <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
-                        <AlertTriangle className="h-8 w-8 text-red-400" />
+                    <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+                        <AlertTriangle className="h-8 w-8 text-destructive" />
                     </div>
                     <div className="space-y-2">
                         <h1 className="text-xl font-bold text-foreground">Unavailable</h1>

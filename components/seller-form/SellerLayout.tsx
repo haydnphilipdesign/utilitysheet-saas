@@ -117,7 +117,7 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
                     Send
                 </button>
             </div>
-            {error && <p className="text-xs text-red-400 text-left">{error}</p>}
+            {error && <p role="alert" className="text-xs text-destructive text-left">{error}</p>}
             <button
                 type="button"
                 onClick={() => { setOpen(false); setError(null); }}

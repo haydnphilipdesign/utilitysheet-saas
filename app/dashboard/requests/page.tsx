@@ -1,12 +1,31 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { format, parseISO } from 'date-fns';
+import {
+    AlertCircle,
+    ChevronLeft,
+    ChevronRight,
+    ExternalLink,
+    FileText,
+    Loader2,
+    Plus,
+    RotateCcw,
+    Search,
+    SlidersHorizontal,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+import { RequestListActions } from '@/components/requests/RequestListActions';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
+import { StatusBadge } from '@/components/ui/status-badge';
 import {
     Table,
     TableBody,
@@ -15,381 +34,543 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-    Plus,
-    Search,
-    MoreHorizontal,
-    Copy,
-    Eye,
-    Download,
-    Mail,
-    ExternalLink,
-    FileText,
-    FilePenLine,
-    Loader2,
-} from 'lucide-react';
-import { format } from 'date-fns';
-import type { Request } from '@/types';
-import { useEffect, useState } from 'react';
-import { generatePacketPdf } from '@/lib/pdf-generator';
-import { toast } from 'sonner';
 import { trackEvent } from '@/lib/analytics/events';
+import { generatePacketPdf } from '@/lib/pdf-generator';
+import {
+    DEFAULT_REQUEST_LIST_SORT,
+    REQUESTS_DEFAULT_PAGE_SIZE,
+    normalizeRequestListParams,
+} from '@/lib/requests/listing';
+import type { Request } from '@/types';
+
+type RequestListResponse = {
+    data: Request[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+};
+
+const EMPTY_META: Omit<RequestListResponse, 'data'> = {
+    total: 0,
+    page: 1,
+    limit: REQUESTS_DEFAULT_PAGE_SIZE,
+    totalPages: 0,
+    hasPreviousPage: false,
+    hasNextPage: false,
+};
+
+function formatDate(value: string | null | undefined, pattern = 'MMM d, yyyy') {
+    if (!value) return '—';
+    const parsed = parseISO(value);
+    return Number.isNaN(parsed.getTime()) ? '—' : format(parsed, pattern);
+}
 
 export default function RequestsPage() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const serializedSearchParams = searchParams.toString();
+    const listParams = useMemo(
+        () => normalizeRequestListParams(new URLSearchParams(serializedSearchParams)),
+        [serializedSearchParams]
+    );
+
     const [requests, setRequests] = useState<Request[]>([]);
+    const [meta, setMeta] = useState(EMPTY_META);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [error, setError] = useState<string | null>(null);
+    const [retryKey, setRetryKey] = useState(0);
+    const [searchQuery, setSearchQuery] = useState(listParams.search || '');
     const [downloadingPdfToken, setDownloadingPdfToken] = useState<string | null>(null);
     const [sendingReminderRequestId, setSendingReminderRequestId] = useState<string | null>(null);
 
+    const navigateWithParams = useCallback((
+        updates: Record<string, string | number | null | undefined>,
+        mode: 'push' | 'replace' = 'push'
+    ) => {
+        const next = new URLSearchParams(serializedSearchParams);
+        for (const [key, value] of Object.entries(updates)) {
+            if (value === null || value === undefined || value === '') {
+                next.delete(key);
+            } else {
+                next.set(key, String(value));
+            }
+        }
+
+        const query = next.toString();
+        router[mode](`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
+    }, [pathname, router, serializedSearchParams]);
+
+    const clearFilters = useCallback(() => {
+        router.push(pathname, { scroll: false });
+    }, [pathname, router]);
+
     useEffect(() => {
+        setSearchQuery(listParams.search || '');
+    }, [listParams.search]);
+
+    useEffect(() => {
+        const normalizedInput = searchQuery.trim();
+        if (normalizedInput === (listParams.search || '')) return;
+
+        const timeout = window.setTimeout(() => {
+            navigateWithParams({
+                q: normalizedInput || null,
+                page: null,
+            }, 'replace');
+        }, 350);
+
+        return () => window.clearTimeout(timeout);
+    }, [listParams.search, navigateWithParams, searchQuery]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+
         async function fetchRequests() {
             setLoading(true);
+            setError(null);
+
+            const query = new URLSearchParams({
+                page: String(listParams.page),
+                limit: String(REQUESTS_DEFAULT_PAGE_SIZE),
+            });
+            if (listParams.search) query.set('q', listParams.search);
+            if (listParams.status !== 'all') query.set('status', listParams.status);
+            if (listParams.sort !== DEFAULT_REQUEST_LIST_SORT) query.set('sort', listParams.sort);
+
             try {
-                const response = await fetch('/api/requests');
-                if (response.ok) {
-                    const data = await response.json();
-                    setRequests(data.data || []);
+                const response = await fetch(`/api/requests?${query.toString()}`, {
+                    signal: controller.signal,
+                });
+                if (!response.ok) {
+                    throw new Error('Unable to load requests');
                 }
-            } catch (error) {
-                console.error('Error fetching requests:', error);
+
+                const data = await response.json() as RequestListResponse;
+                if (controller.signal.aborted) return;
+
+                setRequests(Array.isArray(data.data) ? data.data : []);
+                setMeta({
+                    total: Number(data.total) || 0,
+                    page: Number(data.page) || 1,
+                    limit: Number(data.limit) || REQUESTS_DEFAULT_PAGE_SIZE,
+                    totalPages: Number(data.totalPages) || 0,
+                    hasPreviousPage: Boolean(data.hasPreviousPage),
+                    hasNextPage: Boolean(data.hasNextPage),
+                });
+
+                if (data.page && data.page !== listParams.page) {
+                    navigateWithParams({
+                        page: data.page === 1 ? null : data.page,
+                    }, 'replace');
+                }
+            } catch (fetchError) {
+                if (controller.signal.aborted) return;
+                console.error('Error fetching requests:', fetchError);
+                setRequests([]);
+                setMeta(EMPTY_META);
+                setError('Unable to load requests. Check your connection and try again.');
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) setLoading(false);
             }
         }
 
         fetchRequests();
+        return () => controller.abort();
+    }, [
+        listParams.page,
+        listParams.search,
+        listParams.sort,
+        listParams.status,
+        navigateWithParams,
+        retryKey,
+    ]);
+
+    const copySellerLink = useCallback(async (request: Request) => {
+        const token = request.seller_token || request.public_token;
+        if (!token) return;
+
+        try {
+            await navigator.clipboard.writeText(`${window.location.origin}/s/${token}`);
+            toast.success('Seller link copied');
+        } catch {
+            toast.error('Failed to copy seller link');
+        }
     }, []);
 
-    const filteredRequests = requests.filter((request) => {
-        const matchesSearch =
-            request.property_address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            request.seller_name?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
-
-    // Distinguish a genuine zero-data state from an active search/filter that returns nothing.
-    const hasNoRequests = requests.length === 0;
-
-    const copyLink = (token: string) => {
-        if (!token) return;
-        const link = `${window.location.origin}/s/${token}`;
-        navigator.clipboard.writeText(link);
-        toast.success('Link copied to clipboard');
-    };
-
-    const handleDownloadPdf = async (token: string) => {
-        setDownloadingPdfToken(token);
+    const downloadPdf = useCallback(async (request: Request) => {
+        if (!request.public_token) return;
+        setDownloadingPdfToken(request.public_token);
         try {
-            await generatePacketPdf(token);
+            await generatePacketPdf(request.public_token);
             toast.success('PDF downloaded successfully');
-        } catch (error) {
-            console.error('Error generating PDF:', error);
+        } catch (downloadError) {
+            console.error('Error generating PDF:', downloadError);
             toast.error('Failed to generate PDF. Please try again.');
         } finally {
             setDownloadingPdfToken(null);
         }
-    };
+    }, []);
 
-    const handleSendReminder = async (requestId: string) => {
-        setSendingReminderRequestId(requestId);
+    const sendReminder = useCallback(async (request: Request) => {
+        if (!request.seller_email) return;
+        setSendingReminderRequestId(request.id);
         try {
-            const res = await fetch(`/api/requests/${requestId}/remind`, { method: 'POST' });
-            const data = await res.json().catch(() => ({}));
-
-            if (!res.ok) {
+            const response = await fetch(`/api/requests/${request.id}/remind`, { method: 'POST' });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
                 toast.error(data.error || 'Failed to send reminder');
                 return;
             }
-
             toast.success('Reminder sent');
-        } catch (error) {
-            console.error('Error sending reminder:', error);
+        } catch (reminderError) {
+            console.error('Error sending reminder:', reminderError);
             toast.error('Failed to send reminder. Please try again.');
         } finally {
             setSendingReminderRequestId(null);
         }
-    };
+    }, []);
+
+    const hasActiveFilters = Boolean(listParams.search) || listParams.status !== 'all';
+    const firstResult = meta.total === 0 ? 0 : ((meta.page - 1) * meta.limit) + 1;
+    const lastResult = Math.min(meta.page * meta.limit, meta.total);
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
+        <div className="space-y-6">
             <PageHeader
                 title="Requests"
-                description="All utility sheet requests"
+                description="Track every seller request from first send through completed packet."
                 actions={
-                    <Link href="/dashboard/requests/new">
-                        <Button
-                            data-testid="requests-new-request"
-                            onClick={() =>
-                                trackEvent('new_request_started', {
-                                    source: 'requests_header_button',
-                                    location: 'requests_page',
-                                })
-                            }
-                        >
-                            <Plus className="mr-2 h-4 w-4" />
-                            New Request
-                        </Button>
+                    <Link
+                        href="/dashboard/requests/new"
+                        data-testid="requests-new-request"
+                        className={buttonVariants()}
+                        onClick={() =>
+                            trackEvent('new_request_started', {
+                                source: 'requests_header_button',
+                                location: 'requests_page',
+                            })
+                        }
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        New Request
                     </Link>
                 }
             />
 
-            {/* Filters */}
-            <Card className="border-border bg-card/50">
-                <CardContent className="pt-6">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Card className="gap-0 py-0 sm:py-0">
+                <div className="border-b border-border bg-muted/20 p-3 sm:p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                        <div className="relative min-w-0 flex-1">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
-                                placeholder="Search by address or seller…"
+                                type="search"
                                 inputMode="search"
+                                aria-label="Search requests"
+                                placeholder="Search address or seller"
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 bg-background/50 border-input text-foreground placeholder:text-muted-foreground"
+                                onChange={(event) => setSearchQuery(event.target.value)}
+                                className="bg-background pl-9 sm:pl-9"
                             />
                         </div>
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            aria-label="Filter by status"
-                            className="w-full sm:w-[180px] h-11 sm:h-9 px-3 rounded-md bg-background/50 border border-input text-foreground text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        >
-                            <option value="all">All Statuses</option>
-                            <option value="draft">Draft</option>
-                            <option value="sent">Sent</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="submitted">Submitted</option>
-                        </select>
-                    </div>
-                </CardContent>
-            </Card>
 
-            {/* Table */}
-            <Card className="border-border bg-card/50">
-                <CardContent className="pt-6">
-                    {loading ? (
-                        <div className="flex items-center justify-center py-16 text-muted-foreground">
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                        </div>
-                    ) : filteredRequests.length === 0 ? (
-                        hasNoRequests ? (
-                            <EmptyState
-                                icon={FileText}
-                                title="No requests yet"
-                                description="You have not created any requests yet. Share your seller link to get started."
-                                action={
-                                    <>
-                                        <Link href="/dashboard">
-                                            <Button variant="outline">
-                                                <ExternalLink className="mr-2 h-4 w-4" />
-                                                Go to your seller link
-                                            </Button>
-                                        </Link>
-                                        <Link href="/dashboard/requests/new">
-                                            <Button
-                                                onClick={() =>
-                                                    trackEvent('new_request_started', {
-                                                        source: 'requests_empty_state',
-                                                        location: 'requests_page',
-                                                    })
-                                                }
-                                            >
-                                                <Plus className="mr-2 h-4 w-4" />
-                                                New Request
-                                            </Button>
-                                        </Link>
-                                    </>
-                                }
-                            />
-                        ) : (
-                            <EmptyState
-                                icon={Search}
-                                title="No matching requests"
-                                description="No requests match your current search or filters. Try adjusting them."
-                            />
-                        )
-                    ) : (
-                    <div className="rounded-lg border border-border overflow-x-auto">
-                            <div className="space-y-3 p-3 md:hidden">
-                                {filteredRequests.map((request) => {
-                                    const isLocked = Boolean(request.is_locked);
-
-                                    return (
-                                        <div key={request.id} className="rounded-lg border border-border bg-background/40 p-4 space-y-3">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <p className="font-medium text-foreground truncate">{request.property_address}</p>
-                                                    <p className="text-sm text-muted-foreground truncate">{request.seller_name || '—'}</p>
-                                                    <p className="text-xs text-muted-foreground mt-1">
-                                                        {request.packet_mode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
-                                                    </p>
-                                                </div>
-                                                <StatusBadge status={request.status} locked={isLocked} className="shrink-0" />
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <p className="text-xs text-muted-foreground">
-                                                    Closing: {request.closing_date ? format(new Date(request.closing_date), 'MMM d, yyyy') : '—'}
-                                                </p>
-                                                <div className="flex items-center gap-2">
-                                                    {request.can_edit_submitted_sheet && !isLocked && (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            render={<Link href={`/dashboard/requests/${request.id}/edit`} />}
-                                                        >
-                                                            <FilePenLine className="mr-1.5 h-4 w-4" />
-                                                            Edit
-                                                        </Button>
-                                                    )}
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        render={<Link href={`/dashboard/requests/${request.id}`} />}
-                                                    >
-                                                        <Eye className="mr-1.5 h-4 w-4" />
-                                                        View
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:shrink-0">
+                            <label className="sr-only" htmlFor="request-status-filter">
+                                Filter by status
+                            </label>
+                            <select
+                                id="request-status-filter"
+                                aria-label="Filter by status"
+                                value={listParams.status}
+                                onChange={(event) => navigateWithParams({
+                                    status: event.target.value === 'all' ? null : event.target.value,
+                                    page: null,
                                 })}
-                            </div>
+                                className="h-11 rounded-md border border-input bg-background px-3 text-base text-foreground outline-none focus:ring-2 focus:ring-ring sm:h-8 sm:min-w-40 sm:text-sm"
+                            >
+                                <option value="all">All statuses</option>
+                                <option value="needs_attention">Needs attention</option>
+                                <option value="draft">Draft</option>
+                                <option value="sent">Sent</option>
+                                <option value="in_progress">In progress</option>
+                                <option value="submitted">Submitted</option>
+                            </select>
 
-                        <div className="hidden md:block">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="border-border hover:bg-transparent">
-                                    <TableHead className="text-muted-foreground">Property</TableHead>
-                                    <TableHead className="text-muted-foreground hidden md:table-cell">Seller</TableHead>
-                                    <TableHead className="text-muted-foreground hidden md:table-cell">Closing Date</TableHead>
-                                    <TableHead className="text-muted-foreground hidden lg:table-cell">Created</TableHead>
-                                    <TableHead className="text-muted-foreground">Status</TableHead>
-                                    <TableHead className="text-muted-foreground text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredRequests.map((request) => {
-                                        const isLocked = Boolean(request.is_locked);
-                                        return (
-                                            <TableRow key={request.id} className="border-border hover:bg-muted/30">
-                                                <TableCell className="py-3 sm:py-4">
-                                                    <div className="min-w-0">
-                                                        <p className="font-medium text-foreground text-sm sm:text-base truncate max-w-[180px] sm:max-w-none">
-                                                            {request.property_address}
-                                                        </p>
-                                                        <p className="text-xs sm:text-sm text-muted-foreground md:hidden truncate">
-                                                            {request.seller_name || '—'}
-                                                        </p>
-                                                        <p className="text-[11px] text-muted-foreground">
-                                                            {request.packet_mode === 'advanced' ? 'Advanced' : 'Simple'}
-                                                        </p>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="hidden md:table-cell text-muted-foreground">
-                                                    {request.seller_name || '—'}
-                                                </TableCell>
-                                                <TableCell className="hidden md:table-cell text-muted-foreground">
-                                                    {request.closing_date
-                                                        ? format(new Date(request.closing_date), 'MMM d, yyyy')
-                                                        : '—'
-                                                    }
-                                                </TableCell>
-                                                <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
-                                                    {format(new Date(request.created_at), 'MMM d, yyyy')}
-                                                </TableCell>
-                                                <TableCell className="py-3 sm:py-4">
-                                                    <StatusBadge status={request.status} locked={isLocked} responsive />
-                                                </TableCell>
-                                                <TableCell className="text-right py-3 sm:py-4">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger aria-label="Request actions" className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="bg-popover border-border">
-                                                            {!isLocked && (
-                                                                <DropdownMenuItem
-                                                                    className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                    onClick={() => copyLink(request.seller_token || request.public_token || '')}
-                                                                >
-                                                                    <Copy className="mr-2 h-4 w-4" />
-                                                                    Copy seller link
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                            <DropdownMenuItem
-                                                                className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                onClick={() => window.open(`/dashboard/requests/${request.id}`, '_self')}
-                                                            >
-                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                View details
-                                                            </DropdownMenuItem>
-                                                            {!isLocked && request.can_edit_submitted_sheet && (
-                                                                <DropdownMenuItem
-                                                                    className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                    onClick={() => window.open(`/dashboard/requests/${request.id}/edit`, '_self')}
-                                                                >
-                                                                    <FilePenLine className="mr-2 h-4 w-4" />
-                                                                    Edit submitted sheet
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                            {!isLocked && request.status === 'submitted' && (
-                                                                <>
-                                                                    <DropdownMenuItem
-                                                                        className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                        onClick={() => window.open(`/packet/${request.public_token}`, '_blank')}
-                                                                    >
-                                                                        <ExternalLink className="mr-2 h-4 w-4" />
-                                                                        View info sheet
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem
-                                                                        className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                        onClick={() => handleDownloadPdf(request.public_token)}
-                                                                        disabled={downloadingPdfToken === request.public_token}
-                                                                    >
-                                                                        {downloadingPdfToken === request.public_token ? (
-                                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                                        ) : (
-                                                                            <Download className="mr-2 h-4 w-4" />
-                                                                        )}
-                                                                        {downloadingPdfToken === request.public_token ? 'Generating…' : 'Download PDF'}
-                                                                    </DropdownMenuItem>
-                                                                </>
-                                                            )}
-                                                            {!isLocked && ['sent', 'in_progress'].includes(request.status) && (
-                                                                <DropdownMenuItem
-                                                                    className="text-foreground focus:bg-muted focus:text-foreground cursor-pointer"
-                                                                    onClick={() => handleSendReminder(request.id)}
-                                                                    disabled={!request.seller_email || sendingReminderRequestId === request.id}
-                                                                >
-                                                                    {sendingReminderRequestId === request.id ? (
-                                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                                    ) : (
-                                                                        <Mail className="mr-2 h-4 w-4" />
-                                                                    )}
-                                                                    {sendingReminderRequestId === request.id ? 'Sending…' : 'Send reminder'}
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                            </TableBody>
-                        </Table>
+                            <label className="sr-only" htmlFor="request-sort">
+                                Sort requests
+                            </label>
+                            <select
+                                id="request-sort"
+                                aria-label="Sort requests"
+                                value={listParams.sort}
+                                onChange={(event) => navigateWithParams({
+                                    sort: event.target.value === DEFAULT_REQUEST_LIST_SORT
+                                        ? null
+                                        : event.target.value,
+                                    page: null,
+                                })}
+                                className="h-11 rounded-md border border-input bg-background px-3 text-base text-foreground outline-none focus:ring-2 focus:ring-ring sm:h-8 sm:min-w-48 sm:text-sm"
+                            >
+                                <option value="last_activity_desc">Last activity</option>
+                                <option value="closing_date_asc">Closing date: soonest</option>
+                                <option value="closing_date_desc">Closing date: latest</option>
+                                <option value="created_desc">Created: newest</option>
+                                <option value="created_asc">Created: oldest</option>
+                                <option value="status_asc">Status</option>
+                            </select>
                         </div>
                     </div>
-                    )}
-                </CardContent>
+
+                    <div className="mt-3 flex min-h-7 flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                            <SlidersHorizontal className="h-4 w-4" />
+                            {loading ? (
+                                <span>Updating results…</span>
+                            ) : (
+                                <span>
+                                    <span className="font-medium text-foreground">{meta.total} requests</span>
+                                    {meta.total > 0 ? ` · Showing ${firstResult}–${lastResult}` : ''}
+                                </span>
+                            )}
+                        </div>
+                        {hasActiveFilters && (loading || Boolean(error) || requests.length > 0) ? (
+                            <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+                                <RotateCcw />
+                                Clear filters
+                            </Button>
+                        ) : null}
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div
+                        role="status"
+                        aria-live="polite"
+                        className="flex min-h-72 items-center justify-center gap-2 text-muted-foreground"
+                    >
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Loading requests…
+                    </div>
+                ) : error ? (
+                    <div role="alert" className="flex min-h-72 flex-col items-center justify-center px-6 text-center">
+                        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10">
+                            <AlertCircle className="h-5 w-5 text-destructive" />
+                        </div>
+                        <h2 className="font-semibold text-foreground">Unable to load requests</h2>
+                        <p className="mt-1 max-w-sm text-sm text-muted-foreground">{error}</p>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-4"
+                            onClick={() => setRetryKey((value) => value + 1)}
+                        >
+                            Try again
+                        </Button>
+                    </div>
+                ) : requests.length === 0 ? (
+                    hasActiveFilters ? (
+                        <EmptyState
+                            icon={Search}
+                            title="No matching requests"
+                            description="No requests match this search or filter. Clear the filters to return to the full workspace."
+                            action={
+                                <Button type="button" variant="outline" onClick={clearFilters}>
+                                    <RotateCcw className="mr-2 h-4 w-4" />
+                                    Clear filters
+                                </Button>
+                            }
+                        />
+                    ) : (
+                        <EmptyState
+                            icon={FileText}
+                            title="No requests yet"
+                            description="Create a manual request or share your reusable seller link to start collecting utility details."
+                            action={
+                                <>
+                                    <Link href="/dashboard" className={buttonVariants({ variant: 'outline' })}>
+                                        <ExternalLink className="mr-2 h-4 w-4" />
+                                        Open seller link
+                                    </Link>
+                                    <Link href="/dashboard/requests/new" className={buttonVariants()}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        New Request
+                                    </Link>
+                                </>
+                            }
+                        />
+                    )
+                ) : (
+                    <>
+                        <div className="divide-y divide-border md:hidden">
+                            {requests.map((request) => (
+                                <article
+                                    key={request.id}
+                                    data-testid={`request-mobile-${request.id}`}
+                                    className="space-y-4 p-4"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <Link
+                                                href={`/dashboard/requests/${request.id}`}
+                                                className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            >
+                                                {request.property_address}
+                                            </Link>
+                                            <p className="mt-1 truncate text-sm text-muted-foreground">
+                                                {request.seller_name || 'No seller name'}
+                                            </p>
+                                        </div>
+                                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                                            <StatusBadge status={request.status} locked={Boolean(request.is_locked)} />
+                                            {request.needs_attention && !request.is_locked ? (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                                >
+                                                    Needs attention
+                                                </Badge>
+                                            ) : null}
+                                        </div>
+                                    </div>
+
+                                    <dl className="grid grid-cols-2 gap-3 rounded-md bg-muted/30 p-3 text-xs">
+                                        <div>
+                                            <dt className="text-muted-foreground">Closing</dt>
+                                            <dd className="mt-0.5 font-medium text-foreground">
+                                                {formatDate(request.closing_date)}
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-muted-foreground">Last activity</dt>
+                                            <dd className="mt-0.5 font-medium text-foreground">
+                                                {formatDate(request.last_activity_at)}
+                                            </dd>
+                                        </div>
+                                    </dl>
+
+                                    <RequestListActions
+                                        request={request}
+                                        layout="mobile"
+                                        onCopySellerLink={copySellerLink}
+                                        onSendReminder={sendReminder}
+                                        onDownloadPdf={downloadPdf}
+                                        sendingReminder={sendingReminderRequestId === request.id}
+                                        downloadingPdf={downloadingPdfToken === request.public_token}
+                                    />
+                                </article>
+                            ))}
+                        </div>
+
+                        <div className="hidden overflow-x-auto md:block">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead>Property</TableHead>
+                                        <TableHead>Seller</TableHead>
+                                        <TableHead>Closing date</TableHead>
+                                        <TableHead>Activity</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {requests.map((request) => (
+                                        <TableRow key={request.id}>
+                                            <TableCell className="max-w-72">
+                                                <Link
+                                                    href={`/dashboard/requests/${request.id}`}
+                                                    className="block truncate font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                >
+                                                    {request.property_address}
+                                                </Link>
+                                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                                    {request.packet_mode === 'advanced' ? 'Advanced packet' : 'Simple sheet'}
+                                                </p>
+                                            </TableCell>
+                                            <TableCell className="max-w-48 truncate text-muted-foreground">
+                                                {request.seller_name || '—'}
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap text-muted-foreground">
+                                                {formatDate(request.closing_date)}
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap">
+                                                <p className="text-foreground">{formatDate(request.last_activity_at)}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Created {formatDate(request.created_at, 'MMM d')}
+                                                </p>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col items-start gap-1.5">
+                                                    <StatusBadge
+                                                        status={request.status}
+                                                        locked={Boolean(request.is_locked)}
+                                                    />
+                                                    {request.needs_attention && !request.is_locked ? (
+                                                        <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                                                            Needs attention
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <RequestListActions
+                                                    request={request}
+                                                    layout="desktop"
+                                                    onCopySellerLink={copySellerLink}
+                                                    onSendReminder={sendReminder}
+                                                    onDownloadPdf={downloadPdf}
+                                                    sendingReminder={sendingReminderRequestId === request.id}
+                                                    downloadingPdf={downloadingPdfToken === request.public_token}
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </>
+                )}
+
+                {!loading && !error && meta.totalPages > 1 ? (
+                    <nav
+                        aria-label="Requests pagination"
+                        className="flex flex-col gap-3 border-t border-border bg-muted/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                        <p className="text-sm text-muted-foreground">
+                            Page <span className="font-medium text-foreground">{meta.page}</span> of{' '}
+                            <span className="font-medium text-foreground">{meta.totalPages}</span>
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 sm:flex">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                aria-label="Previous page"
+                                disabled={!meta.hasPreviousPage}
+                                onClick={() => navigateWithParams({
+                                    page: meta.page - 1 <= 1 ? null : meta.page - 1,
+                                })}
+                            >
+                                <ChevronLeft />
+                                Previous
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                aria-label="Next page"
+                                disabled={!meta.hasNextPage}
+                                onClick={() => navigateWithParams({ page: meta.page + 1 })}
+                            >
+                                Next
+                                <ChevronRight />
+                            </Button>
+                        </div>
+                    </nav>
+                ) : null}
             </Card>
         </div>
     );

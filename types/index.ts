@@ -289,6 +289,8 @@ export interface Request {
     created_at: string;
     updated_at: string;
     last_activity_at: string;
+    // Derived by list queries from the current canonical attention rule.
+    needs_attention?: boolean;
     // Joined data
     brand_profile?: BrandProfile | null;
     utility_entries?: UtilityEntry[];

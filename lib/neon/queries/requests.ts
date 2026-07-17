@@ -11,6 +11,13 @@ import type {
     Request,
     UtilityEntry,
 } from '@/types';
+import {
+    DEFAULT_REQUEST_LIST_SORT,
+    REQUEST_NEEDS_ATTENTION_DAYS,
+    REQUESTS_DEFAULT_PAGE_SIZE,
+    type RequestListSort,
+    type RequestListStatusFilter,
+} from '@/lib/requests/listing';
 
 /**
  * Pagination result interface
@@ -21,6 +28,8 @@ export interface PaginatedResult<T> {
     page: number;
     limit: number;
     totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
 }
 
 /**
@@ -29,36 +38,198 @@ export interface PaginatedResult<T> {
 export async function getRequests(
     accountId: string,
     organizationId?: string,
-    options: { page?: number; limit?: number } = {}
+    options: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        status?: RequestListStatusFilter;
+        sort?: RequestListSort;
+        canViewLockedDetails?: boolean;
+    } = {}
 ): Promise<PaginatedResult<Request>> {
-    const page = Math.max(1, options.page || 1);
-    const limit = Math.min(100, Math.max(1, options.limit || 10));
-    const offset = (page - 1) * limit;
+    const requestedPage = Math.max(1, options.page || 1);
+    const limit = Math.min(100, Math.max(1, options.limit || REQUESTS_DEFAULT_PAGE_SIZE));
+    const search = options.search?.trim() || null;
+    const filterStatus = options.status || 'all';
+    const status = filterStatus === 'all' || filterStatus === 'needs_attention'
+        ? null
+        : filterStatus;
+    const needsAttention = filterStatus === 'needs_attention';
+    const sort = options.sort || DEFAULT_REQUEST_LIST_SORT;
+    const canViewLockedDetails = options.canViewLockedDetails === true;
 
-    if (!sql) return { data: [], total: 0, page, limit, totalPages: 0 };
+    if (!sql) {
+        return {
+            data: [],
+            total: 0,
+            page: 1,
+            limit,
+            totalPages: 0,
+            hasPreviousPage: false,
+            hasNextPage: false,
+        };
+    }
 
-    // Build the WHERE clause (exclude deleted requests from user-facing lists).
-    // If the account has an active organization, show:
-    // - all org requests, plus
-    // - the user's personal (pre-org) requests that have no organization.
-    const whereClause = organizationId
-        ? sql`deleted_at IS NULL AND (organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
-        : sql`account_id = ${accountId} AND organization_id IS NULL AND deleted_at IS NULL`;
-
-    // Get total count
-    const countResult = await sql`
-        SELECT COUNT(*) as count FROM requests WHERE ${whereClause}
-    `;
+    // Keep the visibility scope in every SQL statement. Search is deliberately
+    // prevented from matching sanitized locked-row details for unpaid accounts,
+    // because a filtered total would otherwise reveal that hidden data exists.
+    const countResult = organizationId
+        ? await sql`
+            SELECT COUNT(*) AS count
+            FROM requests
+            WHERE deleted_at IS NULL
+                AND (
+                    organization_id = ${organizationId}
+                    OR (account_id = ${accountId} AND organization_id IS NULL)
+                )
+                AND (
+                    ${search}::text IS NULL
+                    OR (
+                        (${canViewLockedDetails}::boolean OR COALESCE(is_locked, FALSE) = FALSE)
+                        AND (
+                            POSITION(LOWER(${search}::text) IN LOWER(property_address)) > 0
+                            OR POSITION(LOWER(${search}::text) IN LOWER(COALESCE(seller_name, ''))) > 0
+                        )
+                    )
+                )
+                AND (${status}::text IS NULL OR status = ${status})
+                AND (
+                    ${needsAttention}::boolean = FALSE
+                    OR (
+                        status = 'sent'
+                        AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    )
+                )
+        `
+        : await sql`
+            SELECT COUNT(*) AS count
+            FROM requests
+            WHERE account_id = ${accountId}
+                AND organization_id IS NULL
+                AND deleted_at IS NULL
+                AND (
+                    ${search}::text IS NULL
+                    OR (
+                        (${canViewLockedDetails}::boolean OR COALESCE(is_locked, FALSE) = FALSE)
+                        AND (
+                            POSITION(LOWER(${search}::text) IN LOWER(property_address)) > 0
+                            OR POSITION(LOWER(${search}::text) IN LOWER(COALESCE(seller_name, ''))) > 0
+                        )
+                    )
+                )
+                AND (${status}::text IS NULL OR status = ${status})
+                AND (
+                    ${needsAttention}::boolean = FALSE
+                    OR (
+                        status = 'sent'
+                        AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    )
+                )
+        `;
     const total = Number(countResult[0]?.count) || 0;
     const totalPages = Math.ceil(total / limit);
+    const page = totalPages > 0 ? Math.min(requestedPage, totalPages) : 1;
+    const offset = (page - 1) * limit;
 
-    // Get paginated data
-    const result = await sql`
-        SELECT * FROM requests 
-        WHERE ${whereClause}
-        ORDER BY created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
-    `;
+    const result = organizationId
+        ? await sql`
+            SELECT
+                requests.*,
+                (
+                    status = 'sent'
+                    AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                ) AS needs_attention
+            FROM requests
+            WHERE deleted_at IS NULL
+                AND (
+                    organization_id = ${organizationId}
+                    OR (account_id = ${accountId} AND organization_id IS NULL)
+                )
+                AND (
+                    ${search}::text IS NULL
+                    OR (
+                        (${canViewLockedDetails}::boolean OR COALESCE(is_locked, FALSE) = FALSE)
+                        AND (
+                            POSITION(LOWER(${search}::text) IN LOWER(property_address)) > 0
+                            OR POSITION(LOWER(${search}::text) IN LOWER(COALESCE(seller_name, ''))) > 0
+                        )
+                    )
+                )
+                AND (${status}::text IS NULL OR status = ${status})
+                AND (
+                    ${needsAttention}::boolean = FALSE
+                    OR (
+                        status = 'sent'
+                        AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    )
+                )
+            ORDER BY
+                CASE WHEN ${sort}::text = 'last_activity_desc' THEN last_activity_at END DESC NULLS LAST,
+                CASE WHEN ${sort}::text = 'closing_date_asc' THEN closing_date END ASC NULLS LAST,
+                CASE WHEN ${sort}::text = 'closing_date_desc' THEN closing_date END DESC NULLS LAST,
+                CASE WHEN ${sort}::text = 'created_desc' THEN created_at END DESC NULLS LAST,
+                CASE WHEN ${sort}::text = 'created_asc' THEN created_at END ASC NULLS LAST,
+                CASE WHEN ${sort}::text = 'status_asc' THEN
+                    CASE
+                        WHEN status = 'draft' THEN 1
+                        WHEN status = 'sent' THEN 2
+                        WHEN status = 'in_progress' THEN 3
+                        WHEN status = 'submitted' THEN 4
+                        ELSE 5
+                    END
+                END ASC,
+                created_at DESC,
+                id DESC
+            LIMIT ${limit} OFFSET ${offset}
+        `
+        : await sql`
+            SELECT
+                requests.*,
+                (
+                    status = 'sent'
+                    AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                ) AS needs_attention
+            FROM requests
+            WHERE account_id = ${accountId}
+                AND organization_id IS NULL
+                AND deleted_at IS NULL
+                AND (
+                    ${search}::text IS NULL
+                    OR (
+                        (${canViewLockedDetails}::boolean OR COALESCE(is_locked, FALSE) = FALSE)
+                        AND (
+                            POSITION(LOWER(${search}::text) IN LOWER(property_address)) > 0
+                            OR POSITION(LOWER(${search}::text) IN LOWER(COALESCE(seller_name, ''))) > 0
+                        )
+                    )
+                )
+                AND (${status}::text IS NULL OR status = ${status})
+                AND (
+                    ${needsAttention}::boolean = FALSE
+                    OR (
+                        status = 'sent'
+                        AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    )
+                )
+            ORDER BY
+                CASE WHEN ${sort}::text = 'last_activity_desc' THEN last_activity_at END DESC NULLS LAST,
+                CASE WHEN ${sort}::text = 'closing_date_asc' THEN closing_date END ASC NULLS LAST,
+                CASE WHEN ${sort}::text = 'closing_date_desc' THEN closing_date END DESC NULLS LAST,
+                CASE WHEN ${sort}::text = 'created_desc' THEN created_at END DESC NULLS LAST,
+                CASE WHEN ${sort}::text = 'created_asc' THEN created_at END ASC NULLS LAST,
+                CASE WHEN ${sort}::text = 'status_asc' THEN
+                    CASE
+                        WHEN status = 'draft' THEN 1
+                        WHEN status = 'sent' THEN 2
+                        WHEN status = 'in_progress' THEN 3
+                        WHEN status = 'submitted' THEN 4
+                        ELSE 5
+                    END
+                END ASC,
+                created_at DESC,
+                id DESC
+            LIMIT ${limit} OFFSET ${offset}
+        `;
 
     return {
         data: result as Request[],
@@ -66,6 +237,8 @@ export async function getRequests(
         page,
         limit,
         totalPages,
+        hasPreviousPage: page > 1,
+        hasNextPage: page < totalPages,
     };
 }
 
@@ -448,7 +621,10 @@ export async function getDashboardStats(accountId: string, organizationId?: stri
             COUNT(*) FILTER (WHERE status = 'sent') as sent,
             COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
             COUNT(*) FILTER (WHERE status = 'submitted') as submitted,
-            COUNT(*) FILTER (WHERE status = 'sent' AND created_at < NOW() - INTERVAL '3 days') as needs_attention
+            COUNT(*) FILTER (
+                WHERE status = 'sent'
+                    AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+            ) as needs_attention
         FROM requests 
         WHERE ${organizationId
             ? sql`deleted_at IS NULL AND (organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
@@ -493,7 +669,10 @@ export async function getWeeklyStats(
             COUNT(*) FILTER (WHERE status = 'submitted') as submitted,
             COUNT(*) FILTER (WHERE status = 'sent') as sent,
             COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
-            COUNT(*) FILTER (WHERE status = 'sent' AND created_at < NOW() - INTERVAL '3 days') as needs_attention
+            COUNT(*) FILTER (
+                WHERE status = 'sent'
+                    AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+            ) as needs_attention
         FROM requests 
         WHERE ${whereClause}
     `;

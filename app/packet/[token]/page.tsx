@@ -135,7 +135,7 @@ function PacketStateScreen({
         <div className="min-h-screen bg-background flex flex-col">
             <header className="border-b border-border bg-background/80 backdrop-blur-xl">
                 <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center gap-1.5 sm:gap-2">
-                    <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shrink-0">
+                    <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 shrink-0">
                         <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </div>
                     <span className="font-bold text-foreground text-sm sm:text-base">UtilitySheet</span>
@@ -231,7 +231,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="h-8 w-8 text-slate-600 dark:text-sky-400 animate-spin" />
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
             </div>
         );
     }
@@ -239,8 +239,8 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     if (packetState === 'not_submitted') {
         return (
             <PacketStateScreen
-                icon={<Clock className="h-6 w-6 text-sky-500 dark:text-sky-400" />}
-                iconClassName="bg-sky-500/10"
+                icon={<Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />}
+                iconClassName="bg-blue-500/10"
                 title="This info sheet is not ready yet"
                 body="The homeowner has not submitted their utility details. Check back soon."
             />
@@ -299,7 +299,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                 <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                         {showPoweredBy ? (
-                            <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 dark:from-sky-500 dark:to-sky-600 shrink-0">
+                            <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 shrink-0">
                                 <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </div>
                         ) : brand?.logo_url ? (
@@ -319,6 +319,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                             variant="outline"
                             size="sm"
                             data-testid="packet-copy-link"
+                            aria-label={copied ? 'Link copied' : 'Copy link'}
                             className="border-input text-foreground hover:bg-muted h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm active:scale-[0.98]"
                             onClick={copyLink}
                         >
@@ -328,12 +329,13 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                         <Button
                             size="sm"
                             data-testid="packet-download-pdf"
+                            aria-label={downloading ? 'Generating PDF' : 'Download PDF'}
                             className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm active:scale-[0.98]"
                             onClick={downloadPdf}
                             disabled={downloading}
                         >
                             <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
-                            <span className="hidden sm:inline">{downloading ? 'Generating...' : 'Download PDF'}</span>
+                            <span className="hidden sm:inline">{downloading ? 'Generating…' : 'Download PDF'}</span>
                         </Button>
                     </div>
                 </div>

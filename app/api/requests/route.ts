@@ -10,6 +10,7 @@ import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/l
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
+import { normalizeRequestListParams } from '@/lib/requests/listing';
 
 function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
         }
         const { account, activeOrganization } = activationState;
         const accountId = account.id;
-        const organizationId = activeOrganization?.id || account.active_organization_id;
+        const organizationId = activeOrganization?.id || account.active_organization_id || undefined;
         const organization = activeOrganization || (organizationId ? await getOrganizationById(organizationId) : null);
         const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
@@ -53,11 +54,15 @@ export async function GET(request: Request) {
             return NextResponse.json(dashboardStats);
         }
 
-        // Parse pagination params
-        const page = parseInt(url.searchParams.get('page') || '1', 10);
-        const limit = parseInt(url.searchParams.get('limit') || '10', 10);
-
-        const result = await getRequests(accountId, organizationId, { page, limit });
+        const listParams = normalizeRequestListParams(url.searchParams);
+        const result = await getRequests(accountId, organizationId, {
+            page: listParams.page,
+            limit: listParams.limit,
+            search: listParams.search,
+            status: listParams.status,
+            sort: listParams.sort,
+            canViewLockedDetails: isPaid,
+        });
         const data = result.data.map((requestRow) => {
             const r = requestRow as unknown as Record<string, unknown> & {
                 is_locked?: unknown;

@@ -335,8 +335,8 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
             ) : loadError ? (
                 <div className="flex-1 flex items-center justify-center">
                     <div className="w-full max-w-md bg-card/60 border border-border rounded-2xl p-8 text-center space-y-5">
-                        <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center">
-                            <AlertTriangle className="h-8 w-8 text-red-400" />
+                        <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+                            <AlertTriangle className="h-8 w-8 text-destructive" />
                         </div>
                         <div className="space-y-2">
                             <h1 className="text-xl font-bold text-foreground">This link isn’t working</h1>
@@ -461,7 +461,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                             }
                                         }}
                                     />
-                                    {fieldErrors.street && <p className="text-xs text-red-500">{fieldErrors.street}</p>}
+                                    {fieldErrors.street && <p className="text-xs text-destructive">{fieldErrors.street}</p>}
                                 </div>
 
                                 <div className="space-y-2">
@@ -506,7 +506,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                                 }
                                             }}
                                         />
-                                        {fieldErrors.city && <p className="text-xs text-red-500">{fieldErrors.city}</p>}
+                                        {fieldErrors.city && <p className="text-xs text-destructive">{fieldErrors.city}</p>}
                                     </div>
 
                                     <div className="space-y-2">
@@ -537,7 +537,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                                 </option>
                                             ))}
                                         </select>
-                                        {fieldErrors.state && <p className="text-xs text-red-500">{fieldErrors.state}</p>}
+                                        {fieldErrors.state && <p className="text-xs text-destructive">{fieldErrors.state}</p>}
                                     </div>
                                 </div>
 
@@ -563,13 +563,13 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                             }
                                         }}
                                     />
-                                    {fieldErrors.zip && <p className="text-xs text-red-500">{fieldErrors.zip}</p>}
+                                    {fieldErrors.zip && <p className="text-xs text-destructive">{fieldErrors.zip}</p>}
                                 </div>
                             </div>
                         )}
 
                         {formError && (
-                            <p className="mt-4 text-sm text-red-500" data-testid="intake-address-error">
+                            <p className="mt-4 text-sm text-destructive" data-testid="intake-address-error">
                                 {formError}
                             </p>
                         )}
