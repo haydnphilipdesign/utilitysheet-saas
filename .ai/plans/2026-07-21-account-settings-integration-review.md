@@ -1,6 +1,6 @@
 # Account Settings and Settings/Branding Integration Review
 
-- Status: Implementation complete; authorized migration and GitHub main publication in progress
+- Status: Complete; authorized migration applied and reviewed work published to GitHub main
 - Owner: OpenAI Codex
 - Date: 2026-07-21
 - Branch: `main`
@@ -238,3 +238,6 @@ pretending the unresolved destructive lifecycle is safe.
 - Migration result: the table did not exist before execution; both statements committed together. Postflight
   verified all six columns/defaults, the primary key, action/status checks, the `accounts(id) ON DELETE SET
   NULL` foreign key, and the `(account_id, created_at DESC)` index. Initial row count was zero.
+- Publication result: final safeguards and the staged diff check passed; implementation commit `da20812`
+  fast-forwarded `46169fc..da20812` to GitHub `main`, and a fresh fetch verified `HEAD == origin/main`.
+- Required implementation, migration, and publication work for this approved slice: none.

@@ -7,7 +7,7 @@
 ## Session Metadata
 
 - Task: Complete Account settings and the final Settings/Branding Profile integration review.
-- Status: Authorized account-security migration applied and verified; GitHub main publication in progress.
+- Status: Complete; authorized account-security migration applied and reviewed Settings/Branding work published to GitHub main.
 - Current or last agent: OpenAI Codex
 - Branch: `main`
 - Last updated: 2026-07-21
@@ -45,6 +45,8 @@
 - Removed tracked generated audit/Playwright artifacts and added ignore rules for future runs.
 - Updated the active plan, original audit, Branding, Notifications, Seller Form Defaults, Workspace & Team,
   self-serve test plan, and durable Account closure decision.
+- Committed the accumulated reviewed work as `da20812` (`Complete account security and settings integration`),
+  pushed it fast-forward to GitHub `main`, fetched again, and verified `HEAD == origin/main` at that commit.
 
 ## Validation
 
@@ -62,10 +64,13 @@
   desktop/mobile functional, accessible-name, overflow, and journey evidence; no fresh visual audit is claimed.
 - Final `git diff --check` passed, and direct inspection found no secret/sensitive pattern in any of the
   21 untracked files. Port 3000 is clear after browser validation.
+- Immediately before publication, `npm exec tsc -- --noEmit`, `npm run security:scan`, `git diff --check`,
+  staged `git diff --check`, and the direct 21-file sensitive-pattern scan passed again.
 
 ## Remaining Work and Risks
 
 - Required implementation work for the approved slice: none.
+- Required migration/publication work: none.
 - The authorized account-security audit migration is complete; no further schema action is required for this slice.
 - Executable closure remains intentionally blocked pending approved retention/tombstone, referral-credit,
   shared-asset transfer, billing-finalization, and partial-failure policies plus a lifecycle migration.
@@ -75,11 +80,10 @@
 
 ## Concurrent Editing Warnings
 
-- No other active task is recorded. This worktree contains the intentional uncommitted changes from this task.
-- No commit, push, deployment, or additional migration has been performed. Only the explicitly authorized
-  account-security migration has been applied.
+- No other active task or concurrent edit is recorded. The reviewed implementation has been committed and
+  pushed to GitHub `main`; no deployment or additional migration was performed.
 
 ## Recommended Next Action
 
-Run the final publication safeguards, commit the reviewed diff, prove `origin/main` is an ancestor of `HEAD`,
-push `HEAD:main`, and verify the remote SHA.
+No required action remains. Account closure, deployment, other migrations, and other production mutations
+remain separate authorization-gated follow-ups.
