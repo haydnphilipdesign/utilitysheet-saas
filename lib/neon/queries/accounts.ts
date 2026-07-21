@@ -218,9 +218,22 @@ export async function getAccountsWithWeeklySummaryEnabled() {
     if (!sql) return [];
 
     const result = await sql`
-        SELECT * FROM accounts 
-        WHERE notification_preferences->>'weekly_summary' = 'true'
-        AND email IS NOT NULL
+        SELECT
+            a.id,
+            a.email,
+            a.full_name,
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM organization_members om
+                    WHERE om.account_id = a.id
+                        AND om.organization_id = a.active_organization_id
+                ) THEN a.active_organization_id
+                ELSE NULL
+            END AS active_organization_id
+        FROM accounts a
+        WHERE a.notification_preferences->>'weekly_summary' = 'true'
+            AND a.email IS NOT NULL
     `;
 
     return result;

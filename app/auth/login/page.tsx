@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { stackClientApp } from '@/lib/stack/client';
 import { Button } from '@/components/ui/button';
@@ -14,22 +15,25 @@ import {
     consumePendingSignupVerification,
     trackActivationResponse,
 } from '@/lib/analytics/activation';
+import { useAuthConfig } from '@/lib/stack/use-auth-config';
 
 export default function LoginPage() {
     const router = useRouter();
+    const authConfig = useAuthConfig();
+    const googleEnabled = authConfig.oauthProviderIds.includes('google');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const getSafeNext = (): string | null => {
+    const getSafeNext = useCallback((): string | null => {
         if (typeof window === 'undefined') return null;
         const nextParam = new URLSearchParams(window.location.search).get('next');
         return nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
-    };
+    }, []);
 
-    const getPostAuthRoute = async (source: string): Promise<string | null> => {
+    const getPostAuthRoute = useCallback(async (source: string): Promise<string | null> => {
         const safeNext = getSafeNext();
         if (safeNext) return safeNext;
         try {
@@ -47,7 +51,7 @@ export default function LoginPage() {
             console.error(e);
             return '/dashboard';
         }
-    };
+    }, [getSafeNext]);
 
     useEffect(() => {
         let cancelled = false;
@@ -68,7 +72,7 @@ export default function LoginPage() {
         return () => {
             cancelled = true;
         };
-    }, [router]);
+    }, [getPostAuthRoute, router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -118,7 +122,7 @@ export default function LoginPage() {
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
                     <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
-                        <img src="/logo-sm.png" alt="UtilitySheet Logo" width={32} height={32} className="h-6 w-6 sm:h-8 sm:w-8" />
+                        <Image src="/logo-sm.png" alt="UtilitySheet Logo" width={32} height={32} className="h-6 w-6 sm:h-8 sm:w-8" />
                     </div>
                     <span className="text-2xl sm:text-3xl font-bold text-foreground">UtilitySheet</span>
                 </div>
@@ -138,76 +142,86 @@ export default function LoginPage() {
                                 </div>
                             )}
 
-                            <div className="space-y-1.5 sm:space-y-2">
-                                <Label htmlFor="email" className="text-foreground text-sm">Email</Label>
-                                <Input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    inputMode="email"
-                                    autoComplete="email"
-                                    spellCheck={false}
-                                    placeholder="agent@realty.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
-                                />
-                            </div>
-                            <div className="space-y-1.5 sm:space-y-2">
-                                <Label htmlFor="password" className="text-foreground text-sm">Password</Label>
-                                <Input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
-                                />
-                            </div>
+                            {authConfig.loading && <p role="status" className="text-center text-sm text-muted-foreground">Loading sign-in options…</p>}
+                            {authConfig.unavailable && <p role="alert" className="text-center text-sm text-destructive">Sign-in options are temporarily unavailable. Please refresh and try again.</p>}
+                            {authConfig.credentialEnabled && (
+                                <>
+                                    <div className="space-y-1.5 sm:space-y-2">
+                                        <Label htmlFor="email" className="text-foreground text-sm">Email</Label>
+                                        <Input
+                                            id="email"
+                                            name="email"
+                                            type="email"
+                                            inputMode="email"
+                                            autoComplete="email"
+                                            spellCheck={false}
+                                            placeholder="agent@realty.com"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            required
+                                            className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5 sm:space-y-2">
+                                        <Label htmlFor="password" className="text-foreground text-sm">Password</Label>
+                                        <Input
+                                            id="password"
+                                            name="password"
+                                            type="password"
+                                            autoComplete="current-password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            required
+                                            className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </CardContent>
                         <CardFooter className="flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 pb-4 sm:pb-6">
-                            <Button
-                                type="submit"
-                                data-testid="login-submit"
-                                className="w-full h-10 sm:h-11 transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
-                                disabled={loading || googleLoading}
-                            >
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Signing in…
-                                    </>
-                                ) : (
-                                    'Sign In'
-                                )}
-                            </Button>
+                            {authConfig.credentialEnabled && (
+                                <Button
+                                    type="submit"
+                                    data-testid="login-submit"
+                                    className="w-full h-10 sm:h-11 transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
+                                    disabled={loading || googleLoading}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Signing in…
+                                        </>
+                                    ) : (
+                                        'Sign In'
+                                    )}
+                                </Button>
+                            )}
 
-                            {/* Divider */}
-                            <div className="relative w-full">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-border" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-                                </div>
-                            </div>
+                            {googleEnabled && (
+                                <>
+                                    {authConfig.credentialEnabled && (
+                                        <div className="relative w-full">
+                                            <div className="absolute inset-0 flex items-center">
+                                                <span className="w-full border-t border-border" />
+                                            </div>
+                                            <div className="relative flex justify-center text-xs uppercase">
+                                                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                                            </div>
+                                        </div>
+                                    )}
 
-                            {/* Google OAuth Button */}
-                            <Button
-                                type="button"
-                                data-testid="login-google"
-                                variant="outline"
-                                className="w-full h-10 sm:h-11 border-input bg-background/50 hover:bg-accent text-foreground transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
-                                onClick={handleGoogleSignIn}
-                                disabled={loading || googleLoading}
-                            >
-                                {googleLoading ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                                    <Button
+                                        type="button"
+                                        data-testid="login-google"
+                                        variant="outline"
+                                        className="w-full h-10 sm:h-11 border-input bg-background/50 hover:bg-accent text-foreground transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
+                                        onClick={handleGoogleSignIn}
+                                        disabled={loading || googleLoading}
+                                    >
+                                        {googleLoading ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                                         <path
                                             fill="currentColor"
                                             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -224,10 +238,12 @@ export default function LoginPage() {
                                             fill="currentColor"
                                             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                                         />
-                                    </svg>
-                                )}
-                                Continue with Google
-                            </Button>
+                                            </svg>
+                                        )}
+                                        Continue with Google
+                                    </Button>
+                                </>
+                            )}
 
                             <p className="text-xs sm:text-sm text-muted-foreground text-center">
                                 Don&apos;t have an account?{' '}

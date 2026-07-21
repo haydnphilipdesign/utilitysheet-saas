@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import {
     getOrCreateAccount,
-    getOrganizationById,
     getRequestById,
     getUtilityEntriesByRequestId,
     updateSubmittedRequestData,
 } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
+import { canAccessOwnedOrActiveOrganizationResource, getAuthorizedActiveOrganization } from '@/lib/auth/organization-access';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import {
     enforceMaxRequestBodyBytes,
@@ -116,13 +116,11 @@ async function getEditorContext(id: string) {
         return { response: NextResponse.json({ error: 'Request not found' }, { status: 404 }) };
     }
 
-    if (requestData.account_id !== account.id && requestData.organization_id !== account.active_organization_id) {
+    if (!await canAccessOwnedOrActiveOrganizationResource(account, requestData)) {
         return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
     }
 
-    const organization = account.active_organization_id
-        ? await getOrganizationById(account.active_organization_id)
-        : null;
+    const organization = await getAuthorizedActiveOrganization(account);
     const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
     if (!isPaid) {

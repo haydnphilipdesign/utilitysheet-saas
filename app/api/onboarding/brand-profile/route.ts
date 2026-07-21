@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
         const profile = await createBrandProfile({
             accountId: account.id,
-            organizationId: activeOrganization?.id || account.active_organization_id || undefined,
+            organizationId: activeOrganization?.id || undefined,
             name,
             primaryColor,
             secondaryColor,

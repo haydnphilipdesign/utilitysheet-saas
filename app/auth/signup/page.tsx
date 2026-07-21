@@ -17,9 +17,12 @@ import {
     trackActivationResponse,
 } from '@/lib/analytics/activation';
 import { persistPendingGrowthAttribution } from '@/lib/growth/attribution';
+import { useAuthConfig } from '@/lib/stack/use-auth-config';
 
 export default function SignupPage() {
     const router = useRouter();
+    const authConfig = useAuthConfig();
+    const googleEnabled = authConfig.oauthProviderIds.includes('google');
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -208,7 +211,9 @@ export default function SignupPage() {
                                 </div>
                             )}
 
-                            <div className="space-y-1.5 sm:space-y-2">
+                            {authConfig.loading && <p role="status" className="text-center text-sm text-muted-foreground">Loading sign-up options…</p>}
+                            {authConfig.unavailable && <p role="alert" className="text-center text-sm text-destructive">Sign-up options are temporarily unavailable. Please refresh and try again.</p>}
+                            {authConfig.credentialEnabled && <div className="space-y-1.5 sm:space-y-2">
                                 <Label htmlFor="fullName" className="text-foreground text-sm">Full Name</Label>
                                 <Input
                                     id="fullName"
@@ -221,8 +226,8 @@ export default function SignupPage() {
                                     required
                                     className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
                                 />
-                            </div>
-                            <div className="space-y-1.5 sm:space-y-2">
+                            </div>}
+                            {authConfig.credentialEnabled && <div className="space-y-1.5 sm:space-y-2">
                                 <Label htmlFor="email" className="text-foreground text-sm">Email</Label>
                                 <Input
                                     id="email"
@@ -237,8 +242,8 @@ export default function SignupPage() {
                                     required
                                     className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
                                 />
-                            </div>
-                            <div className="space-y-1.5 sm:space-y-2">
+                            </div>}
+                            {authConfig.credentialEnabled && <div className="space-y-1.5 sm:space-y-2">
                                 <Label htmlFor="password" className="text-foreground text-sm">Password</Label>
                                 <Input
                                     id="password"
@@ -252,10 +257,10 @@ export default function SignupPage() {
                                     minLength={8}
                                     className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground h-10 sm:h-11 text-base"
                                 />
-                            </div>
+                            </div>}
                         </CardContent>
                         <CardFooter className="flex flex-col gap-3 sm:gap-4 px-4 sm:px-6 pb-4 sm:pb-6">
-                            <Button
+                            {authConfig.credentialEnabled && <Button
                                 type="submit"
                                 data-testid="signup-submit"
                                 className="w-full h-10 sm:h-11 transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
@@ -269,31 +274,31 @@ export default function SignupPage() {
                                 ) : (
                                     'Start Free'
                                 )}
-                            </Button>
+                            </Button>}
 
-                            {/* Divider */}
-                            <div className="relative w-full">
-                                <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-border" />
-                                </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
-                                </div>
-                            </div>
+                            {googleEnabled && (
+                                <>
+                                    {authConfig.credentialEnabled && <div className="relative w-full">
+                                        <div className="absolute inset-0 flex items-center">
+                                            <span className="w-full border-t border-border" />
+                                        </div>
+                                        <div className="relative flex justify-center text-xs uppercase">
+                                            <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                                        </div>
+                                    </div>}
 
-                            {/* Google OAuth Button */}
-                            <Button
-                                type="button"
-                                data-testid="signup-google"
-                                variant="outline"
-                                className="w-full h-10 sm:h-11 border-input bg-background/50 hover:bg-accent text-foreground transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
-                                onClick={handleGoogleSignIn}
-                                disabled={loading || googleLoading}
-                            >
-                                {googleLoading ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                                    <Button
+                                        type="button"
+                                        data-testid="signup-google"
+                                        variant="outline"
+                                        className="w-full h-10 sm:h-11 border-input bg-background/50 hover:bg-accent text-foreground transition-all duration-200 text-sm sm:text-base active:scale-[0.98]"
+                                        onClick={handleGoogleSignIn}
+                                        disabled={loading || googleLoading}
+                                    >
+                                        {googleLoading ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                                         <path
                                             fill="currentColor"
                                             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -310,10 +315,12 @@ export default function SignupPage() {
                                             fill="currentColor"
                                             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                                         />
-                                    </svg>
-                                )}
-                                Continue with Google
-                            </Button>
+                                            </svg>
+                                        )}
+                                        Continue with Google
+                                    </Button>
+                                </>
+                            )}
 
                             <p className="text-xs sm:text-sm text-muted-foreground text-center">
                                 Already have an account?{' '}

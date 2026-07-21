@@ -51,10 +51,10 @@ export default function InvitePage() {
                     router.push('/dashboard');
                     router.refresh();
                 }, 800);
-            } catch (error: any) {
+            } catch (error: unknown) {
                 if (cancelled) return;
                 setStatus('error');
-                setMessage(error?.message || 'Failed to accept invite');
+                setMessage(error instanceof Error ? error.message : 'Failed to accept invite');
             }
         })();
 

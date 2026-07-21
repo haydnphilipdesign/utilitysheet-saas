@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
     getMonthlyUsageMock: vi.fn(),
     getRequestCountForAccountMock: vi.fn(),
     getDefaultBrandProfileMock: vi.fn(),
+    getBrandProfileMock: vi.fn(),
+    canAccessResourceMock: vi.fn(),
     createRequestMock: vi.fn(),
     updateRequestStatusMock: vi.fn(),
     createEventLogMock: vi.fn(),
@@ -46,12 +48,16 @@ vi.mock('@/lib/neon/queries', () => ({
     getOrCreateAccount: mocks.getOrCreateAccountMock,
     ensureAccountRecord: mocks.ensureAccountRecordMock,
     getMonthlyUsage: mocks.getMonthlyUsageMock,
-    getBrandProfile: vi.fn(),
+    getBrandProfile: mocks.getBrandProfileMock,
     getDefaultBrandProfile: mocks.getDefaultBrandProfileMock,
     updateRequestStatus: mocks.updateRequestStatusMock,
     createEventLog: mocks.createEventLogMock,
     getRequestCountForAccount: mocks.getRequestCountForAccountMock,
     getOrganizationById: mocks.getOrganizationByIdMock,
+}));
+
+vi.mock('@/lib/auth/organization-access', () => ({
+    canAccessOwnedOrActiveOrganizationResource: mocks.canAccessResourceMock,
 }));
 
 vi.mock('@/lib/activation/ensure-account-activation', () => ({
@@ -94,6 +100,7 @@ describe('POST /api/requests advanced gating', () => {
         mocks.getMonthlyUsageMock.mockResolvedValue({ used: 0, limit: 3, plan: 'free' });
         mocks.getRequestCountForAccountMock.mockResolvedValue(0);
         mocks.getDefaultBrandProfileMock.mockResolvedValue(null);
+        mocks.canAccessResourceMock.mockResolvedValue(true);
         mocks.getOrganizationByIdMock.mockResolvedValue(null);
         mocks.buildStructuredPropertyAddressMock.mockResolvedValue({
             street: '123 Main St',
@@ -137,6 +144,27 @@ describe('POST /api/requests advanced gating', () => {
         expect(response.status).toBe(403);
         const body = await response.json();
         expect(String(body.message || '')).toMatch(/Advanced Utility Packets/i);
+        expect(mocks.createRequestMock).not.toHaveBeenCalled();
+    });
+
+    it('rejects a Branding Profile outside the authenticated account workspace', async () => {
+        mocks.getBrandProfileMock.mockResolvedValue({
+            id: '00000000-0000-4000-8000-000000000099',
+            account_id: 'acct_other',
+            organization_id: null,
+        });
+        mocks.canAccessResourceMock.mockResolvedValue(false);
+
+        const response = await POST(new Request('http://localhost/api/requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                propertyAddress: '123 Main St, Austin, TX 78701',
+                brandProfileId: '00000000-0000-4000-8000-000000000099',
+            }),
+        }));
+
+        expect(response.status).toBe(400);
         expect(mocks.createRequestMock).not.toHaveBeenCalled();
     });
 });

@@ -23,6 +23,7 @@ import {
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
 import { PageHeader } from '@/components/ui/page-header';
 import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
+import { AccountSecuritySettings } from '@/components/settings/account-security';
 import { Link as LinkIcon, User, Bell, Check, Copy, CreditCard, ExternalLink, Loader2, RefreshCw, Save, Shield, Sparkles, Trash2, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -990,6 +991,7 @@ export default function SettingsPage() {
                     </div>
                 </CardContent>
             </Card>
+            <AccountSecuritySettings />
                 </TabsContent>
 
                 <TabsContent value="notifications" className="mt-2 space-y-6 text-base">

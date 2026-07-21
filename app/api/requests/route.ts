@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog, getOrganizationById } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -11,6 +11,7 @@ import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 import { normalizeRequestListParams } from '@/lib/requests/listing';
+import { canAccessOwnedOrActiveOrganizationResource } from '@/lib/auth/organization-access';
 
 function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
@@ -42,8 +43,8 @@ export async function GET(request: Request) {
         }
         const { account, activeOrganization } = activationState;
         const accountId = account.id;
-        const organizationId = activeOrganization?.id || account.active_organization_id || undefined;
-        const organization = activeOrganization || (organizationId ? await getOrganizationById(organizationId) : null);
+        const organizationId = activeOrganization?.id || undefined;
+        const organization = activeOrganization;
         const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
         const url = new URL(request.url);
@@ -122,8 +123,8 @@ export async function POST(request: Request) {
         }
         const { account, activeOrganization } = activationState;
         const accountId = account.id;
-        const organizationId = activeOrganization?.id || account.active_organization_id;
-        const organization = activeOrganization || (organizationId ? await getOrganizationById(organizationId) : null);
+        const organizationId = activeOrganization?.id;
+        const organization = activeOrganization;
         const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
         const selectedUtilityCategories = parsedBody.data.utilityCategories
@@ -162,10 +163,21 @@ export async function POST(request: Request) {
 
         // Automatically associate with default brand profile if not specified
         let brandProfileId = parsedBody.data.brandProfileId;
+        let selectedBrandProfile = null;
+        if (brandProfileId) {
+            selectedBrandProfile = await getBrandProfile(brandProfileId);
+            if (!selectedBrandProfile || !await canAccessOwnedOrActiveOrganizationResource(account, selectedBrandProfile)) {
+                return NextResponse.json(
+                    { error: 'Invalid Branding Profile', message: 'Choose a Branding Profile from the active workspace.' },
+                    { status: 400 },
+                );
+            }
+        }
         if (!brandProfileId) {
             const defaultBrand = await getDefaultBrandProfile(accountId, organizationId);
             if (defaultBrand) {
                 brandProfileId = defaultBrand.id;
+                selectedBrandProfile = defaultBrand;
             }
         }
 
@@ -221,9 +233,9 @@ export async function POST(request: Request) {
         if (parsedBody.data.sellerEmail && parsedBody.data.sendSellerEmail !== false) {
             // Get agent name from brand profile or account
             let agentName: string | undefined;
-            let brandProfile = null;
+            let brandProfile = selectedBrandProfile;
             if (brandProfileId) {
-                brandProfile = await getBrandProfile(brandProfileId);
+                brandProfile = brandProfile || await getBrandProfile(brandProfileId);
                 agentName = brandProfile?.contact_name || undefined;
             }
             // Fallback to account name if no brand profile contact name

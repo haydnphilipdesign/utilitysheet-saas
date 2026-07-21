@@ -104,8 +104,18 @@ export async function POST(request: Request) {
         }
         const { full_name, notification_preferences } = parsed.data;
 
+        if (!user.primaryEmail) {
+            return NextResponse.json({ error: 'Verified account email required' }, { status: 403 });
+        }
+
+        // Keep Stack displayName and the UtilitySheet profile aligned. Activation reconciliation
+        // treats Stack as the identity source, so updating only the database would be overwritten later.
+        if (full_name !== undefined && full_name !== user.displayName) {
+            await user.setDisplayName(full_name);
+        }
+
         // Get the account ID first
-        const account = await getOrCreateAccount(user.id, user.primaryEmail!);
+        const account = await getOrCreateAccount(user.id, user.primaryEmail);
         if (!account) {
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }

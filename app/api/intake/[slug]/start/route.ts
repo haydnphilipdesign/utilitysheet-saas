@@ -188,7 +188,7 @@ export async function POST(
 
         const newRequest = await createRequest({
             accountId: account.id,
-            organizationId: account.active_organization_id || undefined,
+            organizationId: activeOrg?.id || undefined,
             brandProfileId: defaultBrand?.id,
             propertyAddress: canonicalPropertyAddress,
             propertyAddressStructured: structuredPropertyAddress,

@@ -23,8 +23,8 @@ export function EmailVerificationBanner() {
         try {
             await user.sendVerificationEmail();
             setSent(true);
-        } catch (err: any) {
-            if (err?.message?.includes('EmailAlreadyVerified')) {
+        } catch (err: unknown) {
+            if (err instanceof Error && err.message.includes('EmailAlreadyVerified')) {
                 // Email was verified in the meantime
                 setSent(true);
             } else {

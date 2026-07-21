@@ -49,3 +49,12 @@ Identify high-value settings or user-controlled inputs that are missing, confusi
 - Immediate quality fixes: give notification switches and the Branding Profile overflow menu accessible names, communicate the dependency between submission emails and PDF attachments, and replace the generic delete confirmation with a branded explanation of fallback behavior.
 - Product-owned constraints that should remain constrained: arbitrary PDF layout/fonts/title, separate Simple/Advanced brands, and free-form utility taxonomy customization.
 - No product code, data, schema, billing state, deployment state, or production environment was changed.
+
+## Final integration review (2026-07-21)
+
+- The planned Settings and Branding slices were reviewed together and remain ownership-compatible: personal
+  identity/preferences, workspace administration/routing/billing, reusable-form defaults, request snapshots,
+  and Branding Profile presentation are separate scopes.
+- Directly necessary fixes added approved Account controls, live-membership organization isolation,
+  request-time Branding Profile validation, schema/migration parity, and generated-artifact cleanup.
+- Full result and validation evidence: `.ai/plans/2026-07-21-account-settings-integration-review.md`.

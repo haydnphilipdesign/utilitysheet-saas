@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createBrandProfile, getBrandProfile, getOrCreateAccount, getOrganizationById } from '@/lib/neon/queries';
+import { createBrandProfile, getBrandProfile, getOrCreateAccount } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
+import { canAccessOwnedOrActiveOrganizationResource, getAuthorizedActiveOrganization } from '@/lib/auth/organization-access';
 
 const COPY_SUFFIX = ' (Copy)';
 
@@ -33,19 +34,13 @@ export async function POST(
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
 
-        if (profile.organization_id) {
-            if (profile.organization_id !== account.active_organization_id) {
-                return NextResponse.json({ error: 'Unauthorized access to organization profile' }, { status: 403 });
-            }
-        } else {
-            if (profile.account_id !== account.id) {
-                return NextResponse.json({ error: 'Unauthorized access to account profile' }, { status: 403 });
-            }
+        if (!await canAccessOwnedOrActiveOrganizationResource(account, profile)) {
+            return NextResponse.json({ error: 'Unauthorized access to profile' }, { status: 403 });
         }
 
         let hasPaidAccess = account.subscription_status === 'pro';
         if (!hasPaidAccess && account.active_organization_id) {
-            const org = await getOrganizationById(account.active_organization_id);
+            const org = await getAuthorizedActiveOrganization(account);
             hasPaidAccess = org?.subscription_status === 'team';
         }
 

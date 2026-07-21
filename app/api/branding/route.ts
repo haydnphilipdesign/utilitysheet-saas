@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createBrandProfile, getBrandProfileRequestCounts, getBrandProfiles, getIntakeLinkByAccountId, getOrganizationById } from '@/lib/neon/queries';
+import { createBrandProfile, getBrandProfileRequestCounts, getBrandProfiles, getIntakeLinkByAccountId } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileCreateBodySchema } from '@/lib/validation/schemas';
 import { normalizeMessageTemplates } from '@/lib/message-templates';
@@ -21,8 +21,8 @@ export async function GET() {
 
         const { account, activeOrganization } = activationState;
         const accountId = account.id;
-        const organizationId = activeOrganization?.id || account.active_organization_id;
-        const organization = activeOrganization || (organizationId ? await getOrganizationById(organizationId) : null);
+        const organizationId = activeOrganization?.id;
+        const organization = activeOrganization;
 
         let profiles = await getBrandProfiles(accountId, organizationId || undefined);
 
@@ -91,8 +91,8 @@ export async function POST(request: Request) {
 
         const { account, activeOrganization } = activationState;
         const accountId = account.id;
-        const organizationId = activeOrganization?.id || account.active_organization_id;
-        const organization = activeOrganization || (organizationId ? await getOrganizationById(organizationId) : null);
+        const organizationId = activeOrganization?.id;
+        const organization = activeOrganization;
         const hasPaidAccess = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
         if (!hasPaidAccess) {

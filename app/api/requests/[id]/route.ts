@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getRequestById, updateRequestStatus, getOrCreateAccount, deleteRequest, getOrganizationById } from '@/lib/neon/queries';
+import { getRequestById, updateRequestStatus, getOrCreateAccount, deleteRequest } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { enforceMaxRequestBodyBytes, invalidRequestBodyResponse } from '@/lib/security/api-response';
+import { canAccessOwnedOrActiveOrganizationResource, getAuthorizedActiveOrganization } from '@/lib/auth/organization-access';
 
 const REQUEST_UPDATE_MAX_BODY_BYTES = 8 * 1024;
 
@@ -50,12 +51,11 @@ export async function GET(
         }
 
         // Security check: Ensure the request belongs to the user or their organization
-        if (requestData.account_id !== account.id && requestData.organization_id !== account.active_organization_id) {
+        if (!await canAccessOwnedOrActiveOrganizationResource(account, requestData)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
-        const organizationId = account.active_organization_id;
-        const organization = organizationId ? await getOrganizationById(organizationId) : null;
+        const organization = await getAuthorizedActiveOrganization(account);
         const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
         const row = requestData as unknown as Record<string, unknown> & { is_locked?: unknown };
@@ -99,7 +99,7 @@ export async function PATCH(
         }
 
         // Security check: Ensure the request belongs to the user or their organization
-        if (requestData.account_id !== account.id && requestData.organization_id !== account.active_organization_id) {
+        if (!await canAccessOwnedOrActiveOrganizationResource(account, requestData)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -150,7 +150,7 @@ export async function DELETE(
         }
 
         // Security check: Ensure the request belongs to the user or their organization
-        if (requestData.account_id !== account.id && requestData.organization_id !== account.active_organization_id) {
+        if (!await canAccessOwnedOrActiveOrganizationResource(account, requestData)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

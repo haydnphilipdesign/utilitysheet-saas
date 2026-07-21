@@ -110,3 +110,11 @@ Acceptance:
 - The active organization and Team status must be re-read server-side for every action.
 - Pending-invite cancellation is destructive but recoverable through a new invitation; require confirmation in the UI.
 - Ownership transfer and leave-workspace are out of scope and remain future work until a safe server/data model is designed.
+
+## Final integration review (2026-07-21)
+
+- Workspace and Billing remain separate. Rename, invite, membership, notification, and Team billing routes
+  continue deriving organization/role/seat/plan state server-side.
+- Downstream request and Branding Profile routes now also require the corresponding live membership, closing
+  the stale-active-pointer gap after removal. Ownership transfer and leave-workspace remain intentionally
+  unsupported pending an approved lifecycle.

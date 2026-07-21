@@ -144,6 +144,23 @@ describe('GET /api/requests list contract', () => {
         });
     });
 
+    it('does not trust a stale active-organization pointer without a live membership', async () => {
+        mocks.ensureAccountActivation.mockResolvedValue({
+            account: {
+                id: 'acct_1',
+                active_organization_id: 'org_stale',
+                subscription_status: 'free',
+            },
+            activeOrganization: null,
+        });
+
+        const response = await GET(new Request('http://localhost/api/requests'));
+
+        expect(response.status).toBe(200);
+        expect(mocks.getRequests).toHaveBeenCalledWith('acct_1', undefined, expect.any(Object));
+        expect(mocks.getRequests).not.toHaveBeenCalledWith('acct_1', 'org_stale', expect.any(Object));
+    });
+
     it('sanitizes locked rows while preserving pagination metadata', async () => {
         mocks.getRequests.mockResolvedValue({
             data: [{

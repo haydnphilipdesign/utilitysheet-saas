@@ -91,7 +91,7 @@ export async function POST(_request: Request) {
         }
 
         const { account, activeOrganization, defaultBrandProfile } = activation;
-        const organizationId = activeOrganization?.id || account.active_organization_id || undefined;
+        const organizationId = activeOrganization?.id || undefined;
         const intakeLink = await getIntakeLinkByAccountId(account.id);
         const brandProfile = await getIntakeBrandProfile(
             account.id,

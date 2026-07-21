@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getBrandProfile, updateBrandProfile, deleteBrandProfile, getOrCreateAccount, getOrganizationById } from '@/lib/neon/queries';
+import { getBrandProfile, updateBrandProfile, deleteBrandProfile, getOrCreateAccount } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileUpdateBodySchema } from '@/lib/validation/schemas';
 import { normalizeMessageTemplates } from '@/lib/message-templates';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
+import { canAccessOwnedOrActiveOrganizationResource, getAuthorizedActiveOrganization } from '@/lib/auth/organization-access';
 
 type AccountWithOrgContext = {
+    id: string;
     subscription_status?: string | null;
     active_organization_id?: string | null;
 };
@@ -14,7 +16,7 @@ async function hasPaidBrandingAccess(account: AccountWithOrgContext): Promise<bo
     if (account.subscription_status === 'pro') return true;
     if (!account.active_organization_id) return false;
 
-    const org = await getOrganizationById(account.active_organization_id);
+    const org = await getAuthorizedActiveOrganization(account);
     return org?.subscription_status === 'team';
 }
 
@@ -41,14 +43,8 @@ export async function GET(
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
 
-        if (profile.organization_id) {
-            if (profile.organization_id !== account.active_organization_id) {
-                return NextResponse.json({ error: 'Unauthorized access to organization profile' }, { status: 403 });
-            }
-        } else {
-            if (profile.account_id !== account.id) {
-                return NextResponse.json({ error: 'Unauthorized access to account profile' }, { status: 403 });
-            }
+        if (!await canAccessOwnedOrActiveOrganizationResource(account, profile)) {
+            return NextResponse.json({ error: 'Unauthorized access to profile' }, { status: 403 });
         }
 
         return NextResponse.json(profile);
@@ -88,18 +84,13 @@ export async function PUT(
         }
 
         const hasPaidAccess = await hasPaidBrandingAccess({
+            id: account.id,
             subscription_status: account.subscription_status,
             active_organization_id: account.active_organization_id,
         });
 
-        if (profile.organization_id) {
-            if (profile.organization_id !== account.active_organization_id) {
-                return NextResponse.json({ error: 'Unauthorized access to organization profile' }, { status: 403 });
-            }
-        } else {
-            if (profile.account_id !== account.id) {
-                return NextResponse.json({ error: 'Unauthorized access to account profile' }, { status: 403 });
-            }
+        if (!await canAccessOwnedOrActiveOrganizationResource(account, profile)) {
+            return NextResponse.json({ error: 'Unauthorized access to profile' }, { status: 403 });
         }
 
         const isPro = hasPaidAccess;
@@ -131,7 +122,7 @@ export async function PUT(
             } : {}),
             // Pass context for default handling
             accountId: account.id,
-            organizationId: account.active_organization_id || undefined
+            organizationId: profile.organization_id || undefined
         });
 
         if (!updatedProfile) {
@@ -168,18 +159,13 @@ export async function DELETE(
         }
 
         const hasPaidAccess = await hasPaidBrandingAccess({
+            id: account.id,
             subscription_status: account.subscription_status,
             active_organization_id: account.active_organization_id,
         });
 
-        if (profile.organization_id) {
-            if (profile.organization_id !== account.active_organization_id) {
-                return NextResponse.json({ error: 'Unauthorized access to organization profile' }, { status: 403 });
-            }
-        } else {
-            if (profile.account_id !== account.id) {
-                return NextResponse.json({ error: 'Unauthorized access to account profile' }, { status: 403 });
-            }
+        if (!await canAccessOwnedOrActiveOrganizationResource(account, profile)) {
+            return NextResponse.json({ error: 'Unauthorized access to profile' }, { status: 403 });
         }
 
         if (!hasPaidAccess) {

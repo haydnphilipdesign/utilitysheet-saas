@@ -111,3 +111,11 @@ Focused Vitest per change; then `npx eslint <changed files>`, `npm exec tsc -- -
 `packet-pdf-route`, `utilitysheet-pdf-preview`, `branding-schema`) when Phase B/C touch branding
 render paths. Live authenticated browser QA is not possible in this non-interactive session and
 remains a follow-up.
+
+## Final integration review (2026-07-21)
+
+- Organization-scoped list/create/read/update/delete/duplicate paths now require live membership instead of
+  trusting a stale active-workspace pointer. Default updates use the source profile's verified scope.
+- New request creation validates a selected Branding Profile against the authenticated account/active
+  workspace before association. Existing request/profile fallbacks, messages, PDF/email/web-packet output,
+  and Free/paid behavior remain unchanged. See the 2026-07-21 integration plan for final validation.

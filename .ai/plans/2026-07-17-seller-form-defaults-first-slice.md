@@ -108,3 +108,11 @@ Validation outcome:
 - Public errors must remain generic and must not reveal whether the account, profile, or inactive row exists.
 - The existing cookie resume path should continue returning the already-created draft; defaults apply only when a new request is created.
 - No multiple links, saved presets, taxonomy customization, packet redesign, or unrelated Settings cleanup is in scope.
+
+## Final integration review (2026-07-21)
+
+- Stable `/api/intake-link`, `/i/[slug]`, and per-request capability URLs remain unchanged. Defaults still
+  apply only when a new reusable-form request is created.
+- Public start now uses only the live membership-derived active workspace; a stale account pointer cannot
+  place a new request into a workspace the account has left. Scoped Branding Profile/category resolution,
+  paused-link generic 404 behavior, plan fallback, and existing-link compatibility remain intact.

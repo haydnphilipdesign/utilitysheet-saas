@@ -140,3 +140,11 @@ scoping clean, is safe with removed members, and invents no unsupported recipien
 - Do not run live migrations, send real emails, commit, push, or deploy without separate authorization.
 - Do not invent shared-inbox or free-form recipient behavior (Model C) unless separately approved.
 - Do not enable the weekly-summary cron until scheduling infrastructure is dependably configured.
+
+## Final integration review (2026-07-21)
+
+- Personal notification preferences and Team admin routing remain distinct and membership-derived. Weekly
+  summary account selection now nulls stale active-workspace pointers unless a live membership exists,
+  preventing post-removal workspace statistics from reaching a former member.
+- Notification accessibility/dependency, seller email/PDF attachment, routing, and message-template suites
+  are included in the final 627-test pass. The cron scheduling non-goal remains unchanged.

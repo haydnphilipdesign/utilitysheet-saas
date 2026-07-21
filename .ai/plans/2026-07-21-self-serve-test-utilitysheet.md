@@ -178,3 +178,9 @@
 - Completion remains reviewable after email/PDF failure.
 - Demos have no ordinary quota, operational, activation, retention, testimonial, abandonment, provider-memory, notification-fan-out, acquisition, or referral effects.
 - No schema migration, production write, deployment, commit, or push is required for the implementation itself.
+
+## Final integration review (2026-07-21)
+
+- Test-drive request creation now uses only the live membership-derived active workspace; it no longer falls
+  back to a stale saved organization pointer. Demo isolation and all existing test-drive safety behavior
+  remain covered by the final full Vitest pass.

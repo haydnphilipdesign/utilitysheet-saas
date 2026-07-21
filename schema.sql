@@ -40,6 +40,22 @@ CREATE TABLE IF NOT EXISTS organizations (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Keep the active workspace pointer safe when an organization is removed.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'accounts_active_organization_id_fkey'
+    ) THEN
+        ALTER TABLE accounts
+            ADD CONSTRAINT accounts_active_organization_id_fkey
+            FOREIGN KEY (active_organization_id)
+            REFERENCES organizations(id)
+            ON DELETE SET NULL;
+    END IF;
+END $$;
+
 -- Organization Members table
 CREATE TABLE IF NOT EXISTS organization_members (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -228,6 +244,17 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Self-service account security events. Metadata must remain free of passwords,
+-- auth tokens, capability tokens, raw IP addresses, and user-agent strings.
+CREATE TABLE IF NOT EXISTS account_security_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    action TEXT NOT NULL CHECK (char_length(action) BETWEEN 1 AND 80),
+    status TEXT NOT NULL DEFAULT 'success' CHECK (status IN ('success', 'failure')),
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Product updates / changelog (shown on user dashboard)
 CREATE TABLE IF NOT EXISTS product_updates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -324,6 +351,7 @@ CREATE INDEX IF NOT EXISTS idx_accounts_role_plan_created_at_desc ON accounts(ro
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
 CREATE INDEX IF NOT EXISTS idx_organizations_stripe_customer_id ON organizations(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS idx_event_logs_request_id ON event_logs(request_id);
+CREATE INDEX IF NOT EXISTS idx_account_security_events_account_created ON account_security_events(account_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_request_created ON ai_generation_runs(request_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_feature_category_created ON ai_generation_runs(feature, category, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_status_created ON ai_generation_runs(status, created_at DESC);

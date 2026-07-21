@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
     getOrCreateAccount,
-    getOrganizationById,
     getRequestById,
     updateRequestConfiguration,
 } from '@/lib/neon/queries';
@@ -9,6 +8,7 @@ import { stackServerApp } from '@/lib/stack/server';
 import { requestConfigurationBodySchema } from '@/lib/validation/schemas';
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
+import { canAccessOwnedOrActiveOrganizationResource, getAuthorizedActiveOrganization } from '@/lib/auth/organization-access';
 
 export async function PATCH(
     request: Request,
@@ -31,7 +31,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'Request not found' }, { status: 404 });
         }
 
-        if (existing.account_id !== account.id && existing.organization_id !== account.active_organization_id) {
+        if (!await canAccessOwnedOrActiveOrganizationResource(account, existing)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -48,9 +48,7 @@ export async function PATCH(
             return invalidRequestBodyResponse();
         }
 
-        const organization = account.active_organization_id
-            ? await getOrganizationById(account.active_organization_id)
-            : null;
+        const organization = await getAuthorizedActiveOrganization(account);
         const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
         if (parsedBody.data.packetMode === 'advanced' && !isPaid) {

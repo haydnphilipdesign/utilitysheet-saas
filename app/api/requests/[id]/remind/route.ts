@@ -5,6 +5,7 @@ import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerReminderEmail } from '@/lib/email/email-service';
 import { reminderRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
+import { canAccessOwnedOrActiveOrganizationResource } from '@/lib/auth/organization-access';
 
 const REMINDER_COOLDOWN_MS = 10 * 60 * 1000;
 
@@ -31,7 +32,7 @@ export async function POST(
         }
 
         // Security check: Ensure the request belongs to the user or their organization
-        if (requestData.account_id !== account.id && requestData.organization_id !== account.active_organization_id) {
+        if (!await canAccessOwnedOrActiveOrganizationResource(account, requestData)) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

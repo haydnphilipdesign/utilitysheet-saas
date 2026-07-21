@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
     getOrCreateAccountMock: vi.fn(),
     getOrganizationByIdMock: vi.fn(),
     createBrandProfileMock: vi.fn(),
+    canAccessResourceMock: vi.fn(),
+    getAuthorizedOrganizationMock: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -19,6 +21,11 @@ vi.mock('@/lib/neon/queries', () => ({
     getOrCreateAccount: mocks.getOrCreateAccountMock,
     getOrganizationById: mocks.getOrganizationByIdMock,
     createBrandProfile: mocks.createBrandProfileMock,
+}));
+
+vi.mock('@/lib/auth/organization-access', () => ({
+    canAccessOwnedOrActiveOrganizationResource: mocks.canAccessResourceMock,
+    getAuthorizedActiveOrganization: mocks.getAuthorizedOrganizationMock,
 }));
 
 import { POST } from '@/app/api/branding/[id]/duplicate/route';
@@ -72,6 +79,14 @@ describe('POST /api/branding/[id]/duplicate', () => {
             name: data.name,
             is_default: false,
         }));
+        mocks.canAccessResourceMock.mockImplementation(async (account, profile) => (
+            profile.organization_id
+                ? profile.organization_id === account.active_organization_id
+                : profile.account_id === account.id
+        ));
+        mocks.getAuthorizedOrganizationMock.mockImplementation(async (account) => (
+            account.active_organization_id ? mocks.getOrganizationByIdMock(account.active_organization_id) : null
+        ));
     });
 
     it('rejects unauthenticated requests', async () => {

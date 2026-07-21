@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -47,6 +49,7 @@ logs_result*.json
 Screenshot_*.png
 Screenshot_*.jpg
 Screenshot_*.jpeg
+.audit-*.mjs
 *.har
 *.trace.json
 *.ndjson

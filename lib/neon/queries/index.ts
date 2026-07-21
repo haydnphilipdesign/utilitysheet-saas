@@ -144,6 +144,14 @@ export type {
     ReferralCreditCounts,
     ReferralCreditStatus,
 } from './referral-credits';
+
+export type { AccountSecurityEventAction } from './account-data';
+export {
+    getAccountClosureReadiness,
+    getAccountDataExport,
+    recordAccountSecurityEvent,
+    updateAccountEmail,
+} from './account-data';
 export {
     awardReferralCreditForActivation,
     getEarnedReferralCredits,

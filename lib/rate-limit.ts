@@ -189,6 +189,34 @@ export const growthReferralEventRatelimit: RateLimitPolicy = {
     prefix: 'ratelimit:growth-referral',
 };
 
+export const accountSecurityRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(12, "15 m"),
+            analytics: true,
+            prefix: "ratelimit:account-security",
+        })
+        : null,
+    limit: 12,
+    windowMs: 15 * 60 * 1000,
+    prefix: "account-security",
+};
+
+export const accountExportRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(3, "1 h"),
+            analytics: true,
+            prefix: "ratelimit:account-export",
+        })
+        : null,
+    limit: 3,
+    windowMs: 60 * 60 * 1000,
+    prefix: "account-export",
+};
+
 const memoryRateLimit = new Map<string, { count: number; resetAt: number }>();
 
 /**
