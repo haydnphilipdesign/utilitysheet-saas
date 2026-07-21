@@ -211,6 +211,23 @@ type AnalyticsEventMap = {
   seller_success_email_confirmation_requested: BasePayload & {
     success: boolean;
   };
+  test_drive_completed: BasePayload & {
+    source: "seller_flow";
+  };
+  test_drive_offer_viewed: BasePayload & {
+    source: "onboarding" | "dashboard";
+    state: "eligible" | "ready" | "completed" | "ineligible";
+  };
+  test_drive_started: BasePayload & {
+    source: "onboarding" | "dashboard";
+  };
+  test_drive_opened: BasePayload & {
+    source: "onboarding" | "dashboard";
+    action: "open" | "resume";
+  };
+  test_drive_seller_link_copied: BasePayload & {
+    source: "onboarding" | "dashboard";
+  };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

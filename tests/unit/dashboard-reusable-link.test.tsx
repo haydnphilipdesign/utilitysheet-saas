@@ -147,6 +147,10 @@ function createDashboardFetchMock(options: FetchOptions) {
             return jsonResponse([]);
         }
 
+        if (url === '/api/test-drive' && method === 'GET') {
+            return jsonResponse({ status: 'eligible' });
+        }
+
         if (url.includes('/remind') && method === 'POST') {
             return jsonResponse({ success: true });
         }

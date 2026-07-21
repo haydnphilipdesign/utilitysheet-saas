@@ -107,6 +107,10 @@ function createFetchMock() {
             return jsonResponse({ id: 'brand_1' });
         }
 
+        if (url === '/api/test-drive' && method === 'GET') {
+            return jsonResponse({ status: 'eligible' });
+        }
+
         return jsonResponse({ error: 'Not found' }, 404);
     });
 }

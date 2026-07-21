@@ -308,10 +308,6 @@ export default function NewRequestPage() {
                 sendSellerEmail: formData.send_seller_email,
             };
 
-            if (isOnboarding) {
-                requestBody.isDemo = true;
-            }
-
             const response = await fetch('/api/requests', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

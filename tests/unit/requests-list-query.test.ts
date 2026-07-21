@@ -52,6 +52,7 @@ describe('getRequests list query', () => {
         expect(queryText).toContain('account_id = ');
         expect(queryText).toContain('organization_id IS NULL');
         expect(queryText).toContain('deleted_at IS NULL');
+        expect(queryText.match(/COALESCE\(is_demo, FALSE\) = FALSE/g)?.length).toBeGreaterThanOrEqual(2);
         expect(queryText).toContain('POSITION(LOWER(');
         expect(queryText).toContain('property_address');
         expect(queryText).toContain('seller_name');

@@ -173,6 +173,36 @@ describe('packet-data builder', () => {
         expect(getIntakeLinkByAccountId).toHaveBeenCalledWith('acct_optin');
     });
 
+    it('marks test packets and suppresses referral acquisition data', async () => {
+        (getRequestByToken as Mock).mockResolvedValue({
+            id: 'req_test_drive',
+            account_id: 'acct_test_drive',
+            organization_id: null,
+            brand_profile_id: 'brand_test_drive',
+            property_address: '[TEST] 123 Maple Street, Anytown, PA 18301',
+            created_at: '2026-01-01T00:00:00.000Z',
+            status: 'submitted',
+            is_demo: true,
+        });
+
+        (getBrandProfile as Mock).mockResolvedValue({
+            id: 'brand_test_drive',
+            name: 'My Brand',
+            primary_color: '#10b981',
+            show_powered_by: true,
+        });
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+
+        const result = await getPacketDataByPublicToken('test_token');
+
+        expect(result.status).toBe('ok');
+        if (result.status !== 'ok') return;
+
+        expect(result.data.meta.is_demo).toBe(true);
+        expect(result.data.meta.referral_code).toBeNull();
+        expect(getIntakeLinkByAccountId).not.toHaveBeenCalled();
+    });
+
     it('returns locked when request is overage-locked and user is not paid', async () => {
         (getRequestById as Mock).mockResolvedValue({
             id: 'req_locked',

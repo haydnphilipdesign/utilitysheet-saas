@@ -366,6 +366,7 @@ export async function getLatestRequestsForUsers(userIds: string[], limitPerUser 
             FROM requests r
             WHERE r.account_id = ANY(${uniqueUserIds}::uuid[])
                 AND r.deleted_at IS NULL
+                AND COALESCE(r.is_demo, FALSE) = FALSE
         ) ranked_requests
         WHERE row_num <= ${perUserLimit}
         ORDER BY account_id, created_at DESC, id DESC

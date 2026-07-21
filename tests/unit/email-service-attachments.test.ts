@@ -45,7 +45,7 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: true,
         });
 
-        expect(result).toEqual({ success: true });
+        expect(result).toEqual({ success: true, attachmentStatus: 'attached' });
         expect(createPacketPdfAttachmentForRequestMock).toHaveBeenCalledWith('req_1');
 
         expect(sendEmailMock).toHaveBeenCalledTimes(1);
@@ -65,7 +65,7 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: false,
         });
 
-        expect(result).toEqual({ success: true });
+        expect(result).toEqual({ success: true, attachmentStatus: 'disabled' });
         expect(createPacketPdfAttachmentForRequestMock).not.toHaveBeenCalled();
 
         const payload = sendEmailMock.mock.calls[0][0];
@@ -85,7 +85,7 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: true,
         });
 
-        expect(result).toEqual({ success: true });
+        expect(result).toEqual({ success: true, attachmentStatus: 'failed' });
         expect(createPacketPdfAttachmentForRequestMock).toHaveBeenCalledWith('req_3');
 
         const payload = sendEmailMock.mock.calls[0][0];
@@ -110,7 +110,7 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: true,
         });
 
-        expect(result).toEqual({ success: true });
+        expect(result).toEqual({ success: true, attachmentStatus: 'attached' });
         const payload = sendEmailMock.mock.calls[0][0];
         expect(payload.to).toBe('haydn@multimedium.dev');
         expect(payload.subject).toBe('Utility Info Submitted for 123 Main Street, Anytown, PA 18301');
@@ -127,8 +127,37 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: false,
         });
 
-        expect(result).toEqual({ success: true });
+        expect(result).toEqual({ success: true, attachmentStatus: 'disabled' });
         const payload = sendEmailMock.mock.calls[0][0];
         expect(payload.to).toBe('tc@example.com');
+    });
+
+    it('labels a test drive and removes every referral prompt', async () => {
+        createPacketPdfAttachmentForRequestMock.mockResolvedValue({
+            status: 'attached',
+            attachment: {
+                filename: 'test-utility-sheet.pdf',
+                content: Buffer.from('fake-pdf-content'),
+                contentType: 'application/pdf',
+            },
+        });
+
+        const result = await sendTCCompletionNotificationEmail({
+            tcEmail: 'verified@example.com',
+            propertyAddress: '[TEST] 123 Maple Street, Anytown, PA 18301',
+            requestId: 'req_test',
+            attachPdf: true,
+            showReferralFooter: false,
+            referralCode: 'must-not-render',
+            isTestDrive: true,
+        });
+
+        expect(result).toEqual({ success: true, attachmentStatus: 'attached' });
+        const payload = sendEmailMock.mock.calls[0][0];
+        expect(payload.to).toBe('verified@example.com');
+        expect(payload.subject).toMatch(/Your test UtilitySheet is ready/i);
+        expect(payload.html).toContain('This is your test UtilitySheet');
+        expect(payload.html).not.toContain('/from-a-closing');
+        expect(payload.html).not.toContain('/dashboard/settings?tab=referrals');
     });
 });

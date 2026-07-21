@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog, getRequestCountForAccount, getOrganizationById } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog, getOrganizationById } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -147,34 +147,17 @@ export async function POST(request: Request) {
             );
         }
 
-        const isDemoRequest = parsedBody.data.isDemo === true;
-
-        if (isDemoRequest) {
-            const existingRequestCount = await getRequestCountForAccount(accountId);
-            if (existingRequestCount > 0) {
-                return NextResponse.json(
-                    {
-                        error: 'Demo request unavailable',
-                        message: 'Demo requests are only available for your first request.',
-                    },
-                    { status: 403 }
-                );
-            }
-        }
-
         // Check plan limits before creating request
-        if (!isDemoRequest) {
-            const usage = await getMonthlyUsage(accountId, organizationId);
-            if (usage.used >= usage.limit) {
-                return NextResponse.json(
-                    {
-                        error: 'Monthly limit reached',
-                        message: `You have reached your ${usage.plan} plan limit of ${usage.limit} requests per month. Please upgrade to continue.`,
-                        usage,
-                    },
-                    { status: 403 }
-                );
-            }
+        const usage = await getMonthlyUsage(accountId, organizationId);
+        if (usage.used >= usage.limit) {
+            return NextResponse.json(
+                {
+                    error: 'Monthly limit reached',
+                    message: `You have reached your ${usage.plan} plan limit of ${usage.limit} requests per month. Please upgrade to continue.`,
+                    usage,
+                },
+                { status: 403 }
+            );
         }
 
         // Automatically associate with default brand profile if not specified
@@ -200,7 +183,7 @@ export async function POST(request: Request) {
             sellerPhone: parsedBody.data.sellerPhone,
             closingDate: parsedBody.data.closingDate,
             utilityCategories: selectedUtilityCategories,
-            isDemo: isDemoRequest,
+            isDemo: false,
             packetMode,
             advancedModules,
             advancedModuleExclusions,
@@ -225,7 +208,7 @@ export async function POST(request: Request) {
                 utility_categories: selectedUtilityCategories,
                 has_seller_email: !!parsedBody.data.sellerEmail,
                 send_seller_email: parsedBody.data.sendSellerEmail !== false,
-                is_demo: isDemoRequest,
+                is_demo: false,
                 packet_mode: packetMode,
                 advanced_modules: advancedModules,
                 advanced_module_exclusions: advancedModuleExclusions,

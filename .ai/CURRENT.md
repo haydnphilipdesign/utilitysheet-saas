@@ -6,58 +6,66 @@
 
 ## Session Metadata
 
-- Task: Branding Profiles improvements from the completed Settings/Branding configurability audit.
-- Status: Phases A, B, and C COMPLETE, validated, committed (`eb4dfb0`), pushed to `main`, and the
-  identity migration has been APPLIED to the live database and verified (all 5 columns present).
-- Current or last agent: Claude Code
+- Task: Build the self-serve authenticated Test UtilitySheet experience for newly registered users.
+- Status: Completed; no required implementation or validation work remains.
+- Current or last agent: OpenAI Codex
 - Branch: `main`
-- Last updated: 2026-07-17
-- Relevant plan: `.ai/plans/2026-07-17-branding-profiles-improvements.md`
-- Source audit: `.ai/plans/2026-07-17-settings-branding-configurability-audit.md`
+- Last updated: 2026-07-21
+- Relevant plan: `.ai/plans/2026-07-21-self-serve-test-utilitysheet.md`
 
-## What shipped
+## Verified Repository State and Constraints
 
-- Phase A: `POST /api/branding/[id]/duplicate`; usage annotation on `GET /api/branding`
-  (`request_count`, `is_intake_default`, additive); list-page usage context, Duplicate action,
-  in-product delete Dialog with real fallback copy, accessible overflow trigger.
-- Phase B: five optional structured identity columns on `brand_profiles` (`company_name`,
-  `professional_title`, `license_number`, `license_state`, `compliance_line`). Rendered on the PDF
-  header + compliance line, the web packet header + footer, and request/reminder email footers
-  (title omitted from email per the matrix). Seller form unchanged. Fields pass through on all
-  plans; absent fields render nothing. Migration `migrations-brand-profile-identity.sql` + schema.sql
-  mirror.
-- Phase C: automatic Resend `replyTo` = profile contact email on seller request/reminder emails
-  (from-address/domain unchanged); templates editor variable-insertion chips + unknown/malformed
-  `{{token}}` validation + resolved sample previews (`lib/message-templates/variables.ts`);
-  `POST /api/branding/test-email` (auth, rate-limited, sends only to the caller's own verified
-  email) with a "Send test email" button in the Messages tab.
+- `HEAD`, local `main`, and `origin/main` began aligned at `df39f81`; no commit, push, deployment,
+  migration, production email, or production-data action was performed.
+- The pre-existing untracked `.ai/plans/2026-07-21-live-growth-notification-migrations.md` is an
+  intentional completed live-schema verification artifact and remains untouched.
+- `requests.is_demo` already provides the durable marker, so this feature requires no schema change.
+- The generic public `/demo`, reusable seller-link contract, and normal request/seller behavior remain intact.
+
+## Work Completed
+
+- Added authenticated GET/POST `/api/test-drive`, server-derived verified recipient and fictional identity,
+  active workspace/Branding Profile/intake defaults, rate limiting, and transaction/advisory-lock-backed
+  create-or-resume behavior that sends at most one invitation.
+- Removed client-controlled `isDemo` from ordinary request creation; the normal route always creates a
+  non-demo request and retains monthly-limit enforcement.
+- Reused the real seller persistence, web packet, branded production PDF, and completion-email paths while
+  making demo submission idempotent and excluding quota/metering, AI/provider-memory writes, contact
+  resolution, referral credit, workspace-admin fan-out, contact alerts, and acquisition/referral content.
+- Added owner-only test completion delivery with a required production-PDF attempt and durable success/fail
+  event state. Delivery or telemetry failure never rolls back the submitted demo or removes review links.
+- Added the shared Test UtilitySheet card to onboarding and dashboard with eligible/loading/error,
+  creating, resume, completed, delivery-failed, and live-submission-ineligible states plus safe typed analytics.
+- Excluded demos from customer lists/counts/stats/Needs Attention/weekly summaries, activation outreach,
+  provider memory, Branding Profile usage, admin latest requests, and admin abandonment/seller-progress data.
+- Added focused route, query, seller safety, packet/email, operational-exclusion, and component coverage.
 
 ## Validation
 
-- Full Vitest: 584/584 passing (114 files). New suites: `branding-duplicate-route`,
-  `branding-list-page`, `branding-test-email-route`, `message-template-variables`,
-  `packet-html-identity`.
-- Changed-file ESLint: 0 errors (only pre-existing `no-img-element` warnings). `tsc --noEmit` clean.
-  `npm run build` succeeded.
-- PDF guardrails preserved: identity additions live inside keep-together blocks (brand header and a
-  new `.compliance-line` block before the disclaimer); no changes to tables, buyer steps, filenames,
-  page chrome, or plan gating. Live Chromium PDF visual inspection was NOT run in this
-  non-interactive session and is a recommended follow-up for the header/compliance visual polish.
+- Full Vitest: 119 test files passed after making one new effect-timing assertion deterministic.
+- Final focused regression/safety run: 7 files, 38 tests passed.
+- Changed-file ESLint: 0 errors; 12 existing warnings remain in touched packet/seller components.
+- `npm exec tsc -- --noEmit`: passed.
+- `npm run build`: passed; `/api/test-drive` appears in the route manifest.
+- Signed-in browser QA: onboarding and dashboard at 390px, 768px, and 1440px had visible ineligible-state
+  cards, no horizontal overflow, and no console errors. The available account already had real submissions,
+  so eligible-state interaction remained covered by component/API tests and no email/test record was created.
+- `npm run security:scan` and direct new-file sensitive-data inspection: passed.
+- `git diff --check`: passed.
 
-## Remaining
+## Remaining Work and Risks
 
-- Done: commit (`eb4dfb0`), push to `main`, and the live migration
-  (`migrations-brand-profile-identity.sql`, idempotent, applied and verified against the DB in
-  `.env.local`). No required work remains.
-- Recommended follow-up only: authenticated browser QA of the branding editor (Professional identity
-  card, template preview/validation, Send test email), the web packet, and a rendered PDF; plus a
-  visual PDF regression pass for the header/compliance additions.
+- Required: none.
+- Browser limitation: a live eligible-account email/PDF round trip was intentionally not executed because
+  safe QA had no eligible fixture and production email/data actions were prohibited. The server, component,
+  email attachment, packet, and failure paths are covered by tests.
+- Optional: review and stage/commit the focused diff only when explicitly authorized.
 
 ## Concurrent Editing Warnings
 
-- None outstanding. This task touched the files listed in the plan; prior notification-slice work is
-  committed (`cb7630f`).
+- No active task-specific file ownership warning remains.
+- Preserve unrelated work, especially `.ai/plans/2026-07-21-live-growth-notification-migrations.md`.
 
 ## Recommended Next Action
 
-Confirm the deployed migration and run live authenticated QA of the new branding surfaces.
+Review the self-serve test-drive diff and validation evidence; no additional implementation is required.

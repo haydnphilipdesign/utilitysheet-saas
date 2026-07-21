@@ -13,6 +13,7 @@ import UtilitySheetPdfPreview from '@/components/branding/UtilitySheetPdfPreview
 import { trackEvent } from '@/lib/analytics/events';
 import { cn } from '@/lib/utils';
 import type { Account, BrandProfile, Organization, PacketMode } from '@/types';
+import { TestDriveCard } from '@/components/test-drive/TestDriveCard';
 
 const BRAND_COLORS = [
     { name: 'Emerald', value: '#10b981' },
@@ -341,6 +342,8 @@ export default function OnboardingPage() {
                         </p>
                     </CardFooter>
                 </Card>
+
+                <TestDriveCard source="onboarding" reusableSellerLink={intakeLink?.url} />
 
                 <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
                     <Card className="border-border/70 bg-card/80">

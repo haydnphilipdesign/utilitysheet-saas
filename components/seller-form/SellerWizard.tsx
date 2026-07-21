@@ -81,11 +81,12 @@ interface SellerWizardProps {
     token: string;
     brandProfile?: BrandProfile | null;
     isDemo?: boolean;
+    isTestDrive?: boolean;
 }
 
 type AdvancedNavigationMode = 'linear' | 'review_edit';
 
-export function SellerWizard({ initialRequestData, initialSuggestions, token, brandProfile, isDemo = false }: SellerWizardProps) {
+export function SellerWizard({ initialRequestData, initialSuggestions, token, brandProfile, isDemo = false, isTestDrive = false }: SellerWizardProps) {
     enum Step {
         WELCOME = 0,
         HOME_BASICS = 1,
@@ -397,10 +398,14 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
         trackEvent('seller_step_viewed', {
             step: stepLabel,
-            location: isDemo ? 'demo_seller_flow' : 'seller_flow',
+            location: isDemo
+                ? 'demo_seller_flow'
+                : isTestDrive
+                  ? 'test_drive_seller_flow'
+                  : 'seller_flow',
             packet_mode: state.packet_mode,
         });
-    }, [currentStep, isDemo, utilityIndex, visibleUtilities, state.packet_mode, currentAdvancedModule]);
+    }, [currentStep, isDemo, isTestDrive, utilityIndex, visibleUtilities, state.packet_mode, currentAdvancedModule]);
 
     const totalUtilities = visibleUtilities.length;
     const totalAdvancedSteps = orderedAdvancedModules.length;
@@ -558,12 +563,18 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 } catch {
                     // ignore
                 }
-                trackEvent('seller_submitted', {
-                    source: 'seller_flow',
-                    utility_count: visibleUtilities.length,
-                    location: 'seller_flow',
-                    packet_mode: state.packet_mode,
-                });
+                if (isTestDrive) {
+                    trackEvent('test_drive_completed', {
+                        source: 'seller_flow',
+                    });
+                } else {
+                    trackEvent('seller_submitted', {
+                        source: 'seller_flow',
+                        utility_count: visibleUtilities.length,
+                        location: 'seller_flow',
+                        packet_mode: state.packet_mode,
+                    });
+                }
                 setCurrentStep(Step.SUCCESS);
             } else {
                 const errorBody = await response.json().catch(() => null);
@@ -629,6 +640,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             autosaveFlash={autosaveFlash}
             sellerToken={isDemo ? undefined : token}
             showSaveLink={!isDemo && currentStep > Step.WELCOME && currentStep < Step.SUCCESS}
+            isTestDrive={isTestDrive}
         >
             <AnimatePresence mode={shouldReduceMotion ? 'sync' : 'wait'} initial={!shouldReduceMotion}>
                 {currentStep === Step.WELCOME && (() => {

@@ -17,6 +17,8 @@ export async function getDueActivationOutreachCandidates(limit = 50): Promise<Ac
         WITH request_counts AS (
             SELECT account_id, COUNT(*)::int AS request_count
             FROM requests
+            WHERE deleted_at IS NULL
+              AND COALESCE(is_demo, FALSE) = FALSE
             GROUP BY account_id
         ),
         base AS (

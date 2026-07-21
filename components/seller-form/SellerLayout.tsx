@@ -27,6 +27,7 @@ interface SellerLayoutProps {
     autosaveFlash?: boolean;
     sellerToken?: string;
     showSaveLink?: boolean;
+    isTestDrive?: boolean;
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -141,6 +142,7 @@ export function SellerLayout(props: SellerLayoutProps) {
         autosaveFlash,
         sellerToken,
         showSaveLink,
+        isTestDrive,
     } = props;
     const headerRef = useRef<HTMLElement | null>(null);
     const [headerHeight, setHeaderHeight] = useState<number | null>(null);
@@ -233,6 +235,12 @@ export function SellerLayout(props: SellerLayoutProps) {
                             <p className="text-xs text-foreground font-medium truncate">{address}</p>
                         </div>
                     )}
+
+                    {isTestDrive ? (
+                        <div role="status" className="mb-3 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
+                            <strong>Test UtilitySheet:</strong> use fictional answers to experience the same flow your seller will complete.
+                        </div>
+                    ) : null}
 
                     {/* Progress Bar */}
                     <div className="space-y-1.5 sm:space-y-2">

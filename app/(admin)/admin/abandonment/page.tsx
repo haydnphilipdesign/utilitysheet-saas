@@ -48,6 +48,7 @@ async function getSellerProgressData(): Promise<SellerProgressData | null> {
                 COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress_count,
                 COUNT(*)::int AS total_requests
             FROM requests
+            WHERE COALESCE(is_demo, FALSE) = FALSE
         `,
         sql`
             SELECT
@@ -63,6 +64,7 @@ async function getSellerProgressData(): Promise<SellerProgressData | null> {
                 )::int AS inactive_over_7d
             FROM requests
             WHERE status = 'in_progress'
+              AND COALESCE(is_demo, FALSE) = FALSE
         `,
         sql`
             WITH last_events AS (
@@ -72,6 +74,7 @@ async function getSellerProgressData(): Promise<SellerProgressData | null> {
                 FROM event_logs el
                 JOIN requests r ON r.id = el.request_id
                 WHERE r.status = 'in_progress'
+                  AND COALESCE(r.is_demo, FALSE) = FALSE
                 ORDER BY el.request_id, el.created_at DESC
             )
             SELECT event_type, COUNT(*)::int AS count
@@ -87,6 +90,7 @@ async function getSellerProgressData(): Promise<SellerProgressData | null> {
                 FROM event_logs el
                 JOIN requests r ON r.id = el.request_id
                 WHERE r.status = 'in_progress'
+                  AND COALESCE(r.is_demo, FALSE) = FALSE
                   AND el.event_type = 'suggestions_fetched'
                 ORDER BY el.request_id, el.created_at DESC
             )
@@ -106,6 +110,7 @@ async function getSellerProgressData(): Promise<SellerProgressData | null> {
                 FROM event_logs el
                 JOIN requests r ON r.id = el.request_id
                 WHERE r.status = 'in_progress'
+                  AND COALESCE(r.is_demo, FALSE) = FALSE
                 ORDER BY el.request_id, el.created_at DESC
             )
             SELECT
@@ -125,6 +130,7 @@ async function getSellerProgressData(): Promise<SellerProgressData | null> {
             LEFT JOIN accounts a ON r.account_id = a.id
             LEFT JOIN last_events le ON le.request_id = r.id
             WHERE r.status = 'in_progress'
+              AND COALESCE(r.is_demo, FALSE) = FALSE
             ORDER BY COALESCE(le.last_event_at, r.created_at) DESC
             LIMIT 200
         `,

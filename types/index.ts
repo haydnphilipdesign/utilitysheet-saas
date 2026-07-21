@@ -296,6 +296,7 @@ export interface Request {
     advanced_modules?: AdvancedModuleKey[] | null;
     advanced_module_exclusions?: AdvancedModuleExclusions | null;
     advanced_packet_data?: AdvancedPacketData | null;
+    is_demo?: boolean | null;
     metered_at?: string | null;
     is_locked?: boolean | null;
     can_edit_submitted_sheet?: boolean | null;

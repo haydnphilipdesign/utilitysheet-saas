@@ -59,6 +59,7 @@ export interface PacketPdfData {
     }>;
     meta?: {
         show_powered_by?: boolean;
+        is_demo?: boolean;
     };
 }
 

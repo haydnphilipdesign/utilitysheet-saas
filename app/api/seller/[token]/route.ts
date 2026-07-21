@@ -275,6 +275,8 @@ async function findHistoricalContactMatch({
         )
         AND r.account_id = ${accountId}
         AND r.organization_id IS NOT DISTINCT FROM ${organizationId}
+        AND r.deleted_at IS NULL
+        AND COALESCE(r.is_demo, FALSE) = FALSE
         GROUP BY 1, 2
         ORDER BY COUNT(*) DESC
         LIMIT 1
@@ -403,6 +405,7 @@ export async function GET(
                 advanced_modules: configuredAdvancedModules,
                 advanced_module_exclusions: configuredAdvancedModuleExclusions,
                 advanced_packet_data: filteredAdvancedPacketData,
+                is_demo: requestRecord.is_demo === true,
             },
             brandProfile: publicBrandProfile,
             suggestions: {},
@@ -462,6 +465,10 @@ export async function POST(
             }
         }
 
+        if (requestRecord.is_demo === true && requestRecord.status === 'submitted') {
+            return NextResponse.json({ success: true, alreadySubmitted: true });
+        }
+
         if (!sql) {
             return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
         }
@@ -471,6 +478,7 @@ export async function POST(
 
         const account = await getAccountById(requestData.account_id);
         const organization = requestData.organization_id ? await getOrganizationById(requestData.organization_id) : null;
+        const isTestDriveSubmission = requestRecord.is_demo === true;
         const isUtilitySheetDemoSubmission =
             organization?.slug === DEMO_WORKSPACE_SLUG &&
             DEMO_ADDRESS_PATTERN.test(requestData.property_address);
@@ -488,7 +496,7 @@ export async function POST(
         // (Agent-created requests are metered on creation and quota-checked on creation.)
         const isUnmetered = requestRecord.metered_at == null;
         let shouldLock = false;
-        if (!isPaid && isUnmetered) {
+        if (!isTestDriveSubmission && !isPaid && isUnmetered) {
             const usage = await getMonthlyUsage(requestData.account_id, requestData.organization_id ?? undefined);
             if (usage.plan === 'free' && usage.used >= usage.limit) {
                 shouldLock = true;
@@ -535,7 +543,10 @@ export async function POST(
             advanced_packet_data = ${JSON.stringify(advancedPacketData)}::jsonb,
             status = 'submitted',
             last_activity_at = NOW(),
-            metered_at = COALESCE(metered_at, NOW()),
+            metered_at = CASE
+                WHEN ${isTestDriveSubmission} THEN metered_at
+                ELSE COALESCE(metered_at, NOW())
+            END,
             is_locked = CASE WHEN ${shouldLock} THEN TRUE ELSE is_locked END,
             locked_reason = CASE WHEN ${shouldLock} THEN 'monthly_limit' ELSE locked_reason END,
             locked_at = CASE WHEN ${shouldLock} THEN COALESCE(locked_at, NOW()) ELSE locked_at END
@@ -617,7 +628,7 @@ export async function POST(
                     )
                 `;
 
-                if (finalEntryMode === 'suggested_confirmed' || finalEntryMode === 'search_selected') {
+                if (!isTestDriveSubmission && (finalEntryMode === 'suggested_confirmed' || finalEntryMode === 'search_selected')) {
                     await markAiSuggestionSelection({
                         requestId: requestData.id,
                         category: typedCategory,
@@ -644,7 +655,7 @@ export async function POST(
         const unresolvedEntries: { category: string; displayName?: string }[] = [];
         const seenContactTargets = new Set<string>();
 
-        if (!accessLocked && !isUtilitySheetDemoSubmission) {
+        if (!accessLocked && !isUtilitySheetDemoSubmission && !isTestDriveSubmission) {
             for (const target of contactResolutionTargets) {
                 const normalizedProviderName = normalizeProviderNameForLookup(target.providerName);
                 if (!normalizedProviderName) continue;
@@ -719,18 +730,20 @@ export async function POST(
             userAgent,
         });
 
-        scheduleReferralCreditAward(requestData.account_id);
+        if (!isTestDriveSubmission) {
+            scheduleReferralCreditAward(requestData.account_id);
+        }
 
         // Assemble submission-notification recipients. The request owner is always
         // the first candidate; when the workspace enables admin routing, the
         // organization's current admins are appended. Admins are derived live from
         // membership, so removed members are never notified. Personal-preference
         // and dedup handling lives in buildSubmissionRecipients.
-        const recipientCandidates: SubmissionRecipientCandidate[] = [
-            { email: account?.email, name: account?.full_name, prefs: notificationPrefs },
-        ];
+        const recipientCandidates: SubmissionRecipientCandidate[] = isTestDriveSubmission
+            ? []
+            : [{ email: account?.email, name: account?.full_name, prefs: notificationPrefs }];
 
-        if (organization?.id) {
+        if (!isTestDriveSubmission && organization?.id) {
             const workspaceSettings = normalizeWorkspaceNotificationSettings(organization.notification_settings);
             if (workspaceSettings[NOTIFY_ADMINS_ON_SUBMISSION]) {
                 const admins = await getOrganizationAdminRecipients(organization.id).catch(() => []);
@@ -744,15 +757,19 @@ export async function POST(
             }
         }
 
-        const submissionRecipients = buildSubmissionRecipients(recipientCandidates, { accessLocked });
+        const submissionRecipients = isTestDriveSubmission
+            ? (account?.email
+                ? [{ email: account.email, name: account.full_name || undefined, attachPdf: true }]
+                : [])
+            : buildSubmissionRecipients(recipientCandidates, { accessLocked });
 
         if (submissionRecipients.length > 0) {
             try {
                 // Mirrors the packet page's rule: free-plan workspaces carry the
                 // UtilitySheet referral footer, and paid workspaces carry it only
                 // when their brand profile voluntarily keeps powered-by branding.
-                let showReferralFooter = !isPaid;
-                if (!showReferralFooter) {
+                let showReferralFooter = !isTestDriveSubmission && !isPaid;
+                if (!isTestDriveSubmission && !showReferralFooter) {
                     const requestBrandProfile = requestData.brand_profile_id
                         ? await getBrandProfile(requestData.brand_profile_id).catch(() => null)
                         : null;
@@ -760,13 +777,13 @@ export async function POST(
                         || await getDefaultBrandProfile(requestData.account_id, requestData.organization_id ?? undefined).catch(() => null);
                     showReferralFooter = Boolean(resolvedBrandProfile?.show_powered_by);
                 }
-                const intakeLink = showReferralFooter
+                const intakeLink = showReferralFooter && !isTestDriveSubmission
                     ? await getIntakeLinkByAccountId(requestData.account_id).catch(() => null)
                     : null;
 
                 // Per-recipient sends are independent: one failure must not block
                 // the others, and none can block the seller submission response.
-                await Promise.allSettled(
+                const deliveryResults = await Promise.allSettled(
                     submissionRecipients.map((recipient) =>
                         sendTCCompletionNotificationEmail({
                             tcEmail: recipient.email,
@@ -777,19 +794,63 @@ export async function POST(
                             attachPdf: recipient.attachPdf,
                             showReferralFooter,
                             referralCode: intakeLink?.slug || null,
+                            isTestDrive: isTestDriveSubmission,
                         })
                     )
                 );
+
+                if (isTestDriveSubmission) {
+                    const firstResult = deliveryResults[0];
+                    const deliverySucceeded = firstResult?.status === 'fulfilled'
+                        && firstResult.value.success
+                        && firstResult.value.attachmentStatus === 'attached';
+                    await createEventLog({
+                        requestId: requestData.id,
+                        eventType: deliverySucceeded
+                            ? 'test_drive_delivery_succeeded'
+                            : 'test_drive_delivery_failed',
+                        eventData: {
+                            email_sent: firstResult?.status === 'fulfilled' && firstResult.value.success,
+                            pdf_attached: firstResult?.status === 'fulfilled'
+                                && firstResult.value.attachmentStatus === 'attached',
+                            recipient: 'initiating_account_email',
+                        },
+                    }).catch((eventError) => {
+                        console.error('Failed to record test-drive delivery outcome:', eventError);
+                    });
+                }
             } catch (emailError) {
                 console.error('Failed to send TC completion notification email:', emailError);
+                if (isTestDriveSubmission) {
+                    await createEventLog({
+                        requestId: requestData.id,
+                        eventType: 'test_drive_delivery_failed',
+                        eventData: {
+                            email_sent: false,
+                            pdf_attached: false,
+                            recipient: 'initiating_account_email',
+                        },
+                    }).catch(() => undefined);
+                }
             }
         } else {
             console.warn('TC notification skipped: no eligible recipients');
+            if (isTestDriveSubmission) {
+                await createEventLog({
+                    requestId: requestData.id,
+                    eventType: 'test_drive_delivery_failed',
+                    eventData: {
+                        email_sent: false,
+                        pdf_attached: false,
+                        recipient: 'initiating_account_email',
+                    },
+                }).catch(() => undefined);
+            }
         }
 
         // Contact resolution alerts remain owner-only (they concern the owner's
         // provider-memory workflow).
-        if (account?.email && !accessLocked && notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
+        if (!isTestDriveSubmission && account?.email && !accessLocked && notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
             try {
                 await sendContactResolutionAlertEmail({
                     tcEmail: account.email,

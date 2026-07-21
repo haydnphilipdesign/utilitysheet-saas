@@ -894,7 +894,10 @@ interface SendTCCompletionNotificationEmailParams {
      */
     showReferralFooter?: boolean;
     referralCode?: string | null;
+    isTestDrive?: boolean;
 }
+
+type CompletionAttachmentStatus = 'attached' | 'skipped' | 'failed' | 'disabled';
 
 /**
  * Sends an email notification to the TC when a seller completes their utility form.
@@ -908,7 +911,12 @@ export async function sendTCCompletionNotificationEmail({
     attachPdf = false,
     showReferralFooter = false,
     referralCode = null,
-}: SendTCCompletionNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
+    isTestDrive = false,
+}: SendTCCompletionNotificationEmailParams): Promise<{
+    success: boolean;
+    error?: string;
+    attachmentStatus: CompletionAttachmentStatus;
+}> {
     // Construct the dashboard URL to view the completed request
     const baseUrl = getAppBaseUrl();
     const dashboardUrl = `${baseUrl}/dashboard/requests/${requestId}`;
@@ -923,10 +931,12 @@ export async function sendTCCompletionNotificationEmail({
         referralFooterUrl: showReferralFooter
             ? buildCompletionReferralFooterUrl(baseUrl, referralCode)
             : null,
-        referralProgramUrl: `${baseUrl}/dashboard/settings?tab=referrals`,
+        referralProgramUrl: isTestDrive ? null : `${baseUrl}/dashboard/settings?tab=referrals`,
+        isTestDrive,
     });
 
     try {
+        let attachmentStatus: CompletionAttachmentStatus = attachPdf ? 'skipped' : 'disabled';
         let attachments:
             | Array<{ filename: string; content: Buffer; contentType?: string }>
             | undefined;
@@ -936,6 +946,7 @@ export async function sendTCCompletionNotificationEmail({
             const attachmentResult = await createPacketPdfAttachmentForRequest(requestId);
 
             if (attachmentResult.status === 'attached') {
+                attachmentStatus = 'attached';
                 const { attachment } = attachmentResult;
                 attachments = [{
                     filename: attachment.filename,
@@ -948,11 +959,13 @@ export async function sendTCCompletionNotificationEmail({
                     bytes: attachment.content.byteLength,
                 });
             } else if (attachmentResult.status === 'skipped') {
+                attachmentStatus = 'skipped';
                 console.log('[email][submission_attachment] skipped', {
                     requestId,
                     reason: attachmentResult.reason,
                 });
             } else {
+                attachmentStatus = 'failed';
                 console.warn('[email][submission_attachment] failed', {
                     requestId,
                     error: attachmentResult.error,
@@ -970,23 +983,26 @@ export async function sendTCCompletionNotificationEmail({
         const { data, error } = await resend.emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: getDemoEmailRecipient(tcEmail),
-            subject: `Utility Info Submitted for ${propertyAddress}`,
+            subject: isTestDrive
+                ? `Your test UtilitySheet is ready: ${propertyAddress}`
+                : `Utility Info Submitted for ${propertyAddress}`,
             html: emailHtml,
             attachments,
         });
 
         if (error) {
             console.error('Resend API returned error:', error.message);
-            return { success: false, error: error.message };
+            return { success: false, error: error.message, attachmentStatus };
         }
 
         console.log('TC completion notification email sent successfully:', data?.id);
-        return { success: true };
+        return { success: true, attachmentStatus };
     } catch (error) {
         console.error('Exception in sendTCCompletionNotificationEmail:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
+            attachmentStatus: 'failed',
         };
     }
 }
@@ -1011,6 +1027,7 @@ interface GenerateTCCompletionHtmlParams {
     dashboardUrl: string;
     referralFooterUrl?: string | null;
     referralProgramUrl?: string | null;
+    isTestDrive?: boolean;
 }
 
 function generateTCCompletionNotificationHtml({
@@ -1020,6 +1037,7 @@ function generateTCCompletionNotificationHtml({
     dashboardUrl,
     referralFooterUrl = null,
     referralProgramUrl = null,
+    isTestDrive = false,
 }: GenerateTCCompletionHtmlParams): string {
     const greeting = tcName ? `Hi ${tcName},` : 'Hello,';
     const sellerMention = sellerName ? `${sellerName} has` : 'The seller has';
@@ -1040,6 +1058,12 @@ function generateTCCompletionNotificationHtml({
                                     <a href="${referralProgramUrl}" style="color: #475569; font-weight: 600;">Share your referral link</a>
                                     and you both get a free month when their first seller submission arrives.
                                 </p>
+                            </div>`
+        : '';
+    const testDriveIntro = isTestDrive
+        ? `
+                            <div style="margin: 0 0 20px; padding: 12px 16px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e3a8a; font-size: 14px; line-height: 1.6;">
+                                <strong>This is your test UtilitySheet.</strong> It uses fictional property and seller information so you can review the real branded result safely.
                             </div>`
         : '';
 
@@ -1067,7 +1091,7 @@ function generateTCCompletionNotificationHtml({
                     <tr>
                         <td style="padding: 32px 40px 0; text-align: center;">
                             <div style="display: inline-block; background-color: #d1fae5; color: #065f46; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;">
-                                ✓ Submission Complete
+                                ${isTestDrive ? '✓ Test Complete' : '✓ Submission Complete'}
                             </div>
                         </td>
                     </tr>
@@ -1075,6 +1099,7 @@ function generateTCCompletionNotificationHtml({
                     <!-- Content -->
                     <tr>
                         <td style="padding: 24px 40px 40px;">
+                            ${testDriveIntro}
                             <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
                                 ${greeting}
                             </p>
@@ -1091,7 +1116,9 @@ function generateTCCompletionNotificationHtml({
                             </div>
                             
                             <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                You can now review the live utility sheet, download the current PDF, and share it forward. If your workspace is on Pro or Team, you can also correct submitted details from the dashboard without reopening the seller link.
+                                ${isTestDrive
+            ? 'You can now review the completed test sheet and its production PDF. When you are ready for a real transaction, place your reusable seller link in your listing email, checklist, or transaction template.'
+            : 'You can now review the live utility sheet, download the current PDF, and share it forward. If your workspace is on Pro or Team, you can also correct submitted details from the dashboard without reopening the seller link.'}
                             </p>
                             
                             <!-- CTA Button -->
@@ -1100,7 +1127,7 @@ function generateTCCompletionNotificationHtml({
                                     <td style="text-align: center;">
                                         ${renderBulletproofButton({
         href: dashboardUrl,
-        label: 'Review Submitted Sheet',
+        label: isTestDrive ? 'Review Test UtilitySheet' : 'Review Submitted Sheet',
         backgroundColor: '#059669',
         borderRadius: 8,
         fontWeight: 600,

@@ -107,6 +107,21 @@ describe('POST /api/requests advanced gating', () => {
         });
     });
 
+    it('rejects client attempts to mark a normal request as a demo', async () => {
+        const response = await POST(new Request('http://localhost/api/requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                propertyAddress: '123 Main St, Austin, TX 78701',
+                isDemo: true,
+            }),
+        }));
+
+        expect(response.status).toBe(400);
+        expect(mocks.ensureAccountActivationMock).not.toHaveBeenCalled();
+        expect(mocks.createRequestMock).not.toHaveBeenCalled();
+    });
+
     it('rejects advanced packet creation for free users', async () => {
         const response = await POST(new Request('http://localhost/api/requests', {
             method: 'POST',

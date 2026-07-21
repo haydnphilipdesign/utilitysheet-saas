@@ -129,6 +129,8 @@ export async function getBrandProfileRequestCounts(profileIds: string[]): Promis
         SELECT brand_profile_id, COUNT(*)::int AS request_count
         FROM requests
         WHERE brand_profile_id = ANY(${profileIds}::uuid[])
+          AND deleted_at IS NULL
+          AND COALESCE(is_demo, FALSE) = FALSE
         GROUP BY brand_profile_id
     `;
 

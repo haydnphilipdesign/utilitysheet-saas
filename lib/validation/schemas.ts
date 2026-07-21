@@ -28,7 +28,6 @@ export const createRequestBodySchema = z.object({
     advancedModuleExclusions: z.record(z.string(), z.array(z.string())).optional(),
     brandProfileId: z.string().uuid().optional(),
     sendSellerEmail: z.boolean().optional(),
-    isDemo: z.boolean().optional(),
 }).strict();
 
 export const intakeLinkUpdateBodySchema = z.object({

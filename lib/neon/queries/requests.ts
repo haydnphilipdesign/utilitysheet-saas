@@ -32,6 +32,12 @@ export interface PaginatedResult<T> {
     hasNextPage: boolean;
 }
 
+export type TestDriveRequestResult = {
+    request: Request | null;
+    created: boolean;
+    hasLiveSubmission: boolean;
+};
+
 /**
  * Get all requests for an account or organization (with pagination)
  */
@@ -78,6 +84,7 @@ export async function getRequests(
             SELECT COUNT(*) AS count
             FROM requests
             WHERE deleted_at IS NULL
+                AND COALESCE(is_demo, FALSE) = FALSE
                 AND (
                     organization_id = ${organizationId}
                     OR (account_id = ${accountId} AND organization_id IS NULL)
@@ -107,6 +114,7 @@ export async function getRequests(
             WHERE account_id = ${accountId}
                 AND organization_id IS NULL
                 AND deleted_at IS NULL
+                AND COALESCE(is_demo, FALSE) = FALSE
                 AND (
                     ${search}::text IS NULL
                     OR (
@@ -141,6 +149,7 @@ export async function getRequests(
                 ) AS needs_attention
             FROM requests
             WHERE deleted_at IS NULL
+                AND COALESCE(is_demo, FALSE) = FALSE
                 AND (
                     organization_id = ${organizationId}
                     OR (account_id = ${accountId} AND organization_id IS NULL)
@@ -193,6 +202,7 @@ export async function getRequests(
             WHERE account_id = ${accountId}
                 AND organization_id IS NULL
                 AND deleted_at IS NULL
+                AND COALESCE(is_demo, FALSE) = FALSE
                 AND (
                     ${search}::text IS NULL
                     OR (
@@ -378,6 +388,152 @@ export async function createRequest(data: {
     return (result[0] as Request) || null;
 }
 
+/**
+ * Atomically creates or returns the account's one self-serve test request.
+ *
+ * The transaction-scoped advisory lock serializes concurrent clicks for this
+ * account without adding a schema constraint. The later statements run after
+ * the lock is acquired, so they see a request committed by an earlier waiter.
+ */
+export async function getOrCreateTestDriveRequest(data: {
+    accountId: string;
+    organizationId?: string;
+    brandProfileId?: string;
+    propertyAddress: string;
+    propertyAddressStructured?: PropertyAddressStructured | null;
+    sellerName: string;
+    sellerEmail: string;
+    utilityCategories: string[];
+    packetMode: PacketMode;
+    advancedModules: AdvancedModuleKey[];
+    advancedModuleExclusions: AdvancedModuleExclusions;
+}): Promise<TestDriveRequestResult> {
+    if (!sql) {
+        return { request: null, created: false, hasLiveSubmission: false };
+    }
+
+    const publicToken = generateToken();
+    const sellerToken = generateToken();
+    const lockKey = `test-drive:${data.accountId}`;
+
+    const [, insertedRows, demoRows, liveRows] = await sql.transaction([
+        sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`,
+        sql`
+            INSERT INTO requests (
+                account_id,
+                organization_id,
+                brand_profile_id,
+                property_address,
+                property_address_structured,
+                seller_name,
+                seller_email,
+                utility_categories,
+                packet_mode,
+                advanced_modules,
+                advanced_module_exclusions,
+                advanced_packet_data,
+                public_token,
+                seller_token,
+                is_demo,
+                status,
+                metered_at,
+                is_locked
+            )
+            SELECT
+                ${data.accountId},
+                ${data.organizationId || null},
+                ${data.brandProfileId || null},
+                ${data.propertyAddress},
+                ${data.propertyAddressStructured ? JSON.stringify(data.propertyAddressStructured) : null}::jsonb,
+                ${data.sellerName},
+                ${data.sellerEmail},
+                ${data.utilityCategories},
+                ${data.packetMode},
+                ${data.advancedModules},
+                ${JSON.stringify(data.advancedModuleExclusions)}::jsonb,
+                '{}'::jsonb,
+                ${publicToken},
+                ${sellerToken},
+                TRUE,
+                'sent',
+                NULL,
+                FALSE
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM requests
+                WHERE account_id = ${data.accountId}
+                  AND COALESCE(is_demo, FALSE) = TRUE
+            )
+              AND NOT EXISTS (
+                SELECT 1
+                FROM requests
+                WHERE account_id = ${data.accountId}
+                  AND status = 'submitted'
+                  AND deleted_at IS NULL
+                  AND COALESCE(is_demo, FALSE) = FALSE
+            )
+            RETURNING *
+        `,
+        sql`
+            SELECT *
+            FROM requests
+            WHERE account_id = ${data.accountId}
+              AND COALESCE(is_demo, FALSE) = TRUE
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1
+        `,
+        sql`
+            SELECT EXISTS (
+                SELECT 1
+                FROM requests
+                WHERE account_id = ${data.accountId}
+                  AND status = 'submitted'
+                  AND deleted_at IS NULL
+                  AND COALESCE(is_demo, FALSE) = FALSE
+            ) AS has_live_submission
+        `,
+    ]);
+
+    return {
+        request: (demoRows[0] as Request) || null,
+        created: insertedRows.length > 0,
+        hasLiveSubmission: Boolean(liveRows[0]?.has_live_submission),
+    };
+}
+
+export async function getTestDriveRequestState(accountId: string): Promise<{
+    request: Request | null;
+    hasLiveSubmission: boolean;
+}> {
+    if (!sql) return { request: null, hasLiveSubmission: false };
+
+    const [demoRows, liveRows] = await Promise.all([
+        sql`
+            SELECT *
+            FROM requests
+            WHERE account_id = ${accountId}
+              AND COALESCE(is_demo, FALSE) = TRUE
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1
+        `,
+        sql`
+            SELECT EXISTS (
+                SELECT 1
+                FROM requests
+                WHERE account_id = ${accountId}
+                  AND status = 'submitted'
+                  AND deleted_at IS NULL
+                  AND COALESCE(is_demo, FALSE) = FALSE
+            ) AS has_live_submission
+        `,
+    ]);
+
+    return {
+        request: (demoRows[0] as Request) || null,
+        hasLiveSubmission: Boolean(liveRows[0]?.has_live_submission),
+    };
+}
+
 export async function updateRequestConfiguration(
     id: string,
     data: {
@@ -534,6 +690,7 @@ export async function getRequestCountForAccount(accountId: string): Promise<numb
         FROM requests
         WHERE account_id = ${accountId}
             AND metered_at IS NOT NULL
+            AND COALESCE(is_demo, FALSE) = FALSE
     `;
 
     return Number(result[0]?.count) || 0;
@@ -627,8 +784,8 @@ export async function getDashboardStats(accountId: string, organizationId?: stri
             ) as needs_attention
         FROM requests 
         WHERE ${organizationId
-            ? sql`deleted_at IS NULL AND (organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
-            : sql`account_id = ${accountId} AND organization_id IS NULL AND deleted_at IS NULL`}
+            ? sql`deleted_at IS NULL AND COALESCE(is_demo, FALSE) = FALSE AND (organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
+            : sql`account_id = ${accountId} AND organization_id IS NULL AND deleted_at IS NULL AND COALESCE(is_demo, FALSE) = FALSE`}
     `;
 
     return {
@@ -660,8 +817,8 @@ export async function getWeeklyStats(
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const whereClause = organizationId
-        ? sql`created_at >= ${sevenDaysAgo.toISOString()} AND deleted_at IS NULL AND (organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
-        : sql`account_id = ${accountId} AND organization_id IS NULL AND created_at >= ${sevenDaysAgo.toISOString()} AND deleted_at IS NULL`;
+        ? sql`created_at >= ${sevenDaysAgo.toISOString()} AND deleted_at IS NULL AND COALESCE(is_demo, FALSE) = FALSE AND (organization_id = ${organizationId} OR (account_id = ${accountId} AND organization_id IS NULL))`
+        : sql`account_id = ${accountId} AND organization_id IS NULL AND created_at >= ${sevenDaysAgo.toISOString()} AND deleted_at IS NULL AND COALESCE(is_demo, FALSE) = FALSE`;
 
     const result = await sql`
         SELECT 

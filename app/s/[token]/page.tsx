@@ -22,6 +22,7 @@ interface RequestData {
     advanced_modules?: AdvancedModuleKey[];
     advanced_module_exclusions?: AdvancedModuleExclusions;
     advanced_packet_data?: AdvancedPacketData;
+    is_demo?: boolean;
 }
 
 interface BrandProfile {
@@ -72,6 +73,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 advanced_modules: request.advanced_modules || [],
                 advanced_module_exclusions: request.advanced_module_exclusions || {},
                 advanced_packet_data: request.advanced_packet_data || {},
+                is_demo: request.is_demo === true,
             };
 
             setRequestData(reqData);
@@ -129,6 +131,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
             initialSuggestions={suggestions}
             token={resolvedParams.token}
             brandProfile={brandProfile}
+            isTestDrive={requestData.is_demo === true}
         />
     );
 }

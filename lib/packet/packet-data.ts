@@ -80,6 +80,7 @@ export interface PacketDataPayload {
     meta: {
         show_powered_by: boolean;
         referral_code: string | null;
+        is_demo: boolean;
     };
 }
 
@@ -315,6 +316,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
     const account = await getAccountById(requestData.account_id);
     const organization = requestData.organization_id ? await getOrganizationById(requestData.organization_id) : null;
     const isPro = account?.subscription_status === 'pro' || organization?.subscription_status === 'team';
+    const isTestDrive = requestWithPacketFields.is_demo === true;
 
     const isLocked = Boolean(requestWithPacketFields.is_locked);
     if (isLocked && !isPro) {
@@ -325,7 +327,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
     // Paid accounts can voluntarily keep UtilitySheet branding on their
     // deliverable; when they do, their packet carries the referral path too.
     const showsPoweredByVoluntarily = !forceShowPoweredBy && Boolean(brandProfile?.show_powered_by);
-    const intakeLink = forceShowPoweredBy || showsPoweredByVoluntarily
+    const intakeLink = !isTestDrive && (forceShowPoweredBy || showsPoweredByVoluntarily)
         ? await getIntakeLinkByAccountId(requestData.account_id)
         : null;
     const buyerNextSteps = isPro ? normalizeSteps(brandProfile?.buyer_next_steps) : null;
@@ -409,7 +411,8 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
             advanced_sections: advancedSections,
             meta: {
                 show_powered_by: forceShowPoweredBy,
-                referral_code: intakeLink?.slug || null,
+                referral_code: isTestDrive ? null : (intakeLink?.slug || null),
+                is_demo: isTestDrive,
             },
         },
     };

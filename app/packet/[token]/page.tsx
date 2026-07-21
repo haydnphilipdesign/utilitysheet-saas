@@ -75,6 +75,7 @@ type PacketResponse = {
     meta?: {
         show_powered_by?: boolean;
         referral_code?: string | null;
+        is_demo?: boolean;
     };
 };
 
@@ -284,6 +285,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     const showPoweredBy = forceShowPoweredBy || (brand?.show_powered_by ?? false);
     const showGenerationDate = brand?.show_generation_date ?? true;
     const packetTitle = getPacketTitle(mode);
+    const isTestDrive = data.meta?.is_demo === true;
     const headerBrandName = showPoweredBy ? 'UtilitySheet' : (brand?.name || packetTitle);
     const welcomeMessage = brand?.welcome_message?.trim() || '';
     const professionalTitle = brand?.professional_title?.trim() || '';
@@ -362,6 +364,11 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
             {/* Packet Content */}
             <main className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
                 <div className="space-y-4 sm:space-y-6 p-4 sm:p-8 bg-card rounded-xl border border-border">
+                    {isTestDrive ? (
+                        <div role="status" className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
+                            <strong>Test UtilitySheet:</strong> this finished sheet uses fictional property and seller information for your private product walkthrough.
+                        </div>
+                    ) : null}
                     {/* Branding Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-border">
                         <div className="flex items-center gap-3 sm:gap-4">
@@ -695,7 +702,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                 <span>{brand.contact_email}</span>
                             ) : null}
                         </p>
-                        {showPoweredBy ? (
+                        {showPoweredBy && !isTestDrive ? (
                             <TransactionReferralCta referralCode={data.meta?.referral_code || null} />
                         ) : null}
                     </div>

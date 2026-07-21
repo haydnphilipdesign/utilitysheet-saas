@@ -27,13 +27,15 @@ export {
 } from './accounts';
 
 // Request queries
-export type { PaginatedResult } from './requests';
+export type { PaginatedResult, TestDriveRequestResult } from './requests';
 export {
     getRequests,
     getRequestById,
     getRequestByToken,
     getRequestBySellerToken,
     createRequest,
+    getOrCreateTestDriveRequest,
+    getTestDriveRequestState,
     updateRequestConfiguration,
     updateSubmittedRequestData,
     propagateAdvancedModuleDefaultsToOpenRequests,
@@ -95,7 +97,9 @@ export {
 // Event log queries
 export {
     createEventLog,
+    getTestDriveLifecycleEvents,
 } from './event-logs';
+export type { TestDriveLifecycleEvent } from './event-logs';
 
 // Product updates (changelog) queries
 export {

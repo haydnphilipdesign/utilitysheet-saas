@@ -60,6 +60,8 @@ export async function getProviderMemoryCandidates(params: {
         INNER JOIN requests r ON r.id = ue.request_id
         WHERE r.account_id = ${params.accountId}
         AND r.organization_id IS NOT DISTINCT FROM ${params.organizationId}
+        AND r.deleted_at IS NULL
+        AND COALESCE(r.is_demo, FALSE) = FALSE
         AND ue.category = ${params.category}
         AND (
             UPPER(COALESCE(r.property_address_structured->>'state', '')) = ${state}

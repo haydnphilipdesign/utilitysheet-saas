@@ -36,6 +36,7 @@ import { generatePacketPdf } from '@/lib/pdf-generator';
 import { trackEvent } from '@/lib/analytics/events';
 import { mergeFeaturedProductUpdate } from '@/lib/product-updates';
 import type { DashboardStats, ProductUpdate, Request } from '@/types';
+import { TestDriveCard } from '@/components/test-drive/TestDriveCard';
 
 type DashboardRequest = Request & { can_edit_submitted_sheet?: boolean };
 
@@ -609,6 +610,8 @@ export default function DashboardPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            <TestDriveCard source="dashboard" reusableSellerLink={intakeLink?.url} />
 
             <div className="grid gap-4 xl:grid-cols-2">
                 <WorkSection
