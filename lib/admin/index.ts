@@ -2,6 +2,7 @@ import "server-only";
 import { stackServerApp } from '@/lib/stack/server';
 import { sql } from '@/lib/neon/db';
 import type { Account, UserRole, AdminAction, AdminAuditLog, Plan, AdminUserRow } from '@/types';
+import type { AdminActivationFilter, AdminPlanFilter } from '@/lib/admin/list-query';
 import { headers } from 'next/headers';
 
 type StackUser = {
@@ -19,6 +20,8 @@ export type AdminAuditLogRow = AdminAuditLog & {
 
 export type UserSortField = 'created' | 'email' | 'name';
 export type SortDirection = 'asc' | 'desc';
+
+export type { AdminActivationFilter, AdminPlanFilter } from '@/lib/admin/list-query';
 
 export type UserSearchStats = {
     total: number;
@@ -166,7 +169,8 @@ export async function searchUsers(params: {
     offset?: number;
     query?: string;
     role?: UserRole;
-    plan?: Plan | 'team';
+    plan?: AdminPlanFilter;
+    activation?: AdminActivationFilter;
     sortBy?: UserSortField;
     sortDir?: SortDirection;
 }): Promise<{ users: AdminUserRow[]; total: number; stats: UserSearchStats }> {
@@ -205,9 +209,68 @@ export async function searchUsers(params: {
     if (params.plan) {
         if (params.plan === 'team') {
             whereClause = sql`${whereClause} AND o.subscription_status = 'team'`;
+        } else if (params.plan === 'paying') {
+            whereClause = sql`
+                ${whereClause}
+                AND (ac.subscription_status = 'pro' OR o.subscription_status = 'team')
+            `;
         } else {
             whereClause = sql`${whereClause} AND ac.subscription_status = ${params.plan}`;
         }
+    }
+
+    if (params.activation === 'no-setup') {
+        whereClause = sql`
+            ${whereClause}
+            AND ac.onboarding_completed_at IS NULL
+            AND NOT EXISTS (
+                SELECT 1
+                FROM requests r
+                WHERE r.account_id = ac.id
+                  AND r.deleted_at IS NULL
+                  AND COALESCE(r.is_demo, FALSE) = FALSE
+            )
+        `;
+    }
+
+    if (params.activation === 'missing-defaults') {
+        whereClause = sql`
+            ${whereClause}
+            AND (
+                ac.active_organization_id IS NULL
+                OR NOT EXISTS (SELECT 1 FROM brand_profiles bp WHERE bp.account_id = ac.id)
+                OR NOT EXISTS (SELECT 1 FROM intake_links il WHERE il.account_id = ac.id)
+            )
+        `;
+    }
+
+    if (params.activation === 'activated-7d') {
+        whereClause = sql`
+            ${whereClause}
+            AND (
+                SELECT MIN(COALESCE(r.metered_at, r.last_activity_at))
+                FROM requests r
+                WHERE r.account_id = ac.id
+                  AND r.status = 'submitted'
+                  AND r.deleted_at IS NULL
+                  AND COALESCE(r.is_demo, FALSE) = FALSE
+            ) >= NOW() - INTERVAL '7 days'
+        `;
+    }
+
+    if (params.activation === 'habitual') {
+        whereClause = sql`
+            ${whereClause}
+            AND (
+                SELECT COUNT(*)
+                FROM requests r
+                WHERE r.account_id = ac.id
+                  AND r.status = 'submitted'
+                  AND r.deleted_at IS NULL
+                  AND COALESCE(r.is_demo, FALSE) = FALSE
+                  AND COALESCE(r.metered_at, r.last_activity_at) >= NOW() - INTERVAL '30 days'
+            ) >= 3
+        `;
     }
 
     const sortBy = params.sortBy ?? 'created';

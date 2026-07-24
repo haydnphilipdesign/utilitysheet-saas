@@ -65,8 +65,11 @@ async function getStats() {
         `,
         sql`
             SELECT
+                -- Demo requests are excluded so this agrees with the "inactive 7+ days"
+                -- figure on /admin/abandonment, which excludes them throughout.
                 COUNT(*) FILTER (
                     WHERE status = 'in_progress'
+                      AND COALESCE(is_demo, FALSE) = FALSE
                       AND COALESCE(last_activity_at, created_at) < NOW() - INTERVAL '7 days'
                 )::int AS stale_in_progress,
                 COUNT(*) FILTER (
@@ -227,7 +230,7 @@ export default async function AdminDashboardPage() {
                             urgent
                         />
                         <AttentionItem
-                            href="/admin/users"
+                            href="/admin/users?activation=no-setup&role=user"
                             label="No setup and no request"
                             description="Accounts that have not completed setup or created a request."
                             value={activation?.noOnboardingNoRequest || 0}
@@ -235,7 +238,7 @@ export default async function AdminDashboardPage() {
                             urgent
                         />
                         <AttentionItem
-                            href="/admin/users"
+                            href="/admin/users?activation=missing-defaults&role=user"
                             label="Core setup incomplete"
                             description="Accounts missing a workspace, brand profile, or seller link."
                             value={activation?.missingDefaults || 0}
@@ -257,14 +260,14 @@ export default async function AdminDashboardPage() {
                         value={(activation?.firstLiveSubmissionLast7d || 0).toLocaleString()}
                         description="Accounts receiving their first live seller submission in the last 7 days."
                         icon={Activity}
-                        href="/admin/users"
+                        href="/admin/users?activation=activated-7d&role=user"
                     />
                     <OperationalMetric
                         label="Seller submissions"
                         value={stats.submittedLast7d.toLocaleString()}
                         description="Requests submitted by sellers in the last 7 days."
                         icon={FileCheck2}
-                        href="/admin/requests?status=submitted"
+                        href="/admin/requests?activity=7d&status=submitted"
                     />
                     <OperationalMetric
                         label="Activation rate"
@@ -277,7 +280,7 @@ export default async function AdminDashboardPage() {
                         value={(activation?.habitualAccounts || 0).toLocaleString()}
                         description="Accounts with at least 3 submitted requests in the last 30 days."
                         icon={FileText}
-                        href="/admin/testimonial-candidates"
+                        href="/admin/users?activation=habitual&role=user"
                     />
                 </div>
 
@@ -331,21 +334,21 @@ export default async function AdminDashboardPage() {
                         value={(activation?.paidAccounts || 0).toLocaleString()}
                         description="Pro accounts plus users whose active workspace has Team billing."
                         icon={ShieldCheck}
-                        href="/admin/users?plan=pro"
+                        href="/admin/users?plan=paying&role=user"
                     />
                     <OperationalMetric
                         label="Team workspaces"
                         value={stats.teamWorkspaces.toLocaleString()}
                         description="Workspaces with an active Team entitlement; this is the team-adoption signal."
                         icon={Building2}
-                        href="/admin/organizations"
+                        href="/admin/organizations?billing=team"
                     />
                     <OperationalMetric
                         label="Personal/default workspaces"
                         value={stats.personalWorkspaces.toLocaleString()}
                         description="Automatically created or non-Team workspaces, shown as account context rather than team adoption."
                         icon={UsersRound}
-                        href="/admin/organizations"
+                        href="/admin/organizations?billing=non-team"
                     />
                 </div>
             </section>

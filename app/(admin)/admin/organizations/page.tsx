@@ -11,10 +11,12 @@ import {
     buildAdminHref,
     clampPage,
     getParam,
+    parseOrgBillingFilter,
     parsePage,
     parsePageSize,
     resolveSearchParams,
     shouldCanonicalizePage,
+    type OrgBillingFilter,
 } from '@/lib/admin/list-query';
 import { classifyAdminWorkspace, type AdminWorkspaceKind } from '@/lib/admin/workspace-classification';
 
@@ -36,11 +38,21 @@ type AdminOrgRow = {
     workspace_kind: AdminWorkspaceKind;
 };
 
-async function getOrgs(params: { query?: string; limit: number; offset: number }) {
+/**
+ * `billing` filters on the workspace's own subscription status, which is what the operations overview
+ * counts. It is deliberately narrower than `workspace_kind`, which also considers member count.
+ */
+async function getOrgs(params: { query?: string; billing?: OrgBillingFilter; limit: number; offset: number }) {
     if (!sql) return [];
 
     const q = params.query?.trim() ? `%${params.query.trim()}%` : null;
     let whereClause = sql`TRUE`;
+    if (params.billing === 'team') {
+        whereClause = sql`${whereClause} AND o.subscription_status = 'team'`;
+    }
+    if (params.billing === 'non-team') {
+        whereClause = sql`${whereClause} AND COALESCE(o.subscription_status, 'free') != 'team'`;
+    }
     if (q) {
         whereClause = sql`
             ${whereClause}
@@ -96,11 +108,17 @@ async function getOrgs(params: { query?: string; limit: number; offset: number }
     });
 }
 
-async function getOrgsCount(params: { query?: string }) {
+async function getOrgsCount(params: { query?: string; billing?: OrgBillingFilter }) {
     if (!sql) return 0;
 
     const q = params.query?.trim() ? `%${params.query.trim()}%` : null;
     let whereClause = sql`TRUE`;
+    if (params.billing === 'team') {
+        whereClause = sql`${whereClause} AND subscription_status = 'team'`;
+    }
+    if (params.billing === 'non-team') {
+        whereClause = sql`${whereClause} AND COALESCE(subscription_status, 'free') != 'team'`;
+    }
     if (q) {
         whereClause = sql`
             ${whereClause}
@@ -124,17 +142,19 @@ export default async function OrgsPage({ searchParams }: { searchParams: OrgsSea
     const page = parsePage(rawPage, 1);
     const pageSize = parsePageSize(rawPageSize, [25, 50, 100], DEFAULT_PAGE_SIZE);
     const query = (getParam(sp, 'q') || '').trim();
+    const billing = parseOrgBillingFilter(getParam(sp, 'billing'));
     const offset = (page - 1) * pageSize;
 
     const [orgs, total] = await Promise.all([
-        getOrgs({ query, limit: pageSize, offset }),
-        getOrgsCount({ query }),
+        getOrgs({ query, billing, limit: pageSize, offset }),
+        getOrgsCount({ query, billing }),
     ]);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const canonicalPage = clampPage(page, totalPages);
 
     const baseValues = {
         q: query || undefined,
+        billing,
         pageSize,
     };
 
@@ -171,14 +191,26 @@ export default async function OrgsPage({ searchParams }: { searchParams: OrgsSea
                             Search
                         </Button>
                     </div>
-                    {query ? (
-                        <Link
-                            href={buildAdminHref('/admin/organizations', { page: 1, pageSize })}
-                            className="text-xs text-muted-foreground hover:text-foreground"
+                    <div className="flex flex-wrap items-center gap-2">
+                        <select
+                            name="billing"
+                            aria-label="Workspace billing"
+                            defaultValue={billing || ''}
+                            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
                         >
-                            Reset
-                        </Link>
-                    ) : null}
+                            <option value="">All workspaces</option>
+                            <option value="team">Team billing</option>
+                            <option value="non-team">Personal/default</option>
+                        </select>
+                        {(query || billing) ? (
+                            <Link
+                                href={buildAdminHref('/admin/organizations', { page: 1, pageSize })}
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                            >
+                                Reset
+                            </Link>
+                        ) : null}
+                    </div>
                 </form>
             </AdminFilterBar>
 

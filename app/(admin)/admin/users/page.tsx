@@ -12,13 +12,15 @@ import {
     buildAdminHref,
     clampPage,
     getParam,
+    parseAdminActivationFilter,
+    parseAdminPlanFilter,
     parseDirection,
     parsePage,
     parsePageSize,
     resolveSearchParams,
     shouldCanonicalizePage,
 } from '@/lib/admin/list-query';
-import type { Plan, UserRole } from '@/types';
+import type { UserRole } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,14 +28,6 @@ type UsersSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 function isUserRole(value: string): value is UserRole {
     return value === 'user' || value === 'admin' || value === 'banned';
-}
-
-function isPlan(value: string): value is Plan {
-    return value === 'free' || value === 'pro' || value === 'canceled';
-}
-
-function isAdminPlanFilter(value: string): value is Plan | 'team' {
-    return value === 'team' || isPlan(value);
 }
 
 function isUserSortField(value: string): value is UserSortField {
@@ -55,16 +49,18 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
     const query = (getParam(sp, 'q') || '').trim();
     const roleRaw = getParam(sp, 'role');
     const planRaw = getParam(sp, 'plan');
+    const activationRaw = getParam(sp, 'activation');
     const sortRaw = getParam(sp, 'sort');
     const dirRaw = getParam(sp, 'dir');
 
     const role = roleRaw && isUserRole(roleRaw) ? roleRaw : undefined;
-    const plan = planRaw && isAdminPlanFilter(planRaw) ? planRaw : undefined;
+    const plan = parseAdminPlanFilter(planRaw);
+    const activation = parseAdminActivationFilter(activationRaw);
     const sortBy: UserSortField = sortRaw && isUserSortField(sortRaw) ? sortRaw : 'created';
     const sortDir = parseDirection(dirRaw, 'desc');
 
     const offset = (page - 1) * pageSize;
-    const { users, total, stats } = await searchUsers({ limit: pageSize, offset, query, role, plan, sortBy, sortDir });
+    const { users, total, stats } = await searchUsers({ limit: pageSize, offset, query, role, plan, activation, sortBy, sortDir });
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const canonicalPage = clampPage(page, totalPages);
 
@@ -72,6 +68,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
         q: query || undefined,
         role,
         plan,
+        activation,
         pageSize,
         sort: sortBy,
         dir: sortDir,
@@ -155,6 +152,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                         <div className="flex flex-wrap items-center gap-2">
                             <select
                                 name="role"
+                                aria-label="Role"
                                 defaultValue={role || ''}
                                 className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
                             >
@@ -165,16 +163,30 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                             </select>
                             <select
                                 name="plan"
+                                aria-label="Entitlement"
                                 defaultValue={plan || ''}
                                 className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
                             >
                                 <option value="">All entitlements</option>
+                                <option value="paying">Paying (Pro or Team)</option>
                                 <option value="free">Free</option>
                                 <option value="pro">Pro</option>
                                 <option value="team">Team</option>
                                 <option value="canceled">Canceled</option>
                             </select>
-                            {(query || role || plan) ? (
+                            <select
+                                name="activation"
+                                aria-label="Setup state"
+                                defaultValue={activation || ''}
+                                className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+                            >
+                                <option value="">Any setup state</option>
+                                <option value="no-setup">No setup and no request</option>
+                                <option value="missing-defaults">Core setup incomplete</option>
+                                <option value="activated-7d">Activated this week</option>
+                                <option value="habitual">Habitual (3+ in 30 days)</option>
+                            </select>
+                            {(query || role || plan || activation) ? (
                                 <Link href={resetHref} className="text-xs text-muted-foreground hover:text-foreground">
                                     Reset
                                 </Link>

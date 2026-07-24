@@ -58,7 +58,8 @@ export function AdminFilterBar({ children, className }: { children: ReactNode; c
     return (
         <div
             className={cn(
-                'sticky top-[4.5rem] z-20 rounded-lg border border-border/70 bg-card/90 p-3 shadow-sm backdrop-blur',
+                // Offset is derived from the admin shell's header height so the two cannot drift apart.
+                'sticky top-[calc(var(--admin-header-height,4rem)+0.5rem)] z-20 rounded-lg border border-border/70 bg-card/90 p-3 shadow-sm backdrop-blur',
                 className
             )}
         >

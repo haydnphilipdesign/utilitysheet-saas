@@ -6,84 +6,82 @@
 
 ## Session Metadata
 
-- Task: Complete Account settings and the final Settings/Branding Profile integration review.
-- Status: Complete; authorized account-security migration applied and reviewed Settings/Branding work published to GitHub main.
-- Current or last agent: OpenAI Codex
+- Task: Admin navigation sidebar, layout offset repair, and operations-overview drill-down correctness.
+- Status: Complete and validated. Changes are uncommitted in the working tree.
+- Current or last agent: Claude Code
 - Branch: `main`
-- Last updated: 2026-07-21
-- Relevant plan: `.ai/plans/2026-07-21-account-settings-integration-review.md`
-- Durable decision: `.ai/decisions/2026-07-21-account-security-and-closure-boundary.md`
+- Last updated: 2026-07-24
+- Relevant plan: `.ai/plans/2026-07-24-admin-sidebar-and-drilldowns.md`
+- Durable decision: none created; no architectural boundary changed.
 
 ## Verified Repository State and Constraints
 
-- `HEAD`, local `main`, and `origin/main` were aligned at `46169fc` when this task began with a clean worktree.
-- Existing Settings/Branding work was treated as intentional. Account, Seller Form Defaults, Notifications,
-  Workspace & Team, Billing, Referrals, Branding Profiles, PDF Content, and message/preview plans and code
-  were reviewed as one product.
-- The user approved the non-destructive account slice and, on 2026-07-21, explicitly authorized applying
-  only `migrations-account-security-events.sql`, committing this reviewed work, and pushing it to GitHub main.
-- Executable closure, Stripe cancellation, shared asset transfer/deletion, Stack user deletion, deployments,
-  unrelated migrations, billing mutations, and other production-data actions remain unauthorized.
+- `HEAD`, local `main`, and `origin/main` were aligned at `252258d` with a clean worktree when this task
+  began. The previous Settings/Branding task was complete and published.
+- No commit, push, migration, schema change, deployment, or live admin mutation was authorized or performed.
+- All changes are in the Admin surface plus two shared admin libraries. No customer-facing route, seller
+  flow, packet, PDF, billing, or auth behavior was touched.
 
 ## Work Completed
 
-- Added recent-authenticated Account security controls for verified email changes, direct-to-Stack password
-  changes, configured sign-in method visibility, active-session review/revocation, personal JSON export, and
-  read-only closure readiness. Closure is explicitly unavailable and no destructive endpoint exists.
-- Added `migrations-account-security-events.sql` plus matching `schema.sql`. The authorized migration was
-  applied transactionally to the configured Neon target on 2026-07-21, enabling durable audit rows.
-- Fixed Account full-name updates to keep Stack display name and activation reconciliation aligned.
-- Fixed a cross-surface isolation defect: stale `accounts.active_organization_id` values no longer grant
-  workspace scope or Team entitlements. Live membership now gates request, Branding Profile, reusable-form,
-  onboarding/test-drive, and weekly-summary organization paths; request creation also rejects a Branding
-  Profile outside the authenticated active scope.
-- Preserved established ownership/default boundaries: reusable defaults affect new requests only; request
-  configuration remains the snapshot; Branding Profiles own presentation/content; personal preferences,
-  workspace routing/administration, and billing remain separate; public capability URLs/contracts are stable.
-- Mirrored the existing `accounts.active_organization_id` `ON DELETE SET NULL` foreign key in `schema.sql` and
-  verified focused Settings/Branding migrations match the snapshot.
-- Removed tracked generated audit/Playwright artifacts and added ignore rules for future runs.
-- Updated the active plan, original audit, Branding, Notifications, Seller Form Defaults, Workspace & Team,
-  self-serve test plan, and durable Account closure decision.
-- Committed the accumulated reviewed work as `da20812` (`Complete account security and settings integration`),
-  pushed it fast-forward to GitHub `main`, fetched again, and verified `HEAD == origin/main` at that commit.
+Motivated by the user reporting sustained difficulty adapting to the Admin v2 redesign. Review confirmed
+three defects beyond ordinary adjustment cost.
+
+- Replaced the two-row grouped header nav with a left sidebar rendered once in the DOM. It is sticky at
+  `lg` and above and becomes a slide-over below `lg`, toggled from the header, hidden with `max-lg:hidden`
+  when closed so it leaves the tab order without JS-measured viewport state. Routes, labels, ordering, and
+  the four groups are unchanged except `Overview` → `Dashboard`, which removed a name collision with the
+  `Overview` chart component rendered inside that page.
+- Removed the duplicate back-to-app control; the header had two separate links to `/dashboard`.
+- Fixed the sticky filter bar, which was hidden behind the header on every list page. `AdminFilterBar` was
+  pinned at `4.5rem`, a value correct for the pre-v2 64px header but not the ~108px v2 header. The offset is
+  now derived from a `--admin-header-height` custom property declared on the admin shell.
+- Repaired seven overview metrics that linked to lists which could not show the counted rows. Added
+  `activation` (`no-setup`, `missing-defaults`, `activated-7d`, `habitual`) and `plan=paying` to
+  `/admin/users`, `activity` (`7d`, `30d`, `stale7d`, `stale30d`) to `/admin/requests`, and `billing`
+  (`team`, `non-team`) to `/admin/organizations`. Each predicate mirrors its counterpart in
+  `lib/admin/activation-funnel.ts`; overview links carry `role=user` because the funnel counts only that role.
+- Excluded demo requests from the overview stale-in-progress count so it agrees with `/admin/abandonment`,
+  which excludes them throughout.
+- Centralized the list-filter types and parsers in `lib/admin/list-query.ts` and consolidated the duplicated
+  where-clause builder on the requests page. Added missing `aria-label`s to filter selects.
+- Authorization, reason requirements, audit logging, entitlement semantics, policy checks, and
+  `ADMIN_WRITES_DISABLED` behavior are unchanged. All admin routes remain stable.
+
+## Files Changed
+
+- `app/(admin)/layout-content.tsx`, `app/(admin)/admin/page.tsx`, `app/(admin)/admin/users/page.tsx`,
+  `app/(admin)/admin/requests/page.tsx`, `app/(admin)/admin/organizations/page.tsx`
+- `components/admin/primitives.tsx`, `lib/admin/index.ts`, `lib/admin/list-query.ts`
+- `ADMIN.md`, `.ai/plans/2026-07-24-admin-sidebar-and-drilldowns.md`, `.ai/CURRENT.md`
+- `tests/unit/admin-layout-navigation.test.tsx` (rewritten), `tests/unit/admin-list-filters.test.ts` (new)
 
 ## Validation
 
-- Focused final isolation run: 7 files, 38 tests passed. Final full Vitest: 127 files, 627 tests passed.
-- Playwright across Desktop Chrome, Mobile Chrome, and Mobile Safari: auth 6/6, intake 6/6, packet 3/3,
-  seller wizard 6/6. An initial parallel combined intake run had two Desktop Chrome navigation timeouts;
-  the immediate all-project rerun passed 6/6.
-- Changed-file ESLint passed. Repository-wide `npm run lint` remains non-zero only for the pre-existing,
-  unrelated `components/admin/EventLogTable.tsx:6` explicit-`any` error; 20 existing warnings remain.
+- Full Vitest: 128 files, 640 tests passed, up from the 127/627 baseline.
 - `npm exec tsc -- --noEmit`, `npm run build`, and `npm run security:scan` passed.
-- Migration postflight: the table did not exist before execution; both reviewed statements committed in one
-  Neon transaction; all six columns/defaults, primary key, action/status checks, `accounts(id) ON DELETE SET
-  NULL` foreign key, and `(account_id, created_at DESC)` index match the migration. Initial row count is zero.
-- Fresh in-app screenshots were blocked by the desktop browser's localhost URL policy. CLI Playwright provides
-  desktop/mobile functional, accessible-name, overflow, and journey evidence; no fresh visual audit is claimed.
-- Final `git diff --check` passed, and direct inspection found no secret/sensitive pattern in any of the
-  21 untracked files. Port 3000 is clear after browser validation.
-- Immediately before publication, `npm exec tsc -- --noEmit`, `npm run security:scan`, `git diff --check`,
-  staged `git diff --check`, and the direct 21-file sensitive-pattern scan passed again.
+- `git diff --check` passed with only CRLF notices.
+- Changed-file ESLint clean. Repository-wide `npm run lint` still reports exactly the pre-existing baseline:
+  1 error (`components/admin/EventLogTable.tsx:6`, unrelated) and 20 warnings.
+- No authenticated browser QA was run; no fresh visual evidence is claimed.
 
 ## Remaining Work and Risks
 
-- Required implementation work for the approved slice: none.
-- Required migration/publication work: none.
-- The authorized account-security audit migration is complete; no further schema action is required for this slice.
-- Executable closure remains intentionally blocked pending approved retention/tombstone, referral-credit,
-  shared-asset transfer, billing-finalization, and partial-failure policies plus a lifecycle migration.
-- Primary-email promotion happens in Stack before UtilitySheet/Stripe reconciliation. Database failure can
-  require retry; personal Stripe email sync is intentionally best-effort and logged as attempted.
-- Repository-wide lint is not clean because of the unrelated baseline admin error named above.
+- Required work: none.
+- Optional: authenticated visual QA of the sidebar at desktop and narrow widths, and of filter-bar scroll
+  behavior on a long list. The offset arithmetic and tests are verified; the rendered result is not.
+- Risk: activation predicates now exist twice, as aggregates in `lib/admin/activation-funnel.ts` and as row
+  filters in `searchUsers`. They were written to match and are documented as a pair in `ADMIN.md`, but a
+  future schema change must update both or a metric will stop agreeing with its drill-down.
+- The new `searchUsers` activation filters use correlated subqueries over `requests`, `brand_profiles`, and
+  `intake_links`. They are unmeasured against production data volume.
 
 ## Concurrent Editing Warnings
 
-- No other active task or concurrent edit is recorded. The reviewed implementation has been committed and
-  pushed to GitHub `main`; no deployment or additional migration was performed.
+- None. No other active task is recorded. Changes are uncommitted; avoid concurrent edits to the Admin
+  surface and `lib/admin/` until this work is committed or discarded.
 
 ## Recommended Next Action
 
-No required action remains. Account closure, deployment, other migrations, and other production mutations
-remain separate authorization-gated follow-ups.
+Review the uncommitted diff and decide whether to commit. Committing, pushing, and deploying all remain
+unauthorized and require explicit approval.

@@ -14,8 +14,11 @@ import {
     getParam,
     parsePage,
     parsePageSize,
+    parseRequestActivityFilter,
+    parseRequestStatus,
     resolveSearchParams,
     shouldCanonicalizePage,
+    type RequestActivityFilter,
 } from '@/lib/admin/list-query';
 import type { RequestStatus } from '@/types';
 
@@ -23,9 +26,10 @@ export const dynamic = 'force-dynamic';
 
 type RequestsSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-function isRequestStatus(value: string): value is RequestStatus {
-    return value === 'draft' || value === 'sent' || value === 'in_progress' || value === 'submitted';
-}
+/**
+ * Activity windows are measured over `COALESCE(metered_at, last_activity_at, created_at)`, the same
+ * expression the operations overview uses, so a count on `/admin` and this list agree.
+ */
 
 type AdminRequestRow = {
     id: string;
@@ -40,14 +44,29 @@ type AdminRequestRow = {
     seller_email: string | null;
 };
 
-async function getRequests(params: { query?: string; status?: RequestStatus; limit: number; offset: number }) {
-    if (!sql) return [];
+type RequestFilters = { query?: string; status?: RequestStatus; activity?: RequestActivityFilter };
+
+function buildRequestsWhere(params: RequestFilters) {
+    if (!sql) return null;
 
     const q = params.query?.trim() ? `%${params.query.trim()}%` : null;
     let whereClause = sql`TRUE`;
 
     if (params.status) {
         whereClause = sql`${whereClause} AND r.status = ${params.status}`;
+    }
+
+    if (params.activity === '7d') {
+        whereClause = sql`${whereClause} AND COALESCE(r.metered_at, r.last_activity_at, r.created_at) >= NOW() - INTERVAL '7 days'`;
+    }
+    if (params.activity === '30d') {
+        whereClause = sql`${whereClause} AND COALESCE(r.metered_at, r.last_activity_at, r.created_at) >= NOW() - INTERVAL '30 days'`;
+    }
+    if (params.activity === 'stale7d') {
+        whereClause = sql`${whereClause} AND COALESCE(r.metered_at, r.last_activity_at, r.created_at) < NOW() - INTERVAL '7 days'`;
+    }
+    if (params.activity === 'stale30d') {
+        whereClause = sql`${whereClause} AND COALESCE(r.metered_at, r.last_activity_at, r.created_at) < NOW() - INTERVAL '30 days'`;
     }
 
     if (q) {
@@ -63,6 +82,15 @@ async function getRequests(params: { query?: string; status?: RequestStatus; lim
             )
         `;
     }
+
+    return whereClause;
+}
+
+async function getRequests(params: RequestFilters & { limit: number; offset: number }) {
+    if (!sql) return [];
+
+    const whereClause = buildRequestsWhere(params);
+    if (!whereClause) return [];
 
     const result = await sql`
         SELECT
@@ -79,29 +107,11 @@ async function getRequests(params: { query?: string; status?: RequestStatus; lim
     return result as unknown as AdminRequestRow[];
 }
 
-async function getRequestsCount(params: { query?: string; status?: RequestStatus }) {
+async function getRequestsCount(params: RequestFilters) {
     if (!sql) return 0;
 
-    const q = params.query?.trim() ? `%${params.query.trim()}%` : null;
-    let whereClause = sql`TRUE`;
-
-    if (params.status) {
-        whereClause = sql`${whereClause} AND r.status = ${params.status}`;
-    }
-
-    if (q) {
-        whereClause = sql`
-            ${whereClause}
-            AND (
-                r.property_address ILIKE ${q}
-                OR r.seller_name ILIKE ${q}
-                OR r.seller_email ILIKE ${q}
-                OR CAST(r.id AS TEXT) ILIKE ${q}
-                OR a.email ILIKE ${q}
-                OR a.full_name ILIKE ${q}
-            )
-        `;
-    }
+    const whereClause = buildRequestsWhere(params);
+    if (!whereClause) return 0;
 
     const result = await sql`
         SELECT COUNT(*) as count
@@ -121,13 +131,13 @@ export default async function RequestsPage({ searchParams }: { searchParams: Req
     const page = parsePage(rawPage, 1);
     const pageSize = parsePageSize(rawPageSize, [25, 50, 100], DEFAULT_PAGE_SIZE);
     const query = (getParam(sp, 'q') || '').trim();
-    const statusRaw = getParam(sp, 'status');
-    const status = statusRaw && isRequestStatus(statusRaw) ? statusRaw : undefined;
+    const status = parseRequestStatus(getParam(sp, 'status'));
+    const activity = parseRequestActivityFilter(getParam(sp, 'activity'));
     const offset = (page - 1) * pageSize;
 
     const [requests, total] = await Promise.all([
-        getRequests({ query, status, limit: pageSize, offset }),
-        getRequestsCount({ query, status }),
+        getRequests({ query, status, activity, limit: pageSize, offset }),
+        getRequestsCount({ query, status, activity }),
     ]);
     const latestRequests = await getLatestRequestsForUsers(
         requests.map((request) => request.account_id).filter((id): id is string => Boolean(id))
@@ -138,6 +148,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Req
     const baseValues = {
         q: query || undefined,
         status,
+        activity,
         pageSize,
     };
 
@@ -179,6 +190,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Req
                     <div className="flex flex-wrap items-center gap-2">
                         <select
                             name="status"
+                            aria-label="Status"
                             defaultValue={status || ''}
                             className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
                         >
@@ -188,7 +200,19 @@ export default async function RequestsPage({ searchParams }: { searchParams: Req
                             <option value="in_progress">In progress</option>
                             <option value="submitted">Submitted</option>
                         </select>
-                        {(query || status) ? (
+                        <select
+                            name="activity"
+                            aria-label="Activity"
+                            defaultValue={activity || ''}
+                            className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+                        >
+                            <option value="">Any activity</option>
+                            <option value="7d">Active in last 7 days</option>
+                            <option value="30d">Active in last 30 days</option>
+                            <option value="stale7d">Inactive 7+ days</option>
+                            <option value="stale30d">Inactive 30+ days</option>
+                        </select>
+                        {(query || status || activity) ? (
                             <Link
                                 href={buildAdminHref('/admin/requests', { page: 1, pageSize })}
                                 className="text-xs text-muted-foreground hover:text-foreground"

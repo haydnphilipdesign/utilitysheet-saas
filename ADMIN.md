@@ -10,6 +10,37 @@
 - `/admin/updates` draft, review, publication, and deletion of customer-facing Product Updates
 - `/admin/audit-logs` audit log viewer
 
+## Navigation
+
+Admin uses a left sidebar grouped as Operations, Customers, Growth & Content, and Security. Below the `lg`
+breakpoint the same sidebar becomes a slide-over opened from the header. Routes are unchanged; several nav
+labels intentionally differ from their URL (`Seller Progress` → `/admin/abandonment`, `Workspaces` →
+`/admin/organizations`, `Customer Outreach` → `/admin/testimonial-candidates`).
+
+## List Filters
+
+Every clickable metric on `/admin` links to a list filtered to the rows it counted. The predicates behind
+these filters mirror `lib/admin/activation-funnel.ts`; changing one side requires changing the other.
+
+`/admin/users` accepts `q`, `role`, `plan`, `activation`, `sort`, `dir`, `page`, `pageSize`.
+
+- `plan=paying` matches a Pro entitlement override **or** an active workspace on Team billing. It is
+  deliberately broader than `plan=pro`.
+- `activation=no-setup` matches accounts with no completed onboarding and no non-deleted, non-demo request.
+- `activation=missing-defaults` matches accounts missing an active workspace, brand profile, or intake link.
+- `activation=activated-7d` matches accounts whose first live seller submission landed in the last 7 days.
+- `activation=habitual` matches accounts with 3 or more submitted requests in the last 30 days.
+
+Overview links to these filters also carry `role=user`, because the activation funnel counts only
+`role = 'user'` accounts.
+
+`/admin/requests` accepts `q`, `status`, `activity`, `page`, `pageSize`. The `activity` windows (`7d`, `30d`,
+`stale7d`, `stale30d`) are measured over `COALESCE(metered_at, last_activity_at, created_at)`.
+
+`/admin/organizations` accepts `q`, `billing`, `page`, `pageSize`. The `billing` filter (`team`, `non-team`)
+matches the workspace's own subscription status and is narrower than the displayed workspace kind, which
+also considers member count.
+
 ## Guardrails
 - Admin write actions require a **reason** (min 3 chars) and are recorded to `admin_audit_logs`.
 - Set `ADMIN_WRITES_DISABLED=true` to hard-disable admin write actions (useful as a “safety catch” in production).
