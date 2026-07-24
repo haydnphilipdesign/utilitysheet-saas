@@ -2,9 +2,10 @@
 
 ## Status
 
-Completed on 2026-07-24 by Claude Code. All four phases are implemented and validated. Uncommitted in the
-working tree; no commit, push, migration, or deployment was authorized or performed. Follow-up to the
-completed `.ai/plans/2026-07-17-admin-operations-workspace.md`.
+Completed on 2026-07-24 by Claude Code. All four phases are implemented and validated. Committed as
+`454e951` and pushed to GitHub `main` with the user's explicit authorization; no migration or deployment
+was authorized or performed. Follow-up to the completed
+`.ai/plans/2026-07-17-admin-operations-workspace.md`.
 
 ## Objective
 

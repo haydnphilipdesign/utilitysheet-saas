@@ -7,7 +7,7 @@
 ## Session Metadata
 
 - Task: Admin navigation sidebar, layout offset repair, and operations-overview drill-down correctness.
-- Status: Complete and validated. Changes are uncommitted in the working tree.
+- Status: Complete, validated, and published to GitHub `main` as `454e951`.
 - Current or last agent: Claude Code
 - Branch: `main`
 - Last updated: 2026-07-24
@@ -18,7 +18,9 @@
 
 - `HEAD`, local `main`, and `origin/main` were aligned at `252258d` with a clean worktree when this task
   began. The previous Settings/Branding task was complete and published.
-- No commit, push, migration, schema change, deployment, or live admin mutation was authorized or performed.
+- The user explicitly authorized committing and pushing this work to GitHub `main` on 2026-07-24. It was
+  committed as `454e951`, pushed fast-forward, and verified with `HEAD == origin/main` after a fresh fetch.
+- No migration, schema change, deployment, or live admin mutation was authorized or performed.
 - All changes are in the Admin surface plus two shared admin libraries. No customer-facing route, seller
   flow, packet, PDF, billing, or auth behavior was touched.
 
@@ -78,10 +80,10 @@ three defects beyond ordinary adjustment cost.
 
 ## Concurrent Editing Warnings
 
-- None. No other active task is recorded. Changes are uncommitted; avoid concurrent edits to the Admin
-  surface and `lib/admin/` until this work is committed or discarded.
+- None. No other active task is recorded, and this work is committed and pushed, so no uncommitted Admin
+  state is at risk.
 
 ## Recommended Next Action
 
-Review the uncommitted diff and decide whether to commit. Committing, pushing, and deploying all remain
-unauthorized and require explicit approval.
+No required action remains. Optional: authenticated visual QA of the sidebar and filter-bar scroll behavior.
+Deployment, migrations, and other production mutations remain separate authorization-gated follow-ups.
