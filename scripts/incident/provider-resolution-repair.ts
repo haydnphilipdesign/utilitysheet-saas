@@ -176,7 +176,7 @@ async function main() {
             SELECT ue.id
             FROM utility_entries ue
             JOIN input i ON i.entry_id = ue.id
-            WHERE ue.updated_at = i.expected_updated_at
+            WHERE date_trunc('milliseconds', ue.updated_at) = i.expected_updated_at
               AND COALESCE(NULLIF(ue.display_name, ''), NULLIF(ue.raw_text, ''))
                     IS NOT DISTINCT FROM i.expected_provider_name
               AND ue.contact_phone IS NOT DISTINCT FROM i.expected_phone

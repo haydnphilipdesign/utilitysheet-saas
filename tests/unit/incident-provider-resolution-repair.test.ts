@@ -138,5 +138,8 @@ describe('incident provider repair apply gate', () => {
         expect(
             source.match(/\$\{PROVIDER_RESOLUTION_INCIDENT_ID\}::text/g)
         ).toHaveLength(2);
+        expect(source).toContain(
+            "date_trunc('milliseconds', ue.updated_at) = i.expected_updated_at"
+        );
     });
 });
