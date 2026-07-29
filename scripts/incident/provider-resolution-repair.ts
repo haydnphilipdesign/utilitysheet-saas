@@ -219,7 +219,7 @@ async function main() {
                 r.account_id,
                 'incident_provider_contact_repair',
                 jsonb_build_object(
-                    'incident_id', ${PROVIDER_RESOLUTION_INCIDENT_ID},
+                    'incident_id', ${PROVIDER_RESOLUTION_INCIDENT_ID}::text,
                     'request_id', u.request_id,
                     'utility_entry_id', u.id,
                     'category', u.category,
@@ -239,7 +239,7 @@ async function main() {
                 'submitted_sheet_edited',
                 jsonb_build_object(
                     'actor', 'admin_incident_repair',
-                    'incident_id', ${PROVIDER_RESOLUTION_INCIDENT_ID},
+                    'incident_id', ${PROVIDER_RESOLUTION_INCIDENT_ID}::text,
                     'utility_entry_id', u.id,
                     'category', u.category,
                     'changed_fields', to_jsonb(array_remove(ARRAY[

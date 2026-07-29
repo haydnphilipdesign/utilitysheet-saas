@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
     assertRepairApplyAuthorized,
@@ -127,5 +128,15 @@ describe('incident provider repair apply gate', () => {
             adminId,
             adminWritesDisabled: false,
         })).not.toThrow();
+    });
+
+    it('casts incident metadata parameters for PostgreSQL JSON construction', () => {
+        const source = readFileSync(
+            'scripts/incident/provider-resolution-repair.ts',
+            'utf8'
+        );
+        expect(
+            source.match(/\$\{PROVIDER_RESOLUTION_INCIDENT_ID\}::text/g)
+        ).toHaveLength(2);
     });
 });
