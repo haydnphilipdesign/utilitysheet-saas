@@ -8,9 +8,9 @@
 
 - Task: Diagnose paying-customer reports of incorrect provider suggestions and unresolved contacts.
 - Intended outcome: Establish root cause and safe remediation, including whether the 2026-07-24 Gemini model change is involved.
-- Status: Provider hotfix and dashboard product update are committed, pushed, deployed, and production
-  smoke-verified. Reviewed repair decisions and credit/email dry runs are complete; production repair,
-  credit application, and customer send remain authorization-gated.
+- Status: Incident response completed. Hotfix/product update are deployed; 6 reviewed contact repairs
+  are applied and audited; 7 one-month credits totaling $82 are applied and verified; all 8 segmented
+  customer emails were sent successfully.
 - Current or last agent: OpenAI Codex
 - Branch: `main`
 - Last updated: 2026-07-29
@@ -26,8 +26,8 @@
 - The customer reports incorrect companies on the last five or more sheets, manual correct-company entries
   not pulling contact information, and `unresolved contacts`.
 - The user changed `GEMINI_MODEL_NAME` back to `gemini-3.1-flash-lite` and initiated the emergency
-  rollback. The user later explicitly authorized the hotfix/product-update commit, push, and deployment.
-  No customer-record repair, Stripe credit, or customer email is authorized yet.
+  rollback. The user later explicitly authorized the hotfix/product-update release and, in a separate
+  turn, the reviewed production repairs, universal credits, and segmented customer emails.
 
 ## Work Completed
 
@@ -96,6 +96,28 @@
   it to `origin/main`, and verified local `HEAD == origin/main`.
 - Vercel production deployment `dpl_4vTrb4Ay7X7BMpXVa9aYAbhsXS6h` reached `READY` for that exact SHA
   and attached the `utilitysheet.com` and `www.utilitysheet.com` aliases.
+- The first authorized repair apply attempt was rejected during PostgreSQL statement planning because
+  the dynamic incident ID in `jsonb_build_object` lacked an explicit SQL type. Atomicity was verified:
+  all 6 selected rows remained unchanged and 0 repair audit/event rows existed. The script now casts
+  both metadata parameters to `text`; focused validation and publication are required before retry.
+- The second repair apply attempt was blocked by the all-or-none eligibility guard and also wrote 0 rows
+  and 0 audit/events. Read-only predicate counts isolated the mismatch: all 6 rows matched provider,
+  phone, URL, and null-only checks, but PostgreSQL microsecond `updated_at` values did not equal the
+  millisecond timestamps preserved by JavaScript/JSON. The SQL guard now compares timestamps at
+  millisecond precision, consistent with the reviewed dry-run comparison.
+- Published the two operational corrections as `a680082` and `af1b414`; production deployment
+  `dpl_FuGSXRgFPKsyLpe6AuTvDt8cChGi` reached `READY` for `af1b414`.
+- After publishing both operational corrections, the third repair apply completed successfully:
+  6 reviewed entries across 5 requests were updated, filling 5 missing phone fields and 6 missing URL
+  fields. Postflight matched every proposed value, confirmed provider names/existing contacts were
+  preserved, and found exactly 6 Admin audit rows plus 6 request event rows for the incident.
+- Applied the authorized universal one-month credits through Stripe customer-balance transactions:
+  7 billing entities, $82.00 total. The immediate postflight found `already_applied=7`, `pending=0`,
+  and zero remaining pending cents.
+- Sent all 8 authorized incident emails after the repair and credit postflights:
+  1 reporting customer, 2 other affected paid customers, 4 paid-goodwill customers, and 1 affected
+  non-billed account. The sender verified all 7 billing-entity credits before delivery and completed
+  `sent=8/8` with no reported failure.
 
 ## Validation
 
@@ -138,13 +160,11 @@
 
 ## Remaining Required Work
 
-- Apply the 6 reviewed repairs only after explicit production-data authorization and confirmation of an
-  Admin account. The dry run is current and all 6 rows were eligible.
-- Apply the seven Stripe credits only after explicit financial authorization using the verified
-  expected count of 7 and total of 8200 cents.
-- Send customer communications only after the hotfix deployment, repair-review decision, and credit
-  application are verified, `PROVIDER_INCIDENT_EXCLUDED_EMAILS` is configured/reviewed, and customer
-  delivery is explicitly authorized.
+- No required incident operation remains.
+- Eight ambiguous provider/contact entries remain intentionally unchanged and may be handled individually
+  only if an account owner confirms the correct provider.
+- A personal reply to the original reporting-customer thread is drafted in the active Codex task but has
+  not been sent separately; the reporting customer already received the segmented incident email.
 
 ## Concurrent Editing Warnings
 
@@ -154,5 +174,5 @@
 
 ## Recommended Next Action
 
-Obtain explicit authorization for the 6 production contact repairs. After repair verification, obtain
-separate authorization for the seven Stripe credits and then for the eight customer emails.
+Send or adapt the drafted personal reply in the original customer thread, then monitor customer responses
+for any of the eight intentionally unchanged confirmation cases.

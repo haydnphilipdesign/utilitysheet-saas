@@ -2,11 +2,12 @@
 
 ## Status
 
-Emergency mitigation and the durable hotfix/product-update release are complete. Engineering,
-compensation, repair-review, and communication design are approved. The approved design is recorded in
+Incident response is complete. Emergency mitigation, the durable hotfix/product-update release,
+reviewed contact repairs, universal credits, and segmented customer communications all completed. The
+approved design is recorded in
 `docs/superpowers/specs/2026-07-29-provider-resolution-incident-remediation-design.md`.
-The read-only production review, reviewed repair dry run, and Stripe/email dry runs are complete.
-Production repair, Stripe credit, and customer email remain separately authorization-gated.
+Six repairs were applied and audited, all seven one-month credits totaling $82 were verified, and all
+eight customer emails were sent. No required incident operation remains.
 
 The independent implementation plans are:
 
@@ -218,6 +219,10 @@ ESLint, production build, security scan, and `git diff --check`.
   cases, and 55 unchanged.
 - Reviewed repair dry run: all 6 selected entries remained eligible across 5 requests, with 0 stale
   entries; no production data changed.
+- Live repair: 6 entries applied across 5 requests; all proposed values independently matched and exactly
+  6 Admin audit plus 6 request event rows were verified.
+- Live credits: 7 applied for $82 total; postflight found 7 already applied and 0 pending.
+- Live communications: all 8 segmented emails sent after repair/credit verification.
 - Read-only credit preview: 7 active billing entities; $82.00 total; no incident credit already applied.
 - Read-only communication preview: 8 recipients after exclusion/deduplication; no email sent. One
   affected Pro-entitled but non-billed account is assigned the no-credit segment.

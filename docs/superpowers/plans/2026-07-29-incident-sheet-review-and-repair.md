@@ -2,8 +2,8 @@
 
 **Status (2026-07-29):** Tooling complete and validated. The read-only production report completed with
 6 automatic candidates, 8 customer-confirmation cases, and 55 unchanged entries. The exported decisions
-were reviewed and the repair dry run confirmed all 6 selected entries remain eligible with 0 stale rows.
-Any live repair remains separately authorization-gated.
+were reviewed, and all 6 selected entries were applied and independently verified across 5 requests.
+Provider names and existing contact values were preserved; 6 Admin audit and 6 request event rows exist.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
