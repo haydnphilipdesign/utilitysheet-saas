@@ -1,7 +1,8 @@
 # Provider Resolution Hotfix Implementation Plan
 
-**Status (2026-07-29):** Local implementation complete. All focused and full-repository validation
-passed. Deployment remains separately authorization-gated.
+**Status (2026-07-29):** Complete. All focused and full-repository validation passed. Release commit
+`3adfc8c` reached `origin/main`; Vercel production deployment
+`dpl_4vTrb4Ay7X7BMpXVa9aYAbhsXS6h` reached `READY`, and the nine-category production smoke test passed.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

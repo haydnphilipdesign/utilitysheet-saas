@@ -6,84 +6,153 @@
 
 ## Session Metadata
 
-- Task: Admin navigation sidebar, layout offset repair, and operations-overview drill-down correctness.
-- Status: Complete, validated, and published to GitHub `main` as `454e951`.
-- Current or last agent: Claude Code
+- Task: Diagnose paying-customer reports of incorrect provider suggestions and unresolved contacts.
+- Intended outcome: Establish root cause and safe remediation, including whether the 2026-07-24 Gemini model change is involved.
+- Status: Provider hotfix and dashboard product update are committed, pushed, deployed, and production
+  smoke-verified. Reviewed repair decisions and credit/email dry runs are complete; production repair,
+  credit application, and customer send remain authorization-gated.
+- Current or last agent: OpenAI Codex
 - Branch: `main`
-- Last updated: 2026-07-24
-- Relevant plan: `.ai/plans/2026-07-24-admin-sidebar-and-drilldowns.md`
-- Durable decision: none created; no architectural boundary changed.
+- Last updated: 2026-07-29
+- Relevant plan: `.ai/plans/2026-07-29-provider-contact-resolution-incident.md`
+- Issue/PR: none
 
 ## Verified Repository State and Constraints
 
-- `HEAD`, local `main`, and `origin/main` were aligned at `252258d` with a clean worktree when this task
-  began. The previous Settings/Branding task was complete and published.
-- The user explicitly authorized committing and pushing this work to GitHub `main` on 2026-07-24. It was
-  committed as `454e951`, pushed fast-forward, and verified with `HEAD == origin/main` after a fresh fetch.
-- No migration, schema change, deployment, or live admin mutation was authorized or performed.
-- All changes are in the Admin surface plus two shared admin libraries. No customer-facing route, seller
-  flow, packet, PDF, billing, or auth behavior was touched.
+- The prior Admin task is complete and published; no unfinished product implementation is recorded.
+- The worktree began with unrelated edits to `.ai/README.md`, `.ai/decisions/README.md`,
+  `.ai/plans/README.md`, `AGENTS.md`, and `CLAUDE.md`. Preserve them.
+- `Utility-Sheet-Issue.html` is an untracked customer email and must not be committed.
+- The customer reports incorrect companies on the last five or more sheets, manual correct-company entries
+  not pulling contact information, and `unresolved contacts`.
+- The user changed `GEMINI_MODEL_NAME` back to `gemini-3.1-flash-lite` and initiated the emergency
+  rollback. The user later explicitly authorized the hotfix/product-update commit, push, and deployment.
+  No customer-record repair, Stripe credit, or customer email is authorized yet.
 
 ## Work Completed
 
-Motivated by the user reporting sustained difficulty adapting to the Admin v2 redesign. Review confirmed
-three defects beyond ordinary adjustment cost.
-
-- Replaced the two-row grouped header nav with a left sidebar rendered once in the DOM. It is sticky at
-  `lg` and above and becomes a slide-over below `lg`, toggled from the header, hidden with `max-lg:hidden`
-  when closed so it leaves the tab order without JS-measured viewport state. Routes, labels, ordering, and
-  the four groups are unchanged except `Overview` → `Dashboard`, which removed a name collision with the
-  `Overview` chart component rendered inside that page.
-- Removed the duplicate back-to-app control; the header had two separate links to `/dashboard`.
-- Fixed the sticky filter bar, which was hidden behind the header on every list page. `AdminFilterBar` was
-  pinned at `4.5rem`, a value correct for the pre-v2 64px header but not the ~108px v2 header. The offset is
-  now derived from a `--admin-header-height` custom property declared on the admin shell.
-- Repaired seven overview metrics that linked to lists which could not show the counted rows. Added
-  `activation` (`no-setup`, `missing-defaults`, `activated-7d`, `habitual`) and `plan=paying` to
-  `/admin/users`, `activity` (`7d`, `30d`, `stale7d`, `stale30d`) to `/admin/requests`, and `billing`
-  (`team`, `non-team`) to `/admin/organizations`. Each predicate mirrors its counterpart in
-  `lib/admin/activation-funnel.ts`; overview links carry `role=user` because the funnel counts only that role.
-- Excluded demo requests from the overview stale-in-progress count so it agrees with `/admin/abandonment`,
-  which excludes them throughout.
-- Centralized the list-filter types and parsers in `lib/admin/list-query.ts` and consolidated the duplicated
-  where-clause builder on the requests page. Added missing `aria-label`s to filter selects.
-- Authorization, reason requirements, audit logging, entitlement semantics, policy checks, and
-  `ADMIN_WRITES_DISABLED` behavior are unchanged. All admin routes remain stable.
-
-## Files Changed
-
-- `app/(admin)/layout-content.tsx`, `app/(admin)/admin/page.tsx`, `app/(admin)/admin/users/page.tsx`,
-  `app/(admin)/admin/requests/page.tsx`, `app/(admin)/admin/organizations/page.tsx`
-- `components/admin/primitives.tsx`, `lib/admin/index.ts`, `lib/admin/list-query.ts`
-- `ADMIN.md`, `.ai/plans/2026-07-24-admin-sidebar-and-drilldowns.md`, `.ai/CURRENT.md`
-- `tests/unit/admin-layout-navigation.test.tsx` (rewritten), `tests/unit/admin-list-filters.test.ts` (new)
+- Extracted the customer-reported symptoms from the email.
+- Located separate provider suggestion/search and contact-resolution services.
+- Confirmed production switched from `gemini-3.1-flash-lite` to `gemini-3.5-flash-lite` on July 24.
+- Confirmed UtilitySheet combines Google Search with JSON mode but no explicit JSON schema.
+- Reproduced `gemini-3.5-flash-lite` returning input-token usage but no candidate/text/output tokens for
+  that request shape. The identical request succeeds on `gemini-3.1-flash-lite`.
+- Verified that omitting Search or adding an explicit response JSON schema restores valid 3.5 output.
+- Confirmed the supplied account had 5 submitted sheets after cutover, all 5 affected, with 8 of 23
+  provider entries unresolved; the measured pre-cutover account baseline was 0 unresolved of 53.
+- Confirmed global non-demo impact after cutover: 14 of 18 submitted sheets affected and 34 of 80
+  provider entries unresolved.
+- Confirmed every fresh 3.5 provider search fell back and apparent successful suggestions were cache hits.
+- Identified cache amplification: contact misses 90 days, suggestions 30 days, searches 7 days; cache keys
+  are not model/request-format aware.
+- Verified the user's rollback deployment reached `READY`.
+- Ran a controlled production demo smoke test: HTTP 200, non-empty results for all nine categories, and
+  fresh telemetry attributed to `gemini-3.1-flash-lite`.
+- Measured compensation scope: four affected Pro-entitled accounts, three actively billed; no affected
+  Team or Free account. Current billed population is six Pro subscriptions plus one four-seat Team
+  subscription.
+- Confirmed Stripe customer-balance adjustments are the existing mechanism for referral credits, but the
+  referral ledger is not appropriate for incident compensation.
+- User approved a universal one-month credit for every actively billed customer and no Free-account
+  credit. Read-only Stripe verification confirmed six active Pro subscriptions and one active Team
+  subscription, $82 total current monthly recurring amount, and no existing negative customer balances.
+- User approved the surgical engineering design: explicit caller schemas, empty-response classification,
+  preserved upstream telemetry reasons, model/request-format-aware cache namespaces, five-minute
+  negative/fallback TTLs, and a cache version bump. Production remains on 3.1 while this is validated;
+  SDK/API migration is out of the incident hotfix.
+- User approved the universal-credit, affected-sheet review/repair, and segmented-communication design.
+  The operator review will use a local, untracked, read-only incident packet; high-confidence missing
+  contacts may be repaired automatically after a reviewed dry run, while ambiguous provider names remain
+  a smaller review queue. It will not require raw database review or automatically replace provider names.
+- Recorded the approved design in
+  `docs/superpowers/specs/2026-07-29-provider-resolution-incident-remediation-design.md`.
+- Split the approved scope into four implementation-ready plans covering the provider hotfix,
+  sheet review/repair, universal customer credits, and customer communications.
+- Implemented the provider-resolution hotfix locally:
+  - explicit schemas for provider arrays and contact objects;
+  - default model changed to `gemini-3.1-flash-lite`;
+  - empty candidate/text responses retry and surface as `provider_error`;
+  - original provider/parse failures survive later quality gates;
+  - cache namespaces include model and request-format version;
+  - fallback suggestions/searches and contact misses use five-minute TTLs.
+- Implemented private incident review and repair tooling with fresh no-cache diagnostics, conservative
+  exact-provider/confidence/corroboration gates, an ignored HTML review packet, and an apply-gated,
+  all-or-none null-field repair with optimistic concurrency and audit events.
+- Ran the read-only production review across 69 incident-window entries: 6 automatic contact-repair
+  candidates, 8 entries requiring customer confirmation, and 55 entries left unchanged. No customer
+  record or cache changed.
+- Implemented the idempotent Stripe customer-balance credit operation. Its live dry run found 7 eligible
+  active billing entities, no prior incident credits, and $82.00 pending.
+- Implemented four state-aware customer email variants, recipient segmentation/deduplication, a
+  dry-run-first sender with Stripe-credit verification, and the resolved dashboard product update.
+- The recipient dry run found 8 deduplicated recipients: 1 reporting customer, 2 other affected paid,
+  4 paid goodwill, and 1 affected non-billed. The non-billed account is correctly excluded from credit
+  language. No email was sent.
+- Validated the operator-exported decision file: 69 entries with 6 `fill_missing`, 8
+  `customer_confirmation`, and 55 `leave_unchanged` decisions.
+- The repair dry run confirmed all 6 selected entries remain eligible across 5 requests, covering 5
+  missing phone fields and 6 missing URL fields with no stale rows. No production data changed.
+- Committed the incident release as `3adfc8c485c8a4a723fe0ee5355bc621d947d2f5`, fast-forward pushed
+  it to `origin/main`, and verified local `HEAD == origin/main`.
+- Vercel production deployment `dpl_4vTrb4Ay7X7BMpXVa9aYAbhsXS6h` reached `READY` for that exact SHA
+  and attached the `utilitysheet.com` and `www.utilitysheet.com` aliases.
 
 ## Validation
 
-- Full Vitest: 128 files, 640 tests passed, up from the 127/627 baseline.
-- `npm exec tsc -- --noEmit`, `npm run build`, and `npm run security:scan` passed.
-- `git diff --check` passed with only CRLF notices.
-- Changed-file ESLint clean. Repository-wide `npm run lint` still reports exactly the pre-existing baseline:
-  1 error (`components/admin/EventLogTable.tsx:6`, unrelated) and 20 warnings.
-- No authenticated browser QA was run; no fresh visual evidence is claimed.
+- Startup audit completed: applicable `AGENTS.md`, prior `.ai/CURRENT.md`, worktree status/diff, and
+  AI telemetry documentation inspected.
+- Vercel runtime-error aggregate from July 24 onward showed no seller/provider 5xx errors, matching the
+  caught/null failure path.
+- Read-only redacted production telemetry and contact-resolution aggregates inspected.
+- Controlled API reproduction completed with installed `@google/genai` 1.43.0:
+  - 3.1 + JSON + Search: valid JSON and output tokens.
+  - 3.5 + JSON + Search without schema: no candidate/text/output tokens.
+  - 3.5 + JSON without Search: valid JSON.
+  - 3.5 + JSON + Search + explicit response schema: valid JSON.
+- Production rollback smoke test completed after deployment
+  `dpl_KSAA98Bx7UTknexGoN175iAP3MQj` reached `READY`:
+  - `/api/demo/suggestions` returned HTTP 200 in 10.2 seconds.
+  - All nine configured utility categories returned non-empty results.
+  - Fresh AI telemetry recorded the restored `gemini-3.1-flash-lite` model.
+- Provider hotfix focused suite: 6 files / 44 tests passed.
+- Combined incident suite: 9 files / 54 tests passed.
+- Full Vitest suite: 134 files / 668 tests passed.
+- `npm exec tsc -- --noEmit` passed.
+- Focused ESLint passed for all changed implementation and test files.
+- `npm run build` passed.
+- `npm run security:scan` passed.
+- `git diff --check` passed with existing line-ending warnings only.
+- Read-only Stripe dry run: 7 eligible, 0 already applied, 7 pending, $82.00 total.
+- Read-only communication dry run: 8 deduplicated recipients; no email sent.
+- Private read-only report:
+  `.incident-reports/provider-resolution-2026-07-2026-07-29T17-19-29-553Z.html`.
+  Two fresh AI responses were parse-rejected and therefore remained outside the automatic repair set.
+- Reviewed repair dry run: 6 selected/eligible, 0 stale, 5 phone fields, 6 URL fields, 5 requests; no
+  production data changed.
+- Production hotfix smoke test: `/api/demo/suggestions` returned HTTP 200 in 10.9 seconds and all 9
+  categories returned non-empty results.
+- Vercel reported no `/api/demo/suggestions` runtime errors in the post-release window.
+- The dashboard product-update source was included in the exact deployed SHA; its focused test passed.
+  `/api/updates` intentionally exposes database updates only and is not the verification path for the
+  client-merged featured update.
 
-## Remaining Work and Risks
+## Remaining Required Work
 
-- Required work: none.
-- Optional: authenticated visual QA of the sidebar at desktop and narrow widths, and of filter-bar scroll
-  behavior on a long list. The offset arithmetic and tests are verified; the rendered result is not.
-- Risk: activation predicates now exist twice, as aggregates in `lib/admin/activation-funnel.ts` and as row
-  filters in `searchUsers`. They were written to match and are documented as a pair in `ADMIN.md`, but a
-  future schema change must update both or a metric will stop agreeing with its drill-down.
-- The new `searchUsers` activation filters use correlated subqueries over `requests`, `brand_profiles`, and
-  `intake_links`. They are unmeasured against production data volume.
+- Apply the 6 reviewed repairs only after explicit production-data authorization and confirmation of an
+  Admin account. The dry run is current and all 6 rows were eligible.
+- Apply the seven Stripe credits only after explicit financial authorization using the verified
+  expected count of 7 and total of 8200 cents.
+- Send customer communications only after the hotfix deployment, repair-review decision, and credit
+  application are verified, `PROVIDER_INCIDENT_EXCLUDED_EMAILS` is configured/reviewed, and customer
+  delivery is explicitly authorized.
 
 ## Concurrent Editing Warnings
 
-- None. No other active task is recorded, and this work is committed and pushed, so no uncommitted Admin
-  state is at risk.
+- Do not overwrite the pre-existing coordination-file changes listed above.
+- Avoid concurrent edits to the incident AI/provider, scripts, email template, and product-update files.
+- Do not commit the untracked customer email or the ignored `.incident-reports/` artifacts.
 
 ## Recommended Next Action
 
-No required action remains. Optional: authenticated visual QA of the sidebar and filter-bar scroll behavior.
-Deployment, migrations, and other production mutations remain separate authorization-gated follow-ups.
+Obtain explicit authorization for the 6 production contact repairs. After repair verification, obtain
+separate authorization for the seven Stripe credits and then for the eight customer emails.

@@ -1,8 +1,8 @@
 # Provider Incident Communications Implementation Plan
 
 **Status (2026-07-29):** Templates, recipient segmentation, dry-run-first sender, and dashboard update
-are complete and validated. The recipient preview found 8 deduplicated recipients. No email has been
-sent and the product update has not been deployed.
+are complete and validated. The recipient preview found 8 deduplicated recipients. The dashboard update
+is deployed in production as part of release `3adfc8c`. No customer email has been sent.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

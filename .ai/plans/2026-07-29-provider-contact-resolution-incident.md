@@ -2,11 +2,11 @@
 
 ## Status
 
-Emergency mitigation complete. Engineering, compensation, repair-review, and communication design are
-approved; local implementation and release validation are complete. The approved design is recorded in
+Emergency mitigation and the durable hotfix/product-update release are complete. Engineering,
+compensation, repair-review, and communication design are approved. The approved design is recorded in
 `docs/superpowers/specs/2026-07-29-provider-resolution-incident-remediation-design.md`.
-The read-only production review and the Stripe/email dry runs are complete. Production repair, Stripe
-credit, email, deployment, commit, and push remain separately authorization-gated.
+The read-only production review, reviewed repair dry run, and Stripe/email dry runs are complete.
+Production repair, Stripe credit, and customer email remain separately authorization-gated.
 
 The independent implementation plans are:
 
@@ -174,7 +174,7 @@ Approved by the user on 2026-07-29:
 - Add focused regression tests for the 3.5 JSON + Search + schema request shape, empty responses,
   failure-reason preservation, and cache TTL/key behavior.
 
-### Local implementation status
+### Release status
 
 Implemented and locally validated on 2026-07-29:
 
@@ -186,7 +186,10 @@ Implemented and locally validated on 2026-07-29:
 - five-minute provider/search fallback and contact-miss TTLs.
 
 Focused validation passed: 6 test files / 44 tests and `npm exec tsc -- --noEmit`.
-No deployment, cache deletion, production smoke test of this code, commit, or push has occurred.
+Release commit `3adfc8c485c8a4a723fe0ee5355bc621d947d2f5` was fast-forward pushed to
+`origin/main`. Vercel production deployment `dpl_4vTrb4Ay7X7BMpXVa9aYAbhsXS6h` reached `READY` for
+that exact SHA. A production demo request returned HTTP 200 with non-empty suggestions for all nine
+categories, and no route runtime errors were reported in the post-release window.
 
 Full local implementation validation also passed: 134 Vitest files / 668 tests, TypeScript, focused
 ESLint, production build, security scan, and `git diff --check`.
@@ -213,6 +216,8 @@ ESLint, production build, security scan, and `git diff --check`.
 
 - Read-only incident review: 69 entries; 6 automatic contact-repair candidates, 8 customer-confirmation
   cases, and 55 unchanged.
+- Reviewed repair dry run: all 6 selected entries remained eligible across 5 requests, with 0 stale
+  entries; no production data changed.
 - Read-only credit preview: 7 active billing entities; $82.00 total; no incident credit already applied.
 - Read-only communication preview: 8 recipients after exclusion/deduplication; no email sent. One
   affected Pro-entitled but non-billed account is assigned the no-credit segment.

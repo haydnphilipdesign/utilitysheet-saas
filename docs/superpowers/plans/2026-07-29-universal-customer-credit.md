@@ -1,8 +1,8 @@
 # Universal Customer Credit Implementation Plan
 
 **Status (2026-07-29):** Tooling complete and validated. The read-only Stripe preview confirmed 7
-eligible billing entities, $82.00 total, and no existing incident credits. Live application remains
-separately authorization-gated.
+eligible billing entities, $82.00 total, and no existing incident credits. The tooling is deployed;
+live credit application remains separately authorization-gated.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
