@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import type { GenerateContentConfig, ThinkingLevel, Tool } from '@google/genai';
+import type { GenerateContentConfig, GenerateContentResponse, ThinkingLevel, Tool } from '@google/genai';
 
 // Get API key from environment
 const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
@@ -8,7 +8,7 @@ const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Model configuration
-const DEFAULT_MODEL_NAME = 'gemini-3.5-flash';
+const DEFAULT_MODEL_NAME = 'gemini-3.1-flash-lite';
 const MODEL_NAME = process.env.GEMINI_MODEL_NAME?.trim() || DEFAULT_MODEL_NAME;
 const ALLOWED_THINKING_LEVELS = ['minimal', 'low', 'medium', 'high'] as const;
 
@@ -43,6 +43,11 @@ export type JSONFailureReason = 'provider_error' | 'parse_error';
 export interface JSONGenerationResult<T> {
     data: T | null;
     failure: JSONFailureReason | null;
+    groundingSourceUrls: string[];
+}
+
+export interface JSONGenerationOptions {
+    responseJsonSchema: unknown;
 }
 
 interface GeminiErrorMetadata {
@@ -284,7 +289,10 @@ async function withRetry<T>(
  * Get the configured Gemini model instance
  * Returns null if API key is not configured
  */
-export function getGeminiModel(jsonMode: boolean = false) {
+export function getGeminiModel(
+    jsonMode: boolean = false,
+    responseJsonSchema?: unknown
+) {
     if (!genAI) {
         return null;
     }
@@ -292,6 +300,9 @@ export function getGeminiModel(jsonMode: boolean = false) {
     const config: GenerateContentConfig = {};
     if (jsonMode) {
         config.responseMimeType = 'application/json';
+        if (responseJsonSchema) {
+            config.responseJsonSchema = responseJsonSchema;
+        }
     }
 
     const thinkingLevel = getThinkingLevel();
@@ -354,42 +365,58 @@ export async function generateContent(prompt: string): Promise<string | null> {
  * Uses JSON mode for reliable structured responses
  * Returns null if not configured or on error after retries
  */
-export async function generateJSON<T>(prompt: string): Promise<T | null> {
-    const result = await generateJSONWithMeta<T>(prompt);
+export async function generateJSON<T>(
+    prompt: string,
+    options: JSONGenerationOptions
+): Promise<T | null> {
+    const result = await generateJSONWithMeta<T>(prompt, options);
     return result.data;
 }
 
 /**
  * Generate JSON content with normalized failure metadata
  */
-export async function generateJSONWithMeta<T>(prompt: string): Promise<JSONGenerationResult<T>> {
-    const requestConfig = getGeminiModel(true); // Use JSON mode
+export async function generateJSONWithMeta<T>(
+    prompt: string,
+    options: JSONGenerationOptions
+): Promise<JSONGenerationResult<T>> {
+    const requestConfig = getGeminiModel(true, options.responseJsonSchema);
     if (!requestConfig || !genAI) {
         console.log('[Gemini] Not configured, skipping AI generation');
         return {
             data: null,
             failure: 'provider_error',
+            groundingSourceUrls: [],
         };
     }
 
-    const raw = await withRetry(async () => {
+    const responseData = await withRetry(async () => {
         const response = await genAI.models.generateContent({
             ...requestConfig,
             contents: prompt,
         });
-        return response.text ?? '';
+        const text = response.text?.trim();
+        if (!response.candidates?.length || !text) {
+            throw new Error('Gemini returned no candidate text');
+        }
+
+        return {
+            text,
+            groundingSourceUrls: getGroundingSourceUrls(response),
+        };
     });
 
-    if (!raw) {
+    if (!responseData) {
         return {
             data: null,
             failure: 'provider_error',
+            groundingSourceUrls: [],
         };
     }
 
     try {
         // With JSON mode, response should be clean JSON, but still handle edge cases
-        let jsonStr = raw.trim();
+        let jsonStr = responseData.text.trim();
         // Remove markdown code fences if present (fallback for edge cases)
         const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (jsonMatch) {
@@ -398,6 +425,7 @@ export async function generateJSONWithMeta<T>(prompt: string): Promise<JSONGener
         return {
             data: JSON.parse(jsonStr) as T,
             failure: null,
+            groundingSourceUrls: responseData.groundingSourceUrls,
         };
     } catch (error) {
         console.error('[Gemini] Error parsing JSON response:', {
@@ -406,6 +434,16 @@ export async function generateJSONWithMeta<T>(prompt: string): Promise<JSONGener
         return {
             data: null,
             failure: 'parse_error',
+            groundingSourceUrls: responseData.groundingSourceUrls,
         };
     }
+}
+
+function getGroundingSourceUrls(response: GenerateContentResponse): string[] {
+    return Array.from(new Set(
+        (response.candidates || [])
+            .flatMap((candidate) => candidate.groundingMetadata?.groundingChunks || [])
+            .map((chunk) => chunk.web?.uri)
+            .filter((uri): uri is string => Boolean(uri))
+    ));
 }

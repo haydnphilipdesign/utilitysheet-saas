@@ -1,17 +1,33 @@
 import { createHash } from 'crypto';
 import { buildLocationContext, parseAddressWithConfidence } from '@/lib/address/location-parser';
-import { generateJSON, isGeminiConfigured } from '@/lib/ai/gemini-client';
+import {
+    generateJSONWithMeta,
+    getGeminiModelName,
+    isGeminiConfigured,
+} from '@/lib/ai/gemini-client';
+import type { JSONFailureReason } from '@/lib/ai/gemini-client';
+import {
+    AI_REQUEST_FORMAT_VERSION,
+    PROVIDER_CONTACT_RESPONSE_SCHEMA,
+} from '@/lib/ai/response-schemas';
 import { getFromCache, setInCache } from '@/lib/cache';
 import { ProviderContact, UtilityCategory } from '@/types';
 
-// Cache TTL: 90 days in seconds
-const CACHE_TTL_SECONDS = 90 * 24 * 60 * 60;
+const POSITIVE_CACHE_TTL_SECONDS = 90 * 24 * 60 * 60;
+const NEGATIVE_CACHE_TTL_SECONDS = 5 * 60;
+const CONTACT_CACHE_VERSION = 'v2';
 
 type CachedContact = { v: ProviderContact | null };
 
 export interface ContactLookupContext {
     category?: UtilityCategory;
     address?: string | null;
+}
+
+export interface ContactResolutionDiagnostic {
+    contact: ProviderContact | null;
+    failure: JSONFailureReason | null;
+    groundingSourceUrls: string[];
 }
 
 function shouldAllowUnverifiedAiContacts(): boolean {
@@ -47,7 +63,8 @@ function getContextCacheScope(context?: ContactLookupContext): string {
 
 function toCacheKey(providerNameOrId: string, context?: ContactLookupContext): string {
     const mode = shouldAllowUnverifiedAiContacts() ? 'ai' : 'strict';
-    return `contact:${mode}:${getContextCacheScope(context)}:${hashCacheKeyPart(providerNameOrId.trim().toLowerCase())}`;
+    const model = sanitizeCacheToken(getGeminiModelName());
+    return `contact:${CONTACT_CACHE_VERSION}:${model}:${AI_REQUEST_FORMAT_VERSION}:${mode}:${getContextCacheScope(context)}:${hashCacheKeyPart(providerNameOrId.trim().toLowerCase())}`;
 }
 
 function safeHttpUrl(value: string | undefined): string | undefined {
@@ -106,19 +123,7 @@ Respond ONLY with the JSON object, no additional text.`;
  * Get contact info using Gemini AI
  * Returns null if AI is unavailable or fails
  */
-async function getAIContact(providerName: string, context?: ContactLookupContext): Promise<ProviderContact | null> {
-    if (!isGeminiConfigured()) {
-        return null;
-    }
-
-    const prompt = buildContactPrompt(providerName, context);
-    const result = await generateJSON<ProviderContact>(prompt);
-
-    if (!result) {
-        return null;
-    }
-
-    // Normalize and sanitize response
+function sanitizeContact(result: ProviderContact): ProviderContact {
     const customerServicePhone = result.customer_service_phone || undefined;
     const startStopServiceUrl = safeHttpUrl(result.start_stop_service_url || undefined);
     const mainWebsite = safeHttpUrl(result.main_website || undefined);
@@ -129,6 +134,43 @@ async function getAIContact(providerName: string, context?: ContactLookupContext
         main_website: mainWebsite,
         hours: result.hours || undefined,
     };
+}
+
+export async function resolveContactFresh(
+    providerName: string,
+    context?: ContactLookupContext
+): Promise<ContactResolutionDiagnostic> {
+    if (!isGeminiConfigured()) {
+        return {
+            contact: null,
+            failure: 'provider_error',
+            groundingSourceUrls: [],
+        };
+    }
+
+    const prompt = buildContactPrompt(providerName, context);
+    const result = await generateJSONWithMeta<ProviderContact>(prompt, {
+        responseJsonSchema: PROVIDER_CONTACT_RESPONSE_SCHEMA,
+    });
+
+    if (!result.data) {
+        return {
+            contact: null,
+            failure: result.failure,
+            groundingSourceUrls: result.groundingSourceUrls,
+        };
+    }
+
+    return {
+        contact: sanitizeContact(result.data),
+        failure: null,
+        groundingSourceUrls: result.groundingSourceUrls,
+    };
+}
+
+async function getAIContact(providerName: string, context?: ContactLookupContext): Promise<ProviderContact | null> {
+    const result = await resolveContactFresh(providerName, context);
+    return result.contact;
 }
 
 /**
@@ -159,7 +201,11 @@ export async function resolveContact(
     }
 
     // Cache result (including null) to avoid repeated lookups
-    await setInCache(cacheKey, { v: contact }, CACHE_TTL_SECONDS);
+    await setInCache(
+        cacheKey,
+        { v: contact },
+        contact ? POSITIVE_CACHE_TTL_SECONDS : NEGATIVE_CACHE_TTL_SECONDS
+    );
 
     return contact;
 }

@@ -13,17 +13,22 @@ import { createHash } from 'crypto';
 import { getProviderMemoryCandidates, type ProviderMemoryCandidate } from '@/lib/neon/queries/provider-memory';
 import { createAiSuggestionRun, type AiTelemetryFeature, type AiTelemetryStatus } from '@/lib/neon/queries/ai-telemetry';
 import { canonicalProviderKey, dedupeProviderSuggestions } from '@/lib/providers/canonicalize';
+import {
+    AI_REQUEST_FORMAT_VERSION,
+    PROVIDER_SUGGESTION_RESPONSE_SCHEMA,
+} from '@/lib/ai/response-schemas';
 
 // Cache TTL: 30 days in seconds
 const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 // Search cache TTL: 7 days in seconds (queries change more often)
 const SEARCH_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+const FALLBACK_CACHE_TTL_SECONDS = 5 * 60;
 const PROVIDER_MEMORY_CACHE_TTL_SECONDS = 6 * 60 * 60;
 // v6: canonical dedup layer (state-abbreviation + alias aware) — bumping
 // invalidates caches that may still hold near-duplicate suggestion lists.
-const SUGGESTION_CACHE_VERSION = 'v6';
-const SEARCH_CACHE_VERSION = 'v6';
+const SUGGESTION_CACHE_VERSION = 'v7';
+const SEARCH_CACHE_VERSION = 'v7';
 const PROVIDER_MEMORY_CACHE_VERSION = 'v1';
 const SUGGESTION_PROMPT_VERSION = 'provider-suggestions-v1';
 const SEARCH_PROMPT_VERSION = 'provider-search-v1';
@@ -89,6 +94,8 @@ interface PipelineResult {
     suggestions: ProviderSuggestion[];
     outcome: SuggestionOutcome;
 }
+
+export type ProviderSearchDiagnostic = PipelineResult;
 
 interface AiPassResult {
     suggestions: ProviderSuggestion[];
@@ -225,11 +232,16 @@ function getCacheKey(address: string, category: UtilityCategory, context?: Sugge
     const scope = getScopeToken(context);
     const state = sanitizeLocalityToken(parsed.state || 'default');
     const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `suggestions:${SUGGESTION_CACHE_VERSION}:${scope}:${state}:${locality}:${category}`;
+    return `suggestions:${SUGGESTION_CACHE_VERSION}:${getAiCacheToken()}:${scope}:${state}:${locality}:${category}`;
 }
 
 function hashCacheKeyPart(input: string): string {
     return createHash('sha256').update(input).digest('hex').slice(0, 16);
+}
+
+function getAiCacheToken(): string {
+    const model = sanitizeLocalityToken(getGeminiModelName());
+    return `${model}:${AI_REQUEST_FORMAT_VERSION}`;
 }
 
 function getSearchCacheKey(
@@ -244,13 +256,13 @@ function getSearchCacheKey(
     const scope = getScopeToken(context);
 
     if (!address) {
-        return `provider-search:${SEARCH_CACHE_VERSION}:${scope}:global:${categoryKey}:${queryHash}`;
+        return `provider-search:${SEARCH_CACHE_VERSION}:${getAiCacheToken()}:${scope}:global:${categoryKey}:${queryHash}`;
     }
 
     const parsed = parseAddress(address);
     const state = sanitizeLocalityToken(parsed.state || 'default');
     const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `provider-search:${SEARCH_CACHE_VERSION}:${scope}:${state}:${locality}:${categoryKey}:${queryHash}`;
+    return `provider-search:${SEARCH_CACHE_VERSION}:${getAiCacheToken()}:${scope}:${state}:${locality}:${categoryKey}:${queryHash}`;
 }
 
 function getPipelineCacheKey(baseKey: string, serveNew: boolean): string {
@@ -586,14 +598,14 @@ function logShadowComparison(params: {
 }
 
 function getTelemetryStatus(outcome: SuggestionOutcome): AiTelemetryStatus {
-    if (outcome.source === 'fallback' || outcome.reasonCode === 'fallback_used') {
-        return 'fallback';
-    }
     if (outcome.upstreamReasonCode === 'ai_parse_error') {
         return 'parse_error';
     }
     if (outcome.upstreamReasonCode === 'ai_provider_error' || outcome.upstreamReasonCode === 'ai_unconfigured') {
         return 'error';
+    }
+    if (outcome.source === 'fallback' || outcome.reasonCode === 'fallback_used') {
+        return 'fallback';
     }
     if (
         outcome.upstreamReasonCode === 'quality_gate_failed' ||
@@ -1039,7 +1051,9 @@ async function runAiPass(
         };
     }
 
-    const response = await generateJSONWithMeta<unknown>(prompt);
+    const response = await generateJSONWithMeta<unknown>(prompt, {
+        responseJsonSchema: PROVIDER_SUGGESTION_RESPONSE_SCHEMA,
+    });
     if (response.failure === 'provider_error') {
         return {
             suggestions: [],
@@ -1065,6 +1079,21 @@ async function runAiPass(
         suggestions: normalizeAndRankSuggestions(parsed, category, maxItems),
         reasonCode: null,
     };
+}
+
+function mergeUpstreamReason(
+    current: SuggestionReasonCode | null,
+    next: SuggestionReasonCode | null
+): SuggestionReasonCode | null {
+    if (!next) return current;
+    if (
+        current === 'ai_provider_error' ||
+        current === 'ai_parse_error' ||
+        current === 'ai_unconfigured'
+    ) {
+        return current;
+    }
+    return next;
 }
 
 function toMemorySuggestion(candidate: ProviderMemoryCandidate, category: UtilityCategory): ProviderSuggestion {
@@ -1244,9 +1273,9 @@ async function runTwoPassSuggestionPipeline(
 
     const primaryPass = await runAiPass(buildSuggestionPrompt(parsed, category), category, 8);
     attempts++;
-    if (primaryPass.reasonCode) upstreamReason = primaryPass.reasonCode;
+    upstreamReason = mergeUpstreamReason(upstreamReason, primaryPass.reasonCode);
     const primaryGate = applyQualityGates(primaryPass.suggestions, category, parsed);
-    if (primaryGate.reasonCode) upstreamReason = primaryGate.reasonCode;
+    upstreamReason = mergeUpstreamReason(upstreamReason, primaryGate.reasonCode);
 
     let chosenSource: SuggestionSource | null = null;
     let chosenSuggestions: ProviderSuggestion[] = [];
@@ -1258,7 +1287,7 @@ async function runTwoPassSuggestionPipeline(
             5
         );
         attempts++;
-        if (verifyPass.reasonCode) upstreamReason = verifyPass.reasonCode;
+        upstreamReason = mergeUpstreamReason(upstreamReason, verifyPass.reasonCode);
         const verifyGate = applyQualityGates(verifyPass.suggestions, category, parsed);
 
         if (verifyGate.accepted) {
@@ -1268,7 +1297,7 @@ async function runTwoPassSuggestionPipeline(
             chosenSource = 'ai_primary';
             chosenSuggestions = primaryGate.suggestions;
         } else if (verifyGate.reasonCode) {
-            upstreamReason = verifyGate.reasonCode;
+            upstreamReason = mergeUpstreamReason(upstreamReason, verifyGate.reasonCode);
         }
     } else if (primaryGate.accepted) {
         chosenSource = 'ai_primary';
@@ -1278,13 +1307,13 @@ async function runTwoPassSuggestionPipeline(
     if (!chosenSource && isRecoveryPassEnabled() && hasBudgetRemaining(startedAt, maxPipelineMs)) {
         const recoveryPass = await runAiPass(buildSuggestionRecoveryPrompt(parsed, category), category, 5);
         attempts++;
-        if (recoveryPass.reasonCode) upstreamReason = recoveryPass.reasonCode;
+        upstreamReason = mergeUpstreamReason(upstreamReason, recoveryPass.reasonCode);
         const recoveryGate = applyQualityGates(recoveryPass.suggestions, category, parsed);
         if (recoveryGate.accepted) {
             chosenSource = 'ai_recovery';
             chosenSuggestions = recoveryGate.suggestions;
         } else if (recoveryGate.reasonCode) {
-            upstreamReason = recoveryGate.reasonCode;
+            upstreamReason = mergeUpstreamReason(upstreamReason, recoveryGate.reasonCode);
         }
     }
 
@@ -1400,9 +1429,9 @@ async function runTwoPassSearchPipeline(params: SearchPipelineParams): Promise<P
         8
     );
     attempts++;
-    if (primaryPass.reasonCode) upstreamReason = primaryPass.reasonCode;
+    upstreamReason = mergeUpstreamReason(upstreamReason, primaryPass.reasonCode);
     const primaryGate = applyQualityGates(primaryPass.suggestions, params.category, params.resolvedAddress);
-    if (primaryGate.reasonCode) upstreamReason = primaryGate.reasonCode;
+    upstreamReason = mergeUpstreamReason(upstreamReason, primaryGate.reasonCode);
 
     let chosenSource: SuggestionSource | null = null;
     let chosenSuggestions: ProviderSuggestion[] = [];
@@ -1414,7 +1443,7 @@ async function runTwoPassSearchPipeline(params: SearchPipelineParams): Promise<P
             5
         );
         attempts++;
-        if (verifyPass.reasonCode) upstreamReason = verifyPass.reasonCode;
+        upstreamReason = mergeUpstreamReason(upstreamReason, verifyPass.reasonCode);
         const verifyGate = applyQualityGates(verifyPass.suggestions, params.category, params.resolvedAddress);
 
         if (verifyGate.accepted) {
@@ -1424,7 +1453,7 @@ async function runTwoPassSearchPipeline(params: SearchPipelineParams): Promise<P
             chosenSource = 'ai_primary';
             chosenSuggestions = primaryGate.suggestions;
         } else if (verifyGate.reasonCode) {
-            upstreamReason = verifyGate.reasonCode;
+            upstreamReason = mergeUpstreamReason(upstreamReason, verifyGate.reasonCode);
         }
     } else if (primaryGate.accepted) {
         chosenSource = 'ai_primary';
@@ -1438,13 +1467,13 @@ async function runTwoPassSearchPipeline(params: SearchPipelineParams): Promise<P
             5
         );
         attempts++;
-        if (recoveryPass.reasonCode) upstreamReason = recoveryPass.reasonCode;
+        upstreamReason = mergeUpstreamReason(upstreamReason, recoveryPass.reasonCode);
         const recoveryGate = applyQualityGates(recoveryPass.suggestions, params.category, params.resolvedAddress);
         if (recoveryGate.accepted) {
             chosenSource = 'ai_recovery';
             chosenSuggestions = recoveryGate.suggestions;
         } else if (recoveryGate.reasonCode) {
-            upstreamReason = recoveryGate.reasonCode;
+            upstreamReason = mergeUpstreamReason(upstreamReason, recoveryGate.reasonCode);
         }
     }
 
@@ -1619,7 +1648,13 @@ export async function getSuggestions(
             console.log(`[Suggestions] ${suggestions.length} suggestions for ${category} (${location.lines.join(', ')})`);
         }
 
-        await setInCache(cacheKey, suggestions, CACHE_TTL_SECONDS);
+        await setInCache(
+            cacheKey,
+            suggestions,
+            result.outcome.source === 'fallback'
+                ? FALLBACK_CACHE_TTL_SECONDS
+                : CACHE_TTL_SECONDS
+        );
         return suggestions;
     })();
 
@@ -1702,7 +1737,13 @@ export async function searchProviders(
         });
         const suggestions = result.suggestions;
 
-        await setInCache(cacheKey, suggestions, SEARCH_CACHE_TTL_SECONDS);
+        await setInCache(
+            cacheKey,
+            suggestions,
+            result.outcome.source === 'fallback'
+                ? FALLBACK_CACHE_TTL_SECONDS
+                : SEARCH_CACHE_TTL_SECONDS
+        );
         return suggestions;
     })();
 
@@ -1712,6 +1753,43 @@ export async function searchProviders(
     } finally {
         inFlightSearchRequests.delete(cacheKey);
     }
+}
+
+/**
+ * Run a fresh location-aware provider search for incident/support review.
+ * This intentionally bypasses cache, account-scoped provider memory, and
+ * seller-facing AI telemetry.
+ */
+export async function searchProvidersFresh(
+    query: string,
+    category: UtilityCategory,
+    address: string
+): Promise<ProviderSearchDiagnostic> {
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) {
+        const resolvedAddress = await resolveParsedLocation(address);
+        return {
+            suggestions: [],
+            outcome: buildOutcome({
+                category,
+                source: 'fallback',
+                reasonCode: 'fallback_used',
+                upstreamReasonCode: 'ai_empty',
+                attemptCount: 0,
+                startedAt: Date.now(),
+                suggestions: [],
+                location: resolvedAddress,
+                servedPipeline: 'new',
+            }),
+        };
+    }
+
+    const resolvedAddress = await resolveParsedLocation(address);
+    return runTwoPassSearchPipeline({
+        query: trimmedQuery,
+        category,
+        resolvedAddress,
+    });
 }
 
 // ============================================================================

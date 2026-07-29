@@ -2,6 +2,7 @@ import type { ProductUpdate } from '@/types';
 
 const REFERRAL_UPDATE_TIMESTAMP = '2026-07-15T09:00:00.000Z';
 const SUBMITTED_EDITING_UPDATE_TIMESTAMP = '2026-03-31T09:00:00.000Z';
+const PROVIDER_RESOLUTION_UPDATE_TIMESTAMP = '2026-07-29T17:00:00.000Z';
 
 /**
  * Hardcoded featured updates, newest first. The dashboard banner treats the
@@ -9,6 +10,26 @@ const SUBMITTED_EDITING_UPDATE_TIMESTAMP = '2026-03-31T09:00:00.000Z';
  * entry at the top re-surfaces the banner for everyone.
  */
 export const FEATURED_PRODUCT_UPDATES: ProductUpdate[] = [
+    {
+        id: 'provider-resolution-incident-resolved',
+        title: 'Resolved: Provider suggestions and contact lookup',
+        body: [
+            'Between July 24 and July 29, some provider lookups could return generic suggestions or omit contact information.',
+            '',
+            '- We restored the previous provider model.',
+            '- Provider responses now use explicit structured validation.',
+            '- Generic fallbacks and unresolved contact results expire quickly instead of remaining cached.',
+            '- We are reviewing submitted sheets from the affected period.',
+            '',
+            'No action is needed for most sheets. If a provider itself cannot be verified confidently, we will contact the account owner before changing it.',
+        ].join('\n'),
+        category: 'bugfix',
+        is_published: true,
+        published_at: PROVIDER_RESOLUTION_UPDATE_TIMESTAMP,
+        created_by: null,
+        created_at: PROVIDER_RESOLUTION_UPDATE_TIMESTAMP,
+        updated_at: PROVIDER_RESOLUTION_UPDATE_TIMESTAMP,
+    },
     {
         id: 'referral-credit-program',
         title: 'New: Give a month of Pro, get a month of Pro',

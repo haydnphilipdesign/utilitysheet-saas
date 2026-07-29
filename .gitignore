@@ -58,3 +58,4 @@ Screenshot_*.jpeg
 .claude/settings.local.json
 .superpowers/
 .worktrees/
+/.incident-reports/

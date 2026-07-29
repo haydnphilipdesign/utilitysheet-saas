@@ -15,6 +15,10 @@
     "test:e2e:desktop": "playwright test --project=\"Desktop Chrome\"",
     "demo:reset": "node scripts/demo-seed.mjs",
     "seed:demo": "npm run demo:reset",
+    "incident:provider-report": "tsx --env-file=.env --env-file=.env.local scripts/incident/provider-resolution-report.ts",
+    "incident:provider-repair": "tsx --env-file=.env --env-file=.env.local scripts/incident/provider-resolution-repair.ts",
+    "incident:credit": "node --env-file=.env --env-file=.env.local scripts/incident/credit-paid-customers.mjs",
+    "incident:email": "tsx --env-file=.env --env-file=.env.local scripts/incident/send-provider-incident-update.ts",
     "security:scan": "node scripts/security/scan-artifacts.mjs"
   },
   "dependencies": {
@@ -73,6 +77,7 @@
     "eslint-config-next": "16.0.10",
     "jsdom": "^27.4.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.1",
     "typescript": "^5",
     "vitest": "^4.0.16"
   }

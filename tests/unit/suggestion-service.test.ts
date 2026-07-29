@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const isGeminiConfiguredMock = vi.hoisted(() => vi.fn());
 const generateJSONWithMetaMock = vi.hoisted(() => vi.fn());
 const getProviderMemoryCandidatesMock = vi.hoisted(() => vi.fn());
+const createAiSuggestionRunMock = vi.hoisted(() => vi.fn(async () => 'run_1'));
+const getFromCacheMock = vi.hoisted(() => vi.fn());
+const setInCacheMock = vi.hoisted(() => vi.fn());
 const cacheState = vi.hoisted(() => ({ store: new Map<string, unknown>() }));
 
 vi.mock('@/lib/ai/gemini-client', () => ({
@@ -16,17 +19,26 @@ vi.mock('@/lib/neon/queries/provider-memory', () => ({
 }));
 
 vi.mock('@/lib/neon/queries/ai-telemetry', () => ({
-    createAiSuggestionRun: vi.fn(async () => 'run_1'),
+    createAiSuggestionRun: createAiSuggestionRunMock,
 }));
 
 vi.mock('@/lib/cache', () => ({
-    getFromCache: vi.fn(async (key: string) => cacheState.store.get(key) ?? null),
-    setInCache: vi.fn(async (key: string, value: unknown) => {
-        cacheState.store.set(key, value);
-    }),
+    getFromCache: getFromCacheMock,
+    setInCache: setInCacheMock,
 }));
 
-import { __testing, getSuggestions, searchProviders } from '@/lib/providers/suggestion-service';
+getFromCacheMock.mockImplementation(async (key: string) => cacheState.store.get(key) ?? null);
+setInCacheMock.mockImplementation(async (key: string, value: unknown) => {
+        cacheState.store.set(key, value);
+});
+
+import {
+    __testing,
+    getSuggestions,
+    searchProviders,
+    searchProvidersFresh,
+} from '@/lib/providers/suggestion-service';
+import { PROVIDER_SUGGESTION_RESPONSE_SCHEMA } from '@/lib/ai/response-schemas';
 
 const {
     parseAddress,
@@ -38,15 +50,15 @@ const {
 } = __testing;
 
 function ok<T>(data: T) {
-    return { data, failure: null } as const;
+    return { data, failure: null, groundingSourceUrls: [] } as const;
 }
 
 function providerError() {
-    return { data: null, failure: 'provider_error' as const };
+    return { data: null, failure: 'provider_error' as const, groundingSourceUrls: [] };
 }
 
 function parseError() {
-    return { data: null, failure: 'parse_error' as const };
+    return { data: null, failure: 'parse_error' as const, groundingSourceUrls: [] };
 }
 
 describe('Suggestion Service', () => {
@@ -97,6 +109,13 @@ describe('Suggestion Service', () => {
         const keyB = getCacheKey('123 Main St, Raleigh, NC 27601', 'electric', contextB);
         expect(keyA).not.toBe(keyB);
     });
+
+    it('namespaces cache keys by model and structured request format', () => {
+        const key = getCacheKey('123 Main St, Raleigh, NC 27601', 'electric');
+
+        expect(key).toContain('gemini-test');
+        expect(key).toContain('structured-json-v2');
+    });
 });
 
 describe('Suggestions Pipeline', () => {
@@ -115,6 +134,11 @@ describe('Suggestions Pipeline', () => {
         const result = await getSuggestions('123 Main St, Raleigh, NC 27601', 'electric');
         expect(result.length).toBeGreaterThan(0);
         expect(result[0].display_name).toBeTruthy();
+        expect(setInCacheMock).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.any(Array),
+            5 * 60
+        );
     });
 
     it('filters explicitly out-of-state fallback providers when state is known', async () => {
@@ -141,8 +165,17 @@ describe('Suggestions Pipeline', () => {
 
         const result = await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
+        expect(generateJSONWithMetaMock).toHaveBeenCalledWith(
+            expect.any(String),
+            { responseJsonSchema: PROVIDER_SUGGESTION_RESPONSE_SCHEMA }
+        );
         expect(result.length).toBeGreaterThanOrEqual(2);
         expect(result[0].display_name).toMatch(/Florida Power/i);
+        expect(setInCacheMock).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.any(Array),
+            30 * 24 * 60 * 60
+        );
     });
 
     it('falls back only after AI passes fail quality gates', async () => {
@@ -153,6 +186,13 @@ describe('Suggestions Pipeline', () => {
         const result = await getSuggestions('13 Nemesia Ct W, Homosassa, FL 34446', 'water');
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
         expect(result.length).toBeGreaterThan(0);
+        expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                status: 'error',
+                reasonCode: 'fallback_used',
+                upstreamReasonCode: 'ai_provider_error',
+            })
+        );
     });
 
     it('rejects explicit state mismatch outputs via quality gates', () => {
@@ -254,5 +294,29 @@ describe('Suggestions Pipeline', () => {
         expect(a.length).toBeGreaterThan(0);
         expect(b.length).toBeGreaterThan(0);
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(4);
+    });
+
+    it('runs a fresh diagnostic search without cache or telemetry writes', async () => {
+        generateJSONWithMetaMock
+            .mockResolvedValueOnce(ok([
+                { display_name: 'Duke Energy', confidence: 0.9, rationale_short: 'Query match', contact_phone: '800-777-9898', contact_website: 'https://duke-energy.com' },
+                { display_name: 'Dominion Energy', confidence: 0.6, rationale_short: 'Regional option', contact_phone: null, contact_website: null },
+            ]))
+            .mockResolvedValueOnce(ok([
+                { display_name: 'Duke Energy', confidence: 0.94, rationale_short: 'Verified local provider', contact_phone: '800-777-9898', contact_website: 'https://duke-energy.com' },
+                { display_name: 'Dominion Energy', confidence: 0.58, rationale_short: 'Secondary match', contact_phone: null, contact_website: null },
+            ]));
+
+        const result = await searchProvidersFresh(
+            'Duke Energy',
+            'electric',
+            '123 Main St, Raleigh, NC 27601'
+        );
+
+        expect(result.outcome.source).toBe('ai_verify');
+        expect(result.suggestions[0].display_name).toBe('Duke Energy');
+        expect(getFromCacheMock).not.toHaveBeenCalled();
+        expect(setInCacheMock).not.toHaveBeenCalled();
+        expect(createAiSuggestionRunMock).not.toHaveBeenCalled();
     });
 });

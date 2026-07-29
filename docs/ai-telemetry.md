@@ -114,6 +114,16 @@ Telemetry writes should never block the seller flow. Suggestion telemetry persis
 
 Submission-time selection correlation is also auxiliary. If a matching suggestion item is not found, the seller submission still succeeds and the durable `utility_entries` row remains the source of truth for the final submitted sheet.
 
+Every Gemini JSON caller supplies an explicit response schema alongside JSON mode and Google Search
+grounding. A transport-success response without candidate text is retried and ultimately classified as
+`provider_error`; later quality gates preserve that upstream reason in telemetry even when a bounded
+fallback is served.
+
+Provider suggestion, provider search, and contact cache namespaces include the configured Gemini model
+and the application request-format version. Usable AI results retain their normal positive cache
+durations. Generic provider/search fallbacks and contact misses are cached for five minutes so a
+transient provider incompatibility cannot persist for days or months.
+
 ## Future AI Review Tooling
 
 An internal AI Review page can use these tables to surface questionable runs:
@@ -250,4 +260,3 @@ FROM ai_generation_runs
 GROUP BY feature, cache_hit
 ORDER BY feature, cache_hit;
 ```
-

@@ -47,7 +47,7 @@ describe('gemini-client grounding config', () => {
         const modelParams = getGeminiModel(true);
 
         expect(GoogleGenAIMock).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
-        expect(modelParams?.model).toBe('gemini-3.5-flash');
+        expect(modelParams?.model).toBe('gemini-3.1-flash-lite');
         expect(modelParams?.config.responseMimeType).toBe('application/json');
         expect(modelParams?.config.tools).toEqual([
             {
@@ -62,6 +62,48 @@ describe('gemini-client grounding config', () => {
         const { getGeminiModel } = await import('@/lib/ai/gemini-client');
         const modelParams = getGeminiModel(false);
         expect(modelParams?.config.tools).toBeUndefined();
+    });
+
+    it('passes a caller-specific JSON schema alongside Google Search grounding', async () => {
+        const schema = {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+                name: { type: 'string' },
+            },
+            required: ['name'],
+        };
+        generateContentMock.mockResolvedValue({
+            candidates: [{
+                content: {
+                    parts: [{ text: '{"name":"Duke Energy"}' }],
+                },
+                groundingMetadata: {
+                    groundingChunks: [{
+                        web: { uri: 'https://example.com/source' },
+                    }],
+                },
+            }],
+            text: '{"name":"Duke Energy"}',
+        });
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const result = await generateJSONWithMeta<{ name: string }>('prompt', {
+            responseJsonSchema: schema,
+        });
+
+        expect(generateContentMock).toHaveBeenCalledWith(expect.objectContaining({
+            config: expect.objectContaining({
+                responseMimeType: 'application/json',
+                responseJsonSchema: schema,
+                tools: [{ googleSearch: {} }],
+            }),
+        }));
+        expect(result).toEqual({
+            data: { name: 'Duke Energy' },
+            failure: null,
+            groundingSourceUrls: ['https://example.com/source'],
+        });
     });
 
     it('warns once and ignores deprecated grounding threshold when provided', async () => {
@@ -89,7 +131,7 @@ describe('gemini-client grounding config', () => {
 
         expect(isGeminiConfigured()).toBe(true);
         expect(GoogleGenAIMock).toHaveBeenCalledWith({ apiKey: 'fallback-key' });
-        expect(modelParams?.model).toBe('gemini-3.5-flash');
+        expect(modelParams?.model).toBe('gemini-3.1-flash-lite');
     });
 
     it('allows overriding the Gemini model via GEMINI_MODEL_NAME', async () => {
@@ -209,6 +251,32 @@ describe('gemini-client retry behavior', () => {
         const result = await promise;
 
         expect(result).toBeNull();
+        expect(generateContentMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('retries and classifies a response without candidate text as a provider error', async () => {
+        generateContentMock.mockResolvedValue({
+            candidates: [],
+            text: undefined,
+        });
+        const schema = {
+            type: 'object',
+            properties: { name: { type: 'string' } },
+            required: ['name'],
+        };
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const promise = generateJSONWithMeta<{ name: string }>('prompt', {
+            responseJsonSchema: schema,
+        });
+        await vi.runAllTimersAsync();
+        const result = await promise;
+
+        expect(result).toEqual({
+            data: null,
+            failure: 'provider_error',
+            groundingSourceUrls: [],
+        });
         expect(generateContentMock).toHaveBeenCalledTimes(3);
     });
 });
