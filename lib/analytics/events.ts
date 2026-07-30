@@ -88,6 +88,9 @@ type AnalyticsEventMap = {
   seller_link_copied: BasePayload & {
     source: string;
   };
+  seller_form_preview_opened: BasePayload & {
+    source: string;
+  };
   seller_link_sms_copied: BasePayload & {
     source: string;
   };

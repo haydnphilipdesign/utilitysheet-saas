@@ -39,7 +39,8 @@ describe('settings reusable link mode', () => {
         vi.clearAllMocks();
     });
 
-    it('shows mode comparison, module toggles, and saves mode+modules in one payload for paid users', async () => {
+    it('organizes seller questions, previews the form, and saves all defaults in one payload for paid users', async () => {
+        const openMock = vi.spyOn(window, 'open').mockImplementation(() => null);
         const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = typeof input === 'string' ? input : String(input);
             const method = (init?.method || 'GET').toUpperCase();
@@ -84,6 +85,8 @@ describe('settings reusable link mode', () => {
                         slug: 'pro-link',
                         url: 'https://example.com/i/pro-link',
                         is_active: true,
+                        defaultBrandProfileId: body.defaultBrandProfileId ?? null,
+                        defaultUtilityCategories: body.defaultUtilityCategories ?? ['electric', 'gas', 'water'],
                         defaultPacketMode: body.defaultPacketMode,
                         advancedModules: body.advancedModules,
                         advancedModuleExclusions: body.advancedModuleExclusions || {},
@@ -102,19 +105,45 @@ describe('settings reusable link mode', () => {
         render(<SettingsPage />);
         fireEvent.click(await screen.findByRole('tab', { name: 'Seller Form' }));
 
-        await screen.findByText('Default packet mode');
-        expect(screen.getAllByText('Simple Utility Sheet').length).toBeGreaterThan(0);
-        expect(screen.getAllByText('Advanced Utility Packet').length).toBeGreaterThan(0);
-        expect(screen.getByText(/Mailbox access, lawn care contacts/i)).toBeInTheDocument();
-        expect(screen.getByText(/Open any enabled module to include or remove individual seller questions/i)).toBeInTheDocument();
-        expect(screen.getAllByText(/Customize questions — include or remove each one/i).length).toBeGreaterThan(0);
+        await screen.findByText('What sellers are asked');
+        expect(screen.getByText('Form access & sharing')).toBeInTheDocument();
+        expect(screen.getByText('Completed packet')).toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: /Simple Utility Sheet/i })).toHaveAttribute('aria-checked', 'false');
+        expect(screen.getByRole('radio', { name: /Advanced Utility Packet/i })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByText(/Enable the sections you need, then open one/i)).toBeInTheDocument();
+        expect(screen.queryByText('Garage Door Code')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Mailbox & Home Access/i }));
         expect(screen.getByText('Garage Door Code')).toBeInTheDocument();
+        const garageCodeQuestion = screen.getByLabelText('Include Garage Door Code');
+        expect(garageCodeQuestion).toBeChecked();
+        fireEvent.click(garageCodeQuestion);
+        expect(garageCodeQuestion).not.toBeChecked();
+        fireEvent.click(garageCodeQuestion);
+        expect(garageCodeQuestion).toBeChecked();
+
+        fireEvent.click(screen.getByRole('button', { name: /Home Service Contacts/i }));
+        expect(screen.queryByText('Garage Door Code')).not.toBeInTheDocument();
         expect(screen.getByText('Pool Service Provider')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /Preview form/i }));
+        expect(openMock).toHaveBeenCalledWith(
+            'https://example.com/i/pro-link',
+            '_blank',
+            'noopener,noreferrer'
+        );
+
+        fireEvent.click(screen.getByRole('radio', { name: /Simple Utility Sheet/i }));
+        expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /^Reset$/i }));
+        expect(screen.getByRole('radio', { name: /Advanced Utility Packet/i })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByText('All defaults saved')).toBeInTheDocument();
 
         const mailboxButton = await screen.findByTestId('module-toggle-mailbox_access');
         fireEvent.click(mailboxButton);
 
-        fireEvent.click(screen.getByRole('button', { name: /Save Packet Defaults/i }));
+        expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: /Save seller form/i }));
 
         await waitFor(() => {
             const saveCall = fetchMock.mock.calls.find(
@@ -125,7 +154,10 @@ describe('settings reusable link mode', () => {
             expect(body.defaultPacketMode).toBe('advanced');
             expect(body.advancedModules).toEqual(['service_providers']);
             expect(body.advancedModuleExclusions).toEqual({});
+            expect(body.defaultBrandProfileId).toBeNull();
+            expect(body.defaultUtilityCategories).toEqual(['electric', 'gas', 'water']);
         });
+        await screen.findByText('All defaults saved');
     });
 
     it('shows advanced controls as read-only for free users', async () => {
@@ -178,10 +210,10 @@ describe('settings reusable link mode', () => {
         fireEvent.click(await screen.findByRole('tab', { name: 'Seller Form' }));
 
         await screen.findByText(/read-only on Free/i);
-        const modeSelect = screen.getByLabelText('Default packet mode') as HTMLSelectElement;
-        expect(modeSelect.disabled).toBe(true);
-        expect(screen.getByTestId('module-toggle-mailbox_access')).toBeDisabled();
-        expect(screen.getByRole('button', { name: /Save Packet Defaults/i })).toBeDisabled();
+        expect(screen.getByRole('radio', { name: /Simple Utility Sheet/i })).toBeDisabled();
+        expect(screen.getByRole('radio', { name: /Advanced Utility Packet/i })).toBeDisabled();
+        expect(screen.getByTestId('module-toggle-mailbox_access')).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('button', { name: /Save seller form/i })).toBeDisabled();
     });
 
     it('pauses the reusable form and saves Branding Profile and utility defaults', async () => {
@@ -250,7 +282,7 @@ describe('settings reusable link mode', () => {
         render(<SettingsPage />);
         fireEvent.click(await screen.findByRole('tab', { name: 'Seller Form' }));
 
-        await screen.findByText('Seller Form Defaults');
+        await screen.findByText('Form access & sharing');
         const activeSwitch = screen.getByRole('switch', { name: 'Accept new seller form starts' });
         expect(activeSwitch).toBeChecked();
         fireEvent.click(activeSwitch);
@@ -268,7 +300,7 @@ describe('settings reusable link mode', () => {
             target: { value: '00000000-0000-4000-8000-000000000002' },
         });
         fireEvent.click(screen.getByRole('checkbox', { name: 'Natural Gas' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Save Form Defaults' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Save seller form' }));
 
         await waitFor(() => {
             const defaultsCall = fetchMock.mock.calls.find(([, init]) => {
@@ -279,6 +311,14 @@ describe('settings reusable link mode', () => {
             expect(defaultsCall).toBeTruthy();
             const body = JSON.parse(String((defaultsCall?.[1] as RequestInit).body));
             expect(body.defaultUtilityCategories).toEqual(['electric', 'water']);
+            expect(body.defaultPacketMode).toBe('simple');
+            expect(body.advancedModules).toEqual([
+                'lawn_exterior',
+                'irrigation_seasonal_controls',
+                'mailbox_access',
+                'smart_home_security',
+                'service_providers',
+            ]);
         });
     });
 });

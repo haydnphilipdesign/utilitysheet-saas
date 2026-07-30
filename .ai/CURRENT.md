@@ -5,15 +5,17 @@
 
 ## Session Metadata
 
-- Task: Add requested Advanced Utility Packet questions and improve question-control discoverability.
-- Intended outcome: Support pool service, other maintenance providers, garage
-  door codes, and keys/garage-remotes handoff details throughout the seller,
-  editor, web packet, and PDF flows.
-- Status: Completed locally and validated; not committed, pushed, or deployed.
+- Task: Redesign the reusable seller-form settings UX on top of the completed
+  Advanced field additions.
+- Intended outcome: Make mode selection, question customization, preview, and
+  saving easier to discover and understand.
+- Status: Completed locally and fully validated; not committed, pushed, or
+  deployed.
 - Current or last agent: OpenAI Codex
 - Branch: `main`
 - Last updated: 2026-07-30
-- Relevant plan: `.ai/plans/2026-07-30-advanced-packet-requested-fields.md`
+- Relevant plan: `.ai/plans/2026-07-30-seller-form-settings-ux-redesign.md`
+- Related completed plan: `.ai/plans/2026-07-30-advanced-packet-requested-fields.md`
 - Relevant decision: `.ai/decisions/2026-07-30-optional-access-codes-in-advanced-packets.md`
 - Issue/PR: none
 
@@ -31,6 +33,11 @@
   `docs/pdf-system-reference.md` have been reviewed.
 - The product owner explicitly approved an optional garage-door-code field in
   privately shared packets.
+- The existing intake-link API can persist branding, utility categories,
+  packet mode, modules, and question exclusions in one request.
+- Form availability, custom URL, and electric-meter collection have separate
+  immediate persistence behavior and will remain outside the combined defaults
+  save.
 
 ## Work Completed
 
@@ -54,6 +61,26 @@
   explicitly explain that individual questions can be included or removed.
 - Added focused coverage for form entry, validation, exclusions, wizard flow,
   settings discoverability, packet ordering/labels, and PDF preview HTML.
+- Audited the Seller Form settings hierarchy, save handlers, intake-link API,
+  Advanced configurator, and focused tests.
+- Created an implementation-ready UX redesign plan.
+- Reorganized the Seller Form tab into:
+  - Form access & sharing;
+  - What sellers are asked;
+  - Completed packet.
+- Added a Preview form action with a typed analytics event.
+- Replaced the passive mode comparison plus select with accessible selectable
+  Simple/Advanced radio cards.
+- Refactored the shared Advanced configurator into collapsed, single-open
+  module rows with switches, concise counts, and readable checkbox question
+  rows.
+- Consolidated Branding Profile, utility categories, packet mode, modules, and
+  exclusions into one save request and sticky saved/dirty/reset action bar.
+- Kept availability, custom URL, and electric meter collection as clearly
+  labeled immediate or separate-save controls.
+- Updated Settings tests for hierarchy, preview, radio cards, collapsed and
+  single-open modules, checkbox toggling, reset, Free gating, and the combined
+  save payload.
 
 ## Validation
 
@@ -67,13 +94,20 @@
 - `npm run build` passed.
 - `npm run security:scan` passed.
 - `git diff --check` passed with line-ending warnings only.
+- Redesign-focused Vitest: 3 files / 13 tests passed.
+- Focused Settings Vitest after reset/checkbox additions: 1 file / 3 tests
+  passed.
+- Redesign TypeScript and focused ESLint passed.
+- Full Vitest after redesign: 134 files / 672 tests passed.
+- Production build after redesign passed.
+- Security scan and final `git diff --check` passed.
 
 ## Remaining Required Work
 
 - No required implementation or validation remains within the authorized
   scope.
-- Publication is intentionally pending: no commit, push, or deployment was
-  authorized or performed.
+- Publication remains pending: no commit, push, or deployment was authorized
+  or performed.
 
 ## Concurrent Editing Warnings
 
@@ -84,6 +118,6 @@
 
 ## Recommended Next Action
 
-After explicit authorization, review the final diff, commit only the intended
-product/coordination files, push, deploy, and verify the new questions in
-production before telling the customer they are live.
+After explicit authorization, review the final diff, commit the intended
+product and coordination files, push, deploy, and verify the redesigned Seller
+Form tab in production.

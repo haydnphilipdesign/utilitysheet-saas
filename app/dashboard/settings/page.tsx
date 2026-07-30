@@ -303,6 +303,7 @@ export default function SettingsPage() {
         return intakeDefaultBrandProfileId === (intakeLink.defaultBrandProfileId || '')
             && intakeUtilityCategories.join('|') === savedCategories.join('|');
     }, [intakeDefaultBrandProfileId, intakeLink, intakeUtilityCategories]);
+    const intakeSettingsUnchanged = intakeFormDefaultsUnchanged && intakeModeSettingsUnchanged;
     const intakeHasAdvancedModuleWithNoFields = useMemo(() => (
         intakeAdvancedModules.some((moduleKey) => getAdvancedModuleIncludedFieldCount(moduleKey, intakeAdvancedModuleExclusions) === 0)
     ), [intakeAdvancedModuleExclusions, intakeAdvancedModules]);
@@ -463,6 +464,14 @@ export default function SettingsPage() {
         }
     };
 
+    const handlePreviewIntakeLink = () => {
+        if (!intakeLink?.url) return;
+        trackEvent('seller_form_preview_opened', {
+            source: 'settings_reusable_link',
+        });
+        window.open(intakeLink.url, '_blank', 'noopener,noreferrer');
+    };
+
     const updateIntakeLinkFromResponse = (nextIntakeLink: typeof intakeLink) => {
         if (!nextIntakeLink) return;
         const nextModules = Array.isArray(nextIntakeLink.advancedModules) && nextIntakeLink.advancedModules.length > 0
@@ -508,30 +517,45 @@ export default function SettingsPage() {
         ));
     };
 
-    const handleSaveSellerFormDefaults = async () => {
+    const handleSaveSellerFormSettings = async () => {
         if (intakeUtilityCategories.length === 0) {
             toast.error('Select at least one utility category.');
+            return;
+        }
+        if (intakeDefaultPacketMode === 'advanced' && intakeAdvancedModules.length === 0) {
+            toast.error('Enable at least one module for Advanced Utility Packet mode.');
+            return;
+        }
+        if (intakeDefaultPacketMode === 'advanced' && intakeHasAdvancedModuleWithNoFields) {
+            toast.error('Each enabled module must include at least one question.');
             return;
         }
 
         setIntakeSaving(true);
         try {
+            const normalizedExclusions = normalizeAdvancedModuleExclusions(
+                intakeAdvancedModuleExclusions,
+                intakeAdvancedModules
+            );
             const response = await fetch('/api/intake-link', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     defaultBrandProfileId: intakeDefaultBrandProfileId || null,
                     defaultUtilityCategories: intakeUtilityCategories,
+                    defaultPacketMode: intakeDefaultPacketMode,
+                    advancedModules: intakeAdvancedModules,
+                    advancedModuleExclusions: normalizedExclusions,
                 }),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data?.message || data?.error || 'Failed to update seller form defaults');
+                throw new Error(data?.message || data?.error || 'Failed to update seller form settings');
             }
             updateIntakeLinkFromResponse(data.intakeLink || null);
-            toast.success('Seller form defaults updated');
+            toast.success('Seller form settings saved');
         } catch (error: unknown) {
-            toast.error(error instanceof Error ? error.message : 'Failed to update seller form defaults');
+            toast.error(error instanceof Error ? error.message : 'Failed to update seller form settings');
         } finally {
             setIntakeSaving(false);
         }
@@ -593,44 +617,18 @@ export default function SettingsPage() {
         });
     };
 
-    const handleSaveDefaultPacketMode = async () => {
-        if (intakeDefaultPacketMode === 'advanced' && intakeAdvancedModules.length === 0) {
-            toast.error('Enable at least one module for Advanced Utility Packet mode.');
-            return;
-        }
-        if (intakeDefaultPacketMode === 'advanced' && intakeHasAdvancedModuleWithNoFields) {
-            toast.error('Each enabled module must include at least one question.');
-            return;
-        }
-        setIntakeSaving(true);
-        try {
-            const normalizedExclusions = normalizeAdvancedModuleExclusions(
-                intakeAdvancedModuleExclusions,
-                intakeAdvancedModules
-            );
-            const response = await fetch('/api/intake-link', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    defaultPacketMode: intakeDefaultPacketMode,
-                    advancedModules: intakeAdvancedModules,
-                    advancedModuleExclusions: normalizedExclusions,
-                }),
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(data?.message || data?.error || 'Failed to update default mode');
-            }
-            if (data.intakeLink) {
-                updateIntakeLinkFromResponse(data.intakeLink);
-            }
-            toast.success('Packet defaults updated');
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : 'Failed to update default mode';
-            toast.error(message);
-        } finally {
-            setIntakeSaving(false);
-        }
+    const handleResetSellerFormSettings = () => {
+        if (!intakeLink) return;
+        const nextModules = intakeLink.advancedModules && intakeLink.advancedModules.length > 0
+            ? normalizeAdvancedModules(intakeLink.advancedModules)
+            : [...ADVANCED_MODULE_DEFAULTS];
+        setIntakeDefaultBrandProfileId(intakeLink.defaultBrandProfileId || '');
+        setIntakeUtilityCategories(normalizeSettingsUtilityCategories(intakeLink.defaultUtilityCategories));
+        setIntakeDefaultPacketMode(intakeLink.defaultPacketMode || 'simple');
+        setIntakeAdvancedModules(nextModules);
+        setIntakeAdvancedModuleExclusions(
+            normalizeAdvancedModuleExclusions(intakeLink.advancedModuleExclusions || {}, nextModules)
+        );
     };
 
     const handleSaveWorkspaceName = async () => {
@@ -1064,307 +1062,355 @@ export default function SettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="link" className="mt-2 space-y-6 text-base">
-            {/* Reusable Seller Form Section */}
-            <Card className="border-border bg-card/50">
-                <CardHeader>
-                    <CardTitle className="text-foreground flex items-center gap-2">
-                        <LinkIcon className="h-5 w-5 text-primary" />
-                        Seller Form Defaults
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground">
-                        Control who can start your reusable form and what each new seller request includes.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <section className="space-y-4 rounded-xl border border-border bg-muted/20 p-4" aria-labelledby="seller-form-access-heading">
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <h3 id="seller-form-access-heading" className="text-sm font-semibold text-foreground">Form availability</h3>
-                                    <Badge variant={intakeLink?.is_active === false ? 'outline' : 'default'}>
-                                        {intakeLink?.is_active === false ? 'Paused' : 'Active'}
-                                    </Badge>
+                    <Card className="border-border bg-card/50">
+                        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="space-y-1.5">
+                                <CardTitle className="flex items-center gap-2 text-foreground">
+                                    <LinkIcon className="h-5 w-5 text-primary" />
+                                    Seller Form
+                                </CardTitle>
+                                <CardDescription className="text-muted-foreground">
+                                    Control access, choose what sellers are asked, and set the completed packet style.
+                                </CardDescription>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full border-input sm:w-auto"
+                                onClick={handlePreviewIntakeLink}
+                                disabled={!intakeLink?.url}
+                            >
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                Preview form
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <section className="space-y-4" aria-labelledby="seller-form-access-heading">
+                                <div className="space-y-1">
+                                    <h3 id="seller-form-access-heading" className="text-base font-semibold text-foreground">
+                                        Form access & sharing
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Manage who can start the reusable form and how you share it.
+                                    </p>
                                 </div>
-                                <p className="text-sm text-muted-foreground">
-                                    Pause new starts without changing your form URL or existing request links.
-                                </p>
-                            </div>
-                            <Switch
-                                aria-label="Accept new seller form starts"
-                                checked={intakeLink?.is_active !== false}
-                                onCheckedChange={handleToggleIntakeActive}
-                                disabled={!intakeLink || intakeSaving}
-                            />
-                        </div>
 
-                        {intakeLink?.is_active === false && (
-                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-                                This form is paused. Visitors receive an unavailable response and cannot create new requests until you reactivate it.
-                            </div>
-                        )}
+                                <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <p className="text-sm font-medium text-foreground">Accept new seller form starts</p>
+                                                <Badge variant={intakeLink?.is_active === false ? 'outline' : 'default'}>
+                                                    {intakeLink?.is_active === false ? 'Paused' : 'Active'}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                Pause new starts without changing existing request links.
+                                            </p>
+                                        </div>
+                                        <Switch
+                                            aria-label="Accept new seller form starts"
+                                            checked={intakeLink?.is_active !== false}
+                                            onCheckedChange={handleToggleIntakeActive}
+                                            disabled={!intakeLink || intakeSaving}
+                                        />
+                                    </div>
 
-                    {intakeLink?.url ? (
-                        <div className="space-y-2">
-                            <Label className="text-foreground">Seller form URL</Label>
-                            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                                <Input
-                                    value={intakeLink.url}
-                                    readOnly
-                                    className="bg-muted border-input text-muted-foreground"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="border-input text-foreground hover:bg-muted"
-                                    onClick={handleCopyIntakeLink}
-                                >
-                                    Copy
-                                </Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">Loading…</p>
-                    )}
+                                    {intakeLink?.is_active === false && (
+                                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+                                            This form is paused. Visitors cannot create new requests until you reactivate it.
+                                        </div>
+                                    )}
 
-                    </section>
+                                    {intakeLink?.url ? (
+                                        <div className="space-y-2">
+                                            <Label className="text-foreground">Seller form URL</Label>
+                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                                <Input
+                                                    value={intakeLink.url}
+                                                    readOnly
+                                                    className="bg-muted text-muted-foreground"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    className="border-input"
+                                                    onClick={handleCopyIntakeLink}
+                                                >
+                                                    <Copy className="mr-2 h-4 w-4" />
+                                                    Copy
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">Loading…</p>
+                                    )}
 
-                    <Separator className="bg-border" />
+                                    <div className="space-y-2 border-t border-border pt-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <Label htmlFor="intakeSlug" className="text-foreground">Custom form URL</Label>
+                                            {!intakeCanCustomize && <Badge variant="outline">Pro / Teams</Badge>}
+                                        </div>
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                            <div className="flex-1 space-y-1">
+                                                <Input
+                                                    id="intakeSlug"
+                                                    value={intakeSlugDraft}
+                                                    onChange={(e) => setIntakeSlugDraft(e.target.value)}
+                                                    placeholder="your-name"
+                                                    className="bg-background/50"
+                                                    disabled={!intakeCanCustomize || intakeSaving}
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Lowercase letters, numbers, and dashes only. Saved separately from form defaults.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                onClick={handleSaveIntakeSlug}
+                                                disabled={!intakeCanCustomize || intakeSaving || intakeSlugDraft.trim().length < 3}
+                                            >
+                                                {intakeSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                                Save URL
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
 
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                            <Label htmlFor="intakeSlug" className="text-foreground">Custom form URL</Label>
-                            {!intakeCanCustomize && (
-                                <Badge variant="outline">Pro / Teams</Badge>
-                            )}
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                            <div className="flex-1 space-y-1">
-                                <Input
-                                    id="intakeSlug"
-                                    value={intakeSlugDraft}
-                                    onChange={(e) => setIntakeSlugDraft(e.target.value)}
-                                    placeholder="your-name"
-                                    className="bg-background/50 border-input text-foreground"
-                                    disabled={!intakeCanCustomize || intakeSaving}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Lowercase letters, numbers, and dashes only.
-                                </p>
-                            </div>
-                            <Button
-                                type="button"
-                                onClick={handleSaveIntakeSlug}
-                                disabled={!intakeCanCustomize || intakeSaving || intakeSlugDraft.trim().length < 3}
-                            >
-                                {intakeSaving ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Save className="mr-2 h-4 w-4" />
-                                )}
-                                Save
-                            </Button>
-                        </div>
-                    </div>
+                            <Separator className="bg-border" />
 
-                    <Separator className="bg-border" />
+                            <section className="space-y-5" aria-labelledby="seller-questions-heading">
+                                <div className="space-y-1">
+                                    <h3 id="seller-questions-heading" className="text-base font-semibold text-foreground">
+                                        What sellers are asked
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        These defaults are copied into new requests started from your reusable form.
+                                    </p>
+                                </div>
 
-                    <section className="space-y-4" aria-labelledby="seller-form-fields-heading">
-                        <div className="space-y-1">
-                            <h3 id="seller-form-fields-heading" className="text-sm font-semibold text-foreground">Seller form fields and presentation</h3>
-                            <p className="text-sm text-muted-foreground">
-                                These defaults are copied into each new request started from your reusable form.
-                            </p>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="defaultBrandProfile" className="text-foreground">Default Branding Profile</Label>
-                            <select
-                                id="defaultBrandProfile"
-                                value={intakeDefaultBrandProfileId}
-                                onChange={(event) => setIntakeDefaultBrandProfileId(event.target.value)}
-                                className="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm text-foreground"
-                                disabled={intakeSaving}
-                            >
-                                <option value="">Use workspace default</option>
-                                {intakeBrandProfiles.map((profile) => (
-                                    <option key={profile.id} value={profile.id}>
-                                        {profile.name}{profile.isDefault ? ' (workspace default)' : ''}
-                                    </option>
-                                ))}
-                            </select>
-                            <p className="text-xs text-muted-foreground">
-                                “Use workspace default” follows whichever Branding Profile is currently marked default.
-                            </p>
-                        </div>
-
-                        <fieldset className="space-y-2">
-                            <legend className="text-sm font-medium text-foreground">Utility categories</legend>
-                            <p className="text-xs text-muted-foreground">Choose which utility sections sellers see on new requests.</p>
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                {UTILITY_CATEGORIES.map((category) => {
-                                    const checked = intakeUtilityCategories.includes(category.key);
-                                    return (
-                                        <label
-                                            key={category.key}
-                                            className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/40"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={checked}
-                                                onChange={() => toggleIntakeUtilityCategory(category.key)}
-                                                disabled={intakeSaving}
-                                                className="h-4 w-4 rounded border-input accent-primary"
-                                            />
-                                            <span aria-hidden="true">{category.icon}</span>
-                                            <span>{category.label}</span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                            {intakeUtilityCategories.length === 0 && (
-                                <p className="text-xs text-destructive">Select at least one utility category.</p>
-                            )}
-                        </fieldset>
-
-                        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/20 p-4">
-                            <div>
-                                <p className="text-foreground text-sm font-medium">Collect electric meter number</p>
-                                <p className="text-sm text-muted-foreground">Show an optional meter-number field when Electric is included.</p>
-                            </div>
-                            <Switch
-                                aria-label="Collect electric meter number"
-                                checked={notifications.collect_electric_meter_number}
-                                onCheckedChange={(checked) => handleNotificationToggle('collect_electric_meter_number', checked)}
-                            />
-                        </div>
-
-                        <div className="flex justify-end">
-                            <Button
-                                type="button"
-                                onClick={handleSaveSellerFormDefaults}
-                                disabled={intakeSaving || intakeFormDefaultsUnchanged || intakeUtilityCategories.length === 0}
-                            >
-                                {intakeSaving ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Save className="mr-2 h-4 w-4" />
-                                )}
-                                Save Form Defaults
-                            </Button>
-                        </div>
-                    </section>
-
-                    <Separator className="bg-border" />
-
-                    <section className="space-y-4" aria-labelledby="packet-defaults-heading">
-                        <div className="space-y-1">
-                            <h3 id="packet-defaults-heading" className="text-sm font-semibold text-foreground">Completed packet defaults</h3>
-                            <p className="text-sm text-muted-foreground">Choose the output mode and advanced questions for new seller-form requests.</p>
-                        </div>
-
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                            <Label htmlFor="defaultPacketMode" className="text-foreground">Default packet mode</Label>
-                            {!intakeCanCustomize && <Badge variant="outline">Pro / Teams</Badge>}
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1">
-                                <p className="text-sm font-semibold text-foreground">Simple Utility Sheet</p>
-                                <p className="text-xs text-muted-foreground">Fast utility list only, ideal for straightforward handoffs.</p>
-                                <p className="text-xs text-muted-foreground">
-                                    Example: Electric, gas, water, and internet provider contacts.
-                                </p>
-                            </div>
-                            <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1">
-                                <p className="text-sm font-semibold text-foreground">Advanced Utility Packet</p>
-                                <p className="text-xs text-muted-foreground">Adds modular seller transition details beyond utility providers.</p>
-                                <p className="text-xs text-muted-foreground">
-                                    Example: Mailbox access, lawn care contacts, and smart home notes.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                                <div className="flex-1">
-                                    <select
-                                        id="defaultPacketMode"
-                                        value={intakeDefaultPacketMode}
-                                        onChange={(e) => setIntakeDefaultPacketMode(e.target.value as PacketMode)}
-                                        className="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm text-foreground"
-                                        disabled={!intakeCanCustomize || intakeSaving}
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-sm font-medium text-foreground">Form & packet type</p>
+                                        {!intakeCanCustomize && <Badge variant="outline">Pro / Teams</Badge>}
+                                    </div>
+                                    <div
+                                        role="radiogroup"
+                                        aria-label="Form and packet type"
+                                        className="grid grid-cols-1 gap-3 sm:grid-cols-2"
                                     >
-                                        <option value="simple">Simple Utility Sheet</option>
-                                        <option value="advanced">Advanced Utility Packet</option>
+                                        {([
+                                            {
+                                                value: 'simple' as const,
+                                                title: 'Simple Utility Sheet',
+                                                description: 'A focused form for utility providers and essential home basics.',
+                                                example: 'Best for straightforward handoffs.',
+                                            },
+                                            {
+                                                value: 'advanced' as const,
+                                                title: 'Advanced Utility Packet',
+                                                description: 'Adds selectable lawn, access, security, and home-service questions.',
+                                                example: 'Best for a complete closing handoff.',
+                                            },
+                                        ]).map((option) => {
+                                            const selected = intakeDefaultPacketMode === option.value;
+                                            return (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={selected}
+                                                    onClick={() => setIntakeDefaultPacketMode(option.value)}
+                                                    disabled={!intakeCanCustomize || intakeSaving}
+                                                    className={`relative rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-65 ${
+                                                        selected
+                                                            ? 'border-primary/60 bg-primary/10 ring-1 ring-primary/20'
+                                                            : 'border-border bg-muted/20 hover:border-input hover:bg-muted/35'
+                                                    }`}
+                                                >
+                                                    <span className="flex items-start justify-between gap-3">
+                                                        <span className="space-y-1.5">
+                                                            <span className="block text-sm font-semibold text-foreground">{option.title}</span>
+                                                            <span className="block text-sm leading-relaxed text-muted-foreground">{option.description}</span>
+                                                            <span className="block text-xs font-medium text-muted-foreground">{option.example}</span>
+                                                        </span>
+                                                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                                                            selected ? 'border-primary bg-primary text-primary-foreground' : 'border-input'
+                                                        }`}>
+                                                            {selected && <Check className="h-3.5 w-3.5" />}
+                                                        </span>
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {!intakeCanCustomize && (
+                                        <p className="text-sm text-amber-600 dark:text-amber-300">
+                                            Advanced form defaults are read-only on Free. Upgrade to Pro or Teams to edit.
+                                        </p>
+                                    )}
+                                </div>
+
+                                <fieldset className="space-y-3">
+                                    <legend className="text-sm font-medium text-foreground">Utility categories</legend>
+                                    <p className="text-sm text-muted-foreground">Choose which utility sections sellers see.</p>
+                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                        {UTILITY_CATEGORIES.map((category) => {
+                                            const checked = intakeUtilityCategories.includes(category.key);
+                                            return (
+                                                <label
+                                                    key={category.key}
+                                                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-muted/20 px-3 py-3 text-sm text-foreground transition-colors hover:bg-muted/40"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={() => toggleIntakeUtilityCategory(category.key)}
+                                                        disabled={intakeSaving}
+                                                        className="h-4 w-4 rounded border-input accent-primary"
+                                                    />
+                                                    <span aria-hidden="true">{category.icon}</span>
+                                                    <span>{category.label}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                    {intakeUtilityCategories.length === 0 && (
+                                        <p className="text-sm text-destructive">Select at least one utility category.</p>
+                                    )}
+                                </fieldset>
+
+                                <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/20 p-4">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-medium text-foreground">Collect electric meter number</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Show an optional meter-number field when Electric is included. This preference saves automatically.
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        aria-label="Collect electric meter number"
+                                        checked={notifications.collect_electric_meter_number}
+                                        onCheckedChange={(checked) => handleNotificationToggle('collect_electric_meter_number', checked)}
+                                    />
+                                </div>
+
+                                {intakeDefaultPacketMode === 'advanced' && (
+                                    <div className="space-y-3 rounded-xl border border-border bg-muted/15 p-4">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="text-sm font-semibold text-foreground">Advanced questions</p>
+                                                <span className="text-xs font-medium text-muted-foreground">
+                                                    {intakeAdvancedModules.length} modules enabled
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                Enable the sections you need, then open one to choose its individual questions.
+                                            </p>
+                                        </div>
+                                        <AdvancedModuleConfigurator
+                                            enabledModules={intakeAdvancedModules}
+                                            exclusions={intakeAdvancedModuleExclusions}
+                                            onToggleModule={toggleIntakeAdvancedModule}
+                                            onToggleField={toggleIntakeAdvancedModuleField}
+                                            disabled={!intakeCanCustomize || intakeSaving}
+                                        />
+                                        {intakeAdvancedModules.length === 0 && (
+                                            <p className="text-sm text-amber-600 dark:text-amber-300">
+                                                Enable at least one module for Advanced Utility Packet mode.
+                                            </p>
+                                        )}
+                                        {intakeHasAdvancedModuleWithNoFields && intakeAdvancedModules.length > 0 && (
+                                            <p className="text-sm text-amber-600 dark:text-amber-300">
+                                                Each enabled module must include at least one question.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+
+                            <Separator className="bg-border" />
+
+                            <section className="space-y-4" aria-labelledby="completed-packet-heading">
+                                <div className="space-y-1">
+                                    <h3 id="completed-packet-heading" className="text-base font-semibold text-foreground">
+                                        Completed packet
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Choose the Branding Profile applied to the finished web packet and PDF.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="defaultBrandProfile" className="text-foreground">Default Branding Profile</Label>
+                                    <select
+                                        id="defaultBrandProfile"
+                                        value={intakeDefaultBrandProfileId}
+                                        onChange={(event) => setIntakeDefaultBrandProfileId(event.target.value)}
+                                        className="h-10 w-full rounded-md border border-input bg-background/50 px-3 text-sm text-foreground"
+                                        disabled={intakeSaving}
+                                    >
+                                        <option value="">Use workspace default</option>
+                                        {intakeBrandProfiles.map((profile) => (
+                                            <option key={profile.id} value={profile.id}>
+                                                {profile.name}{profile.isDefault ? ' (workspace default)' : ''}
+                                            </option>
+                                        ))}
                                     </select>
+                                    <p className="text-sm text-muted-foreground">
+                                        “Use workspace default” follows whichever Branding Profile is currently marked default.
+                                    </p>
+                                </div>
+                            </section>
+
+                            <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span className={`flex h-7 w-7 items-center justify-center rounded-full ${
+                                        intakeSettingsUnchanged
+                                            ? 'bg-emerald-500/10 text-emerald-600'
+                                            : 'bg-amber-500/10 text-amber-600'
+                                    }`}>
+                                        {intakeSettingsUnchanged ? <Check className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                                    </span>
+                                    <span>
+                                        <span className="block font-medium text-foreground">
+                                            {intakeSettingsUnchanged ? 'All defaults saved' : 'Unsaved changes'}
+                                        </span>
+                                        <span className="block text-xs text-muted-foreground">
+                                            Applies to new requests from your reusable form.
+                                        </span>
+                                    </span>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="flex-1 border-input sm:flex-none"
+                                        onClick={handleResetSellerFormSettings}
+                                        disabled={intakeSaving || intakeSettingsUnchanged}
+                                    >
+                                        Reset
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        className="flex-1 sm:flex-none"
+                                        onClick={handleSaveSellerFormSettings}
+                                        disabled={
+                                            intakeSaving ||
+                                            !intakeCanCustomize ||
+                                            intakeSettingsUnchanged ||
+                                            intakeUtilityCategories.length === 0 ||
+                                            (intakeDefaultPacketMode === 'advanced' && (
+                                                intakeAdvancedModules.length === 0 || intakeHasAdvancedModuleWithNoFields
+                                            ))
+                                        }
+                                    >
+                                        {intakeSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                        Save seller form
+                                    </Button>
                                 </div>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                Controls which mode sellers get when they start from your reusable form.
-                            </p>
-                            {!intakeCanCustomize && (
-                                <p className="text-xs text-amber-500">
-                                    Advanced mode defaults are read-only on Free. Upgrade to Pro or Teams to edit.
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
-                    {intakeDefaultPacketMode === 'advanced' && (
-                        <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
-                            <div className="space-y-1">
-                                <div className="flex items-center justify-between gap-2">
-                                    <Label className="text-foreground">Advanced Modules & Questions</Label>
-                                    <span className="text-xs text-muted-foreground">{intakeAdvancedModules.length} enabled</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Open any enabled module to include or remove individual seller questions.
-                                </p>
-                            </div>
-                            <AdvancedModuleConfigurator
-                                enabledModules={intakeAdvancedModules}
-                                exclusions={intakeAdvancedModuleExclusions}
-                                onToggleModule={toggleIntakeAdvancedModule}
-                                onToggleField={toggleIntakeAdvancedModuleField}
-                                disabled={!intakeCanCustomize || intakeSaving}
-                            />
-                            {intakeAdvancedModules.length === 0 && (
-                                <p className="text-xs text-amber-500">Enable at least one module for Advanced Utility Packet mode.</p>
-                            )}
-                            {intakeHasAdvancedModuleWithNoFields && intakeAdvancedModules.length > 0 && (
-                                <p className="text-xs text-amber-500">Each enabled module must include at least one question.</p>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                        <div className="flex-1 space-y-1">
-                            <p className="text-xs text-muted-foreground">
-                                Save both default mode and module settings together.
-                            </p>
-                        </div>
-                        <Button
-                            type="button"
-                            onClick={handleSaveDefaultPacketMode}
-                            disabled={
-                                intakeSaving ||
-                                !intakeCanCustomize ||
-                                intakeModeSettingsUnchanged ||
-                                (intakeDefaultPacketMode === 'advanced' && (
-                                    intakeAdvancedModules.length === 0 || intakeHasAdvancedModuleWithNoFields
-                                ))
-                            }
-                        >
-                            {intakeSaving ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Save className="mr-2 h-4 w-4" />
-                            )}
-                            Save Packet Defaults
-                        </Button>
-                    </div>
-                    </section>
-                </CardContent>
-            </Card>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="workspace" className="mt-2 space-y-6 text-base">

@@ -1,7 +1,9 @@
 'use client';
 
-import { ChevronDown, Eye, EyeOff } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import {
     ADVANCED_MODULE_KEYS,
@@ -65,6 +67,8 @@ export function AdvancedModuleConfigurator({
     disabled = false,
     className,
 }: AdvancedModuleConfiguratorProps) {
+    const [expandedModule, setExpandedModule] = useState<AdvancedModuleKey | null>(null);
+
     return (
         <div className={cn('space-y-3', className)}>
             {ADVANCED_MODULE_KEYS.map((moduleKey) => {
@@ -74,100 +78,120 @@ export function AdvancedModuleConfigurator({
                 const totalFields = moduleMeta.fields.length;
                 const excludedSet = new Set(exclusions[moduleKey] || []);
                 const fieldGroups = groupModuleFields(moduleMeta.fields);
+                const modulePanelId = `advanced-module-panel-${moduleKey}`;
+
+                const handleModuleToggle = (nextEnabled: boolean) => {
+                    onToggleModule(moduleKey);
+                    setExpandedModule(nextEnabled ? moduleKey : (current) => (
+                        current === moduleKey ? null : current
+                    ));
+                };
 
                 return (
                     <div
                         key={moduleKey}
                         className={cn(
-                            'rounded-xl border p-3 sm:p-4 space-y-3',
+                            'overflow-hidden rounded-xl border transition-colors',
                             moduleEnabled ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-border bg-background/20'
                         )}
                     >
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="space-y-1 min-w-0">
-                                <p className="text-sm font-semibold text-foreground">{moduleMeta.label}</p>
-                                <p className="text-xs text-muted-foreground">{moduleMeta.summary}</p>
-                            </div>
-                            <Button
+                        <div className="flex items-center gap-3 p-3 sm:p-4">
+                            <button
                                 type="button"
-                                size="sm"
-                                variant={moduleEnabled ? 'default' : 'outline'}
-                                className={moduleEnabled ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'border-input'}
-                                onClick={() => onToggleModule(moduleKey)}
-                                disabled={disabled}
-                                title={`Toggle ${moduleMeta.label}`}
-                                aria-label={`Toggle ${moduleMeta.label}`}
-                                data-testid={`module-toggle-${moduleKey}`}
+                                className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-not-allowed"
+                                onClick={() => moduleEnabled && setExpandedModule((current) => (
+                                    current === moduleKey ? null : moduleKey
+                                ))}
+                                disabled={disabled || !moduleEnabled}
+                                aria-expanded={expandedModule === moduleKey}
+                                aria-controls={modulePanelId}
                             >
-                                {moduleEnabled ? 'Enabled' : 'Disabled'}
-                            </Button>
+                                <ChevronDown
+                                    className={cn(
+                                        'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                                        expandedModule === moduleKey && 'rotate-180'
+                                    )}
+                                />
+                                <span className="min-w-0 flex-1 space-y-1">
+                                    <span className="block text-sm font-semibold text-foreground">{moduleMeta.label}</span>
+                                    <span className="block text-xs leading-relaxed text-muted-foreground">{moduleMeta.summary}</span>
+                                    <span className="block text-xs font-medium text-foreground/80">
+                                        {includedCount} of {totalFields} questions included
+                                    </span>
+                                </span>
+                            </button>
+                            <div className="flex shrink-0 items-center gap-2">
+                                <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
+                                    {moduleEnabled ? 'Enabled' : 'Disabled'}
+                                </span>
+                                <Switch
+                                    checked={moduleEnabled}
+                                    onCheckedChange={handleModuleToggle}
+                                    disabled={disabled}
+                                    aria-label={`${moduleEnabled ? 'Disable' : 'Enable'} ${moduleMeta.label}`}
+                                    data-testid={`module-toggle-${moduleKey}`}
+                                />
+                            </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground">
-                                <span className="text-foreground font-medium">Seller will be asked:</span> {moduleMeta.sellerAsks}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                <span className="text-foreground font-medium">Packet output:</span> {moduleMeta.outputImpact}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                {includedCount} of {totalFields} questions included
-                            </p>
-                        </div>
-
-                        <details className="group rounded-lg border border-border bg-background/40" open={moduleEnabled}>
-                            <summary className="list-none cursor-pointer px-3 py-2 text-xs text-muted-foreground flex items-center justify-between gap-2">
-                                <span>Customize questions — include or remove each one</span>
-                                <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-                            </summary>
-                            <div className="space-y-2 px-2 pb-2">
+                        {moduleEnabled && expandedModule === moduleKey && (
+                            <div
+                                id={modulePanelId}
+                                className="space-y-3 border-t border-border/70 bg-background/45 p-3 sm:p-4"
+                            >
+                                <p className="text-sm text-muted-foreground">
+                                    Choose the questions sellers will see.
+                                </p>
                                 {fieldGroups.map((fieldGroup) => (
-                                    <div key={fieldGroup.key} className={cn(fieldGroup.label ? 'rounded-md border border-border/60 bg-background/40 p-2 space-y-2' : 'space-y-2')}>
+                                    <div key={fieldGroup.key} className={cn(fieldGroup.label && 'space-y-1')}>
                                         {fieldGroup.label && (
-                                            <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{fieldGroup.label}</p>
+                                            <p className="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                                {fieldGroup.label}
+                                            </p>
                                         )}
                                         {fieldGroup.fields.map((field) => {
                                             const fieldExcluded = excludedSet.has(field.key);
                                             const fieldIncluded = !fieldExcluded;
-                                            const rowDisabled = disabled || !moduleEnabled;
                                             return (
-                                                <button
+                                                <label
                                                     key={field.key}
-                                                    type="button"
-                                                    disabled={rowDisabled}
-                                                    aria-pressed={fieldIncluded}
                                                     data-testid={`module-field-toggle-${moduleKey}-${field.key}`}
-                                                    onClick={() => onToggleField(moduleKey, field.key)}
                                                     className={cn(
-                                                        'w-full rounded-md border px-2.5 py-2 text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed',
+                                                        'flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-colors',
                                                         fieldIncluded
-                                                            ? 'border-emerald-500/35 bg-emerald-500/10'
-                                                            : 'border-border bg-background/30 hover:border-input'
+                                                            ? 'border-emerald-500/30 bg-emerald-500/8'
+                                                            : 'border-border bg-background/30 hover:border-input',
+                                                        disabled && 'cursor-not-allowed opacity-60'
                                                     )}
                                                 >
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="min-w-0">
-                                                            <p className="text-xs font-medium text-foreground">{field.label}</p>
-                                                            <p className="text-[11px] text-muted-foreground mt-0.5">{field.sellerPrompt}</p>
-                                                            {field.example && (
-                                                                <p className="text-[11px] text-muted-foreground mt-0.5">Example: {field.example}</p>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1 mt-0.5">
-                                                            {fieldIncluded ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                                                            {fieldIncluded ? 'Included' : 'Excluded'}
+                                                    <Checkbox
+                                                        checked={fieldIncluded}
+                                                        onCheckedChange={() => onToggleField(moduleKey, field.key)}
+                                                        disabled={disabled}
+                                                        aria-label={`Include ${field.label}`}
+                                                        className="mt-0.5"
+                                                    />
+                                                    <span className="min-w-0">
+                                                        <span className="block text-sm font-medium text-foreground">{field.label}</span>
+                                                        <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+                                                            {field.sellerPrompt}
                                                         </span>
-                                                    </div>
-                                                </button>
+                                                        {field.example && (
+                                                            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground/90">
+                                                                Example: {field.example}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </label>
                                             );
                                         })}
                                     </div>
                                 ))}
                             </div>
-                        </details>
+                        )}
 
                         {moduleEnabled && includedCount === 0 && (
-                            <p className="text-xs text-amber-500">
+                            <p className="border-t border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-600 dark:text-amber-300">
                                 Include at least one question or disable this module before saving.
                             </p>
                         )}
