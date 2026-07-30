@@ -401,6 +401,23 @@ export function AdvancedDetailsStep({
                             mailbox_access: { ...advanced.mailbox_access, mailbox_location: value },
                         })}
                     />)}
+                    {renderIfVisible('garage_door_code', <Field
+                        label="Garage Door Code"
+                        value={advanced.mailbox_access?.garage_door_code}
+                        placeholder="Code to provide at closing"
+                        onChange={(value) => updateAdvanced({
+                            mailbox_access: { ...advanced.mailbox_access, garage_door_code: value },
+                        })}
+                    />)}
+                    {renderIfVisible('keys_and_garage_remotes_location', <Field
+                        label="Keys & Garage Remotes at Closing"
+                        multiline
+                        value={advanced.mailbox_access?.keys_and_garage_remotes_location}
+                        placeholder="Where extra keys and garage remotes will be left"
+                        onChange={(value) => updateAdvanced({
+                            mailbox_access: { ...advanced.mailbox_access, keys_and_garage_remotes_location: value },
+                        })}
+                    />)}
                     {renderIfVisible('parking_instructions', <Field
                         label="Parking Instructions"
                         multiline
@@ -524,6 +541,33 @@ export function AdvancedDetailsStep({
                     placeholder="(555) 123-4567"
                     onChange={(value) => updateAdvanced({
                         service_providers: { ...advanced.service_providers, plumber_provider_phone: value },
+                    })}
+                />)}
+                {renderIfVisible('pool_service_provider_name', <Field
+                    label="Pool Service Provider"
+                    value={advanced.service_providers?.pool_service_provider_name}
+                    placeholder="Company name"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, pool_service_provider_name: value },
+                    })}
+                />)}
+                {renderIfVisible('pool_service_provider_phone', <Field
+                    label="Pool Service Phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={advanced.service_providers?.pool_service_provider_phone}
+                    placeholder="(555) 123-4567"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, pool_service_provider_phone: value },
+                    })}
+                />)}
+                {renderIfVisible('other_maintenance_providers', <Field
+                    label="Other Maintenance Providers"
+                    multiline
+                    value={advanced.service_providers?.other_maintenance_providers}
+                    placeholder="Provider names, services, and contact information"
+                    onChange={(value) => updateAdvanced({
+                        service_providers: { ...advanced.service_providers, other_maintenance_providers: value },
                     })}
                 />)}
                 {renderIfVisible('service_provider_notes', <Field

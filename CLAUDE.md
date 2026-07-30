@@ -2,12 +2,19 @@
 
 # Claude Code Notes
 
-`AGENTS.md` is the primary repository guidance. Respect any applicable nested `AGENTS.md` files if they are added later.
+`AGENTS.md` is the primary shared guidance. Respect every applicable nested
+`AGENTS.md` and maintain the shared `.ai/` files as required task work.
 
-- Updating the shared `.ai/` files is a required part of the task, not optional cleanup.
-- Read and verify `.ai/CURRENT.md` before substantial work, and read the relevant active or approved `.ai/plans/` plan before implementation.
-- Correct stale shared state before relying on it. Update `.ai/CURRENT.md` at meaningful milestones and before ending or pausing any substantial session.
-- Do not paste full chat transcripts into the repository.
-- Do not edit files concurrently with Codex or another agent when ownership overlaps. Record ownership warnings and material scope or plan changes in `.ai/CURRENT.md`.
-- Before delegating execution to Codex, update `.ai/CURRENT.md` and the active plan with the approved scope, current status, changed and expected files, acceptance criteria, required validation, risks/blockers, concurrent editing warnings, and next action. A chat prompt alone is not the handoff.
-- After Codex returns work, independently review the repository state, complete diff, and validation results; then update the active plan and `.ai/CURRENT.md` with Claude's verified findings before reporting completion, delegating again, pausing, or ending the session.
+- Read and verify the appropriate `CURRENT.md` and plan before substantial
+  work.
+- Correct stale shared state before relying on it.
+- Do not paste transcripts or private reasoning into the repository.
+- Do not edit files concurrently when ownership overlaps.
+- Before delegating to Codex or another agent, write the durable scope, status,
+  files, acceptance criteria, validation, risks, overlap warnings, and next
+  action to the shared handoff and active plan.
+- After delegated work returns, independently inspect the repository, diff, and
+  validation, then record the verified result before reporting completion or
+  transferring work again.
+- Before pausing or ending for any reason, leave the required resumable final
+  handoff.

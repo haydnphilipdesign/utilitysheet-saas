@@ -61,6 +61,8 @@ export const ADVANCED_MODULE_FIELD_KEYS: Record<AdvancedModuleKey, string[]> = {
     mailbox_access: [
         'mailbox_number',
         'mailbox_location',
+        'garage_door_code',
+        'keys_and_garage_remotes_location',
         'parking_instructions',
         'breaker_box_location',
         'main_water_shutoff_location',
@@ -78,6 +80,9 @@ export const ADVANCED_MODULE_FIELD_KEYS: Record<AdvancedModuleKey, string[]> = {
         'pest_control_provider_phone',
         'plumber_provider_name',
         'plumber_provider_phone',
+        'pool_service_provider_name',
+        'pool_service_provider_phone',
+        'other_maintenance_providers',
         'service_provider_notes',
     ],
 };
@@ -102,6 +107,8 @@ export const ADVANCED_MODULE_FIELD_METADATA: Record<AdvancedModuleKey, AdvancedM
     mailbox_access: [
         { key: 'mailbox_number', label: 'Mailbox Number', sellerPrompt: 'What is the mailbox number?', example: '12B' },
         { key: 'mailbox_location', label: 'Mailbox Location', sellerPrompt: 'Where is the mailbox located?', example: 'Cluster boxes by community entrance' },
+        { key: 'garage_door_code', label: 'Garage Door Code', sellerPrompt: 'What garage door code should be handed off?', example: '2468' },
+        { key: 'keys_and_garage_remotes_location', label: 'Keys & Garage Remotes at Closing', sellerPrompt: 'Where will extra keys and garage remotes be left at closing?', example: 'Kitchen counter in a labeled envelope' },
         { key: 'parking_instructions', label: 'Parking Instructions', sellerPrompt: 'Any parking guidance for access?', example: 'Use visitor parking near clubhouse' },
         { key: 'breaker_box_location', label: 'Breaker Box Location', sellerPrompt: 'Where is the breaker panel?', example: 'Garage, left wall' },
         { key: 'main_water_shutoff_location', label: 'Main Water Shutoff Location', sellerPrompt: 'Where is the main water shutoff?', example: 'Utility room behind furnace' },
@@ -119,6 +126,9 @@ export const ADVANCED_MODULE_FIELD_METADATA: Record<AdvancedModuleKey, AdvancedM
         { key: 'pest_control_provider_phone', label: 'Pest Control Phone', sellerPrompt: 'What is the pest control phone number?', example: '(555) 300-2000', groupLabel: 'Pest Control Contact' },
         { key: 'plumber_provider_name', label: 'Plumber', sellerPrompt: 'Who is the usual plumber?', example: 'Rapid Rooter', groupLabel: 'Plumber Contact' },
         { key: 'plumber_provider_phone', label: 'Plumber Phone', sellerPrompt: 'What is the plumber phone number?', example: '(555) 300-3000', groupLabel: 'Plumber Contact' },
+        { key: 'pool_service_provider_name', label: 'Pool Service Provider', sellerPrompt: 'Who services the pool?', example: 'Clearwater Pool Care', groupLabel: 'Pool Service Contact' },
+        { key: 'pool_service_provider_phone', label: 'Pool Service Phone', sellerPrompt: 'What is the pool service phone number?', example: '(555) 300-4000', groupLabel: 'Pool Service Contact' },
+        { key: 'other_maintenance_providers', label: 'Other Maintenance Providers', sellerPrompt: 'Are there any other maintenance providers the buyer should know about?', example: 'Handyman: Oak Street Home Services, (555) 300-5000' },
         { key: 'service_provider_notes', label: 'Service Provider Notes', sellerPrompt: 'Any service contracts or notes?', example: 'HVAC service plan renewed in March' },
     ],
 };
@@ -143,8 +153,8 @@ export const ADVANCED_MODULE_METADATA: Record<AdvancedModuleKey, AdvancedModuleM
     mailbox_access: {
         key: 'mailbox_access',
         label: ADVANCED_MODULE_LABELS.mailbox_access,
-        summary: 'Mailbox location and key home access details.',
-        sellerAsks: 'Seller can share mailbox details, parking notes, breaker panel, and main water shutoff location.',
+        summary: 'Mailbox, garage, keys, and key home access details.',
+        sellerAsks: 'Seller can share mailbox and garage access, key/remotes handoff, parking, breaker panel, and water shutoff details.',
         outputImpact: 'Included fields appear in the Mailbox & Home Access section of the packet.',
         fields: ADVANCED_MODULE_FIELD_METADATA.mailbox_access,
     },
@@ -160,7 +170,7 @@ export const ADVANCED_MODULE_METADATA: Record<AdvancedModuleKey, AdvancedModuleM
         key: 'service_providers',
         label: ADVANCED_MODULE_LABELS.service_providers,
         summary: 'Recurring home service contacts.',
-        sellerAsks: 'Seller can share HVAC, pest control, and plumber contacts plus optional notes.',
+        sellerAsks: 'Seller can share HVAC, pest control, plumber, pool, and other maintenance contacts plus optional notes.',
         outputImpact: 'Included fields appear in the Home Service Contacts section of the packet.',
         fields: ADVANCED_MODULE_FIELD_METADATA.service_providers,
     },

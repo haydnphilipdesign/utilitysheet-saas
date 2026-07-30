@@ -41,6 +41,8 @@ describe('advanced module exclusions normalization', () => {
                 mailbox_access: [
                     'mailbox_number',
                     'mailbox_location',
+                    'garage_door_code',
+                    'keys_and_garage_remotes_location',
                     'parking_instructions',
                     'breaker_box_location',
                     'main_water_shutoff_location',

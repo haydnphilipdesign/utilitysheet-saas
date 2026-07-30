@@ -106,6 +106,10 @@ describe('settings reusable link mode', () => {
         expect(screen.getAllByText('Simple Utility Sheet').length).toBeGreaterThan(0);
         expect(screen.getAllByText('Advanced Utility Packet').length).toBeGreaterThan(0);
         expect(screen.getByText(/Mailbox access, lawn care contacts/i)).toBeInTheDocument();
+        expect(screen.getByText(/Open any enabled module to include or remove individual seller questions/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/Customize questions — include or remove each one/i).length).toBeGreaterThan(0);
+        expect(screen.getByText('Garage Door Code')).toBeInTheDocument();
+        expect(screen.getByText('Pool Service Provider')).toBeInTheDocument();
 
         const mailboxButton = await screen.findByTestId('module-toggle-mailbox_access');
         fireEvent.click(mailboxButton);

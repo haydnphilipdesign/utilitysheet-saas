@@ -256,11 +256,16 @@ describe('sellerSubmissionBodySchema', () => {
             advanced: {
                 mailbox_access: {
                     mailbox_number: 'A-12',
+                    garage_door_code: '2468',
+                    keys_and_garage_remotes_location: 'Kitchen counter in a labeled envelope',
                     parking_instructions: 'Use guest parking by Building B',
                 },
                 service_providers: {
                     hvac_provider_name: 'Cool Air Co',
                     plumber_provider_phone: '(555) 111-2222',
+                    pool_service_provider_name: 'Clearwater Pool Care',
+                    pool_service_provider_phone: '(555) 333-4444',
+                    other_maintenance_providers: 'Handyman: Oak Street Home Services',
                 },
             },
             utilities: {
@@ -275,5 +280,8 @@ describe('sellerSubmissionBodySchema', () => {
         expect(parsed.data.packet_mode).toBe('advanced');
         expect(parsed.data.advanced_modules).toEqual(['mailbox_access', 'service_providers']);
         expect(parsed.data.advanced?.mailbox_access?.mailbox_number).toBe('A-12');
+        expect(parsed.data.advanced?.mailbox_access?.garage_door_code).toBe('2468');
+        expect(parsed.data.advanced?.service_providers?.pool_service_provider_name).toBe('Clearwater Pool Care');
+        expect(parsed.data.advanced?.service_providers?.other_maintenance_providers).toBe('Handyman: Oak Street Home Services');
     });
 });

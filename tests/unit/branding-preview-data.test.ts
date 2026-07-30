@@ -90,6 +90,10 @@ describe('buildBrandingPreviewPacketData plan-gating parity', () => {
         // Canonical metadata-driven labels, not generated key title-casing.
         expect(render.html).toContain('Plumber');
         expect(render.html).not.toContain('Plumber Provider Name');
+        expect(render.html).toContain('Garage Door Code');
+        expect(render.html).toContain('Keys &amp; Garage Remotes at Closing');
+        expect(render.html).toContain('Pool Service Provider');
+        expect(render.html).toContain('Other Maintenance Providers');
         expect(render.filename.startsWith('seller-transition-packet-')).toBe(true);
     });
 });

@@ -65,7 +65,7 @@ function utilityLabel(category: UtilityCategory): string {
 }
 
 function isLongTextField(fieldKey: string): boolean {
-    return ['notes', 'location', 'instructions'].some((token) => fieldKey.includes(token));
+    return ['notes', 'location', 'instructions', 'other_maintenance_providers'].some((token) => fieldKey.includes(token));
 }
 
 export function SubmittedSheetEditor({ requestId }: { requestId: string }) {

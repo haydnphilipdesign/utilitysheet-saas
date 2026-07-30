@@ -58,16 +58,25 @@ Local configuration belongs in ignored `.env*` files or the deployment environme
 - `scripts/security/scan-artifacts.mjs` scans tracked files only. Before staging new files, also inspect them directly for secrets and sensitive data.
 - No repository-wide branch, commit-message, or pull-request convention is currently enforced. Do not create commits, push, deploy, run migrations, or modify production data unless the user explicitly authorizes that action.
 
-## Shared Coordination System (Required)
+## Shared Agent Coordination System (Required)
 
-The files under `.ai/` are the durable cross-agent communication system for Claude Code, OpenAI Codex, and any other coding agent. Maintaining them is part of the task, not optional cleanup. Chat messages, private reasoning, and model-specific session history are not durable handoffs and must never be the only record of important repository state.
+The files under `.ai/` are the durable coordination system shared by Claude
+Code, OpenAI Codex, other coding agents, and human contributors. Maintaining
+them is required task work. Private chat, model-specific memory, and delegation
+prompts are not durable handoffs and must never be the only record of important
+repository state.
 
 - `.ai/CURRENT.md` is the required concise handoff for the active or most recently paused/completed task.
 - `.ai/plans/` contains implementation-ready plans when a task warrants one.
 - `.ai/decisions/` contains only durable decisions future contributors need to understand.
 - Keep these files factual and concise. Do not paste transcripts, raw logs, or a chronological diary into them.
 
-### Required Startup Behavior
+For work spanning multiple Norma Suite projects, also read the parent suite
+`AGENTS.md`, `.ai/PROJECTS.md`, and suite `.ai/CURRENT.md` when those files are
+available. Project-local files remain authoritative for project implementation
+state.
+
+### Required Startup
 
 Before beginning substantial work, every agent must:
 
@@ -83,7 +92,7 @@ If `.ai/CURRENT.md` is stale, incomplete, contradictory, or inconsistent with th
 
 For a tiny, obvious, low-risk task without a formal plan, a full startup audit is not required, but the agent must still read `.ai/CURRENT.md` and inspect the relevant worktree state before modifying files.
 
-### Required Updates During Work
+### Meaningful Updates
 
 For substantial, multi-step, risky, delegated, or long-running work, every agent must update `.ai/CURRENT.md` at meaningful milestones so another session can recover the current state. Required milestone examples include:
 
@@ -108,7 +117,7 @@ Do not update `.ai/CURRENT.md` after every tool call, minor edit, or routine com
 - Stop and report a conflict instead of guessing when a decision is irreversible, security-sensitive, financially consequential, or affects production data, schema, infrastructure, or deployment.
 - Run validation proportional to risk: focused tests first, lint/type-check for affected TypeScript, broader Vitest/Playwright/build checks for cross-cutting or release-sensitive changes.
 
-### Plan Creation and Maintenance
+### Plans and Durable Decisions
 
 Create an implementation-ready plan under `.ai/plans/` before work that is substantial, multi-step, cross-cutting, architecturally meaningful, high-risk, difficult to reverse, affects several product areas, or requires coordination between agents. Tiny, obvious, low-risk changes do not need a separate plan.
 
@@ -136,7 +145,7 @@ When a durable decision is made, the responsible agent must:
 3. Link or reference it from the active plan when relevant.
 4. Mention it in `.ai/CURRENT.md`.
 
-### Delegation and Cross-Agent Handoffs
+### Delegation and Ownership Transfer
 
 Before Claude delegates implementation to Codex, Codex hands work back to Claude, or any agent transfers responsibility, the delegating agent must update the shared files before the receiving agent begins. A chat message alone is not a durable handoff.
 
@@ -153,7 +162,7 @@ The durable handoff must include, as applicable:
 
 The receiving agent must read the shared files, verify the handoff against the repository, correct stale or contradictory information, record that it has taken over the task, update `.ai/CURRENT.md` at later meaningful milestones, and leave a final handoff before stopping.
 
-### Interruptions, Usage Limits, and Blockers
+### Interruptions and Session End
 
 Whenever an agent can reasonably anticipate that a session may end, it should update `.ai/CURRENT.md` before continuing into another major workstream. If work stops because of a usage limit, tool failure, interruption, unresolved blocker, pause, or changed user direction, the agent must record before ending whenever possible:
 
@@ -185,7 +194,7 @@ The final handoff must record, as applicable:
 
 For a tiny task, the update may be brief. It is still required before ending when the work changed repository state or left anything unfinished.
 
-### Completion Cleanup and Cross-Agent Definition of Done
+### Definition of Done
 
 When a task is completed, the agent must:
 

@@ -411,6 +411,8 @@ describe('packet-data builder', () => {
                 mailbox_access: [
                     'mailbox_number',
                     'mailbox_location',
+                    'garage_door_code',
+                    'keys_and_garage_remotes_location',
                     'parking_instructions',
                     'breaker_box_location',
                     'main_water_shutoff_location',
@@ -442,6 +444,59 @@ describe('packet-data builder', () => {
         expect(fieldKeys).toContain('hvac_provider_name');
         expect(fieldKeys).toContain('hvac_provider_phone');
         expect(fieldKeys).not.toContain('service_provider_notes');
+    });
+
+    it('renders requested access and maintenance fields in canonical packet order', async () => {
+        (getRequestByToken as Mock).mockResolvedValue({
+            id: 'req_requested_fields',
+            account_id: 'acct_requested_fields',
+            organization_id: null,
+            brand_profile_id: null,
+            property_address: '777 Palm Ave, Tampa, FL 33602',
+            created_at: '2026-07-30T00:00:00.000Z',
+            status: 'submitted',
+            packet_mode: 'advanced',
+            advanced_modules: ['mailbox_access', 'service_providers'],
+            advanced_packet_data: {
+                mailbox_access: {
+                    garage_door_code: '2468',
+                    keys_and_garage_remotes_location: 'Kitchen counter in a labeled envelope',
+                },
+                service_providers: {
+                    pool_service_provider_phone: '(555) 300-4000',
+                    pool_service_provider_name: 'Clearwater Pool Care',
+                    other_maintenance_providers: 'Handyman: Oak Street Home Services',
+                },
+            },
+        });
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+
+        const result = await getPacketDataByPublicToken('token_requested_fields');
+
+        expect(result.status).toBe('ok');
+        if (result.status !== 'ok') return;
+
+        const mailboxFields = result.data.advanced_sections
+            ?.find((section) => section.key === 'mailbox_access')
+            ?.fields ?? [];
+        expect(mailboxFields.map((field) => field.key)).toEqual([
+            'garage_door_code',
+            'keys_and_garage_remotes_location',
+        ]);
+
+        const serviceFields = result.data.advanced_sections
+            ?.find((section) => section.key === 'service_providers')
+            ?.fields ?? [];
+        expect(serviceFields.map((field) => field.key)).toEqual([
+            'pool_service_provider_name',
+            'pool_service_provider_phone',
+            'other_maintenance_providers',
+        ]);
+        expect(serviceFields.map((field) => field.label)).toEqual([
+            'Pool Service Provider',
+            'Pool Service Phone',
+            'Other Maintenance Providers',
+        ]);
     });
 
     it('normalizes advanced fields in metadata order with canonical labels and values', async () => {

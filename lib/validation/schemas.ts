@@ -377,6 +377,8 @@ const advancedModuleDataSchema = z.object({
     mailbox_access: z.object({
         mailbox_number: optionalNullableText(80).optional(),
         mailbox_location: optionalNullableText(300).optional(),
+        garage_door_code: optionalNullableText(80).optional(),
+        keys_and_garage_remotes_location: optionalNullableText(600).optional(),
         parking_instructions: optionalNullableText(400).optional(),
         breaker_box_location: optionalNullableText(300).optional(),
         main_water_shutoff_location: optionalNullableText(300).optional(),
@@ -394,6 +396,9 @@ const advancedModuleDataSchema = z.object({
         pest_control_provider_phone: optionalNullableText(40).optional(),
         plumber_provider_name: optionalNullableText(120).optional(),
         plumber_provider_phone: optionalNullableText(40).optional(),
+        pool_service_provider_name: optionalNullableText(120).optional(),
+        pool_service_provider_phone: optionalNullableText(40).optional(),
+        other_maintenance_providers: optionalNullableText(600).optional(),
         service_provider_notes: optionalNullableText(600).optional(),
     }).partial().optional(),
 }).partial();

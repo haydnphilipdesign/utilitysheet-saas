@@ -117,7 +117,7 @@ export function AdvancedModuleConfigurator({
 
                         <details className="group rounded-lg border border-border bg-background/40" open={moduleEnabled}>
                             <summary className="list-none cursor-pointer px-3 py-2 text-xs text-muted-foreground flex items-center justify-between gap-2">
-                                <span>Review included questions</span>
+                                <span>Customize questions — include or remove each one</span>
                                 <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
                             </summary>
                             <div className="space-y-2 px-2 pb-2">

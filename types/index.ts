@@ -52,6 +52,8 @@ export type AdvancedPacketData = {
     mailbox_access?: {
         mailbox_number?: string | null;
         mailbox_location?: string | null;
+        garage_door_code?: string | null;
+        keys_and_garage_remotes_location?: string | null;
         parking_instructions?: string | null;
         breaker_box_location?: string | null;
         main_water_shutoff_location?: string | null;
@@ -69,6 +71,9 @@ export type AdvancedPacketData = {
         pest_control_provider_phone?: string | null;
         plumber_provider_name?: string | null;
         plumber_provider_phone?: string | null;
+        pool_service_provider_name?: string | null;
+        pool_service_provider_phone?: string | null;
+        other_maintenance_providers?: string | null;
         service_provider_notes?: string | null;
     } | null;
 };

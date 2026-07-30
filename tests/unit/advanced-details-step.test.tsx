@@ -79,4 +79,41 @@ describe('AdvancedDetailsStep module UX', () => {
         expect(screen.queryByLabelText('Lawn Care Email')).not.toBeInTheDocument();
         expect(snowPhone).toHaveAttribute('type', 'tel');
     });
+
+    it('collects the requested pool and other maintenance provider details', () => {
+        render(<StatefulAdvancedStep moduleKey="service_providers" />);
+
+        fireEvent.change(screen.getByLabelText('Pool Service Provider'), {
+            target: { value: 'Clearwater Pool Care' },
+        });
+        fireEvent.change(screen.getByLabelText('Pool Service Phone'), {
+            target: { value: '(555) 300-4000' },
+        });
+        fireEvent.change(screen.getByLabelText('Other Maintenance Providers'), {
+            target: { value: 'Handyman: Oak Street Home Services, (555) 300-5000' },
+        });
+
+        expect(screen.getByLabelText('Pool Service Phone')).toHaveAttribute('type', 'tel');
+        expect(readAdvancedState().service_providers).toMatchObject({
+            pool_service_provider_name: 'Clearwater Pool Care',
+            pool_service_provider_phone: '(555) 300-4000',
+            other_maintenance_providers: 'Handyman: Oak Street Home Services, (555) 300-5000',
+        });
+    });
+
+    it('collects garage codes and the keys/remotes closing location', () => {
+        render(<StatefulAdvancedStep moduleKey="mailbox_access" />);
+
+        fireEvent.change(screen.getByLabelText('Garage Door Code'), {
+            target: { value: '2468' },
+        });
+        fireEvent.change(screen.getByLabelText('Keys & Garage Remotes at Closing'), {
+            target: { value: 'Kitchen counter in a labeled envelope' },
+        });
+
+        expect(readAdvancedState().mailbox_access).toMatchObject({
+            garage_door_code: '2468',
+            keys_and_garage_remotes_location: 'Kitchen counter in a labeled envelope',
+        });
+    });
 });

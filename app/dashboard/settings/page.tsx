@@ -1311,9 +1311,14 @@ export default function SettingsPage() {
 
                     {intakeDefaultPacketMode === 'advanced' && (
                         <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
-                            <div className="flex items-center justify-between gap-2">
-                                <Label className="text-foreground">Advanced Modules</Label>
-                                <span className="text-xs text-muted-foreground">{intakeAdvancedModules.length} enabled</span>
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                    <Label className="text-foreground">Advanced Modules & Questions</Label>
+                                    <span className="text-xs text-muted-foreground">{intakeAdvancedModules.length} enabled</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Open any enabled module to include or remove individual seller questions.
+                                </p>
                             </div>
                             <AdvancedModuleConfigurator
                                 enabledModules={intakeAdvancedModules}

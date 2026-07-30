@@ -1,34 +1,44 @@
 # Decision Records
 
-Use this directory only for durable architecture or product decisions when future contributors or agents will benefit from understanding why the choice was made.
+Use this directory only for durable decisions whose rationale future
+contributors or agents need to understand. Examples include architecture or
+module boundaries, technology or provider choices, data-model conventions,
+authentication or authorization approaches, long-term API or integration
+behavior, security policy, durable product behavior, and rejected alternatives
+likely to be reconsidered.
 
-Examples include architectural boundaries, technology or provider selections, data-model conventions, authentication or authorization approaches, long-term API behavior, durable product behavior, and rejected alternatives likely to be reconsidered.
+Do not use decision records for ordinary progress, routine refactors, minor
+implementation details, temporary debugging choices, transcripts, or every
+file and function change.
 
-Do not use it for ordinary session notes, debugging logs, temporary implementation details, routine refactors, chat transcripts, every file/function change, or ordinary task progress.
+When a durable decision is made:
 
-When a durable decision is made, the responsible agent must:
-
-1. Create a new record or update the existing record for that decision.
-2. Record the context, decision, rationale, alternatives when relevant, and consequences.
-3. Link or reference the record from the active plan when relevant.
-4. Mention the decision record in `.ai/CURRENT.md`.
-
-Decision records should remain honest history. Supersede or amend them explicitly rather than silently rewriting a past decision to look current.
+1. Create or update the relevant record.
+2. Record context, decision, rationale, alternatives, and consequences.
+3. Link it from the active plan when relevant.
+4. Mention it in `CURRENT.md`.
+5. Amend or supersede earlier decisions explicitly rather than silently
+   rewriting history.
 
 Recommended filename:
 
-```text
-YYYY-MM-DD-short-decision-name.md
-```
+`YYYY-MM-DD-short-decision-name.md`
+
+Accepted statuses:
+
+- Proposed
+- Accepted
+- Superseded
+- Rejected
 
 ## Template
 
-```md
+````md
 # Decision: Title
 
 ## Status
 
-Proposed | Accepted | Superseded | Rejected
+Proposed
 
 ## Context
 
@@ -41,4 +51,4 @@ Proposed | Accepted | Superseded | Rejected
 ## Consequences
 
 ## Related Files, Plans, Issues, or Pull Requests
-```
+````
