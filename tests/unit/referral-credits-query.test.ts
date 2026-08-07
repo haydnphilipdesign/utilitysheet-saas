@@ -11,7 +11,9 @@ vi.mock('@/lib/neon/db', () => ({
 
 import {
     awardReferralCreditForActivation,
+    claimReferralCodeForAccount,
     getEarnedReferralCredits,
+    getReferralClaimState,
     getReferralCreditCountsForAccount,
     getReferralCreditsForAccount,
     getValidReferralReferrerAccountId,
@@ -31,7 +33,7 @@ function expectCandidateIdentityAndActivation(queryText: string): void {
     expect(queryText).toContain("status = 'submitted'");
     expect(queryText).toContain('deleted_at IS NULL');
     expect(queryText).toContain('COALESCE(is_demo, FALSE) = FALSE');
-    expect(queryText).toContain('= 1');
+    expect(queryText).toContain('>= 1');
     expect(queryText).toContain("NOW() - INTERVAL '365 days'");
     expect(queryText).toContain('< 12');
     expect(queryText).not.toContain('existing_credit.status');
@@ -101,6 +103,68 @@ describe('referral credit queries', () => {
         expect(queryText).toContain('ga.referral_code = il.slug');
         expect(queryText).toContain('il.account_id <> ga.account_id');
     });
+
+    it('reports whether a post-signup referral code can still be claimed', async () => {
+        sqlTagMock
+            .mockResolvedValueOnce([{
+                referral_code: null,
+                within_claim_window: true,
+            }])
+            .mockResolvedValueOnce([{
+                referral_code: 'friend-code',
+                within_claim_window: false,
+            }])
+            .mockResolvedValueOnce([{
+                referral_code: null,
+                within_claim_window: false,
+            }]);
+
+        await expect(getReferralClaimState('account_new')).resolves.toEqual({
+            code: null,
+            canClaim: true,
+            status: 'available',
+        });
+        await expect(getReferralClaimState('account_claimed')).resolves.toEqual({
+            code: 'friend-code',
+            canClaim: false,
+            status: 'claimed',
+        });
+        await expect(getReferralClaimState('account_old')).resolves.toEqual({
+            code: null,
+            canClaim: false,
+            status: 'expired',
+        });
+
+        expect(callSqlText(sqlTagMock.mock.calls[0])).toContain("INTERVAL '30 days'");
+    });
+
+    it('claims a valid non-self code once while preserving existing first-touch fields', async () => {
+        sqlTagMock.mockResolvedValue([{ status: 'claimed', referral_code: 'friend-code' }]);
+
+        await expect(
+            claimReferralCodeForAccount('account_referred', 'friend-code')
+        ).resolves.toEqual({ code: 'friend-code', status: 'claimed' });
+
+        const queryText = callSqlText(sqlTagMock.mock.calls[0]);
+        expect(queryText).toContain("INTERVAL '30 days'");
+        expect(queryText).toContain('JOIN account_state state ON il.account_id <> state.id');
+        expect(queryText).toContain('FOR UPDATE OF a');
+        expect(queryText).toContain('ON CONFLICT (account_id) DO UPDATE');
+        expect(queryText).toContain('SET referral_code = EXCLUDED.referral_code');
+        expect(queryText).toContain('WHERE growth_attributions.referral_code IS NULL');
+        expect(sqlTagMock.mock.calls[0].slice(1)).toEqual(['account_referred', 'friend-code']);
+    });
+
+    it.each(['invalid_code', 'already_claimed', 'expired'] as const)(
+        'returns the %s claim outcome without inventing a code',
+        async (status) => {
+            sqlTagMock.mockResolvedValue([{ status, referral_code: null }]);
+
+            await expect(
+                claimReferralCodeForAccount('account_referred', 'friend-code')
+            ).resolves.toEqual({ code: null, status });
+        }
+    );
 
     it('lists account credits and earned credits with stable earned-at ordering', async () => {
         sqlTagMock.mockResolvedValue([awardedCredit]);

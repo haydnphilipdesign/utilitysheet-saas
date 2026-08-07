@@ -26,6 +26,123 @@ export type ReferralCreditCounts = {
     applied: number;
 };
 
+export type ReferralClaimStatus = 'available' | 'claimed' | 'expired' | 'unavailable';
+
+export type ReferralClaimState = {
+    code: string | null;
+    canClaim: boolean;
+    status: ReferralClaimStatus;
+};
+
+export type ClaimReferralCodeResult = {
+    code: string | null;
+    status:
+        | 'claimed'
+        | 'invalid_code'
+        | 'already_claimed'
+        | 'expired'
+        | 'account_not_found'
+        | 'unavailable';
+};
+
+export async function getReferralClaimState(accountId: string): Promise<ReferralClaimState> {
+    if (!sql) return { code: null, canClaim: false, status: 'unavailable' };
+
+    const result = await sql`
+        SELECT
+            ga.referral_code,
+            a.created_at >= NOW() - INTERVAL '30 days' AS within_claim_window
+        FROM accounts a
+        LEFT JOIN growth_attributions ga ON ga.account_id = a.id
+        WHERE a.id = ${accountId}
+        LIMIT 1
+    `;
+    const row = result[0];
+    if (!row) return { code: null, canClaim: false, status: 'unavailable' };
+
+    const code = (row.referral_code as string | null | undefined) || null;
+    if (code) return { code, canClaim: false, status: 'claimed' };
+    if (!Boolean(row.within_claim_window)) {
+        return { code: null, canClaim: false, status: 'expired' };
+    }
+
+    return { code: null, canClaim: true, status: 'available' };
+}
+
+export async function claimReferralCodeForAccount(
+    accountId: string,
+    referralCode: string
+): Promise<ClaimReferralCodeResult> {
+    if (!sql) return { code: null, status: 'unavailable' };
+
+    const result = await sql`
+        WITH account_state AS (
+            SELECT
+                a.id,
+                ga.referral_code AS existing_referral_code,
+                a.created_at >= NOW() - INTERVAL '30 days' AS within_claim_window
+            FROM accounts a
+            LEFT JOIN growth_attributions ga ON ga.account_id = a.id
+            WHERE a.id = ${accountId}
+            FOR UPDATE OF a
+        ),
+        valid_referral AS (
+            SELECT il.slug
+            FROM intake_links il
+            JOIN account_state state ON il.account_id <> state.id
+            WHERE il.slug = ${referralCode}
+            LIMIT 1
+        ),
+        claimed AS (
+            INSERT INTO growth_attributions (
+                account_id,
+                source,
+                medium,
+                campaign,
+                content,
+                referral_code,
+                landing_path
+            )
+            SELECT
+                state.id,
+                'post_signup_referral',
+                'product_referral',
+                'manual_referral_code',
+                'settings',
+                valid_referral.slug,
+                '/dashboard/settings'
+            FROM account_state state
+            CROSS JOIN valid_referral
+            WHERE state.existing_referral_code IS NULL
+              AND state.within_claim_window = TRUE
+            ON CONFLICT (account_id) DO UPDATE
+                SET referral_code = EXCLUDED.referral_code
+                WHERE growth_attributions.referral_code IS NULL
+            RETURNING referral_code
+        )
+        SELECT
+            CASE
+                WHEN NOT EXISTS (SELECT 1 FROM account_state) THEN 'account_not_found'
+                WHEN (SELECT existing_referral_code FROM account_state) IS NOT NULL THEN 'already_claimed'
+                WHEN NOT (SELECT within_claim_window FROM account_state) THEN 'expired'
+                WHEN NOT EXISTS (SELECT 1 FROM valid_referral) THEN 'invalid_code'
+                WHEN EXISTS (SELECT 1 FROM claimed) THEN 'claimed'
+                ELSE 'already_claimed'
+            END AS status,
+            COALESCE(
+                (SELECT referral_code FROM claimed),
+                (SELECT existing_referral_code FROM account_state)
+            ) AS referral_code
+    `;
+    const row = result[0];
+    if (!row) return { code: null, status: 'unavailable' };
+
+    return {
+        code: (row.referral_code as string | null | undefined) || null,
+        status: row.status as ClaimReferralCodeResult['status'],
+    };
+}
+
 export async function awardReferralCreditForActivation(
     referredAccountId: string
 ): Promise<AwardedReferralCredit | null> {
@@ -46,7 +163,7 @@ export async function awardReferralCreditForActivation(
                     AND status = 'submitted'
                     AND deleted_at IS NULL
                     AND COALESCE(is_demo, FALSE) = FALSE
-              ) = 1
+              ) >= 1
               AND (
                   SELECT COUNT(*)
                   FROM referral_credits existing_credit
@@ -71,7 +188,7 @@ export async function awardReferralCreditForActivation(
                         AND status = 'submitted'
                         AND deleted_at IS NULL
                         AND COALESCE(is_demo, FALSE) = FALSE
-                  ) = 1
+                  ) >= 1
                   AND (
                       SELECT COUNT(*)
                       FROM referral_credits existing_credit

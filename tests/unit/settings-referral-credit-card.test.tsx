@@ -73,6 +73,13 @@ function makeFetchMock() {
             return jsonResponse({
                 referralLink: 'https://utilitysheet.com/auth/signup?ref=referrer-slug',
                 counts: { earned: 2, applied: 1 },
+                referralAttribution: { code: null, canClaim: true, status: 'available' },
+            });
+        }
+
+        if (url === '/api/referrals' && method === 'POST') {
+            return jsonResponse({
+                referralAttribution: { code: 'friend-code', canClaim: false, status: 'claimed' },
             });
         }
 
@@ -177,6 +184,53 @@ describe('settings referral credit card', () => {
         );
     });
 
+    it('lets an eligible user add a missed referral code', async () => {
+        const fetchMock = makeFetchMock();
+        vi.stubGlobal('fetch', fetchMock);
+        render(<SettingsPage />);
+        await openReferralsTab();
+
+        fireEvent.change(await screen.findByRole('textbox', { name: 'Referral code' }), {
+            target: { value: ' FRIEND-CODE ' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Add code' }));
+
+        await waitFor(() => {
+            expect(toastSuccessMock).toHaveBeenCalledWith('Referral code added');
+        });
+        expect(screen.getByText('Referral code friend-code applied')).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledWith('/api/referrals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: ' FRIEND-CODE ' }),
+        });
+    });
+
+    it('shows the API error when a referral code cannot be claimed', async () => {
+        const fallbackFetch = makeFetchMock();
+        vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = typeof input === 'string' ? input : String(input);
+            if (url === '/api/referrals' && init?.method === 'POST') {
+                return jsonResponse({ error: 'Referral code not found. Check the code and try again.' }, 400);
+            }
+            return fallbackFetch(input, init);
+        }));
+        render(<SettingsPage />);
+        await openReferralsTab();
+
+        fireEvent.change(await screen.findByRole('textbox', { name: 'Referral code' }), {
+            target: { value: 'missing-code' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Add code' }));
+
+        await waitFor(() => {
+            expect(toastErrorMock).toHaveBeenCalledWith(
+                'Referral code not found. Check the code and try again.'
+            );
+        });
+        expect(screen.getByRole('textbox', { name: 'Referral code' })).toHaveValue('missing-code');
+    });
+
     it('clears a loaded summary immediately and tracks the next user view separately', async () => {
         let resolveUserB!: (response: Response) => void;
         const userBResponse = new Promise<Response>((resolve) => { resolveUserB = resolve; });
@@ -190,6 +244,7 @@ describe('settings referral credit card', () => {
                     return jsonResponse({
                         referralLink: 'https://utilitysheet.com/auth/signup?ref=user-a',
                         counts: { earned: 2, applied: 1 },
+                        referralAttribution: { code: null, canClaim: true, status: 'available' },
                     });
                 }
                 return userBResponse;
@@ -221,6 +276,7 @@ describe('settings referral credit card', () => {
             resolveUserB(jsonResponse({
                 referralLink: 'https://utilitysheet.com/auth/signup?ref=user-b',
                 counts: { earned: 1, applied: 3 },
+                referralAttribution: { code: null, canClaim: true, status: 'available' },
             }));
         });
         expect(await screen.findByDisplayValue('https://utilitysheet.com/auth/signup?ref=user-b')).toBeInTheDocument();
@@ -281,6 +337,7 @@ describe('settings referral credit card', () => {
             resolveUserB(jsonResponse({
                 referralLink: 'https://utilitysheet.com/auth/signup?ref=user-b',
                 counts: { earned: 1, applied: 3 },
+                referralAttribution: { code: null, canClaim: true, status: 'available' },
             }));
         });
         expect(await screen.findByDisplayValue('https://utilitysheet.com/auth/signup?ref=user-b')).toBeInTheDocument();
@@ -291,6 +348,7 @@ describe('settings referral credit card', () => {
             resolveUserA(jsonResponse({
                 referralLink: 'https://utilitysheet.com/auth/signup?ref=user-a',
                 counts: { earned: 8, applied: 4 },
+                referralAttribution: { code: null, canClaim: true, status: 'available' },
             }));
         });
         expect(screen.queryByDisplayValue('https://utilitysheet.com/auth/signup?ref=user-a')).not.toBeInTheDocument();
