@@ -1,10 +1,11 @@
 # Admin Panel (UtilitySheet)
 
 ## Routes
-- `/admin` operational priorities, activation, recent usage, and customer health
+- `/admin` business totals, recent request and signup activity, standing backlogs, and request lifecycle
 - `/admin/users` user search, account inspection, and audited controls
 - `/admin/requests` request search, lifecycle inspection, and audited support actions
-- `/admin/organizations` workspace search; Team organizations are distinguished from personal/default workspaces in Admin copy
+- `/admin/growth` activation funnel, acquisition sources, and packet referral instrumentation
+- `/admin/organizations` workspace search and Team/personal workspace totals; Team organizations are distinguished from personal/default workspaces in Admin copy
 - `/admin/abandonment` seller-progress monitoring (route retained for compatibility)
 - `/admin/testimonial-candidates` customer outreach and advocacy-candidate review (route retained for compatibility)
 - `/admin/updates` draft, review, publication, and deletion of customer-facing Product Updates
@@ -12,15 +13,30 @@
 
 ## Navigation
 
-Admin uses a left sidebar grouped as Operations, Customers, Growth & Content, and Security. Below the `lg`
+Admin uses a left sidebar grouped as Operations, Customers, Growth & Content, and Security. `Growth`
+sits in Growth & Content alongside Customer Outreach and Updates. Below the `lg`
 breakpoint the same sidebar becomes a slide-over opened from the header. Routes are unchanged; several nav
 labels intentionally differ from their URL (`Seller Progress` → `/admin/abandonment`, `Workspaces` →
 `/admin/organizations`, `Customer Outreach` → `/admin/testimonial-candidates`).
 
+## Overview and Growth Split
+
+`/admin` carries only what an operator checks daily: total customer accounts, paying accounts, total
+requests, seller submissions in the last 7 days, the newest requests and signups, the standing backlog
+chips, and the request lifecycle bar. Analysis that is consulted occasionally lives on `/admin/growth`:
+the full activation funnel, acquisition sources, and packet referral instrumentation. Adding a metric to
+`/admin` means removing one, or it belongs on `/admin/growth`.
+
+Business totals come from `lib/admin/operations-overview.ts`. Its `paid_accounts` predicate deliberately
+mirrors the `paid_accounts` predicate in `lib/admin/activation-funnel.ts` and the `plan=paying` list
+filter, so the overview, the growth funnel, and the user list cannot disagree. Both modules count only
+`role = 'user'` accounts.
+
 ## List Filters
 
-Every clickable metric on `/admin` links to a list filtered to the rows it counted. The predicates behind
-these filters mirror `lib/admin/activation-funnel.ts`; changing one side requires changing the other.
+Every clickable metric on `/admin` and `/admin/growth` links to a list filtered to the rows it counted.
+The predicates behind these filters mirror `lib/admin/activation-funnel.ts` and
+`lib/admin/operations-overview.ts`; changing one side requires changing the other.
 
 `/admin/users` accepts `q`, `role`, `plan`, `activation`, `sort`, `dir`, `page`, `pageSize`.
 
@@ -39,7 +55,8 @@ Overview links to these filters also carry `role=user`, because the activation f
 
 `/admin/organizations` accepts `q`, `billing`, `page`, `pageSize`. The `billing` filter (`team`, `non-team`)
 matches the workspace's own subscription status and is narrower than the displayed workspace kind, which
-also considers member count.
+also considers member count. The Team and personal/default workspace totals in the page header are
+unfiltered and use the same subscription-status predicate as `billing`.
 
 ## Guardrails
 - Admin write actions require a **reason** (min 3 chars) and are recorded to `admin_audit_logs`.

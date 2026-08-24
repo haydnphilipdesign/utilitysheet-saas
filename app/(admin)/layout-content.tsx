@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, FileText, Inbox, LayoutDashboard, Megaphone, Menu, Shield, Sparkles, TrendingDown, Users, X, Zap } from 'lucide-react';
+import { Building2, FileText, Inbox, LayoutDashboard, Megaphone, Menu, Shield, Sparkles, TrendingDown, TrendingUp, Users, X, Zap } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +31,7 @@ const adminNavigationSections = [
         id: 'growth-content',
         name: 'Growth & Content',
         items: [
+            { name: 'Growth', href: '/admin/growth', icon: TrendingUp },
             { name: 'Customer Outreach', href: '/admin/testimonial-candidates', icon: Sparkles },
             { name: 'Updates', href: '/admin/updates', icon: Megaphone },
         ],

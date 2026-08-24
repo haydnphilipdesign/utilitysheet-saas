@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { Building2, Search, Users } from 'lucide-react';
 import { sql } from '@/lib/neon/db';
 import { OrgTable } from '@/components/admin/OrgTable';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { AdminDataTableShell, AdminFilterBar, AdminPageHeader, AdminPagination } from '@/components/admin/primitives';
+import { AdminDataTableShell, AdminFilterBar, AdminPageHeader, AdminPagination, AdminStatStrip } from '@/components/admin/primitives';
 import {
     DEFAULT_PAGE_SIZE,
     buildAdminHref,
@@ -108,6 +108,29 @@ async function getOrgs(params: { query?: string; billing?: OrgBillingFilter; lim
     });
 }
 
+/**
+ * Unfiltered workspace totals. These moved here from the operations overview: Team adoption is a
+ * question you ask while looking at workspaces, not a daily operations figure. `team` matches the
+ * workspace's own Team entitlement, the same predicate as the `billing=team` filter.
+ */
+async function getWorkspaceTotals() {
+    if (!sql) return { total: 0, team: 0, nonTeam: 0 };
+
+    const result = await sql`
+        SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE subscription_status = 'team')::int AS team,
+            COUNT(*) FILTER (WHERE COALESCE(subscription_status, 'free') != 'team')::int AS non_team
+        FROM organizations
+    `;
+
+    return {
+        total: Number(result[0]?.total || 0),
+        team: Number(result[0]?.team || 0),
+        nonTeam: Number(result[0]?.non_team || 0),
+    };
+}
+
 async function getOrgsCount(params: { query?: string; billing?: OrgBillingFilter }) {
     if (!sql) return 0;
 
@@ -145,9 +168,10 @@ export default async function OrgsPage({ searchParams }: { searchParams: OrgsSea
     const billing = parseOrgBillingFilter(getParam(sp, 'billing'));
     const offset = (page - 1) * pageSize;
 
-    const [orgs, total] = await Promise.all([
+    const [orgs, total, workspaceTotals] = await Promise.all([
         getOrgs({ query, billing, limit: pageSize, offset }),
         getOrgsCount({ query, billing }),
+        getWorkspaceTotals(),
     ]);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const canonicalPage = clampPage(page, totalPages);
@@ -173,6 +197,29 @@ export default async function OrgsPage({ searchParams }: { searchParams: OrgsSea
             <AdminPageHeader
                 title="Workspaces"
                 description={`Inspect ${total.toLocaleString()} account workspaces. Team organizations are identified by Team entitlement, not workspace creation alone.`}
+            />
+
+            <AdminStatStrip
+                stats={[
+                    {
+                        label: 'Team workspaces',
+                        value: workspaceTotals.team.toLocaleString(),
+                        hint: 'Active Team entitlement. This is the team-adoption signal.',
+                        icon: Building2,
+                    },
+                    {
+                        label: 'Personal or default',
+                        value: workspaceTotals.nonTeam.toLocaleString(),
+                        hint: 'Automatically created or non-Team workspaces, shown as account context.',
+                        icon: Users,
+                    },
+                    {
+                        label: 'All workspaces',
+                        value: workspaceTotals.total.toLocaleString(),
+                        hint: 'Every organization record, regardless of billing.',
+                        icon: Building2,
+                    },
+                ]}
             />
 
             <AdminFilterBar>
