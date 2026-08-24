@@ -6,7 +6,8 @@
   activity, and what needs a human, and move analysis to its own route.
 - Intended outcome: Total users, paying accounts, and recent request activity
   are readable at a glance; growth and funnel analysis lives on `/admin/growth`.
-- Status: Completed locally and validated; not committed or deployed.
+- Status: Completed, validated, committed as `7f00139`, and pushed to
+  `origin/main`.
 - Current or last agent: Claude Code
 - Branch: `main`
 - Last updated: 2026-08-24
@@ -72,8 +73,10 @@
 
 ## Remaining Required Work
 
-None within the authorized scope. Nothing was committed, pushed, deployed, or
-applied to production data.
+None. The work was committed as `7f00139` and pushed to `origin/main` with the
+user's explicit authorization. No migration was needed and no production data
+action was taken. If the project auto-deploys from `main`, this push will
+publish the new `/admin` and `/admin/growth` routes.
 
 ## Known Risks and Uncertainties
 
@@ -92,6 +95,6 @@ applied to production data.
 
 ## Recommended Next Action
 
-Run `npm run dev`, sign in as an admin, and view `/admin`, `/admin/growth`, and
-`/admin/organizations` to confirm the layouts read well with real data. Then, if
-approved, review and commit the changed files.
+Sign in as an admin on the deployed site and view `/admin`, `/admin/growth`, and
+`/admin/organizations` to confirm the layouts read well with real data. This is
+the visual pass that local validation could not cover.

@@ -2,8 +2,9 @@
 
 ## Status
 
-Completed and validated locally on 2026-08-24 by Claude Code. Not committed,
-deployed, or applied to production data.
+Completed and validated locally on 2026-08-24 by Claude Code, then committed as
+`7f00139` and pushed to `origin/main` with the user's explicit authorization.
+No migration was run and no production data action was taken.
 
 ## Validation Results
 
