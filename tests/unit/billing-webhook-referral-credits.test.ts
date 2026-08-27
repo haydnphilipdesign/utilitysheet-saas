@@ -12,10 +12,13 @@ const mocks = vi.hoisted(() => {
         applyEarnedReferralCredits: vi.fn(),
         configuredStripe,
         constructEvent,
+        getAccountById: vi.fn(),
         getAccountByStripeCustomerId: vi.fn(),
+        getOrganizationById: vi.fn(),
         getOrganizationByStripeCustomerId: vi.fn(),
         retrieveSubscription,
         stripe: configuredStripe as typeof configuredStripe | null,
+        transferAccountSubscriptionToOrganization: vi.fn(),
         updateAccountSubscription: vi.fn(),
         updateOrganizationSubscription: vi.fn(),
     };
@@ -31,8 +34,11 @@ vi.mock('@/lib/stripe/client', () => ({
 }));
 
 vi.mock('@/lib/neon/queries', () => ({
+    getAccountById: mocks.getAccountById,
     getAccountByStripeCustomerId: mocks.getAccountByStripeCustomerId,
+    getOrganizationById: mocks.getOrganizationById,
     getOrganizationByStripeCustomerId: mocks.getOrganizationByStripeCustomerId,
+    transferAccountSubscriptionToOrganization: mocks.transferAccountSubscriptionToOrganization,
     updateAccountSubscription: mocks.updateAccountSubscription,
     updateOrganizationSubscription: mocks.updateOrganizationSubscription,
 }));
@@ -91,10 +97,16 @@ describe('POST /api/billing/webhook referral credits', () => {
         mocks.constructEvent.mockReturnValue(checkoutEvent);
         mocks.retrieveSubscription.mockResolvedValue(subscription);
         mocks.getAccountByStripeCustomerId.mockResolvedValue({ id: 'account_1' });
+        mocks.getAccountById.mockResolvedValue({ id: 'account_1' });
+        mocks.getOrganizationById.mockResolvedValue({ id: 'organization_1' });
         mocks.getOrganizationByStripeCustomerId.mockResolvedValue(null);
         mocks.updateAccountSubscription.mockResolvedValue(undefined);
         mocks.updateOrganizationSubscription.mockResolvedValue(undefined);
         mocks.applyEarnedReferralCredits.mockResolvedValue(['credit_1']);
+        mocks.transferAccountSubscriptionToOrganization.mockResolvedValue({
+            account: { id: 'account_1' },
+            organization: { id: 'organization_1' },
+        });
     });
 
     afterEach(() => {
@@ -141,6 +153,39 @@ describe('POST /api/billing/webhook referral credits', () => {
             seatQuantity: 7,
         });
         expect(mocks.applyEarnedReferralCredits).not.toHaveBeenCalled();
+    });
+
+    it('routes a converted Pro subscription to its organization metadata before customer lookup', async () => {
+        mocks.constructEvent.mockReturnValue({
+            type: 'customer.subscription.updated',
+            data: {
+                object: {
+                    ...subscription,
+                    customer: 'cus_pro',
+                    metadata: {
+                        billing_scope: 'organization',
+                        organization_id: 'organization_1',
+                        converted_from_account_id: 'account_1',
+                    },
+                },
+            },
+        });
+
+        const response = await POST(makeWebhookRequest());
+
+        expect(response.status).toBe(200);
+        expect(mocks.transferAccountSubscriptionToOrganization).toHaveBeenCalledWith({
+            accountId: 'account_1',
+            organizationId: 'organization_1',
+            stripeCustomerId: 'cus_pro',
+            subscriptionId: 'sub_checkout',
+            subscriptionEndsAt: new Date(1_900_000_000 * 1000),
+            seatQuantity: 7,
+        });
+        expect(mocks.getAccountByStripeCustomerId).not.toHaveBeenCalled();
+        expect(mocks.getOrganizationByStripeCustomerId).not.toHaveBeenCalled();
+        expect(mocks.updateAccountSubscription).not.toHaveBeenCalled();
+        expect(mocks.updateOrganizationSubscription).not.toHaveBeenCalled();
     });
 
     it('returns 500 so Stripe retries when earned credit redemption fails', async () => {

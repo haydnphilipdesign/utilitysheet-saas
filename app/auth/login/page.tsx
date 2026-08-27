@@ -16,6 +16,7 @@ import {
     trackActivationResponse,
 } from '@/lib/analytics/activation';
 import { useAuthConfig } from '@/lib/stack/use-auth-config';
+import { normalizePostAuthReturnTo, rememberPostAuthReturnTo } from '@/lib/auth/post-auth-return';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -26,31 +27,35 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [safeNextPath, setSafeNextPath] = useState<string | null>(null);
 
     const getSafeNext = useCallback((): string | null => {
         if (typeof window === 'undefined') return null;
         const nextParam = new URLSearchParams(window.location.search).get('next');
-        return nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
+        return normalizePostAuthReturnTo(nextParam);
     }, []);
 
     const getPostAuthRoute = useCallback(async (source: string): Promise<string | null> => {
         const safeNext = getSafeNext();
-        if (safeNext) return safeNext;
         try {
             const response = await fetch('/api/account');
             if (response.status === 401) return null;
-            if (!response.ok) return '/dashboard';
+            if (!response.ok) return safeNext || '/dashboard';
 
             const data = await response.json().catch(() => ({}));
             trackActivationResponse(data, source);
             if (consumePendingSignupVerification()) {
                 trackEvent('signup_verified', { source });
             }
-            return '/dashboard';
+            return safeNext || '/dashboard';
         } catch (e) {
             console.error(e);
-            return '/dashboard';
+            return safeNext || '/dashboard';
         }
+    }, [getSafeNext]);
+
+    useEffect(() => {
+        setSafeNextPath(getSafeNext());
     }, [getSafeNext]);
 
     useEffect(() => {
@@ -103,6 +108,7 @@ export default function LoginPage() {
         setGoogleLoading(true);
         setError(null);
         try {
+            rememberPostAuthReturnTo(safeNextPath || getSafeNext());
             await stackClientApp.signInWithOAuth('google');
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
@@ -247,7 +253,10 @@ export default function LoginPage() {
 
                             <p className="text-xs sm:text-sm text-muted-foreground text-center">
                                 Don&apos;t have an account?{' '}
-                                <Link href="/auth/signup" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                                <Link
+                                    href={safeNextPath ? `/auth/signup?next=${encodeURIComponent(safeNextPath)}` : '/auth/signup'}
+                                    className="text-primary hover:text-primary/80 font-medium transition-colors"
+                                >
                                     Sign up
                                 </Link>
                             </p>

@@ -41,12 +41,6 @@ export async function POST() {
         const referralTrialOptions = qualifiesForTrial
             ? {
                 payment_method_collection: 'if_required' as const,
-                subscription_data: {
-                    trial_period_days: 30,
-                    trial_settings: {
-                        end_behavior: { missing_payment_method: 'cancel' as const },
-                    },
-                },
             }
             : {};
 
@@ -63,6 +57,18 @@ export async function POST() {
             cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?tab=billing`,
             metadata: {
                 account_id: account.id,
+            },
+            subscription_data: {
+                metadata: {
+                    billing_scope: 'account',
+                    account_id: account.id,
+                },
+                ...(qualifiesForTrial ? {
+                    trial_period_days: 30,
+                    trial_settings: {
+                        end_behavior: { missing_payment_method: 'cancel' as const },
+                    },
+                } : {}),
             },
             ...referralTrialOptions,
         };

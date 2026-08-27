@@ -18,6 +18,7 @@ import {
 } from '@/lib/analytics/activation';
 import { persistPendingGrowthAttribution } from '@/lib/growth/attribution';
 import { useAuthConfig } from '@/lib/stack/use-auth-config';
+import { normalizePostAuthReturnTo, rememberPostAuthReturnTo } from '@/lib/auth/post-auth-return';
 
 export default function SignupPage() {
     const router = useRouter();
@@ -30,11 +31,12 @@ export default function SignupPage() {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [safeNextPath, setSafeNextPath] = useState<string | null>(null);
 
     const getSafeNext = useCallback((): string | null => {
         if (typeof window === 'undefined') return null;
         const nextParam = new URLSearchParams(window.location.search).get('next');
-        return nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : null;
+        return normalizePostAuthReturnTo(nextParam);
     }, []);
 
     const getPostAuthRoute = useCallback(async (source: string): Promise<string | null> => {
@@ -57,6 +59,11 @@ export default function SignupPage() {
             console.error(e);
             return safeNext || '/dashboard';
         }
+    }, [getSafeNext]);
+
+    useEffect(() => {
+        const destination = getSafeNext();
+        setSafeNextPath(destination);
     }, [getSafeNext]);
 
     useEffect(() => {
@@ -108,6 +115,7 @@ export default function SignupPage() {
 
             if (signInResult.status === 'error') {
                 // Signup succeeded but sign-in failed - show success and let them sign in manually
+                rememberPostAuthReturnTo(safeNextPath || getSafeNext());
                 rememberPendingSignupVerification();
                 trackEvent('signup_verification_required', { method: 'email', source: 'signup_form' });
                 setSuccess(true);
@@ -135,6 +143,7 @@ export default function SignupPage() {
         setError(null);
         trackEvent('signup_started', { method: 'google', source: 'signup_google' });
         try {
+            rememberPostAuthReturnTo(safeNextPath || getSafeNext());
             await stackClientApp.signInWithOAuth('google');
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to sign up with Google');
@@ -169,7 +178,7 @@ export default function SignupPage() {
                         <Button
                             variant="outline"
                             className="w-full h-10 sm:h-11 border-input text-muted-foreground hover:bg-accent hover:text-foreground text-sm sm:text-base active:scale-[0.98]"
-                            onClick={() => router.push('/auth/login')}
+                            onClick={() => router.push(safeNextPath ? `/auth/login?next=${encodeURIComponent(safeNextPath)}` : '/auth/login')}
                         >
                             Back to Sign In
                         </Button>
@@ -324,7 +333,10 @@ export default function SignupPage() {
 
                             <p className="text-xs sm:text-sm text-muted-foreground text-center">
                                 Already have an account?{' '}
-                                <Link href="/auth/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
+                                <Link
+                                    href={safeNextPath ? `/auth/login?next=${encodeURIComponent(safeNextPath)}` : '/auth/login'}
+                                    className="text-primary hover:text-primary/80 font-medium transition-colors"
+                                >
                                     Sign in
                                 </Link>
                             </p>

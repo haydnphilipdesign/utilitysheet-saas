@@ -1,13 +1,25 @@
 import { NextResponse } from 'next/server';
-import { stripe, STRIPE_TEAMS_PRICE_ID } from '@/lib/stripe/client';
+import { stripe, STRIPE_PRO_PRICE_ID, STRIPE_TEAMS_PRICE_ID } from '@/lib/stripe/client';
 import { stackServerApp } from '@/lib/stack/server';
 import {
     getOrCreateAccount,
     getOrganizationById,
     getOrganizationMemberRole,
     getOrganizationSeatUsage,
+    transferAccountSubscriptionToOrganization,
     updateOrganizationStripeCustomer,
 } from '@/lib/neon/queries';
+
+function getStripeId(value: string | { id: string } | null): string | null {
+    return typeof value === 'string' ? value : value?.id || null;
+}
+
+function getSubscriptionEndsAt(subscription: Awaited<ReturnType<NonNullable<typeof stripe>['subscriptions']['retrieve']>>) {
+    const teamItem = subscription.items.data.find((item) => item.price.id === STRIPE_TEAMS_PRICE_ID);
+    return teamItem?.current_period_end
+        ? new Date(teamItem.current_period_end * 1000)
+        : null;
+}
 
 function getMinSeats(): number {
     const raw = process.env.TEAM_MIN_SEATS;
@@ -66,11 +78,142 @@ export async function POST(request: Request) {
         }
 
         const seatUsage = await getOrganizationSeatUsage(organizationId);
-        if (seats < seatUsage.used) {
+        const reservedSeats = seatUsage.used + seatUsage.pendingInvites;
+        if (seats < reservedSeats) {
             return NextResponse.json(
-                { error: 'Seat quantity too low', message: `Your org already has ${seatUsage.used} members.` },
+                {
+                    error: 'Seat quantity too low',
+                    message: `Your workspace already reserves ${reservedSeats} seats across members and pending invitations.`,
+                },
                 { status: 400 }
             );
+        }
+
+        const accountIsPro = account.subscription_status === 'pro';
+        if (accountIsPro) {
+            if (!STRIPE_PRO_PRICE_ID || !account.stripe_customer_id || !account.subscription_id) {
+                return NextResponse.json(
+                    {
+                        error: 'Subscription requires support',
+                        message: 'Your Pro billing record is incomplete. Contact support before starting Teams.',
+                    },
+                    { status: 409 }
+                );
+            }
+
+            if (
+                organization.stripe_customer_id &&
+                organization.stripe_customer_id !== account.stripe_customer_id
+            ) {
+                return NextResponse.json(
+                    {
+                        error: 'Subscription requires support',
+                        message: 'This workspace has separate billing history. Contact support before converting Pro to Teams.',
+                    },
+                    { status: 409 }
+                );
+            }
+
+            if (
+                organization.subscription_id &&
+                organization.subscription_id !== account.subscription_id
+            ) {
+                return NextResponse.json(
+                    {
+                        error: 'Subscription requires support',
+                        message: 'This workspace has separate billing history. Contact support before converting Pro to Teams.',
+                    },
+                    { status: 409 }
+                );
+            }
+
+            const subscription = await stripe.subscriptions.retrieve(account.subscription_id);
+            const subscriptionCustomerId = getStripeId(subscription.customer);
+            const items = subscription.items.data;
+            const proItem = items.find((item) => item.price.id === STRIPE_PRO_PRICE_ID);
+            const subscriptionIsPaid = subscription.status === 'active' || subscription.status === 'trialing';
+
+            if (
+                subscription.id !== account.subscription_id ||
+                subscriptionCustomerId !== account.stripe_customer_id ||
+                !subscriptionIsPaid ||
+                items.length !== 1 ||
+                !proItem
+            ) {
+                return NextResponse.json(
+                    {
+                        error: 'Subscription requires support',
+                        message: 'Your current Stripe subscription could not be safely converted automatically.',
+                    },
+                    { status: 409 }
+                );
+            }
+
+            const convertedSubscription = await stripe.subscriptions.update(
+                subscription.id,
+                {
+                    items: [{
+                        id: proItem.id,
+                        price: STRIPE_TEAMS_PRICE_ID,
+                        quantity: seats,
+                    }],
+                    proration_behavior: 'create_prorations',
+                    metadata: {
+                        billing_scope: 'organization',
+                        organization_id: organizationId,
+                        converted_from_account_id: account.id,
+                    },
+                },
+                {
+                    idempotencyKey: `pro-to-team-${organizationId}-${subscription.id}-${seats}`,
+                }
+            );
+
+            const convertedCustomerId = getStripeId(convertedSubscription.customer);
+            const convertedTeamItem = convertedSubscription.items.data.find(
+                (item) => item.price.id === STRIPE_TEAMS_PRICE_ID
+            );
+            if (
+                !convertedCustomerId ||
+                convertedCustomerId !== account.stripe_customer_id ||
+                !convertedTeamItem ||
+                convertedTeamItem.quantity !== seats
+            ) {
+                throw new Error('Stripe returned an unexpected Teams subscription state');
+            }
+
+            const transfer = await transferAccountSubscriptionToOrganization({
+                accountId: account.id,
+                organizationId,
+                stripeCustomerId: convertedCustomerId,
+                subscriptionId: convertedSubscription.id,
+                subscriptionEndsAt: getSubscriptionEndsAt(convertedSubscription),
+                seatQuantity: seats,
+            });
+
+            try {
+                await stripe.customers.update(convertedCustomerId, {
+                    name: (organization.name as string) || undefined,
+                    metadata: {
+                        account_id: '',
+                        billing_scope: 'organization',
+                        organization_id: organizationId,
+                    },
+                });
+            } catch (metadataError) {
+                console.error('Failed to refresh converted Teams customer metadata:', metadataError);
+            }
+
+            const successUrl = '/dashboard/settings?tab=billing&team_checkout=success';
+            if (!transfer) {
+                return NextResponse.json({
+                    converted: true,
+                    pendingSync: true,
+                    url: successUrl,
+                }, { status: 202 });
+            }
+
+            return NextResponse.json({ converted: true, url: successUrl });
         }
 
         // Get or create Stripe customer for the organization
@@ -80,8 +223,11 @@ export async function POST(request: Request) {
                 email: user.primaryEmail || undefined,
                 name: (organization.name as string) || undefined,
                 metadata: {
+                    billing_scope: 'organization',
                     organization_id: organizationId,
                 },
+            }, {
+                idempotencyKey: `organization-stripe-customer-${organizationId}`,
             });
             stripeCustomerId = customer.id;
             await updateOrganizationStripeCustomer(organizationId, stripeCustomerId);
@@ -103,6 +249,12 @@ export async function POST(request: Request) {
             metadata: {
                 organization_id: organizationId,
                 seats: String(seats),
+            },
+            subscription_data: {
+                metadata: {
+                    billing_scope: 'organization',
+                    organization_id: organizationId,
+                },
             },
         });
 

@@ -109,7 +109,7 @@ async function verifyAllPaidCreditsApplied(
         ORDER BY stripe_customer_id
     ` as unknown as BillingRow[];
     const stripe = new Stripe(stripeKey, {
-        apiVersion: '2025-12-15.clover',
+        apiVersion: '2026-08-26.dahlia',
     });
 
     for (const row of billingRows) {

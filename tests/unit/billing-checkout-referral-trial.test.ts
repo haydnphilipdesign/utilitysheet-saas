@@ -77,6 +77,10 @@ describe('POST /api/billing/checkout referral trial', () => {
                 metadata: { account_id: 'account_referred' },
                 payment_method_collection: 'if_required',
                 subscription_data: {
+                    metadata: {
+                        billing_scope: 'account',
+                        account_id: 'account_referred',
+                    },
                     trial_period_days: 30,
                     trial_settings: {
                         end_behavior: { missing_payment_method: 'cancel' },
@@ -131,6 +135,12 @@ describe('POST /api/billing/checkout referral trial', () => {
             success_url: 'https://app.utility-sheet.test/dashboard/settings?tab=billing&session_id={CHECKOUT_SESSION_ID}',
             cancel_url: 'https://app.utility-sheet.test/dashboard/settings?tab=billing',
             metadata: { account_id: 'account_referred' },
+            subscription_data: {
+                metadata: {
+                    billing_scope: 'account',
+                    account_id: 'account_referred',
+                },
+            },
         });
     });
 
@@ -246,6 +256,11 @@ describe('POST /api/billing/checkout referral trial', () => {
         expect(mocks.createSession).toHaveBeenCalledTimes(1);
         expect(mocks.createSession.mock.calls[0]).toHaveLength(1);
         expect(mocks.createSession.mock.calls[0][0]).not.toHaveProperty('payment_method_collection');
-        expect(mocks.createSession.mock.calls[0][0]).not.toHaveProperty('subscription_data');
+        expect(mocks.createSession.mock.calls[0][0].subscription_data).toEqual({
+            metadata: {
+                billing_scope: 'account',
+                account_id: 'account_referred',
+            },
+        });
     });
 });

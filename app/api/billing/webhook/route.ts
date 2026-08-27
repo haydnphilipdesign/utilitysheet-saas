@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server';
 import { stripe, STRIPE_TEAMS_PRICE_ID } from '@/lib/stripe/client';
 import {
     updateAccountSubscription,
+    getAccountById,
     getAccountByStripeCustomerId,
+    getOrganizationById,
     getOrganizationByStripeCustomerId,
+    transferAccountSubscriptionToOrganization,
     updateOrganizationSubscription,
 } from '@/lib/neon/queries';
 import { applyEarnedReferralCredits } from '@/lib/referrals/referral-credit-service';
@@ -39,6 +42,74 @@ function getSeatQuantityFromSubscription(subscription: Stripe.Subscription) {
     return typeof qty === 'number' ? qty : null;
 }
 
+function getMetadataId(metadata: Stripe.Metadata | null | undefined, key: string): string | null {
+    const value = metadata?.[key]?.trim();
+    return value || null;
+}
+
+async function syncOrganizationSubscription(
+    organizationId: string,
+    subscription: Stripe.Subscription
+) {
+    const customerId = getExpandableId(subscription.customer);
+    if (!customerId) {
+        throw new Error('Teams subscription is missing a customer ID');
+    }
+
+    const convertedFromAccountId = getMetadataId(
+        subscription.metadata,
+        'converted_from_account_id'
+    );
+    const status = isPaidStripeStatus(subscription.status) ? 'team' : 'free';
+    const seatQuantity = getSeatQuantityFromSubscription(subscription);
+    const subscriptionEndsAt = getSubscriptionEndsAt(subscription, STRIPE_TEAMS_PRICE_ID);
+
+    if (status === 'team' && convertedFromAccountId) {
+        if (!seatQuantity) {
+            throw new Error('Converted Teams subscription is missing its seat quantity');
+        }
+
+        const transferred = await transferAccountSubscriptionToOrganization({
+            accountId: convertedFromAccountId,
+            organizationId,
+            stripeCustomerId: customerId,
+            subscriptionId: subscription.id,
+            subscriptionEndsAt,
+            seatQuantity,
+        });
+        if (!transferred) {
+            throw new Error('Failed to transfer converted Teams billing ownership');
+        }
+        return;
+    }
+
+    const organization = await getOrganizationById(organizationId);
+    if (!organization) {
+        throw new Error('Teams subscription organization not found');
+    }
+
+    await updateOrganizationSubscription(organization.id, {
+        subscriptionStatus: status,
+        subscriptionId: status === 'team' ? subscription.id : null,
+        subscriptionEndsAt: status === 'team' ? subscriptionEndsAt : null,
+        seatQuantity: status === 'team' ? seatQuantity : 0,
+    });
+}
+
+async function syncAccountSubscription(accountId: string, subscription: Stripe.Subscription) {
+    const account = await getAccountById(accountId);
+    if (!account) {
+        throw new Error('Pro subscription account not found');
+    }
+
+    const status = isPaidStripeStatus(subscription.status) ? 'pro' : 'free';
+    await updateAccountSubscription(account.id, {
+        subscriptionStatus: status,
+        subscriptionId: status === 'pro' ? subscription.id : null,
+        subscriptionEndsAt: status === 'pro' ? getSubscriptionEndsAt(subscription) : null,
+    });
+}
+
 export async function POST(request: Request) {
     try {
         if (!stripe) {
@@ -71,9 +142,30 @@ export async function POST(request: Request) {
                         throw new Error('Subscription checkout session is missing customer or subscription ID');
                     }
 
+                    const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId);
+                    const organizationId =
+                        getMetadataId(subscriptionResponse.metadata, 'organization_id') ||
+                        getMetadataId(session.metadata, 'organization_id');
+                    if (organizationId) {
+                        await syncOrganizationSubscription(organizationId, subscriptionResponse);
+                        console.log(`Activated Teams subscription for organization ${organizationId}`);
+                        break;
+                    }
+
+                    const accountId =
+                        getMetadataId(subscriptionResponse.metadata, 'account_id') ||
+                        getMetadataId(session.metadata, 'account_id');
+                    if (accountId) {
+                        await syncAccountSubscription(accountId, subscriptionResponse);
+                        await applyEarnedReferralCredits(accountId, {
+                            requireActiveSubscription: false,
+                        });
+                        console.log(`Activated Pro subscription for account ${accountId}`);
+                        break;
+                    }
+
                     const account = await getAccountByStripeCustomerId(customerId);
                     if (account) {
-                        const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId);
                         await updateAccountSubscription(account.id, {
                             subscriptionStatus: 'pro',
                             subscriptionId: subscriptionResponse.id,
@@ -88,7 +180,6 @@ export async function POST(request: Request) {
 
                     const organization = await getOrganizationByStripeCustomerId(customerId);
                     if (organization) {
-                        const subscriptionResponse = await stripe.subscriptions.retrieve(subscriptionId);
                         const seatQuantity = getSeatQuantityFromSubscription(subscriptionResponse);
 
                         await updateOrganizationSubscription(organization.id, {
@@ -111,6 +202,20 @@ export async function POST(request: Request) {
                 const customerId = typeof subscription.customer === 'string'
                     ? subscription.customer
                     : subscription.customer.id;
+
+                const organizationId = getMetadataId(subscription.metadata, 'organization_id');
+                if (organizationId) {
+                    await syncOrganizationSubscription(organizationId, subscription);
+                    console.log(`Updated Teams subscription for organization ${organizationId}`);
+                    break;
+                }
+
+                const accountId = getMetadataId(subscription.metadata, 'account_id');
+                if (accountId) {
+                    await syncAccountSubscription(accountId, subscription);
+                    console.log(`Updated Pro subscription for account ${accountId}`);
+                    break;
+                }
 
                 const account = await getAccountByStripeCustomerId(customerId);
                 if (account) {
@@ -150,6 +255,20 @@ export async function POST(request: Request) {
                 const customerId = typeof subscription.customer === 'string'
                     ? subscription.customer
                     : subscription.customer.id;
+
+                const organizationId = getMetadataId(subscription.metadata, 'organization_id');
+                if (organizationId) {
+                    await syncOrganizationSubscription(organizationId, subscription);
+                    console.log(`Downgraded organization ${organizationId} to free`);
+                    break;
+                }
+
+                const accountId = getMetadataId(subscription.metadata, 'account_id');
+                if (accountId) {
+                    await syncAccountSubscription(accountId, subscription);
+                    console.log(`Downgraded account ${accountId} to free`);
+                    break;
+                }
 
                 const account = await getAccountByStripeCustomerId(customerId);
                 if (account) {

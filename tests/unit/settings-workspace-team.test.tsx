@@ -160,4 +160,62 @@ describe('Workspace & Team Settings', () => {
         expect(screen.queryByText('Workspace details')).not.toBeInTheDocument();
         expect(screen.queryByText('invitee@example.com')).not.toBeInTheDocument();
     });
+
+    it('presents Pro-to-Team as a single-subscription conversion with deferred proration', async () => {
+        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = typeof input === 'string' ? input : String(input);
+            const method = (init?.method || 'GET').toUpperCase();
+
+            if (url === '/api/account' && method === 'GET') {
+                return jsonResponse({
+                    account: {
+                        id: 'acct_admin',
+                        full_name: 'Admin User',
+                        email: 'admin@example.com',
+                        subscription_status: 'pro',
+                        notification_preferences: {},
+                    },
+                    activeOrganization: {
+                        id: 'org_1',
+                        name: 'Acme Workspace',
+                        role: 'admin',
+                        subscription_status: 'free',
+                    },
+                    usage: { used: 2, limit: 999999, plan: 'pro' },
+                });
+            }
+
+            if (url === '/api/intake-link' && method === 'GET') {
+                return jsonResponse({ intakeLink: null, canCustomize: true });
+            }
+
+            if (url === '/api/organization/members' && method === 'GET') {
+                return jsonResponse({
+                    organization: {
+                        id: 'org_1',
+                        name: 'Acme Workspace',
+                        subscription_status: 'free',
+                    },
+                    role: 'admin',
+                    members: [],
+                    seatUsage: { used: 1, pendingInvites: 0 },
+                });
+            }
+
+            if (url === '/api/organization/invites' && method === 'GET') {
+                return jsonResponse({ invites: [] });
+            }
+
+            return jsonResponse({ error: 'Not found' }, 404);
+        });
+
+        vi.stubGlobal('fetch', fetchMock);
+        render(<SettingsPage />);
+
+        fireEvent.click(await screen.findByRole('tab', { name: 'Billing' }));
+
+        expect(await screen.findByRole('button', { name: 'Upgrade Pro to Teams' })).toBeInTheDocument();
+        expect(screen.getByText(/without creating a second subscription/i)).toBeInTheDocument();
+        expect(screen.getByText(/prorated upgrade difference to your next invoice/i)).toBeInTheDocument();
+    });
 });

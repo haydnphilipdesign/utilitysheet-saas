@@ -1923,7 +1923,9 @@ export default function SettingsPage() {
                             Teams subscription
                         </CardTitle>
                         <CardDescription className="text-muted-foreground">
-                            Start centralized, seat-based billing for a shared workspace. Workspace members and invitations are managed separately in Workspace &amp; Team.
+                            {usage.plan === 'pro'
+                                ? 'Convert your current Pro subscription into centralized, seat-based Teams billing without creating a second subscription.'
+                                : 'Start centralized, seat-based billing for a shared workspace. Workspace members and invitations are managed separately in Workspace & Team.'}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -1956,7 +1958,9 @@ export default function SettingsPage() {
                                         className="bg-background/50 border-input text-foreground"
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Estimated {usdNoCents.format(teamsMonthlyTotal)}/mo. Pending invitations reserve seats after the subscription is active.
+                                        Estimated {usdNoCents.format(teamsMonthlyTotal)}/mo. {usage.plan === 'pro'
+                                            ? 'Stripe will apply the prorated upgrade difference to your next invoice.'
+                                            : 'Pending invitations reserve seats after the subscription is active.'}
                                     </p>
                                 </div>
                                 <Button type="button" onClick={handleTeamCheckout} disabled={teamBillingLoading}>
@@ -1965,7 +1969,7 @@ export default function SettingsPage() {
                                     ) : (
                                         <Sparkles className="mr-2 h-4 w-4" />
                                     )}
-                                    Start Teams
+                                    {usage.plan === 'pro' ? 'Upgrade Pro to Teams' : 'Start Teams'}
                                 </Button>
                             </div>
                         ) : (

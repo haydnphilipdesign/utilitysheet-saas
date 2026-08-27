@@ -123,6 +123,106 @@ export async function updateOrganizationSubscription(
 }
 
 /**
+ * Atomically transfers an existing personal Stripe subscription to an
+ * organization after Stripe has converted its price to Teams.
+ *
+ * The operation is idempotent for the same customer/subscription pair and
+ * refuses to overwrite a different account or organization subscription.
+ */
+export async function transferAccountSubscriptionToOrganization(data: {
+    accountId: string;
+    organizationId: string;
+    stripeCustomerId: string;
+    subscriptionId: string;
+    subscriptionEndsAt: Date | null;
+    seatQuantity: number;
+}) {
+    if (!sql) return null;
+
+    const result = await sql`
+        WITH locked_account AS (
+            SELECT id, stripe_customer_id, subscription_status, subscription_id
+            FROM accounts
+            WHERE id = ${data.accountId}
+            FOR UPDATE
+        ),
+        locked_organization AS (
+            SELECT id, stripe_customer_id, subscription_status, subscription_id
+            FROM organizations
+            WHERE id = ${data.organizationId}
+            FOR UPDATE
+        ),
+        eligible AS (
+            SELECT 1
+            FROM locked_account account_row
+            CROSS JOIN locked_organization organization_row
+            WHERE (
+                organization_row.subscription_id IS NULL
+                OR (
+                    organization_row.subscription_id = ${data.subscriptionId}
+                    AND organization_row.stripe_customer_id = ${data.stripeCustomerId}
+                )
+            )
+            AND (
+                (
+                    account_row.subscription_id = ${data.subscriptionId}
+                    AND account_row.stripe_customer_id = ${data.stripeCustomerId}
+                    AND account_row.subscription_status = 'pro'
+                )
+                OR (
+                    account_row.subscription_id IS NULL
+                    AND account_row.stripe_customer_id IS NULL
+                    AND account_row.subscription_status = 'free'
+                    AND organization_row.subscription_id = ${data.subscriptionId}
+                    AND organization_row.stripe_customer_id = ${data.stripeCustomerId}
+                )
+            )
+        ),
+        updated_organization AS (
+            UPDATE organizations organization_row
+            SET stripe_customer_id = ${data.stripeCustomerId},
+                subscription_status = 'team',
+                subscription_id = ${data.subscriptionId},
+                subscription_ends_at = ${data.subscriptionEndsAt?.toISOString() || null},
+                seat_quantity = ${data.seatQuantity},
+                updated_at = NOW()
+            WHERE organization_row.id = ${data.organizationId}
+                AND EXISTS (SELECT 1 FROM eligible)
+            RETURNING organization_row.*
+        ),
+        updated_account AS (
+            UPDATE accounts account_row
+            SET stripe_customer_id = NULL,
+                subscription_status = 'free',
+                subscription_id = NULL,
+                subscription_ends_at = NULL,
+                updated_at = NOW()
+            WHERE account_row.id = ${data.accountId}
+                AND EXISTS (SELECT 1 FROM updated_organization)
+                AND (
+                    account_row.subscription_id = ${data.subscriptionId}
+                    OR (
+                        account_row.subscription_id IS NULL
+                        AND account_row.stripe_customer_id IS NULL
+                        AND account_row.subscription_status = 'free'
+                    )
+                )
+            RETURNING account_row.*
+        )
+        SELECT
+            (SELECT row_to_json(updated_organization) FROM updated_organization) AS organization,
+            (SELECT row_to_json(updated_account) FROM updated_account) AS account
+        WHERE EXISTS (SELECT 1 FROM updated_organization)
+            AND EXISTS (SELECT 1 FROM updated_account)
+    `;
+
+    const row = result[0] as { organization?: unknown; account?: unknown } | undefined;
+    const organization = parseJsonColumn(row?.organization);
+    const account = parseJsonColumn(row?.account);
+    return organization && account ? { organization, account } : null;
+}
+
+/**
  * Update organization name and slug
  */
 export async function updateOrganization(organizationId: string, name: string) {
@@ -767,4 +867,27 @@ export async function setActiveOrganization(accountId: string, organizationId: s
     `;
 
     return result[0];
+}
+
+/**
+ * Set the active organization only when the account is a current member.
+ * Intended for authenticated user-driven workspace switching.
+ */
+export async function setActiveOrganizationForMember(accountId: string, organizationId: string) {
+    if (!sql) return null;
+
+    const result = await sql`
+        UPDATE accounts
+        SET active_organization_id = ${organizationId}, updated_at = NOW()
+        WHERE id = ${accountId}
+            AND EXISTS (
+                SELECT 1
+                FROM organization_members om
+                WHERE om.organization_id = ${organizationId}
+                    AND om.account_id = ${accountId}
+            )
+        RETURNING *
+    `;
+
+    return result[0] || null;
 }

@@ -45,12 +45,12 @@ export default function InvitePage() {
 
                 if (cancelled) return;
                 setStatus('success');
-                setMessage('Invite accepted! Redirecting to your dashboard…');
+                setMessage('Invite accepted. This team is now active; your other workspaces remain available from the account menu. Redirecting…');
 
                 setTimeout(() => {
                     router.push('/dashboard');
                     router.refresh();
-                }, 800);
+                }, 1400);
             } catch (error: unknown) {
                 if (cancelled) return;
                 setStatus('error');

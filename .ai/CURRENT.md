@@ -2,99 +2,108 @@
 
 ## Session Metadata
 
-- Task: Refine the admin area so `/admin` answers business size, recent
-  activity, and what needs a human, and move analysis to its own route.
-- Intended outcome: Total users, paying accounts, and recent request activity
-  are readable at a glance; growth and funnel analysis lives on `/admin/growth`.
-- Status: Completed, validated, committed as `7f00139`, and pushed to
-  `origin/main`.
-- Current or last agent: Claude Code
+- Task: Fix Pro-to-Team billing conversion, existing-user workspace access,
+  and invite authentication return paths.
+- Intended outcome: One subscription after a Pro upgrade, safe switching among
+  existing memberships, and reliable invite completion after sign-in.
+- Status: Completed; no required implementation or validation work remains.
+- Current or last agent: OpenAI Codex
 - Branch: `main`
-- Last updated: 2026-08-24
-- Relevant plan: `.ai/plans/2026-08-24-admin-operations-refinement.md`
+- Last updated: 2026-08-27
+- Relevant plan: `.ai/plans/2026-08-27-teams-upgrade-and-workspace-switching.md`
 - Issue/PR: none
 
 ## Verified Repository State and Constraints
 
-- The worktree was clean at startup. The prior task (post-signup referral
-  claiming) was already committed as `99bda81`.
-- Confirmed by repo-wide grep before changing anything:
-  `getActivationFunnelStats()` computed `totalAccounts`, `dashboardReady`,
-  `onboardingCompletionRate`, `firstRequestRate`, `inactiveRate`,
-  `activationToHabitRate`, and `sellerLinkReady`, and none of the seven were
-  rendered anywhere. The dashboard therefore never showed a total user count.
-- No schema change was needed or made. Every new query is a read-only aggregate
-  over existing columns.
-- `components/admin/StatsCard.tsx` is pre-existing dead code, untouched here.
+- Started from clean `main` at `39e3efa`, aligned with `origin/main`.
+- Existing Team invitations support authenticated existing accounts. Invite
+  acceptance requires an exact normalized email match, an active Team
+  subscription, and an available seat.
+- Free workspace admins can start a Team subscription for their active
+  workspace and then invite members.
+- The current Pro-to-Team UI is not a true billing conversion. It starts a new
+  organization-level Stripe subscription/customer while leaving the
+  account-level Pro subscription untouched. After Team activation, the UI
+  shows the Team portal and no longer exposes the personal Pro portal, creating
+  a double-billing/cancellation risk.
+- Accepting an invite inserts membership and changes the account's
+  `active_organization_id`. It does not migrate the invitee's existing
+  workspace data, and the dashboard has no workspace switcher. Existing data
+  is retained, but organization-scoped records from the prior workspace may be
+  unreachable through the UI while the Team workspace is active.
+- Team purchase defaults to a three-seat minimum. Active members and pending
+  invitations each reserve a seat.
+- No domain-based auto-join or company matching exists; this is appropriate as
+  a security boundary.
 
 ## Work Completed
 
-- Added `lib/admin/operations-overview.ts`: business totals, 7-day and prior
-  7-day windows, request volume, status breakdown, recent requests, and recent
-  signups, with pure transforms kept separately testable.
-- Rewrote `app/(admin)/admin/page.tsx` into four bands: a four-figure business
-  strip (Users, Paid, Requests, Seller submissions), recent requests beside new
-  signups, standing-backlog chips, and a request lifecycle bar.
-- Added `components/admin/RecentRequestsList.tsx`,
-  `components/admin/RecentSignupsList.tsx`, and
-  `components/admin/RequestLifecycleBar.tsx`.
-- Added `/admin/growth` holding the full activation funnel (including the seven
-  previously unrendered fields), acquisition sources, and packet referral
-  instrumentation, and added its sidebar entry under Growth & Content.
-- Moved Team and personal/default workspace totals to an `AdminStatStrip` on
-  `/admin/organizations`.
-- Deleted `components/admin/Overview.tsx` and
-  `components/admin/RecentActivity.tsx`, which became unused.
-- Updated `ADMIN.md` routes, navigation, list filters, and added an
-  "Overview and Growth Split" section stating what may live on `/admin`.
-
-## Key Implementation Details
-
-- The lifecycle bar reuses `STATUS_STYLES` hues from
-  `components/ui/status-badge.tsx` at higher opacity, so a bar segment and its
-  status badge always read as the same status.
-- `paid_accounts` in `operations-overview.ts` deliberately mirrors the same
-  predicate in `activation-funnel.ts` and the `plan=paying` list filter, so the
-  overview, the funnel, and the user list cannot disagree.
-- The stale-in-progress count still excludes demo requests so it continues to
-  agree with `/admin/abandonment`.
-- `formatDelta` returns null when the prior window is zero, so a first week
-  never renders a meaningless "+100%".
+- Traced Team checkout, Stripe webhook ownership, invite creation and
+  acceptance, activation/workspace selection, request scoping, and dashboard
+  workspace navigation.
+- Confirmed the existing-user invite flow is implemented, while identifying
+  unsafe Pro conversion and multi-workspace UX gaps.
+- Created the implementation-ready plan and accepted durable billing/workspace
+  boundary in
+  `.ai/decisions/2026-08-27-team-billing-ownership-and-workspace-isolation.md`.
+- Implementation is now authorized locally. No production data was queried or
+  changed, and no deployment, migration, commit, or push action is authorized.
+- Implemented an in-place Pro-to-Team Stripe subscription-item conversion with
+  explicit seat quantity, deferred prorations, metadata-first webhook routing,
+  and an atomic/idempotent transfer of billing ownership from account to
+  organization. Free-to-Team remains on Checkout and now receives equivalent
+  organization ownership metadata.
+- Added a membership-guarded active-workspace API/query and an account-menu
+  switcher that performs a full reload after selection. Workspace data remains
+  isolated and unchanged.
+- Added safe one-time OAuth return-path persistence, retained invite `next`
+  parameters across custom sign-in/sign-up navigation, and clarified invite
+  success copy.
+- Upgraded `stripe` to 22.6.0 and the pinned Stripe API version to
+  `2026-08-26.dahlia`; the incident helper's pinned API version was aligned for
+  SDK type compatibility.
 
 ## Validation
 
-- Focused Vitest: 3 files / 29 tests passed.
-- Full Vitest: 136 files / 707 tests passed.
+- Focused Teams/auth/billing Vitest: 11 files / 45 tests passed.
+- Full Vitest: 143 files / 731 tests passed.
+- Changed-file ESLint passed with no findings.
 - `npm exec tsc -- --noEmit` passed.
-- `npm run lint`: 1 error and 20 warnings, all pre-existing in untouched files.
-  The error is `components/admin/EventLogTable.tsx:6` (`no-explicit-any`).
-- `npm run build` passed; `/admin/growth` appears in the route manifest.
+- `npm run build` passed. It emitted only the existing stale
+  `baseline-browser-mapping` and edge-runtime/static-generation warnings.
 - `npm run security:scan` passed.
+- Direct sensitive-pattern inspection covered all 11 untracked files and found
+  no matches.
+- `git diff --check` passed; Git emitted only line-ending normalization
+  warnings.
+- Full `npm run lint` was also run and remains blocked by the pre-existing
+  `components/admin/EventLogTable.tsx:6` explicit-`any` error, with 19 unrelated
+  warnings. Changed files remain clean.
 
 ## Remaining Required Work
 
-None. The work was committed as `7f00139` and pushed to `origin/main` with the
-user's explicit authorization. No migration was needed and no production data
-action was taken. If the project auto-deploys from `main`, this push will
-publish the new `/admin` and `/admin/growth` routes.
+- None.
 
 ## Known Risks and Uncertainties
 
-- The redesign was not viewed in a running browser. `/admin` needs a live Neon
-  database and an authenticated admin session, so verification was code-level
-  plus component tests. A visual pass is worth doing before deploying.
-- `recharts` is now an unused dependency, since its only importer was the
-  deleted `Overview.tsx`. Removing it from `package.json` is optional follow-up,
-  not required work.
+- No live Stripe conversion was performed. The Stripe mutation path is covered
+  by mocked route/webhook regression tests and still requires normal deployed
+  end-to-end observation on first use.
+- OAuth destination persistence is covered in unit/component tests; no live
+  Google OAuth round trip was performed locally.
+- `npm install stripe@22.6.0` reported the repository's existing dependency
+  audit/peer warnings. No automated audit fix was attempted because it would be
+  unrelated and potentially breaking.
 
 ## Concurrent Editing Warnings
 
 - Preserve `.ai/plans/2026-08-05-codex-security-standard-scan.md` and its scan
   artifacts; that paused scan is unrelated to this task.
-- No other agent had work in progress at startup.
+- No other active implementation work was found, and the code worktree was
+  clean before this handoff update.
 
 ## Recommended Next Action
 
-Sign in as an admin on the deployed site and view `/admin`, `/admin/growth`, and
-`/admin/organizations` to confirm the layouts read well with real data. This is
-the visual pass that local validation could not cover.
+Optionally review the diff, then commit and deploy through the normal release
+process when authorized. Observe the first real Pro-to-Team conversion and
+Google OAuth invite acceptance; no migration is required.

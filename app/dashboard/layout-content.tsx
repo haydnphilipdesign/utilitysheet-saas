@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@stackframe/stack';
 import { stackClientApp } from '@/lib/stack/client';
@@ -17,10 +18,12 @@ import {
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { EmailVerificationBanner } from '@/components/email-verification-banner';
-import { LayoutDashboard, FileText, Palette, Settings, LogOut, Menu, X, Megaphone, Plus } from 'lucide-react';
+import { Building2, Check, FileText, LayoutDashboard, Loader2, LogOut, Megaphone, Menu, Palette, Plus, Settings, X } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import { trackActivationResponse, trackDashboardFirstViewOnce } from '@/lib/analytics/activation';
+import { consumePostAuthReturnTo } from '@/lib/auth/post-auth-return';
 import type { Account, Organization } from '@/types';
+import { toast } from 'sonner';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -38,8 +41,17 @@ export function DashboardLayoutContent({
     const router = useRouter();
     const user = useUser();
     const [organization, setOrganization] = useState<Organization | null>(null);
+    const [organizations, setOrganizations] = useState<Organization[]>([]);
     const [account, setAccount] = useState<Account | null>(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [switchingOrganizationId, setSwitchingOrganizationId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const destination = consumePostAuthReturnTo();
+        if (destination && destination !== pathname) {
+            router.replace(destination);
+        }
+    }, [pathname, router]);
 
     useEffect(() => {
         // Fetch organization info
@@ -49,6 +61,9 @@ export function DashboardLayoutContent({
                 trackActivationResponse(data, 'dashboard_layout');
                 if (data.activeOrganization) {
                     setOrganization(data.activeOrganization);
+                }
+                if (Array.isArray(data.organizations)) {
+                    setOrganizations(data.organizations);
                 }
                 if (data.account) {
                     setAccount(data.account);
@@ -81,6 +96,28 @@ export function DashboardLayoutContent({
         router.refresh();
     };
 
+    const handleWorkspaceSwitch = async (organizationId: string) => {
+        if (organizationId === organization?.id || switchingOrganizationId) return;
+
+        setSwitchingOrganizationId(organizationId);
+        try {
+            const response = await fetch('/api/account/active-organization', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || 'Failed to switch workspace');
+            }
+
+            window.location.assign('/dashboard');
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to switch workspace');
+            setSwitchingOrganizationId(null);
+        }
+    };
+
     const getInitials = (name?: string | null, email?: string | null) => {
         if (name) {
             const parts = name.trim().split(/\s+/);
@@ -105,7 +142,7 @@ export function DashboardLayoutContent({
                         <div className="flex flex-1 min-w-0 items-center gap-4 sm:gap-8 overflow-hidden">
                             <Link href="/dashboard" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
                                 <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20">
-                                    <img src="/logo-sm.png" alt="UtilitySheet Logo" width={20} height={20} className="h-4 w-4 sm:h-5 sm:w-5" />
+                                    <Image src="/logo-sm.png" alt="UtilitySheet Logo" width={20} height={20} className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </div>
                                 <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-2">
                                     <span className="shrink-0 text-base sm:text-xl font-bold text-foreground">UtilitySheet</span>
@@ -197,6 +234,35 @@ export function DashboardLayoutContent({
                                         </div>
                                     </div>
                                     <DropdownMenuSeparator />
+                                    {organizations.length > 1 && (
+                                        <>
+                                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                                                Workspaces
+                                            </div>
+                                            {organizations.map((workspace) => {
+                                                const isCurrent = workspace.id === organization?.id;
+                                                const isSwitching = workspace.id === switchingOrganizationId;
+                                                return (
+                                                    <DropdownMenuItem
+                                                        key={workspace.id}
+                                                        className="cursor-pointer gap-2"
+                                                        disabled={isCurrent || switchingOrganizationId !== null}
+                                                        aria-label={isCurrent ? `Current workspace: ${workspace.name}` : `Switch to workspace ${workspace.name}`}
+                                                        onSelect={() => void handleWorkspaceSwitch(workspace.id)}
+                                                    >
+                                                        <Building2 className="h-4 w-4 shrink-0" />
+                                                        <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
+                                                        {isSwitching ? (
+                                                            <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                                                        ) : isCurrent ? (
+                                                            <Check className="h-4 w-4 shrink-0" />
+                                                        ) : null}
+                                                    </DropdownMenuItem>
+                                                );
+                                            })}
+                                            <DropdownMenuSeparator />
+                                        </>
+                                    )}
                                     <DropdownMenuItem
                                         className="cursor-pointer"
                                         onClick={() => router.push('/dashboard/updates')}
