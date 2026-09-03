@@ -21,6 +21,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
+import { QuestionGapCapture } from '@/components/question-requests/QuestionGapCapture';
 import { PageHeader } from '@/components/ui/page-header';
 import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
 import { AccountSecuritySettings } from '@/components/settings/account-security';
@@ -1327,6 +1328,11 @@ export default function SettingsPage() {
                                         )}
                                     </div>
                                 )}
+
+                                <QuestionGapCapture
+                                    context="settings"
+                                    packetMode={intakeDefaultPacketMode}
+                                />
                             </section>
 
                             <Separator className="bg-border" />

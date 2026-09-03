@@ -49,6 +49,12 @@ export const intakeLinkUpdateBodySchema = z.object({
     message: 'At least one seller form setting is required',
 });
 
+export const questionRequestBodySchema = z.object({
+    requestedText: z.string().trim().min(3).max(300),
+    context: z.enum(['settings', 'request_creation']),
+    packetMode: z.enum(['simple', 'advanced']).optional(),
+});
+
 const waterSourceEnum = z.enum(['city', 'well', 'hoa', 'not_sure']);
 const sewerTypeEnum = z.enum(['public', 'septic', 'hoa', 'not_sure']);
 const heatingTypeEnum = z.enum(['natural_gas', 'propane', 'oil', 'electric', 'not_sure']);

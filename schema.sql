@@ -157,6 +157,18 @@ CREATE TABLE IF NOT EXISTS intake_links (
     UNIQUE(account_id)
 );
 
+CREATE TABLE IF NOT EXISTS question_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
+    requested_text TEXT NOT NULL,
+    context TEXT NOT NULL CHECK (context IN ('settings', 'request_creation')),
+    packet_mode TEXT CHECK (packet_mode IN ('simple', 'advanced')),
+    status TEXT NOT NULL DEFAULT 'new'
+        CHECK (status IN ('new', 'reviewed', 'planned', 'declined')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Utility Entries table (seller responses)
 CREATE TABLE IF NOT EXISTS utility_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -343,6 +355,10 @@ CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);
 CREATE INDEX IF NOT EXISTS idx_requests_metered_at ON requests(metered_at);
 CREATE INDEX IF NOT EXISTS idx_requests_is_locked ON requests(is_locked);
 CREATE INDEX IF NOT EXISTS idx_requests_deleted_at ON requests(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_question_requests_created_at
+    ON question_requests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_question_requests_account_created_at
+    ON question_requests(account_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_utility_entries_request_id ON utility_entries(request_id);
 CREATE INDEX IF NOT EXISTS idx_brand_profiles_account_id ON brand_profiles(account_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_stripe_customer_id ON accounts(stripe_customer_id);

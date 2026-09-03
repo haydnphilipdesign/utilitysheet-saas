@@ -189,6 +189,24 @@ export const growthReferralEventRatelimit: RateLimitPolicy = {
     prefix: 'ratelimit:growth-referral',
 };
 
+/**
+ * Rate limiter for authenticated question-gap submissions
+ * Limit: 10 requests per hour per account
+ */
+export const questionRequestRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(10, "1 h"),
+            analytics: true,
+            prefix: "ratelimit:question-request",
+        })
+        : null,
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+    prefix: 'ratelimit:question-request',
+};
+
 export const accountSecurityRatelimit: RateLimitPolicy = {
     limiter: redis
         ? new Ratelimit({

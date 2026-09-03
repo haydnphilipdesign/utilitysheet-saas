@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
+import { QuestionGapCapture } from '@/components/question-requests/QuestionGapCapture';
 import { GooglePlacesAddressInput } from '@/components/address/GooglePlacesAddressInput';
 import {
     Dialog,
@@ -949,6 +950,11 @@ export default function NewRequestPage() {
                                         </button>
                                     </div>
                                 </div>
+
+                                <QuestionGapCapture
+                                    context="request_creation"
+                                    packetMode={formData.packet_mode}
+                                />
 
                                 {formData.packet_mode === 'advanced' && (
                                     <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
