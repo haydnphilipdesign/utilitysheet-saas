@@ -29,7 +29,7 @@ const features = [
     {
         icon: Layers,
         title: featureHighlights[1].title,
-        tag: 'Advanced',
+        tag: 'Handoff',
         description: featureHighlights[1].description,
     },
     {

@@ -24,9 +24,9 @@ export const faqItems = [
       'Yes. UtilitySheet creates a reusable seller link for your workspace. Add it to your email signature, text templates, or closing checklist, and sellers can start by entering the property address.',
   },
   {
-    question: 'What is the Advanced Utility Packet?',
+    question: 'What is the Property Handoff Packet?',
     answer:
-      'Advanced Utility Packet mode adds optional transition details like lawn care, irrigation, security, service providers, mailbox details, and access notes so the final sheet is more complete.',
+      'Property Handoff Packet mode collects utilities, home systems, access details, and service-provider information in one seller handoff. It adds optional sections for lawn and snow care, irrigation, mailbox and home access, security and smart devices, and recurring home service contacts, so the finished packet covers more than utilities alone.',
   },
   {
     question: 'Does the seller need an account or app?',
@@ -95,7 +95,7 @@ export const pricingTiers = [
     href: '/auth/signup?plan=pro',
     features: [
       'Use UtilitySheet on every file',
-      'Advanced Utility Packet mode',
+      'Property Handoff Packet mode',
       'Edit submitted sheets after seller submission',
       'Live updates to future PDF downloads',
       'Custom branding and branded links',
@@ -150,9 +150,9 @@ export const featureHighlights = [
       'Use the same seller intake link across listings instead of rebuilding a utility request for every property.',
   },
   {
-    title: 'Simple Utility Sheet and Advanced Utility Packet modes',
+    title: 'Simple Utility Sheet and Property Handoff Packet modes',
     description:
-      'Choose a lightweight utility sheet or collect deeper closing-prep details when the transaction needs more context.',
+      'Choose core utility information, or collect utilities, home systems, access details, and service-provider information in one seller handoff.',
   },
   {
     title: 'Suggested providers from the address',

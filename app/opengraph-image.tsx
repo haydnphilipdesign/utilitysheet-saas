@@ -130,7 +130,7 @@ export default function OpenGraphImage() {
                         maxWidth: 980,
                     }}
                 >
-                    Send sellers one guided link. Choose Simple Utility Sheet or Advanced Utility Packet output (PDF + link) without the back-and-forth.
+                    Send sellers one guided link. Choose Simple Utility Sheet or Property Handoff Packet output (PDF + link) without the back-and-forth.
                 </div>
 
                 <div style={{ marginTop: 30, display: 'flex', gap: 12, flexWrap: 'wrap' }}>

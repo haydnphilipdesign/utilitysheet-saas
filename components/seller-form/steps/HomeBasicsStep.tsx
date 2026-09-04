@@ -6,6 +6,12 @@ import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import type { AdvancedModuleKey, SewerType, UtilityCategory, WaterSource } from '@/types';
 import { ADVANCED_MODULE_KEYS } from '@/lib/packet/modules';
+import {
+    FUEL_SOURCE_OPTIONS,
+    SEWER_TYPE_OPTIONS,
+    WATER_SOURCE_OPTIONS,
+    getFuelSourceLabel,
+} from '@/lib/packet/seller-questions';
 import { wizardFocusRing, wizardPrimaryButton } from '../wizard-ui';
 
 interface HomeBasicsStepProps {
@@ -99,12 +105,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     Water Source
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                    {[
-                        { id: 'city', label: 'Public Water', hint: "We'll ask the provider name next" },
-                        { id: 'well', label: 'Private Well' },
-                        { id: 'hoa', label: 'HOA / Condo' },
-                        { id: 'not_sure', label: 'Not Sure' },
-                    ].map((opt) => (
+                    {WATER_SOURCE_OPTIONS.map((opt) => (
                         <button
                             key={opt.id}
                             type="button"
@@ -131,12 +132,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     Sewer Type
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                    {[
-                        { id: 'public', label: 'Public Sewer', hint: "We'll ask the authority next" },
-                        { id: 'septic', label: 'Septic System' },
-                        { id: 'hoa', label: 'HOA / Condo' },
-                        { id: 'not_sure', label: 'Not Sure' },
-                    ].map((opt) => (
+                    {SEWER_TYPE_OPTIONS.map((opt) => (
                         <button
                             key={opt.id}
                             type="button"
@@ -166,12 +162,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Select all that apply to your home.</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                    {[
-                        { id: 'natural_gas', label: 'Natural Gas' },
-                        { id: 'propane', label: 'Propane' },
-                        { id: 'oil', label: 'Heating Oil' },
-                        { id: 'electric', label: 'Electric' }
-                    ].map((fuel) => {
+                    {FUEL_SOURCE_OPTIONS.map((fuel) => {
                         const isSelected = state.fuels_present.includes(fuel.id);
                         return (
                             <button
@@ -230,10 +221,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                         {state.fuels_present.map((fuelId) => {
-                            const label = fuelId === 'natural_gas' ? 'Natural Gas' :
-                                fuelId === 'propane' ? 'Propane' :
-                                    fuelId === 'oil' ? 'Heating Oil' :
-                                        'Electric';
+                            const label = getFuelSourceLabel(fuelId);
 
                             return (
                                 <button

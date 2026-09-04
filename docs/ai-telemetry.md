@@ -86,7 +86,7 @@ AI telemetry intentionally does not store:
 - Account numbers or meter numbers.
 - IP addresses.
 - Full seller submission payloads.
-- Advanced packet field values.
+- Property Handoff Packet field values (stored packet mode `advanced`).
 
 Provider names shown to sellers are stored because they are the object being evaluated. Location is limited to state, ZIP3, and city.
 

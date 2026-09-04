@@ -11,7 +11,7 @@ import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
   title: 'UtilitySheet Pricing for Seller Utility Link Workflows',
   description:
-    'View UtilitySheet pricing for Starter, Pro, and Teams. Compare reusable seller links, free requests, submitted-sheet editing, branded utility sheet output, advanced packet mode, and team workflows.',
+    'View UtilitySheet pricing for Starter, Pro, and Teams. Compare reusable seller links, free requests, submitted-sheet editing, branded utility sheet output, Property Handoff Packet mode, and team workflows.',
   path: '/pricing',
   keywords: [
     'utility sheet pricing',
@@ -40,7 +40,7 @@ export default function PricingPage() {
       <MarketingPageHero
         eyebrow="Pricing"
         title="Choose the plan that fits your seller-link workflow"
-        description="Start with the free plan if you want to test the reusable seller link on live files. Upgrade to Pro or Teams when you need submitted-sheet editing, branded utility sheets, advanced packet mode, or shared team workflows."
+        description="Start with the free plan if you want to test the reusable seller link on live files. Upgrade to Pro or Teams when you need submitted-sheet editing, branded utility sheets, Property Handoff Packet mode, or shared team workflows."
       >
         <MarketingBreadcrumbs
           items={[
@@ -74,7 +74,7 @@ export default function PricingPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {[
             'You want every seller utility form and PDF to reflect your own branding instead of UtilitySheet branding.',
-            'You want Advanced Utility Packet mode so the finished sheet includes more than just utilities.',
+            'You want Property Handoff Packet mode so the finished packet includes home systems, access details, and service providers, not just utilities.',
             'You need unlimited requests because the workflow is now part of every transaction.',
             'You need to correct submitted sheets inside the dashboard instead of sending the seller back through the public form.',
             'You need teammates inside the same workspace with shared defaults, shared visibility, and shared editing access.',

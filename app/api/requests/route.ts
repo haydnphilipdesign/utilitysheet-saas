@@ -6,7 +6,7 @@ import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { createRequestBodySchema } from '@/lib/validation/schemas';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
-import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
+import { PACKET_MODE_LABELS, normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     error: 'Upgrade required',
-                    message: 'Advanced Utility Packets are available on Pro and Teams.',
+                    message: `${PACKET_MODE_LABELS.advanced} mode is available on Pro and Teams.`,
                 },
                 { status: 403 }
             );

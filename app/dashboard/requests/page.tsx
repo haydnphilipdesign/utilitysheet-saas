@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 
 import { RequestListActions } from '@/components/requests/RequestListActions';
+import { PACKET_MODE_SHORT_LABELS } from '@/lib/packet/modules';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -487,7 +488,7 @@ export default function RequestsPage() {
                                                     {request.property_address}
                                                 </Link>
                                                 <p className="mt-0.5 text-xs text-muted-foreground">
-                                                    {request.packet_mode === 'advanced' ? 'Advanced packet' : 'Simple sheet'}
+                                                    {PACKET_MODE_SHORT_LABELS[request.packet_mode === 'advanced' ? 'advanced' : 'simple']}
                                                 </p>
                                             </TableCell>
                                             <TableCell className="max-w-48 truncate text-muted-foreground">

@@ -11,7 +11,7 @@ import { breadcrumbSchema, faqPageSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
   title: 'UtilitySheet FAQ for Seller Utility Forms and PDFs',
   description:
-    'Read common questions about UtilitySheet, including seller utility forms, utility sheet PDFs, submitted-sheet editing, plan limits, provider suggestions, and advanced packet mode.',
+    'Read common questions about UtilitySheet, including seller utility forms, utility sheet PDFs, submitted-sheet editing, plan limits, provider suggestions, and Property Handoff Packet mode.',
   path: '/faq',
   keywords: [
     'utility sheet faq',

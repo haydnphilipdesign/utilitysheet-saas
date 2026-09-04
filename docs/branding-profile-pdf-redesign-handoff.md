@@ -16,7 +16,7 @@ Last verified: July 6, 2026, on `main` at merge commit `9ff0ca4`.
 > for historical context; see [pdf-system-reference.md](./pdf-system-reference.md) for current
 > architecture.
 
-Audience: the next designer/engineer refining Branding Profiles and their relationship to the Simple PDF and Advanced Utility Packet.
+Audience: the next designer/engineer refining Branding Profiles and their relationship to the Simple PDF and Property Handoff Packet.
 
 Read [pdf-system-reference.md](./pdf-system-reference.md) for the complete production PDF architecture. This document focuses on the Branding Profile model, its downstream effects, current preview gaps, and safe redesign boundaries.
 
@@ -109,7 +109,7 @@ The production packet data layer, not the PDF CSS, enforces these output rules:
 
 | Feature | Free | Pro / Team |
 | --- | --- | --- |
-| Advanced packet mode | Unavailable | Available |
+| Property Handoff Packet mode | Unavailable | Available |
 | Custom Buyer Next Steps | Product defaults | Profile value honored |
 | Custom next-steps title | Default title | Profile value honored |
 | Welcome message | Hidden | Profile value honored |

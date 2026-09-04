@@ -24,7 +24,7 @@ export default function AboutPage() {
                             Built from <span className="text-slate-500">Real Experience</span>
                         </h1>
                         <p className="text-xl text-muted-foreground leading-relaxed">
-                            UtilitySheet helps transaction coordinators collect utility providers with one seller link, then deliver a clean utility handoff as either a Simple Utility Sheet or an Advanced Utility Packet (web + PDF). Paid plans can also update submitted sheets from the dashboard when the details change later.
+                            UtilitySheet helps transaction coordinators collect utility providers with one seller link, then deliver a clean handoff as either a Simple Utility Sheet or a Property Handoff Packet (web + PDF). Paid plans can also update submitted sheets from the dashboard when the details change later.
                         </p>
                     </div>
                 </div>
@@ -36,7 +36,7 @@ export default function AboutPage() {
                     <div className="rounded-2xl border border-border/60 bg-card/40 p-6 sm:p-8">
                         <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">What UtilitySheet does</h2>
                         <p className="text-muted-foreground text-base sm:text-lg max-w-3xl">
-                            UtilitySheet helps transaction coordinators collect utility provider details from sellers and deliver clean handoff output without repeated follow-ups, with both simple and advanced packet options plus dashboard-side editing on paid plans.
+                            UtilitySheet helps transaction coordinators collect utility provider details from sellers and deliver clean handoff output without repeated follow-ups, with both Simple Utility Sheet and Property Handoff Packet options plus dashboard-side editing on paid plans.
                         </p>
 
                         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -203,7 +203,7 @@ export default function AboutPage() {
                                 UtilitySheet is a lightweight, transaction-friendly way to collect utility provider information and output it in a clean, professional format that can travel with the deal.
                             </p>
                             <p className="text-lg text-muted-foreground">
-                                No heavy setup. Sellers complete a guided form, and you get either a Simple Utility Sheet or an Advanced Utility Packet ready to share as web view + PDF. You can also auto-attach that PDF to completion emails and, on paid plans, update submitted sheets inside the dashboard when something needs to be corrected.
+                                No heavy setup. Sellers complete a guided form, and you get either a Simple Utility Sheet or a Property Handoff Packet ready to share as web view + PDF. You can also auto-attach that PDF to completion emails and, on paid plans, update submitted sheets inside the dashboard when something needs to be corrected.
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-6">

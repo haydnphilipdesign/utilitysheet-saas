@@ -35,7 +35,7 @@ const tiers = [
         features: [
             'Use UtilitySheet on every file',
             'Custom branded link',
-            'Advanced Utility Packet mode',
+            'Property Handoff Packet mode',
             'Edit submitted sheets after seller submission',
             'Live updates to future PDF downloads',
             'Custom PDF branding',

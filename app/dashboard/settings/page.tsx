@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
 import { QuestionGapCapture } from '@/components/question-requests/QuestionGapCapture';
+import { SellerQuestionsDialog } from '@/components/seller-questions/SellerQuestionsDialog';
 import { PageHeader } from '@/components/ui/page-header';
 import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
 import { AccountSecuritySettings } from '@/components/settings/account-security';
@@ -30,6 +31,8 @@ import { toast } from 'sonner';
 import {
     ADVANCED_MODULE_DEFAULTS,
     ADVANCED_MODULE_KEYS,
+    PACKET_MODE_DESCRIPTIONS,
+    PACKET_MODE_LABELS,
     getAdvancedModuleIncludedFieldCount,
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
@@ -524,7 +527,7 @@ export default function SettingsPage() {
             return;
         }
         if (intakeDefaultPacketMode === 'advanced' && intakeAdvancedModules.length === 0) {
-            toast.error('Enable at least one module for Advanced Utility Packet mode.');
+            toast.error(`Enable at least one module for ${PACKET_MODE_LABELS.advanced} mode.`);
             return;
         }
         if (intakeDefaultPacketMode === 'advanced' && intakeHasAdvancedModuleWithNoFields) {
@@ -1204,14 +1207,14 @@ export default function SettingsPage() {
                                         {([
                                             {
                                                 value: 'simple' as const,
-                                                title: 'Simple Utility Sheet',
-                                                description: 'A focused form for utility providers and essential home basics.',
+                                                title: PACKET_MODE_LABELS.simple,
+                                                description: PACKET_MODE_DESCRIPTIONS.simple,
                                                 example: 'Best for straightforward handoffs.',
                                             },
                                             {
                                                 value: 'advanced' as const,
-                                                title: 'Advanced Utility Packet',
-                                                description: 'Adds selectable lawn, access, security, and home-service questions.',
+                                                title: PACKET_MODE_LABELS.advanced,
+                                                description: PACKET_MODE_DESCRIPTIONS.advanced,
                                                 example: 'Best for a complete closing handoff.',
                                             },
                                         ]).map((option) => {
@@ -1248,7 +1251,7 @@ export default function SettingsPage() {
                                     </div>
                                     {!intakeCanCustomize && (
                                         <p className="text-sm text-amber-600 dark:text-amber-300">
-                                            Advanced form defaults are read-only on Free. Upgrade to Pro or Teams to edit.
+                                            {PACKET_MODE_LABELS.advanced} defaults are read-only on Free. Upgrade to Pro or Teams to edit.
                                         </p>
                                     )}
                                 </div>
@@ -1300,7 +1303,7 @@ export default function SettingsPage() {
                                     <div className="space-y-3 rounded-xl border border-border bg-muted/15 p-4">
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between gap-2">
-                                                <p className="text-sm font-semibold text-foreground">Advanced questions</p>
+                                                <p className="text-sm font-semibold text-foreground">Handoff questions</p>
                                                 <span className="text-xs font-medium text-muted-foreground">
                                                     {intakeAdvancedModules.length} modules enabled
                                                 </span>
@@ -1318,7 +1321,7 @@ export default function SettingsPage() {
                                         />
                                         {intakeAdvancedModules.length === 0 && (
                                             <p className="text-sm text-amber-600 dark:text-amber-300">
-                                                Enable at least one module for Advanced Utility Packet mode.
+                                                Enable at least one module for {PACKET_MODE_LABELS.advanced} mode.
                                             </p>
                                         )}
                                         {intakeHasAdvancedModuleWithNoFields && intakeAdvancedModules.length > 0 && (
@@ -1328,6 +1331,21 @@ export default function SettingsPage() {
                                         )}
                                     </div>
                                 )}
+
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <SellerQuestionsDialog
+                                        configuration={{
+                                            packetMode: intakeDefaultPacketMode,
+                                            utilityCategories: intakeUtilityCategories,
+                                            advancedModules: intakeAdvancedModules,
+                                            advancedModuleExclusions: intakeAdvancedModuleExclusions,
+                                            collectElectricMeterNumber: notifications.collect_electric_meter_number,
+                                        }}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        See what sellers are asked, and search every built-in question.
+                                    </p>
+                                </div>
 
                                 <QuestionGapCapture
                                     context="settings"

@@ -23,6 +23,7 @@ import { WizardState } from '../SellerWizard';
 import { UtilityCategory, ProviderSuggestion, TrashPickupDay, TrashUtilityExtra } from '@/types';
 import { trackEvent } from '@/lib/analytics/events';
 import { dedupeProviderSuggestions } from '@/lib/providers/canonicalize';
+import { UTILITY_PROVIDER_HELPERS, getUtilityProviderPrompt } from '@/lib/packet/seller-questions';
 import { PickupDaySelector, type PickupDaySpecial } from '../PickupDaySelector';
 import { wizardFocusRing, wizardGhostButton, wizardPrimaryButton, wizardSecondaryButton, wizardTextInput } from '../wizard-ui';
 
@@ -278,30 +279,8 @@ export function UtilityStep({
     const CategoryIcon = iconConfig?.icon || Zap;
     const iconColorClass = iconConfig?.color || 'text-slate-500';
 
-    const PROVIDER_PROMPTS: Partial<Record<UtilityCategory, string>> = {
-        electric: 'Who provides electricity for this home?',
-        water: 'Who provides water service to this home?',
-        sewer: 'Which authority handles wastewater service for this home?',
-        gas: 'Who supplies natural gas to this home?',
-        propane: 'Who delivers propane to this home?',
-        oil: 'Who delivers heating oil to this home?',
-        trash: 'Who handles trash and recycling pickup?',
-        internet: 'Who provides internet service to this home?',
-        cable: 'Who provides cable or TV service to this home?',
-    };
-    const PROVIDER_HELPERS: Partial<Record<UtilityCategory, string>> = {
-        water: "Usually a city utility or water district. Check a recent water bill if you're not sure.",
-        sewer: "Often the city, county, or a separate sewer authority. Check a recent bill or your county's website.",
-        electric: "Listed on your monthly electric bill.",
-        gas: "Listed on your monthly gas bill.",
-        propane: "The company that fills your propane tank.",
-        oil: "The company that delivers heating oil.",
-        trash: "Could be the city, the county, or a private hauler.",
-        internet: "Like Xfinity, Spectrum, AT&T Fiber, etc.",
-        cable: "Like Xfinity, Spectrum, DirecTV, etc.",
-    };
-    const providerPrompt = PROVIDER_PROMPTS[category] || `Who provides your ${categoryLabel.toLowerCase()}?`;
-    const providerHelper = PROVIDER_HELPERS[category];
+    const providerPrompt = getUtilityProviderPrompt(category, categoryLabel);
+    const providerHelper = UTILITY_PROVIDER_HELPERS[category];
 
     const trackSkip = (reason: 'i_dont_know' | 'skipped_section' = 'i_dont_know') => {
         trackEvent('seller_utility_skipped', {

@@ -17,6 +17,7 @@ import { generatePacketPdf } from '@/lib/pdf-generator';
 import {
     ADVANCED_MODULE_FIELD_METADATA,
     ADVANCED_MODULE_LABELS,
+    PACKET_MODE_LABELS,
     getAdvancedModuleVisibleFieldKeys,
     getEffectiveAdvancedModules,
 } from '@/lib/packet/modules';
@@ -465,7 +466,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                         <div>
                             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Request Setup</p>
                             <p className="text-sm text-foreground">
-                                {data.request.packetMode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
+                                {PACKET_MODE_LABELS[data.request.packetMode === 'advanced' ? 'advanced' : 'simple']}
                             </p>
                             <p className="text-xs text-muted-foreground">
                                 Closing date: {data.request.closingDate || 'Not set'}
@@ -676,7 +677,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             {visibleAdvancedModules.length > 0 ? (
                 <div className="space-y-4">
                     <div className="space-y-1">
-                        <h2 className="text-xl font-semibold text-foreground">Advanced Packet Details</h2>
+                        <h2 className="text-xl font-semibold text-foreground">Property Handoff Details</h2>
                         <p className="text-sm text-muted-foreground">
                             These sections stay aligned with the packet module setup already attached to this request.
                         </p>
@@ -695,7 +696,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                                     <CardHeader>
                                         <CardTitle className="text-foreground">{ADVANCED_MODULE_LABELS[moduleKey]}</CardTitle>
                                         <CardDescription className="text-muted-foreground">
-                                            Update the information that appears in this advanced packet section.
+                                            Update the information that appears in this handoff packet section.
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="grid gap-4 lg:grid-cols-2">

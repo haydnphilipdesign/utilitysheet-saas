@@ -109,7 +109,7 @@ describe('settings reusable link mode', () => {
         expect(screen.getByText('Form access & sharing')).toBeInTheDocument();
         expect(screen.getByText('Completed packet')).toBeInTheDocument();
         expect(screen.getByRole('radio', { name: /Simple Utility Sheet/i })).toHaveAttribute('aria-checked', 'false');
-        expect(screen.getByRole('radio', { name: /Advanced Utility Packet/i })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('radio', { name: /Property Handoff Packet/i })).toHaveAttribute('aria-checked', 'true');
         expect(screen.getByText(/Enable the sections you need, then open one/i)).toBeInTheDocument();
         expect(screen.queryByText('Garage Door Code')).not.toBeInTheDocument();
 
@@ -136,7 +136,7 @@ describe('settings reusable link mode', () => {
         fireEvent.click(screen.getByRole('radio', { name: /Simple Utility Sheet/i }));
         expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: /^Reset$/i }));
-        expect(screen.getByRole('radio', { name: /Advanced Utility Packet/i })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('radio', { name: /Property Handoff Packet/i })).toHaveAttribute('aria-checked', 'true');
         expect(screen.getByText('All defaults saved')).toBeInTheDocument();
 
         const mailboxButton = await screen.findByTestId('module-toggle-mailbox_access');
@@ -211,7 +211,7 @@ describe('settings reusable link mode', () => {
 
         await screen.findByText(/read-only on Free/i);
         expect(screen.getByRole('radio', { name: /Simple Utility Sheet/i })).toBeDisabled();
-        expect(screen.getByRole('radio', { name: /Advanced Utility Packet/i })).toBeDisabled();
+        expect(screen.getByRole('radio', { name: /Property Handoff Packet/i })).toBeDisabled();
         expect(screen.getByTestId('module-toggle-mailbox_access')).toHaveAttribute('aria-disabled', 'true');
         expect(screen.getByRole('button', { name: /Save seller form/i })).toBeDisabled();
     });

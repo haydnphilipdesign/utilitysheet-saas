@@ -5,6 +5,7 @@ import type { BrandProfileFormData, PacketMode } from '@/types';
 import { buildPacketPdfHtml } from '@/lib/pdf/packet-html';
 import { buildBrandingPreviewPacketData } from '@/lib/branding/preview-data';
 import { cn } from '@/lib/utils';
+import { PACKET_MODE_SHORT_LABELS } from '@/lib/packet/modules';
 
 interface UtilitySheetPdfPreviewProps {
     branding: Partial<BrandProfileFormData>;
@@ -122,8 +123,8 @@ export default function UtilitySheetPdfPreview({
         <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live preview</p>
-                {/* Advanced deliverables are Pro/Teams only, so the mode toggle is
-                    hidden for Free accounts and the preview stays honest. */}
+                {/* Property Handoff Packet deliverables are Pro/Teams only, so the mode
+                    toggle is hidden for Free accounts and the preview stays honest. */}
                 {isPro && (
                     <div
                         className="inline-flex rounded-lg border border-border bg-muted p-0.5 text-xs font-medium"
@@ -143,7 +144,7 @@ export default function UtilitySheetPdfPreview({
                                         : 'text-muted-foreground hover:text-foreground'
                                 )}
                             >
-                                {option === 'simple' ? 'Simple' : 'Advanced'}
+                                {PACKET_MODE_SHORT_LABELS[option]}
                             </button>
                         ))}
                     </div>

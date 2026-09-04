@@ -10,7 +10,7 @@ import {
     updateIntakeLinkSlug,
 } from '@/lib/neon/queries';
 import type { IntakeLink } from '@/lib/neon/queries/intake-links';
-import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
+import { PACKET_MODE_LABELS, normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { stackServerApp } from '@/lib/stack/server';
 import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode } from '@/types';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
@@ -196,7 +196,7 @@ export async function POST(request: Request) {
                 return NextResponse.json(
                     {
                         error: 'Upgrade required',
-                        message: 'Advanced Utility Packet default mode is available on Pro and Teams.',
+                        message: `${PACKET_MODE_LABELS.advanced} default mode is available on Pro and Teams.`,
                     },
                     { status: 403 }
                 );
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     error: 'Upgrade required',
-                    message: 'Advanced module defaults are available on Pro and Teams.',
+                    message: 'Handoff section defaults are available on Pro and Teams.',
                 },
                 { status: 403 }
             );
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     error: 'Upgrade required',
-                    message: 'Advanced module field exclusions are available on Pro and Teams.',
+                    message: 'Handoff question selections are available on Pro and Teams.',
                 },
                 { status: 403 }
             );

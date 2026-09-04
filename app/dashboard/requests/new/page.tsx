@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
 import { QuestionGapCapture } from '@/components/question-requests/QuestionGapCapture';
+import { SellerQuestionsDialog } from '@/components/seller-questions/SellerQuestionsDialog';
 import { GooglePlacesAddressInput } from '@/components/address/GooglePlacesAddressInput';
 import {
     Dialog,
@@ -44,6 +45,9 @@ import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import {
     ADVANCED_MODULE_DEFAULTS,
     ADVANCED_MODULE_KEYS,
+    PACKET_MODE_DESCRIPTIONS,
+    PACKET_MODE_LABELS,
+    PROPERTY_HANDOFF_PACKET_SUPPORTING_COPY,
     getAdvancedModuleIncludedFieldCount,
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
@@ -101,6 +105,9 @@ export default function NewRequestPage() {
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [isPro, setIsPro] = useState(false);
+    // Mirrors the server default in app/api/seller/[token]/route.ts, so the seller
+    // question preview matches what the seller will actually be asked.
+    const [collectElectricMeterNumber, setCollectElectricMeterNumber] = useState(true);
     const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string } | null>(null);
     const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
     const [copiedIntake, setCopiedIntake] = useState(false);
@@ -139,6 +146,9 @@ export default function NewRequestPage() {
                     const accountData = await accountResponse.json();
                     paidAccount = accountData.account?.subscription_status === 'pro' || accountData.activeOrganization?.subscription_status === 'team';
                     setIsPro(paidAccount);
+                    setCollectElectricMeterNumber(
+                        accountData.account?.notification_preferences?.collect_electric_meter_number !== false
+                    );
                 }
 
                 if (intakeResponse.ok) {
@@ -912,8 +922,8 @@ export default function NewRequestPage() {
                                                     : 'border-border hover:border-input'
                                             }`}
                                         >
-                                            <p className="text-sm font-semibold text-foreground">Simple Utility Sheet</p>
-                                            <p className="text-xs text-muted-foreground mt-1">Fast, single-page output</p>
+                                            <p className="text-sm font-semibold text-foreground">{PACKET_MODE_LABELS.simple}</p>
+                                            <p className="text-xs text-muted-foreground mt-1">{PACKET_MODE_DESCRIPTIONS.simple}</p>
                                         </button>
                                         <button
                                             type="button"
@@ -943,12 +953,27 @@ export default function NewRequestPage() {
                                             }`}
                                         >
                                             <div className="flex items-center justify-between gap-2">
-                                                <p className="text-sm font-semibold text-foreground">Advanced Utility Packet</p>
+                                                <p className="text-sm font-semibold text-foreground">{PACKET_MODE_LABELS.advanced}</p>
                                                 {!isPro && <Badge variant="outline">Pro / Teams</Badge>}
                                             </div>
-                                            <p className="text-xs text-muted-foreground mt-1">Modular multi-page packet with seller handoff details</p>
+                                            <p className="text-xs text-muted-foreground mt-1">{PACKET_MODE_DESCRIPTIONS.advanced}</p>
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <SellerQuestionsDialog
+                                        configuration={{
+                                            packetMode: formData.packet_mode,
+                                            utilityCategories: formData.utility_categories,
+                                            advancedModules: formData.advanced_modules,
+                                            advancedModuleExclusions: formData.advanced_module_exclusions,
+                                            collectElectricMeterNumber,
+                                        }}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        See what this seller will be asked, and search every built-in question.
+                                    </p>
                                 </div>
 
                                 <QuestionGapCapture
@@ -960,11 +985,11 @@ export default function NewRequestPage() {
                                     <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between">
-                                                <Label className="text-foreground">Advanced Modules & Questions</Label>
+                                                <Label className="text-foreground">Handoff Sections &amp; Questions</Label>
                                                 <span className="text-xs text-muted-foreground">{formData.advanced_modules.length} enabled</span>
                                             </div>
                                             <p className="text-xs text-muted-foreground">
-                                                Open any enabled module to include or remove individual seller questions for this request.
+                                                {PROPERTY_HANDOFF_PACKET_SUPPORTING_COPY} Open any enabled section to include or remove individual seller questions for this request.
                                             </p>
                                         </div>
                                         <AdvancedModuleConfigurator
@@ -982,7 +1007,7 @@ export default function NewRequestPage() {
                                             onToggleField={toggleAdvancedModuleField}
                                         />
                                         {formData.advanced_modules.length === 0 && (
-                                            <p className="text-xs text-amber-500">Enable at least one module for Advanced mode.</p>
+                                            <p className="text-xs text-amber-500">Enable at least one section for {PACKET_MODE_LABELS.advanced} mode.</p>
                                         )}
                                         {hasAdvancedModuleWithNoFields && formData.advanced_modules.length > 0 && (
                                             <p className="text-xs text-amber-500">Each enabled module must include at least one question.</p>

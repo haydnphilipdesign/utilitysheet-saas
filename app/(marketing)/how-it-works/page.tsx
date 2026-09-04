@@ -76,7 +76,7 @@ export default function HowItWorksPage() {
             'Add the reusable seller link to your listing-to-closing checklist or email template once, then reuse it on every file.',
             'When the seller submits, review the finished utility sheet in the dashboard before sharing it with buyers, agents, support staff, or anyone else who needs the information.',
             'On Pro and Teams, you can correct capitalization, addresses, provider names, or contact details after submission without reopening the seller form.',
-            'Use Simple mode when you just need utilities, or Advanced Utility Packet mode when the deal needs deeper transition details.',
+            'Use Simple Utility Sheet mode when you just need utilities, or Property Handoff Packet mode to collect utilities, home systems, access details, and service-provider information in one seller handoff.',
             'Keep the workflow branded on paid plans so the handoff matches the rest of your client communication.',
           ].map((item) => (
             <div key={item} className="rounded-3xl border border-border bg-card/20 p-6 text-muted-foreground">

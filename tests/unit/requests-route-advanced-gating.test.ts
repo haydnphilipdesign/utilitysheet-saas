@@ -143,7 +143,7 @@ describe('POST /api/requests advanced gating', () => {
 
         expect(response.status).toBe(403);
         const body = await response.json();
-        expect(String(body.message || '')).toMatch(/Advanced Utility Packets/i);
+        expect(String(body.message || '')).toMatch(/Property Handoff Packet mode/i);
         expect(mocks.createRequestMock).not.toHaveBeenCalled();
     });
 

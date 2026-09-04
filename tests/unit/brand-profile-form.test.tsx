@@ -227,7 +227,7 @@ describe('BrandProfileForm test PDF', () => {
         generateTestPdfMock.mockResolvedValue(undefined);
         render(<BrandProfileForm initialData={savedProfile} onSubmit={vi.fn()} isEditing isPro />);
 
-        fireEvent.click(screen.getAllByRole('button', { name: 'Advanced' })[0]);
+        fireEvent.click(screen.getAllByRole('button', { name: 'Handoff Packet' })[0]);
         fireEvent.click(screen.getAllByRole('button', { name: /download test pdf/i })[0]);
 
         await waitFor(() => expect(generateTestPdfMock).toHaveBeenCalled());

@@ -13,7 +13,7 @@ import type { Request } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { generatePacketPdf } from '@/lib/pdf-generator';
-import { ADVANCED_MODULE_DEFAULTS } from '@/lib/packet/modules';
+import { ADVANCED_MODULE_DEFAULTS, PACKET_MODE_LABELS } from '@/lib/packet/modules';
 import { trackEvent } from '@/lib/analytics/events';
 
 function FieldValue({ value }: { value?: string | null }) {
@@ -145,8 +145,8 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
             }
             setRequest(data);
             toast.success(nextMode === 'advanced'
-                ? 'Switched to Advanced Utility Packet'
-                : 'Switched to Simple Utility Sheet');
+                ? `Switched to ${PACKET_MODE_LABELS.advanced}`
+                : `Switched to ${PACKET_MODE_LABELS.simple}`);
         } catch (error) {
             console.error('Error switching request mode:', error);
             toast.error('Failed to switch mode');
@@ -269,7 +269,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                         <StatusBadge status={request.status} />
                         <Badge variant="outline" className="border-border text-foreground">
-                            {packetMode === 'advanced' ? 'Advanced Utility Packet' : 'Simple Utility Sheet'}
+                            {PACKET_MODE_LABELS[packetMode]}
                         </Badge>
                         <span className="text-sm text-muted-foreground">
                             Created {format(new Date(request.created_at), 'MMMM d, yyyy')}
@@ -409,7 +409,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                         disabled={updatingMode || packetMode === 'simple'}
                                         onClick={() => handleSwitchMode('simple')}
                                     >
-                                        Simple Utility Sheet
+                                        {PACKET_MODE_LABELS.simple}
                                     </Button>
                                     <Button
                                         size="sm"
@@ -418,7 +418,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                         disabled={updatingMode || packetMode === 'advanced'}
                                         onClick={() => handleSwitchMode('advanced')}
                                     >
-                                        Advanced Utility Packet
+                                        {PACKET_MODE_LABELS.advanced}
                                     </Button>
                                 </div>
                             ) : (

@@ -33,7 +33,7 @@ describe('UtilitySheetPdfPreview production parity', () => {
         expect(html).toContain('Utility Info Sheet');
         expect(html).toContain('Home Basics');
         expect(html).toContain('Utility Providers');
-        expect(screen.queryByRole('button', { name: 'Advanced' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Handoff Packet' })).not.toBeInTheDocument();
     });
 
     it('applies Free-plan gating: forced powered-by and no welcome message', () => {
@@ -60,21 +60,21 @@ describe('UtilitySheetPdfPreview production parity', () => {
 
         const html = getPreviewHtml();
         expect(html).not.toContain(ADVANCED_MODULE_LABELS.service_providers);
-        expect(screen.queryByRole('button', { name: 'Advanced' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Handoff Packet' })).not.toBeInTheDocument();
     });
 
-    it('exposes a Simple/Advanced toggle for Pro accounts and defaults to simple', () => {
+    it('exposes a Utility Sheet / Handoff Packet toggle for Pro accounts and defaults to simple', () => {
         render(<UtilitySheetPdfPreview branding={baseBranding} isPro />);
 
-        expect(screen.getByRole('button', { name: 'Simple' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Advanced' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Utility Sheet' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Handoff Packet' })).toBeInTheDocument();
         expect(getPreviewHtml()).not.toContain(ADVANCED_MODULE_LABELS.service_providers);
     });
 
-    it('renders advanced sections, keeps Home Basics, and keeps the shared title when toggled to Advanced', () => {
+    it('renders advanced sections, keeps Home Basics, and keeps the shared title when toggled to the handoff packet', () => {
         render(<UtilitySheetPdfPreview branding={baseBranding} isPro />);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Handoff Packet' }));
 
         const html = getPreviewHtml();
         // Both modes share the canonical title and include Home Basics,
@@ -108,7 +108,7 @@ describe('UtilitySheetPdfPreview production parity', () => {
             />
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Advanced' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Handoff Packet' }));
         expect(lastMode).toBe('advanced');
 
         rerender(

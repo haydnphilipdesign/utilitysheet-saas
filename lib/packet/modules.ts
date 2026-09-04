@@ -6,6 +6,32 @@ import type {
 
 export const PACKET_MODES: PacketMode[] = ['simple', 'advanced'];
 
+/**
+ * Customer-facing names for the two packet modes. The stored enum values stay
+ * `simple` and `advanced`; only the labels shown to customers live here, so a
+ * future rename is a single edit rather than a sweep.
+ */
+export const PACKET_MODE_LABELS: Record<PacketMode, string> = {
+    simple: 'Simple Utility Sheet',
+    advanced: 'Property Handoff Packet',
+};
+
+/** Compact variants for badges and toggles where the full label does not fit. */
+export const PACKET_MODE_SHORT_LABELS: Record<PacketMode, string> = {
+    simple: 'Utility Sheet',
+    advanced: 'Handoff Packet',
+};
+
+/** One-line description of what each mode collects. */
+export const PACKET_MODE_DESCRIPTIONS: Record<PacketMode, string> = {
+    simple: 'Core utility information.',
+    advanced: 'Utilities plus home access, systems, service providers, and other property details.',
+};
+
+/** Longer supporting copy for the handoff packet, used where a full sentence fits. */
+export const PROPERTY_HANDOFF_PACKET_SUPPORTING_COPY =
+    'Collect utilities, home systems, access details, and service-provider information in one seller handoff.';
+
 export const ADVANCED_MODULE_KEYS: AdvancedModuleKey[] = [
     'lawn_exterior',
     'irrigation_seasonal_controls',

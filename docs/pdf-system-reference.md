@@ -2,7 +2,7 @@
 
 Last verified: July 6, 2026, on `main` at merge commit `9ff0ca4`.
 
-This is the authoritative engineering reference for the downloadable Simple PDF and Advanced Utility Packet. It describes the current production behavior after the Simple pagination work and the shared Simple/Advanced design-system work.
+This is the authoritative engineering reference for the downloadable Simple PDF and Property Handoff Packet (stored packet mode `advanced`). It describes the current production behavior after the Simple pagination work and the shared Simple/Advanced design-system work.
 
 For the Branding Profile redesign implications, read [branding-profile-pdf-redesign-handoff.md](./branding-profile-pdf-redesign-handoff.md) next.
 
@@ -108,9 +108,9 @@ Simple must remain:
 - free of whole-document transforms or dynamic scale-to-fit behavior;
 - capable of repeating Utilities context on continuation pages.
 
-## Advanced Utility Packet behavior
+## Property Handoff Packet behavior
 
-Advanced uses the same shell and shared sections as Simple, then inserts Advanced detail modules after Utilities.
+The Property Handoff Packet (stored packet mode `advanced`) uses the same shell and shared sections as Simple, then inserts handoff detail modules after Utilities.
 
 Current module keys and display sections are owned by `lib/packet/modules.ts`:
 

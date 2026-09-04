@@ -6,7 +6,7 @@ import {
 } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { requestConfigurationBodySchema } from '@/lib/validation/schemas';
-import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
+import { PACKET_MODE_LABELS, normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { canAccessOwnedOrActiveOrganizationResource, getAuthorizedActiveOrganization } from '@/lib/auth/organization-access';
 
@@ -55,7 +55,7 @@ export async function PATCH(
             return NextResponse.json(
                 {
                     error: 'Upgrade required',
-                    message: 'Advanced Utility Packets are available on Pro and Teams.',
+                    message: `${PACKET_MODE_LABELS.advanced} mode is available on Pro and Teams.`,
                 },
                 { status: 403 }
             );
