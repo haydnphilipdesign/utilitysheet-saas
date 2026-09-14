@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
+import { inferSubmittedSheetUtilityStatus } from '@/lib/submitted-sheet/editor';
 import {
     ADVANCED_MODULE_KEYS,
     normalizeAdvancedModuleExclusions,
@@ -267,6 +268,7 @@ const submittedSheetEditableTrashDetailsSchema = z.object({
 });
 
 const submittedSheetEditableUtilitySchema = z.object({
+    status: z.enum(['provider', 'not_sure', 'not_included']).optional(),
     providerName: z.preprocess(nullToUndefined, z.string().trim().max(200).optional()).default(''),
     contactPhone: z.preprocess(nullToUndefined, z.string().trim().max(50).optional()).default(''),
     contactUrl: z.preprocess(
@@ -278,6 +280,22 @@ const submittedSheetEditableUtilitySchema = z.object({
     ).default(''),
     meterNumber: z.preprocess(nullToUndefined, z.string().trim().max(64).optional()).default(''),
     trashDetails: submittedSheetEditableTrashDetailsSchema,
+}).strict()
+    .refine((utility) => utility.status !== 'provider' || utility.providerName.length > 0, {
+        message: 'Provider name is required',
+        path: ['providerName'],
+    })
+    .transform((utility) => ({
+        ...utility,
+        status: utility.status ?? inferSubmittedSheetUtilityStatus(utility),
+    }));
+
+const emptyStringToNull = (val: unknown) => (val === '' || val === undefined ? null : val);
+
+const submittedSheetHomeBasicsSchema = z.object({
+    waterSource: z.preprocess(emptyStringToNull, z.enum(['city', 'well', 'hoa', 'not_sure']).nullable()),
+    sewerType: z.preprocess(emptyStringToNull, z.enum(['public', 'septic', 'hoa', 'not_sure']).nullable()),
+    heatingType: z.preprocess(emptyStringToNull, z.enum(['natural_gas', 'electric', 'propane', 'oil', 'not_sure']).nullable()),
 }).strict();
 
 export const organizationUpdateBodySchema = z.object({
@@ -480,6 +498,8 @@ export const requestConfigurationBodySchema = z.object({
 export const submittedSheetUpdateBodySchema = z.object({
     updatedAt: z.string().datetime({ offset: true }),
     propertyAddress: z.string().trim().min(5).max(200),
+    // Optional so an editor tab loaded before home basics were editable cannot clear them.
+    homeBasics: submittedSheetHomeBasicsSchema.optional(),
     advanced: advancedModuleDataSchema.optional().default({}),
     utilities: z.preprocess(
         (val) => {

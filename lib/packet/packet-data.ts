@@ -113,7 +113,7 @@ type RequestWithPacketFields = Request & {
     advanced_packet_data?: Record<string, unknown> | null;
 };
 
-type RawUtilityRow = {
+export type RawUtilityRow = {
     category: string;
     provider_name?: string | null;
     display_name?: string | null;
@@ -262,6 +262,24 @@ function normalizeTrashDetails(value: unknown): PacketUtilityData['trash_details
     return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
+/**
+ * Maps stored utility rows to packet utilities. A row without a provider name
+ * (the seller's "Not sure" answer) renders as "Not sure"; a utility with no row
+ * is omitted from the packet.
+ */
+export function buildPacketUtilities(rawUtilities: RawUtilityRow[]): PacketUtilityData[] {
+    return rawUtilities.map((utility) => ({
+        category: utility.category,
+        provider_name: utility.provider_name || utility.display_name || utility.provider_display_name || utility.raw_text || 'Not sure',
+        provider_phone: utility.provider_phone || utility.contact_phone || null,
+        provider_website: utility.provider_website || utility.contact_url || null,
+        meter_number: utility.meter_number || null,
+        trash_details: utility.category === 'trash'
+            ? normalizeTrashDetails(utility.extra)
+            : null,
+    }));
+}
+
 function formatAdvancedDisplayValue(raw: unknown): string | null {
     if (raw === null || raw === undefined) return null;
     const value = Array.isArray(raw) ? raw.join(', ') : String(raw).trim();
@@ -358,16 +376,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
         : null;
 
     const rawUtilities = await getUtilityEntriesByRequestId(requestData.id) as RawUtilityRow[];
-    const utilities: PacketUtilityData[] = rawUtilities.map((utility) => ({
-        category: utility.category,
-        provider_name: utility.provider_name || utility.display_name || utility.provider_display_name || utility.raw_text || 'Not sure',
-        provider_phone: utility.provider_phone || utility.contact_phone || null,
-        provider_website: utility.provider_website || utility.contact_url || null,
-        meter_number: utility.meter_number || null,
-        trash_details: utility.category === 'trash'
-            ? normalizeTrashDetails(utility.extra)
-            : null,
-    }));
+    const utilities = buildPacketUtilities(rawUtilities);
 
     const mode: PacketMode = requestWithPacketFields.packet_mode === 'advanced' ? 'advanced' : 'simple';
     const advancedModules = mode === 'advanced'

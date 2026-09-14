@@ -1,12 +1,22 @@
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
-import { getAdvancedModuleVisibleFieldKeys } from '@/lib/packet/modules';
+import {
+    filterAdvancedPacketDataByExclusions,
+    getAdvancedModuleVisibleFieldKeys,
+    normalizeAdvancedModuleExclusions,
+    normalizeAdvancedModules,
+} from '@/lib/packet/modules';
 import type {
     AdvancedModuleExclusions,
     AdvancedModuleKey,
     AdvancedPacketData,
+    PacketMode,
+    Request as StoredRequest,
+    SubmittedSheetEditableHomeBasics,
     SubmittedSheetEditableTrashDetails,
     SubmittedSheetEditableUtilities,
     SubmittedSheetEditableUtility,
+    SubmittedSheetEditorPayload,
+    SubmittedSheetUtilityStatus,
     TrashPickupDay,
     UtilityCategory,
     UtilityEntry,
@@ -22,6 +32,7 @@ const EMPTY_TRASH_DETAILS: SubmittedSheetEditableTrashDetails = {
 
 export function createEmptySubmittedSheetUtility(): SubmittedSheetEditableUtility {
     return {
+        status: 'not_included',
         providerName: '',
         contactPhone: '',
         contactUrl: '',
@@ -109,8 +120,10 @@ export function buildSubmittedSheetUtilities(
 
     for (const category of categories) {
         const existing = utilityEntries.find((entry) => entry.category === category);
+        const providerName = (existing?.display_name || existing?.raw_text || '').trim();
         utilities[category] = {
-            providerName: existing?.display_name || existing?.raw_text || '',
+            status: !existing ? 'not_included' : providerName ? 'provider' : 'not_sure',
+            providerName,
             contactPhone: existing?.contact_phone || '',
             contactUrl: existing?.contact_url || '',
             meterNumber: existing?.meter_number || '',
@@ -123,10 +136,33 @@ export function buildSubmittedSheetUtilities(
     return utilities;
 }
 
+function hasMeaningfulTrashDetails(trashDetails: SubmittedSheetEditableTrashDetails): boolean {
+    if (trashDetails.hasRecycling) return true;
+    if (trashDetails.trashPickupDay) return true;
+    if (trashDetails.trashPickupDays.length > 0) return true;
+    if (trashDetails.recyclingPickupDays.length > 0) return true;
+    return Boolean(trashDetails.recyclingPickupDay);
+}
+
+/**
+ * Status for a payload sent without one (an editor tab loaded before statuses
+ * existed). Mirrors the earlier save behavior: a name means a provider, other
+ * details without a name mean "Not sure", and an empty utility is left off.
+ */
+export function inferSubmittedSheetUtilityStatus(
+    value: Omit<SubmittedSheetEditableUtility, 'status'>
+): SubmittedSheetUtilityStatus {
+    if (value.providerName.trim()) return 'provider';
+    const hasDetails = Boolean(value.contactPhone.trim() || value.contactUrl.trim() || value.meterNumber.trim())
+        || hasMeaningfulTrashDetails(value.trashDetails);
+    return hasDetails ? 'not_sure' : 'not_included';
+}
+
 function normalizeUtilityForComparison(value: SubmittedSheetEditableUtility | undefined) {
-    if (!value) return null;
+    if (!value || value.status === 'not_included') return null;
     return {
-        providerName: value.providerName.trim(),
+        status: value.status,
+        providerName: value.status === 'provider' ? value.providerName.trim() : '',
         contactPhone: value.contactPhone.trim(),
         contactUrl: value.contactUrl.trim(),
         meterNumber: value.meterNumber.trim(),
@@ -163,6 +199,8 @@ function normalizeAdvancedSectionForComparison(value: unknown): Record<string, u
 export function buildSubmittedSheetChangedFields(params: {
     existingPropertyAddress: string;
     nextPropertyAddress: string;
+    existingHomeBasics?: SubmittedSheetEditableHomeBasics;
+    nextHomeBasics?: SubmittedSheetEditableHomeBasics;
     existingUtilities: SubmittedSheetEditableUtilities;
     nextUtilities: SubmittedSheetEditableUtilities;
     existingAdvanced: AdvancedPacketData;
@@ -174,6 +212,18 @@ export function buildSubmittedSheetChangedFields(params: {
 
     if (params.existingPropertyAddress.trim() !== params.nextPropertyAddress.trim()) {
         changed.add('property_address');
+    }
+
+    if (params.existingHomeBasics && params.nextHomeBasics) {
+        if ((params.existingHomeBasics.waterSource || null) !== (params.nextHomeBasics.waterSource || null)) {
+            changed.add('water_source');
+        }
+        if ((params.existingHomeBasics.sewerType || null) !== (params.nextHomeBasics.sewerType || null)) {
+            changed.add('sewer_type');
+        }
+        if ((params.existingHomeBasics.heatingType || null) !== (params.nextHomeBasics.heatingType || null)) {
+            changed.add('heating_type');
+        }
     }
 
     for (const category of UTILITY_CATEGORY_KEYS) {
@@ -242,17 +292,9 @@ export function mergeAdvancedPacketDataPreservingExcluded({
     return merged;
 }
 
-function hasMeaningfulTrashDetails(trashDetails: SubmittedSheetEditableTrashDetails): boolean {
-    if (trashDetails.hasRecycling) return true;
-    if (trashDetails.trashPickupDay) return true;
-    if (trashDetails.trashPickupDays.length > 0) return true;
-    if (trashDetails.recyclingPickupDays.length > 0) return true;
-    return Boolean(trashDetails.recyclingPickupDay);
-}
-
 export type SubmittedSheetUtilityInsertRow = {
     category: UtilityCategory;
-    entry_mode: 'free_text';
+    entry_mode: 'free_text' | 'unknown';
     display_name: string | null;
     raw_text: string | null;
     contact_phone: string | null;
@@ -261,6 +303,12 @@ export type SubmittedSheetUtilityInsertRow = {
     extra: Record<string, unknown>;
 };
 
+/**
+ * Converts editor utilities to stored rows. `not_included` utilities get no row
+ * (omitted from the packet and PDF). `not_sure` utilities keep a nameless
+ * `unknown` row, which the packet prints as "Not sure", together with any
+ * phone, website, meter, or trash details.
+ */
 export function buildSubmittedSheetUtilityInsertRows(
     utilities: SubmittedSheetEditableUtilities
 ): SubmittedSheetUtilityInsertRow[] {
@@ -268,18 +316,10 @@ export function buildSubmittedSheetUtilityInsertRows(
 
     for (const category of UTILITY_CATEGORY_KEYS) {
         const value = utilities[category];
-        if (!value) continue;
+        if (!value || value.status === 'not_included') continue;
 
-        const providerName = value.providerName.trim();
-        const contactPhone = value.contactPhone.trim();
-        const contactUrl = value.contactUrl.trim();
-        const meterNumber = value.meterNumber.trim();
+        const providerName = value.status === 'provider' ? value.providerName.trim() : '';
         const trashDetails = value.trashDetails;
-        const hasTrashDetails = category === 'trash' && hasMeaningfulTrashDetails(trashDetails);
-
-        if (!providerName && !contactPhone && !contactUrl && !meterNumber && !hasTrashDetails) {
-            continue;
-        }
 
         const extra: Record<string, unknown> = {};
         if (category === 'trash') {
@@ -304,15 +344,77 @@ export function buildSubmittedSheetUtilityInsertRows(
 
         rows.push({
             category,
-            entry_mode: 'free_text',
+            entry_mode: providerName ? 'free_text' : 'unknown',
             display_name: providerName || null,
             raw_text: providerName || null,
-            contact_phone: contactPhone || null,
-            contact_url: contactUrl || null,
-            meter_number: meterNumber || null,
+            contact_phone: value.contactPhone.trim() || null,
+            contact_url: value.contactUrl.trim() || null,
+            meter_number: value.meterNumber.trim() || null,
             extra,
         });
     }
 
     return rows;
+}
+
+export type SubmittedSheetEditableRequestRecord = StoredRequest & {
+    utility_categories?: UtilityCategory[] | null;
+    packet_mode?: PacketMode | null;
+    advanced_modules?: AdvancedModuleKey[] | null;
+    advanced_module_exclusions?: AdvancedModuleExclusions | null;
+    advanced_packet_data?: AdvancedPacketData | null;
+};
+
+export function buildSubmittedSheetEditorPayload({
+    requestData,
+    utilityEntries,
+    collectElectricMeterNumber,
+}: {
+    requestData: SubmittedSheetEditableRequestRecord;
+    utilityEntries: UtilityEntry[];
+    collectElectricMeterNumber: boolean;
+}): SubmittedSheetEditorPayload {
+    const packetMode: PacketMode = requestData.packet_mode === 'advanced' ? 'advanced' : 'simple';
+    const advancedModules = packetMode === 'advanced'
+        ? normalizeAdvancedModules(requestData.advanced_modules || [])
+        : [];
+    const advancedModuleExclusions = packetMode === 'advanced'
+        ? normalizeAdvancedModuleExclusions(
+            requestData.advanced_module_exclusions || {},
+            advancedModules
+        )
+        : {};
+    const advanced = packetMode === 'advanced'
+        ? filterAdvancedPacketDataByExclusions(
+            requestData.advanced_packet_data || {},
+            advancedModules,
+            advancedModuleExclusions
+        )
+        : {};
+
+    return {
+        request: {
+            id: requestData.id,
+            publicToken: requestData.public_token,
+            propertyAddress: requestData.property_address,
+            sellerName: requestData.seller_name || null,
+            sellerEmail: requestData.seller_email || null,
+            sellerPhone: requestData.seller_phone || null,
+            closingDate: requestData.closing_date || null,
+            status: requestData.status,
+            updatedAt: requestData.updated_at,
+            packetMode,
+            utilityCategories: requestData.utility_categories || [],
+            advancedModules,
+            advancedModuleExclusions,
+            waterSource: requestData.water_source || null,
+            sewerType: requestData.sewer_type || null,
+            heatingType: requestData.heating_type || null,
+        },
+        editor: {
+            collectElectricMeterNumber,
+            utilities: buildSubmittedSheetUtilities(requestData.utility_categories, utilityEntries),
+            advanced: advanced as AdvancedPacketData,
+        },
+    };
 }

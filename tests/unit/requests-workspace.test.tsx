@@ -224,7 +224,7 @@ describe('Requests workspace', () => {
             '/packet/public-submitted'
         );
         expect(within(submittedCard).getByRole('button', { name: 'Download PDF' })).toBeEnabled();
-        expect(within(submittedCard).getByRole('link', { name: 'Edit submitted sheet' })).toHaveAttribute(
+        expect(within(submittedCard).getByRole('link', { name: 'Edit info sheet' })).toHaveAttribute(
             'href',
             '/dashboard/requests/req_submitted/edit'
         );

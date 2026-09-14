@@ -172,7 +172,7 @@ export function RequestListActions({
                 {!isLocked && request.can_edit_submitted_sheet ? (
                     <ActionLink href={`/dashboard/requests/${request.id}/edit`} variant="ghost">
                         <FilePenLine />
-                        Edit submitted sheet
+                        Edit info sheet
                     </ActionLink>
                 ) : null}
             </div>
@@ -250,7 +250,7 @@ export function RequestListActions({
                             onClick={() => window.location.assign(`/dashboard/requests/${request.id}/edit`)}
                         >
                             <FilePenLine className="mr-2 h-4 w-4" />
-                            Edit submitted sheet
+                            Edit info sheet
                         </DropdownMenuItem>
                     ) : null}
                 </DropdownMenuContent>

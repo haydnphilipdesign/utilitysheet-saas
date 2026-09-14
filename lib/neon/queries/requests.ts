@@ -566,6 +566,12 @@ export async function updateSubmittedRequestData(
         expectedUpdatedAt: string;
         propertyAddress: string;
         propertyAddressStructured: PropertyAddressStructured | null;
+        /** When omitted, water source, sewer type, and heating type are left unchanged. */
+        homeBasics?: {
+            waterSource: string | null;
+            sewerType: string | null;
+            heatingType: string | null;
+        } | null;
         advancedPacketData: Record<string, unknown>;
         utilityEntries: SubmittedSheetUtilityInsertRow[];
         eventData?: Record<string, unknown> | null;
@@ -575,6 +581,7 @@ export async function updateSubmittedRequestData(
 ): Promise<Request | null> {
     if (!sql) return null;
 
+    const updateHomeBasics = Boolean(data.homeBasics);
     const utilityEntriesJson = JSON.stringify(data.utilityEntries);
     const advancedPacketDataJson = JSON.stringify(data.advancedPacketData || {});
     const eventDataJson = data.eventData ? JSON.stringify(data.eventData) : null;
@@ -586,6 +593,9 @@ export async function updateSubmittedRequestData(
                 SET
                     property_address = ${data.propertyAddress},
                     property_address_structured = ${data.propertyAddressStructured ? JSON.stringify(data.propertyAddressStructured) : null}::jsonb,
+                    water_source = CASE WHEN ${updateHomeBasics}::boolean THEN ${data.homeBasics?.waterSource ?? null}::text ELSE water_source END,
+                    sewer_type = CASE WHEN ${updateHomeBasics}::boolean THEN ${data.homeBasics?.sewerType ?? null}::text ELSE sewer_type END,
+                    heating_type = CASE WHEN ${updateHomeBasics}::boolean THEN ${data.homeBasics?.heatingType ?? null}::text ELSE heating_type END,
                     advanced_packet_data = ${advancedPacketDataJson}::jsonb,
                     updated_at = NOW(),
                     last_activity_at = NOW()

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Loader2, Mail, Download, Lock } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Loader2, Mail, Download, Lock, Pencil } from 'lucide-react';
 import type { Request } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -468,7 +468,8 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         {request.can_edit_submitted_sheet ? (
                             <Link href={`/dashboard/requests/${request.id}/edit`}>
                                 <Button variant="outline" className="w-full border-input text-foreground hover:bg-muted">
-                                    Review / Edit Submitted Sheet
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit Info Sheet
                                 </Button>
                             </Link>
                         ) : request.status === 'submitted' ? (

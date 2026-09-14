@@ -343,7 +343,15 @@ export interface SubmittedSheetEditableTrashDetails {
     recyclingPickupDays: TrashPickupDay[];
 }
 
+/**
+ * How a utility appears on the info sheet. Maps onto stored rows:
+ * `provider` is a named row, `not_sure` is a row without a provider name
+ * (printed as "Not sure"), and `not_included` is no row at all.
+ */
+export type SubmittedSheetUtilityStatus = 'provider' | 'not_sure' | 'not_included';
+
 export interface SubmittedSheetEditableUtility {
+    status: SubmittedSheetUtilityStatus;
     providerName: string;
     contactPhone: string;
     contactUrl: string;
@@ -381,9 +389,16 @@ export interface SubmittedSheetEditorPayload {
     };
 }
 
+export interface SubmittedSheetEditableHomeBasics {
+    waterSource: WaterSource | null;
+    sewerType: SewerType | null;
+    heatingType: HeatingType | null;
+}
+
 export interface SubmittedSheetUpdatePayload {
     updatedAt: string;
     propertyAddress: string;
+    homeBasics?: SubmittedSheetEditableHomeBasics;
     utilities: SubmittedSheetEditableUtilities;
     advanced: AdvancedPacketData;
 }

@@ -20,85 +20,16 @@ import {
 } from '@/lib/packet/modules';
 import {
     buildSubmittedSheetChangedFields,
+    buildSubmittedSheetEditorPayload as buildSubmittedSheetResponse,
     buildSubmittedSheetUtilities,
     buildSubmittedSheetUtilityInsertRows,
     mergeAdvancedPacketDataPreservingExcluded,
+    type SubmittedSheetEditableRequestRecord as EditableRequestRecord,
 } from '@/lib/submitted-sheet/editor';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
-import type {
-    AdvancedModuleExclusions,
-    AdvancedModuleKey,
-    AdvancedPacketData,
-    PacketMode,
-    Request as StoredRequest,
-    SubmittedSheetEditorPayload,
-    UtilityCategory,
-    UtilityEntry,
-} from '@/types';
+import type { AdvancedPacketData, PacketMode } from '@/types';
 
 const SUBMITTED_SHEET_MAX_BODY_BYTES = 96 * 1024;
-
-type EditableRequestRecord = StoredRequest & {
-    utility_categories?: UtilityCategory[] | null;
-    packet_mode?: PacketMode | null;
-    advanced_modules?: AdvancedModuleKey[] | null;
-    advanced_module_exclusions?: AdvancedModuleExclusions | null;
-    advanced_packet_data?: AdvancedPacketData | null;
-};
-
-function buildSubmittedSheetResponse({
-    requestData,
-    utilityEntries,
-    collectElectricMeterNumber,
-}: {
-    requestData: EditableRequestRecord;
-    utilityEntries: UtilityEntry[];
-    collectElectricMeterNumber: boolean;
-}): SubmittedSheetEditorPayload {
-    const packetMode: PacketMode = requestData.packet_mode === 'advanced' ? 'advanced' : 'simple';
-    const advancedModules = packetMode === 'advanced'
-        ? normalizeAdvancedModules(requestData.advanced_modules || [])
-        : [];
-    const advancedModuleExclusions = packetMode === 'advanced'
-        ? normalizeAdvancedModuleExclusions(
-            requestData.advanced_module_exclusions || {},
-            advancedModules
-        )
-        : {};
-    const advanced = packetMode === 'advanced'
-        ? filterAdvancedPacketDataByExclusions(
-            requestData.advanced_packet_data || {},
-            advancedModules,
-            advancedModuleExclusions
-        )
-        : {};
-
-    return {
-        request: {
-            id: requestData.id,
-            publicToken: requestData.public_token,
-            propertyAddress: requestData.property_address,
-            sellerName: requestData.seller_name || null,
-            sellerEmail: requestData.seller_email || null,
-            sellerPhone: requestData.seller_phone || null,
-            closingDate: requestData.closing_date || null,
-            status: requestData.status,
-            updatedAt: requestData.updated_at,
-            packetMode,
-            utilityCategories: requestData.utility_categories || [],
-            advancedModules,
-            advancedModuleExclusions,
-            waterSource: requestData.water_source || null,
-            sewerType: requestData.sewer_type || null,
-            heatingType: requestData.heating_type || null,
-        },
-        editor: {
-            collectElectricMeterNumber,
-            utilities: buildSubmittedSheetUtilities(requestData.utility_categories, utilityEntries),
-            advanced: advanced as AdvancedPacketData,
-        },
-    };
-}
 
 async function getEditorContext(id: string) {
     const user = await stackServerApp.getUser();
@@ -237,6 +168,12 @@ export async function PATCH(
         const changedFields = buildSubmittedSheetChangedFields({
             existingPropertyAddress: context.requestData.property_address,
             nextPropertyAddress: parsedBody.data.propertyAddress,
+            existingHomeBasics: {
+                waterSource: context.requestData.water_source || null,
+                sewerType: context.requestData.sewer_type || null,
+                heatingType: context.requestData.heating_type || null,
+            },
+            nextHomeBasics: parsedBody.data.homeBasics,
             existingUtilities: currentUtilities,
             nextUtilities: parsedBody.data.utilities,
             existingAdvanced: (filterAdvancedPacketDataByExclusions(
@@ -267,6 +204,7 @@ export async function PATCH(
             expectedUpdatedAt: parsedBody.data.updatedAt,
             propertyAddress: parsedBody.data.propertyAddress,
             propertyAddressStructured: structuredAddress,
+            homeBasics: parsedBody.data.homeBasics ?? null,
             advancedPacketData: nextAdvancedPacketData,
             utilityEntries: buildSubmittedSheetUtilityInsertRows(parsedBody.data.utilities),
             eventData: {

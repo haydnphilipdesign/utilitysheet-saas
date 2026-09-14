@@ -44,4 +44,35 @@ describe('updateSubmittedRequestData query', () => {
         expect(queryText).toContain("date_trunc('milliseconds', ");
         expect(queryText).not.toContain('AND updated_at = ');
     });
+
+    it('updates home basics only when they are provided', async () => {
+        const baseUpdate = {
+            expectedUpdatedAt: '2026-09-14T12:00:00.000Z',
+            propertyAddress: '123 Main Street',
+            propertyAddressStructured: null,
+            advancedPacketData: {},
+            utilityEntries: [],
+        };
+
+        await updateSubmittedRequestData('req_1', {
+            ...baseUpdate,
+            homeBasics: { waterSource: 'well', sewerType: null, heatingType: 'natural_gas' },
+        });
+        await updateSubmittedRequestData('req_1', baseUpdate);
+
+        const [withHomeBasics, withoutHomeBasics] = sqlTagMock.mock.calls;
+        const queryText = callSqlText(withHomeBasics);
+        expect(queryText).toContain('water_source = CASE WHEN ');
+        expect(queryText).toContain('ELSE water_source END');
+        expect(queryText).toContain('ELSE heating_type END');
+
+        const withValues = withHomeBasics.slice(1);
+        expect(withValues).toContain(true);
+        expect(withValues).toContain('well');
+        expect(withValues).toContain('natural_gas');
+
+        const withoutValues = withoutHomeBasics.slice(1);
+        expect(withoutValues).toContain(false);
+        expect(withoutValues).not.toContain('well');
+    });
 });
