@@ -552,14 +552,14 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
         .provider-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 10px; page-break-inside: auto; }
         thead { display: table-header-group; }
         .provider-section-title th {
-            padding: 7px 12px; text-align: left; background: #f9fafb;
+            padding: 0; text-align: left; background: #f9fafb;
             border: 1px solid #e4e4e7; border-bottom: 0;
             border-radius: 8px 8px 0 0;
         }
-        .provider-section-title h3 { margin: 0; font-size: 12px; line-height: 1.2; font-weight: 700; }
+        .provider-section-title .section-heading { border-radius: 7px 7px 0 0; }
         .provider-columns th {
             padding: 6px 12px; text-align: left; color: #52525b; background: #ffffff;
-            border-top: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7;
+            border-bottom: 1px solid #e4e4e7;
             font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
         }
         .provider-columns th:first-child, .provider-row td:first-child { border-left: 1px solid #e4e4e7; }

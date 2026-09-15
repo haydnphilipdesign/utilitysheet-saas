@@ -1,3 +1,9 @@
+# Latest small fix (2026-09-15, Claude)
+
+- PDF packet: Utility Providers section heading was indented relative to Home Basics/Buyer Next Steps because the title `th` padding stacked with the inner `.section-heading` padding. Fixed in `lib/pdf/packet-html.ts` CSS only (th padding 0, inner heading top radius, removed duplicate divider line). Committed and pushed to main.
+- Validation: packet-html, branding-preview-data, utilitysheet-pdf-preview Vitest files passed (39 tests); ESLint clean; rendered HTML in Chrome and confirmed alignment. No multi-page PDF stress render done (spacing-only change).
+- Next: none required. No required work remains.
+
 # Current work
 
 - Task: Review and redesign UtilitySheet landing and marketing pages.
