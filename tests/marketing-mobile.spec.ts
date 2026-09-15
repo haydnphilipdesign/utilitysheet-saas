@@ -5,10 +5,10 @@ test('Landing first screen explains product and shows primary CTA on mobile', as
 
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: /Stop chasing sellers for utility info/i })).toBeVisible();
-  await expect(page.getByText(/clean buyer-ready utility sheet back/i)).toBeVisible();
-  await expect(page.getByText(/Built for transaction coordinators, listing admins/i)).toBeVisible();
-  await expect(page.getByTestId('hero-signup-cta')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('utility handoff.');
+  await expect(page.getByText(/Collect utility details from sellers/i)).toBeVisible();
+  await expect(page.getByText(/For transaction coordinators & real estate agents/i)).toBeVisible();
+  await expect(page.getByTestId('hero-signup-cta')).toBeInViewport();
   await expect(page.getByTestId('marketing-header-mobile-signup-cta')).toBeVisible();
 });
 
@@ -43,7 +43,7 @@ test('iPad-like layout keeps nav and CTA readable', async ({ page }) => {
   await page.goto('/');
 
   const header = page.locator('header').first();
-  await expect(header.getByRole('link', { name: 'Home' })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
   await expect(header.getByRole('link', { name: 'Features' })).toBeVisible();
   await expect(header.getByRole('link', { name: 'How It Works' })).toBeVisible();
   await expect(header.getByRole('link', { name: 'Pricing' })).toBeVisible();

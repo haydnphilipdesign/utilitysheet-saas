@@ -1,89 +1,70 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { trackEvent } from '@/lib/analytics/events';
-import { useEffect, useRef } from 'react';
-import { useInView } from 'framer-motion';
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { trackEvent } from "@/lib/analytics/events";
+import { useEffect, useRef } from "react";
+import { useInView } from "framer-motion";
 
 export function FinalCtaSection() {
-    const sectionRef = useRef<HTMLElement | null>(null);
-    const isInView = useInView(sectionRef, { once: true, margin: '-20% 0px -20% 0px' });
-
-    useEffect(() => {
-        if (!isInView) return;
-        trackEvent('landing_section_viewed', {
-            section_id: 'final_cta',
-            page: 'landing',
-            location: 'final_cta',
-        });
-        trackEvent('landing_primary_cta_viewed', {
-            cta_id: 'primary_final_start_free',
-            page: 'landing',
-            location: 'final_cta',
-        });
-    }, [isInView]);
-
-    return (
-        <section ref={sectionRef} className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="mx-auto max-w-5xl">
-                <div className="relative rounded-3xl bg-slate-700 p-6 sm:p-8 md:p-16 text-center shadow-2xl shadow-slate-500/20 overflow-hidden">
-                    <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 mix-blend-overlay" />
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 blur-[80px] rounded-full" />
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-slate-900/40 blur-[80px] rounded-full" />
-
-                    <div className="relative z-10">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-sm font-medium mb-6">
-                            <Sparkles className="w-4 h-4" />
-                            <span>Start with your seller link</span>
-                        </div>
-
-                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:text-5xl tracking-tight">
-                            Your next utility request can start with one reusable link.
-                        </h2>
-                        <p className="text-slate-100/90 text-base sm:text-lg mb-8 sm:mb-10 max-w-2xl mx-auto font-medium">
-                            Start free: create your seller link, add it to a template or send it on a live file, and review the finished sheet when the seller submits.
-                        </p>
-
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                            <Link href="/auth/signup" className="w-full sm:w-auto">
-                                <Button
-                                    size="lg"
-                                    data-testid="marketing-final-signup-cta"
-                                    className="h-14 w-full !bg-emerald-500 px-8 text-base font-bold !text-white shadow-xl shadow-emerald-500/20 transition-all hover:!bg-emerald-400 hover:shadow-emerald-500/30 sm:w-auto sm:px-10 sm:text-xl"
-                                    onClick={() =>
-                                        trackEvent('landing_primary_cta_clicked', {
-                                            cta_id: 'primary_final_start_free',
-                                            destination: '/auth/signup',
-                                            location: 'final_cta',
-                                        })
-                                    }
-                                >
-                                    Create My Seller Link
-                                    <ArrowRight className="ml-2 h-5 w-5" />
-                                </Button>
-                            </Link>
-                            <Link href="/demo" className="w-full sm:w-auto">
-                                <Button
-                                    size="lg"
-                                    variant="outline"
-                                    className="w-full sm:w-auto h-14 px-8 sm:px-10 text-base sm:text-xl font-bold border-white/40 text-white hover:bg-white/10 hover:border-white/60"
-                                    onClick={() =>
-                                        trackEvent('landing_cta_clicked', {
-                                            cta_id: 'secondary_final_demo',
-                                            destination: '/demo',
-                                            location: 'final_cta',
-                                        })
-                                    }
-                                >
-                                    Try the Seller Flow
-                                </Button>
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
+  const sectionRef = useRef<HTMLElement>(null);
+  const isInView = useInView(sectionRef, { once: true });
+  useEffect(() => {
+    if (!isInView) return;
+    trackEvent("landing_section_viewed", {
+      section_id: "final_cta",
+      page: "landing",
+      location: "final_cta",
+    });
+    trackEvent("landing_primary_cta_viewed", {
+      cta_id: "primary_final_start_free",
+      page: "landing",
+      location: "final_cta",
+    });
+  }, [isInView]);
+  return (
+    <section ref={sectionRef} className="marketing-final marketing-section">
+      <div className="marketing-container">
+        <p className="marketing-eyebrow">READY FOR YOUR NEXT CLOSING</p>
+        <h2>
+          One less thing to chase.
+          <br />
+          <em>One better way to hand it off.</em>
+        </h2>
+        <p>
+          Create your free seller link and try it on your next file. Three live
+          files per month. No credit card required.
+        </p>
+        <div className="marketing-actions">
+          <Link
+            href="/auth/signup"
+            className="marketing-button"
+            data-testid="marketing-final-signup-cta"
+            onClick={() =>
+              trackEvent("landing_primary_cta_clicked", {
+                cta_id: "primary_final_start_free",
+                destination: "/auth/signup",
+                location: "final_cta",
+              })
+            }
+          >
+            Start free <ArrowRight size={17} />
+          </Link>
+          <Link
+            href="/demo"
+            className="marketing-text-link"
+            onClick={() =>
+              trackEvent("landing_cta_clicked", {
+                cta_id: "secondary_final_demo",
+                destination: "/demo",
+                location: "final_cta",
+              })
+            }
+          >
+            Try the seller experience <ArrowRight size={17} />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
 }

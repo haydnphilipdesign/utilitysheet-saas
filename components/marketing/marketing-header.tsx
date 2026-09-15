@@ -1,237 +1,194 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { useUser } from '@stackframe/stack';
-import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
-import { trackEvent } from '@/lib/analytics/events';
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useUser } from "@stackframe/stack";
+import { Menu, X } from "lucide-react";
+import { trackEvent } from "@/lib/analytics/events";
+
+const navigation = [
+  ["Home", "/"],
+  ["Features", "/features"],
+  ["How It Works", "/how-it-works"],
+  ["Pricing", "/pricing"],
+  ["FAQ", "/faq"],
+  ["Demo", "/demo"],
+  ["About", "/about"],
+];
 
 export function MarketingHeader() {
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const hasTrackedPrimaryViewRef = useRef(false);
-    const user = useUser();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const hasTrackedPrimaryViewRef = useRef(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const user = useUser();
 
-    useEffect(() => {
-        if (!mobileMenuOpen) {
-            return;
-        }
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileMenuOpen(false);
+        toggleRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [mobileMenuOpen]);
 
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
+  useEffect(() => {
+    if (user || hasTrackedPrimaryViewRef.current) return;
+    trackEvent("landing_primary_cta_viewed", {
+      cta_id: "primary_header_start_free",
+      page: "landing",
+      location: "marketing_header",
+    });
+    hasTrackedPrimaryViewRef.current = true;
+  }, [user]);
 
-        return () => {
-            document.body.style.overflow = previousOverflow;
-        };
-    }, [mobileMenuOpen]);
+  function trackSignup(
+    location: "marketing_header" | "marketing_mobile_menu",
+    ctaId: string,
+  ) {
+    trackEvent("landing_primary_cta_clicked", {
+      cta_id: ctaId,
+      destination: "/auth/signup",
+      location,
+    });
+    setMobileMenuOpen(false);
+  }
 
-    useEffect(() => {
-        if (user || hasTrackedPrimaryViewRef.current) {
-            return;
-        }
-
-        trackEvent('landing_primary_cta_viewed', {
-            cta_id: 'primary_header_start_free',
-            page: 'landing',
-            location: 'marketing_header',
-        });
-        hasTrackedPrimaryViewRef.current = true;
-    }, [user]);
-
-    return (
-        <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
-            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center gap-2">
-                    <Link href="/" className="flex items-center gap-2">
-                        <div className="rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 p-1.5 shadow-lg shadow-slate-500/20">
-                            <Image src="/logo-sm.png" alt="UtilitySheet logo" width={20} height={20} className="h-5 w-5" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
-                        <span className="ml-1.5 text-xs font-normal text-norma-muted">by Norma</span>
-                    </Link>
-                </div>
-
-                <nav className="hidden items-center gap-6 lg:gap-8 md:flex">
-                    <Link href="/" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        Home
-                    </Link>
-                    <Link href="/features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        Features
-                    </Link>
-                    <Link href="/how-it-works" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        How It Works
-                    </Link>
-                    <Link href="/pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        Pricing
-                    </Link>
-                    <Link href="/faq" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        FAQ
-                    </Link>
-                    <Link href="/demo" className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        Demo
-                    </Link>
-                    <Link href="/about" className="hidden lg:block text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                        About
-                    </Link>
-                </nav>
-
-                <div className="flex items-center gap-2 sm:gap-4">
-                    {user ? (
-                        <Link href="/dashboard" className="hidden sm:block">
-                            <Button className="bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20">
-                                Dashboard
-                            </Button>
-                        </Link>
-                    ) : (
-                        <>
-                            <Link href="/auth/login" className="hidden sm:block">
-                                <Button variant="ghost" className="text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
-                                    Sign In
-                                </Button>
-                            </Link>
-                            <Link href="/auth/signup" className="hidden sm:block">
-                                <Button
-                                    className="bg-emerald-600 text-white hover:bg-emerald-500 shadow-lg shadow-emerald-500/20"
-                                    data-testid="marketing-header-signup-cta"
-                                    onClick={() =>
-                                        trackEvent('landing_primary_cta_clicked', {
-                                            cta_id: 'primary_header_start_free',
-                                            destination: '/auth/signup',
-                                            location: 'marketing_header',
-                                        })
-                                    }
-                                >
-                                    Create My Link
-                                </Button>
-                            </Link>
-
-                            <Link href="/auth/signup" className="md:hidden">
-                                <Button
-                                    size="sm"
-                                    className="h-9 bg-emerald-600 text-white hover:bg-emerald-500 px-3"
-                                    data-testid="marketing-header-mobile-signup-cta"
-                                    onClick={() =>
-                                        trackEvent('landing_primary_cta_clicked', {
-                                            cta_id: 'primary_header_mobile_start_free',
-                                            destination: '/auth/signup',
-                                            location: 'marketing_header_mobile',
-                                        })
-                                    }
-                                >
-                                    Create Link
-                                </Button>
-                            </Link>
-                        </>
-                    )}
-
-                    {/* Mobile Menu Button */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="md:hidden text-muted-foreground hover:text-foreground"
-                        data-testid="marketing-mobile-menu-toggle"
-                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        aria-label={mobileMenuOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
-                        aria-expanded={mobileMenuOpen}
-                    >
-                        {mobileMenuOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
-                    </Button>
-                </div>
+  return (
+    <header className="fixed top-0 z-50 w-full border-b border-border/70 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2"
+          aria-label="UtilitySheet home"
+        >
+          <span className="rounded-lg bg-slate-600 p-1.5">
+            <Image
+              src="/logo-sm.png"
+              alt=""
+              width={20}
+              height={20}
+              className="h-5 w-5"
+            />
+          </span>
+          <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
+          <span className="text-norma-muted ml-1.5 text-xs">by Norma</span>
+        </Link>
+        <nav
+          aria-label="Main navigation"
+          className="hidden items-center gap-5 md:flex lg:gap-7"
+        >
+          {navigation.map(([label, href]) => (
+            <Link
+              key={href}
+              href={href}
+              className={`${label === "About" ? "hidden lg:block " : ""}py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          {user ? (
+            <Link
+              href="/dashboard"
+              className="marketing-button !min-h-10 !px-4"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/auth/login"
+                className="hidden py-3 text-xs text-muted-foreground hover:text-foreground sm:block"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="marketing-button hidden !min-h-10 !px-4 !text-xs sm:inline-flex"
+                data-testid="marketing-header-signup-cta"
+                onClick={() =>
+                  trackSignup("marketing_header", "primary_header_start_free")
+                }
+              >
+                Start free
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="marketing-button !min-h-10 !px-4 !text-xs sm:hidden"
+                data-testid="marketing-header-mobile-signup-cta"
+                onClick={() =>
+                  trackSignup(
+                    "marketing_header",
+                    "primary_header_mobile_start_free",
+                  )
+                }
+              >
+                Start free
+              </Link>
+            </>
+          )}
+          <button
+            ref={toggleRef}
+            className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted md:hidden"
+            data-testid="marketing-mobile-menu-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={
+              mobileMenuOpen ? "Close Navigation Menu" : "Open Navigation Menu"
+            }
+            aria-expanded={mobileMenuOpen}
+            aria-controls="marketing-mobile-navigation"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </div>
+      {mobileMenuOpen && (
+        <nav
+          id="marketing-mobile-navigation"
+          aria-label="Mobile navigation"
+          className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-background p-4 shadow-lg md:hidden"
+        >
+          {navigation.map(([label, href]) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setMobileMenuOpen(false)}
+              className="block rounded-md px-4 py-3 text-sm hover:bg-muted"
+            >
+              {label}
+            </Link>
+          ))}
+          {!user && (
+            <div className="mt-3 border-t border-border pt-3">
+              <Link
+                href="/auth/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-3 text-sm"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="marketing-button mt-2 w-full"
+                data-testid="marketing-mobile-signup-cta"
+                onClick={() =>
+                  trackSignup(
+                    "marketing_mobile_menu",
+                    "primary_mobile_menu_start_free",
+                  )
+                }
+              >
+                Start free
+              </Link>
             </div>
-
-            {/* Mobile Navigation */}
-            {mobileMenuOpen && (
-                <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
-                    <nav className="mx-auto max-w-7xl px-4 py-4 space-y-2">
-                        <Link
-                            href="/"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                        >
-                            Home
-                        </Link>
-                        <Link
-                            href="/features"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                        >
-                            Features
-                        </Link>
-                        <Link
-                            href="/how-it-works"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                        >
-                            How It Works
-                        </Link>
-                        <Link
-                            href="/pricing"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                        >
-                            Pricing
-                        </Link>
-                        <Link
-                            href="/faq"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                        >
-                            FAQ
-                        </Link>
-                        <Link
-                            href="/demo"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                        >
-                            Demo
-                        </Link>
-                        <Link
-                            href="/about"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                        >
-                            About
-                        </Link>
-                        <div className="pt-4 space-y-2 border-t border-border mt-2">
-                            {user ? (
-                                <Link
-                                    href="/dashboard"
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className="block px-4 py-3 text-sm font-medium text-center bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg transition-colors"
-                                >
-                                    Dashboard
-                                </Link>
-                            ) : (
-                                <>
-                                    <Link
-                                        href="/auth/login"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="block px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                                    >
-                                        Sign In
-                                    </Link>
-                                    <Link
-                                        href="/auth/signup"
-                                        onClick={() => {
-                                            trackEvent('landing_primary_cta_clicked', {
-                                                cta_id: 'primary_mobile_menu_start_free',
-                                                destination: '/auth/signup',
-                                                location: 'marketing_mobile_menu',
-                                            });
-                                            setMobileMenuOpen(false);
-                                        }}
-                                        className="block px-4 py-3 text-sm font-medium text-center bg-emerald-600 text-white hover:bg-emerald-500 rounded-lg transition-colors"
-                                        data-testid="marketing-mobile-signup-cta"
-                                    >
-                                        Create My Link
-                                    </Link>
-                                </>
-                            )}
-                        </div>
-                    </nav>
-                </div>
-            )}
-        </header>
-    );
+          )}
+        </nav>
+      )}
+    </header>
+  );
 }

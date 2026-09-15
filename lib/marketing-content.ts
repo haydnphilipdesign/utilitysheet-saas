@@ -36,7 +36,7 @@ export const faqItems = [
   {
     question: 'Do sellers actually complete the form?',
     answer:
-      'Yes. Nearly 86% of started UtilitySheets are completed, which is why the workflow is built around one simple seller link instead of a long email thread or a blank PDF.',
+      'The form is designed to be easy to finish on a phone: guided questions, provider suggestions when available, and no seller account required. Track submissions from your dashboard.',
   },
   {
     question: 'How does PDF delivery work?',
@@ -133,7 +133,7 @@ export const workflowSteps = [
     number: '02',
     title: 'Let the seller confirm utility providers',
     description:
-      'UtilitySheet guides the seller through each utility. Where suggestions are available, sellers can confirm, search, or type their own provider details, and nearly 86% of started UtilitySheets are completed.',
+      'UtilitySheet guides the seller through each utility. Where suggestions are available, sellers can confirm, search, or type their own provider details.',
   },
   {
     number: '03',

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { PricingSection } from '@/components/landing/PricingSection';
 import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingSection } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { pricingTiers } from '@/lib/marketing-content';
+
 import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
@@ -37,10 +37,10 @@ export default function PricingPage() {
         ]}
       />
 
-      <MarketingPageHero
+      <MarketingPageHero showActions
         eyebrow="Pricing"
-        title="Choose the plan that fits your seller-link workflow"
-        description="Start with the free plan if you want to test the reusable seller link on live files. Upgrade to Pro or Teams when you need submitted-sheet editing, branded utility sheets, Property Handoff Packet mode, or shared team workflows."
+        title="A small price for a smoother handoff."
+        description="Start with three live files per month, free. Add unlimited requests, your branding, and submitted-sheet editing with Pro. Bring your team together with Teams."
       >
         <MarketingBreadcrumbs
           items={[
@@ -52,20 +52,7 @@ export default function PricingPage() {
 
       <PricingSection />
 
-      <MarketingSection
-        title="Which plan is right for you?"
-        description="The plans map pretty naturally to how different real estate teams work."
-      >
-        <div className="grid gap-6 md:grid-cols-3">
-          {pricingTiers.map((tier) => (
-            <article key={tier.name} className="rounded-3xl border border-border bg-card/30 p-6">
-              <h3 className="text-2xl font-semibold text-foreground">{tier.name}</h3>
-              <p className="mt-2 text-lg font-medium text-slate-700">{tier.price}</p>
-              <p className="mt-3 leading-7 text-muted-foreground">{tier.description}</p>
-            </article>
-          ))}
-        </div>
-      </MarketingSection>
+
 
       <MarketingSection
         title="Common reasons teams upgrade"

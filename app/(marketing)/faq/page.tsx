@@ -35,8 +35,8 @@ export default function FaqPage() {
 
       <MarketingPageHero
         eyebrow="FAQ"
-        title="Answers about seller utility forms, utility sheets, and closing workflows"
-        description="These are the questions transaction coordinators, agents, and support teams tend to ask before they adopt UtilitySheet as part of their real estate process."
+        title="A few details before you begin."
+        description="Plans, seller forms, PDFs, and everything in between. Find the answers here."
       >
         <MarketingBreadcrumbs
           items={[

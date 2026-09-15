@@ -36,10 +36,10 @@ export default function FeaturesPage() {
         ]}
       />
 
-      <MarketingPageHero
+      <MarketingPageHero showActions
         eyebrow="Product"
-        title="Features built around one reusable seller utility link"
-        description="UtilitySheet helps transaction coordinators and agents replace scattered texts, PDFs, and reminders with one guided workflow: share the seller link, collect utility information, review the finished sheet, and make dashboard-side corrections when needed."
+        title="Every detail, from seller to handoff."
+        description="Collect the details once. Keep the file organized. Give buyers a utility sheet that is clear, useful, and ready to share."
       >
         <MarketingBreadcrumbs
           items={[
@@ -55,7 +55,7 @@ export default function FeaturesPage() {
       >
         <div className="grid gap-6 md:grid-cols-2">
           {featureHighlights.map((feature) => (
-            <article key={feature.title} className="rounded-3xl border border-border bg-card/40 p-6">
+            <article key={feature.title} className="rounded-3xl border border-border bg-card/40 p-6 last:md:col-span-2">
               <h3 className="text-2xl font-semibold text-foreground">{feature.title}</h3>
               <p className="mt-3 leading-7 text-muted-foreground">{feature.description}</p>
             </article>
@@ -90,7 +90,7 @@ export default function FeaturesPage() {
         </div>
       </MarketingSection>
 
-      <MarketingSection title="Keep exploring" description="The strongest pages to read next depend on whether you are comparing workflow, pricing, or role-specific use cases.">
+      <MarketingSection title="Keep exploring" description="See the workflow, compare plans, or find the fit for your team.">
         <div className="grid gap-4 md:grid-cols-3">
           {[
             {
@@ -119,7 +119,7 @@ export default function FeaturesPage() {
 
       <MarketingCtaBand
         title="See the features inside a real workflow"
-        description="Start free, send a seller utility form on a live file, and see how much back-and-forth disappears before you decide whether paid editing and branding are worth adding."
+        description="Try the guided seller form, then put your free link to work on a real file."
       />
     </div>
   );

@@ -35,9 +35,9 @@ export default function UtilitySheetForRealEstateAgentsPage() {
         ]}
       />
 
-      <MarketingPageHero
+      <MarketingPageHero showActions
         eyebrow="Use Case"
-        title="UtilitySheet for real estate agents who want a cleaner seller utility handoff"
+        title="A thoughtful handoff for your buyers."
         description="Agents want smooth closings, fewer last-minute requests, and a client experience that feels organized. UtilitySheet gives agents and their support teams one reusable seller link for utility details, then a clean sheet and PDF to review before sharing."
       >
         <MarketingBreadcrumbs
@@ -81,7 +81,7 @@ export default function UtilitySheetForRealEstateAgentsPage() {
       >
         <div className="grid gap-4 md:grid-cols-2">
           {[
-            'Sellers can complete the form without a login or app install, and nearly 86% of started UtilitySheets are completed.',
+            'Sellers can complete the form without a login or app install.',
             'The finished utility sheet is easy to share with buyers and support staff.',
             'Pro and Teams can correct submitted sheets in the dashboard when small details change before closing.',
             'The workflow helps the transaction feel more organized and less reactive.',

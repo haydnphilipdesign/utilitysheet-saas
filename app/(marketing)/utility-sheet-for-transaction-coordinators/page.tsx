@@ -36,9 +36,9 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
         ]}
       />
 
-      <MarketingPageHero
+      <MarketingPageHero showActions
         eyebrow="For Transaction Coordinators"
-        title="Utility collection for transaction coordinators"
+        title="One less loose end on every file."
         description="One seller link. Cleaner submissions. Buyer-ready utility sheets. UtilitySheet gives TCs a repeatable workflow for the utility handoff that usually turns into follow-up texts, blank forms, and last-minute cleanup."
       >
         <MarketingBreadcrumbs
@@ -57,7 +57,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
           {[
             {
               title: 'Fewer seller chase-downs',
-              copy: 'Instead of multiple follow-up emails or texts, you send one guided link and let the seller complete the form in a cleaner flow. Nearly 86% of started UtilitySheets are completed.',
+              copy: 'Instead of multiple follow-up emails or texts, you send one guided link and let the seller complete the form in a cleaner flow.',
             },
             {
               title: 'One workflow on every file',

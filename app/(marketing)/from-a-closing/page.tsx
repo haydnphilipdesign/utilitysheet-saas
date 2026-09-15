@@ -152,7 +152,7 @@ export default async function FromAClosingPage({
                 <ul className="grid gap-3 md:grid-cols-2">
                     {[
                         'Sellers need no account, no app, and no research. "Not sure" is always allowed.',
-                        'Nearly 86% of started UtilitySheets are completed.',
+                        'Sellers can complete the guided form on their phone without an account.',
                         'The finished sheet arrives as a web view and PDF, ready to forward.',
                         'The free plan covers 3 live files per month, with no credit card required.',
                     ].map((item) => (

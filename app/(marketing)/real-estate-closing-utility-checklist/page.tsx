@@ -44,9 +44,9 @@ export default function RealEstateClosingUtilityChecklistPage() {
         ]}
       />
 
-      <MarketingPageHero
+      <MarketingPageHero showActions
         eyebrow="Checklist"
-        title="A real estate closing utility checklist that actually helps your team finish the handoff"
+        title="Your closing utility checklist, sorted."
         description="Closing utility prep sounds simple until someone has to chase the seller, confirm providers, clean up the information, and hand it off to buyers. This checklist shows the core steps, and UtilitySheet helps your team run them in a more repeatable way."
       >
         <MarketingBreadcrumbs

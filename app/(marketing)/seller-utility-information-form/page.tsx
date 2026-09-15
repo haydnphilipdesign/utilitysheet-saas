@@ -36,9 +36,9 @@ export default function SellerUtilityInformationFormPage() {
         ]}
       />
 
-      <MarketingPageHero
+      <MarketingPageHero showActions
         eyebrow="Search Intent"
-        title="A seller utility information form that starts with one reusable link"
+        title="The utility form sellers can finish on their phone."
         description="Many real estate teams still collect utility details through loose checklists, emails, or text chains. UtilitySheet turns that into a guided seller form and gives your team a cleaner utility sheet at the end."
       >
         <MarketingBreadcrumbs
@@ -57,7 +57,7 @@ export default function SellerUtilityInformationFormPage() {
           {[
             {
               title: 'Guided completion',
-              copy: 'The seller follows one flow instead of guessing which details your team still needs. Nearly 86% of started UtilitySheets are completed.',
+              copy: 'The seller follows one flow instead of guessing which details your team still needs.',
             },
             {
               title: 'Cleaner provider details',

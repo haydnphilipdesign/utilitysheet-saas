@@ -1,5 +1,6 @@
 'use client';
 
+import './marketing.css';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -35,7 +36,7 @@ export default function MarketingLayout({
     children: ReactNode;
 }) {
     return (
-        <div className="flex min-h-screen flex-col bg-background text-foreground">
+        <div className="marketing-site flex min-h-screen flex-col bg-background text-foreground">
             <MarketingHeader />
 
             <main className="flex-1 pt-16">
@@ -53,7 +54,7 @@ export default function MarketingLayout({
                                 <span className="text-xl font-bold">UtilitySheet</span>
                             </Link>
                             <p className="mt-4 max-w-xs text-sm text-muted-foreground leading-relaxed">
-                                Share one reusable seller link, collect utility details, and get a clean web sheet plus PDF ready for review. Pro and Teams can make dashboard edits after submission.
+                                A simpler way to collect seller utility details and give buyers a thoughtful, organized handoff.
                             </p>
                             <div className="mt-5 flex flex-wrap gap-3">
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">

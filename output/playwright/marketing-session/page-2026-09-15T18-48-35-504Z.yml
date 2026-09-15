@@ -1,0 +1,540 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - link "UtilitySheet logo UtilitySheet by Norma" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "UtilitySheet logo" [ref=e8]
+        - generic [ref=e9]: UtilitySheet
+        - generic [ref=e10]: by Norma
+    - main [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - generic [ref=e18]: Utility handoff software for real estate closings
+            - heading "Stop chasing sellers for utility info." [level=1] [ref=e23]
+            - paragraph [ref=e24]:
+              - text: Send one reusable seller link, let the seller complete it on their phone, and get a clean buyer-ready utility sheet back.
+              - generic [ref=e25]: Built for transaction coordinators, listing admins, and real estate teams that need the same utility handoff on every file.
+            - generic [ref=e26]:
+              - link [ref=e27] [cursor=pointer]:
+                - /url: /auth/signup
+                - button "Create My Seller Link" [ref=e28]
+              - link [ref=e29] [cursor=pointer]:
+                - /url: /demo
+                - button "Try the Seller Flow" [ref=e30]
+            - generic [ref=e31]:
+              - generic [ref=e32]: No credit card required
+              - generic [ref=e36]: Try it on 3 live files per month
+              - generic [ref=e40]: No seller login or app required
+          - generic [ref=e47]:
+            - generic [ref=e48]: 66-second workflow
+            - generic "UtilitySheet product demo showing the seller link, utility confirmation, PDF delivery, and dashboard submission workflow" [ref=e57]: Your browser does not support the video tag.
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - paragraph [ref=e61]: What UtilitySheet replaces
+            - heading "One link in, one clean utility handoff out." [level=2] [ref=e62]
+            - paragraph [ref=e63]: UtilitySheet is not another transaction platform. It handles the small, repeated closing task that still turns into texts, blank forms, inconsistent answers, and last-minute cleanup.
+            - generic [ref=e64]:
+              - generic [ref=e70]:
+                - heading "Reusable seller link" [level=3] [ref=e71]
+                - paragraph [ref=e72]: Add it to your listing email, text template, transaction checklist, or signature once.
+              - generic [ref=e77]:
+                - heading "Phone-friendly seller flow" [level=3] [ref=e78]
+                - paragraph [ref=e79]: Sellers enter the property address, confirm suggested providers when available, or type their own answers.
+              - generic [ref=e85]:
+                - heading "Buyer-ready utility sheet" [level=3] [ref=e86]
+                - paragraph [ref=e87]: Review the finished web sheet, make Pro/Team edits if needed, and download the clean PDF.
+            - generic [ref=e88]: Make utility collection a repeatable TC workflow instead of a one-off message thread on every file.
+          - generic [ref=e93]:
+            - generic [ref=e95]:
+              - generic [ref=e96]: Finished utility handoff
+              - generic [ref=e97]: Ready to review and share
+            - generic [ref=e100]:
+              - generic [ref=e101]:
+                - generic [ref=e102]:
+                  - img "UtilitySheet Logo" [ref=e104]
+                  - generic [ref=e105]: UtilitySheet
+                - generic [ref=e106]: UTILITY INFO SHEET
+              - generic [ref=e113]:
+                - heading "123 Main St, Springfield" [level=3] [ref=e114]
+                - generic [ref=e115]: Generated today
+              - generic [ref=e120]:
+                - generic [ref=e121]:
+                  - generic [ref=e122]: Utility
+                  - generic [ref=e123]: Provider
+                  - generic [ref=e124]: Contact
+                - generic [ref=e125]:
+                  - generic [ref=e126]:
+                    - generic [ref=e127]: Electric
+                    - generic [ref=e132]: Springfield Electric
+                    - generic [ref=e133]:
+                      - generic [ref=e134]: (800) 555-0100
+                      - generic [ref=e137]: springfieldelectric.com
+                  - generic [ref=e142]:
+                    - generic [ref=e143]: Gas
+                    - generic [ref=e148]: County Gas Co.
+                    - generic [ref=e149]:
+                      - generic [ref=e150]: (800) 555-0101
+                      - generic [ref=e153]: countygas.com
+                  - generic [ref=e158]:
+                    - generic [ref=e159]: Water
+                    - generic [ref=e165]: Springfield Water
+                    - generic [ref=e166]:
+                      - generic [ref=e167]: (800) 555-0102
+                      - generic [ref=e170]: springfieldwater.gov
+                  - generic [ref=e175]:
+                    - generic [ref=e176]: Trash & Recycling
+                    - generic [ref=e182]: Waste Services
+                    - generic [ref=e183]:
+                      - generic [ref=e184]: (800) 555-0103
+                      - generic [ref=e187]: wasteservices.com
+                  - generic [ref=e192]:
+                    - generic [ref=e193]: Internet
+                    - generic [ref=e200]: Xfinity
+                    - generic [ref=e201]:
+                      - generic [ref=e202]: (800) 555-0104
+                      - generic [ref=e205]: xfinity.com
+        - generic [ref=e214]:
+          - generic [ref=e215]:
+            - generic [ref=e216]: Sound familiar?
+            - heading "Replace utility chase-downs with one seller handoff workflow" [level=2] [ref=e221]
+            - paragraph [ref=e222]: "The old way is a blank form, scattered replies, and last-minute cleanup. UtilitySheet keeps the task simple: send the link, let the seller complete it, and review the finished buyer-ready sheet."
+          - generic [ref=e223]:
+            - generic [ref=e224]:
+              - generic [ref=e225]: The Old Way
+              - generic [ref=e230]:
+                - paragraph [ref=e235]: Multiple texts/emails to collect provider details
+                - paragraph [ref=e241]: Delays and follow-ups when sellers miss info
+                - paragraph [ref=e247]: Typos and vague answers turn into more cleanup before closing
+              - paragraph [ref=e249]: "Result: scattered answers, delayed files, and extra cleanup"
+            - generic [ref=e250]:
+              - generic [ref=e251]: With UtilitySheet
+              - generic [ref=e255]:
+                - paragraph [ref=e260]: Send one secure seller link you can reuse on every file
+                - paragraph [ref=e265]: Seller enters the address and confirms providers on their phone
+                - paragraph [ref=e271]: Get a clean web sheet plus shareable PDF after submission
+              - paragraph [ref=e273]: "Result: fewer last-minute utility questions and the same clean sheet every time"
+          - generic [ref=e275]:
+            - generic [ref=e276]: "Simple utility collection:"
+            - generic [ref=e281]: one guided seller link, one utility sheet you can review and share
+        - generic [ref=e283]:
+          - generic [ref=e284]:
+            - generic [ref=e285]:
+              - generic [ref=e290]: One link
+              - generic [ref=e291]: Reused across files
+              - generic [ref=e292]: Add one link to your templates and reuse it across transactions
+            - generic [ref=e293]:
+              - generic [ref=e298]: No login
+              - generic [ref=e299]: For sellers
+              - generic [ref=e300]: No app install, no login, no account required for the seller
+            - generic [ref=e301]:
+              - generic [ref=e306]: Nearly 86%
+              - generic [ref=e307]: Started sheets completed
+              - generic [ref=e308]: Most sellers who start a UtilitySheet finish it
+            - generic [ref=e309]:
+              - generic [ref=e314]: PDF ready
+              - generic [ref=e315]: After submission
+              - generic [ref=e316]: Review the web sheet and download a shareable utility sheet PDF
+          - generic [ref=e317]:
+            - generic [ref=e318]:
+              - heading "Used by real estate professionals collecting utility info on real files" [level=2] [ref=e319]
+              - paragraph [ref=e320]: Real feedback from TCs and real estate professionals using UtilitySheet to get cleaner seller submissions with less back-and-forth.
+            - generic [ref=e321]:
+              - generic [ref=e322]:
+                - blockquote [ref=e326]: “Before UtilitySheet, we sent blank forms to homeowners through Dotloop or DocuSign, and they rarely came back completed. Now we send one seller link from a templated email, get notified when it is complete, download the finished sheet, and we are done.”
+                - generic [ref=e327]:
+                  - generic [ref=e328]: KN
+                  - generic [ref=e329]:
+                    - generic [ref=e330]: Kaylin Nunn
+                    - generic [ref=e331]: Owner & Director of Transaction Coordination, Precision Leverage Solutions
+              - generic [ref=e332]:
+                - blockquote [ref=e336]: “UtilitySheet has made obtaining utility information much easier. Before, we sent emails asking for the info and tried to track down utility companies last minute. Now we keep the email simple, send sellers the UtilitySheet link, and the completion rate has been pretty dang good.”
+                - generic [ref=e337]:
+                  - generic [ref=e338]: CB
+                  - generic [ref=e339]:
+                    - generic [ref=e340]: Courtney Bownes
+                    - generic [ref=e341]: Owner | Lead Transaction Manager, FastForward Transaction Management
+              - generic [ref=e342]:
+                - blockquote [ref=e346]: “Before UtilitySheet, I used a Google spreadsheet with local providers and copied information into emails. UtilitySheet makes it easy for the co-op agent to send the form to the seller, and the completed branded PDF helps level up my TC company's service.”
+                - generic [ref=e347]:
+                  - generic [ref=e348]: AA
+                  - generic [ref=e349]:
+                    - generic [ref=e350]: Agatha Aquilia
+                    - generic [ref=e351]: Transaction Manager, Aquilia Associates
+            - generic [ref=e352]:
+              - generic [ref=e353]:
+                - paragraph [ref=e354]: Origin story
+                - heading "Built from real TC workflow" [level=3] [ref=e355]
+                - paragraph [ref=e356]: UtilitySheet started as an internal tool for a working transaction coordinator, then grew into a reusable seller link for TCs and real estate teams.
+              - generic [ref=e357]:
+                - blockquote [ref=e361]: “Before UtilitySheet, I was chasing utility information through texts and emails, then cleaning up vague answers like "the gas company" right before closing. Now I send sellers one link, they complete the guided form, and I get a clean sheet that is easy to review and share.”
+                - generic [ref=e362]:
+                  - generic [ref=e363]: DO
+                  - generic [ref=e364]:
+                    - generic [ref=e365]: Debbie O'Brien
+                    - generic [ref=e366]: Transaction Coordinator, PA Real Estate Support Services, LLC
+          - generic [ref=e368]:
+            - generic [ref=e369]: No credit card required
+            - generic [ref=e371]: "Free plan: 3 requests/month"
+            - generic [ref=e373]: Cancel anytime
+        - generic [ref=e376]:
+          - generic [ref=e377]:
+            - generic [ref=e378]: Built for TC workflows
+            - heading "Utility collection that fits the TC process." [level=2] [ref=e383]
+            - paragraph [ref=e384]: Turn a repeated closing task into one reusable seller link, one review step, and one buyer-ready utility sheet.
+          - generic [ref=e386]:
+            - paragraph [ref=e387]: Sound familiar?
+            - generic [ref=e388]:
+              - generic [ref=e389]: Repeating the same utility questions on every file
+              - generic [ref=e395]: Incomplete utility details right before closing
+              - generic [ref=e399]: Waiting days for sellers to respond
+          - generic [ref=e404]:
+            - generic [ref=e405]:
+              - generic [ref=e406]:
+                - heading "What you get" [level=4] [ref=e407]
+                - paragraph [ref=e408]: A repeatable seller utility handoff for every file.
+              - generic [ref=e409]:
+                - generic [ref=e415]:
+                  - generic [ref=e416]:
+                    - generic [ref=e417]: One permanent link, reused on every file
+                    - generic [ref=e418]: Reusable on every file
+                  - generic [ref=e419]: Share your seller link in texts, emails, or your signature. Sellers enter the address, then confirm or type their utility providers.
+                - generic [ref=e425]:
+                  - generic [ref=e426]:
+                    - generic [ref=e427]: Collect only the details the file needs
+                    - generic [ref=e428]: Simple or advanced
+                  - generic [ref=e429]: Keep standard utility sheets fast, or add transition details like lawn care, security, mailbox, and access notes when the file needs more context.
+                - generic [ref=e435]:
+                  - generic [ref=e436]:
+                    - generic [ref=e437]: Review and correct submitted sheets
+                    - generic [ref=e438]: Reduces cleanup
+                  - generic [ref=e439]: When a seller submits, Pro and Teams can fix formatting, provider names, addresses, and contact details in the dashboard before the sheet gets shared forward.
+                - generic [ref=e440]:
+                  - link [ref=e441] [cursor=pointer]:
+                    - /url: /auth/signup
+                    - button "Create My Seller Link" [ref=e442]
+                  - link [ref=e443] [cursor=pointer]:
+                    - /url: /demo
+                    - button "Try the Seller Flow" [ref=e444]
+            - generic [ref=e446]:
+              - generic [ref=e447]:
+                - heading "The TC process" [level=4] [ref=e448]
+                - paragraph [ref=e449]: Drop the link into the messages you already send.
+              - generic [ref=e450]:
+                - generic [ref=e451]:
+                  - generic [ref=e452]: "1"
+                  - generic [ref=e453]: Add your seller link to your email signature, listing email template, or text template once.
+                - generic [ref=e454]:
+                  - generic [ref=e455]: "2"
+                  - generic [ref=e456]: When a new file opens, text or email the seller your link. They enter the property address, confirm suggested providers when available, or type their own answers.
+                - generic [ref=e457]:
+                  - generic [ref=e458]: "3"
+                  - generic [ref=e459]: Your completion email can include the finished PDF automatically. If anything needs cleanup after submission, update the live sheet in the dashboard before you share the web link or PDF forward.
+                - generic [ref=e465]:
+                  - generic [ref=e466]: The dashboard stays out of your way
+                  - generic [ref=e467]: Paste your reusable link into email, text, Dotloop, Skyslope, Brokermint, or your TC checklist. Open UtilitySheet when you need to review a submission, fix a typo, update provider details, manage branding, or adjust settings.
+        - generic [ref=e469]:
+          - generic [ref=e470]:
+            - paragraph [ref=e471]: How it works
+            - heading "How the seller-link flow works" [level=2] [ref=e472]
+            - paragraph [ref=e473]: Set up one reusable link, add it to your listing email template or send it directly, then let the seller complete the utility form from their phone.
+          - generic [ref=e474]:
+            - generic [ref=e475]:
+              - generic [ref=e476]:
+                - heading "01.Set up your reusable seller link" [level=4] [ref=e480]
+                - paragraph [ref=e481]: Your workspace starts with one seller link you can reuse across files. Add it to your listing email template, text template, checklist, or send it directly on a transaction.
+              - img "UtilitySheet dashboard showing one reusable seller link ready to copy and send" [ref=e484]
+            - generic [ref=e486]:
+              - generic [ref=e487]:
+                - heading "02.Seller enters the address and confirms utilities" [level=4] [ref=e493]
+                - paragraph [ref=e494]: Sellers open the link on their phone, enter the property address, and move through a guided utility form. UtilitySheet can suggest likely providers based on the address, and sellers can confirm, search, or type their own answer.
+              - img "Mobile seller form showing guided utility questions inside UtilitySheet" [ref=e497]
+            - generic [ref=e499]:
+              - generic [ref=e500]:
+                - heading "03.Get a clean sheet and PDF back" [level=4] [ref=e505]
+                - paragraph [ref=e506]: After submission, your team gets a clean web sheet and downloadable PDF. Your completion email can include the finished PDF automatically, and Pro/Teams can make dashboard edits that carry through to future PDF downloads.
+              - img "UtilitySheet dashboard showing submitted requests with options to view, edit, and download the PDF" [ref=e509]
+        - generic [ref=e512]:
+          - generic [ref=e513]:
+            - paragraph [ref=e514]: Features
+            - heading "Built around the seller link" [level=2] [ref=e515]
+            - paragraph [ref=e516]: "UtilitySheet is focused on one real estate job: collect seller utility details once, turn them into a clean web sheet and PDF, and keep the finished sheet useful after submission."
+          - generic [ref=e517]:
+            - generic [ref=e518]:
+              - heading "Reusable seller link" [level=4] [ref=e524]
+              - paragraph [ref=e525]: Use the same seller intake link across listings instead of rebuilding a utility request for every property.
+            - generic [ref=e526]:
+              - heading "A dashboard you do not have to babysit" [level=4] [ref=e530]
+              - paragraph [ref=e531]: Set up your reusable link once, add it to your template, and let sellers complete the form. Open the dashboard when you need to review, edit, manage branding, or adjust settings.
+            - generic [ref=e532]:
+              - generic [ref=e533]: Handoff
+              - heading "Simple Utility Sheet and Property Handoff Packet modes" [level=4] [ref=e540]
+              - paragraph [ref=e541]: Choose core utility information, or collect utilities, home systems, access details, and service-provider information in one seller handoff.
+            - generic [ref=e542]:
+              - heading "Completion email + PDF attachment" [level=4] [ref=e549]
+              - paragraph [ref=e550]: The completed PDF can attach to your completion email when the seller submits, so the sheet is ready to review right away.
+            - generic [ref=e551]:
+              - heading "Suggested providers from the address" [level=4] [ref=e557]
+              - paragraph [ref=e558]: UtilitySheet can suggest likely providers based on the property address. Sellers can confirm, search, or type their own answer.
+            - generic [ref=e559]:
+              - generic [ref=e560]: Pro + Teams
+              - heading "Submitted-sheet editing on Pro and Teams" [level=4] [ref=e566]
+              - paragraph [ref=e567]: Correct capitalization, addresses, provider names, phone numbers, websites, and other seller-entered details after submission without reopening the seller form.
+            - generic [ref=e568]:
+              - heading "Clean utility sheet output" [level=4] [ref=e574]
+              - paragraph [ref=e575]: Create a buyer-ready utility sheet and PDF you can review, share, and send without reformatting.
+            - generic [ref=e576]:
+              - heading "Tracking, reminders, and status visibility" [level=4] [ref=e582]
+              - paragraph [ref=e583]: See which requests are complete, which sellers need a nudge, and which utility sheets are ready to review.
+            - generic [ref=e584]:
+              - heading "Secure by design" [level=4] [ref=e590]
+              - paragraph [ref=e591]: Seller links are separate from share links. After submission, public and seller links stay read-only, and any corrections happen inside the dashboard.
+            - generic [ref=e592]:
+              - generic [ref=e593]: Pro + Teams
+              - heading "White-label branding" [level=4] [ref=e602]
+              - paragraph [ref=e603]: Paid plans can add your logo, colors, branded link, and branded PDF output so the sheet looks like it came from your team.
+        - generic [ref=e605]:
+          - generic [ref=e606]:
+            - paragraph [ref=e607]: Pricing
+            - heading "Pricing for making UtilitySheet your default workflow" [level=2] [ref=e608]
+            - paragraph [ref=e609]: Start free on a few live files. Upgrade when you want UtilitySheet on every transaction, branded buyer-ready output, post-submission edits, or a shared TC team workspace.
+          - generic [ref=e610]:
+            - generic [ref=e611]:
+              - generic [ref=e612]:
+                - heading "Starter" [level=4] [ref=e613]
+                - generic [ref=e614]: Free
+                - paragraph [ref=e616]: For proving the seller utility handoff workflow on a few live files each month.
+              - list [ref=e617]:
+                - listitem [ref=e618]:
+                  - generic [ref=e622]: Try it on 3 live files per month
+                - listitem [ref=e623]:
+                  - generic [ref=e627]: Reusable seller link
+                - listitem [ref=e628]:
+                  - generic [ref=e632]: Simple Utility Sheet mode
+                - listitem [ref=e633]:
+                  - generic [ref=e637]: Dashboard view of submitted sheets
+                - listitem [ref=e638]:
+                  - generic [ref=e642]: Clean PDF and share link
+                - listitem [ref=e643]:
+                  - generic [ref=e647]: Completion email notifications
+                - listitem [ref=e648]:
+                  - generic [ref=e652]: PDF can attach to completion emails
+                - listitem [ref=e653]:
+                  - generic [ref=e657]: Saved over-limit submissions
+                - listitem [ref=e658]:
+                  - generic [ref=e662]: UtilitySheet branding on shared links
+              - link [ref=e663] [cursor=pointer]:
+                - /url: /auth/signup
+                - button "Create My Link" [ref=e664]
+            - generic [ref=e665]:
+              - generic [ref=e666]: Most Popular
+              - generic [ref=e667]:
+                - heading "Pro" [level=4] [ref=e668]
+                - generic [ref=e669]:
+                  - generic [ref=e670]: $9
+                  - generic [ref=e671]: /month
+                - paragraph [ref=e672]: For solo TCs and agents who want UtilitySheet as their default utility workflow on every transaction.
+              - list [ref=e673]:
+                - listitem [ref=e674]:
+                  - generic [ref=e678]: Use UtilitySheet on every file
+                - listitem [ref=e679]:
+                  - generic [ref=e683]: Custom branded link
+                - listitem [ref=e684]:
+                  - generic [ref=e688]: Property Handoff Packet mode
+                - listitem [ref=e689]:
+                  - generic [ref=e693]: Edit submitted sheets after seller submission
+                - listitem [ref=e694]:
+                  - generic [ref=e698]: Live updates to future PDF downloads
+                - listitem [ref=e699]:
+                  - generic [ref=e703]: Custom PDF branding
+                - listitem [ref=e704]:
+                  - generic [ref=e708]: Branded PDF attachments on completion emails
+                - listitem [ref=e709]:
+                  - generic [ref=e713]: Unlock locked submissions
+                - listitem [ref=e714]:
+                  - generic [ref=e718]: Remove UtilitySheet footer
+                - listitem [ref=e719]:
+                  - generic [ref=e723]: Priority support
+                - listitem [ref=e724]:
+                  - generic [ref=e728]: Single-seat account
+              - link [ref=e729] [cursor=pointer]:
+                - /url: /auth/signup?plan=pro
+                - button "Start Pro" [ref=e730]
+            - generic [ref=e731]:
+              - generic [ref=e732]:
+                - heading "Teams" [level=4] [ref=e733]
+                - generic [ref=e734]:
+                  - generic [ref=e735]: $7
+                  - generic [ref=e736]: /seat/mo
+                - paragraph [ref=e737]: For TC companies, admins, and real estate teams that need shared access, shared defaults, and consistent branded output across multiple people.
+              - list [ref=e738]:
+                - listitem [ref=e739]:
+                  - generic [ref=e743]: Everything in Pro
+                - listitem [ref=e744]:
+                  - generic [ref=e748]: Shared organization workspace
+                - listitem [ref=e749]:
+                  - generic [ref=e753]: Any teammate with request access can edit submitted sheets
+                - listitem [ref=e754]:
+                  - generic [ref=e758]: Invite members and assign roles
+                - listitem [ref=e759]:
+                  - generic [ref=e763]: Seat-based billing with 3-seat minimum
+                - listitem [ref=e764]:
+                  - generic [ref=e768]: Org-wide packet defaults
+                - listitem [ref=e769]:
+                  - generic [ref=e773]: Consistent branded output across the team
+                - listitem [ref=e774]:
+                  - generic [ref=e778]: Priority support
+              - link [ref=e779] [cursor=pointer]:
+                - /url: /auth/signup?plan=teams
+                - button "Start Teams" [ref=e780]
+          - paragraph [ref=e781]: Starter is for proving the workflow on a few files. Pro is for solo TCs and agents using UtilitySheet by default. Teams is for TC companies, admins, and real estate teams standardizing utility collection across multiple people.
+        - generic [ref=e783]:
+          - heading "Frequently Asked Questions" [level=2] [ref=e784]
+          - paragraph [ref=e785]: Answers about seller utility forms, utility sheet PDFs, pricing, and how UtilitySheet fits a real estate closing workflow.
+          - region [ref=e786]:
+            - heading [level=3] [ref=e788]:
+              - button "Who is UtilitySheet for?" [ref=e789]
+            - heading [level=3] [ref=e791]:
+              - button "Can I use one link for every property?" [ref=e792]
+            - heading [level=3] [ref=e794]:
+              - button "What is the Property Handoff Packet?" [ref=e795]
+            - heading [level=3] [ref=e797]:
+              - button "Does the seller need an account or app?" [ref=e798]
+            - heading [level=3] [ref=e800]:
+              - button "Do sellers actually complete the form?" [ref=e801]
+            - heading [level=3] [ref=e803]:
+              - button "How does PDF delivery work?" [ref=e804]
+            - heading [level=3] [ref=e806]:
+              - button "Can I edit a submitted info sheet?" [ref=e807]
+            - heading [level=3] [ref=e809]:
+              - button "How do provider suggestions work?" [ref=e810]
+            - heading [level=3] [ref=e812]:
+              - button "What happens if I hit the free plan limit?" [ref=e813]
+            - heading [level=3] [ref=e815]:
+              - button "How long does it take to get started?" [ref=e816]
+            - heading [level=3] [ref=e818]:
+              - button "What happens after I sign up?" [ref=e819]
+        - generic [ref=e826]:
+          - generic [ref=e827]: Start with your seller link
+          - heading "Your next utility request can start with one reusable link." [level=2] [ref=e832]
+          - paragraph [ref=e833]: "Start free: create your seller link, add it to a template or send it on a live file, and review the finished sheet when the seller submits."
+          - generic [ref=e834]:
+            - link [ref=e835] [cursor=pointer]:
+              - /url: /auth/signup
+              - button "Create My Seller Link" [ref=e836]
+            - link [ref=e837] [cursor=pointer]:
+              - /url: /demo
+              - button "Try the Seller Flow" [ref=e838]
+    - contentinfo [ref=e839]:
+      - generic [ref=e840]:
+        - generic [ref=e841]:
+          - generic [ref=e842]:
+            - link "UtilitySheet logo UtilitySheet" [ref=e843] [cursor=pointer]:
+              - /url: /
+              - img "UtilitySheet logo" [ref=e845]
+              - generic [ref=e846]: UtilitySheet
+            - paragraph [ref=e847]: Share one reusable seller link, collect utility details, and get a clean web sheet plus PDF ready for review. Pro and Teams can make dashboard edits after submission.
+            - generic [ref=e848]:
+              - generic [ref=e849]: Free plan available
+              - generic [ref=e851]: No credit card required
+          - generic [ref=e853]:
+            - heading "Product" [level=3] [ref=e854]
+            - list [ref=e855]:
+              - listitem [ref=e856]:
+                - link "Features" [ref=e857] [cursor=pointer]:
+                  - /url: /features
+              - listitem [ref=e858]:
+                - link "How It Works" [ref=e859] [cursor=pointer]:
+                  - /url: /how-it-works
+              - listitem [ref=e860]:
+                - link "Pricing" [ref=e861] [cursor=pointer]:
+                  - /url: /pricing
+              - listitem [ref=e862]:
+                - link "FAQ" [ref=e863] [cursor=pointer]:
+                  - /url: /faq
+              - listitem [ref=e864]:
+                - link "Interactive Demo" [ref=e865] [cursor=pointer]:
+                  - /url: /demo
+          - generic [ref=e866]:
+            - heading "Use Cases" [level=3] [ref=e867]
+            - list [ref=e868]:
+              - listitem [ref=e869]:
+                - link "For Transaction Coordinators" [ref=e870] [cursor=pointer]:
+                  - /url: /utility-sheet-for-transaction-coordinators
+              - listitem [ref=e871]:
+                - link "For Real Estate Agents" [ref=e872] [cursor=pointer]:
+                  - /url: /utility-sheet-for-real-estate-agents
+              - listitem [ref=e873]:
+                - link "Seller Utility Information Form" [ref=e874] [cursor=pointer]:
+                  - /url: /seller-utility-information-form
+              - listitem [ref=e875]:
+                - link "Closing Utility Checklist" [ref=e876] [cursor=pointer]:
+                  - /url: /real-estate-closing-utility-checklist
+          - generic [ref=e877]:
+            - heading "Company" [level=3] [ref=e878]
+            - list [ref=e879]:
+              - listitem [ref=e880]:
+                - link "About" [ref=e881] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e882]:
+                - link "Start Free" [ref=e883] [cursor=pointer]:
+                  - /url: /auth/signup
+              - listitem [ref=e884]:
+                - link "Sign In" [ref=e885] [cursor=pointer]:
+                  - /url: /auth/login
+          - generic [ref=e886]:
+            - heading "Legal" [level=3] [ref=e887]
+            - list [ref=e888]:
+              - listitem [ref=e889]:
+                - link "Privacy Policy" [ref=e890] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=e891]:
+                - link "Terms of Service" [ref=e892] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=e893]:
+                - link "Cookie Policy" [ref=e894] [cursor=pointer]:
+                  - /url: /cookie-policy
+        - generic [ref=e895]:
+          - generic [ref=e896]:
+            - generic [ref=e897]:
+              - paragraph [ref=e898]: Part of Norma
+              - heading "Explore the rest of the suite" [level=3] [ref=e899]
+              - paragraph [ref=e900]: Norma keeps each tool focused. Intake handles the front-end handoff, UtilitySheet handles utility coordination, and NormaTC is opening to private beta as the transaction hub.
+            - link "Explore the suite" [ref=e901] [cursor=pointer]:
+              - /url: https://normatc.com/products?utm_source=norma_suite&utm_medium=cross_link&utm_campaign=utilitysheet_footer
+          - generic [ref=e904]:
+            - article [ref=e905]:
+              - generic [ref=e906]:
+                - generic [ref=e907]:
+                  - paragraph [ref=e908]: Norma Intake
+                  - paragraph [ref=e909]: Contract-first intake for cleaner handoffs before utility setup starts.
+                - generic [ref=e910]: Live
+              - link "Learn more" [ref=e912] [cursor=pointer]:
+                - /url: https://normatc.com/products?utm_source=norma_suite&utm_medium=cross_link&utm_campaign=utilitysheet_footer_norma-intake#norma-intake
+            - article [ref=e913]:
+              - generic [ref=e914]:
+                - generic [ref=e915]:
+                  - paragraph [ref=e916]: UtilitySheet by Norma
+                  - paragraph [ref=e917]: One seller link for polished utility coordination and clean closing packets.
+                - generic [ref=e918]: Live
+              - generic [ref=e919]: You're here
+            - article [ref=e920]:
+              - generic [ref=e921]:
+                - generic [ref=e922]:
+                  - paragraph [ref=e923]: NormaTC
+                  - paragraph [ref=e924]: Full transaction coordination hub opening to private beta soon.
+                - generic [ref=e925]: Private beta soon
+              - link "Learn more" [ref=e927] [cursor=pointer]:
+                - /url: https://normatc.com/waitlist?utm_source=norma_suite&utm_medium=cross_link&utm_campaign=utilitysheet_footer_normatc
+        - generic [ref=e928]:
+          - paragraph [ref=e929]:
+            - text: Part of the Norma ecosystem ·
+            - link "normatc.com" [ref=e930] [cursor=pointer]:
+              - /url: https://normatc.com
+          - generic [ref=e931]:
+            - paragraph [ref=e932]: © 2026 UtilitySheet. All rights reserved.
+            - paragraph [ref=e933]:
+              - text: Built by
+              - link "Multimedium" [ref=e934] [cursor=pointer]:
+                - /url: https://www.multimedium.dev
+  - region "Notifications alt+T"

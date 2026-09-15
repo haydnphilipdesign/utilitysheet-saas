@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { HowItWorks } from '@/components/landing/HowItWorks';
 import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingSection } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { workflowSteps } from '@/lib/marketing-content';
+
 import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
@@ -37,10 +37,10 @@ export default function HowItWorksPage() {
         ]}
       />
 
-      <MarketingPageHero
+      <MarketingPageHero showActions
         eyebrow="Workflow"
-        title="How UtilitySheet turns one seller link into a clean utility handoff"
-        description="UtilitySheet is designed to be simple for sellers and useful for transaction teams. After signup, your reusable seller link starts the process; guided utility intake keeps information cleaner; and finished output is ready to review, share, and update from the dashboard."
+        title="Send a link. Get the details. Hand it off."
+        description="A simple seller experience, from the first question to the finished PDF. Here is how UtilitySheet fits into your next closing."
       >
         <MarketingBreadcrumbs
           items={[
@@ -52,20 +52,7 @@ export default function HowItWorksPage() {
 
       <HowItWorks />
 
-      <MarketingSection
-        title="The three parts of the workflow"
-        description="Each part is lightweight on purpose so the process is easy to repeat across listings."
-      >
-        <div className="grid gap-6 md:grid-cols-3">
-          {workflowSteps.map((step) => (
-            <article key={step.number} className="rounded-3xl border border-border bg-card/30 p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-600">{step.number}</p>
-              <h3 className="mt-3 text-2xl font-semibold text-foreground">{step.title}</h3>
-              <p className="mt-3 leading-7 text-muted-foreground">{step.description}</p>
-            </article>
-          ))}
-        </div>
-      </MarketingSection>
+
 
       <MarketingSection
         title="Where it fits in your process"
