@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getMonthlyUsage, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
+import { getRequests, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -148,18 +148,8 @@ export async function POST(request: Request) {
             );
         }
 
-        // Check plan limits before creating request
-        const usage = await getMonthlyUsage(accountId, organizationId);
-        if (usage.used >= usage.limit) {
-            return NextResponse.json(
-                {
-                    error: 'Monthly limit reached',
-                    message: `You have reached your ${usage.plan} plan limit of ${usage.limit} requests per month. Please upgrade to continue.`,
-                    usage,
-                },
-                { status: 403 }
-            );
-        }
+        // Plan limits are not enforced at creation. Usage counts seller submissions,
+        // and Free submissions past the monthly limit are saved locked.
 
         // Automatically associate with default brand profile if not specified
         let brandProfileId = parsedBody.data.brandProfileId;
@@ -205,8 +195,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
         }
 
-        // Mark request as 'sent' so it counts against plan limits
-        // Draft requests that are abandoned won't count
+        // Mark request as 'sent'. It counts toward plan usage only once the seller submits.
         await updateRequestStatus(newRequest.id, 'sent');
 
         // Log request creation event

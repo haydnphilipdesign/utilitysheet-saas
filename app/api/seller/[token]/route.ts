@@ -492,8 +492,8 @@ export async function POST(
         };
         const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number !== false;
 
-        // Only apply free-plan overage locking for requests that have not yet been metered.
-        // (Agent-created requests are metered on creation and quota-checked on creation.)
+        // Requests are metered on their first counted submission. Only apply free-plan
+        // overage locking before that, so seller resubmissions never re-lock or re-count.
         const isUnmetered = requestRecord.metered_at == null;
         let shouldLock = false;
         if (!isTestDriveSubmission && !isPaid && isUnmetered) {

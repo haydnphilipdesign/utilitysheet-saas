@@ -1818,7 +1818,7 @@ export default function SettingsPage() {
                                     ? `Unlimited requests • ${orgSeatUsage.used}/${activeOrganization?.seat_quantity ?? '—'} seats used`
                                     : usage.plan === 'pro'
                                         ? 'Unlimited requests'
-                                        : `${usage.limit} requests per month`}
+                                        : `${usage.limit} submitted sheets per month`}
                             </p>
                         </div>
                         {orgIsTeam ? (
@@ -1916,7 +1916,7 @@ export default function SettingsPage() {
                         <div className="p-4 bg-muted/50 rounded-lg border border-border">
                             <div className="flex items-center justify-between mb-2">
                                 <p className="text-sm text-muted-foreground">Monthly Usage</p>
-                                <p className="text-sm font-medium text-foreground">{usage.used} of {usage.limit} requests</p>
+                                <p className="text-sm font-medium text-foreground">{usage.used} of {usage.limit} submitted sheets</p>
                             </div>
                             <div className="w-full h-3 bg-background rounded-full overflow-hidden border border-border shadow-inner">
                                 <div
@@ -1931,7 +1931,7 @@ export default function SettingsPage() {
                             </div>
                             {usage.used >= usage.limit && (
                                 <p className="text-sm text-destructive mt-2">
-                                    You&apos;ve reached your monthly limit. Upgrade to continue creating requests.
+                                    You&apos;ve used this month&apos;s free submissions. You can still send requests, but new seller submissions stay locked until you upgrade.
                                 </p>
                             )}
                         </div>

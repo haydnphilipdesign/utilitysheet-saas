@@ -1,13 +1,25 @@
+# Active task (2026-09-15, Claude)
+
+- Task: Count Free usage on seller submission only, stop blocking Free request creation at the limit (over-limit submissions lock), restore dashboard "Delete request", and clean existing metering data.
+- Status: Implemented and validated locally. Uncommitted on main. Not deployed. Migration written but NOT run.
+- Plan: `.ai/plans/2026-09-15-submission-metering-and-request-delete.md` (outcome, deviations, validation recorded). Decision: `.ai/decisions/2026-09-15-submission-based-free-metering.md`.
+- Behavior: `metered_at` is set only by seller submission; `createRequest` defaults unmetered; `updateRequestStatus` never meters; `POST /api/requests` and intake start no longer block Free at the limit; over-limit Free submissions lock. Delete restored in row menus (desktop and mobile) and request detail page via `components/requests/DeleteRequestDialog.tsx`.
+- Files changed: `lib/neon/queries/requests.ts`, `app/api/requests/route.ts`, `app/api/intake/[slug]/start/route.ts`, `app/api/seller/[token]/route.ts` (comment; working copy normalized to LF), `components/requests/RequestListActions.tsx`, new `components/requests/DeleteRequestDialog.tsx`, `app/dashboard/page.tsx`, `app/dashboard/requests/page.tsx`, `app/dashboard/requests/[id]/page.tsx`, `app/dashboard/requests/new/page.tsx`, `app/dashboard/settings/page.tsx`, new `migrations-requests-submission-metering.sql`, tests (`request-metering-soft-delete`, `requests-route-advanced-gating`, `intake-start-route`, `dashboard-reusable-link`, new `request-list-actions`, new `delete-request-dialog`).
+- Validation: full Vitest 153 files passed; ESLint clean on touched files; `tsc --noEmit` passed. Not run: browser check, `npm run build`.
+- Required next (owner authorization needed): commit and deploy, then run the migration against production (idempotent; run only after deploy). Owner also wants a Facebook reply to a customer; post it only after deploy since it describes the new behavior.
+- Risks: concurrent submissions at one remaining slot can both stay unlocked (pre-existing); admin stats reading `metered_at` now reflect submissions.
+- No concurrent editing warnings beyond the uncommitted files above.
+
 # Latest small fix (2026-09-15, Claude)
 
 - PDF packet: Utility Providers section heading was indented relative to Home Basics/Buyer Next Steps because the title `th` padding stacked with the inner `.section-heading` padding. Fixed in `lib/pdf/packet-html.ts` CSS only (th padding 0, inner heading top radius, removed duplicate divider line). Committed and pushed to main.
 - Validation: packet-html, branding-preview-data, utilitysheet-pdf-preview Vitest files passed (39 tests); ESLint clean; rendered HTML in Chrome and confirmed alignment. No multi-page PDF stress render done (spacing-only change).
 - Next: none required. No required work remains.
 
-# Current work
+# Previous work (marketing redesign)
 
 - Task: Review and redesign UtilitySheet landing and marketing pages.
-- Status: Completed locally 2026-09-15. No required implementation work remains. Not committed, pushed, or deployed.
+- Status: Completed 2026-09-15 and committed in `7ed97d8` (verified in git log; earlier note said uncommitted).
 - Agent: Codex; branch main. Plan: `.ai/plans/2026-09-15-marketing-redesign.md` (completed).
 - User usage constraint honored: latest check 35% five-hour / 49% weekly remaining, above 15% pause threshold. No Opus transfer needed.
 

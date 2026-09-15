@@ -266,7 +266,7 @@ describe('dashboard customer home', () => {
             'href',
             '/dashboard/requests?status=needs_attention'
         );
-        expect(screen.getByText('2 of 3 requests remaining this month')).toBeInTheDocument();
+        expect(screen.getByText('2 of 3 free submissions left this month')).toBeInTheDocument();
         expect(screen.queryByTestId('dashboard-new-request')).not.toBeInTheDocument();
 
         expect(fetchMock).toHaveBeenCalledWith(

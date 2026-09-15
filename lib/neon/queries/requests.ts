@@ -324,11 +324,9 @@ export async function createRequest(data: {
     const publicToken = generateToken();
     const sellerToken = generateToken();
     const status = data.status ?? 'sent';
-    const meteredAt = data.meteredAt !== undefined
-        ? data.meteredAt
-        : status === 'draft'
-            ? null
-            : new Date().toISOString();
+    // Requests count toward plan usage only once a seller submits them
+    // (see the seller submission route), so new requests start unmetered.
+    const meteredAt = data.meteredAt ?? null;
     const packetMode = data.packetMode ?? 'simple';
     const advancedModules = Array.isArray(data.advancedModules) ? data.advancedModules : [];
     const advancedModuleExclusions = data.advancedModuleExclusions || {};
@@ -719,11 +717,7 @@ export async function updateRequestStatus(
         UPDATE requests 
         SET
             status = ${status},
-            last_activity_at = NOW(),
-            metered_at = CASE
-                WHEN metered_at IS NULL AND ${status}::text <> 'draft' THEN NOW()
-                ELSE metered_at
-            END
+            last_activity_at = NOW()
         WHERE id = ${id}
         RETURNING *
     `;

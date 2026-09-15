@@ -7,7 +7,6 @@ import {
     getAccountOrganizations,
     getIntakeBrandProfile,
     getIntakeLinkBySlug,
-    getMonthlyUsage,
     getRequestBySellerToken,
     normalizeIntakeUtilityCategories,
 } from '@/lib/neon/queries';
@@ -125,19 +124,8 @@ export async function POST(
         const organizations = await getAccountOrganizations(account.id);
         const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
         const isPaid = account.subscription_status === 'pro' || activeOrg?.subscription_status === 'team';
-        if (!isPaid) {
-            const usage = await getMonthlyUsage(account.id, activeOrg?.id);
-            if (usage.used >= usage.limit) {
-                return NextResponse.json(
-                    {
-                        error: 'Monthly limit reached',
-                        code: 'MONTHLY_LIMIT_REACHED',
-                        message: `This account has reached its ${usage.plan} plan limit of ${usage.limit} requests this month.`,
-                    },
-                    { status: 403 }
-                );
-            }
-        }
+        // No plan-limit check here: Free submissions past the monthly limit are
+        // saved locked by the seller submission route.
 
         const normalizedAddress = normalizeAddress(canonicalPropertyAddress);
         const cookieName = `us_intake_${slug}`;

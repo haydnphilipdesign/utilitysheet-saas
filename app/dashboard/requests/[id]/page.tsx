@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Loader2, Mail, Download, Lock, Pencil } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Loader2, Mail, Download, Lock, Pencil, Trash2 } from 'lucide-react';
+import { DeleteRequestDialog } from '@/components/requests/DeleteRequestDialog';
 import type { Request } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -31,6 +32,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     const [sendingReminder, setSendingReminder] = useState(false);
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [updatingMode, setUpdatingMode] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
 
     const sellerToken = request?.seller_token || request?.public_token || '';
     const sellerLink = useMemo(() => {
@@ -191,10 +193,21 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     const modeSwitchAllowed = !isLocked && (request.status === 'draft' || request.status === 'sent');
     const canRemind = !isLocked && (request.status === 'sent' || request.status === 'in_progress') && !!request.seller_email;
     const canViewPacket = !isLocked && request.status === 'submitted';
+    const deleteDialog = (
+        <DeleteRequestDialog
+            request={deleteOpen ? request : null}
+            onClose={() => setDeleteOpen(false)}
+            onDeleted={() => {
+                setDeleteOpen(false);
+                router.push('/dashboard/requests');
+            }}
+        />
+    );
 
     if (isLocked) {
         return (
             <div className="max-w-4xl mx-auto space-y-6">
+                {deleteDialog}
                 <div className="space-y-2">
                     <Button
                         variant="ghost"
@@ -247,6 +260,14 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         >
                             Upgrade to Pro — $9/month
                         </Button>
+                        <Button
+                            variant="ghost"
+                            className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => setDeleteOpen(true)}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete request
+                        </Button>
                     </CardContent>
                 </Card>
             </div>
@@ -255,6 +276,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
+            {deleteDialog}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1 min-w-0">
                     <Button
@@ -301,6 +323,14 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             {sendingReminder ? 'Sending…' : 'Send Reminder'}
                         </Button>
                     )}
+                    <Button
+                        variant="outline"
+                        className="border-input text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => setDeleteOpen(true)}
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                    </Button>
                 </div>
             </div>
 

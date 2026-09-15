@@ -11,6 +11,7 @@ import {
     Mail,
     MoreHorizontal,
     Play,
+    Trash2,
 } from 'lucide-react';
 
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -29,6 +31,7 @@ type RequestListActionsProps = {
     onCopySellerLink: (request: Request) => void;
     onSendReminder: (request: Request) => void;
     onDownloadPdf: (request: Request) => void;
+    onDelete: (request: Request) => void;
     sendingReminder: boolean;
     downloadingPdf: boolean;
 };
@@ -111,6 +114,7 @@ export function RequestListActions({
     onCopySellerLink,
     onSendReminder,
     onDownloadPdf,
+    onDelete,
     sendingReminder,
     downloadingPdf,
 }: RequestListActionsProps) {
@@ -175,6 +179,17 @@ export function RequestListActions({
                         Edit info sheet
                     </ActionLink>
                 ) : null}
+
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => onDelete(request)}
+                >
+                    <Trash2 />
+                    Delete
+                </Button>
             </div>
         );
     }
@@ -253,6 +268,16 @@ export function RequestListActions({
                             Edit info sheet
                         </DropdownMenuItem>
                     ) : null}
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                        variant="destructive"
+                        className="cursor-pointer"
+                        onClick={() => onDelete(request)}
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete request
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>

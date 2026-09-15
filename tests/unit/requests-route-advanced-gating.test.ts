@@ -147,6 +147,30 @@ describe('POST /api/requests advanced gating', () => {
         expect(mocks.createRequestMock).not.toHaveBeenCalled();
     });
 
+    it('creates a Free request even when monthly usage is at the limit', async () => {
+        mocks.getMonthlyUsageMock.mockResolvedValue({ used: 3, limit: 3, plan: 'free' });
+        mocks.createRequestMock.mockResolvedValue({
+            id: 'req_1',
+            public_token: 'public-token',
+            seller_token: 'seller-token',
+        });
+        mocks.updateRequestStatusMock.mockResolvedValue({ id: 'req_1', status: 'sent' });
+
+        const response = await POST(new Request('http://localhost/api/requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                propertyAddress: '123 Main St, Austin, TX 78701',
+                utilityCategories: ['electric', 'water'],
+                sendSellerEmail: false,
+            }),
+        }));
+
+        expect(response.status).toBe(201);
+        expect(mocks.createRequestMock).toHaveBeenCalledTimes(1);
+        expect(mocks.getMonthlyUsageMock).not.toHaveBeenCalled();
+    });
+
     it('rejects a Branding Profile outside the authenticated account workspace', async () => {
         mocks.getBrandProfileMock.mockResolvedValue({
             id: '00000000-0000-4000-8000-000000000099',

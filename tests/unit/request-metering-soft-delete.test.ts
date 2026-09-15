@@ -8,7 +8,7 @@ vi.mock('@/lib/neon/db', () => ({
     isDbConfigured: () => true,
 }));
 
-import { deleteRequest } from '@/lib/neon/queries/requests';
+import { createRequest, deleteRequest, updateRequestStatus } from '@/lib/neon/queries/requests';
 import { ensureAccountRecord, getMonthlyUsage } from '@/lib/neon/queries/accounts';
 
 function callSqlText(call: unknown[]): string {
@@ -66,6 +66,30 @@ describe('Requests: metering + soft-delete', () => {
         const usageQueryText = callSqlText(sqlMock.mock.calls[0]);
         expect(usageQueryText).toContain('metered_at');
         expect(usageQueryText).not.toContain("status != 'draft'");
+    });
+
+    it('creates sent requests unmetered so they only count once a seller submits', async () => {
+        sqlMock.mockResolvedValue([{ id: 'req_new' }]);
+
+        await createRequest({
+            accountId: 'acct_1',
+            propertyAddress: '123 Main St, Austin, TX 78701',
+            utilityCategories: ['electric'],
+            status: 'sent',
+        });
+
+        const insertCall = sqlMock.mock.calls.find((call) => callSqlText(call).includes('INSERT INTO requests'));
+        expect(insertCall).toBeDefined();
+        const values = (insertCall as unknown[]).slice(1);
+        expect(values.some((value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value))).toBe(false);
+    });
+
+    it('updateRequestStatus never meters a request', async () => {
+        sqlMock.mockResolvedValueOnce([{ id: 'req_3', status: 'sent' }]);
+
+        await updateRequestStatus('req_3', 'sent');
+
+        expect(callSqlText(sqlMock.mock.calls[0])).not.toContain('metered_at');
     });
 
     it('getMonthlyUsage treats Teams org members as unlimited', async () => {

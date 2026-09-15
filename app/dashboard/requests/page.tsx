@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DeleteRequestDialog, type DeletableRequest } from '@/components/requests/DeleteRequestDialog';
 import { RequestListActions } from '@/components/requests/RequestListActions';
 import { PACKET_MODE_SHORT_LABELS } from '@/lib/packet/modules';
 import { Badge } from '@/components/ui/badge';
@@ -87,6 +88,7 @@ export default function RequestsPage() {
     const [searchQuery, setSearchQuery] = useState(listParams.search || '');
     const [downloadingPdfToken, setDownloadingPdfToken] = useState<string | null>(null);
     const [sendingReminderRequestId, setSendingReminderRequestId] = useState<string | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<DeletableRequest | null>(null);
 
     const navigateWithParams = useCallback((
         updates: Record<string, string | number | null | undefined>,
@@ -241,6 +243,15 @@ export default function RequestsPage() {
 
     return (
         <div className="space-y-6">
+            <DeleteRequestDialog
+                request={deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onDeleted={() => {
+                    setDeleteTarget(null);
+                    setRetryKey((key) => key + 1);
+                }}
+            />
+
             <PageHeader
                 title="Requests"
                 description="Track every seller request from first send through completed packet."
@@ -458,6 +469,7 @@ export default function RequestsPage() {
                                         onCopySellerLink={copySellerLink}
                                         onSendReminder={sendReminder}
                                         onDownloadPdf={downloadPdf}
+                                        onDelete={setDeleteTarget}
                                         sendingReminder={sendingReminderRequestId === request.id}
                                         downloadingPdf={downloadingPdfToken === request.public_token}
                                     />
@@ -523,6 +535,7 @@ export default function RequestsPage() {
                                                     onCopySellerLink={copySellerLink}
                                                     onSendReminder={sendReminder}
                                                     onDownloadPdf={downloadPdf}
+                                                    onDelete={setDeleteTarget}
                                                     sendingReminder={sendingReminderRequestId === request.id}
                                                     downloadingPdf={downloadingPdfToken === request.public_token}
                                                 />

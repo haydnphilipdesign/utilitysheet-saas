@@ -102,7 +102,6 @@ export default function NewRequestPage() {
     const [generatedToken, setGeneratedToken] = useState<string | null>(null);
     const [showShareDialog, setShowShareDialog] = useState(false);
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-    const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [isPro, setIsPro] = useState(false);
     // Mirrors the server default in app/api/seller/[token]/route.ts, so the seller
@@ -327,11 +326,6 @@ export default function NewRequestPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                if (response.status === 403 && errorData.usage) {
-                    setUsageInfo(errorData.usage);
-                    setShowUpgradeDialog(true);
-                    return;
-                }
                 throw new Error(errorData.message || 'Failed to create request');
             }
 
@@ -1161,24 +1155,12 @@ export default function NewRequestPage() {
                         <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-2">
                             <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500" />
                         </div>
-                        <DialogTitle className="text-foreground text-lg sm:text-xl text-center">Monthly limit reached</DialogTitle>
+                        <DialogTitle className="text-foreground text-lg sm:text-xl text-center">{PACKET_MODE_LABELS.advanced} is a Pro feature</DialogTitle>
                         <DialogDescription className="text-muted-foreground text-center text-sm">
-                            You&apos;ve used all {usageInfo?.limit ?? 3} free requests this month
+                            Upgrade to build full property handoff packets for your sellers.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-5 pt-4">
-                        {usageInfo && (
-                            <div className="bg-muted/50 rounded-lg p-4 border border-border">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-muted-foreground text-sm">Monthly usage</span>
-                                    <span className="text-foreground font-medium">{usageInfo.used} / {usageInfo.limit} requests</span>
-                                </div>
-                                <div className="w-full bg-muted rounded-full h-2">
-                                    <div className="bg-destructive h-2 rounded-full" style={{ width: '100%' }} />
-                                </div>
-                                <p className="text-muted-foreground text-xs mt-2">Resets the 1st of each month</p>
-                            </div>
-                        )}
                         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2.5">
                             <p className="text-sm font-semibold text-foreground">Pro plan — $9/month</p>
                             {[
@@ -1206,9 +1188,9 @@ export default function NewRequestPage() {
                             <Button
                                 variant="outline"
                                 className="border-border text-muted-foreground hover:bg-muted"
-                                onClick={() => { setShowUpgradeDialog(false); router.push('/dashboard'); }}
+                                onClick={() => setShowUpgradeDialog(false)}
                             >
-                                Back to Dashboard
+                                Not now
                             </Button>
                         </div>
                     </div>

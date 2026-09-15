@@ -157,6 +157,22 @@ describe('POST /api/intake/[slug]/start', () => {
         }));
     });
 
+    it('starts a request for a Free account already at its monthly limit', async () => {
+        vi.mocked(getMonthlyUsage).mockResolvedValue({ used: 3, limit: 3, plan: 'free' } as never);
+
+        const response = await POST(new Request('http://localhost/api/intake/test-slug/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }),
+        }), { params: Promise.resolve({ slug: 'test-slug' }) });
+
+        expect(response.status).toBe(200);
+        expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
+            status: 'draft',
+            meteredAt: null,
+        }));
+    });
+
     it('uses saved Branding Profile and utility-category defaults for a new request', async () => {
         vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
             slug: 'test-slug',

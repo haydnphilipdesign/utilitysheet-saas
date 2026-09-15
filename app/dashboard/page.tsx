@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 
 import { ReusableLinkActions } from '@/components/dashboard/reusable-link-actions';
 import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
+import { DeleteRequestDialog, type DeletableRequest } from '@/components/requests/DeleteRequestDialog';
 import { RequestListActions } from '@/components/requests/RequestListActions';
 import {
     Accordion,
@@ -60,6 +61,7 @@ type WorkSectionProps = {
     onCopySellerLink: (request: Request) => void;
     onSendReminder: (request: Request) => void;
     onDownloadPdf: (request: Request) => void;
+    onDelete: (request: Request) => void;
     sendingReminderId: string | null;
     downloadingPdfToken: string | null;
 };
@@ -86,6 +88,7 @@ function DashboardRequestRow({
     onCopySellerLink,
     onSendReminder,
     onDownloadPdf,
+    onDelete,
     sendingReminder,
     downloadingPdf,
 }: {
@@ -93,6 +96,7 @@ function DashboardRequestRow({
     onCopySellerLink: (request: Request) => void;
     onSendReminder: (request: Request) => void;
     onDownloadPdf: (request: Request) => void;
+    onDelete: (request: Request) => void;
     sendingReminder: boolean;
     downloadingPdf: boolean;
 }) {
@@ -122,6 +126,7 @@ function DashboardRequestRow({
                     onCopySellerLink={onCopySellerLink}
                     onSendReminder={onSendReminder}
                     onDownloadPdf={onDownloadPdf}
+                    onDelete={onDelete}
                     sendingReminder={sendingReminder}
                     downloadingPdf={downloadingPdf}
                 />
@@ -144,6 +149,7 @@ function WorkSection({
     onCopySellerLink,
     onSendReminder,
     onDownloadPdf,
+    onDelete,
     sendingReminderId,
     downloadingPdfToken,
 }: WorkSectionProps) {
@@ -206,6 +212,7 @@ function WorkSection({
                                 onCopySellerLink={onCopySellerLink}
                                 onSendReminder={onSendReminder}
                                 onDownloadPdf={onDownloadPdf}
+                                onDelete={onDelete}
                                 sendingReminder={sendingReminderId === request.id}
                                 downloadingPdf={downloadingPdfToken === request.public_token}
                             />
@@ -281,6 +288,7 @@ export default function DashboardPage() {
     const [copiedDashboardLink, setCopiedDashboardLink] = useState(false);
     const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
     const [downloadingPdfToken, setDownloadingPdfToken] = useState<string | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<DeletableRequest | null>(null);
     const [updates, setUpdates] = useState<ProductUpdate[]>([]);
     const [updatesLoading, setUpdatesLoading] = useState(true);
     const [dismissedUpdateId, setDismissedUpdateId] = useState<string | null>(null);
@@ -509,6 +517,24 @@ export default function DashboardPage() {
 
     return (
         <div className="space-y-6 sm:space-y-8">
+            <DeleteRequestDialog
+                request={deleteTarget}
+                onClose={() => setDeleteTarget(null)}
+                onDeleted={(deleted) => {
+                    const removeDeleted = (current: WorkListState): WorkListState => {
+                        if (!current.requests.some((item) => item.id === deleted.id)) return current;
+                        return {
+                            ...current,
+                            requests: current.requests.filter((item) => item.id !== deleted.id),
+                            total: Math.max(current.total - 1, 0),
+                        };
+                    };
+                    setAttentionWork(removeDeleted);
+                    setRecentWork(removeDeleted);
+                    setDeleteTarget(null);
+                }}
+            />
+
             <PageHeader
                 title="Dashboard"
                 description="Share your seller link, follow up on active work, and review completed sheets."
@@ -628,6 +654,7 @@ export default function DashboardPage() {
                     onCopySellerLink={handleCopySellerLink}
                     onSendReminder={handleSendReminder}
                     onDownloadPdf={handleDownloadPdf}
+                    onDelete={setDeleteTarget}
                     sendingReminderId={sendingReminderId}
                     downloadingPdfToken={downloadingPdfToken}
                 />
@@ -646,6 +673,7 @@ export default function DashboardPage() {
                     onCopySellerLink={handleCopySellerLink}
                     onSendReminder={handleSendReminder}
                     onDownloadPdf={handleDownloadPdf}
+                    onDelete={setDeleteTarget}
                     sendingReminderId={sendingReminderId}
                     downloadingPdfToken={downloadingPdfToken}
                 />
@@ -665,7 +693,7 @@ export default function DashboardPage() {
                                 href="/dashboard/settings?tab=billing"
                                 className="text-xs text-muted-foreground hover:text-foreground hover:underline"
                             >
-                                {usageRemaining} of {usageInfo.limit} requests remaining this month
+                                {usageRemaining} of {usageInfo.limit} free submissions left this month
                             </Link>
                         ) : null}
                     </div>
