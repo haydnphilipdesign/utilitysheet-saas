@@ -1,12 +1,14 @@
 # Active task (2026-09-15, Claude)
 
 - Task: Count Free usage on seller submission only, stop blocking Free request creation at the limit (over-limit submissions lock), restore dashboard "Delete request", and clean existing metering data.
-- Status: Implemented and validated locally. Uncommitted on main. Not deployed. Migration written but NOT run.
+- Status: COMPLETED 2026-09-15. Code committed and pushed as `894e025`; Vercel Production deploy succeeded. Migration run against production afterward with owner authorization: 52 rows un-metered (metered 763 to 711, 0 remaining candidates). Production DB is the `.env.local` target; `.env` has a placeholder host. No required work remains.
+- Optional follow-ups: publish the customer Product Update and Facebook reply (drafted in session), browser-check Delete on production, add a seller-route over-limit lock unit test.
+- Historical detail below describes the pre-deploy state and is superseded by this status line.
 - Plan: `.ai/plans/2026-09-15-submission-metering-and-request-delete.md` (outcome, deviations, validation recorded). Decision: `.ai/decisions/2026-09-15-submission-based-free-metering.md`.
 - Behavior: `metered_at` is set only by seller submission; `createRequest` defaults unmetered; `updateRequestStatus` never meters; `POST /api/requests` and intake start no longer block Free at the limit; over-limit Free submissions lock. Delete restored in row menus (desktop and mobile) and request detail page via `components/requests/DeleteRequestDialog.tsx`.
 - Files changed: `lib/neon/queries/requests.ts`, `app/api/requests/route.ts`, `app/api/intake/[slug]/start/route.ts`, `app/api/seller/[token]/route.ts` (comment; working copy normalized to LF), `components/requests/RequestListActions.tsx`, new `components/requests/DeleteRequestDialog.tsx`, `app/dashboard/page.tsx`, `app/dashboard/requests/page.tsx`, `app/dashboard/requests/[id]/page.tsx`, `app/dashboard/requests/new/page.tsx`, `app/dashboard/settings/page.tsx`, new `migrations-requests-submission-metering.sql`, tests (`request-metering-soft-delete`, `requests-route-advanced-gating`, `intake-start-route`, `dashboard-reusable-link`, new `request-list-actions`, new `delete-request-dialog`).
-- Validation: full Vitest 153 files passed; ESLint clean on touched files; `tsc --noEmit` passed. Not run: browser check, `npm run build`.
-- Required next (owner authorization needed): commit and deploy, then run the migration against production (idempotent; run only after deploy). Owner also wants a Facebook reply to a customer; post it only after deploy since it describes the new behavior.
+- Validation: full Vitest 153 files passed; ESLint clean on touched files; `tsc --noEmit` passed; `security:scan` passed before commit; Vercel Production deploy of `894e025` succeeded. Not run: browser check, local `npm run build`.
+- Rollout done: deploy first, then migration (idempotent; safe to re-run if needed).
 - Risks: concurrent submissions at one remaining slot can both stay unlocked (pre-existing); admin stats reading `metered_at` now reflect submissions.
 - No concurrent editing warnings beyond the uncommitted files above.
 

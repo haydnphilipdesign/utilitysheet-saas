@@ -1,6 +1,12 @@
 # Submission-Based Metering and Request Delete
 
-Status: Implemented and validated locally (Claude, 2026-09-15). Not committed, pushed, or deployed. Migration written, not run. Owner approved scope and existing-data cleanup.
+Status: Completed (Claude, 2026-09-15). Committed and pushed as `894e025`, Vercel Production deploy succeeded, then the migration was run against production with owner authorization. Owner approved scope and existing-data cleanup.
+
+## Production rollout (2026-09-15)
+
+- Production database identified as the `.env.local` target (contains the reporting customer's account; `.env` holds a placeholder host).
+- Read-only preview matched the migration's own WHERE clause: 52 rows (44 not deleted) of 901 requests.
+- Applied after deploy: 52 rows updated. Metered requests 763 to 711; re-check found 0 remaining candidates. The reporting Free customer's monthly usage went from 2 to 0.
 
 ## Outcome and deviations
 
@@ -16,10 +22,10 @@ Status: Implemented and validated locally (Claude, 2026-09-15). Not committed, p
 - ESLint on all touched files: clean. `npm exec tsc -- --noEmit`: passed.
 - Not done: browser check of the authenticated dashboard, `npm run build` (skipped to avoid disturbing a possibly running dev server), seller-route over-limit lock unit test (no existing route harness; logic unchanged).
 
-## Remaining required steps (need owner authorization)
+## Remaining work
 
-1. Commit and deploy the code.
-2. After deploy, run `migrations-requests-submission-metering.sql` against production (idempotent; re-run is safe).
+- Required: none.
+- Optional: publish a customer Product Update (owner-drafted text provided in session), reply to the customer's Facebook comment, browser-check the Delete flow on production, add a seller-route over-limit lock unit test.
 
 ## Problem (verified)
 
