@@ -273,4 +273,24 @@ describe('POST /api/billing/webhook referral credits', () => {
             expect(mocks.applyEarnedReferralCredits).not.toHaveBeenCalled();
         }
     );
+
+    it.each(['closing', 'closed'])('acknowledges but ignores subscription events for a %s account', async (closureStatus) => {
+        mocks.constructEvent.mockReturnValue({
+            type: 'customer.subscription.updated',
+            data: {
+                object: {
+                    ...subscription,
+                    customer: 'cus_checkout',
+                    metadata: { account_id: 'account_1' },
+                },
+            },
+        });
+        mocks.getAccountById.mockResolvedValue({ id: 'account_1', closure_status: closureStatus });
+
+        const response = await POST(makeWebhookRequest());
+
+        expect(response.status).toBe(200);
+        expect(mocks.updateAccountSubscription).not.toHaveBeenCalled();
+        expect(mocks.applyEarnedReferralCredits).not.toHaveBeenCalled();
+    });
 });

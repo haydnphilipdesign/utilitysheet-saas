@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS accounts (
     subscription_ends_at TIMESTAMPTZ,
     onboarding_completed_at TIMESTAMPTZ,
     notification_preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
+    closure_status TEXT NOT NULL DEFAULT 'active' CONSTRAINT accounts_closure_status_check CHECK (closure_status IN ('active', 'closing', 'closed')),
+    closure_requested_at TIMESTAMPTZ,
+    closed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -267,6 +270,22 @@ CREATE TABLE IF NOT EXISTS account_security_events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Self-serve account closure progress. See migrations-account-closure.sql.
+CREATE TABLE IF NOT EXISTS account_closures (
+    account_id UUID PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+    step TEXT NOT NULL DEFAULT 'requested'
+        CHECK (step IN ('requested', 'billing_canceled', 'data_removed', 'assets_removed', 'auth_deleted', 'completed')),
+    transfers JSONB NOT NULL DEFAULT '{}'::jsonb,
+    notify_email TEXT,
+    pending_blob_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
+    attempt_count INT NOT NULL DEFAULT 0,
+    last_error_code TEXT CHECK (last_error_code IS NULL OR char_length(last_error_code) <= 80),
+    lease_until TIMESTAMPTZ,
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
 -- Product updates / changelog (shown on user dashboard)
 CREATE TABLE IF NOT EXISTS product_updates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -316,7 +335,7 @@ CREATE TABLE IF NOT EXISTS referral_credits (
     referrer_account_id UUID NOT NULL REFERENCES accounts(id),
     referred_account_id UUID NOT NULL REFERENCES accounts(id) UNIQUE,
     amount_cents INT NOT NULL DEFAULT 900,
-    status TEXT NOT NULL DEFAULT 'earned' CHECK (status IN ('earned', 'applied')),
+    status TEXT NOT NULL DEFAULT 'earned' CONSTRAINT referral_credits_status_check CHECK (status IN ('earned', 'applied', 'forfeited')),
     stripe_balance_transaction_id TEXT,
     earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     applied_at TIMESTAMPTZ
@@ -368,6 +387,8 @@ CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
 CREATE INDEX IF NOT EXISTS idx_organizations_stripe_customer_id ON organizations(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS idx_event_logs_request_id ON event_logs(request_id);
 CREATE INDEX IF NOT EXISTS idx_account_security_events_account_created ON account_security_events(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_accounts_closure_status ON accounts(closure_status) WHERE closure_status <> 'active';
+CREATE INDEX IF NOT EXISTS idx_account_closures_pending ON account_closures(updated_at) WHERE step <> 'completed';
 CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_request_created ON ai_generation_runs(request_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_feature_category_created ON ai_generation_runs(feature, category, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_status_created ON ai_generation_runs(status, created_at DESC);

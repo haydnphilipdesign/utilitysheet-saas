@@ -1,6 +1,6 @@
 import { sql } from '@/lib/neon/db';
 
-export type ReferralCreditStatus = 'earned' | 'applied';
+export type ReferralCreditStatus = 'earned' | 'applied' | 'forfeited';
 
 export interface ReferralCredit {
     id: string;

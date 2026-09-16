@@ -9,6 +9,7 @@ import {
 } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { buttonVariants } from '@/components/ui/button';
+import { CopyTemplateButton } from '@/components/marketing/copy-template-button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { createPageMetadata } from '@/lib/seo/site';
@@ -17,21 +18,77 @@ import { breadcrumbSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
     title: 'Free TC Utility Handoff Kit',
     description:
-        'Copy a seller utility email, text message, and closing utility checklist built for transaction coordinators.',
+        'Copy seller utility email templates for listing intake, closing prep, and buyer-side requests through the listing agent, plus a text message and closing utility checklist for transaction coordinators.',
     path: '/tc-utility-handoff-kit',
     keywords: [
         'transaction coordinator templates',
         'seller utility email template',
         'utility handoff checklist',
+        'listing welcome email template',
+        'closing utility email template',
     ],
 });
 
+const emailTemplates = [
+    {
+        id: 'listing-welcome',
+        title: 'Listing welcome',
+        when: 'Listing side, at intake. Add it to your seller welcome email or listing checklist.',
+        subject: 'Welcome, plus one quick form for [Property Address]',
+        body: `Hi [Seller First Name],
+
+Welcome! While we get your listing started, please take a few minutes to share your utility providers for [Property Address]:
+
+[UTILITY FORM LINK]
+
+It works from your phone. If you are unsure about a provider, choose "Not sure" and continue. We will use this to prepare a utility sheet for the buyer and will check in if anything needs an update before closing.
+
+Thank you!
+[Your Name]
+[Company]`,
+    },
+    {
+        id: 'listing-closing-prep',
+        title: 'Listing side, closing prep',
+        when: 'Listing side, under contract or as closing approaches. Send it directly to the seller.',
+        subject: 'Utility information for [Property Address]',
+        body: `Hi [Seller First Name],
+
+As we prepare for closing, please complete our short utility information form for [Property Address]:
+
+[UTILITY FORM LINK]
+
+It works from your phone and should only take a few minutes. If you are unsure about a provider, choose "Not sure" and continue. You do not need to research anything before submitting.
+
+Thank you!
+[Your Name]
+[Company]`,
+    },
+    {
+        id: 'buyer-side-forward',
+        title: 'Buyer side, via listing agent',
+        when: 'Buyer side, under contract. Ask the listing agent to forward the link to the seller.',
+        subject: 'Seller utility form for [Property Address]',
+        body: `Hi [Listing Agent First Name],
+
+To help our buyer set up utilities, could you please forward this short form to your seller for [Property Address]?
+
+[UTILITY FORM LINK]
+
+The seller can fill it out on their phone in a few minutes, and "Not sure" is fine for any provider they do not know. The form is meant for the seller to complete, so please pass it along rather than filling it in.
+
+Thank you!
+[Your Name]
+[Company]`,
+    },
+] as const;
+
 const checklist = [
-    'Add the utility-form link to the listing-side seller email template.',
-    'Send the link when your process normally requests utility information.',
+    'Decide where the link belongs: the seller welcome email, the listing checklist, or your closing-prep email.',
+    'On the buyer side, ask the listing agent to forward the link to the seller.',
     'Confirm that the seller opened or submitted the form.',
     'Send one reminder if the form remains incomplete.',
-    'Review provider names and public contact details for obvious errors.',
+    'Review provider names and public contact details for obvious errors, especially if the details were collected early.',
     'Save the finished sheet or PDF in the transaction file.',
     'Share the approved utility sheet with the intended closing participants.',
     'Never request account numbers, passwords, or copies of utility bills.',
@@ -53,7 +110,7 @@ export default function TcUtilityHandoffKitPage() {
             <MarketingPageHero
                 eyebrow="Free TC resource"
                 title="The TC Utility Handoff Kit"
-                description="Copy the email, text message, and checklist for a cleaner seller utility handoff. Use the templates with any workflow or replace the form step with one reusable UtilitySheet link."
+                description="Copy emails for listing intake, closing prep, and buyer-side requests, plus a text message and checklist for a cleaner seller utility handoff. Use the templates with any workflow or replace the form step with one reusable UtilitySheet link."
             >
                 <MarketingBreadcrumbs
                     items={[
@@ -64,34 +121,34 @@ export default function TcUtilityHandoffKitPage() {
             </MarketingPageHero>
 
             <MarketingSection
-                title="Seller email template"
-                description="Save this message in the email workflow you already use. Replace the bracketed fields before sending."
+                title="Email templates for each stage"
+                description="Save the one that matches your side and timing in the email workflow you already use. Replace the bracketed fields before sending."
             >
-                <Card className="max-w-3xl border-border bg-card/40">
-                    <CardHeader className="flex-row items-center gap-3">
-                        <Mail className="h-5 w-5 text-emerald-600" aria-hidden="true" />
-                        <p className="font-semibold text-foreground">Quick utility information for your closing</p>
-                    </CardHeader>
-                    <CardContent className="space-y-4 leading-7 text-muted-foreground">
-                        <p>Hi [Seller First Name],</p>
-                        <p>
-                            Please complete our short utility information form for [Property Address]:
-                        </p>
-                        <p className="font-medium text-foreground">[UTILITY FORM LINK]</p>
-                        <p>
-                            It works from your phone and should only take a few minutes. If you are unsure
-                            about a provider, choose “Not sure” and continue—you do not need to research
-                            anything before submitting.
-                        </p>
-                        <p>
-                            Thank you!
-                            <br />
-                            [TC Name]
-                            <br />
-                            [TC Company]
-                        </p>
-                    </CardContent>
-                </Card>
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {emailTemplates.map((template) => (
+                        <Card key={template.id} className="border-border bg-card/40">
+                            <CardHeader className="space-y-3">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <Mail className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+                                        <h3 className="font-semibold text-foreground">{template.title}</h3>
+                                    </div>
+                                    <CopyTemplateButton
+                                        label={`${template.title} email`}
+                                        text={`Subject: ${template.subject}\n\n${template.body}`}
+                                    />
+                                </div>
+                                <p className="text-sm leading-6 text-muted-foreground">{template.when}</p>
+                            </CardHeader>
+                            <CardContent className="space-y-3 text-sm leading-7 text-muted-foreground">
+                                <p>
+                                    <span className="font-medium text-foreground">Subject:</span> {template.subject}
+                                </p>
+                                <p className="whitespace-pre-line border-t border-border pt-3">{template.body}</p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
             </MarketingSection>
 
             <MarketingSection
@@ -113,7 +170,7 @@ export default function TcUtilityHandoffKitPage() {
 
             <MarketingSection
                 title="TC utility handoff checklist"
-                description="Drop these steps into the listing-side workflow your team already follows."
+                description="Drop these steps into the workflow your team already follows, on either side of the transaction."
             >
                 <ol className="grid gap-3 md:grid-cols-2">
                     {checklist.map((item) => (

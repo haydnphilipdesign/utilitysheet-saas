@@ -44,7 +44,7 @@ export function MarketingWorkflow() {
               number: "01",
               icon: Send,
               title: "Send your seller link",
-              copy: "Copy your reusable link into an email, text, or listing template. Use it again for the next property.",
+              copy: "Copy your reusable link into an email, text, or checklist you already use. Use it again for the next property.",
             },
             {
               number: "02",
@@ -68,6 +68,41 @@ export function MarketingWorkflow() {
               <p>{copy}</p>
             </article>
           ))}
+        </div>
+        <div className="workflow-moments">
+          <div>
+            <p className="marketing-eyebrow">
+              WHEN TO SEND IT
+            </p>
+            <p className="workflow-moments-intro">
+              Closing is the outcome. It does not have to be the collection
+              date.
+            </p>
+          </div>
+          <ul>
+            {[
+              {
+                label: "At listing intake",
+                copy: "Add the link to your seller welcome email or listing checklist. Review the details before you share them later.",
+              },
+              {
+                label: "Listing side, before closing",
+                copy: "Send the link directly to your seller as part of closing prep.",
+              },
+              {
+                label: "Buyer side, before closing",
+                copy: "Ask the listing agent to forward the link to the seller, who fills in the details.",
+              },
+            ].map(({ label, copy }) => (
+              <li key={label}>
+                <h3>{label}</h3>
+                <p>{copy}</p>
+              </li>
+            ))}
+          </ul>
+          <Link href="/tc-utility-handoff-kit" className="marketing-text-link">
+            Copy an email for each <ArrowUpRight size={17} />
+          </Link>
         </div>
         <div className="workflow-video">
           <div>
@@ -161,15 +196,15 @@ export function MarketingCapabilities() {
             ],
             [
               "03",
-              "Room for the last-minute correction",
+              "Room for a correction before handoff",
               "PRO + TEAMS",
-              "Edit submitted details from your dashboard. Future PDF downloads reflect your changes; earlier email attachments stay as sent.",
+              "Details collected early can change before closing. Edit submitted details from your dashboard. Future PDF downloads reflect your changes; earlier email attachments stay as sent.",
             ],
             [
               "04",
               "More than the utility companies",
               "PRO + TEAMS",
-              "Property Handoff Packet mode adds home systems, access details, and service contacts to the same seller handoff.",
+              "Property Handoff Packet mode adds home systems, access details, and service contacts to the same seller handoff. Check codes and key handoff details closer to closing.",
             ],
           ].map(([number, title, label, copy]) => (
             <article key={number}>
@@ -194,7 +229,7 @@ export function MarketingAudience() {
         <p>
           Made for the people
           <br />
-          <strong>keeping the closing moving.</strong>
+          <strong>moving a file from listing to closing.</strong>
         </p>
         <Link href="/utility-sheet-for-transaction-coordinators">
           Transaction coordinators <ArrowUpRight size={19} />

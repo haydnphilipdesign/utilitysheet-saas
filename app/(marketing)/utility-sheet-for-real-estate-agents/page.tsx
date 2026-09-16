@@ -56,7 +56,7 @@ export default function UtilitySheetForRealEstateAgentsPage() {
           {[
             {
               title: 'Listing prep and closing coordination',
-              copy: 'Keep seller utility details from turning into one more late-stage closing task.',
+              copy: 'Add the link to your seller welcome email or listing checklist, or send it as closing approaches, so utility details are not left for the last week.',
             },
             {
               title: 'Buyer handoff',

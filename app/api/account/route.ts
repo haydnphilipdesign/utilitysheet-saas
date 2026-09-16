@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getOrCreateAccount, updateAccount, getMonthlyUsage } from '@/lib/neon/queries';
+import { getAccountClosureStatusByAuthUserId, getOrCreateAccount, updateAccount, getMonthlyUsage } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { enforceMaxRequestBodyBytes, invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
@@ -29,6 +29,13 @@ export async function GET() {
 
         const activationState = await ensureAccountActivation(user);
         if (!activationState) {
+            const closure = await getAccountClosureStatusByAuthUserId(user.id).catch(() => null);
+            if (closure && closure.status !== 'active') {
+                return NextResponse.json(
+                    { error: 'This account is closed.', code: closure.status === 'closed' ? 'ACCOUNT_CLOSED' : 'ACCOUNT_CLOSING' },
+                    { status: 409, headers: { 'Cache-Control': 'private, no-store' } },
+                );
+            }
             console.error(JSON.stringify({
                 level: 'error',
                 message: 'Account activation returned no state',

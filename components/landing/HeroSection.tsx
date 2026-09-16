@@ -36,15 +36,17 @@ export function HeroSection() {
       <div className="marketing-container hero-grid">
         <div className="hero-copy">
           <p className="marketing-eyebrow">
-            <span /> THE LAST DETAILS. BEAUTIFULLY HANDLED.
+            <span /> FROM LISTING INTAKE TO CLOSING DAY
           </p>
           <h1>
-            A smoother closing.
-            <br />A better <em>utility handoff.</em>
+            Seller utility details.
+            <br />Ready for the <em>handoff.</em>
           </h1>
           <p className="hero-description">
-            Collect utility details from sellers. Give buyers a clear, organized
-            sheet. Keep one more closing task off your mind.
+            Collect them at listing intake, under contract, or as closing
+            approaches. Send your reusable link to the seller directly or
+            through the listing agent, and turn their answers into a clear
+            utility sheet for a smoother closing.
           </p>
           <p className="hero-audience">
             For transaction coordinators &amp; real estate agents.

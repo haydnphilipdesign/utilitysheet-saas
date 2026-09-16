@@ -77,6 +77,11 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                             {user.role}
                         </Badge>
                         <Badge variant="outline">{effectivePlan}</Badge>
+                        {user.closure_status && user.closure_status !== 'active' && (
+                            <Badge variant={user.closure_status === 'closed' ? 'secondary' : 'outline'}>
+                                {user.closure_status === 'closed' ? 'Account closed' : 'Closure in progress'}
+                            </Badge>
+                        )}
                     </div>
                 )}
             />
@@ -106,7 +111,13 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                         </p>
                     </CardHeader>
                     <CardContent>
-                        <AdminUserControls user={managedUser} />
+                        {user.closure_status && user.closure_status !== 'active' ? (
+                            <p className="text-sm text-muted-foreground">
+                                This account is {user.closure_status}. Account controls are read-only while closure is in progress or complete.
+                            </p>
+                        ) : (
+                            <AdminUserControls user={managedUser} />
+                        )}
                     </CardContent>
                 </Card>
             </div>

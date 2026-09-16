@@ -2,6 +2,7 @@ import 'server-only';
 
 import { NextResponse } from 'next/server';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
+import { getAccountClosureStatusByAuthUserId, type AccountClosureStatus } from '@/lib/neon/queries/account-closure';
 import { stackServerApp } from '@/lib/stack/server';
 
 export const RECENT_AUTH_WINDOW_MS = 5 * 60 * 1000;
@@ -17,7 +18,22 @@ export class AccountSecurityError extends Error {
     }
 }
 
-export async function getAccountSecurityContext(options: { requireRecentAuth?: boolean } = {}) {
+export function assertRecentAuth(currentSession: { createdAt?: Date | string } | undefined) {
+    const createdAt = currentSession?.createdAt ? new Date(currentSession.createdAt).getTime() : 0;
+    if (!createdAt || Date.now() - createdAt > RECENT_AUTH_WINDOW_MS) {
+        throw new AccountSecurityError(
+            'RECENT_AUTH_REQUIRED',
+            'Confirm your password or sign in again to continue. Sensitive settings stay unlocked for five minutes.',
+            403,
+        );
+    }
+}
+
+export async function getAccountSecurityContext(options: {
+    requireRecentAuth?: boolean;
+    /** Only the closure route may act on an account that is already closing. */
+    allowClosing?: boolean;
+} = {}) {
     const user = await stackServerApp.getUser();
     if (!user) {
         throw new AccountSecurityError('UNAUTHORIZED', 'Unauthorized', 401);
@@ -31,28 +47,35 @@ export async function getAccountSecurityContext(options: { requireRecentAuth?: b
     }
 
     const activation = await ensureAccountActivation(user);
-    if (!activation?.account) {
-        throw new AccountSecurityError('ACCOUNT_NOT_FOUND', 'Account not found', 404);
+    let account: { id: string } & Record<string, unknown>;
+    let closureStatus: AccountClosureStatus = 'active';
+    if (activation?.account) {
+        account = activation.account as { id: string } & Record<string, unknown>;
+    } else {
+        const closure = await getAccountClosureStatusByAuthUserId(user.id);
+        if (!closure || closure.status === 'active') {
+            throw new AccountSecurityError('ACCOUNT_NOT_FOUND', 'Account not found', 404);
+        }
+        if (!options.allowClosing) {
+            throw new AccountSecurityError('ACCOUNT_CLOSING', 'This account is being closed.', 409);
+        }
+        account = { id: closure.accountId };
+        closureStatus = closure.status;
     }
 
     const sessions = await user.getActiveSessions();
     const currentSession = sessions.find((session) => session.isCurrentSession);
     if (options.requireRecentAuth) {
-        const createdAt = currentSession?.createdAt ? new Date(currentSession.createdAt).getTime() : 0;
-        if (!createdAt || Date.now() - createdAt > RECENT_AUTH_WINDOW_MS) {
-            throw new AccountSecurityError(
-                'RECENT_AUTH_REQUIRED',
-                'Please verify your password to continue.',
-                403,
-            );
-        }
+        assertRecentAuth(currentSession);
     }
 
     return {
         user,
-        account: activation.account,
+        account,
+        closureStatus,
         sessions,
         currentSession,
+        isImpersonation: Boolean(currentSession?.isImpersonation),
     };
 }
 

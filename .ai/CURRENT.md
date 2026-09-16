@@ -1,40 +1,76 @@
-# Current task: first-use guide and seller test-drive polish
+# Most recent task (completed, uncommitted): whole-transaction messaging (listing intake through closing)
 
-- Date: 2026-09-16. Last agent: Claude Code. Branch: main. Status: **Completed.** No required work remains.
-- Commit and worktree state:
-  - The initial implementation is committed as `14e048d` (HEAD).
-  - The follow-up fixes below are **uncommitted**: `.gitignore`, `components/branding/UtilitySheetPdfPreview.tsx`, `components/test-drive/SampleSheetDialog.tsx`, `tests/unit/sample-sheet-dialog.test.tsx`, `tests/unit/utilitysheet-pdf-preview.test.tsx`, plus this file and the plan.
-  - Nothing was pushed or deployed by Claude. Deployment status is unverified.
-- Plan: `.ai/plans/2026-09-16-first-use-and-test-drive-polish.md` (see "Follow-up" for full detail).
-- Authorization: local changes and tests only. No commit, push, deploy, migration, production data change, or real email.
+- Date: 2026-09-16. Agent: Claude Code. Branch: main. Status: **Completed**. No required work remains.
+- Plan and full validation: `.ai/plans/2026-09-16-whole-transaction-messaging.md`.
+- Changed files:
+  - `components/landing/HeroSection.tsx`
+  - `components/landing/MarketingStory.tsx`
+  - `app/(marketing)/marketing.css` (new `.workflow-moments`)
+  - `lib/marketing-content.ts` (FAQ and workflow copy, new "When should I send the seller link?")
+  - `app/(marketing)/{page,how-it-works/page,tc-utility-handoff-kit/page,utility-sheet-for-transaction-coordinators/page,utility-sheet-for-real-estate-agents/page}.tsx`
+  - `app/dashboard/page.tsx` (two accordion lines)
+  - new `components/marketing/copy-template-button.tsx`
+  - `tests/unit/tc-utility-handoff-kit.test.tsx`
+- Checks:
+  - Vitest 22/22 and ESLint clean.
+  - Security scan passed.
+  - Screenshots at desktop, tablet, and mobile are OK.
+  - `tsc` shows only stale `.next` validator errors from the account-closure session's deleted route.
+- Reported follow-up: the "seller links stay read-only after submission" copy is not enforced server-side for non-demo requests (see plan).
+- Next action: the owner reviews and commits these files separately from the account-closure and dialog work.
 
-## Follow-up completed this session (Claude)
+---
 
-- **Sample freshness fixed.** The dialog body mounts per opening and refetches branding and plan with `no-store`. Stale responses from a closed opening are discarded, a failed load is not cached, and preview, download, and analytics share the same per-opening context. Fallback copy separates "no branding" from "couldn't load".
-- **Preview component.** The decorative iframe is `tabIndex={-1}`. The new `scrollContained` prop (default unchanged) lets the dialog avoid nested scrolling.
-- **Verification by Claude.**
-  - Unit tests: 8 sample-dialog tests (5 fail against `14e048d`, all pass now). Full Vitest: 155 files, 828 tests.
-  - `tsc` and changed-file ESLint are clean. Committed Playwright: 15/15. `security:scan` passed.
-  - Signed-in dashboard and dark-theme QA: 25/25 across 5 projects (desktop light and dark, iPhone WebKit light and dark, Pixel dark).
-- **Dashboard verification method.** A temporary development-only harness route rendered the real dashboard client components with mocked APIs. A real Stack login was not used because activation can write to the configured database. The harness was **deleted** from `app/`; a copy and re-run steps are in `.qa-artifacts/README.md`.
-- **States checked.** The first-run dashboard in eligible, ready, completed (delivery failed), error/retry, and ineligible states, plus the sample dialog (keyboard, close, reopen, download, 429). Onboarding, the seller test welcome and banner, and test completion were checked in both light and dark themes. Contrast checked in both themes.
-- **Screenshots.** `C:\Users\haydn\Documents\norma_suite\utility-sheet\.qa-artifacts\screenshots\` (50 PNGs, git-ignored).
-- **Remaining limitations.**
-  - No real Stack session, real API responses, or physical devices were used.
-  - Pre-existing app-wide issue (not fixed): in Chromium, Tab past the last control escapes Base UI dialogs, the existing Feedback dialog included. This belongs in a separate `components/ui/dialog.tsx` task.
-- **Next action.** The owner reviews the uncommitted follow-up diff and decides whether to commit and deploy. Optional: a shared dialog focus-trap task.
+# Active task (Codex takeover): account password confirmation and self-serve account closure
 
-## Independent review — 2026-09-16, Codex
+- Date: 2026-09-16. Current agent: OpenAI Codex (takeover from Claude Code after usage-limit interruption). Branch: main (HEAD `5192ab3`). Status: Phase A (wording) is **completed and uncommitted**. Phase B (executable closure) is **approved and under review/implementation**; the drafted implementation is not yet accepted as correct and closure-specific tests/final validation remain unfinished (decision: `.ai/decisions/2026-09-16-self-serve-account-closure-lifecycle.md`).
+- Plan: `.ai/plans/2026-09-16-account-closure-and-password-confirmation.md`. It holds the investigation, the proposed lifecycle, and the four approval decisions.
+- Authorization: local code, docs, and tests only. No commit, push, deploy, live migration, production data change, Stripe mutation, real account deletion, or real email.
+- Files owned by this task: `components/settings/account-security.tsx`, `lib/account/security.ts`, `tests/unit/account-security-settings.test.tsx`. After approval, the Phase B list in the plan.
+- Concurrent-edit warning: the dialog task below left uncommitted changes. Do not edit or revert `components/ui/dialog.tsx`, `components/ui/use-inert-modal-background.ts`, `components/test-drive/TestDriveCard.tsx`, `app/test-fixtures/`, or `tests/dialog-focus.spec.ts` as part of this task.
+- Phase A:
+  - Changed: `components/settings/account-security.tsx`, `lib/account/security.ts`, `tests/unit/account-security-settings.test.tsx`.
+  - Checks: Vitest 6/6 and 4/4, ESLint and `tsc` clean.
+- Approved changes to the proposal:
+  - UtilitySheet cancels the relevant subscriptions at closure, with no refund.
+  - The user picks the admin who receives their shared work.
+- Takeover verification: Codex read the project and suite guidance, this handoff, the approved plan/decision, and inspected Git status/diff/untracked files. Marketing and dialog-focus changes are concurrent completed work and remain out of scope.
+- Milestone: implementation review and focused closure testing are complete. Codex fixed delayed-webhook tombstone reactivation, approved Stripe-reference retention, shared-asset transfer races, seeded-account claim guards, admin read-only closure visibility, and false-success result-page handling. New focused coverage passes 10 files / 49 tests. `next typegen` regenerated supported route types and `tsc --noEmit` passed before the final edits.
+- Static migration review: `migrations-account-closure.sql` matches the `schema.sql` closure columns/table/status constraints/indexes and referral `forfeited` state; query table/column references were checked against the schema. It was not applied.
+- Next action: run changed-file ESLint, final TypeScript, full Vitest, production build, security scan, and `git diff --check`; fix only account-closure regressions and record exact results.
 
-- Reviewed new components and integration against first-use brief; reran focused card/sample/success tests: 3 files, 23 tests passed. Did not independently repeat browser/full-suite validation; results above are Claude's report.
-- Repository changed during review: implementation now exists in commit `14e048d`; worktree was clean afterward. Earlier "uncommitted" status is superseded. Codex did not commit, push, or deploy; deployment status was not verified.
-- Follow-up found: SampleSheetDialog loads branding once per mount (`loadStartedRef`). On /onboarding, viewing a sample, saving new branding/contact details, and reopening the dialog continues showing/downloading the old branding; failed initial branding loads also remain cached as placeholder until reload. Recommend refresh on each opening or explicit invalidation after branding saves, with a regression test. This is a bounded polish fix, not evidence of a seller-flow failure.
-- Actual authenticated dashboard and dark theme remain unverified in browser. Review complete; no application files changed by Codex. Next: address preview freshness and perform first-run dashboard/dark-theme QA before treating visual acceptance as complete. Coordinate with Claude before edits because a concurrent commit occurred during review.
+---
 
-## Finishing-pass review — 2026-09-16, Codex
+# Previous task (completed, uncommitted): shared dialog keyboard focus containment
 
-- Read Claude's finishing report, updated plan and follow-up diff. Preview freshness fix addresses the previously identified one-load cache; per-opening body cleanup discards late responses. Preview scroll containment defaults remain unchanged outside the sample dialog.
-- Independently reran sample-sheet-dialog and utilitysheet-pdf-preview: 2 files / 17 tests passed. Full-suite, browser, contrast and screenshot findings remain Claude-reported; not independently repeated in this review.
-- Dashboard client UI was exercised via a mocked development harness, not an authenticated end-to-end session. This is useful UI coverage; real auth/API integration remains unverified.
-- Shared Chromium dialog focus escape remains a reported accessibility defect, not merely cosmetic. Recommend a separate bounded reproduction/fix with keyboard regression coverage across sample and existing dialogs before calling accessibility polish complete. No shared-dialog edits made here.
-- Review completed. No application changes by Codex; only this handoff appended. HEAD remains 14e048d with Claude's finishing-pass changes uncommitted. No commit, push, deployment, live data or email action performed. Next: address the reported shared focus defect; release authorization remains with owner.
+- Date: 2026-09-16. Agent: Claude Code. Branch: main (HEAD `5192ab3`). Status: **Completed**. No required work remains.
+- Plan: `.ai/plans/2026-09-16-dialog-keyboard-focus.md` (full evidence, limitations).
+- Authorization used: local changes and tests only. No commit, push, deploy, migration, production data change, or real email.
+- Worktree:
+  - **Uncommitted changes from this task only:**
+    - modified: `components/ui/dialog.tsx`, `components/test-drive/TestDriveCard.tsx`, `.ai/CURRENT.md`;
+    - new: `components/ui/use-inert-modal-background.ts`, `app/test-fixtures/dialogs/page.tsx`, `app/test-fixtures/dialogs/dialog-fixtures.tsx`, `tests/dialog-focus.spec.ts`, `.ai/plans/2026-09-16-dialog-keyboard-focus.md`.
+  - The earlier onboarding finishing pass is already committed (`14e048d`, `5192ab3`). The section below that calls it "uncommitted" is historical.
+- Root causes (verified):
+  1. Base UI's modal trap (1.0.0; the same in 1.8.0) returns focus from its guard elements one animation frame later, and it hides the page behind the dialog only with `aria-hidden`. Rapid Tab (and held Tab in WebKit) reached background controls.
+  2. Base UI keeps `aria-live` regions interactive behind modals. `TestDriveCard` wrapped its buttons in one, which exposed "Start seller test" behind the sample dialog.
+- Fix:
+  1. The shared `DialogContent` now makes exactly the elements Base UI hid `inert` while the dialog is open, and releases them when closing starts (hook: `components/ui/use-inert-modal-background.ts`).
+  2. Removed the control-wrapping `aria-live` in `TestDriveCard`.
+  - No dependency change, no keyboard listener, no custom focus trap.
+- Validation:
+  - New `tests/dialog-focus.spec.ts` (sample, Feedback, and Delete dialogs, a nested menu, outside click) on Chromium, WebKit, and Mobile Chrome: 15/15 fail before the fix, 15/15 pass after, and 45/45 over 3 repeats.
+  - Full Vitest: 828 passed. `tsc` and changed-file ESLint are clean. Security scan passed.
+  - Full Playwright: 62 passed, 5 skipped, and 5 pre-existing Mobile Safari `marketing-mobile` `goto` timeouts (also failing without the fix).
+- Remaining limitations:
+  - WebKit is Playwright on Windows, not physical Safari.
+  - The `next dev` overlay (`nextjs-portal`) can take focus in development only.
+  - The fix depends on Base UI's internal markers; re-run the spec after upgrades.
+  - Admin-only `sheet.tsx` (Base UI dialog directly) is not covered.
+- Next action: the owner reviews and commits if satisfied. Optional follow-up: investigate the Mobile Safari `marketing-mobile` timeouts separately.
+
+---
+
+# Older task (completed and committed): first-use guide and seller test-drive polish
+
+- Committed in `14e048d` and `5192ab3`. Details, validation, and Codex reviews are in `.ai/plans/2026-09-16-first-use-and-test-drive-polish.md`. No required work remains.

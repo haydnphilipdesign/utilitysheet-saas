@@ -153,9 +153,33 @@ export type {
     ReferralCreditStatus,
 } from './referral-credits';
 
+export type {
+    AccountClosureRecord,
+    AccountClosureSnapshot,
+    AccountClosureStatus,
+    AccountClosureStep,
+    ClosureTransfers,
+    ClosureWorkspaceSnapshot,
+} from './account-closure';
+export {
+    AccountClosureConflictError,
+    acquireAccountClosureLease,
+    advanceAccountClosureStep,
+    claimAccountClosure,
+    closedAccountEmail,
+    completeAccountClosure,
+    filterUnreferencedLogoUrls,
+    getAccountClosure,
+    getAccountClosureSnapshot,
+    getAccountClosureStatusByAuthUserId,
+    getSoleMemberOrganizations,
+    listStalledAccountClosures,
+    releaseAccountClosureLease,
+    removeAccountClosureData,
+    revertAccountClosure,
+} from './account-closure';
 export type { AccountSecurityEventAction } from './account-data';
 export {
-    getAccountClosureReadiness,
     getAccountDataExport,
     recordAccountSecurityEvent,
     updateAccountEmail,

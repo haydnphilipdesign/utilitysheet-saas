@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/activation-reengagement",
       "schedule": "30 12 * * *"
+    },
+    {
+      "path": "/api/cron/account-closure-retry",
+      "schedule": "0 13 * * *"
     }
   ]
 }

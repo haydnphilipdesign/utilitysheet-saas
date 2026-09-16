@@ -22,7 +22,7 @@ import {
 export const metadata: Metadata = createPageMetadata({
     title: 'Seller Utility Handoff Software for Real Estate Closings',
     description:
-        'UtilitySheet helps transaction coordinators and real estate teams send one reusable seller link, collect utility details, and produce a clean buyer-ready utility sheet.',
+        'UtilitySheet helps transaction coordinators and real estate teams send one reusable seller link at listing intake or before closing, collect seller utility details, and produce a clean buyer-ready utility sheet.',
     path: '/',
 });
 

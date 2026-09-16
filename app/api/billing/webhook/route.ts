@@ -85,6 +85,12 @@ async function syncOrganizationSubscription(
 
     const organization = await getOrganizationById(organizationId);
     if (!organization) {
+        // Account closure cancels a sole member's Team plan and then deletes the
+        // workspace, so the final events can arrive with nothing left to update.
+        if (status !== 'team') {
+            console.log(`Ignored ended Teams subscription for removed organization ${organizationId}`);
+            return;
+        }
         throw new Error('Teams subscription organization not found');
     }
 
@@ -102,12 +108,18 @@ async function syncAccountSubscription(accountId: string, subscription: Stripe.S
         throw new Error('Pro subscription account not found');
     }
 
+    if (account.closure_status === 'closing' || account.closure_status === 'closed') {
+        console.log(`Ignored subscription event for ${account.closure_status} account ${accountId}`);
+        return false;
+    }
+
     const status = isPaidStripeStatus(subscription.status) ? 'pro' : 'free';
     await updateAccountSubscription(account.id, {
         subscriptionStatus: status,
         subscriptionId: status === 'pro' ? subscription.id : null,
         subscriptionEndsAt: status === 'pro' ? getSubscriptionEndsAt(subscription) : null,
     });
+    return true;
 }
 
 export async function POST(request: Request) {
@@ -156,25 +168,25 @@ export async function POST(request: Request) {
                         getMetadataId(subscriptionResponse.metadata, 'account_id') ||
                         getMetadataId(session.metadata, 'account_id');
                     if (accountId) {
-                        await syncAccountSubscription(accountId, subscriptionResponse);
-                        await applyEarnedReferralCredits(accountId, {
-                            requireActiveSubscription: false,
-                        });
-                        console.log(`Activated Pro subscription for account ${accountId}`);
+                        const updated = await syncAccountSubscription(accountId, subscriptionResponse);
+                        if (updated) {
+                            await applyEarnedReferralCredits(accountId, {
+                                requireActiveSubscription: false,
+                            });
+                            console.log(`Activated Pro subscription for account ${accountId}`);
+                        }
                         break;
                     }
 
                     const account = await getAccountByStripeCustomerId(customerId);
                     if (account) {
-                        await updateAccountSubscription(account.id, {
-                            subscriptionStatus: 'pro',
-                            subscriptionId: subscriptionResponse.id,
-                            subscriptionEndsAt: getSubscriptionEndsAt(subscriptionResponse),
-                        });
-                        await applyEarnedReferralCredits(account.id, {
-                            requireActiveSubscription: false,
-                        });
-                        console.log(`Activated Pro subscription for account ${account.id}`);
+                        const updated = await syncAccountSubscription(account.id, subscriptionResponse);
+                        if (updated) {
+                            await applyEarnedReferralCredits(account.id, {
+                                requireActiveSubscription: false,
+                            });
+                            console.log(`Activated Pro subscription for account ${account.id}`);
+                        }
                         break;
                     }
 
@@ -212,22 +224,15 @@ export async function POST(request: Request) {
 
                 const accountId = getMetadataId(subscription.metadata, 'account_id');
                 if (accountId) {
-                    await syncAccountSubscription(accountId, subscription);
-                    console.log(`Updated Pro subscription for account ${accountId}`);
+                    if (await syncAccountSubscription(accountId, subscription)) {
+                        console.log(`Updated Pro subscription for account ${accountId}`);
+                    }
                     break;
                 }
 
                 const account = await getAccountByStripeCustomerId(customerId);
                 if (account) {
-                    // Map Stripe status to our Plan type ('free' | 'pro')
-                    const status = isPaidStripeStatus(subscription.status) ? 'pro' : 'free';
-
-                    await updateAccountSubscription(account.id, {
-                        subscriptionStatus: status,
-                        subscriptionId: subscription.id,
-                        subscriptionEndsAt: getSubscriptionEndsAt(subscription),
-                    });
-                    console.log(`Updated subscription status to ${status} for account ${account.id}`);
+                    await syncAccountSubscription(account.id, subscription);
                     break;
                 }
 
@@ -265,19 +270,15 @@ export async function POST(request: Request) {
 
                 const accountId = getMetadataId(subscription.metadata, 'account_id');
                 if (accountId) {
-                    await syncAccountSubscription(accountId, subscription);
-                    console.log(`Downgraded account ${accountId} to free`);
+                    if (await syncAccountSubscription(accountId, subscription)) {
+                        console.log(`Downgraded account ${accountId} to free`);
+                    }
                     break;
                 }
 
                 const account = await getAccountByStripeCustomerId(customerId);
                 if (account) {
-                    await updateAccountSubscription(account.id, {
-                        subscriptionStatus: 'free',
-                        subscriptionId: null,
-                        subscriptionEndsAt: null,
-                    });
-                    console.log(`Downgraded to free plan for account ${account.id}`);
+                    await syncAccountSubscription(account.id, subscription);
                     break;
                 }
 

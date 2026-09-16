@@ -61,7 +61,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
             },
             {
               title: 'One workflow on every file',
-              copy: 'Add the reusable seller link to your listing email, text template, checklist, or signature once. From there, utility collection stops feeling improvised.',
+              copy: 'Add the reusable seller link once to your seller welcome email, listing checklist, closing-prep email, or signature. Buyer-side TCs can ask the listing agent to forward it to the seller.',
             },
             {
               title: 'Better buyer handoff quality',

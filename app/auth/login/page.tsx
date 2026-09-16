@@ -40,6 +40,7 @@ export default function LoginPage() {
         try {
             const response = await fetch('/api/account');
             if (response.status === 401) return null;
+            if (response.status === 409) return '/account-closed';
             if (!response.ok) return safeNext || '/dashboard';
 
             const data = await response.json().catch(() => ({}));

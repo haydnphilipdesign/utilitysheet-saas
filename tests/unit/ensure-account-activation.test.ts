@@ -127,4 +127,24 @@ describe('ensureAccountActivation', () => {
         expect(result?.activation.organizationCreated).toBe(false);
         expect(result?.activation.defaultsProvisioned).toBe(false);
     });
+
+    it('does not recreate defaults when the account record is closing or closed', async () => {
+        queryMocks.ensureAccountRecord.mockResolvedValue({
+            account: null,
+            created: false,
+            closureStatus: 'closing',
+        });
+
+        const result = await ensureAccountActivation({
+            id: 'auth_closing',
+            primaryEmail: 'owner@example.com',
+            displayName: 'Owner',
+        });
+
+        expect(result).toBeNull();
+        expect(queryMocks.getAccountOrganizations).not.toHaveBeenCalled();
+        expect(queryMocks.createOrganization).not.toHaveBeenCalled();
+        expect(queryMocks.createBrandProfile).not.toHaveBeenCalled();
+        expect(queryMocks.ensureIntakeLink).not.toHaveBeenCalled();
+    });
 });

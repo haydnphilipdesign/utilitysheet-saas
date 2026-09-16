@@ -8,7 +8,11 @@ export type AccountSecurityEventAction =
     | 'session_revoked'
     | 'other_sessions_revoked'
     | 'account_data_exported'
-    | 'closure_readiness_viewed';
+    | 'closure_readiness_viewed'
+    | 'closure_review_viewed'
+    | 'account_closure_started'
+    | 'account_closure_failed'
+    | 'account_closed';
 
 export async function updateAccountEmail(accountId: string, email: string) {
     if (!sql) return null;
@@ -169,64 +173,5 @@ export async function getAccountDataExport(accountId: string) {
         growthAttribution: attribution[0] || null,
         referralSummary: referrals[0] || null,
         securityEvents,
-    };
-}
-
-export async function getAccountClosureReadiness(accountId: string, email: string) {
-    if (!sql) return null;
-
-    const [account, workspaces, assets, invitations, referrals] = await Promise.all([
-        sql`
-            SELECT subscription_status, subscription_id, subscription_ends_at
-            FROM accounts
-            WHERE id = ${accountId}
-        `,
-        sql`
-            SELECT
-                o.id, o.name, om.role, o.subscription_status, o.subscription_id,
-                COUNT(DISTINCT all_members.id)::int AS member_count,
-                COUNT(DISTINCT all_members.id) FILTER (WHERE all_members.role = 'admin')::int AS admin_count,
-                COUNT(DISTINCT oi.id) FILTER (WHERE oi.accepted_at IS NULL AND oi.expires_at > NOW())::int AS pending_invite_count,
-                COUNT(DISTINCT bp.id) FILTER (WHERE bp.account_id = ${accountId})::int AS owned_profile_count,
-                COUNT(DISTINCT r.id) FILTER (WHERE r.account_id = ${accountId})::int AS owned_request_count
-            FROM organization_members om
-            JOIN organizations o ON o.id = om.organization_id
-            LEFT JOIN organization_members all_members ON all_members.organization_id = o.id
-            LEFT JOIN organization_invitations oi ON oi.organization_id = o.id
-            LEFT JOIN brand_profiles bp ON bp.organization_id = o.id
-            LEFT JOIN requests r ON r.organization_id = o.id
-            WHERE om.account_id = ${accountId}
-            GROUP BY o.id, o.name, om.role, o.subscription_status, o.subscription_id, om.created_at
-            ORDER BY om.created_at ASC
-        `,
-        sql`
-            SELECT
-                (SELECT COUNT(*)::int FROM requests WHERE account_id = ${accountId}) AS request_count,
-                (SELECT COUNT(*)::int FROM brand_profiles WHERE account_id = ${accountId}) AS profile_count,
-                (SELECT COUNT(*)::int FROM intake_links WHERE account_id = ${accountId}) AS seller_form_count,
-                (SELECT COUNT(*)::int FROM requests WHERE account_id = ${accountId} AND status != 'draft') AS public_request_count
-        `,
-        sql`
-            SELECT COUNT(*)::int AS count
-            FROM organization_invitations
-            WHERE lower(email) = ${email.trim().toLowerCase()}
-                AND accepted_at IS NULL
-                AND expires_at > NOW()
-        `,
-        sql`
-            SELECT
-                COUNT(*) FILTER (WHERE referrer_account_id = ${accountId} AND status = 'earned')::int AS unapplied_earned_count,
-                COUNT(*) FILTER (WHERE referred_account_id = ${accountId})::int AS referred_record_count
-            FROM referral_credits
-        `,
-    ]);
-
-    if (!account[0]) return null;
-    return {
-        personalSubscription: account[0],
-        workspaces,
-        assets: assets[0] || {},
-        pendingInvitationsAddressedToEmail: Number(invitations[0]?.count) || 0,
-        referralRecords: referrals[0] || {},
     };
 }

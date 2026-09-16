@@ -379,6 +379,46 @@
   line-height: 1.8;
   color: #64716a;
 }
+.workflow-moments {
+  display: grid;
+  grid-template-columns: 0.65fr 1fr;
+  gap: 16px 65px;
+  margin-top: 48px;
+}
+.workflow-moments .marketing-eyebrow {
+  margin-bottom: 12px;
+}
+.workflow-moments-intro {
+  max-width: 300px;
+  font-family: Georgia, serif;
+  font-size: 22px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: #202d35;
+}
+.workflow-moments ul {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.workflow-moments li {
+  padding-top: 14px;
+  border-top: 2px solid #577765;
+}
+.workflow-moments h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.workflow-moments li p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #64716a;
+}
+.workflow-moments > .marketing-text-link {
+  grid-column: 2;
+  justify-self: start;
+}
 .workflow-video {
   display: grid;
   grid-template-columns: 0.65fr 1fr;
@@ -692,6 +732,17 @@
   }
   .workflow-step-top {
     margin-bottom: 16px;
+  }
+  .workflow-moments {
+    grid-template-columns: 1fr;
+    margin-top: 35px;
+  }
+  .workflow-moments ul {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .workflow-moments > .marketing-text-link {
+    grid-column: 1;
   }
   .workflow-video {
     grid-template-columns: 1fr;

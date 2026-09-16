@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@stackframe/stack';
-import { Download, FileSearch, KeyRound, Loader2, Mail, Monitor, ShieldCheck } from 'lucide-react';
+import { Download, FileSearch, KeyRound, Loader2, LogIn, Mail, Monitor, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { AccountClosureSection } from '@/components/settings/account-closure';
 
 type SecuritySummary = {
     primaryEmail: string;
@@ -46,28 +47,8 @@ type SecuritySummary = {
     }>;
 };
 
-type ClosureReadiness = {
-    executableClosureAvailable: false;
-    readyForFutureClosure: boolean;
-    blockers: string[];
-    workspaces: Array<{
-        id: string;
-        name: string;
-        role: 'admin' | 'member';
-        subscription_status: string;
-        member_count: number;
-        admin_count: number;
-        pending_invite_count: number;
-        owned_profile_count: number;
-        owned_request_count: number;
-    }>;
-    assets: {
-        request_count?: number;
-        profile_count?: number;
-        seller_form_count?: number;
-        public_request_count?: number;
-    };
-};
+const ACCOUNT_SETTINGS_PATH = '/dashboard/settings?tab=account';
+const RECENT_AUTH_PROMPT = 'Confirm it’s you, then try again.';
 
 async function readJson(response: Response) {
     return response.json().catch(() => ({})) as Promise<Record<string, unknown>>;
@@ -88,7 +69,6 @@ export function AccountSecuritySettings() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordError, setPasswordError] = useState<string | null>(null);
-    const [closure, setClosure] = useState<ClosureReadiness | null>(null);
     const [confirmation, setConfirmation] = useState<{
         title: string;
         description: string;
@@ -121,7 +101,24 @@ export function AccountSecuritySettings() {
         void loadSecurity(false);
     }, []);
 
-    const verifyIdentity = async (event: React.FormEvent) => {
+    // Accounts created with Google (or another provider) have no password, so
+    // the only way to start a fresh five-minute window is to sign in again.
+    const hasPassword = Boolean(user?.hasPassword);
+
+    const signInAgain = async () => {
+        if (!user) return;
+        setReauthLoading(true);
+        try {
+            await user.signOut({
+                redirectUrl: `/auth/login?next=${encodeURIComponent(ACCOUNT_SETTINGS_PATH)}`,
+            });
+        } catch {
+            setReauthLoading(false);
+            toast.error('We couldn’t sign you out. Refresh the page and try again.');
+        }
+    };
+
+    const submitPasswordConfirmation = async (event: React.FormEvent) => {
         event.preventDefault();
         if (!user?.primaryEmail) return;
         setReauthLoading(true);
@@ -134,14 +131,14 @@ export function AccountSecuritySettings() {
                 noRedirect: true,
             });
             if (result.status === 'error') {
-                throw new Error('That password did not match your account.');
+                throw new Error('That password is incorrect. Try again, or reset it from the sign-in page.');
             }
             setReauthPassword('');
             setReauthOpen(false);
             const loaded = await loadSecurity(false);
-            if (loaded) toast.success('Identity verified for five minutes.');
+            if (loaded) toast.success('Password confirmed. Sensitive settings are unlocked for five minutes.');
         } catch (error) {
-            setReauthError(error instanceof Error ? error.message : 'Identity verification failed.');
+            setReauthError(error instanceof Error ? error.message : 'We couldn’t confirm your password. Try again.');
         } finally {
             setReauthLoading(false);
         }
@@ -159,7 +156,7 @@ export function AccountSecuritySettings() {
             const data = await readJson(response);
             if (response.status === 403 && data.code === 'RECENT_AUTH_REQUIRED') {
                 setReauthOpen(true);
-                throw new Error('Verify your password, then try again.');
+                throw new Error(RECENT_AUTH_PROMPT);
             }
             if (!response.ok) throw new Error(String(data.error || 'Account security action failed.'));
             toast.success(successMessage);
@@ -234,7 +231,7 @@ export function AccountSecuritySettings() {
             if (response.status === 403) {
                 const data = await readJson(response);
                 if (data.code === 'RECENT_AUTH_REQUIRED') setReauthOpen(true);
-                throw new Error('Verify your password, then request the export again.');
+                throw new Error(RECENT_AUTH_PROMPT);
             }
             if (!response.ok) {
                 const data = await readJson(response);
@@ -257,24 +254,6 @@ export function AccountSecuritySettings() {
         }
     };
 
-    const loadClosureReadiness = async () => {
-        setBusyAction('closure-readiness');
-        try {
-            const response = await fetch('/api/account/closure-readiness', { cache: 'no-store' });
-            const data = await readJson(response);
-            if (response.status === 403 && data.code === 'RECENT_AUTH_REQUIRED') {
-                setReauthOpen(true);
-                throw new Error('Verify your password, then review closure readiness again.');
-            }
-            if (!response.ok) throw new Error(String(data.error || 'Could not load closure readiness.'));
-            setClosure(data as unknown as ClosureReadiness);
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Could not load closure readiness.');
-        } finally {
-            setBusyAction(null);
-        }
-    };
-
     return (
         <>
             <Card className="border-border bg-card/50">
@@ -284,22 +263,32 @@ export function AccountSecuritySettings() {
                         Sign-in &amp; security
                     </CardTitle>
                     <CardDescription>
-                        Manage verified emails, your password, and signed-in devices. Sensitive details require a fresh password check.
+                        Manage your sign-in email, password, and signed-in devices.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
                     {!security ? (
                         <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                                <p className="text-sm font-medium text-foreground">Security details are protected</p>
-                                <p className="text-sm text-muted-foreground">Verify your password to view emails and active sessions for five minutes.</p>
+                                <p className="text-sm font-medium text-foreground">
+                                    {hasPassword ? 'Confirm your password to continue' : 'Sign in again to continue'}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    {hasPassword
+                                        ? 'To protect your account, re-enter your password before viewing or changing these settings. They stay unlocked for five minutes.'
+                                        : 'Your account doesn’t use a password, so sign in again to view or change these settings. They stay unlocked for five minutes after you sign in.'}
+                                </p>
                             </div>
-                            <Button onClick={() => setReauthOpen(true)} disabled={loading || !user?.hasPassword}>
-                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                                Verify identity
-                            </Button>
-                            {!user?.hasPassword && (
-                                <p className="text-sm text-muted-foreground">Sign out and back in to refresh your security session.</p>
+                            {hasPassword ? (
+                                <Button className="shrink-0" onClick={() => setReauthOpen(true)} disabled={loading}>
+                                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                                    Confirm password
+                                </Button>
+                            ) : (
+                                <Button className="shrink-0" onClick={() => void signInAgain()} disabled={loading || !user || reauthLoading}>
+                                    {loading || reauthLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                                    Sign in again
+                                </Button>
                             )}
                         </div>
                     ) : (
@@ -455,7 +444,7 @@ export function AccountSecuritySettings() {
                         Data controls
                     </CardTitle>
                     <CardDescription>
-                        Export your personal UtilitySheet data or review what must be resolved before a future account closure.
+                        Download a copy of your UtilitySheet data, or close your account.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -470,66 +459,62 @@ export function AccountSecuritySettings() {
                         </Button>
                     </div>
 
-                    <div className="space-y-3 rounded-xl border border-border p-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-foreground">Account closure readiness</p>
-                                <p className="text-sm text-muted-foreground">Closure is not available yet. This read-only review identifies billing, workspace, public-link, asset, and referral safeguards.</p>
-                            </div>
-                            <Button variant="outline" onClick={() => void loadClosureReadiness()} disabled={busyAction === 'closure-readiness'}>
-                                {busyAction === 'closure-readiness' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Review readiness
-                            </Button>
-                        </div>
-                        {closure && (
-                            <div role="status" className="space-y-3 rounded-lg bg-muted/30 p-3 text-sm">
-                                <p className="font-medium text-foreground">
-                                    {closure.blockers.length === 0
-                                        ? 'No current billing or workspace blocker was detected, but closure remains unavailable until the retention lifecycle is approved.'
-                                        : `${closure.blockers.length} item${closure.blockers.length === 1 ? '' : 's'} must be resolved before closure can be offered.`}
-                                </p>
-                                {closure.blockers.length > 0 && (
-                                    <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-                                        {closure.blockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
-                                    </ul>
-                                )}
-                                <p className="text-muted-foreground">
-                                    Account-owned records: {Number(closure.assets.request_count) || 0} requests, {Number(closure.assets.profile_count) || 0} Branding Profiles, and {Number(closure.assets.seller_form_count) || 0} reusable seller forms across {closure.workspaces.length} workspace{closure.workspaces.length === 1 ? '' : 's'}.
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                    <AccountClosureSection
+                        onRecentAuthRequired={() => setReauthOpen(true)}
+                        onDownloadExport={downloadExport}
+                        exporting={busyAction === 'export'}
+                    />
                 </CardContent>
             </Card>
 
             <Dialog open={reauthOpen} onOpenChange={setReauthOpen}>
                 <DialogContent>
-                    <form onSubmit={verifyIdentity} className="space-y-4">
-                        <DialogHeader>
-                            <DialogTitle>Verify your identity</DialogTitle>
-                            <DialogDescription>Enter your current UtilitySheet password. It goes directly to Stack Auth and is never sent to UtilitySheet.</DialogDescription>
-                        </DialogHeader>
-                        {reauthError && <p role="alert" className="text-sm text-destructive">{reauthError}</p>}
-                        <div className="space-y-2">
-                            <Label htmlFor="reauth-password">Current password</Label>
-                            <Input
-                                id="reauth-password"
-                                type="password"
-                                autoComplete="current-password"
-                                value={reauthPassword}
-                                onChange={(event) => setReauthPassword(event.target.value)}
-                                required
-                                autoFocus
-                            />
+                    {hasPassword ? (
+                        <form onSubmit={submitPasswordConfirmation} className="space-y-4">
+                            <DialogHeader>
+                                <DialogTitle>Confirm your password</DialogTitle>
+                                <DialogDescription>
+                                    Re-enter your password to view and change sensitive account settings. You won’t be asked again for five minutes. Your password goes straight to our sign-in provider, not to UtilitySheet.
+                                </DialogDescription>
+                            </DialogHeader>
+                            {reauthError && <p role="alert" className="text-sm text-destructive">{reauthError}</p>}
+                            <div className="space-y-2">
+                                <Label htmlFor="reauth-password">Password</Label>
+                                <Input
+                                    id="reauth-password"
+                                    type="password"
+                                    autoComplete="current-password"
+                                    value={reauthPassword}
+                                    onChange={(event) => setReauthPassword(event.target.value)}
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setReauthOpen(false)}>Cancel</Button>
+                                <Button type="submit" disabled={reauthLoading}>
+                                    {reauthLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {reauthLoading ? 'Confirming…' : 'Confirm password'}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    ) : (
+                        <div className="space-y-4">
+                            <DialogHeader>
+                                <DialogTitle>Sign in again</DialogTitle>
+                                <DialogDescription>
+                                    Sensitive settings stay unlocked for five minutes after you sign in, and that time has passed. Your account doesn’t use a password, so sign in again the way you usually do. You’ll come back to Account settings.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => setReauthOpen(false)}>Cancel</Button>
+                                <Button type="button" onClick={() => void signInAgain()} disabled={reauthLoading}>
+                                    {reauthLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                                    Sign in again
+                                </Button>
+                            </DialogFooter>
                         </div>
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setReauthOpen(false)}>Cancel</Button>
-                            <Button type="submit" disabled={reauthLoading}>
-                                {reauthLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Verify
-                            </Button>
-                        </DialogFooter>
-                    </form>
+                    )}
                 </DialogContent>
             </Dialog>
 
@@ -538,7 +523,7 @@ export function AccountSecuritySettings() {
                     <form onSubmit={changePassword} className="space-y-4">
                         <DialogHeader>
                             <DialogTitle>Change password</DialogTitle>
-                            <DialogDescription>Your current and new passwords go directly to Stack Auth. Other sessions are revoked after the change.</DialogDescription>
+                            <DialogDescription>Your current and new passwords go straight to our sign-in provider, not to UtilitySheet. After the change, your other devices are signed out.</DialogDescription>
                         </DialogHeader>
                         {passwordError && <p role="alert" className="text-sm text-destructive">{passwordError}</p>}
                         <div className="space-y-2">

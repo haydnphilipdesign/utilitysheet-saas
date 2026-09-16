@@ -16,12 +16,17 @@ export const faqItems = [
   {
     question: 'Who is UtilitySheet for?',
     answer:
-      'UtilitySheet is built for transaction coordinators, real estate agents, listing admins, support staff, and teams that need a repeatable way to collect seller utility information and share a clean utility sheet before closing.',
+      'UtilitySheet is built for transaction coordinators, real estate agents, listing admins, support staff, and teams that need a repeatable way to collect seller utility information and share a clean utility sheet. Use it at listing intake, under contract, or as closing approaches, from either side of the transaction.',
   },
   {
     question: 'Can I use one link for every property?',
     answer:
-      'Yes. UtilitySheet creates a reusable seller link for your workspace. Add it to your email signature, text templates, or closing checklist, and sellers can start by entering the property address.',
+      'Yes. UtilitySheet creates a reusable seller link for your workspace. Add it to your seller welcome email, listing checklist, closing-prep email, or text templates, and sellers can start by entering the property address.',
+  },
+  {
+    question: 'When should I send the seller link?',
+    answer:
+      'Whenever it fits your process. Listing teams can include it in a seller welcome email or listing checklist, or send it directly to the seller before closing. Buyer-side coordinators can ask the listing agent to forward the link to the seller, so the seller fills in the details. If you collect details early, review the sheet before you share it, since providers or access details can change before closing.',
   },
   {
     question: 'What is the Property Handoff Packet?',
@@ -127,7 +132,7 @@ export const workflowSteps = [
     number: '01',
     title: 'Send one seller utility form link',
     description:
-      'Share your reusable seller link by email, text, signature, or checklist. Sellers enter the property address and start from their phone or computer.',
+      'Share your reusable seller link at listing intake or before closing, by email, text, signature, or checklist. Sellers enter the property address and start from their phone or computer.',
   },
   {
     number: '02',

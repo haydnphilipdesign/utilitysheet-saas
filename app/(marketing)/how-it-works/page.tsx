@@ -40,7 +40,7 @@ export default function HowItWorksPage() {
       <MarketingPageHero showActions
         eyebrow="Workflow"
         title="Send a link. Get the details. Hand it off."
-        description="A simple seller experience, from the first question to the finished PDF. Here is how UtilitySheet fits into your next closing."
+        description="A simple seller experience, from the first question to the finished PDF. Here is how UtilitySheet fits into your next transaction, from listing intake to closing."
       >
         <MarketingBreadcrumbs
           items={[
@@ -56,11 +56,12 @@ export default function HowItWorksPage() {
 
       <MarketingSection
         title="Where it fits in your process"
-        description="Transaction coordinators and agents usually slot UtilitySheet into the same moment they would normally send a utility checklist, email, or follow-up text."
+        description="Transaction coordinators and agents slot UtilitySheet into a message they already send, whether that is at listing intake, under contract, or as closing approaches."
       >
         <div className="grid gap-6 md:grid-cols-2">
           {[
-            'Add the reusable seller link to your listing-to-closing checklist or email template once, then reuse it on every file.',
+            'Add the reusable seller link once to your seller welcome email, listing checklist, or closing-prep email, then reuse it on every file. On the buyer side, ask the listing agent to forward it to the seller.',
+            'If you collect details early in the listing, review the finished sheet before you share it. Providers and access details can change before closing.',
             'When the seller submits, review the finished utility sheet in the dashboard before sharing it with buyers, agents, support staff, or anyone else who needs the information.',
             'On Pro and Teams, you can correct capitalization, addresses, provider names, or contact details after submission without reopening the seller form.',
             'Use Simple Utility Sheet mode when you just need utilities, or Property Handoff Packet mode to collect utilities, home systems, access details, and service-provider information in one seller handoff.',

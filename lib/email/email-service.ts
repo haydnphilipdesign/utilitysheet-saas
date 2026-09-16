@@ -1813,6 +1813,85 @@ export async function sendActivationReminderEmail({
 }
 
 // =============================================================================
+// ACCOUNT CLOSED EMAIL
+// =============================================================================
+
+function generateAccountClosedHtml({ supportEmail }: { supportEmail: string }): string {
+    const safeSupportEmail = escapeHtml(supportEmail);
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your UtilitySheet account is closed</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden;">
+                    <tr>
+                        <td style="padding: 32px 40px;">
+                            <h1 style="margin: 0 0 20px; color: #111827; font-size: 22px; font-weight: 600;">Your UtilitySheet account is closed</h1>
+                            <p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">
+                                We closed your account as you asked. Your sign-in, personal requests, seller links, and Branding Profiles have been deleted, and any subscription on the account was canceled.
+                            </p>
+                            <p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">
+                                Requests you shared in a team workspace now belong to the admin you chose. We keep billing and security records, without your name or contact details.
+                            </p>
+                            <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                                If you didn't close your account, email <a href="mailto:${safeSupportEmail}" style="color: #2563eb;">${safeSupportEmail}</a> right away.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                                This is the last email we'll send to this address about this account.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    `.trim();
+}
+
+export async function sendAccountClosedEmail({
+    toEmail,
+    supportEmail = 'haydn@multimedium.dev',
+}: {
+    toEmail: string;
+    supportEmail?: string;
+}): Promise<{ success: boolean; error?: string }> {
+    try {
+        const resend = getResend();
+        const { error } = await resend.emails.send({
+            from: 'UtilitySheet <noreply@utilitysheet.com>',
+            to: getDemoEmailRecipient(toEmail),
+            subject: 'Your UtilitySheet account is closed',
+            html: generateAccountClosedHtml({ supportEmail }),
+        });
+
+        if (error) {
+            console.error('Failed to send account closed email:', error.message);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending account closed email');
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+        };
+    }
+}
+
+// =============================================================================
 // Testing Exports (for unit tests only)
 // =============================================================================
 export const __testing = {
@@ -1822,4 +1901,5 @@ export const __testing = {
     generateContactResolutionAlertHtml,
     generateWeeklySummaryHtml,
     generateActivationReminderHtml,
+    generateAccountClosedHtml,
 };

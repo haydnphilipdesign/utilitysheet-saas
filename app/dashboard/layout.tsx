@@ -4,6 +4,7 @@ import { stackServerApp } from '@/lib/stack/server';
 import { noIndexMetadata } from '@/lib/seo/site';
 import { DashboardLayoutContent } from './layout-content';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
+import { getAccountClosureStatusByAuthUserId } from '@/lib/neon/queries';
 
 export const metadata = noIndexMetadata;
 
@@ -30,7 +31,9 @@ export default async function DashboardLayout({
 
     const activationState = await ensureAccountActivation(user);
     if (!activationState?.account) {
-        redirect('/auth/login');
+        // Sending a closing account to login would bounce straight back here.
+        const closure = await getAccountClosureStatusByAuthUserId(user.id);
+        redirect(closure && closure.status !== 'active' ? '/account-closed' : '/auth/login');
     }
 
     return (

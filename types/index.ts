@@ -179,6 +179,9 @@ export interface Account {
     subscription_ends_at?: string | null;
     onboarding_completed_at?: string | null;
     notification_preferences?: Record<string, unknown>;
+    closure_status?: 'active' | 'closing' | 'closed';
+    closure_requested_at?: string | null;
+    closed_at?: string | null;
     created_at: string;
     updated_at: string;
 }

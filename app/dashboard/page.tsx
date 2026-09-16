@@ -619,6 +619,8 @@ export default function DashboardPage() {
                                         <p>They complete utility details in about 2 minutes.</p>
                                         <p>You receive the submission by email and can review it here.</p>
                                         <p>Pro and Teams can edit a submitted sheet without reopening the seller link.</p>
+                                        <p>Add it to a seller welcome email, listing checklist, or closing-prep email.</p>
+                                        <p>On the buyer side, ask the listing agent to forward it to the seller.</p>
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>

@@ -334,7 +334,11 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
                     </Button>
                 </section>
 
-                <section className={panelClassName} aria-label="Seller test" aria-live="polite">
+                {/* No aria-live on this wrapper: Base UI keeps live regions (and
+                    everything inside them) interactive behind modal dialogs, which
+                    would expose these buttons behind the sample dialog. Errors and
+                    notices below announce themselves via role="alert"/"status". */}
+                <section className={panelClassName} aria-label="Seller test">
                     {renderTestPanel()}
                 </section>
 

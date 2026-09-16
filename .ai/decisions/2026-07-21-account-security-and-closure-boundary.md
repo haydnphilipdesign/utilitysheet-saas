@@ -1,6 +1,6 @@
 # Account security and closure boundary
 
-- Status: Accepted
+- Status: Accepted. The executable-closure deferral is superseded by `2026-09-16-self-serve-account-closure-lifecycle.md`.
 - Date: 2026-07-21
 - Decision owner: Product owner, after repository-grounded approval gate
 - Related plan: `.ai/plans/2026-07-21-account-settings-integration-review.md`

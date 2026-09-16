@@ -21,13 +21,20 @@ const referralCreditsIndexes = [
     "CREATE INDEX IF NOT EXISTS idx_referral_credits_earned ON referral_credits(referrer_account_id, earned_at) WHERE status = 'earned';",
 ];
 
+const referralCreditsTableWithClosureStatus = referralCreditsTable.replace(
+    "status TEXT NOT NULL DEFAULT 'earned' CHECK (status IN ('earned', 'applied'))",
+    "status TEXT NOT NULL DEFAULT 'earned' CONSTRAINT referral_credits_status_check CHECK (status IN ('earned', 'applied', 'forfeited'))",
+);
+
 describe('referral credit ledger SQL', () => {
     it.each(['migrations-referral-credits.sql', 'schema.sql'])(
         '%s contains the referral credit ledger table and indexes',
         async (filePath) => {
             const sql = normalizeSql(await readFile(filePath, 'utf8'));
 
-            expect(sql).toContain(referralCreditsTable);
+            expect(sql).toContain(
+                filePath === 'schema.sql' ? referralCreditsTableWithClosureStatus : referralCreditsTable,
+            );
             for (const indexDefinition of referralCreditsIndexes) {
                 expect(sql).toContain(indexDefinition);
             }

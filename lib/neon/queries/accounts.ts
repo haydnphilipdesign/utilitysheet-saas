@@ -29,6 +29,13 @@ export async function ensureAccountRecord(
 
     if (result.length > 0) {
         const existing = result[0];
+        // A closing or closed account must never be reused or refreshed from
+        // Stack. The column is absent until migrations-account-closure.sql runs.
+        const closureStatus = existing.closure_status as string | undefined;
+        if (closureStatus === 'closing' || closureStatus === 'closed') {
+            return { account: null, created: false, closureStatus };
+        }
+
         const shouldUpdateEmail = email.trim().length > 0 && existing.email !== email;
         const shouldUpdateFullName = Boolean(fullName?.trim()) && existing.full_name !== fullName;
 
@@ -52,6 +59,7 @@ export async function ensureAccountRecord(
             FROM accounts
             WHERE auth_user_id IS NULL
                 AND lower(email) = ${normalizedEmail}
+                AND COALESCE(to_jsonb(accounts) ->> 'closure_status', 'active') = 'active'
             ORDER BY created_at ASC
             LIMIT 1
         `;
@@ -64,10 +72,14 @@ export async function ensureAccountRecord(
                     full_name = COALESCE(${fullName || null}, full_name),
                     updated_at = NOW()
                 WHERE id = ${claimableSeededAccount[0].id}
+                    AND auth_user_id IS NULL
+                    AND COALESCE(to_jsonb(accounts) ->> 'closure_status', 'active') = 'active'
                 RETURNING *
             `;
 
-            return { account: claimed[0] || claimableSeededAccount[0], created: false };
+            if (claimed[0]) {
+                return { account: claimed[0], created: false };
+            }
         }
     }
 
