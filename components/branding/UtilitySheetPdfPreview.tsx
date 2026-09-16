@@ -31,6 +31,10 @@ interface UtilitySheetPdfPreviewProps {
      */
     mode?: PacketMode;
     onModeChange?: (mode: PacketMode) => void;
+    /** Heading above the preview. Defaults to "Live preview" (branding editor). */
+    label?: string;
+    /** Accessible name for the preview frame. */
+    frameLabel?: string;
 }
 
 /**
@@ -56,6 +60,8 @@ export default function UtilitySheetPdfPreview({
     defaultMode = 'simple',
     mode: controlledMode,
     onModeChange,
+    label = 'Live preview',
+    frameLabel = 'Preview of your branded utility info sheet',
 }: UtilitySheetPdfPreviewProps) {
     const [internalMode, setInternalMode] = useState<PacketMode>(defaultMode);
     const mode = controlledMode ?? internalMode;
@@ -122,7 +128,7 @@ export default function UtilitySheetPdfPreview({
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live preview</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
                 {/* Property Handoff Packet deliverables are Pro/Teams only, so the mode
                     toggle is hidden for Free accounts and the preview stays honest. */}
                 {isPro && (
@@ -161,7 +167,7 @@ export default function UtilitySheetPdfPreview({
                             srcDoc={html}
                             onLoad={measureDocument}
                             scrolling="no"
-                            aria-label="Preview of your branded utility info sheet"
+                            aria-label={frameLabel}
                             style={{
                                 width: PRINT_CONTENT_WIDTH_PX,
                                 height: documentHeight,

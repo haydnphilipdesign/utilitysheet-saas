@@ -606,7 +606,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const handleRetrySubmit = () => {
         trackEvent('seller_submission_retry_clicked', {
             error_kind: submitError?.kind || 'unknown',
-            location: 'seller_flow',
+            location: isTestDrive ? 'test_drive_seller_flow' : 'seller_flow',
         });
         handleSubmit();
     };
@@ -639,7 +639,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             stepTotal={totalSteps}
             autosaveFlash={autosaveFlash}
             sellerToken={isDemo ? undefined : token}
-            showSaveLink={!isDemo && currentStep > Step.WELCOME && currentStep < Step.SUCCESS}
+            showSaveLink={!isDemo && !isTestDrive && currentStep > Step.WELCOME && currentStep < Step.SUCCESS}
             isTestDrive={isTestDrive}
         >
             <AnimatePresence mode={shouldReduceMotion ? 'sync' : 'wait'} initial={!shouldReduceMotion}>
@@ -655,6 +655,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                             onNext={handleNext}
                             estimatedMinutes={estimatedMinutes}
                             stepCount={totalSteps}
+                            isTestDrive={isTestDrive}
+                            savesProgress={!isDemo}
                         />
                     );
                 })()}
@@ -740,7 +742,9 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                             </div>
                         </div>
                         <div className="space-y-2 max-w-sm">
-                            <h2 className="text-xl sm:text-2xl font-bold text-foreground">Sending your info to your agent…</h2>
+                            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+                                {isTestDrive ? 'Creating your test sheet…' : 'Sending your info to your agent…'}
+                            </h2>
                             <p className="text-sm text-muted-foreground">This usually takes a few seconds. Please don’t close the tab.</p>
                         </div>
                     </motion.div>
@@ -750,6 +754,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     <SuccessStep
                         key="success"
                         isDemo={isDemo}
+                        isTestDrive={isTestDrive}
                         demoData={isDemo ? {
                             address: initialRequestData.property_address,
                             state,

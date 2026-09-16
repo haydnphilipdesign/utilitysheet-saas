@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ArrowRight, Home, Save } from 'lucide-react';
+import { ArrowRight, Check, Home, Save } from 'lucide-react';
 import { wizardFocusRing } from '../wizard-ui';
 
 interface WelcomeStepProps {
@@ -9,9 +9,18 @@ interface WelcomeStepProps {
     onNext: () => void;
     estimatedMinutes?: number;
     stepCount?: number;
+    isTestDrive?: boolean;
+    /** False for the public demo, which never stores a draft. */
+    savesProgress?: boolean;
 }
 
-export function WelcomeStep({ address, onNext, estimatedMinutes, stepCount }: WelcomeStepProps) {
+const TEST_DRIVE_POINTS = [
+    'Answer as if you were the seller. Made-up providers and details are fine.',
+    'When you submit, UtilitySheet creates a finished sheet and PDF you can review.',
+    'This test does not count toward your plan, and no one else is notified.',
+];
+
+export function WelcomeStep({ address, onNext, estimatedMinutes, stepCount, isTestDrive = false, savesProgress = true }: WelcomeStepProps) {
     const minutesText = (() => {
         if (!estimatedMinutes || estimatedMinutes <= 2) return 'about 2 minutes';
         if (estimatedMinutes <= 4) return 'about 3 to 4 minutes';
@@ -30,28 +39,56 @@ export function WelcomeStep({ address, onNext, estimatedMinutes, stepCount }: We
                 <Home className="h-8 w-8 sm:h-10 sm:w-10 text-[color:var(--brand-accent)]" />
             </div>
 
-            <div className="space-y-3 sm:space-y-4 max-w-md">
-                <h2 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground">
-                    Tell us about the home&apos;s utilities
-                </h2>
-                <div className="space-y-2 sm:space-y-1">
+            {isTestDrive ? (
+                <div className="space-y-3 sm:space-y-4 max-w-md">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
+                        You&apos;re about to see what your seller sees
+                    </h2>
                     <p className="text-sm sm:text-base text-muted-foreground">
-                        We&apos;re gathering utility details for:
+                        This is the same form your sellers complete, filled in for a fictional property:
                     </p>
                     <p className="text-sm sm:text-lg font-medium text-foreground px-3 sm:px-4 py-2 bg-muted/50 rounded-lg border border-border inline-block max-w-full break-words">
                         {address}
                     </p>
+                    <ul className="space-y-2 text-left text-xs sm:text-sm text-muted-foreground">
+                        {TEST_DRIVE_POINTS.map((point) => (
+                            <li key={point} className="flex items-start gap-2">
+                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand-accent)]" aria-hidden="true" />
+                                <span>{point}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <p className="text-xs text-muted-foreground/80 inline-flex items-center gap-1.5 justify-center">
+                        <Save className="h-3 w-3" aria-hidden="true" />
+                        Progress saves automatically in this browser.
+                    </p>
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                    {stepCount && stepCount > 0
-                        ? `${stepCount} quick questions, ${minutesText}. We'll ask which services the home uses, then you can confirm the providers.`
-                        : `This takes ${minutesText}. We'll ask which services the home uses, then you can confirm the providers.`}
-                </p>
-                <p className="text-xs text-muted-foreground/80 inline-flex items-center gap-1.5 justify-center">
-                    <Save className="h-3 w-3" />
-                    Your progress saves automatically. Close the tab and come back anytime.
-                </p>
-            </div>
+            ) : (
+                <div className="space-y-3 sm:space-y-4 max-w-md">
+                    <h2 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-foreground to-muted-foreground">
+                        Tell us about the home&apos;s utilities
+                    </h2>
+                    <div className="space-y-2 sm:space-y-1">
+                        <p className="text-sm sm:text-base text-muted-foreground">
+                            We&apos;re gathering utility details for:
+                        </p>
+                        <p className="text-sm sm:text-lg font-medium text-foreground px-3 sm:px-4 py-2 bg-muted/50 rounded-lg border border-border inline-block max-w-full break-words">
+                            {address}
+                        </p>
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                        {stepCount && stepCount > 0
+                            ? `${stepCount} quick questions, ${minutesText}. We'll ask which services the home uses, then you can confirm the providers.`
+                            : `This takes ${minutesText}. We'll ask which services the home uses, then you can confirm the providers.`}
+                    </p>
+                    {savesProgress ? (
+                        <p className="text-xs text-muted-foreground/80 inline-flex items-center gap-1.5 justify-center">
+                            <Save className="h-3 w-3" />
+                            Your progress saves automatically in this browser, so you can close the tab and come back later.
+                        </p>
+                    ) : null}
+                </div>
+            )}
 
             <button
                 type="button"
@@ -59,7 +96,7 @@ export function WelcomeStep({ address, onNext, estimatedMinutes, stepCount }: We
                 data-testid="seller-welcome-continue"
                 className={`group relative inline-flex items-center justify-center px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white transition-all duration-200 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] border border-[color:var(--brand-accent-border)] rounded-xl shadow-lg active:scale-95 ${wizardFocusRing}`}
             >
-                <span className="mr-2">Get Started</span>
+                <span className="mr-2">{isTestDrive ? 'Start the test' : 'Get Started'}</span>
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </button>
         </motion.div>

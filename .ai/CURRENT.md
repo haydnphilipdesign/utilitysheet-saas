@@ -1,56 +1,30 @@
-# Active task (2026-09-15, Claude)
+# Current task: first-use guide and seller test-drive polish
 
-- Task: Count Free usage on seller submission only, stop blocking Free request creation at the limit (over-limit submissions lock), restore dashboard "Delete request", and clean existing metering data.
-- Status: COMPLETED 2026-09-15. Code committed and pushed as `894e025`; Vercel Production deploy succeeded. Migration run against production afterward with owner authorization: 52 rows un-metered (metered 763 to 711, 0 remaining candidates). Production DB is the `.env.local` target; `.env` has a placeholder host. No required work remains.
-- Optional follow-ups: publish the customer Product Update and Facebook reply (drafted in session), browser-check Delete on production, add a seller-route over-limit lock unit test.
-- Historical detail below describes the pre-deploy state and is superseded by this status line.
-- Plan: `.ai/plans/2026-09-15-submission-metering-and-request-delete.md` (outcome, deviations, validation recorded). Decision: `.ai/decisions/2026-09-15-submission-based-free-metering.md`.
-- Behavior: `metered_at` is set only by seller submission; `createRequest` defaults unmetered; `updateRequestStatus` never meters; `POST /api/requests` and intake start no longer block Free at the limit; over-limit Free submissions lock. Delete restored in row menus (desktop and mobile) and request detail page via `components/requests/DeleteRequestDialog.tsx`.
-- Files changed: `lib/neon/queries/requests.ts`, `app/api/requests/route.ts`, `app/api/intake/[slug]/start/route.ts`, `app/api/seller/[token]/route.ts` (comment; working copy normalized to LF), `components/requests/RequestListActions.tsx`, new `components/requests/DeleteRequestDialog.tsx`, `app/dashboard/page.tsx`, `app/dashboard/requests/page.tsx`, `app/dashboard/requests/[id]/page.tsx`, `app/dashboard/requests/new/page.tsx`, `app/dashboard/settings/page.tsx`, new `migrations-requests-submission-metering.sql`, tests (`request-metering-soft-delete`, `requests-route-advanced-gating`, `intake-start-route`, `dashboard-reusable-link`, new `request-list-actions`, new `delete-request-dialog`).
-- Validation: full Vitest 153 files passed; ESLint clean on touched files; `tsc --noEmit` passed; `security:scan` passed before commit; Vercel Production deploy of `894e025` succeeded. Not run: browser check, local `npm run build`.
-- Rollout done: deploy first, then migration (idempotent; safe to re-run if needed).
-- Risks: concurrent submissions at one remaining slot can both stay unlocked (pre-existing); admin stats reading `metered_at` now reflect submissions.
-- No concurrent editing warnings beyond the uncommitted files above.
+- Date: 2026-09-16. Agent: Claude Code. Branch: main (base fa4f111). Status: **Completed**, uncommitted in the worktree. No required work remains.
+- Plan: `.ai/plans/2026-09-16-first-use-and-test-drive-polish.md` (Completed; it holds full outcome, validation, limitations, and follow-ups).
+- Authorization used: local implementation and tests only. No commit, push, deploy, migration, production data change, or real email.
 
-# Latest small fix (2026-09-15, Claude)
+## What changed
 
-- PDF packet: Utility Providers section heading was indented relative to Home Basics/Buyer Next Steps because the title `th` padding stacked with the inner `.section-heading` padding. Fixed in `lib/pdf/packet-html.ts` CSS only (th padding 0, inner heading top radius, removed duplicate divider line). Committed and pushed to main.
-- Validation: packet-html, branding-preview-data, utilitysheet-pdf-preview Vitest files passed (39 tests); ESLint clean; rendered HTML in Chrome and confirmed alignment. No multi-page PDF stress render done (spacing-only change).
-- Next: none required. No required work remains.
-
-# Previous work (marketing redesign)
-
-- Task: Review and redesign UtilitySheet landing and marketing pages.
-- Status: Completed 2026-09-15 and committed in `7ed97d8` (verified in git log; earlier note said uncommitted).
-- Agent: Codex; branch main. Plan: `.ai/plans/2026-09-15-marketing-redesign.md` (completed).
-- User usage constraint honored: latest check 35% five-hour / 49% weekly remaining, above 15% pause threshold. No Opus transfer needed.
-
-## Outcome
-
-- Editorial marketing identity: warm paper, restrained blue, serif display typography, scoped marketing light palette independent of dashboard theme. No new app dependency or font request.
-- Homepage: prominent explicitly illustrative sheet, concise workflow, existing real video, capabilities, unchanged customer quotes, clearer pricing, FAQ and final CTA. Preserved auth redirect, schema/metadata, plan URLs and core CTA/section analytics.
-- Shared page shell and header redesigned; early signup/demo paths on core pages, keyboard-friendly mobile navigation, desktop header stays accessible on scroll. Mobile sticky CTA remains dismissible.
-- About rebuilt around the existing founder/TC story and portraits. Improved core/role/resource headings and removed duplicated pricing/workflow sections.
-- Removed unsupported 86% completion metric across public marketing, based on September 10 baseline audit. No replacement numerical claim. Legal text, dashboard, seller flow, billing, database and PDF rendering unchanged.
-- Main new files: `app/(marketing)/marketing.css`, `components/landing/MarketingStory.tsx`; modified marketing pages, shared shell/header, Hero/Pricing/SocialProof/FinalCTA/StickyCTA, `lib/marketing-content.ts`, and existing browser regression expectations. See git diff for exact scope.
+- `components/test-drive/TestDriveCard.tsx` is now the shared "See how UtilitySheet works" card, with two secondary panels:
+  - Sample sheet: new `SampleSheetDialog.tsx` reuses `UtilitySheetPdfPreview` and `POST /api/branding/test-pdf`. No request is created. The label says whether saved or placeholder branding is shown.
+  - Seller test: one-click start with same-tab navigation, resume link, completed output links, and a next step for the real link.
+  - On the dashboard, the card is hidden for ineligible accounts and while loading.
+- Seller flow (test drive only): "Test mode" banner with an "Exit test" link, a test welcome variant, and the save-link affordance hidden. New `steps/TestDriveSuccess.tsx` gets the output links from `GET /api/test-drive` and describes delivery only when it is recorded. `SuccessStep` now takes `isTestDrive`.
+- Real seller and `/demo` success screens are unchanged. Welcome copy now says progress saves "in this browser", and `/demo` no longer claims saving.
+- Copy: removed "production PDF" and "Test UtilitySheet" from UI, API errors, the packet banner (now with a dashboard link), and the test completion email body.
+- Onboarding: hero copy explains the output, and the title is now an `h1`.
+- Analytics (typed, no identifiers): `sample_sheet_viewed`, `sample_sheet_pdf_downloaded`, `test_drive_output_opened`, `test_drive_dashboard_returned`. Test-drive locations are used for the retry and help-contact events.
+- `UtilitySheetPdfPreview` gained optional `label`/`frameLabel` props (defaults unchanged).
+- Tests: updated `tests/unit/test-drive-card.test.tsx`; new `tests/unit/sample-sheet-dialog.test.tsx`, `tests/unit/seller-test-drive-success.test.tsx`, and `tests/test-drive-journey.spec.ts`.
 
 ## Validation
 
-- Final focused ESLint passed across marketing routes/components, touched landing components, content and browser spec.
-- `npm exec tsc -- --noEmit` passed; final `npm run build` passed including TypeScript/static generation after final code edits.
-- Vitest: 3 files / 8 tests passed (from-a-closing referral attribution, handoff kit, Norma suite panel).
-- Existing marketing browser suite: 10 passed / 2 intentional desktop skips using installed Chrome for Desktop Chrome and Mobile Chrome. Original bundled browser executables missing; Safari/WebKit not installed, so Safari remains an optional compatibility check.
-- 14 public marketing routes returned 200 with no horizontal overflow at 360, 820, 1440px. From-a-closing tested through unit tests without live referral/database browsing. Inspected homepage mobile/tablet/desktop, Features, Pricing and About screenshots; dark-system/reduced-motion mode checked. Menu open/Escape close and exact pricing links verified.
-- `git diff --check` passed with normal repository settings. Windows LF/CRLF notices are informational.
-- Pre-existing local CSP blocks Vercel debug analytics scripts; did not weaken policy. Analytics ingestion not verified. Node 22.22.2 available locally; CI is Node 20. Conversion uplift is unmeasured.
+- Full Vitest passed (155 files). `tsc` passed. Changed-file ESLint: 0 errors (12 pre-existing warnings).
+- Playwright test-drive journey passed 9/9 and the real seller journey 6/6, on Desktop Chrome, Mobile Safari, and Mobile Chrome, with all APIs mocked.
+- `security:scan` passed; `git diff --check` clean.
+- Limitations: `/dashboard` was not browser-verified (server auth). The live DB/email path was intentionally not exercised.
 
-## Review and recovery
+## Next action
 
-- Local dev server left running at http://localhost:3100 for owner review (port 3000 belongs to Norma). Browser preview requested in Codex.
-- Screenshots and temporary browser config/logs live under `output/playwright/`; notable files: `marketing-desktop-final.png`, `marketing-mobile-final.png`, `marketing-tablet-final.png`, `pricing-final.png`, `about-final.png`. They are review artifacts, not source to commit.
-- Recommended next action: owner review of local preview/diff. Commit/push/deployment require explicit authorization. Optional: Safari check, then measure signup/activation after an authorized release.
-- No active concurrent editing warnings.
-
-## Preserve unrelated work
-
-Paused acquisition research remains in `.ai/plans/2026-09-10-acquisition-recovery-strategy.md`; its report is incomplete and out of scope. Existing untracked September 10 plans, `docs/audits/`, and prior `output/` files are intentional. Submitted-sheet editing was completed/pushed by Claude September 14; its plan/decision remain authoritative. No production data or configuration changes were made.
+The owner reviews the diff (and screenshots from the session) and decides whether to commit and deploy. Optional follow-ups are listed in the plan. No concurrent-editing warnings remain.

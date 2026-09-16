@@ -273,9 +273,11 @@ export default function OnboardingPage() {
                                 <Sparkles className="h-3.5 w-3.5" />
                                 Primary workflow
                             </div>
-                            <CardTitle className="text-3xl text-foreground">Your seller link is ready, {displayFirstName}.</CardTitle>
+                            <CardTitle>
+                                <h1 className="text-3xl font-semibold text-foreground">Your seller link is ready, {displayFirstName}.</h1>
+                            </CardTitle>
                             <CardDescription className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                                Share one reusable link with sellers and let them start from any property address. Setup is optional now, so you can copy the link and use UtilitySheet immediately.
+                                Send this one link to any seller. They enter the property address and answer a short mobile form, and you get a finished utility sheet and PDF to share with the buyer. Setup is optional, so you can copy the link and use it now.
                             </CardDescription>
                         </div>
                     </CardHeader>

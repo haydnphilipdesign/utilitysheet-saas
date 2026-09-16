@@ -35,7 +35,7 @@ export async function GET() {
 
         if (!user.primaryEmail) {
             return NextResponse.json(
-                { error: 'Your account needs a verified email before you can start a test.' },
+                { error: 'Verify your account email to use the seller test.' },
                 { status: 400 }
             );
         }
@@ -49,7 +49,7 @@ export async function GET() {
         return NextResponse.json(await stateFor(current.request, current.hasLiveSubmission));
     } catch (error) {
         console.error('Error loading test drive:', error);
-        return NextResponse.json({ error: 'Failed to load your test UtilitySheet.' }, { status: 500 });
+        return NextResponse.json({ error: 'We could not load your seller test. Please try again.' }, { status: 500 });
     }
 }
 
@@ -64,7 +64,7 @@ export async function POST(_request: Request) {
         const recipient = user.primaryEmail?.trim();
         if (!recipient) {
             return NextResponse.json(
-                { error: 'Your account needs a verified email before you can start a test.' },
+                { error: 'Verify your account email to use the seller test.' },
                 { status: 400 }
             );
         }
@@ -128,7 +128,7 @@ export async function POST(_request: Request) {
             if (result.hasLiveSubmission) {
                 return NextResponse.json({ status: 'ineligible', reason: 'live_submission' });
             }
-            return NextResponse.json({ error: 'Failed to create your test UtilitySheet.' }, { status: 500 });
+            return NextResponse.json({ error: 'We could not start your seller test. Please try again.' }, { status: 500 });
         }
 
         if (result.created) {
@@ -186,6 +186,6 @@ export async function POST(_request: Request) {
         );
     } catch (error) {
         console.error('Error starting test drive:', error);
-        return NextResponse.json({ error: 'Failed to start your test UtilitySheet.' }, { status: 500 });
+        return NextResponse.json({ error: 'We could not start your seller test. Please try again.' }, { status: 500 });
     }
 }

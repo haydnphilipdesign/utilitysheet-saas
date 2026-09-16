@@ -6,6 +6,7 @@ import { CheckCircle2, Rocket, ArrowRight, FileDown, Loader2, Mail, Phone, Send,
 import Link from 'next/link';
 import type { WizardState } from '../SellerWizard';
 import { trackEvent } from '@/lib/analytics/events';
+import { TestDriveSuccess } from './TestDriveSuccess';
 
 interface BrandContact {
     name?: string;
@@ -16,6 +17,8 @@ interface BrandContact {
 
 interface SuccessStepProps {
     isDemo?: boolean;
+    /** Authenticated seller test (`requests.is_demo`), distinct from the public /demo. */
+    isTestDrive?: boolean;
     demoData?: {
         address: string;
         state: WizardState;
@@ -27,7 +30,7 @@ interface SuccessStepProps {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function SuccessStep({ isDemo = false, demoData, brandProfile, sellerToken, propertyAddress }: SuccessStepProps) {
+export function SuccessStep({ isDemo = false, isTestDrive = false, demoData, brandProfile, sellerToken, propertyAddress }: SuccessStepProps) {
     const [downloading, setDownloading] = useState(false);
     const [downloaded, setDownloaded] = useState(false);
     const [confirmEmail, setConfirmEmail] = useState('');
@@ -80,6 +83,10 @@ export function SuccessStep({ isDemo = false, demoData, brandProfile, sellerToke
             setDownloading(false);
         }
     };
+
+    if (isTestDrive && !isDemo) {
+        return <TestDriveSuccess />;
+    }
 
     if (isDemo) {
         return (

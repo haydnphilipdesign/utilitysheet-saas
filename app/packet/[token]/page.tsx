@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, use, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -365,8 +366,16 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
             <main className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
                 <div className="space-y-4 sm:space-y-6 p-4 sm:p-8 bg-card rounded-xl border border-border">
                     {isTestDrive ? (
-                        <div role="status" className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
-                            <strong>Test UtilitySheet:</strong> this finished sheet uses fictional property and seller information for your private product walkthrough.
+                        <div role="status" className="flex flex-col gap-2 rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-950 sm:flex-row sm:items-center sm:justify-between dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
+                            <p>
+                                <strong>Test sheet.</strong> This is what a finished seller submission looks like. The property and seller details are fictional.
+                            </p>
+                            <Link
+                                href="/dashboard"
+                                className="inline-flex min-h-9 shrink-0 items-center font-semibold underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                            >
+                                Back to dashboard
+                            </Link>
                         </div>
                     ) : null}
                     {/* Branding Header */}

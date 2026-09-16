@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, CSSProperties, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Mail, Phone, Globe, Check, Send, Loader2 } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import { buildBrandAccentStyle, resolveBrandColor } from '@/lib/branding/deliverable';
@@ -237,8 +238,20 @@ export function SellerLayout(props: SellerLayoutProps) {
                     )}
 
                     {isTestDrive ? (
-                        <div role="status" className="mb-3 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
-                            <strong>Test UtilitySheet:</strong> use fictional answers to experience the same flow your seller will complete.
+                        <div
+                            data-testid="seller-test-drive-banner"
+                            className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100"
+                        >
+                            <p className="min-w-0">
+                                <strong>Test mode.</strong> You are seeing what your seller sees. Use made-up answers.
+                            </p>
+                            <Link
+                                href="/dashboard"
+                                onClick={() => trackEvent('test_drive_dashboard_returned', { source: 'seller_banner' })}
+                                className="inline-flex min-h-9 shrink-0 items-center rounded-md px-2 font-semibold underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                            >
+                                Exit test
+                            </Link>
                         </div>
                     ) : null}
 
@@ -300,7 +313,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                 onClick={() => trackEvent('seller_help_contact_clicked', {
                                     contact_type: 'email',
                                     step: stepName || 'unknown',
-                                    location: 'seller_flow',
+                                    location: isTestDrive ? 'test_drive_seller_flow' : 'seller_flow',
                                 })}
                                 className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
                             >
@@ -314,7 +327,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                 onClick={() => trackEvent('seller_help_contact_clicked', {
                                     contact_type: 'phone',
                                     step: stepName || 'unknown',
-                                    location: 'seller_flow',
+                                    location: isTestDrive ? 'test_drive_seller_flow' : 'seller_flow',
                                 })}
                                 className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
                             >
@@ -330,7 +343,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                 onClick={() => trackEvent('seller_help_contact_clicked', {
                                     contact_type: 'website',
                                     step: stepName || 'unknown',
-                                    location: 'seller_flow',
+                                    location: isTestDrive ? 'test_drive_seller_flow' : 'seller_flow',
                                 })}
                                 className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
                             >

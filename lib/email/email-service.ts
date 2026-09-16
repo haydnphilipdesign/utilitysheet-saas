@@ -1117,7 +1117,7 @@ function generateTCCompletionNotificationHtml({
                             
                             <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
                                 ${isTestDrive
-            ? 'You can now review the completed test sheet and its production PDF. When you are ready for a real transaction, place your reusable seller link in your listing email, checklist, or transaction template.'
+            ? 'You can now review the completed test sheet and download its PDF. When you are ready for a real transaction, place your reusable seller link in your listing email, checklist, or transaction template.'
             : 'You can now review the live utility sheet, download the current PDF, and share it forward. If your workspace is on Pro or Team, you can also correct submitted details from the dashboard without reopening the seller link.'}
                             </p>
                             

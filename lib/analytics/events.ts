@@ -231,6 +231,21 @@ type AnalyticsEventMap = {
   test_drive_seller_link_copied: BasePayload & {
     source: "onboarding" | "dashboard";
   };
+  test_drive_output_opened: BasePayload & {
+    source: "onboarding" | "dashboard" | "seller_success";
+    output: "web" | "pdf";
+  };
+  test_drive_dashboard_returned: BasePayload & {
+    source: "seller_banner" | "seller_success";
+  };
+  sample_sheet_viewed: BasePayload & {
+    source: "onboarding" | "dashboard";
+    branding: "saved" | "generic";
+  };
+  sample_sheet_pdf_downloaded: BasePayload & {
+    source: "onboarding" | "dashboard";
+    success: boolean;
+  };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
