@@ -1,30 +1,40 @@
 # Current task: first-use guide and seller test-drive polish
 
-- Date: 2026-09-16. Agent: Claude Code. Branch: main (base fa4f111). Status: **Completed**, uncommitted in the worktree. No required work remains.
-- Plan: `.ai/plans/2026-09-16-first-use-and-test-drive-polish.md` (Completed; it holds full outcome, validation, limitations, and follow-ups).
-- Authorization used: local implementation and tests only. No commit, push, deploy, migration, production data change, or real email.
+- Date: 2026-09-16. Last agent: Claude Code. Branch: main. Status: **Completed.** No required work remains.
+- Commit and worktree state:
+  - The initial implementation is committed as `14e048d` (HEAD).
+  - The follow-up fixes below are **uncommitted**: `.gitignore`, `components/branding/UtilitySheetPdfPreview.tsx`, `components/test-drive/SampleSheetDialog.tsx`, `tests/unit/sample-sheet-dialog.test.tsx`, `tests/unit/utilitysheet-pdf-preview.test.tsx`, plus this file and the plan.
+  - Nothing was pushed or deployed by Claude. Deployment status is unverified.
+- Plan: `.ai/plans/2026-09-16-first-use-and-test-drive-polish.md` (see "Follow-up" for full detail).
+- Authorization: local changes and tests only. No commit, push, deploy, migration, production data change, or real email.
 
-## What changed
+## Follow-up completed this session (Claude)
 
-- `components/test-drive/TestDriveCard.tsx` is now the shared "See how UtilitySheet works" card, with two secondary panels:
-  - Sample sheet: new `SampleSheetDialog.tsx` reuses `UtilitySheetPdfPreview` and `POST /api/branding/test-pdf`. No request is created. The label says whether saved or placeholder branding is shown.
-  - Seller test: one-click start with same-tab navigation, resume link, completed output links, and a next step for the real link.
-  - On the dashboard, the card is hidden for ineligible accounts and while loading.
-- Seller flow (test drive only): "Test mode" banner with an "Exit test" link, a test welcome variant, and the save-link affordance hidden. New `steps/TestDriveSuccess.tsx` gets the output links from `GET /api/test-drive` and describes delivery only when it is recorded. `SuccessStep` now takes `isTestDrive`.
-- Real seller and `/demo` success screens are unchanged. Welcome copy now says progress saves "in this browser", and `/demo` no longer claims saving.
-- Copy: removed "production PDF" and "Test UtilitySheet" from UI, API errors, the packet banner (now with a dashboard link), and the test completion email body.
-- Onboarding: hero copy explains the output, and the title is now an `h1`.
-- Analytics (typed, no identifiers): `sample_sheet_viewed`, `sample_sheet_pdf_downloaded`, `test_drive_output_opened`, `test_drive_dashboard_returned`. Test-drive locations are used for the retry and help-contact events.
-- `UtilitySheetPdfPreview` gained optional `label`/`frameLabel` props (defaults unchanged).
-- Tests: updated `tests/unit/test-drive-card.test.tsx`; new `tests/unit/sample-sheet-dialog.test.tsx`, `tests/unit/seller-test-drive-success.test.tsx`, and `tests/test-drive-journey.spec.ts`.
+- **Sample freshness fixed.** The dialog body mounts per opening and refetches branding and plan with `no-store`. Stale responses from a closed opening are discarded, a failed load is not cached, and preview, download, and analytics share the same per-opening context. Fallback copy separates "no branding" from "couldn't load".
+- **Preview component.** The decorative iframe is `tabIndex={-1}`. The new `scrollContained` prop (default unchanged) lets the dialog avoid nested scrolling.
+- **Verification by Claude.**
+  - Unit tests: 8 sample-dialog tests (5 fail against `14e048d`, all pass now). Full Vitest: 155 files, 828 tests.
+  - `tsc` and changed-file ESLint are clean. Committed Playwright: 15/15. `security:scan` passed.
+  - Signed-in dashboard and dark-theme QA: 25/25 across 5 projects (desktop light and dark, iPhone WebKit light and dark, Pixel dark).
+- **Dashboard verification method.** A temporary development-only harness route rendered the real dashboard client components with mocked APIs. A real Stack login was not used because activation can write to the configured database. The harness was **deleted** from `app/`; a copy and re-run steps are in `.qa-artifacts/README.md`.
+- **States checked.** The first-run dashboard in eligible, ready, completed (delivery failed), error/retry, and ineligible states, plus the sample dialog (keyboard, close, reopen, download, 429). Onboarding, the seller test welcome and banner, and test completion were checked in both light and dark themes. Contrast checked in both themes.
+- **Screenshots.** `C:\Users\haydn\Documents\norma_suite\utility-sheet\.qa-artifacts\screenshots\` (50 PNGs, git-ignored).
+- **Remaining limitations.**
+  - No real Stack session, real API responses, or physical devices were used.
+  - Pre-existing app-wide issue (not fixed): in Chromium, Tab past the last control escapes Base UI dialogs, the existing Feedback dialog included. This belongs in a separate `components/ui/dialog.tsx` task.
+- **Next action.** The owner reviews the uncommitted follow-up diff and decides whether to commit and deploy. Optional: a shared dialog focus-trap task.
 
-## Validation
+## Independent review — 2026-09-16, Codex
 
-- Full Vitest passed (155 files). `tsc` passed. Changed-file ESLint: 0 errors (12 pre-existing warnings).
-- Playwright test-drive journey passed 9/9 and the real seller journey 6/6, on Desktop Chrome, Mobile Safari, and Mobile Chrome, with all APIs mocked.
-- `security:scan` passed; `git diff --check` clean.
-- Limitations: `/dashboard` was not browser-verified (server auth). The live DB/email path was intentionally not exercised.
+- Reviewed new components and integration against first-use brief; reran focused card/sample/success tests: 3 files, 23 tests passed. Did not independently repeat browser/full-suite validation; results above are Claude's report.
+- Repository changed during review: implementation now exists in commit `14e048d`; worktree was clean afterward. Earlier "uncommitted" status is superseded. Codex did not commit, push, or deploy; deployment status was not verified.
+- Follow-up found: SampleSheetDialog loads branding once per mount (`loadStartedRef`). On /onboarding, viewing a sample, saving new branding/contact details, and reopening the dialog continues showing/downloading the old branding; failed initial branding loads also remain cached as placeholder until reload. Recommend refresh on each opening or explicit invalidation after branding saves, with a regression test. This is a bounded polish fix, not evidence of a seller-flow failure.
+- Actual authenticated dashboard and dark theme remain unverified in browser. Review complete; no application files changed by Codex. Next: address preview freshness and perform first-run dashboard/dark-theme QA before treating visual acceptance as complete. Coordinate with Claude before edits because a concurrent commit occurred during review.
 
-## Next action
+## Finishing-pass review — 2026-09-16, Codex
 
-The owner reviews the diff (and screenshots from the session) and decides whether to commit and deploy. Optional follow-ups are listed in the plan. No concurrent-editing warnings remain.
+- Read Claude's finishing report, updated plan and follow-up diff. Preview freshness fix addresses the previously identified one-load cache; per-opening body cleanup discards late responses. Preview scroll containment defaults remain unchanged outside the sample dialog.
+- Independently reran sample-sheet-dialog and utilitysheet-pdf-preview: 2 files / 17 tests passed. Full-suite, browser, contrast and screenshot findings remain Claude-reported; not independently repeated in this review.
+- Dashboard client UI was exercised via a mocked development harness, not an authenticated end-to-end session. This is useful UI coverage; real auth/API integration remains unverified.
+- Shared Chromium dialog focus escape remains a reported accessibility defect, not merely cosmetic. Recommend a separate bounded reproduction/fix with keyboard regression coverage across sample and existing dialogs before calling accessibility polish complete. No shared-dialog edits made here.
+- Review completed. No application changes by Codex; only this handoff appended. HEAD remains 14e048d with Claude's finishing-pass changes uncommitted. No commit, push, deployment, live data or email action performed. Next: address the reported shared focus defect; release authorization remains with owner.

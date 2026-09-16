@@ -35,6 +35,12 @@ interface UtilitySheetPdfPreviewProps {
     label?: string;
     /** Accessible name for the preview frame. */
     frameLabel?: string;
+    /**
+     * When true (default) the sheet scrolls inside a fixed-height box. Pass
+     * false when the parent already scrolls (e.g. a dialog body) so there is a
+     * single scroll area.
+     */
+    scrollContained?: boolean;
 }
 
 /**
@@ -62,6 +68,7 @@ export default function UtilitySheetPdfPreview({
     onModeChange,
     label = 'Live preview',
     frameLabel = 'Preview of your branded utility info sheet',
+    scrollContained = true,
 }: UtilitySheetPdfPreviewProps) {
     const [internalMode, setInternalMode] = useState<PacketMode>(defaultMode);
     const mode = controlledMode ?? internalMode;
@@ -157,7 +164,7 @@ export default function UtilitySheetPdfPreview({
                 )}
             </div>
 
-            <div className="max-h-[520px] overflow-y-auto rounded-lg border border-border bg-white shadow-lg dark:border-neutral-700">
+            <div className={cn('rounded-lg border border-border bg-white shadow-lg dark:border-neutral-700', scrollContained && 'max-h-[520px] overflow-y-auto')}>
                 <div className="p-3">
                     <div ref={containerRef} className="relative w-full overflow-hidden" style={{ height: documentHeight * scale }}>
                         <iframe
@@ -167,6 +174,7 @@ export default function UtilitySheetPdfPreview({
                             srcDoc={html}
                             onLoad={measureDocument}
                             scrolling="no"
+                            tabIndex={-1}
                             aria-label={frameLabel}
                             style={{
                                 width: PRINT_CONTENT_WIDTH_PX,

@@ -121,4 +121,17 @@ describe('UtilitySheetPdfPreview production parity', () => {
         );
         expect(getPreviewHtml()).toContain(ADVANCED_MODULE_LABELS.service_providers);
     });
+
+    it('scrolls inside a fixed box by default and can defer scrolling to its parent', () => {
+        const { unmount } = render(<UtilitySheetPdfPreview branding={baseBranding} />);
+        const frameBox = () => screen.getByTitle('Branding profile PDF preview').closest('.rounded-lg') as HTMLElement;
+        expect(frameBox().className).toContain('max-h-[520px]');
+        expect(screen.getByTitle('Branding profile PDF preview')).toHaveAttribute('tabindex', '-1');
+        unmount();
+
+        render(<UtilitySheetPdfPreview branding={baseBranding} scrollContained={false} label="Sample sheet" />);
+        expect(frameBox().className).not.toContain('max-h-[520px]');
+        expect(frameBox().className).not.toContain('overflow-y-auto');
+        expect(screen.getByText('Sample sheet')).toBeInTheDocument();
+    });
 });

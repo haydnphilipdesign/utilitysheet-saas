@@ -58,4 +58,6 @@ Screenshot_*.jpeg
 .claude/settings.local.json
 .superpowers/
 .worktrees/
+# local QA harness specs and review screenshots
+.qa-artifacts/
 /.incident-reports/

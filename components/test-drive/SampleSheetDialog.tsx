@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,7 +32,8 @@ type AccountPlanResponse = {
 
 type SampleContext = {
     branding: BrandProfileFormData;
-    isSavedBranding: boolean;
+    /** saved: default Branding Profile; none: account has no profile; unavailable: load failed. */
+    brandingSource: 'saved' | 'none' | 'unavailable';
     isPro: boolean;
 };
 
@@ -71,24 +72,35 @@ function toFormData(profile: BrandProfile): BrandProfileFormData {
 }
 
 async function loadSampleContext(): Promise<SampleContext> {
+    // Always read the latest saved values: branding can change between openings.
     const [brandingResult, accountResult] = await Promise.allSettled([
-        fetch('/api/branding').then((response) => (response.ok ? response.json() : [])),
-        fetch('/api/account').then((response): Promise<AccountPlanResponse> => (response.ok ? response.json() : Promise.resolve({}))),
+        fetch('/api/branding', { cache: 'no-store' }).then((response) => {
+            if (!response.ok) throw new Error(`Branding request failed with ${response.status}`);
+            return response.json();
+        }),
+        fetch('/api/account', { cache: 'no-store' }).then((response): Promise<AccountPlanResponse> => (response.ok ? response.json() : Promise.resolve({}))),
     ]);
-
-    const profiles = brandingResult.status === 'fulfilled' && Array.isArray(brandingResult.value)
-        ? (brandingResult.value as BrandProfile[])
-        : [];
-    const profile = profiles.find((item) => item.is_default) || profiles[0] || null;
 
     const accountData: AccountPlanResponse = accountResult.status === 'fulfilled' ? accountResult.value : {};
     const isPro = accountData?.account?.subscription_status === 'pro'
         || accountData?.activeOrganization?.subscription_status === 'team';
 
+    if (brandingResult.status === 'rejected' || !Array.isArray(brandingResult.value)) {
+        return { branding: GENERIC_BRANDING, brandingSource: 'unavailable', isPro };
+    }
+
+    const profiles = brandingResult.value as BrandProfile[];
+    const profile = profiles.find((item) => item.is_default) || profiles[0] || null;
     return profile
-        ? { branding: toFormData(profile), isSavedBranding: true, isPro }
-        : { branding: GENERIC_BRANDING, isSavedBranding: false, isPro };
+        ? { branding: toFormData(profile), brandingSource: 'saved', isPro }
+        : { branding: GENERIC_BRANDING, brandingSource: 'none', isPro };
 }
+
+const BRANDING_NOTES: Record<SampleContext['brandingSource'], string> = {
+    saved: 'Fictional property and provider details, shown with your saved default Branding Profile.',
+    none: 'Fictional property and provider details with placeholder branding. Your own branding appears once it is saved.',
+    unavailable: 'Fictional property and provider details with placeholder branding, because your saved branding could not be loaded. Close and reopen to try again.',
+};
 
 /**
  * Shows a fictional finished sheet rendered by the production document
@@ -96,31 +108,43 @@ async function loadSampleContext(): Promise<SampleContext> {
  * POST /api/branding/test-pdf. Nothing here creates a request.
  */
 export function SampleSheetDialog({ open, onOpenChange, source }: SampleSheetDialogProps) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-4 sm:max-w-2xl">
+                {/* The popup unmounts when closed, so every opening mounts a
+                    fresh body that loads the current branding and plan. */}
+                <SampleSheetBody source={source} onClose={() => onOpenChange(false)} />
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function SampleSheetBody({ source, onClose }: { source: TestDriveSource; onClose: () => void }) {
     const [context, setContext] = useState<SampleContext | null>(null);
     const [mode, setMode] = useState<PacketMode>('simple');
     const [downloading, setDownloading] = useState(false);
-    const loadStartedRef = useRef(false);
 
     useEffect(() => {
-        if (!open || loadStartedRef.current) return;
-        loadStartedRef.current = true;
-        void loadSampleContext().then(setContext);
-    }, [open]);
-
-    // One view event per opening, once we know which branding is shown.
-    const isSavedBranding = context?.isSavedBranding;
-    useEffect(() => {
-        if (!open || isSavedBranding === undefined) return;
-        trackEvent('sample_sheet_viewed', {
-            source,
-            branding: isSavedBranding ? 'saved' : 'generic',
+        let cancelled = false;
+        void loadSampleContext().then((next) => {
+            // A response from a closed opening must never land in a newer one.
+            if (cancelled) return;
+            setContext(next);
+            trackEvent('sample_sheet_viewed', {
+                source,
+                branding: next.brandingSource === 'saved' ? 'saved' : 'generic',
+            });
         });
-    }, [open, isSavedBranding, source]);
+        return () => {
+            cancelled = true;
+        };
+    }, [source]);
 
     const downloadPdf = async () => {
         if (!context) return;
         setDownloading(true);
         try {
+            // Same context and plan gating as the preview on screen.
             await generateTestPdf(context.branding, context.isPro ? mode : 'simple');
             trackEvent('sample_sheet_pdf_downloaded', { source, success: true });
         } catch (error) {
@@ -132,50 +156,47 @@ export function SampleSheetDialog({ open, onOpenChange, source }: SampleSheetDia
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-4 sm:max-w-2xl">
-                <DialogHeader className="pr-8">
-                    <DialogTitle className="text-base font-semibold text-foreground">Sample utility sheet</DialogTitle>
-                    <DialogDescription className="text-sm">
-                        This is what you get when a seller finishes. You can review it online, download the PDF, and share it with the buyer.
-                    </DialogDescription>
-                </DialogHeader>
+        <>
+            <DialogHeader className="pr-8">
+                <DialogTitle className="text-base font-semibold text-foreground">Sample utility sheet</DialogTitle>
+                <DialogDescription className="text-sm">
+                    This is what you get when a seller finishes. You can review it online, download the PDF, and share it with the buyer.
+                </DialogDescription>
+            </DialogHeader>
 
-                <div className="min-h-0 flex-1 overflow-y-auto">
-                    {!context ? (
-                        <div aria-busy="true" className="flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                            Loading sample sheet…
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                                {context.isSavedBranding
-                                    ? 'Fictional property and provider details, shown with your saved default Branding Profile.'
-                                    : 'Fictional property and provider details with placeholder branding. Your own branding appears once it is saved.'}
-                            </p>
-                            <UtilitySheetPdfPreview
-                                branding={context.branding}
-                                isPro={context.isPro}
-                                mode={mode}
-                                onModeChange={setMode}
-                                label="Sample sheet"
-                                frameLabel="Sample utility info sheet with fictional details"
-                            />
-                        </div>
-                    )}
-                </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+                {!context ? (
+                    <div aria-busy="true" className="flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        Loading sample sheet…
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                            {BRANDING_NOTES[context.brandingSource]}
+                        </p>
+                        <UtilitySheetPdfPreview
+                            branding={context.branding}
+                            isPro={context.isPro}
+                            mode={mode}
+                            onModeChange={setMode}
+                            label="Sample sheet"
+                            frameLabel="Sample utility info sheet with fictional details"
+                            scrollContained={false}
+                        />
+                    </div>
+                )}
+            </div>
 
-                <DialogFooter className="border-t border-border pt-3">
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                        Close
-                    </Button>
-                    <Button type="button" onClick={downloadPdf} disabled={!context || downloading}>
-                        {downloading ? <Loader2 className="animate-spin" /> : <Download />}
-                        {downloading ? 'Preparing PDF…' : 'Download sample PDF'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            <DialogFooter className="border-t border-border pt-3">
+                <Button type="button" variant="outline" onClick={onClose}>
+                    Close
+                </Button>
+                <Button type="button" onClick={downloadPdf} disabled={!context || downloading}>
+                    {downloading ? <Loader2 className="animate-spin" /> : <Download />}
+                    {downloading ? 'Preparing PDF…' : 'Download sample PDF'}
+                </Button>
+            </DialogFooter>
+        </>
     );
 }

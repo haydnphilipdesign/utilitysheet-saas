@@ -2,7 +2,7 @@
 
 ## Status
 
-Completed (2026-09-16, Claude Code). Uncommitted in the worktree. No commit, push, deploy, migration, production data change, or real email was performed.
+Completed (2026-09-16). Initial implementation was committed as `14e048d`. The follow-up below (sample freshness, dashboard and dark-theme QA) is **uncommitted** in the worktree. No push, deploy, migration, production data change, or real email was performed by Claude.
 
 ## Objective
 
@@ -73,7 +73,9 @@ Not changing: onboarding-completion semantics, `/api/test-drive` contract, selle
 ## Progress log
 
 - 2026-09-16: Plan written after startup audit; implementation begun.
-- 2026-09-16: Implemented and validated. Completed.
+- 2026-09-16: Implemented and validated. Completed. Committed as `14e048d`.
+- 2026-09-16: Codex independent review found stale sample branding after reopening, and noted the dashboard and dark theme were unverified in a browser.
+- 2026-09-16: Claude follow-up: freshness fix, signed-in dashboard QA through a temporary local harness, dark-theme QA, nested-scroll fix. Completed (uncommitted).
 
 ## Outcome
 
@@ -97,11 +99,61 @@ No durable decision record was needed. These are UI-behavior choices recorded he
 - `npm run security:scan` passed; `git diff --check` clean. New files contain only fictional fixtures (`example.com`, 555 numbers).
 - Screenshots were reviewed and kept in the session scratchpad, not the repo. Playwright browsers (chromium 1208, webkit 2248) were installed to the local user cache to run QA.
 
+## Follow-up (2026-09-16, Claude Code): freshness, dashboard, and dark theme
+
+### Fixes
+
+- **Sample preview freshness** (`components/test-drive/SampleSheetDialog.tsx`): loading moved into an inner `SampleSheetBody` that the Base UI popup mounts on each opening and unmounts on close.
+  - Every opening refetches `/api/branding` and `/api/account` with `cache: 'no-store'`, so saved branding and contact changes appear on reopen.
+  - A failed load is not cached. The effect cleanup discards responses from a closed opening, so an older response cannot replace newer context.
+  - Preview and download share the same per-opening context and plan gating. `sample_sheet_viewed` fires once per completed opening.
+  - Fallback copy now separates "no saved branding" from "saved branding could not be loaded" (the latter says to close and reopen). The `loadStartedRef` one-shot was removed.
+- **`UtilitySheetPdfPreview`**:
+  - The decorative iframe is now `tabIndex={-1}`, since it is not interactive (`pointer-events: none`). With it, WebKit keeps Tab focus inside the sample dialog.
+  - New optional `scrollContained` prop (default `true`, unchanged for the Branding editor and onboarding). The sample dialog passes `false`, so there is one scroll area instead of a 520px nested scroller.
+- `.gitignore`: added `.qa-artifacts/` for local QA specs, harness copy, and screenshots.
+
+### Validation (Claude, this session)
+
+- `tests/unit/sample-sheet-dialog.test.tsx` now has 8 tests, including new regressions for:
+  - branding changed between openings, for both preview and download;
+  - recovery after a failed first load;
+  - a slow response from an earlier opening is ignored, including for download and view analytics;
+  - "no branding" vs "load failed" copy.
+- Against the committed `14e048d` dialog, 5 of the 8 tests fail; all 8 pass with the fix.
+- `tests/unit/utilitysheet-pdf-preview.test.tsx`: added a scroll/tabIndex test.
+- Full Vitest: 155 files, 828 tests passed. `tsc --noEmit` passed. ESLint on changed files: clean.
+- Committed Playwright (`test-drive-journey`, `seller-wizard-journey`): 15/15 passed on Desktop Chrome, Mobile Safari, and Mobile Chrome.
+- `security:scan` passed; `git diff --check` clean.
+- **Signed-in dashboard QA.** A real Stack session plus `ensureAccountActivation` would touch the configured database, so a real login was not used. Instead, a temporary development-only route (`app/qa-harness/dashboard`) rendered the real `DashboardLayoutContent` and `DashboardPage` in the same Suspense boundary as the real layout, against mocked `/api/**`. `/dashboard` auth was not modified. The route 404'd unless both `NODE_ENV=development` and `QA_DASHBOARD_HARNESS=1` were set, and it was **deleted after QA** (a copy is kept in the ignored `.qa-artifacts/harness-src/`, with re-run steps in `.qa-artifacts/README.md`).
+- Local spec `.qa-artifacts/specs/first-use.qa.spec.ts`: 25/25 passed across desktop-light, desktop-dark, iphone-light (WebKit), iphone-dark (WebKit), and pixel-dark (Chromium). It checked:
+  - Dashboard first-run **eligible** state:
+    - the seller link card sits above the guide, and the guide loading does not move it;
+    - the Copy button is the only filled primary control in `main`;
+    - no horizontal overflow or clipped or off-screen controls.
+  - Sample dialog:
+    - opens by keyboard with focus inside; Tab moves within its controls; the focus indicator is visible;
+    - single scroll area;
+    - Download produces `utility-info-sheet-preview.pdf` (mocked);
+    - Escape closes and returns focus to "View sample sheet"; footer Close works and reopening reloads;
+    - a 429 on download shows an error toast and the dialog stays usable.
+  - **Start**: one click, same-tab navigation to the seller test.
+  - **Ready/resume**, **completed** (delivery-failed notice, new-tab output links, Copy seller link), and **error then retry** (sample stays usable; the card does not collapse or jump on retry).
+  - **Ineligible**: the guide stays hidden and the link card remains.
+  - Dark and light: onboarding, onboarding sample dialog, seller test welcome and banner (Exit test has a visible focus ring), and the test completion screen, with no overflow or clipped controls.
+  - WCAG AA text contrast (≥4.5:1, computed through a canvas so oklch colors are measured) for all text in the guide card, ready state with the amber notice, in both themes.
+- Screenshots were reviewed manually (desktop and mobile, light and dark) and saved to `.qa-artifacts/screenshots/` (50 files).
+
+### Findings not fixed (out of the bounded scope)
+
+- **Shared dialog focus wrap (pre-existing, app-wide).** In Chromium, tabbing past the last control of a Base UI dialog lands on a focus guard and then escapes to the page behind. The existing Feedback dialog behaves the same way, so this lives in `components/ui/dialog.tsx` or Base UI, not the sample dialog. In WebKit the sample dialog now wraps correctly. Fixing the shared dialog affects every dialog and should be its own task.
+- The seller header shows a "Saved" autosave flash on the completion screen (pre-existing wizard autosave behavior; cosmetic).
+
 ## Limitations
 
-- `/dashboard` is server-auth gated, so it was not browser-verified. The shared card is covered there by unit tests (`dashboard-reusable-link`) and verified in the browser on `/onboarding`.
-- The real `/api/test-drive` + seller submission + email/PDF path was not exercised end to end (by design: no DB writes or email). It is unchanged apart from error copy and remains covered by existing route and safety tests.
-- Visual QA used the light theme only.
+- The dashboard was verified through the local harness (the real client components with mocked APIs). It was not verified with a real Stack Auth session, real `/api` responses, or the real server layout's redirects.
+- The real `/api/test-drive` + seller submission + email/PDF path was not exercised end to end (by design: no DB writes or email). It remains covered by existing route and safety tests.
+- Visual checks used Chromium and WebKit emulation, not physical devices. The Next.js dev indicator appears in screenshots (dev-only).
 
 ## Optional follow-up (not required)
 
