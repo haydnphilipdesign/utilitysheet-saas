@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 import { getAccountClosureStatusByAuthUserId, type AccountClosureStatus } from '@/lib/neon/queries/account-closure';
 import { stackServerApp } from '@/lib/stack/server';
+import { stackSessionClientApp } from '@/lib/stack/session-client';
 
 export const RECENT_AUTH_WINDOW_MS = 5 * 60 * 1000;
 
@@ -63,7 +64,15 @@ export async function getAccountSecurityContext(options: {
         closureStatus = closure.status;
     }
 
-    const sessions = await user.getActiveSessions();
+    const { accessToken, refreshToken } = await user.getAuthJson();
+    if (!accessToken || !refreshToken) {
+        throw new AccountSecurityError('UNAUTHORIZED', 'Unauthorized', 401);
+    }
+    const sessionUser = await stackSessionClientApp.getUser({ tokenStore: { accessToken, refreshToken } });
+    if (!sessionUser || sessionUser.id !== user.id) {
+        throw new AccountSecurityError('UNAUTHORIZED', 'Unauthorized', 401);
+    }
+    const sessions = await sessionUser.getActiveSessions();
     const currentSession = sessions.find((session) => session.isCurrentSession);
     if (options.requireRecentAuth) {
         assertRecentAuth(currentSession);

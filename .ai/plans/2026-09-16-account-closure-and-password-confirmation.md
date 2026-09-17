@@ -3,7 +3,7 @@
 ## Status
 
 - Phase A (password-confirmation wording): **Completed**, Claude Code, 2026-09-16.
-- Phase B (executable closure): **Approved 2026-09-16; implementation complete, final validation in progress** (OpenAI Codex takeover from Claude Code). The approved lifecycle below incorporates the owner's billing and transfer-target decisions. Decision record: `.ai/decisions/2026-09-16-self-serve-account-closure-lifecycle.md`.
+- Phase B (executable closure): **Completed and validated locally 2026-09-16** (OpenAI Codex takeover from Claude Code). The approved lifecycle below incorporates the owner's billing and transfer-target decisions. Decision record: `.ai/decisions/2026-09-16-self-serve-account-closure-lifecycle.md`.
 - Authorization: local code, docs, and tests only. No commit, push, deploy, live migration, production data change, Stripe mutation, real account deletion, or real email.
 - Supersedes the "executable closure deferred" clause of `.ai/decisions/2026-07-21-account-security-and-closure-boundary.md` only after approval.
 
@@ -213,4 +213,7 @@ Each blocker is shown with the route to resolve it.
   - Hardened shared-asset discovery and transaction guards for membership changes during closure; retained transferred public links while personal/sole-workspace links are deleted.
   - Added verified-error handling to `/account-closed` so network/server failures are not presented as successful closure.
   - Added closure-focused route, lifecycle, cron, activation, webhook, SQL-contract, settings, and result-page tests. Focused result: 10 files / 49 tests passed.
-  - Static migration review found the migration and `schema.sql` mirror aligned for closure columns, step/status constraints, indexes, and the `forfeited` referral state. The migration was not applied.
+  - Static migration review found the migration and `schema.sql` mirror aligned for closure columns, step/status constraints, indexes, and the `forfeited` referral state.
+  - Final validation: changed-file ESLint passed; supported `next typegen` and `tsc --noEmit` passed; focused closure/security suite passed 10 files / 49 tests; full Vitest passed 161 files / 865 tests; production build passed; security scan passed; `git diff --check` passed with line-ending notices only.
+  - After explicit owner authorization, `migrations-account-closure.sql` was applied atomically to the configured Neon database. Post-migration metadata verification confirmed all three account columns, `account_closures`, both named constraints, and both indexes. No application/customer rows were read or changed by verification.
+  - Implementation was committed and pushed to `origin/main` in `02296aa` after validation and migration. It is not yet verified as deployed. No required implementation work remains; only these final coordination wording updates are still uncommitted.
