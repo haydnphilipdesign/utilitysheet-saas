@@ -1,6 +1,8 @@
 # Plan: HOA question group
 
-- Status: **Proposed, blocked on evidence.** Not approved for implementation.
+- Status: **On hold at product-owner request (2026-09-19).** Not approved for
+  implementation. Direction leans Option A; the blocker is migration access, not
+  evidence.
 - Created: 2026-09-19
 - Author: Claude Opus 5
 - Branch: `claude/utility-sheet-custom-questions-mkzek4`
@@ -164,12 +166,33 @@ feedback is about water/sewer, which means she was looking at the Simple sheet.
 If HOA ships as Option B and she is on Free, the feature does not reach the
 person who asked for it and the reply to her becomes an upgrade pitch.
 
-Two things settle it, neither available from this container:
+**Resolved 2026-09-19: the table is empty.** The product owner read it at
+`/admin/question-requests` and found zero submissions.
 
-1. **Alisha's plan.** Free or Pro. Changes the reply and the recommendation.
-2. **The `question_requests` table.** The decision rule was fixed in advance by
-   the gap-capture plan: *concentrated demand means build the fields; a varied
-   long tail means the builder.* It has never been read.
+That is not a reading of the decision rule, it is the absence of one. Neither
+branch of *concentrated means build the fields, varied long tail means the
+builder* fires on an empty set. Two things were checked before concluding
+anything from it:
+
+- **The instrument works.** `QuestionGapCapture` is still mounted on both
+  surfaces and still outside the packet-mode conditionals, so the D2
+  reachability guard holds: `app/dashboard/settings/page.tsx:1350` sits after
+  the advanced block closes at 1333, and `app/dashboard/requests/new/page.tsx:973`
+  sits before the advanced block opens at 978. A Free user in Simple mode can
+  reach and submit it.
+- **Demand is real but arriving elsewhere.** The product owner reports this ask
+  has come in by email more than once. Alisha is the clearest case: she had
+  exactly the feedback the capture exists to collect and sent an email instead.
+  The control is a collapsed `<details>` disclosure inside a Settings section,
+  which is low-affordance by design.
+
+**Consequence for this plan.** Waiting on the table is no longer a sensible
+gate. At current scale the owner's inbox is the dataset, and what it holds so
+far is one named field (HOA) plus a capability request with no fields named.
+That is not the long tail that would justify a builder. The evidence gate on
+**HOA specifically** is therefore released: it generalizes to every market and
+is closing-critical, which is the built-in test. The gate on a **general
+custom-question builder** stands unchanged.
 
 ```sql
 SELECT requested_text, context, packet_mode, created_at
@@ -180,12 +203,27 @@ SELECT count(*) AS total, count(DISTINCT account_id) AS accounts
 FROM question_requests;
 ```
 
-**Current recommendation, stated as a recommendation and not a decision:**
-Option A, the gating `has_hoa` question in Home Basics with the detail fields
-conditional on Yes. It reaches everyone, it costs a Simple-mode seller exactly
-one tap to say No, and HOA status is closing-relevant on a plain utility sheet
-and not only on a full handoff packet. Adopt it only if the table supports HOA
-as concentrated demand.
+**Recommendation: Option A**, the gating `has_hoa` question in Home Basics with
+the detail fields conditional on Yes. It reaches everyone, it costs a
+Simple-mode seller one tap to say No, and HOA status is closing-relevant on a
+plain utility sheet and not only on a full handoff packet.
+
+**Product owner, 2026-09-19:** leans the same way, on the grounds that it should
+be available on the Free plan. Recorded as a direction, not a final approval.
+Free-plan availability and Option A are the same choice, because Home Basics is
+asked on every form in both modes and on every plan.
+
+**Current blocker: migration access, not evidence.** Option A adds columns to
+`requests`, and the owner has no Neon credentials until roughly 2026-09-30.
+Implementation is on hold until then.
+
+**A no-migration shortcut exists and was rejected.** `requests.advanced_packet_data`
+is JSONB present on every row regardless of mode, so HOA answers could be stored
+there today. That column is named for advanced packets, is filtered through the
+advanced exclusions model, and is only read when `mode === 'advanced'`. Using it
+for Free-tier Home Basics answers would create a second, misnamed storage path
+for Home Basics and the competing abstraction `AGENTS.md` warns against. Not
+worth it to save an eleven-day wait.
 
 ## 7. Acceptance criteria
 
@@ -250,8 +288,11 @@ New:
 
 ## 11. Next concrete action
 
-Read `question_requests` at `/admin/question-requests` (shipped 2026-09-19; it
-replaces the psql session the query in section 6 used to require) and check
-Alisha's plan tier. Then either approve Option A, switch to Option B, or record
-that the evidence points at the builder after all. Do not begin implementation
-before that.
+Hold. Resume when the owner has Neon credentials, expected around 2026-09-30.
+
+At that point: confirm Option A, write `migrations-hoa-questions.sql`, and
+confirm before running it. Writing the migration does not authorize running it.
+
+Optional and independent of the hold: raise the capture control's affordance, or
+accept that email is the channel at this scale and log those asks by hand. The
+current state, a working instrument nobody uses, gives the worst of both.

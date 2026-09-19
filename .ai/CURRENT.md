@@ -1,4 +1,4 @@
-# Current task: HOA relabel and requested-questions admin view, deployed
+# Current task: HOA relabel and admin view shipped; HOA question group on hold
 
 - Date: 2026-09-19. Agent: Claude Opus 5. Branch:
   `claude/utility-sheet-custom-questions-mkzek4`, merged to `main` and pushed
@@ -94,12 +94,42 @@ inconsistency, since fixed with authorization:
 - `tests/unit/home-basics-labels.test.ts` extended to 7 tests, including a
   parity assertion across both packet modes.
 
-## Still blocked
+## On hold: HOA question group
 
-The HOA question group (§6 of the plan): Home Basics placement versus a 6th
-handoff module. Needs the `question_requests` data, now readable at
-`/admin/question-requests` once deployed, plus Alisha's plan tier. Do not begin
-implementation before that.
+**Product owner decision, 2026-09-19: hold implementation.** Not blocked on
+evidence any more, blocked on migration access.
+
+- The owner read `/admin/question-requests` and found **zero submissions**.
+- Verified before drawing any conclusion from that: `QuestionGapCapture` is
+  still mounted on both surfaces and still outside the packet-mode conditionals
+  (`app/dashboard/settings/page.tsx:1350` after the advanced block closes at
+  1333; `app/dashboard/requests/new/page.tsx:973` before it opens at 978). The
+  D2 reachability guard holds, so the instrument works and the zero is real.
+- The demand is real but arrives by email, not through the capture. The owner
+  reports repeat asks; Alisha had exactly the feedback the control exists to
+  collect and emailed instead. The control is a collapsed `<details>` in a
+  Settings section, which is low-affordance by design.
+- **Consequence:** an empty set fires neither branch of the concentrated-versus-
+  long-tail rule, so waiting on the table is no longer a sensible gate. What the
+  inbox holds is one named field plus a capability request with no fields named,
+  which is not builder evidence. The evidence gate on **HOA specifically** is
+  released. The gate on a **general custom-question builder** stands.
+- **Owner leans Option A** (Home Basics), on the grounds that it should be
+  available on the Free plan. These are the same choice: Home Basics is asked on
+  every form, in both modes, on every plan. Recorded as a direction, not a final
+  approval.
+- **Blocker:** Option A adds columns to `requests`, and the owner has no Neon
+  credentials until roughly 2026-09-30.
+- A no-migration shortcut exists via `requests.advanced_packet_data` (JSONB, on
+  every row regardless of mode) and was **rejected**: that column is named for
+  advanced packets, filtered through the advanced exclusions model, and read
+  only when `mode === 'advanced'`. Using it for Free-tier Home Basics answers
+  would create a misnamed second storage path. Not worth an eleven-day saving.
+- The owner has replied to Alisha. No customer follow-up is outstanding.
+
+No decision record was created under `.ai/decisions/`: the Option A direction is
+a lean, not a settled decision, and recording it as durable would overstate it.
+Create one when Option A is confirmed.
 
 ## Risks and cautions
 
@@ -117,11 +147,15 @@ None known. Working tree clean.
 
 ## Next concrete action
 
-1. After deployment, open `/admin/question-requests` and read the list against
-   the concentrated-versus-long-tail rule. Check Alisha's plan tier.
-2. Then approve Option A, switch to Option B, or record that the evidence points
-   at the builder.
+Nothing is required until the owner has Neon credentials, expected around
+2026-09-30. Then: confirm Option A, write `migrations-hoa-questions.sql`, and
+**confirm before running it**.
 
-Worth a look after deploying: a handoff packet's public page now carries a Home
-Basics card it did not have before. Confirm it reads correctly alongside the
-Additional Home Details section.
+Two optional items, neither blocking:
+
+1. Eyeball a live handoff packet's public page. It now carries a Home Basics
+   card it did not have before, above the Additional Home Details section. The
+   ordering matches the PDF, but no one has seen it rendered against real data.
+2. Decide what to do about the capture control. A working instrument nobody uses
+   is the worst of both outcomes: either raise its affordance, or accept email
+   as the channel at this scale and log those asks by hand.
