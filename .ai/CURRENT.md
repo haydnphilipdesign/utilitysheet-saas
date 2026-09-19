@@ -62,7 +62,7 @@ from a phone.
 
 Run on the merged tree:
 
-- Full Vitest: **884 passed across 164 files**.
+- Full Vitest: **887 passed across 164 files**.
 - `npm exec tsc -- --noEmit`: clean.
 - Full lint: 1 error, `components/admin/EventLogTable.tsx:6` `no-explicit-any`.
   Pre-existing, unrelated, untouched; already recorded in the 2026-09-03 notes.
@@ -75,20 +75,24 @@ Run on the merged tree:
   place it runs with real configuration.
 - Not run: Playwright. No flow behavior changed.
 
-## Open defect found, deliberately not fixed
+## Shipped 3: advanced-packet Home Basics parity (see git log)
 
 Raised by the product owner and confirmed: advanced mode does **not** skip Home
-Basics, so the relabel covers both modes. Verifying that surfaced a separate
-inconsistency, recorded in §2a of the plan:
+Basics, so the relabel covers both modes. Verifying that surfaced a real
+inconsistency, since fixed with authorization:
 
-- Advanced packet PDF renders Home Basics (`packet-html.ts:638`, unconditional).
-- Advanced packet **web page does not** (`app/packet/[token]/page.tsx:313`,
-  `!isAdvanced ? [...] : []`), and the advanced sections do not carry it either.
-
-So an advanced packet's two formats disagree about what the buyer sees. Probably
-a bug; one line to change. Held back because it alters every live advanced
-packet and the owner is travelling and cannot review it. **Requires an owner
-decision before it ships.**
+- The advanced packet PDF rendered Home Basics; the web page did not
+  (`app/packet/[token]/page.tsx`, `!isAdvanced ? [...] : []`), so the two
+  formats of one packet disagreed about what the buyer saw.
+- Git history shows the guard carried no rationale: it arrived in the squashed
+  initial import and was never revisited.
+- Fixed structurally rather than by deleting the guard. Both surfaces now render
+  from a shared `getHomeBasicsRows` in `lib/packet/seller-questions.ts`, so they
+  cannot diverge again.
+- **The PDF output is unchanged**, since it was already correct. No pagination
+  risk was introduced. Only the web view gained the section.
+- `tests/unit/home-basics-labels.test.ts` extended to 7 tests, including a
+  parity assertion across both packet modes.
 
 ## Still blocked
 
@@ -115,6 +119,9 @@ None known. Working tree clean.
 
 1. After deployment, open `/admin/question-requests` and read the list against
    the concentrated-versus-long-tail rule. Check Alisha's plan tier.
-2. Decide the §2a advanced-packet Home Basics inconsistency.
-3. Then approve Option A, switch to Option B, or record that the evidence points
+2. Then approve Option A, switch to Option B, or record that the evidence points
    at the builder.
+
+Worth a look after deploying: a handoff packet's public page now carries a Home
+Basics card it did not have before. Confirm it reads correctly alongside the
+Additional Home Details section.

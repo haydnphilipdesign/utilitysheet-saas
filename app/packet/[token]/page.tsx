@@ -18,11 +18,7 @@ import { format } from 'date-fns';
 import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
 import { resolveBrandColor, getPacketTitle, hexToRgba } from '@/lib/branding/deliverable';
 import { generatePacketPdf } from '@/lib/pdf-generator';
-import {
-    getHeatingTypeLabel,
-    getSewerTypeLabel,
-    getWaterSourceLabel,
-} from '@/lib/packet/seller-questions';
+import { getHomeBasicsRows } from '@/lib/packet/seller-questions';
 import { toast } from 'sonner';
 import { trackEvent } from '@/lib/analytics/events';
 import type { UtilityCategory } from '@/types';
@@ -310,13 +306,9 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     const buyerSteps = (brand?.buyer_next_steps && brand.buyer_next_steps.length > 0 ? brand.buyer_next_steps : DEFAULT_BUYER_STEPS)
         .map((step) => step.trim())
         .filter(Boolean);
-    const homeBasics = !isAdvanced
-        ? [
-            { label: 'Water Source', value: request.water_source ? getWaterSourceLabel(request.water_source) : null },
-            { label: 'Sewer Type', value: request.sewer_type ? getSewerTypeLabel(request.sewer_type) : null },
-            { label: 'Heating Type', value: request.heating_type ? getHeatingTypeLabel(request.heating_type) : null },
-        ].filter((item) => item.value && String(item.value).trim())
-        : [];
+    // Shared with the PDF so the two formats of one packet cannot disagree.
+    // This previously skipped handoff mode while the PDF did not.
+    const homeBasics = getHomeBasicsRows(request);
 
     return (
         <div className="min-h-screen bg-background">

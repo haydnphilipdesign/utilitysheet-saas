@@ -43,7 +43,7 @@ including it:
   through shared label helpers in `lib/packet/seller-questions.ts`.
 - `tests/unit/home-basics-labels.test.ts` guards both.
 
-## 2a. Open defect found while verifying, deliberately not fixed
+## 2a. Defect found while verifying, since fixed
 
 Raised by the product owner on 2026-09-19 and confirmed by inspection: selecting
 the Property Handoff Packet does **not** skip Home Basics. `SellerWizard` runs
@@ -65,11 +65,17 @@ Sewer Type, or Heating Type, while the same packet's PDF shows all three. The
 advanced sections do not carry Home Basics either, so the data is simply
 dropped from one of the two deliverable formats.
 
-The `!isAdvanced` guard looks deliberate, but the PDF contradicts whatever
-rationale it had, and `docs/pdf-system-reference.md` treats the two formats as
-one deliverable. Most likely a bug. It is one line to change, and it was held
-back because it alters what buyers see on every live advanced packet and
-deserves a look before it ships. Decide it separately from this plan.
+**Resolved 2026-09-19 with product-owner authorization.** Git history shows the
+`!isAdvanced` guard carried no rationale: it arrived in the squashed initial
+import and was never revisited, while `docs/pdf-system-reference.md` treats the
+two formats as one deliverable.
+
+Rather than delete the guard alone, both surfaces now render from one shared
+`getHomeBasicsRows` in `lib/packet/seller-questions.ts`, so the two formats
+cannot diverge again. The PDF was already correct and its output is unchanged,
+so no pagination risk was introduced. The public packet page now shows Home
+Basics on handoff packets, matching the PDF and matching what the seller was
+asked.
 
 ## 3. Verified repository facts
 
@@ -249,6 +255,3 @@ replaces the psql session the query in section 6 used to require) and check
 Alisha's plan tier. Then either approve Option A, switch to Option B, or record
 that the evidence points at the builder after all. Do not begin implementation
 before that.
-
-Separately and independently: decide the advanced-mode Home Basics
-inconsistency in section 2a.

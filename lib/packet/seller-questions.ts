@@ -96,6 +96,33 @@ export function getHeatingTypeLabel(value: string): string {
     return findChoiceLabel(HEATING_TYPE_OPTIONS, value);
 }
 
+export interface HomeBasicsRow {
+    label: string;
+    value: string;
+}
+
+/**
+ * The Home Basics rows a packet displays, resolved to labels with unanswered
+ * questions dropped.
+ *
+ * Both the PDF and the public packet page render from this. They are two
+ * formats of one deliverable, and they previously built the list separately and
+ * drifted: the web view hid Home Basics in handoff mode while the PDF showed
+ * it, so the same packet disagreed with itself. Sharing the builder makes that
+ * divergence impossible rather than merely fixed.
+ */
+export function getHomeBasicsRows(request: {
+    water_source?: string | null;
+    sewer_type?: string | null;
+    heating_type?: string | null;
+}): HomeBasicsRow[] {
+    return [
+        { label: 'Water Source', value: request.water_source ? getWaterSourceLabel(request.water_source) : '' },
+        { label: 'Sewer Type', value: request.sewer_type ? getSewerTypeLabel(request.sewer_type) : '' },
+        { label: 'Heating Type', value: request.heating_type ? getHeatingTypeLabel(request.heating_type) : '' },
+    ].filter((row) => row.value.trim().length > 0);
+}
+
 /** Utility categories the seller opts into on Home Basics rather than always seeing. */
 export const OPTIONAL_UTILITY_CATEGORIES: UtilityCategory[] = ['trash', 'internet', 'cable'];
 

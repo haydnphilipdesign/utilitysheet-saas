@@ -3,11 +3,7 @@ import { UTILITY_CATEGORIES, DEFAULT_BUYER_STEPS } from '@/lib/constants';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import { clampBrandingText } from '@/lib/branding/text';
 import { DEFAULT_BRAND_COLOR, getPacketTitle } from '@/lib/branding/deliverable';
-import {
-    getHeatingTypeLabel,
-    getSewerTypeLabel,
-    getWaterSourceLabel,
-} from '@/lib/packet/seller-questions';
+import { getHomeBasicsRows } from '@/lib/packet/seller-questions';
 
 export interface PacketPdfData {
     mode?: 'simple' | 'advanced';
@@ -307,11 +303,7 @@ function buildTitleBlockMarkup(context: SharedMarkupContext, title: string, show
 }
 
 function buildHomeBasicsMarkup(request: PacketPdfData['request']): string {
-    const basics = [
-        ['Water Source', request.water_source ? getWaterSourceLabel(request.water_source) : null],
-        ['Sewer Type', request.sewer_type ? getSewerTypeLabel(request.sewer_type) : null],
-        ['Heating Type', request.heating_type ? getHeatingTypeLabel(request.heating_type) : null],
-    ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+    const basics = getHomeBasicsRows(request);
 
     if (basics.length === 0) return '';
 
@@ -319,7 +311,7 @@ function buildHomeBasicsMarkup(request: PacketPdfData['request']): string {
         <section class="home-basics keep-together">
             <div class="section-heading accent-heading"><h3>Home Basics</h3></div>
             <div class="home-basics-grid">
-                ${basics.map(([label, value]) => `
+                ${basics.map(({ label, value }) => `
                     <div class="home-basic">
                         <p class="home-basic-label">${label}</p>
                         <p class="home-basic-value">${escapeHtml(value)}</p>
