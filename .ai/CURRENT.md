@@ -1,113 +1,120 @@
-# Current task: HOA/Condo relabel shipped; HOA question group proposed
+# Current task: HOA relabel and requested-questions admin view, deployed
 
 - Date: 2026-09-19. Agent: Claude Opus 5. Branch:
-  `claude/utility-sheet-custom-questions-mkzek4`. Status: relabel **complete and
-  validated**, committed. HOA question group **proposed and blocked on evidence**.
-- Plans: `.ai/plans/2026-09-19-hoa-question-group.md` (Proposed, not approved).
+  `claude/utility-sheet-custom-questions-mkzek4`, merged to `main` and pushed
+  with explicit product-owner authorization. Status: **both shipped items
+  complete and validated.** The HOA question group remains proposed and blocked.
+- Plan: `.ai/plans/2026-09-19-hoa-question-group.md` (Proposed, not approved).
 - Trigger: customer feedback from Alisha Starkey
   (`admin@abovebeyondvs.com`, user `f2f7661e-19e2-4040-aa70-fa499bd45dcc`),
-  2026-09-19, asking whether questions can be edited and reporting that sellers
-  will misread the HOA/Condo option.
+  2026-09-19.
 
-## Completed and validated
+## Shipped 1: HOA/Condo relabel and Home Basics display labels (`2d77177`)
 
-The feedback held two requests. The first was a defect in shipped copy, not a
-customization request, and is fixed:
+The `hoa` option on water source and sewer type means the association bills the
+utility. It rendered as a bare "HOA / Condo" with no hint, so sellers read it as
+"are you in an HOA?". That is not merely confusing:
+`SellerWizard.tsx:301-304` gates the provider step on `water_source === 'city'`
+/ `sewer_type === 'public'`, so a misread **silently drops the provider from the
+packet**. Both packet surfaces also printed the raw enum, so buyers saw
+"Water Source: hoa" (PDF) and "Hoa" (web).
 
-- The `hoa` option on water source and sewer type means the association bills
-  the utility. It rendered as a bare "HOA / Condo" with no hint, while its
-  neighbours carried hints. Sellers read it as "are you in an HOA?".
-- Answering it that way is not merely confusing. `SellerWizard.tsx:301-304`
-  gates the provider step on `water_source === 'city'` / `sewer_type ===
-  'public'`, so a misread **silently drops the provider from the packet** and
-  the customer cannot tell it is missing.
-- Both packet surfaces rendered the stored enum directly: the PDF printed
-  "Water Source: hoa", and the public packet page printed "Hoa" via a
-  `capitalize` class over the raw value.
+- `lib/packet/seller-questions.ts`: relabelled to "Included in HOA / Condo Fee"
+  with the hint "The association pays this bill". Added `HEATING_TYPE_OPTIONS`
+  and `getWaterSourceLabel` / `getSewerTypeLabel` / `getHeatingTypeLabel` over a
+  shared `findChoiceLabel`, which `getFuelSourceLabel` now also uses. Unknown
+  values fall back to the humanized string, preserving prior behavior.
+- `lib/pdf/packet-html.ts`, `app/packet/[token]/page.tsx`: resolve through those
+  helpers. Dropped the `capitalize` class on the web view, which would have
+  rendered the new label as "Included In HOA".
+- `components/requests/SubmittedSheetEditor.tsx`: same relabel in that file's own
+  sentence-case convention. It still declares its own option lists rather than
+  importing the shared ones. **Left deliberately**: importing would retitle every
+  option in that dropdown, an unrelated visual change. Optional cleanup only.
+- `tests/unit/home-basics-labels.test.ts` (new, 4 tests).
 
-Changes:
+## Shipped 2: `/admin/question-requests` read-only triage view (`6762166`)
 
-- `lib/packet/seller-questions.ts`: `hoa` relabelled to "Included in HOA /
-  Condo Fee" with the hint "The association pays this bill" on both water and
-  sewer. Added `HEATING_TYPE_OPTIONS` (the stored `heating_type` set, which adds
-  `not_sure` to the fuels) and the display-label helpers `getWaterSourceLabel`,
-  `getSewerTypeLabel`, `getHeatingTypeLabel`, plus a shared `findChoiceLabel`
-  that `getFuelSourceLabel` now also uses. An unrecognized value falls back to
-  the humanized string, preserving the previous underscore handling.
-- `lib/pdf/packet-html.ts` and `app/packet/[token]/page.tsx`: Home Basics values
-  resolve through those helpers. Removed the now-wrong `capitalize` class on the
-  web view, which would have rendered the new label as "Included In HOA".
-- `components/requests/SubmittedSheetEditor.tsx`: same relabel in that file's
-  own sentence-case convention. **It still declares its own water/sewer/heating
-  option lists rather than importing the shared ones.** Left as-is deliberately:
-  converting it would change the casing of every option in that dropdown, which
-  is an unrelated visual change. The new test guards the values that matter.
-- `tests/unit/home-basics-labels.test.ts` (new, 4 tests): label resolution,
-  unknown-value fallback, the HOA label stating billing rather than membership,
-  and the PDF never emitting a raw Home Basics enum.
+The gap-capture slice shipped no admin UI by design (D4), so `question_requests`
+had never been read. This makes it readable without a psql session, including
+from a phone.
 
-Validation, all run on this branch:
+- `lib/admin/question-requests.ts`: query plus pure shaping, following the
+  `lib/admin/` convention used by `operations-overview.ts`. Its paid predicate
+  deliberately mirrors `paid_accounts` in `lib/admin/operations-overview.ts`;
+  changing one side requires changing the other.
+- `app/(admin)/admin/question-requests/page.tsx`: presentation only. Totals,
+  distinct accounts, last 30 days, Free/paid split, breakdowns by capture
+  surface and packet mode, then the submissions as a wrapping list rather than a
+  wide table so it reads on a phone. Carries the fields-versus-builder decision
+  rule and a sensitivity warning about the free text.
+- **Read-only by design.** No status mutation, so no reason string and no audit
+  entry are required. Adding a write path would change that.
+- Protected by the existing `requireAdmin()` guard in `app/(admin)/layout.tsx`.
+  No new auth surface.
+- Nav entry added under Growth & Content; `ADMIN.md` route list and nav
+  paragraph updated.
+- `tests/unit/admin-question-requests.test.ts` (new, 7 tests).
+- The table exists in production: `migrations-question-requests.sql` was applied
+  2026-09-03 with authorization and verified. **No migration was needed or run.**
 
-- Full Vitest: **877 passed across 163 files**.
+## Validation
+
+Run on the merged tree:
+
+- Full Vitest: **884 passed across 164 files**.
 - `npm exec tsc -- --noEmit`: clean.
-- ESLint on changed files: 0 errors (4 pre-existing `no-img-element` warnings in
-  `app/packet/[token]/page.tsx`, untouched by this work).
-- Full lint: 1 error, `components/admin/EventLogTable.tsx:6`
-  `no-explicit-any`. Pre-existing and unrelated; already recorded in the
-  2026-09-03 plan's validation notes. Not touched.
+- Full lint: 1 error, `components/admin/EventLogTable.tsx:6` `no-explicit-any`.
+  Pre-existing, unrelated, untouched; already recorded in the 2026-09-03 notes.
 - `npm run security:scan`: passed.
-- Not run: Playwright. No seller-flow behavior changed, only labels.
+- `npm run build`: **compiles successfully and passes TypeScript**, then fails at
+  "Collecting page data" on a missing `NEXT_PUBLIC_STACK_PROJECT_ID`. Verified
+  **pre-existing** by building clean `main`, which fails identically. This
+  container has no environment variables; it is not a regression. A full
+  production build was therefore not exercised here, and deployment is the first
+  place it runs with real configuration.
+- Not run: Playwright. No flow behavior changed.
 
-Environment note: `npm ci` was needed; this container starts as a bare clone.
+## Open defect found, deliberately not fixed
 
-## Blocked, and why
+Raised by the product owner and confirmed: advanced mode does **not** skip Home
+Basics, so the relabel covers both modes. Verifying that surfaced a separate
+inconsistency, recorded in §2a of the plan:
 
-The second request, "is this property in an HOA?", is planned but **must not be
-implemented yet**. `.ai/plans/2026-09-19-hoa-question-group.md` §6 holds the open
-decision: Home Basics (reaches everyone, needs a migration) versus a 6th handoff
-module (Pro-only, no migration). Alisha's feedback concerns water/sewer, so she
-was on the Simple sheet; a Pro-only module may not reach her at all.
+- Advanced packet PDF renders Home Basics (`packet-html.ts:638`, unconditional).
+- Advanced packet **web page does not** (`app/packet/[token]/page.tsx:313`,
+  `!isAdvanced ? [...] : []`), and the advanced sections do not carry it either.
 
-Two inputs settle it, neither obtainable from this container:
+So an advanced packet's two formats disagree about what the buyer sees. Probably
+a bug; one line to change. Held back because it alters every live advanced
+packet and the owner is travelling and cannot review it. **Requires an owner
+decision before it ships.**
 
-1. **`question_requests` has never been read.** The gap-capture slice
-   (`.ai/plans/2026-09-03-question-gap-capture.md`, shipped `6024d80`) was built
-   precisely to decide fields-versus-builder, and D4 deliberately shipped no
-   admin UI, so reading it needs psql against production. The decision rule was
-   fixed in advance: concentrated demand means build the fields; a varied long
-   tail means the builder. The query is in §6 of the new plan.
-2. **Alisha's plan tier** (Free or Pro), which changes both the recommendation
-   and the reply to her.
+## Still blocked
 
-This session had no database access: no `DATABASE_URL`, no `.env*` files. The
-product owner is travelling without desktop access until roughly 2026-09-30, so
-neither input is available in the near term.
+The HOA question group (§6 of the plan): Home Basics placement versus a 6th
+handoff module. Needs the `question_requests` data, now readable at
+`/admin/question-requests` once deployed, plus Alisha's plan tier. Do not begin
+implementation before that.
 
 ## Risks and cautions
 
 - Do not treat this feedback as evidence for a custom-question builder. The
-  standing verdict against it
+  standing verdict
   (`docs/product-feedback/2026-09-03-michelle-wright-opus-evaluation.md` §Idea 2)
-  is unchanged, and the HOA half of the message argues for a built-in.
-- No live database action, migration, deployment, or production mutation was
-  performed. None is authorized.
+  is unchanged.
+- No migration, schema change, or production data mutation was performed. The
+  merge to `main` was explicitly authorized by the product owner and triggers a
+  deployment.
 
 ## Concurrent editing
 
-None known. No other agent work in progress. Working tree is clean apart from
-this committed work.
+None known. Working tree clean.
 
 ## Next concrete action
 
-Owner decision, in this order:
-
-1. Review and deploy the relabel. It is independent of everything else and fixes
-   a live data-loss path for every user.
-2. On return to desktop, run the `question_requests` query in §6 of the new plan
-   and check Alisha's plan tier.
+1. After deployment, open `/admin/question-requests` and read the list against
+   the concentrated-versus-long-tail rule. Check Alisha's plan tier.
+2. Decide the §2a advanced-packet Home Basics inconsistency.
 3. Then approve Option A, switch to Option B, or record that the evidence points
-   at the builder after all.
-
-Optional follow-up, not required work: build the admin triage view for
-`question_requests` that the 2026-09-03 plan named as a follow-up. It would make
-step 2 readable from a phone instead of requiring a psql session.
+   at the builder.

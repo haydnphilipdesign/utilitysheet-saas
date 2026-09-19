@@ -43,6 +43,34 @@ including it:
   through shared label helpers in `lib/packet/seller-questions.ts`.
 - `tests/unit/home-basics-labels.test.ts` guards both.
 
+## 2a. Open defect found while verifying, deliberately not fixed
+
+Raised by the product owner on 2026-09-19 and confirmed by inspection: selecting
+the Property Handoff Packet does **not** skip Home Basics. `SellerWizard` runs
+`WELCOME -> HOME_BASICS -> UTILITIES -> [ADVANCED_DETAILS] -> REVIEW`
+unconditionally, so advanced-mode sellers answer water source, sewer type, and
+fuel exactly as simple-mode sellers do. The relabel in section 2 therefore
+covers both modes, and so does the provider-skip data loss it prevents.
+
+Verifying that surfaced a separate inconsistency **which remains unfixed**:
+
+| Surface | Simple | Advanced |
+| --- | --- | --- |
+| Asked of the seller | Yes | Yes |
+| Rendered in the PDF | Yes | Yes (`packet-html.ts:638`, unconditional) |
+| Rendered on the packet web page | Yes | **No** (`app/packet/[token]/page.tsx:313`, `!isAdvanced ? [...] : []`) |
+
+On an advanced packet the buyer opening the web link sees no Water Source,
+Sewer Type, or Heating Type, while the same packet's PDF shows all three. The
+advanced sections do not carry Home Basics either, so the data is simply
+dropped from one of the two deliverable formats.
+
+The `!isAdvanced` guard looks deliberate, but the PDF contradicts whatever
+rationale it had, and `docs/pdf-system-reference.md` treats the two formats as
+one deliverable. Most likely a bug. It is one line to change, and it was held
+back because it alters what buyers see on every live advanced packet and
+deserves a look before it ships. Decide it separately from this plan.
+
 ## 3. Verified repository facts
 
 Verified by inspection on 2026-09-19 against this branch.
@@ -216,6 +244,11 @@ New:
 
 ## 11. Next concrete action
 
-Read `question_requests` and check Alisha's plan. Then either approve Option A,
-switch to Option B, or record that the evidence points at the builder after all.
-Do not begin implementation before that.
+Read `question_requests` at `/admin/question-requests` (shipped 2026-09-19; it
+replaces the psql session the query in section 6 used to require) and check
+Alisha's plan tier. Then either approve Option A, switch to Option B, or record
+that the evidence points at the builder after all. Do not begin implementation
+before that.
+
+Separately and independently: decide the advanced-mode Home Basics
+inconsistency in section 2a.
