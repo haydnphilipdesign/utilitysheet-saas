@@ -33,17 +33,24 @@ export interface SellerChoiceOption<TValue extends string = string> {
     hint?: string;
 }
 
+/*
+ * The HOA option means the association bills this utility, not "is this home in
+ * an HOA?". Sellers read a bare "HOA / Condo" as the second question, and
+ * answering it that way skips the provider prompt in SellerWizard, so the
+ * provider is silently missing from the packet. The label states the billing
+ * meaning outright.
+ */
 export const WATER_SOURCE_OPTIONS: SellerChoiceOption<WaterSource>[] = [
     { id: 'city', label: 'Public Water', hint: "We'll ask the provider name next" },
     { id: 'well', label: 'Private Well' },
-    { id: 'hoa', label: 'HOA / Condo' },
+    { id: 'hoa', label: 'Included in HOA / Condo Fee', hint: 'The association pays this bill' },
     { id: 'not_sure', label: 'Not Sure' },
 ];
 
 export const SEWER_TYPE_OPTIONS: SellerChoiceOption<SewerType>[] = [
     { id: 'public', label: 'Public Sewer', hint: "We'll ask the authority next" },
     { id: 'septic', label: 'Septic System' },
-    { id: 'hoa', label: 'HOA / Condo' },
+    { id: 'hoa', label: 'Included in HOA / Condo Fee', hint: 'The association pays this bill' },
     { id: 'not_sure', label: 'Not Sure' },
 ];
 
@@ -54,8 +61,39 @@ export const FUEL_SOURCE_OPTIONS: SellerChoiceOption[] = [
     { id: 'electric', label: 'Electric' },
 ];
 
+/**
+ * Stored `heating_type` values, which add `not_sure` to the fuels a seller can
+ * pick as their primary heat source.
+ */
+export const HEATING_TYPE_OPTIONS: SellerChoiceOption[] = [
+    ...FUEL_SOURCE_OPTIONS,
+    { id: 'not_sure', label: 'Not Sure' },
+];
+
+function findChoiceLabel(options: SellerChoiceOption[], value: string): string {
+    return options.find((option) => option.id === value)?.label || value.replaceAll('_', ' ');
+}
+
 export function getFuelSourceLabel(fuelId: string): string {
-    return FUEL_SOURCE_OPTIONS.find((option) => option.id === fuelId)?.label || fuelId;
+    return findChoiceLabel(FUEL_SOURCE_OPTIONS, fuelId);
+}
+
+/*
+ * Home Basics reaches the buyer straight from the database on both packet
+ * surfaces. Resolve stored values through these before rendering, or `hoa`
+ * ships to the buyer as "hoa".
+ */
+
+export function getWaterSourceLabel(value: string): string {
+    return findChoiceLabel(WATER_SOURCE_OPTIONS, value);
+}
+
+export function getSewerTypeLabel(value: string): string {
+    return findChoiceLabel(SEWER_TYPE_OPTIONS, value);
+}
+
+export function getHeatingTypeLabel(value: string): string {
+    return findChoiceLabel(HEATING_TYPE_OPTIONS, value);
 }
 
 /** Utility categories the seller opts into on Home Basics rather than always seeing. */

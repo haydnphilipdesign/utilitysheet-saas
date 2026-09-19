@@ -18,6 +18,11 @@ import { format } from 'date-fns';
 import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
 import { resolveBrandColor, getPacketTitle, hexToRgba } from '@/lib/branding/deliverable';
 import { generatePacketPdf } from '@/lib/pdf-generator';
+import {
+    getHeatingTypeLabel,
+    getSewerTypeLabel,
+    getWaterSourceLabel,
+} from '@/lib/packet/seller-questions';
 import { toast } from 'sonner';
 import { trackEvent } from '@/lib/analytics/events';
 import type { UtilityCategory } from '@/types';
@@ -307,9 +312,9 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
         .filter(Boolean);
     const homeBasics = !isAdvanced
         ? [
-            { label: 'Water Source', value: request.water_source },
-            { label: 'Sewer Type', value: request.sewer_type },
-            { label: 'Heating Type', value: request.heating_type },
+            { label: 'Water Source', value: request.water_source ? getWaterSourceLabel(request.water_source) : null },
+            { label: 'Sewer Type', value: request.sewer_type ? getSewerTypeLabel(request.sewer_type) : null },
+            { label: 'Heating Type', value: request.heating_type ? getHeatingTypeLabel(request.heating_type) : null },
         ].filter((item) => item.value && String(item.value).trim())
         : [];
 
@@ -455,8 +460,8 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                     {homeBasics.map((item) => (
                                         <div key={item.label}>
                                             <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
-                                            <p className="text-sm sm:text-base font-medium text-foreground capitalize">
-                                                {String(item.value).replace(/_/g, ' ')}
+                                            <p className="text-sm sm:text-base font-medium text-foreground">
+                                                {item.value}
                                             </p>
                                         </div>
                                     ))}

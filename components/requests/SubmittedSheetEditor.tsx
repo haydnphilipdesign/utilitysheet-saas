@@ -48,14 +48,14 @@ const STATUS_OPTIONS: Array<{ value: SubmittedSheetUtilityStatus; label: string 
 const WATER_SOURCE_OPTIONS = [
     { value: 'city', label: 'Public water' },
     { value: 'well', label: 'Private well' },
-    { value: 'hoa', label: 'HOA / Condo' },
+    { value: 'hoa', label: 'Included in HOA / condo fee' },
     { value: 'not_sure', label: 'Not sure' },
 ];
 
 const SEWER_TYPE_OPTIONS = [
     { value: 'public', label: 'Public sewer' },
     { value: 'septic', label: 'Septic system' },
-    { value: 'hoa', label: 'HOA / Condo' },
+    { value: 'hoa', label: 'Included in HOA / condo fee' },
     { value: 'not_sure', label: 'Not sure' },
 ];
 
