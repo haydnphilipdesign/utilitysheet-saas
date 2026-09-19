@@ -5,6 +5,7 @@
 - `/admin/users` user search, account inspection, and audited controls
 - `/admin/requests` request search, lifecycle inspection, and audited support actions
 - `/admin/growth` activation funnel, acquisition sources, and packet referral instrumentation
+- `/admin/question-requests` read-only triage of seller-form questions customers requested but could not find
 - `/admin/organizations` workspace search and Team/personal workspace totals; Team organizations are distinguished from personal/default workspaces in Admin copy
 - `/admin/abandonment` seller-progress monitoring (route retained for compatibility)
 - `/admin/testimonial-candidates` customer outreach and advocacy-candidate review (route retained for compatibility)
@@ -14,7 +15,7 @@
 ## Navigation
 
 Admin uses a left sidebar grouped as Operations, Customers, Growth & Content, and Security. `Growth`
-sits in Growth & Content alongside Customer Outreach and Updates. Below the `lg`
+sits in Growth & Content alongside Requested Questions, Customer Outreach, and Updates. Below the `lg`
 breakpoint the same sidebar becomes a slide-over opened from the header. Routes are unchanged; several nav
 labels intentionally differ from their URL (`Seller Progress` → `/admin/abandonment`, `Workspaces` →
 `/admin/organizations`, `Customer Outreach` → `/admin/testimonial-candidates`).
