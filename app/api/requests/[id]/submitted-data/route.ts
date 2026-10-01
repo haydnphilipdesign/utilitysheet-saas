@@ -18,6 +18,7 @@ import {
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
+import { normalizeHoaAnswers } from '@/lib/packet/hoa';
 import {
     buildSubmittedSheetChangedFields,
     buildSubmittedSheetEditorPayload as buildSubmittedSheetResponse,
@@ -165,6 +166,10 @@ export async function PATCH(
             })
             : {};
 
+        // Absent when the editor tab predates the HOA questions; the stored
+        // answers are then left alone.
+        const nextHoa = parsedBody.data.hoa ? normalizeHoaAnswers(parsedBody.data.hoa) : undefined;
+
         const changedFields = buildSubmittedSheetChangedFields({
             existingPropertyAddress: context.requestData.property_address,
             nextPropertyAddress: parsedBody.data.propertyAddress,
@@ -174,6 +179,8 @@ export async function PATCH(
                 heatingType: context.requestData.heating_type || null,
             },
             nextHomeBasics: parsedBody.data.homeBasics,
+            existingHoa: normalizeHoaAnswers(context.requestData),
+            nextHoa,
             existingUtilities: currentUtilities,
             nextUtilities: parsedBody.data.utilities,
             existingAdvanced: (filterAdvancedPacketDataByExclusions(
@@ -205,6 +212,7 @@ export async function PATCH(
             propertyAddress: parsedBody.data.propertyAddress,
             propertyAddressStructured: structuredAddress,
             homeBasics: parsedBody.data.homeBasics ?? null,
+            hoa: nextHoa ?? null,
             advancedPacketData: nextAdvancedPacketData,
             utilityEntries: buildSubmittedSheetUtilityInsertRows(parsedBody.data.utilities),
             eventData: {

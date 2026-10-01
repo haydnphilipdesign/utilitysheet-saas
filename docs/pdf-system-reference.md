@@ -27,6 +27,7 @@ Advanced adds canonical, metadata-driven detail sections between Utilities and B
 | Shared visual shell | Yes | Yes |
 | Home Basics | When at least one value exists | When at least one value exists |
 | Utilities | Yes | Yes |
+| HOA / Condo Association Details | When the seller answered Yes and gave details | Same |
 | Advanced detail modules | No | Yes |
 | Buyer Next Steps | Yes | Yes |
 | Normal page target | One page when content permits | As many pages as content needs |
@@ -67,9 +68,10 @@ The production body order is:
 3. Optional welcome message
 4. Home Basics, when available
 5. Utility Providers table
-6. Advanced detail sections, in Advanced mode only
-7. Buyer Next Steps
-8. Optional disclaimer
+6. HOA / Condo Association Details, in both modes, when the seller answered Yes and gave details
+7. Advanced detail sections, in Advanced mode only
+8. Buyer Next Steps
+9. Optional disclaimer
 
 Chromium adds separate running page chrome:
 
@@ -146,6 +148,14 @@ The pagination model depends on table semantics supported by Chromium paged medi
 - Odd field counts receive an intentionally empty partner cell.
 - The whole section table is allowed to fragment.
 - Borders belong to individual cells so page continuation seams remain closed.
+
+### Home Basics and association details (added October 1, 2026)
+
+- Home Basics prints the seller's Yes / No / Not Sure answer to the HOA question as a fourth value. With four values the grid uses four columns so the block stays one row tall; with three or fewer it keeps the original three columns.
+- Home Basics values are printed as stored labels. The earlier `text-transform: capitalize` was removed because it rewrote "Included in HOA / Condo Fee" as "Included In" and would do the same to an email address.
+- The association details are a separate table that follows the Advanced section model: a repeating title in `<thead>`, atomic rows, borders on cells, and the whole table allowed to fragment.
+- It differs in one way: it packs three answers to a row instead of two, and a row with fewer answers stretches its last cell across the remaining columns instead of adding an empty partner cell. That gives the long payments-and-documents answer the full width, and it keeps a typical Simple sheet with a full set of association details on one page.
+- Both the row list and the Home Basics value come from `lib/packet/hoa.ts` and `getHomeBasicsRows`, which the public packet page also uses, so the two formats cannot disagree.
 
 ### Buyer Next Steps
 
@@ -256,6 +266,19 @@ The July 6, 2026 implementation was verified with:
 
 The temporary real-data and stress-render artifacts were intentionally removed after verification.
 
+### October 1, 2026: HOA question group
+
+Rendered through `createPacketPdfAttachmentFromData()` with the shared preview fixture (five utilities, meter and trash details, four default buyer steps):
+
+- Simple, HOA unanswered: 1 page (unchanged from before the change);
+- Simple, HOA answered No: 1 page;
+- Simple, HOA answered Yes with all seven details at realistic lengths: 1 page;
+- Simple, every association field at its maximum length, as words and as one unbroken run: 2 pages, values wrap inside their cells, Buyer Next Steps splits between items;
+- Advanced, all five modules plus realistic association details: 2 pages (the Advanced fixture's page count before the change);
+- Advanced, all five modules plus maximum-length association details: 3 pages, with the repeated section heading on the continuation page.
+
+Every page was inspected. No clipping, overlap, split rows, or broken continuation borders, and the text is selectable.
+
 ## Regression tests
 
 The main coverage lives in:
@@ -303,6 +326,7 @@ Unless a new product decision explicitly replaces them, preserve these behaviors
 | PDF browser rendering and page settings | `lib/pdf/packet-attachment.ts` |
 | Packet data/profile resolution and plan gating | `lib/packet/packet-data.ts` |
 | Advanced modules, labels, order, examples, exclusions | `lib/packet/modules.ts` |
+| HOA / condo association questions, labels, limits, and packet rows | `lib/packet/hoa.ts` |
 | Canonical title and safe brand-color helpers | `lib/branding/deliverable.ts` |
 | Branding text limits | `lib/branding/limits.ts` |
 | Whitespace normalization and truncation | `lib/branding/text.ts` |

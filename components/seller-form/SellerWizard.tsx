@@ -9,6 +9,7 @@ import type {
     AdvancedModuleKey,
     AdvancedPacketData,
     HeatingType,
+    HoaAnswers,
     PacketMode,
     ProviderSuggestion,
     SewerType,
@@ -29,8 +30,9 @@ import {
     normalizeAdvancedModuleExclusions,
 } from '@/lib/packet/modules';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
+import { createEmptyHoaAnswers } from '@/lib/packet/hoa';
 
-export interface WizardState {
+export interface WizardState extends HoaAnswers {
     water_source: WaterSource;
     sewer_type: SewerType;
     heating_type: HeatingType;
@@ -76,6 +78,7 @@ interface SellerWizardProps {
         advanced_modules?: AdvancedModuleKey[];
         advanced_module_exclusions?: AdvancedModuleExclusions;
         advanced_packet_data?: AdvancedPacketData;
+        hoa?: HoaAnswers;
     };
     initialSuggestions: Record<UtilityCategory, ProviderSuggestion[]>;
     token: string;
@@ -130,6 +133,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         heating_type: 'not_sure',
         fuels_present: [],
         primary_heating_type: null,
+        ...createEmptyHoaAnswers(),
+        ...initialRequestData.hoa,
         trash_handled_by: 'not_sure',
         optional_utilities: [],
         packet_mode: requestPacketMode,
@@ -168,7 +173,10 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             };
             if ((parsed?.v !== 1 && parsed?.v !== 2) || !parsed.state) return;
 
-            setState(parsed.state);
+            // Merge over the initial state so a draft saved before a question
+            // existed keeps that question's default instead of dropping the key.
+            const draftState = parsed.state;
+            setState((prev) => ({ ...prev, ...draftState }));
             if (typeof parsed.currentStep === 'number') {
                 setCurrentStep(Math.max(0, Math.min(Step.SUCCESS, parsed.currentStep)) as Step);
             }

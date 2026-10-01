@@ -19,6 +19,7 @@ import {
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
+import { normalizeHoaAnswers } from '@/lib/packet/hoa';
 import type {
     AdvancedModuleExclusions,
     AdvancedModuleKey,
@@ -405,6 +406,9 @@ export async function GET(
                 advanced_modules: configuredAdvancedModules,
                 advanced_module_exclusions: configuredAdvancedModuleExclusions,
                 advanced_packet_data: filteredAdvancedPacketData,
+                // Prefills the seller's earlier HOA answers so a resubmission
+                // does not wipe the association details they already typed.
+                hoa: normalizeHoaAnswers(requestRecord),
                 is_demo: requestRecord.is_demo === true,
             },
             brandProfile: publicBrandProfile,
@@ -534,12 +538,26 @@ export async function POST(
             })
             : {};
 
+        // A seller form loaded before the HOA questions shipped sends no
+        // `has_hoa` key. Leave the stored answers alone in that case.
+        const updateHoa = parsedBody.data.has_hoa !== undefined;
+        const hoa = normalizeHoaAnswers(parsedBody.data);
+
         // Update request with applicability info
         await sql`
             UPDATE requests SET
             water_source = ${parsedBody.data.water_source || null},
             sewer_type = ${parsedBody.data.sewer_type || null},
             heating_type = ${parsedBody.data.primary_heating_type || null},
+            has_hoa = CASE WHEN ${updateHoa}::boolean THEN ${hoa.has_hoa}::text ELSE has_hoa END,
+            hoa_name = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_name}::text ELSE hoa_name END,
+            hoa_management_company = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_company}::text ELSE hoa_management_company END,
+            hoa_management_contact = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_contact}::text ELSE hoa_management_contact END,
+            hoa_management_phone = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_phone}::text ELSE hoa_management_phone END,
+            hoa_management_email = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_email}::text ELSE hoa_management_email END,
+            hoa_dues_amount = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_dues_amount}::text ELSE hoa_dues_amount END,
+            hoa_dues_frequency = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_dues_frequency}::text ELSE hoa_dues_frequency END,
+            hoa_portal_or_payment = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_portal_or_payment}::text ELSE hoa_portal_or_payment END,
             advanced_packet_data = ${JSON.stringify(advancedPacketData)}::jsonb,
             status = 'submitted',
             last_activity_at = NOW(),

@@ -1,15 +1,15 @@
 # Plan: HOA question group
 
-- Status: **Approved, in progress (2026-10-01).** The product owner confirmed
-  Option A. The migration is written, mirrored in `schema.sql`, and **applied to
-  production on 2026-10-01 with explicit owner authorization**. Application code
-  is not started and is waiting on the field-set decisions in section 12. See
-  sections 11 and 12.
+- Status: **Completed 2026-10-01.** Option A built as decided, migration applied
+  to production, application code committed and pushed to `main` with owner
+  authorization. No required work remains. The implementation record and
+  validation results are in section 13; sections 5, 10, and 12 are kept as the
+  history of how the field set was reached.
 - Decision record: `.ai/decisions/2026-10-01-hoa-questions-in-home-basics.md`.
 - Created: 2026-09-19
-- Author: Claude Opus 5. Resumed 2026-10-01 by Claude Opus 5.5.
+- Author: Claude Opus 5. Resumed and completed 2026-10-01 by Claude Opus 5.5.
 - Branch: originally `claude/utility-sheet-custom-questions-mkzek4` (merged).
-  Resumed on `main`, uncommitted.
+  Completed on `main`.
 - Source: customer feedback from Alisha Starkey (`admin@abovebeyondvs.com`,
   user `f2f7661e-19e2-4040-aa70-fa499bd45dcc`), 2026-09-19.
 - Consolidated record: `docs/product-feedback/2026-09-19-alisha-starkey-hoa-feedback.md`.
@@ -428,6 +428,119 @@ owner:
   summary next to `water_source`, `sewer_type`, and `heating_type`, and update
   `docs/ai-telemetry.md` to list it. Never include the free-text HOA values. The
   Yes rate is the evidence for whether the detail fields earn their place.
+
+**Owner decisions, 2026-10-01 (later the same day):**
+
+1. Three extra columns: **approved**, including the second database run.
+2. Portal logins: **not collected for now**; document it and the document-upload
+   idea for possible future work. Done in
+   `docs/product-feedback/2026-10-01-hoa-deferred-capabilities.md`.
+3. Both recommendations above: **confirmed.**
+4. New, separate: the owner wants to look into custom questions to decide
+   whether they are worth building. Scoped as an evaluation, not a build, in
+   `.ai/plans/2026-10-01-custom-questions-evaluation.md`.
+
+## 13. Implementation record (2026-10-01)
+
+### Database
+
+`migrations-hoa-questions.sql` was extended with `hoa_management_contact`,
+`hoa_management_email`, and `hoa_dues_frequency` (`monthly` / `quarterly` /
+`yearly`) and re-applied to the same verified production target (host SHA-256
+prefix `79d6a988e446`), one transaction, 5 second `lock_timeout`. `requests`
+went from 36 to 39 columns; `requests_hoa_dues_frequency_check` was added; the
+six earlier columns were skipped by `IF NOT EXISTS`; 964 rows, none with an HOA
+value set. Before applying, the dry run was repeated in in-memory Postgres from
+both the live shape and the pre-HOA shape.
+
+### Final field set
+
+Gate `has_hoa` (Yes / No / Not Sure), then behind a Yes only: association name,
+management company, contact name, contact phone, contact email, dues amount,
+dues period, and "where are dues paid or documents found". This supersedes the
+six-field table in section 5.
+
+### What was built
+
+- `lib/packet/hoa.ts` (new): the one declaration of the questions, labels,
+  limits, choices, the normalizer that clears details unless the answer is Yes,
+  and the packet rows. No imports beyond types, so validation and queries can
+  depend on it.
+- Seller form: the gate and details on `HomeBasicsStep.tsx`; `ReviewStep.tsx`
+  shows them and now takes its water and sewer labels from the shared helpers,
+  which fixes the stale "HOA / Condo" label; `SellerWizard.tsx` carries the
+  answers, prefills earlier ones, and merges an older saved draft over the
+  defaults.
+- `app/api/seller/[token]/route.ts`: GET returns earlier answers for prefill;
+  POST writes them, and leaves them alone when the body has no `has_hoa` key.
+- Submitted-sheet editor: a new "HOA / condo association" section, with the
+  payload, change tracking (`hoa`), route, and query updated. The `hoa` payload
+  is optional so an older tab cannot clear the answers.
+- Packet: `getHomeBasicsRows` adds the gate answer; `getHoaDetailRows` feeds a
+  details section on both the public page and the PDF, in both modes.
+- Inventory and seller preview: the nine questions appear under Home Basics
+  automatically (verified by test, per criterion 7).
+- Telemetry: `has_hoa` only. Account data export: the nine columns.
+- Docs: `docs/pdf-system-reference.md`, `docs/ai-telemetry.md`, `PRD.md`.
+
+### Deviations from the plan
+
+- **Field set** grew from six to nine, by owner decision (above).
+- **PDF layout.** The first render used the two-column handoff table and pushed
+  the reference Simple sheet onto a second page with a one-line orphan. Final
+  layout: Home Basics uses four columns when the gate answer is present, and the
+  association section packs three answers to a row with the last cell stretched.
+- **`text-transform: capitalize` removed** from Home Basics values in the PDF.
+  It printed "Included In HOA / Condo Fee" and would have capitalized an email
+  address. A leftover from before the 2026-09-19 label helpers.
+- **Not done, optional:** the branding preview fixture
+  (`lib/branding/preview-data.ts`), the demo seed (`scripts/demo-seed.mjs`), and
+  the admin request detail page do not show HOA answers. The preview was left
+  alone on purpose so the sample sheet stays one page and existing preview tests
+  keep their meaning.
+
+### Acceptance criteria
+
+1. No costs one tap and shows nothing further: met (component and Playwright tests).
+2. Yes persists through submission, editor, packet page, and PDF: met.
+3. No raw stored value on a buyer-facing surface: met (`hoa-questions.test.ts`).
+4. PDF pagination at maximum length, selectable text: met (renders below).
+5. Migration written, mirrored, and applied with authorization: met.
+6. Portal helper warns against passwords and account numbers: met, on the
+   seller form and the editor, covered by tests.
+7. Inventory and preview include the questions: met, verified by test.
+8. Lint, type-check, full Vitest: met (below).
+
+### Validation
+
+- `npm test -- --run`: **926 passed across 167 files** (887 before; 39 new or
+  extended tests in `hoa-questions.test.ts`, `seller-wizard-hoa-flow.test.tsx`,
+  `submitted-sheet-editor-hoa.test.tsx`, and two existing files).
+- `npm exec tsc -- --noEmit`: clean.
+- `npm run lint`: 2 errors, both pre-existing and unrelated
+  (`components/admin/EventLogTable.tsx:6`, and a local ignored file under
+  `.qa-artifacts/`). No errors in changed files.
+- `npm run build`: succeeded (this machine has environment configuration).
+- `npm run security:scan`: passed.
+- Playwright: the seller, packet, intake, and test-drive specs pass on Desktop
+  Chrome, Mobile Safari, and Mobile Chrome (36 runs), including a new HOA
+  journey and a packet overflow check. All use mocked APIs.
+  `npm run test:e2e:mobile` as a whole: 44 passed, 6 failed, all six in
+  `tests/marketing-mobile.spec.ts`, which fails the same way run alone. They
+  assert landing-page copy and reach no code this change touches. **Pre-existing
+  and unrelated; not fixed here.**
+- PDF, rendered through `createPacketPdfAttachmentFromData()` and inspected page
+  by page: results recorded in `docs/pdf-system-reference.md`. Simple stays one
+  page with realistic association details; maximum-length values wrap and
+  paginate without clipping.
+- SQL: the exact `UPDATE` statements from the seller route and the editor query
+  were executed against in-memory Postgres built from `schema.sql`. The write
+  semantics (write, preserve when absent, clear on No, reject an invalid answer)
+  were exercised the same way.
+- Phone screenshots of the seller step, the review, and the packet page were
+  captured and inspected.
+- Not verified: a real seller submission against the deployed site. The first
+  production HOA submission is the first end-to-end run with real services.
 
 Optional and independent of the hold: raise the capture control's affordance, or
 accept that email is the channel at this scale and log those asks by hand. The

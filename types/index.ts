@@ -81,6 +81,26 @@ export type AdvancedPacketData = {
 export type WaterSource = 'city' | 'well' | 'hoa' | 'not_sure';
 export type SewerType = 'public' | 'septic' | 'hoa' | 'not_sure';
 export type HeatingType = 'natural_gas' | 'propane' | 'oil' | 'electric' | 'not_sure';
+export type HasHoa = 'yes' | 'no' | 'not_sure';
+export type HoaDuesFrequency = 'monthly' | 'quarterly' | 'yearly';
+
+/**
+ * The HOA / condo association answers on Home Basics, keyed by their `requests`
+ * columns. `has_hoa` null means the question was never answered. The detail
+ * fields are only meaningful when `has_hoa` is 'yes'.
+ */
+export interface HoaAnswers {
+    has_hoa: HasHoa | null;
+    hoa_name: string | null;
+    hoa_management_company: string | null;
+    hoa_management_contact: string | null;
+    hoa_management_phone: string | null;
+    hoa_management_email: string | null;
+    hoa_dues_amount: string | null;
+    hoa_dues_frequency: HoaDuesFrequency | null;
+    hoa_portal_or_payment: string | null;
+}
+
 export type TrashPickupDay =
     | 'mon'
     | 'tue'
@@ -300,6 +320,15 @@ export interface Request {
     water_source?: WaterSource | null;
     sewer_type?: SewerType | null;
     heating_type?: HeatingType | null;
+    has_hoa?: HasHoa | null;
+    hoa_name?: string | null;
+    hoa_management_company?: string | null;
+    hoa_management_contact?: string | null;
+    hoa_management_phone?: string | null;
+    hoa_management_email?: string | null;
+    hoa_dues_amount?: string | null;
+    hoa_dues_frequency?: HoaDuesFrequency | null;
+    hoa_portal_or_payment?: string | null;
     packet_mode?: PacketMode | null;
     advanced_modules?: AdvancedModuleKey[] | null;
     advanced_module_exclusions?: AdvancedModuleExclusions | null;
@@ -381,6 +410,7 @@ export interface SubmittedSheetEditorRequest {
     waterSource: WaterSource | null;
     sewerType: SewerType | null;
     heatingType: HeatingType | null;
+    hoa: HoaAnswers;
 }
 
 export interface SubmittedSheetEditorPayload {
@@ -402,6 +432,7 @@ export interface SubmittedSheetUpdatePayload {
     updatedAt: string;
     propertyAddress: string;
     homeBasics?: SubmittedSheetEditableHomeBasics;
+    hoa?: HoaAnswers;
     utilities: SubmittedSheetEditableUtilities;
     advanced: AdvancedPacketData;
 }

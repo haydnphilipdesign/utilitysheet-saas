@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { AlertCircle, ArrowLeft, Check, Download, ExternalLink, Loader2 } from 'lucide-react';
@@ -26,9 +26,19 @@ import {
     getAdvancedModuleVisibleFieldKeys,
     getEffectiveAdvancedModules,
 } from '@/lib/packet/modules';
+import {
+    HAS_HOA_OPTIONS,
+    HOA_DUES_FREQUENCY_OPTIONS,
+    HOA_TEXT_FIELDS,
+    createEmptyHoaAnswers,
+    normalizeHoaAnswers,
+    type HoaTextFieldKey,
+} from '@/lib/packet/hoa';
 import { cn } from '@/lib/utils';
 import type {
     AdvancedModuleKey,
+    HasHoa,
+    HoaAnswers,
     SubmittedSheetEditableUtility,
     SubmittedSheetEditorPayload,
     SubmittedSheetUtilityStatus,
@@ -66,6 +76,25 @@ const HEATING_TYPE_OPTIONS = [
     { value: 'oil', label: 'Heating oil' },
     { value: 'not_sure', label: 'Not sure' },
 ];
+
+// This file uses sentence case throughout, so it relabels the shared HOA declarations.
+const HAS_HOA_EDITOR_LABELS: Record<HasHoa, string> = {
+    yes: 'Yes',
+    no: 'No',
+    not_sure: 'Not sure',
+};
+
+const HOA_EDITOR_LABELS: Record<HoaTextFieldKey, string> = {
+    hoa_name: 'Association name',
+    hoa_management_company: 'Management company',
+    hoa_management_contact: 'Contact name',
+    hoa_management_phone: 'Contact phone',
+    hoa_management_email: 'Contact email',
+    hoa_dues_amount: 'Dues amount',
+    hoa_portal_or_payment: 'Payments and documents',
+};
+
+const EMPTY_HOA_ANSWERS = createEmptyHoaAnswers();
 
 const RECYCLING_OPTIONS = [
     { value: 'yes', label: 'Yes' },
@@ -150,6 +179,8 @@ function editableSnapshot(payload: SubmittedSheetEditorPayload | null): string {
     return JSON.stringify({
         address: payload.request.propertyAddress,
         homeBasics: [payload.request.waterSource, payload.request.sewerType, payload.request.heatingType],
+        // Normalized, so details hidden behind a No do not count as unsaved changes.
+        hoa: normalizeHoaAnswers(payload.request.hoa),
         utilities: payload.editor.utilities,
         advanced: compactAdvanced(payload.editor.advanced),
     });
@@ -417,6 +448,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
         if (data.request.waterSource === 'not_sure') items.push({ targetId: fieldId('waterSource'), label: 'Water source' });
         if (data.request.sewerType === 'not_sure') items.push({ targetId: fieldId('sewerType'), label: 'Sewer type' });
         if (data.request.heatingType === 'not_sure') items.push({ targetId: fieldId('heatingType'), label: 'Heating type' });
+        if (data.request.hoa?.has_hoa === 'not_sure') items.push({ targetId: fieldId('hasHoa'), label: 'HOA / condo association' });
         return items;
     }, [data, visibleUtilityCategories]);
 
@@ -540,6 +572,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                         sewerType: data.request.sewerType,
                         heatingType: data.request.heatingType,
                     },
+                    hoa: data.request.hoa ?? EMPTY_HOA_ANSWERS,
                     utilities,
                     advanced: data.editor.advanced,
                 }),
@@ -652,6 +685,11 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             : saveState === 'saved'
                 ? { icon: <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />, text: 'All changes saved', tone: 'text-muted-foreground' }
                 : { icon: null, text: 'No unsaved changes', tone: 'text-muted-foreground' };
+
+    const hoa = data.request.hoa ?? EMPTY_HOA_ANSWERS;
+    const updateHoa = (patch: Partial<HoaAnswers>) => {
+        updateRequest({ hoa: { ...hoa, ...patch } });
+    };
 
     const homeBasicsFields = [
         { key: 'waterSource' as const, label: 'Water source', options: WATER_SOURCE_OPTIONS },
@@ -783,6 +821,84 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                         ))}
                     </div>
                     <p className="text-xs text-muted-foreground">Home Basics set to “Not set” are left off the sheet.</p>
+                </div>
+            </section>
+
+            <section
+                aria-labelledby="sheet-hoa-heading"
+                data-testid="hoa-card"
+                className={cn('rounded-xl border border-border bg-card', clearOfSaveBarClassName)}
+            >
+                <div className="border-b border-border px-4 py-3 sm:px-5">
+                    <h2 id="sheet-hoa-heading" className="text-base font-semibold text-foreground">HOA / condo association</h2>
+                </div>
+                <div className="space-y-4 p-4 sm:p-5">
+                    <Field id={fieldId('hasHoa')} label="Part of an HOA or condo association" className="sm:max-w-xs">
+                        <select
+                            id={fieldId('hasHoa')}
+                            value={hoa.has_hoa || ''}
+                            onChange={(event) => updateHoa({ has_hoa: (event.target.value || null) as HoaAnswers['has_hoa'] })}
+                            className={selectClassName}
+                        >
+                            <option value="">Not set</option>
+                            {HAS_HOA_OPTIONS.map((option) => (
+                                <option key={option.id} value={option.id}>{HAS_HOA_EDITOR_LABELS[option.id]}</option>
+                            ))}
+                        </select>
+                    </Field>
+
+                    {hoa.has_hoa === 'yes' ? (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            {HOA_TEXT_FIELDS.map((field) => {
+                                const id = fieldId('hoa', field.key);
+                                const hint = field.key === 'hoa_portal_or_payment'
+                                    ? 'Prints on the info sheet. Do not enter passwords or account numbers.'
+                                    : undefined;
+                                return (
+                                    <Fragment key={field.key}>
+                                        <Field
+                                            id={id}
+                                            label={HOA_EDITOR_LABELS[field.key]}
+                                            hint={hint}
+                                            className={field.key === 'hoa_portal_or_payment' ? 'sm:col-span-2' : undefined}
+                                        >
+                                            <Input
+                                                {...fieldA11y(id, undefined, hint)}
+                                                type={field.inputType}
+                                                value={hoa[field.key] || ''}
+                                                maxLength={field.maxLength}
+                                                autoComplete="off"
+                                                placeholder="Optional"
+                                                onChange={(event) => updateHoa({ [field.key]: event.target.value })}
+                                            />
+                                        </Field>
+                                        {field.key === 'hoa_dues_amount' ? (
+                                            <Field id={fieldId('hoa', 'hoa_dues_frequency')} label="Dues billed">
+                                                <select
+                                                    id={fieldId('hoa', 'hoa_dues_frequency')}
+                                                    value={hoa.hoa_dues_frequency || ''}
+                                                    onChange={(event) => updateHoa({
+                                                        hoa_dues_frequency: (event.target.value || null) as HoaAnswers['hoa_dues_frequency'],
+                                                    })}
+                                                    className={selectClassName}
+                                                >
+                                                    <option value="">Not set</option>
+                                                    {HOA_DUES_FREQUENCY_OPTIONS.map((option) => (
+                                                        <option key={option.id} value={option.id}>{option.label}</option>
+                                                    ))}
+                                                </select>
+                                            </Field>
+                                        ) : null}
+                                    </Fragment>
+                                );
+                            })}
+                        </div>
+                    ) : null}
+                    <p className="text-xs text-muted-foreground">
+                        {hoa.has_hoa === 'yes'
+                            ? 'Blank fields are left off the sheet.'
+                            : 'Association details are only kept when this is set to Yes. “Not set” leaves the answer off the sheet.'}
+                    </p>
                 </div>
             </section>
 

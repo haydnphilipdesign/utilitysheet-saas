@@ -1,5 +1,14 @@
 import { UTILITY_CATEGORIES } from '@/lib/constants';
 import {
+    HAS_HOA_OPTIONS,
+    HOA_DETAILS_CONDITION,
+    HOA_DUES_FREQUENCY_OPTIONS,
+    HOA_GATE_LABEL,
+    HOA_GATE_PROMPT,
+    HOA_TEXT_FIELDS,
+    getHasHoaLabel,
+} from '@/lib/packet/hoa';
+import {
     ADVANCED_MODULE_FIELD_METADATA,
     ADVANCED_MODULE_KEYS,
     ADVANCED_MODULE_METADATA,
@@ -110,16 +119,22 @@ export interface HomeBasicsRow {
  * drifted: the web view hid Home Basics in handoff mode while the PDF showed
  * it, so the same packet disagreed with itself. Sharing the builder makes that
  * divergence impossible rather than merely fixed.
+ *
+ * The HOA row is the seller's Yes / No / Not Sure answer. The association
+ * details behind a Yes are a separate section, from getHoaDetailRows in
+ * lib/packet/hoa.ts.
  */
 export function getHomeBasicsRows(request: {
     water_source?: string | null;
     sewer_type?: string | null;
     heating_type?: string | null;
+    has_hoa?: string | null;
 }): HomeBasicsRow[] {
     return [
         { label: 'Water Source', value: request.water_source ? getWaterSourceLabel(request.water_source) : '' },
         { label: 'Sewer Type', value: request.sewer_type ? getSewerTypeLabel(request.sewer_type) : '' },
         { label: 'Heating Type', value: request.heating_type ? getHeatingTypeLabel(request.heating_type) : '' },
+        { label: HOA_GATE_LABEL, value: request.has_hoa ? getHasHoaLabel(request.has_hoa) : '' },
     ].filter((row) => row.value.trim().length > 0);
 }
 
@@ -255,6 +270,34 @@ function buildHomeBasicsSection(): SellerQuestionSection {
                 condition: 'Asked only when the seller selects more than one fuel source.',
                 choices: FUEL_SOURCE_OPTIONS.map((option) => option.label),
             },
+            {
+                key: 'home_basics.has_hoa',
+                label: HOA_GATE_LABEL,
+                sellerPrompt: HOA_GATE_PROMPT,
+                helper: 'A Yes leads to a few optional questions about the association.',
+                choices: HAS_HOA_OPTIONS.map((option) => option.label),
+            },
+            ...HOA_TEXT_FIELDS.flatMap((field): SellerQuestion[] => {
+                const question: SellerQuestion = {
+                    key: `home_basics.${field.key}`,
+                    label: `HOA ${field.label}`,
+                    sellerPrompt: field.sellerPrompt,
+                    helper: field.helper,
+                    example: field.example,
+                    condition: HOA_DETAILS_CONDITION,
+                };
+                if (field.key !== 'hoa_dues_amount') return [question];
+                return [
+                    question,
+                    {
+                        key: 'home_basics.hoa_dues_frequency',
+                        label: 'HOA Dues Frequency',
+                        sellerPrompt: 'How often are the dues billed?',
+                        condition: HOA_DETAILS_CONDITION,
+                        choices: HOA_DUES_FREQUENCY_OPTIONS.map((option) => option.label),
+                    },
+                ];
+            }),
             {
                 key: 'home_basics.optional_utilities',
                 label: 'Optional Utilities',

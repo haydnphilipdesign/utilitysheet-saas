@@ -4,6 +4,8 @@ import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import { clampBrandingText } from '@/lib/branding/text';
 import { DEFAULT_BRAND_COLOR, getPacketTitle } from '@/lib/branding/deliverable';
 import { getHomeBasicsRows } from '@/lib/packet/seller-questions';
+import { HOA_SECTION_TITLE, getHoaDetailRows } from '@/lib/packet/hoa';
+import type { HoaAnswers } from '@/types';
 
 export interface PacketPdfData {
     mode?: 'simple' | 'advanced';
@@ -14,7 +16,7 @@ export interface PacketPdfData {
         water_source?: string | null;
         sewer_type?: string | null;
         heating_type?: string | null;
-    };
+    } & Partial<HoaAnswers>;
     brand: {
         name?: string | null;
         logo_url?: string | null;
@@ -310,7 +312,7 @@ function buildHomeBasicsMarkup(request: PacketPdfData['request']): string {
     return `
         <section class="home-basics keep-together">
             <div class="section-heading accent-heading"><h3>Home Basics</h3></div>
-            <div class="home-basics-grid">
+            <div class="home-basics-grid"${basics.length > 3 ? ` style="grid-template-columns: repeat(${basics.length}, 1fr);"` : ''}>
                 ${basics.map(({ label, value }) => `
                     <div class="home-basic">
                         <p class="home-basic-label">${label}</p>
@@ -363,6 +365,47 @@ function buildUtilitiesMarkup(utilities: PacketPdfData['utilities']): string {
                 <tr class="provider-columns"><th>Utility</th><th>Provider</th><th>Contact</th></tr>
             </thead>
             <tbody>${rows}</tbody>
+        </table>`;
+}
+
+const HOA_SECTION_COLUMNS = 3;
+
+/**
+ * The association details behind a Yes on the Home Basics HOA question. Printed
+ * in both packet modes, because Home Basics is asked in both.
+ *
+ * It follows the handoff sections' pagination model (repeating title, atomic
+ * rows, borders on cells) but packs three short answers to a row, so a typical
+ * Simple sheet with a full set of association details still fits one page. A
+ * row with fewer answers stretches its last cell, which gives the long
+ * payments-and-documents answer the full width.
+ */
+function buildHoaSectionMarkup(request: PacketPdfData['request']): string {
+    const fields = getHoaDetailRows(request);
+    if (fields.length === 0) return '';
+
+    const rows: Array<typeof fields> = [];
+    for (let index = 0; index < fields.length; index += HOA_SECTION_COLUMNS) {
+        rows.push(fields.slice(index, index + HOA_SECTION_COLUMNS));
+    }
+
+    return `
+        <table class="detail-section-table hoa-section-table">
+            <thead>
+                <tr class="detail-section-title">
+                    <th colspan="${HOA_SECTION_COLUMNS}"><h3>${escapeHtml(HOA_SECTION_TITLE)}</h3></th>
+                </tr>
+            </thead>
+            <tbody>${rows.map((row) => `
+                <tr class="detail-row">${row.map((field, index) => {
+        const span = index === row.length - 1 ? HOA_SECTION_COLUMNS - index : 1;
+        return `
+                    <td class="detail-cell"${span > 1 ? ` colspan="${span}"` : ''}>
+                        <div class="detail-label">${escapeHtml(field.label)}</div>
+                        <div class="detail-value">${escapeHtml(field.value)}</div>
+                    </td>`;
+    }).join('')}
+                </tr>`).join('')}</tbody>
         </table>`;
 }
 
@@ -545,7 +588,7 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
         .section-heading h3 { margin: 0; font-size: 12px; line-height: 1.2; font-weight: 700; }
         .home-basics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 8px 12px 9px; }
         .home-basic-label { margin: 0 0 2px; color: #71717a; font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .home-basic-value { margin: 0; color: #09090b; font-size: 10.5px; font-weight: 500; text-transform: capitalize; }
+        .home-basic-value { margin: 0; color: #09090b; font-size: 10.5px; font-weight: 500; }
         .provider-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 10px; page-break-inside: auto; }
         thead { display: table-header-group; }
         .provider-section-title th {
@@ -602,6 +645,9 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
         .detail-cell { width: 50%; padding: 8px 12px; border-bottom: 1px solid #e4e4e7; vertical-align: top; }
         .detail-cell:first-child { border-left: 1px solid #e4e4e7; }
         .detail-cell:last-child { border-left: 1px solid #e4e4e7; border-right: 1px solid #e4e4e7; }
+        .hoa-section-table { table-layout: fixed; }
+        .hoa-section-table .detail-cell { width: auto; border-left: 1px solid #e4e4e7; }
+        .hoa-section-table .detail-row:last-child .detail-cell:only-child { border-radius: 0 0 8px 8px; }
         .detail-row:last-child .detail-cell:first-child { border-radius: 0 0 0 8px; }
         .detail-row:last-child .detail-cell:last-child { border-radius: 0 0 8px 0; }
         .detail-cell-empty { background: #ffffff; }
@@ -629,6 +675,7 @@ function buildPacketPdfDocumentHtml(data: PacketPdfData): PacketPdfHtmlResult {
 
         ${buildHomeBasicsMarkup(request)}
         ${buildUtilitiesMarkup(utilities)}
+        ${buildHoaSectionMarkup(request)}
         ${advancedSectionsHtml}
         ${buildBuyerNextStepsMarkup(nextStepsTitle, buyerNextSteps)}
 

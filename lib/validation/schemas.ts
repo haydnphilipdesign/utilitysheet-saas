@@ -3,6 +3,7 @@ import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
 import { inferSubmittedSheetUtilityStatus } from '@/lib/submitted-sheet/editor';
+import { HOA_TEXT_FIELDS, type HoaTextFieldKey } from '@/lib/packet/hoa';
 import {
     ADVANCED_MODULE_KEYS,
     normalizeAdvancedModuleExclusions,
@@ -298,6 +299,30 @@ const submittedSheetHomeBasicsSchema = z.object({
     heatingType: z.preprocess(emptyStringToNull, z.enum(['natural_gas', 'electric', 'propane', 'oil', 'not_sure']).nullable()),
 }).strict();
 
+const blankToNull = (val: unknown) => (val === '' ? null : val);
+const hoaText = (key: HoaTextFieldKey) =>
+    clearableLimitedString(HOA_TEXT_FIELDS.find((field) => field.key === key)?.maxLength ?? 120);
+
+/*
+ * Every HOA field is optional so a seller form or editor tab loaded before the
+ * HOA questions shipped still validates. Callers treat a body without `has_hoa`
+ * as "leave the stored answers alone", and run the values through
+ * normalizeHoaAnswers, which drops the details unless the answer is Yes.
+ */
+const hoaAnswerFields = {
+    has_hoa: z.preprocess(blankToNull, z.enum(['yes', 'no', 'not_sure']).nullable().optional()),
+    hoa_name: hoaText('hoa_name'),
+    hoa_management_company: hoaText('hoa_management_company'),
+    hoa_management_contact: hoaText('hoa_management_contact'),
+    hoa_management_phone: hoaText('hoa_management_phone'),
+    hoa_management_email: hoaText('hoa_management_email'),
+    hoa_dues_amount: hoaText('hoa_dues_amount'),
+    hoa_dues_frequency: z.preprocess(blankToNull, z.enum(['monthly', 'quarterly', 'yearly']).nullable().optional()),
+    hoa_portal_or_payment: hoaText('hoa_portal_or_payment'),
+};
+
+const submittedSheetHoaSchema = z.object(hoaAnswerFields).strict();
+
 export const organizationUpdateBodySchema = z.object({
     name: z.string().trim().min(2).max(100),
 }).strict();
@@ -433,6 +458,7 @@ export const sellerSubmissionBodySchema = z.object({
     heating_type: heatingTypeEnum,
     fuels_present: z.array(heatingFuelEnum).max(4),
     primary_heating_type: heatingFuelEnum.nullable(),
+    ...hoaAnswerFields,
     trash_handled_by: z.enum(['municipal', 'private', 'not_sure']),
     optional_utilities: z.array(z.enum(['trash', 'internet', 'cable'])).optional(),
     packet_mode: packetModeEnum.optional(),
@@ -500,6 +526,8 @@ export const submittedSheetUpdateBodySchema = z.object({
     propertyAddress: z.string().trim().min(5).max(200),
     // Optional so an editor tab loaded before home basics were editable cannot clear them.
     homeBasics: submittedSheetHomeBasicsSchema.optional(),
+    // Optional for the same reason: an older editor tab cannot clear the HOA answers.
+    hoa: submittedSheetHoaSchema.optional(),
     advanced: advancedModuleDataSchema.optional().default({}),
     utilities: z.preprocess(
         (val) => {

@@ -11,10 +11,12 @@ import {
 import type {
     AdvancedModuleExclusions,
     AdvancedModuleKey,
+    HoaAnswers,
     PacketMode,
     Request,
     TrashPickupDay,
 } from '@/types';
+import { normalizeHoaAnswers } from '@/lib/packet/hoa';
 import {
     ADVANCED_MODULE_FIELD_METADATA,
     ADVANCED_MODULE_LABELS,
@@ -26,7 +28,7 @@ import {
 
 export const PACKET_LOCKED_MESSAGE = 'This seller packet is locked. Ask the agent to upgrade to view it.';
 
-export interface PacketRequestData {
+export interface PacketRequestData extends HoaAnswers {
     id: string;
     property_address: string;
     created_at: string;
@@ -414,6 +416,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
                 water_source: requestWithPacketFields.water_source || null,
                 sewer_type: requestWithPacketFields.sewer_type || null,
                 heating_type: requestWithPacketFields.heating_type || null,
+                ...normalizeHoaAnswers(requestWithPacketFields),
             },
             brand: publicBrandProfile,
             utilities,

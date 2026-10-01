@@ -7,6 +7,7 @@ import type {
     AdvancedModuleExclusions,
     AdvancedModuleKey,
     AdvancedPacketData,
+    HoaAnswers,
     PacketMode,
     ProviderSuggestion,
     UtilityCategory,
@@ -22,6 +23,7 @@ interface RequestData {
     advanced_modules?: AdvancedModuleKey[];
     advanced_module_exclusions?: AdvancedModuleExclusions;
     advanced_packet_data?: AdvancedPacketData;
+    hoa?: HoaAnswers;
     is_demo?: boolean;
 }
 
@@ -73,6 +75,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 advanced_modules: request.advanced_modules || [],
                 advanced_module_exclusions: request.advanced_module_exclusions || {},
                 advanced_packet_data: request.advanced_packet_data || {},
+                hoa: request.hoa || undefined,
                 is_demo: request.is_demo === true,
             };
 

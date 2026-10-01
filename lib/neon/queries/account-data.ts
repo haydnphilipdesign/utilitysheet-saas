@@ -115,7 +115,10 @@ export async function getAccountDataExport(accountId: string) {
                 property_address_structured, seller_name, seller_email, seller_phone,
                 closing_date, status, packet_mode, advanced_modules,
                 advanced_module_exclusions, advanced_packet_data, utility_categories,
-                water_source, sewer_type, heating_type, is_demo, created_at,
+                water_source, sewer_type, heating_type, has_hoa, hoa_name,
+                hoa_management_company, hoa_management_contact, hoa_management_phone,
+                hoa_management_email, hoa_dues_amount, hoa_dues_frequency,
+                hoa_portal_or_payment, is_demo, created_at,
                 updated_at, last_activity_at, metered_at, is_locked, locked_reason,
                 locked_at, deleted_at
             FROM requests

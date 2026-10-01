@@ -19,9 +19,10 @@ import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
 import { resolveBrandColor, getPacketTitle, hexToRgba } from '@/lib/branding/deliverable';
 import { generatePacketPdf } from '@/lib/pdf-generator';
 import { getHomeBasicsRows } from '@/lib/packet/seller-questions';
+import { HOA_SECTION_TITLE, getHoaDetailRows } from '@/lib/packet/hoa';
 import { toast } from 'sonner';
 import { trackEvent } from '@/lib/analytics/events';
-import type { UtilityCategory } from '@/types';
+import type { HoaAnswers, UtilityCategory } from '@/types';
 import { TransactionReferralCta } from '@/components/packet/transaction-referral-cta';
 
 type PacketBrand = {
@@ -54,7 +55,7 @@ type PacketResponse = {
         water_source?: string | null;
         sewer_type?: string | null;
         heating_type?: string | null;
-    };
+    } & Partial<HoaAnswers>;
     brand: PacketBrand;
     utilities: Array<{
         category: UtilityCategory | string;
@@ -309,6 +310,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
     // Shared with the PDF so the two formats of one packet cannot disagree.
     // This previously skipped handoff mode while the PDF did not.
     const homeBasics = getHomeBasicsRows(request);
+    const hoaDetails = getHoaDetailRows(request);
 
     return (
         <div className="min-h-screen bg-background">
@@ -448,7 +450,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                                 <h3 className="text-base sm:text-lg font-semibold text-foreground">Home Basics</h3>
                             </CardHeader>
                             <CardContent className="px-4 sm:px-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                <div className={`grid grid-cols-1 gap-3 sm:gap-4 ${homeBasics.length > 3 ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
                                     {homeBasics.map((item) => (
                                         <div key={item.label}>
                                             <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
@@ -624,6 +626,27 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Association details behind a Yes on Home Basics, in both packet modes like the PDF */}
+                    {hoaDetails.length > 0 && (
+                        <Card className="border-border bg-card/50" data-testid="packet-hoa-details">
+                            <CardHeader className="pb-2 px-4 sm:px-6">
+                                <h3 className="text-base sm:text-lg font-semibold text-foreground">{HOA_SECTION_TITLE}</h3>
+                            </CardHeader>
+                            <CardContent className="px-4 sm:px-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                    {hoaDetails.map((item) => (
+                                        <div key={item.key} className={`min-w-0 ${item.key === 'hoa_portal_or_payment' ? 'sm:col-span-3' : ''}`}>
+                                            <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                                            <p className="text-sm sm:text-base font-medium text-foreground break-words">
+                                                {item.value}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {isAdvanced && advancedSections.length > 0 && (
                         <Card className="border-border bg-card/50">

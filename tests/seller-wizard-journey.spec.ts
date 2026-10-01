@@ -107,6 +107,62 @@ test.describe('Seller wizard full journey', () => {
         await expect(page.getByRole('heading', { name: 'All Done!' })).toBeVisible();
     });
 
+    test('asks the HOA question on Home Basics and submits the association details', async ({ page }) => {
+        let submitted: Record<string, unknown> | null = null;
+        await page.route(`**/api/seller/${TOKEN}`, async (route) => {
+            if (route.request().method() === 'POST') {
+                submitted = route.request().postDataJSON();
+                await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+                return;
+            }
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(REQUEST_RESPONSE) });
+        });
+
+        await page.goto(`/s/${TOKEN}`);
+        await page.getByTestId('seller-welcome-continue').click();
+
+        // The details stay hidden until a Yes, so a No costs one tap.
+        await expect(page.getByText('Is this home part of an HOA or condo association?')).toBeVisible();
+        await expect(page.getByTestId('hoa-details')).toHaveCount(0);
+        await page.getByTestId('has-hoa-no').click();
+        await expect(page.getByTestId('hoa-details')).toHaveCount(0);
+
+        await page.getByTestId('has-hoa-yes').click();
+        await expect(page.getByTestId('hoa-details')).toBeVisible();
+        await page.getByLabel('Association Name').fill('Lakeview Commons HOA');
+        await page.getByLabel('Management Company').fill('Crest Property Management');
+        await page.getByLabel('Contact Phone').fill('(555) 204-8890');
+        await page.getByLabel('Dues').fill('$240');
+        await page.getByTestId('hoa-dues-frequency-quarterly').click();
+        await page.getByLabel('Payments & Documents').fill('Resident portal at portal.lakeview.example');
+        await expect(page.getByText(/don't enter passwords or account numbers/i)).toBeVisible();
+
+        // The form must not scroll sideways on a phone with the details open.
+        const overflows = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+        expect(overflows).toBe(false);
+
+        await page.getByRole('button', { name: 'Continue' }).click();
+        await page.getByTestId('seller-utility-skip-electric').click();
+
+        await expect(page.getByRole('heading', { name: 'Review and Submit' })).toBeVisible();
+        const review = page.getByTestId('review-hoa');
+        await expect(review.getByText('Lakeview Commons HOA')).toBeVisible();
+        await expect(review.getByText('$240 per quarter')).toBeVisible();
+
+        await page.getByRole('button', { name: /submit/i }).click();
+        await expect(page.getByRole('heading', { name: 'All Done!' })).toBeVisible();
+
+        expect(submitted).toMatchObject({
+            has_hoa: 'yes',
+            hoa_name: 'Lakeview Commons HOA',
+            hoa_management_company: 'Crest Property Management',
+            hoa_management_phone: '(555) 204-8890',
+            hoa_dues_amount: '$240',
+            hoa_dues_frequency: 'quarterly',
+            hoa_portal_or_payment: 'Resident portal at portal.lakeview.example',
+        });
+    });
+
     test('"Not sure" clears selected trash days and survives to review', async ({ page }) => {
         await page.goto(`/s/${TOKEN}`);
 

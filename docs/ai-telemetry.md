@@ -105,8 +105,9 @@ The summary includes:
 - enabled `advanced_modules`
 - `advanced_exclusion_count`
 - high-level utility configuration such as `water_source`, `sewer_type`, and `heating_type`
+- `has_hoa`: the seller's Yes / No / Not Sure answer to the HOA or condo association question, or null when unanswered
 
-It does not include provider names, meter numbers, contact values, advanced field answers, or seller/property identity fields.
+It does not include provider names, meter numbers, contact values, advanced field answers, or seller/property identity fields. It also does not include the association details behind a Yes (association name, management company, contact name, phone, email, dues, or the payments-and-documents answer). Those are seller-entered free text and stay in the `requests` row only.
 
 ## Failure Behavior
 

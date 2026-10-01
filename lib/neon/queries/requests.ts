@@ -3,9 +3,11 @@
  */
 import { sql, generateToken } from '@/lib/neon/db';
 import type { SubmittedSheetUtilityInsertRow } from '@/lib/submitted-sheet/editor';
+import { normalizeHoaAnswers } from '@/lib/packet/hoa';
 import type {
     AdvancedModuleExclusions,
     AdvancedModuleKey,
+    HoaAnswers,
     PacketMode,
     PropertyAddressStructured,
     Request,
@@ -570,6 +572,8 @@ export async function updateSubmittedRequestData(
             sewerType: string | null;
             heatingType: string | null;
         } | null;
+        /** When omitted, the HOA answers are left unchanged. */
+        hoa?: HoaAnswers | null;
         advancedPacketData: Record<string, unknown>;
         utilityEntries: SubmittedSheetUtilityInsertRow[];
         eventData?: Record<string, unknown> | null;
@@ -580,6 +584,8 @@ export async function updateSubmittedRequestData(
     if (!sql) return null;
 
     const updateHomeBasics = Boolean(data.homeBasics);
+    const updateHoa = Boolean(data.hoa);
+    const hoa = normalizeHoaAnswers(data.hoa);
     const utilityEntriesJson = JSON.stringify(data.utilityEntries);
     const advancedPacketDataJson = JSON.stringify(data.advancedPacketData || {});
     const eventDataJson = data.eventData ? JSON.stringify(data.eventData) : null;
@@ -594,6 +600,15 @@ export async function updateSubmittedRequestData(
                     water_source = CASE WHEN ${updateHomeBasics}::boolean THEN ${data.homeBasics?.waterSource ?? null}::text ELSE water_source END,
                     sewer_type = CASE WHEN ${updateHomeBasics}::boolean THEN ${data.homeBasics?.sewerType ?? null}::text ELSE sewer_type END,
                     heating_type = CASE WHEN ${updateHomeBasics}::boolean THEN ${data.homeBasics?.heatingType ?? null}::text ELSE heating_type END,
+                    has_hoa = CASE WHEN ${updateHoa}::boolean THEN ${hoa.has_hoa}::text ELSE has_hoa END,
+                    hoa_name = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_name}::text ELSE hoa_name END,
+                    hoa_management_company = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_company}::text ELSE hoa_management_company END,
+                    hoa_management_contact = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_contact}::text ELSE hoa_management_contact END,
+                    hoa_management_phone = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_phone}::text ELSE hoa_management_phone END,
+                    hoa_management_email = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_email}::text ELSE hoa_management_email END,
+                    hoa_dues_amount = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_dues_amount}::text ELSE hoa_dues_amount END,
+                    hoa_dues_frequency = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_dues_frequency}::text ELSE hoa_dues_frequency END,
+                    hoa_portal_or_payment = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_portal_or_payment}::text ELSE hoa_portal_or_payment END,
                     advanced_packet_data = ${advancedPacketDataJson}::jsonb,
                     updated_at = NOW(),
                     last_activity_at = NOW()

@@ -5,6 +5,7 @@ type SellerSubmissionLike = {
     sewer_type?: string | null;
     primary_heating_type?: string | null;
     heating_type?: string | null;
+    has_hoa?: string | null;
     packet_mode?: string | null;
     advanced_modules?: unknown;
     advanced_module_exclusions?: unknown;
@@ -47,5 +48,8 @@ export function buildSellerSubmittedEventSummary(payload: SellerSubmissionLike) 
         water_source: payload.water_source || null,
         sewer_type: payload.sewer_type || null,
         heating_type: payload.primary_heating_type || payload.heating_type || null,
+        // The Yes / No / Not Sure answer only. The association name, contact,
+        // dues, and portal answers are seller-entered free text and stay out.
+        has_hoa: payload.has_hoa || null,
     };
 }

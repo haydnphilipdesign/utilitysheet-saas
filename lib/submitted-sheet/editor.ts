@@ -5,10 +5,12 @@ import {
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
+import { HOA_ANSWER_KEYS, normalizeHoaAnswers } from '@/lib/packet/hoa';
 import type {
     AdvancedModuleExclusions,
     AdvancedModuleKey,
     AdvancedPacketData,
+    HoaAnswers,
     PacketMode,
     Request as StoredRequest,
     SubmittedSheetEditableHomeBasics,
@@ -201,6 +203,8 @@ export function buildSubmittedSheetChangedFields(params: {
     nextPropertyAddress: string;
     existingHomeBasics?: SubmittedSheetEditableHomeBasics;
     nextHomeBasics?: SubmittedSheetEditableHomeBasics;
+    existingHoa?: HoaAnswers;
+    nextHoa?: HoaAnswers;
     existingUtilities: SubmittedSheetEditableUtilities;
     nextUtilities: SubmittedSheetEditableUtilities;
     existingAdvanced: AdvancedPacketData;
@@ -223,6 +227,14 @@ export function buildSubmittedSheetChangedFields(params: {
         }
         if ((params.existingHomeBasics.heatingType || null) !== (params.nextHomeBasics.heatingType || null)) {
             changed.add('heating_type');
+        }
+    }
+
+    if (params.existingHoa && params.nextHoa) {
+        const before = normalizeHoaAnswers(params.existingHoa);
+        const after = normalizeHoaAnswers(params.nextHoa);
+        if (HOA_ANSWER_KEYS.some((key) => before[key] !== after[key])) {
+            changed.add('hoa');
         }
     }
 
@@ -410,6 +422,7 @@ export function buildSubmittedSheetEditorPayload({
             waterSource: requestData.water_source || null,
             sewerType: requestData.sewer_type || null,
             heatingType: requestData.heating_type || null,
+            hoa: normalizeHoaAnswers(requestData),
         },
         editor: {
             collectElectricMeterNumber,

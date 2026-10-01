@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { UtilityStep } from '@/components/seller-form/steps/UtilityStep';
 import type { WizardState } from '@/components/seller-form/SellerWizard';
+import { createEmptyHoaAnswers } from '@/lib/packet/hoa';
 import type { ProviderSuggestion, UtilityCategory } from '@/types';
 
 vi.mock('framer-motion', () => ({
@@ -26,6 +27,7 @@ function createWizardState(): WizardState {
         heating_type: 'not_sure',
         fuels_present: [],
         primary_heating_type: null,
+        ...createEmptyHoaAnswers(),
         trash_handled_by: 'not_sure',
         optional_utilities: [],
         packet_mode: 'simple',

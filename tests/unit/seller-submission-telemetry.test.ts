@@ -3,10 +3,15 @@ import { buildSellerSubmittedEventSummary } from '@/lib/telemetry/seller-submiss
 
 describe('seller submission telemetry summary', () => {
     it('summarizes seller submission without storing raw utility or advanced payloads', () => {
-        const summary = buildSellerSubmittedEventSummary({
+        // The route passes the whole validated body, association free text included.
+        const submission = {
             water_source: 'city',
             sewer_type: 'public',
             primary_heating_type: 'electric',
+            has_hoa: 'yes',
+            hoa_name: 'Lakeview Commons HOA',
+            hoa_management_email: 'office@lakeview.example',
+            hoa_portal_or_payment: 'portal.lakeview.example',
             packet_mode: 'advanced',
             advanced_modules: ['mailbox_access'],
             advanced_module_exclusions: { mailbox_access: ['gate_code'] },
@@ -29,7 +34,8 @@ describe('seller submission telemetry summary', () => {
                     raw_text: 'Seller Typed Water',
                 },
             },
-        });
+        } as const;
+        const summary = buildSellerSubmittedEventSummary(submission);
 
         expect(summary).toEqual({
             actor: 'seller',
@@ -48,9 +54,12 @@ describe('seller submission telemetry summary', () => {
             water_source: 'city',
             sewer_type: 'public',
             heating_type: 'electric',
+            has_hoa: 'yes',
         });
 
         const serialized = JSON.stringify(summary);
+        expect(serialized).not.toContain('Lakeview');
+        expect(serialized).not.toContain('lakeview.example');
         expect(serialized).not.toContain('Acme Electric');
         expect(serialized).not.toContain('Seller Typed Water');
         expect(serialized).not.toContain('SECRET-METER');

@@ -7,6 +7,8 @@ import { WizardState } from '../SellerWizard';
 import { AdvancedModuleKey, AdvancedPacketData, TrashUtilityExtra, UtilityCategory } from '@/types';
 import { ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
+import { HOA_GATE_LABEL, getHasHoaLabel, getHoaDetailRows } from '@/lib/packet/hoa';
+import { getSewerTypeLabel, getWaterSourceLabel } from '@/lib/packet/seller-questions';
 import { wizardFocusRing, wizardTextInput } from '../wizard-ui';
 
 // Category-specific icons (same as UtilityStep)
@@ -61,19 +63,7 @@ export function ReviewStep({
         UTILITY_CATEGORIES.map((category) => [category.key, category.label])
     ) as Record<UtilityCategory, string>;
 
-    const waterSourceLabel: Record<WizardState['water_source'], string> = {
-        city: 'Public water',
-        well: 'Private well',
-        hoa: 'HOA / Condo',
-        not_sure: 'Not sure',
-    };
-
-    const sewerTypeLabel: Record<WizardState['sewer_type'], string> = {
-        public: 'Public sewer',
-        septic: 'Septic system',
-        hoa: 'HOA / Condo',
-        not_sure: 'Not sure',
-    };
+    const hoaDetailRows = getHoaDetailRows(state);
 
     const formatPickupDay = (value: string | null | undefined): string => {
         if (!value) return 'Not sure';
@@ -151,11 +141,11 @@ export function ReviewStep({
                     <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
                         <div>
                             <p className="text-muted-foreground mb-0.5 sm:mb-1 text-xs sm:text-sm">Water</p>
-                            <p className="text-foreground text-sm sm:text-base">{waterSourceLabel[state.water_source]}</p>
+                            <p className="text-foreground text-sm sm:text-base">{getWaterSourceLabel(state.water_source)}</p>
                         </div>
                         <div>
                             <p className="text-muted-foreground mb-0.5 sm:mb-1 text-xs sm:text-sm">Sewer</p>
-                            <p className="text-foreground text-sm sm:text-base">{sewerTypeLabel[state.sewer_type]}</p>
+                            <p className="text-foreground text-sm sm:text-base">{getSewerTypeLabel(state.sewer_type)}</p>
                         </div>
                         <div className="col-span-2">
                             <p className="text-muted-foreground mb-1 text-xs sm:text-sm">Fuels Present</p>
@@ -176,6 +166,24 @@ export function ReviewStep({
                                     <span className="text-foreground text-sm capitalize font-medium">
                                         {state.primary_heating_type.replace('_', ' ')}
                                     </span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="col-span-2" data-testid="review-hoa">
+                            <p className="text-muted-foreground mb-0.5 sm:mb-1 text-xs sm:text-sm">{HOA_GATE_LABEL}</p>
+                            <p className="text-foreground text-sm sm:text-base">
+                                {state.has_hoa
+                                    ? getHasHoaLabel(state.has_hoa)
+                                    : <span className="text-muted-foreground italic text-xs sm:text-sm">Not answered</span>}
+                            </p>
+                            {hoaDetailRows.length > 0 && (
+                                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
+                                    {hoaDetailRows.map((row) => (
+                                        <div key={row.key} className="text-xs sm:text-sm break-words">
+                                            <span className="text-muted-foreground">{row.label}: </span>
+                                            <span className="text-foreground">{row.value}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>

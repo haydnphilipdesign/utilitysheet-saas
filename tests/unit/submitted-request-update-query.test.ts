@@ -75,4 +75,42 @@ describe('updateSubmittedRequestData query', () => {
         expect(withoutValues).toContain(false);
         expect(withoutValues).not.toContain('well');
     });
+
+    it('updates HOA answers only when they are provided, and keeps details only behind a Yes', async () => {
+        const baseUpdate = {
+            expectedUpdatedAt: '2026-10-01T12:00:00.000Z',
+            propertyAddress: '123 Main Street',
+            propertyAddressStructured: null,
+            advancedPacketData: {},
+            utilityEntries: [],
+        };
+        const hoa = {
+            has_hoa: 'yes' as const,
+            hoa_name: 'Lakeview Commons HOA',
+            hoa_management_company: null,
+            hoa_management_contact: null,
+            hoa_management_phone: null,
+            hoa_management_email: null,
+            hoa_dues_amount: '$240',
+            hoa_dues_frequency: 'quarterly' as const,
+            hoa_portal_or_payment: null,
+        };
+
+        await updateSubmittedRequestData('req_1', { ...baseUpdate, hoa });
+        await updateSubmittedRequestData('req_1', baseUpdate);
+        await updateSubmittedRequestData('req_1', { ...baseUpdate, hoa: { ...hoa, has_hoa: 'no' } });
+
+        const [withHoa, withoutHoa, changedToNo] = sqlTagMock.mock.calls;
+        const queryText = callSqlText(withHoa);
+        for (const column of Object.keys(hoa)) {
+            expect(queryText).toContain(`${column} = CASE WHEN `);
+            expect(queryText).toContain(`ELSE ${column} END`);
+        }
+
+        expect(withHoa.slice(1)).toEqual(expect.arrayContaining(['yes', 'Lakeview Commons HOA', '$240', 'quarterly']));
+        expect(withoutHoa.slice(1)).not.toContain('yes');
+        expect(changedToNo.slice(1)).toContain('no');
+        expect(changedToNo.slice(1)).not.toContain('Lakeview Commons HOA');
+        expect(changedToNo.slice(1)).not.toContain('quarterly');
+    });
 });
