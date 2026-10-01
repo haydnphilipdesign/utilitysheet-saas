@@ -16,6 +16,22 @@ export const HOA_GATE_LABEL = 'HOA / Condo Association';
 export const HOA_GATE_PROMPT = 'Is this home part of an HOA or condo association?';
 export const HOA_SECTION_TITLE = 'HOA / Condo Association Details';
 export const HOA_DETAILS_CONDITION = 'Asked only when the seller answers Yes to the HOA question.';
+export const HOA_GATE_CONDITION = 'Shown while "Ask about HOA or condo association" is on in Settings.';
+
+/**
+ * The account preference behind the Settings switch. It lives beside
+ * `collect_electric_meter_number` in `accounts.notification_preferences`, is on
+ * unless explicitly false, and is available on every plan.
+ *
+ * It controls asking only. Answers already collected stay on the packet and
+ * stay editable; turning the switch off never deletes anything.
+ */
+export const COLLECT_HOA_QUESTIONS_PREFERENCE = 'collect_hoa_questions';
+
+export function collectsHoaQuestions(preferences: unknown): boolean {
+    if (!preferences || typeof preferences !== 'object') return true;
+    return (preferences as Record<string, unknown>)[COLLECT_HOA_QUESTIONS_PREFERENCE] !== false;
+}
 
 export const HAS_HOA_OPTIONS: Array<{ id: HasHoa; label: string }> = [
     { id: 'yes', label: 'Yes' },
@@ -175,6 +191,19 @@ export function normalizeHoaAnswers(source: Partial<Record<keyof HoaAnswers, unk
     answers.hoa_dues_frequency = readChoice(HOA_DUES_FREQUENCY_OPTIONS, source.hoa_dues_frequency);
 
     return answers;
+}
+
+/**
+ * What a seller submission should write. Nothing is written, and the stored
+ * answers are left alone, when the account has the HOA questions turned off or
+ * when the form predates them and sent no `has_hoa` key.
+ */
+export function resolveHoaSubmission(
+    body: Partial<Record<keyof HoaAnswers, unknown>>,
+    collectHoaQuestions: boolean
+): { update: boolean; answers: HoaAnswers } {
+    const update = collectHoaQuestions && body.has_hoa !== undefined;
+    return { update, answers: update ? normalizeHoaAnswers(body) : createEmptyHoaAnswers() };
 }
 
 export function getHasHoaLabel(value: string): string {

@@ -1,16 +1,42 @@
-# Current task: HOA question group shipped; custom-questions evaluation proposed
+# Current task: HOA question group and its on/off setting shipped
 
 - Date: 2026-10-01. Agent: Claude Opus 5.5 (Claude Code). Branch: `main`.
-- Status: **HOA question group complete. No required work remains on it.**
-  Migration applied to production; application code committed and pushed to
-  `main` with explicit product-owner authorization (see git log). The push
+- Status: **Complete. No required engineering work remains.** The HOA question
+  group and the setting that turns it off are both committed and pushed to
+  `main` with explicit product-owner authorization (see git log). Each push
   triggers a deployment.
-- Plan: `.ai/plans/2026-09-19-hoa-question-group.md` (Completed). Section 13 is
-  the implementation record and full validation results.
-- Decision: `.ai/decisions/2026-10-01-hoa-questions-in-home-basics.md` (Accepted).
+- Plans:
+  - `.ai/plans/2026-09-19-hoa-question-group.md` (Completed). Section 13 is the
+    implementation record and validation.
+  - `.ai/plans/2026-10-01-hoa-toggle-and-product-update.md` (Setting completed;
+    section 8 is its record). **The product update is not published.** The owner
+    publishes it through `/admin/updates`; copy is in section 3 of that plan.
+  - `.ai/plans/2026-10-01-custom-questions-evaluation.md` (Proposed, not started).
+- Decision: `.ai/decisions/2026-10-01-hoa-questions-in-home-basics.md`
+  (Accepted, amended the same day: item 9 adds the free on/off setting).
 - Customer record: `docs/product-feedback/2026-09-19-alisha-starkey-hoa-feedback.md`.
-- Next proposed work, **not started**:
-  `.ai/plans/2026-10-01-custom-questions-evaluation.md` (Proposed).
+- Draft customer reply, not sent:
+  `docs/product-feedback/2026-10-01-alisha-starkey-reply-draft.md`.
+
+## The on/off setting
+
+"Ask about HOA or condo association", under Settings, Seller Form, next to
+"Collect electric meter number". On by default. **Free on every plan** (owner
+decision). Stored as `collect_hoa_questions` in
+`accounts.notification_preferences`; no migration.
+
+- Off hides the question on the seller form and its review step, and the server
+  writes no HOA answers from a submission.
+- It controls asking only. Answers already collected keep printing and stay
+  editable. Nothing is deleted.
+- It is read live from the request owner's account, so it also applies to links
+  already sent, and in a Team workspace each member's requests follow that
+  member's own setting.
+
+**Two assumptions to confirm with the owner**, who answered only the gating
+question: that "off" should stop asking without hiding existing answers, and
+that the per-member behavior is acceptable for Teams. Both follow the
+meter-number switch and both are recorded in the decision record.
 
 ## What shipped
 
@@ -50,10 +76,15 @@ row data were printed.
 4. Detail questions behind Yes only; all three answers print.
 5. Only `has_hoa` enters seller telemetry.
 6. Look into custom questions, to decide whether they are worth building.
+7. Add a setting to turn the HOA questions off, free on every plan.
+8. Publish the product update through the existing admin system, not through
+   the hardcoded featured list.
 
 ## Validation
 
-- Vitest: **926 passed across 167 files.**
+State after the setting was added:
+
+- Vitest: **933 passed across 167 files.**
 - `npm exec tsc -- --noEmit`: clean.
 - `npm run build`: succeeded.
 - `npm run security:scan`: passed.
@@ -61,7 +92,8 @@ row data were printed.
   (`components/admin/EventLogTable.tsx:6`; a local ignored file under
   `.qa-artifacts/`). None in changed files.
 - Playwright: seller, packet, intake, and test-drive specs pass on desktop and
-  both mobile browsers (36 runs, mocked APIs), including a new HOA journey.
+  both mobile browsers (39 runs, mocked APIs), including an HOA journey and a
+  run with the setting off.
 - PDFs rendered through the production pipeline and inspected page by page;
   results in `docs/pdf-system-reference.md`.
 - The exact seller and editor `UPDATE` statements were executed against
@@ -78,9 +110,10 @@ row data were printed.
 
 ## Not verified
 
-A real seller submission against the deployed site. Everything short of that
-was exercised. The first production submission with an HOA answer is the first
-run through real services.
+A real seller submission against the deployed site, and the new switch on the
+live Settings page with a real account. Everything short of that was exercised.
+The first production submission with an HOA answer is the first run through real
+services.
 
 ## Optional follow-up (none required)
 
@@ -121,7 +154,12 @@ None known. The worktree holds only the untracked `user-feedback/` folder.
 
 ## Next concrete action
 
-Owner: confirm or adjust the thresholds in section 7 of
-`.ai/plans/2026-10-01-custom-questions-evaluation.md`, then begin its step 1 by
-listing the question requests received by email so far. No engineering is
-needed for steps 1, 2, and 4.
+1. Owner: publish the product update at `/admin/updates` using the copy in
+   section 3 of `.ai/plans/2026-10-01-hoa-toggle-and-product-update.md`, and
+   flip the new switch once on the live Settings page to confirm it saves.
+2. Owner: edit and send the reply to Alisha, and tell the other customers who
+   asked for an HOA question by email that it exists.
+3. Owner: confirm or adjust the thresholds in section 7 of
+   `.ai/plans/2026-10-01-custom-questions-evaluation.md`, then begin its step 1
+   by listing the question requests received by email so far. No engineering is
+   needed for steps 1, 2, and 4.

@@ -26,10 +26,12 @@ interface HomeBasicsStepProps {
     updateState: (updates: Partial<WizardState>) => void;
     requestedUtilityCategories: UtilityCategory[];
     configuredAdvancedModules: AdvancedModuleKey[];
+    /** Off when the requesting account turned the HOA questions off in Settings. */
+    collectHoaQuestions?: boolean;
     onNext: () => void;
 }
 
-export function HomeBasicsStep({ state, updateState, requestedUtilityCategories, configuredAdvancedModules, onNext }: HomeBasicsStepProps) {
+export function HomeBasicsStep({ state, updateState, requestedUtilityCategories, configuredAdvancedModules, collectHoaQuestions = true, onNext }: HomeBasicsStepProps) {
     const optionalUtilities = [
         { id: 'trash' as const, label: 'Trash & Recycling', icon: Trash2 },
         { id: 'internet' as const, label: 'Internet', icon: Wifi },
@@ -250,6 +252,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             )}
 
             {/* HOA / Condo Association */}
+            {collectHoaQuestions && (
             <div className="space-y-3 sm:space-y-4">
                 <div>
                     <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
@@ -341,6 +344,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     </motion.div>
                 )}
             </div>
+            )}
 
             {(availableOptionalUtilities.length > 0 || showAdvancedModuleSelector) && (
                 <div className="pt-2 flex items-center gap-3">

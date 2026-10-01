@@ -226,7 +226,8 @@ UtilitySheet is an address-first SaaS that standardizes and accelerates the coll
   (These toggles dynamically hide/disable irrelevant categories, but never block submission.)
 * HOA or condo association: Yes / No / Not sure. A Yes reveals optional association details
   (name, management company, contact, dues, where dues are paid or documents are found).
-  Asked on every form and every plan. Never collects portal passwords.
+  Asked on every form and every plan unless the account turns it off in Settings
+  (free on every plan). Never collects portal passwords.
 
 **Per-category card**
 

@@ -19,6 +19,7 @@ interface RequestData {
     property_address: string;
     utility_categories: UtilityCategory[];
     collect_electric_meter_number?: boolean;
+    collect_hoa_questions?: boolean;
     packet_mode?: PacketMode;
     advanced_modules?: AdvancedModuleKey[];
     advanced_module_exclusions?: AdvancedModuleExclusions;
@@ -71,6 +72,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 property_address: request.property_address,
                 utility_categories: request.utility_categories || UTILITY_CATEGORY_KEYS,
                 collect_electric_meter_number: request.collect_electric_meter_number !== false,
+                collect_hoa_questions: request.collect_hoa_questions !== false,
                 packet_mode: request.packet_mode || 'simple',
                 advanced_modules: request.advanced_modules || [],
                 advanced_module_exclusions: request.advanced_module_exclusions || {},

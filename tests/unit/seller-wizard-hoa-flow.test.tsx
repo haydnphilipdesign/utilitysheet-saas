@@ -28,7 +28,7 @@ const emptySuggestions = {
     oil: [],
 } as Record<UtilityCategory, ProviderSuggestion[]>;
 
-function renderWizard(hoa?: HoaAnswers) {
+function renderWizard(hoa?: HoaAnswers, collectHoaQuestions?: boolean) {
     return render(
         <SellerWizard
             token="seller-wizard-hoa-test-token"
@@ -36,6 +36,7 @@ function renderWizard(hoa?: HoaAnswers) {
                 property_address: '123 Test Lane',
                 utility_categories: ['electric'],
                 collect_electric_meter_number: false,
+                collect_hoa_questions: collectHoaQuestions,
                 packet_mode: 'simple',
                 advanced_modules: [],
                 advanced_packet_data: {},
@@ -181,6 +182,18 @@ describe('SellerWizard HOA question', () => {
 
         expect(screen.getByText('Included in HOA / Condo Fee')).toBeInTheDocument();
         expect(screen.queryByText('HOA / Condo')).not.toBeInTheDocument();
+    });
+
+    it('does not ask or review the HOA question when the account turned it off', () => {
+        renderWizard(undefined, false);
+        openHomeBasics();
+
+        expect(screen.getByRole('heading', { name: 'Home Basics' })).toBeInTheDocument();
+        expect(screen.queryByText('Is this home part of an HOA or condo association?')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('has-hoa-yes')).not.toBeInTheDocument();
+
+        continueToReview();
+        expect(screen.queryByTestId('review-hoa')).not.toBeInTheDocument();
     });
 
     it('keeps a draft saved before the question existed usable', () => {

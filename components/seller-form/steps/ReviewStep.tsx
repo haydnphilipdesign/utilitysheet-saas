@@ -32,6 +32,7 @@ interface ReviewStepProps {
     onEditUtility?: (index: number) => void;
     updateUtility?: (category: UtilityCategory, updates: { meter_number?: string | null }) => void;
     collectElectricMeterNumber?: boolean;
+    collectHoaQuestions?: boolean;
     onSubmit: () => Promise<void>;
     submitting: boolean;
     packetMode?: 'simple' | 'advanced';
@@ -50,6 +51,7 @@ export function ReviewStep({
     onEditUtility,
     updateUtility,
     collectElectricMeterNumber = false,
+    collectHoaQuestions = true,
     onSubmit,
     submitting,
     packetMode = 'simple',
@@ -169,6 +171,7 @@ export function ReviewStep({
                                 </div>
                             )}
                         </div>
+                        {collectHoaQuestions && (
                         <div className="col-span-2" data-testid="review-hoa">
                             <p className="text-muted-foreground mb-0.5 sm:mb-1 text-xs sm:text-sm">{HOA_GATE_LABEL}</p>
                             <p className="text-foreground text-sm sm:text-base">
@@ -187,6 +190,7 @@ export function ReviewStep({
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
                 </div>
 

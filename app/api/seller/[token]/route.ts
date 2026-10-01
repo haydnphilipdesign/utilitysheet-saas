@@ -19,7 +19,7 @@ import {
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
-import { normalizeHoaAnswers } from '@/lib/packet/hoa';
+import { collectsHoaQuestions, normalizeHoaAnswers, resolveHoaSubmission } from '@/lib/packet/hoa';
 import type {
     AdvancedModuleExclusions,
     AdvancedModuleKey,
@@ -374,6 +374,7 @@ export async function GET(
             collect_electric_meter_number?: boolean;
         };
         const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number !== false;
+        const collectHoaQuestions = collectsHoaQuestions(notificationPrefs);
 
         // Get AI suggestions for each category
         const utilityCategories =
@@ -401,6 +402,7 @@ export async function GET(
                 property_address: requestData.property_address,
                 utility_categories: utilityCategories,
                 collect_electric_meter_number: collectElectricMeterNumber,
+                collect_hoa_questions: collectHoaQuestions,
                 status: requestData.status,
                 packet_mode: requestRecord.packet_mode || 'simple',
                 advanced_modules: configuredAdvancedModules,
@@ -538,10 +540,13 @@ export async function POST(
             })
             : {};
 
-        // A seller form loaded before the HOA questions shipped sends no
-        // `has_hoa` key. Leave the stored answers alone in that case.
-        const updateHoa = parsedBody.data.has_hoa !== undefined;
-        const hoa = normalizeHoaAnswers(parsedBody.data);
+        // Leave the stored HOA answers alone when the account has the questions
+        // turned off, or when a seller form loaded before they shipped sends
+        // no `has_hoa` key.
+        const { update: updateHoa, answers: hoa } = resolveHoaSubmission(
+            parsedBody.data,
+            collectsHoaQuestions(notificationPrefs)
+        );
 
         // Update request with applicability info
         await sql`
@@ -740,6 +745,8 @@ export async function POST(
             eventType: 'seller_submitted',
             eventData: buildSellerSubmittedEventSummary({
                 ...parsedBody.data,
+                // Only an answer that was actually asked and stored is counted.
+                has_hoa: updateHoa ? hoa.has_hoa : null,
                 packet_mode: packetMode,
                 advanced_modules: configuredAdvancedModules,
                 advanced_module_exclusions: configuredAdvancedModuleExclusions,

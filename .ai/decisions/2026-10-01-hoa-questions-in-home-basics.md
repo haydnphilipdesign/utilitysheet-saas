@@ -21,8 +21,9 @@ documents as well.
 ## Decision
 
 1. The HOA group is a built-in part of **Home Basics**, so it is available on
-   the Free plan and in both packet modes. It is not a handoff module and has no
-   per-customer opt-out.
+   the Free plan and in both packet modes. It is not a handoff module.
+   **Amended 2026-10-01 (same day, after release):** an account can turn the
+   whole group off. See item 9. The original decision had no opt-out.
 2. Answers are stored as nullable columns on `requests`, next to the other Home
    Basics columns: `has_hoa` (`yes` / `no` / `not_sure`), `hoa_name`,
    `hoa_management_company`, `hoa_management_contact`, `hoa_management_phone`,
@@ -49,6 +50,18 @@ documents as well.
    warn against entering passwords or account numbers. Association document
    upload is not part of this group. Both are deferred, with implementation
    notes in `docs/product-feedback/2026-10-01-hoa-deferred-capabilities.md`.
+9. **One on/off setting, free on every plan.** "Ask about HOA or condo
+   association" under Settings, Seller Form, stored as `collect_hoa_questions`
+   in `accounts.notification_preferences`, on unless explicitly false.
+   - It is **not** a paid capability. The owner decided this on 2026-10-01.
+   - It controls **asking only**. Off hides the question from the seller form
+     and its review step, and the server writes no HOA answers. Answers already
+     collected keep printing on the packet and stay editable. Turning it off
+     deletes nothing.
+   - It is read live from the request owner's account, like the meter-number
+     switch beside it, so it also applies to links already sent, and in a Team
+     workspace each member's requests follow that member's own setting.
+   - There is no per-field control. The group is on or off as a whole.
 
 ## Rationale
 
@@ -83,6 +96,12 @@ documents as well.
 - **Collect the portal login.** Deferred, not rejected outright. A safe version
   needs a coordinator-only answer that never reaches the packet, which does not
   exist yet.
+- **Making "off" a Pro / Teams capability.** Rejected. The meter-number switch
+  and the utility-category checkboxes in the same panel are free; paid plans add
+  capabilities (the handoff packet, per-question controls, a custom URL).
+  Charging to remove a question that was just added to every Free form would
+  read as taking something away to sell it back. Per-field control of the detail
+  questions remains a plausible Pro capability later.
 - **A general custom-question builder.** Not built and not justified by this
   feedback. The owner has since asked for it to be evaluated on its own merits;
   see `.ai/plans/2026-10-01-custom-questions-evaluation.md`. Until that produces
@@ -92,8 +111,12 @@ documents as well.
 
 ## Consequences
 
-- Every seller on every request sees one extra gate question. A No or Not Sure
-  costs one tap. The detail questions must stay behind a Yes.
+- Unless the account turns it off, every seller on every request sees one extra
+  gate question. A No or Not Sure costs one tap. The detail questions must stay
+  behind a Yes.
+- The setting is not copied onto the request. Anything that needs to know
+  whether a request "asked" the HOA question later cannot read it from the
+  request row; only a stored answer proves it was asked.
 - The migration was applied to production on 2026-10-01 with owner
   authorization, before the application code shipped; see the plan, section 11.
 - A seller form or editor tab loaded before the release sends no HOA keys. Both

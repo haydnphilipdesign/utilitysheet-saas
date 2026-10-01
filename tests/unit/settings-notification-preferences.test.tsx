@@ -181,4 +181,68 @@ describe('settings notification preferences', () => {
         expect(meterCheckbox).toBeTruthy();
         expect(meterCheckbox.checked).toBe(true);
     });
+
+    it('lets a Free account turn the HOA questions off, and keeps its other preferences', async () => {
+        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            const url = typeof input === 'string' ? input : String(input);
+            const method = (init?.method || 'GET').toUpperCase();
+
+            if (url === '/api/account' && method === 'GET') {
+                return jsonResponse({
+                    account: {
+                        id: 'acc_1',
+                        full_name: 'Test User',
+                        email: 'test@example.com',
+                        subscription_status: 'free',
+                        // No collect_hoa_questions key: every account before this setting existed.
+                        notification_preferences: { collect_electric_meter_number: false },
+                    },
+                    activeOrganization: null,
+                    organizations: [],
+                    usage: { used: 0, limit: 3, plan: 'free' },
+                });
+            }
+
+            if (url === '/api/intake-link' && method === 'GET') {
+                return jsonResponse({
+                    intakeLink: { slug: 'test-link', url: 'https://example.com/i/test-link', is_active: true },
+                    canCustomize: false,
+                });
+            }
+
+            if (url === '/api/account' && method === 'POST') {
+                return jsonResponse({ account: { id: 'acc_1' } });
+            }
+
+            return jsonResponse({ error: 'Not found' }, 404);
+        });
+
+        vi.stubGlobal('fetch', fetchMock);
+
+        render(<SettingsPage />);
+        await openTab('Seller Form');
+
+        const hoaToggleLabel = await screen.findByText('Ask about HOA or condo association');
+        const hoaCheckbox = hoaToggleLabel.closest('div')?.parentElement?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+        expect(hoaCheckbox).toBeTruthy();
+        expect(hoaCheckbox.checked).toBe(true);
+        expect(hoaCheckbox.disabled).toBe(false);
+
+        fireEvent.click(hoaCheckbox);
+        expect(hoaCheckbox.checked).toBe(false);
+
+        await waitFor(() => {
+            const postCalls = fetchMock.mock.calls.filter(
+                ([url, init]) => url === '/api/account' && (init as RequestInit)?.method === 'POST'
+            );
+            expect(postCalls.length).toBeGreaterThan(0);
+        });
+
+        const lastPostCall = fetchMock.mock.calls
+            .filter(([url, init]) => url === '/api/account' && (init as RequestInit)?.method === 'POST')
+            .at(-1);
+        const postBody = JSON.parse(String((lastPostCall?.[1] as RequestInit).body));
+        expect(postBody.notification_preferences.collect_hoa_questions).toBe(false);
+        expect(postBody.notification_preferences.collect_electric_meter_number).toBe(false);
+    });
 });

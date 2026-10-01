@@ -3,6 +3,7 @@ import {
     HAS_HOA_OPTIONS,
     HOA_DETAILS_CONDITION,
     HOA_DUES_FREQUENCY_OPTIONS,
+    HOA_GATE_CONDITION,
     HOA_GATE_LABEL,
     HOA_GATE_PROMPT,
     HOA_TEXT_FIELDS,
@@ -229,11 +230,23 @@ export interface SellerQuestionConfiguration {
     advancedModuleExclusions?: AdvancedModuleExclusions | null;
     /** Defaults to true, matching the server-side `!== false` default. */
     collectElectricMeterNumber?: boolean;
+    /** Defaults to true, matching the server-side `!== false` default. */
+    collectHoaQuestions?: boolean;
 }
 
 // ─── Section builders ────────────────────────────────────────────────────────
 
-function buildHomeBasicsSection(): SellerQuestionSection {
+function isHoaQuestionKey(key: string): boolean {
+    return key === 'home_basics.has_hoa' || key.startsWith('home_basics.hoa_');
+}
+
+function buildHomeBasicsSection(collectHoaQuestions = true): SellerQuestionSection {
+    const section = buildFullHomeBasicsSection();
+    if (collectHoaQuestions) return section;
+    return { ...section, questions: section.questions.filter((question) => !isHoaQuestionKey(question.key)) };
+}
+
+function buildFullHomeBasicsSection(): SellerQuestionSection {
     return {
         key: 'home_basics',
         group: 'home_basics',
@@ -275,6 +288,7 @@ function buildHomeBasicsSection(): SellerQuestionSection {
                 label: HOA_GATE_LABEL,
                 sellerPrompt: HOA_GATE_PROMPT,
                 helper: 'A Yes leads to a few optional questions about the association.',
+                condition: HOA_GATE_CONDITION,
                 choices: HAS_HOA_OPTIONS.map((option) => option.label),
             },
             ...HOA_TEXT_FIELDS.flatMap((field): SellerQuestion[] => {
@@ -450,7 +464,7 @@ export function getSellerQuestionPreview(config: SellerQuestionConfiguration): S
         .filter((category) => category === 'electric' || requested.has(category));
 
     const sections: SellerQuestionSection[] = [
-        buildHomeBasicsSection(),
+        buildHomeBasicsSection(config.collectHoaQuestions !== false),
         ...previewedCategories.map((category) => buildUtilitySection(category, collectElectricMeterNumber)),
     ];
 

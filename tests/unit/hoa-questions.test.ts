@@ -5,13 +5,16 @@ import {
     HOA_GATE_LABEL,
     HOA_SECTION_TITLE,
     HOA_TEXT_FIELDS,
+    collectsHoaQuestions,
     createEmptyHoaAnswers,
     formatHoaDues,
     getHoaDetailRows,
     normalizeHoaAnswers,
+    resolveHoaSubmission,
 } from '@/lib/packet/hoa';
 import {
     getHomeBasicsRows,
+    getIncludedSellerQuestionKeys,
     getSellerQuestionInventory,
     getSellerQuestionPreview,
     searchSellerQuestionSections,
@@ -175,7 +178,7 @@ describe('HOA questions in the seller question inventory', () => {
 
     it('lists the gate and every detail question under Home Basics', () => {
         expect(byKey('home_basics.has_hoa')?.choices).toEqual(['Yes', 'No', 'Not Sure']);
-        expect(byKey('home_basics.has_hoa')?.condition).toBeUndefined();
+        expect(byKey('home_basics.has_hoa')?.condition).toContain('on in Settings');
         for (const field of HOA_TEXT_FIELDS) {
             expect(byKey(`home_basics.${field.key}`)?.condition).toContain('answers Yes');
         }
@@ -206,6 +209,50 @@ describe('HOA questions in the seller question inventory', () => {
 
         expect(helper).toMatch(/password/i);
         expect(helper).toMatch(/account number/i);
+    });
+});
+
+describe('turning the HOA questions off in Settings', () => {
+    const config = { packetMode: 'simple' as const, utilityCategories: ['electric' as const], advancedModules: [] };
+    const hoaKeys = (keys: Iterable<string>) => [...keys].filter((key) => /^home_basics\.(has_hoa|hoa_)/.test(key));
+
+    it('is on unless the account preference is explicitly false', () => {
+        expect(collectsHoaQuestions(undefined)).toBe(true);
+        expect(collectsHoaQuestions(null)).toBe(true);
+        expect(collectsHoaQuestions({})).toBe(true);
+        expect(collectsHoaQuestions({ collect_electric_meter_number: false })).toBe(true);
+        expect(collectsHoaQuestions({ collect_hoa_questions: true })).toBe(true);
+        expect(collectsHoaQuestions({ collect_hoa_questions: false })).toBe(false);
+    });
+
+    it('removes all nine HOA questions from the seller preview, and nothing else', () => {
+        const on = getSellerQuestionPreview(config);
+        const off = getSellerQuestionPreview({ ...config, collectHoaQuestions: false });
+        const keys = (sections: typeof on) => sections.flatMap((section) => section.questions.map((question) => question.key));
+
+        expect(hoaKeys(keys(on))).toHaveLength(9);
+        expect(hoaKeys(keys(off))).toHaveLength(0);
+        expect(keys(off)).toEqual(keys(on).filter((key) => hoaKeys([key]).length === 0));
+        expect(keys(getSellerQuestionPreview({ ...config, collectHoaQuestions: true }))).toEqual(keys(on));
+    });
+
+    it('keeps them in the full inventory, marked as not included', () => {
+        const inventoryKeys = getSellerQuestionInventory().flatMap((section) => section.questions.map((question) => question.key));
+
+        expect(hoaKeys(inventoryKeys)).toHaveLength(9);
+        expect(hoaKeys(getIncludedSellerQuestionKeys(config))).toHaveLength(9);
+        expect(hoaKeys(getIncludedSellerQuestionKeys({ ...config, collectHoaQuestions: false }))).toHaveLength(0);
+    });
+
+    it('writes nothing from a submission while the questions are off', () => {
+        // A form opened before the switch was flipped can still send answers.
+        expect(resolveHoaSubmission(FULL_ANSWERS, false)).toEqual({ update: false, answers: createEmptyHoaAnswers() });
+        expect(resolveHoaSubmission(FULL_ANSWERS, true)).toEqual({ update: true, answers: FULL_ANSWERS });
+    });
+
+    it('still leaves stored answers alone for a form that predates the questions', () => {
+        expect(resolveHoaSubmission({}, true).update).toBe(false);
+        expect(resolveHoaSubmission({ has_hoa: null }, true)).toEqual({ update: true, answers: createEmptyHoaAnswers() });
     });
 });
 

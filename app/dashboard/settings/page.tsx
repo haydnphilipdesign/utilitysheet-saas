@@ -45,6 +45,7 @@ type NotificationPreferences = {
     seller_submissions: boolean;
     seller_submission_pdf_attachment: boolean;
     collect_electric_meter_number: boolean;
+    collect_hoa_questions: boolean;
     contact_resolution: boolean;
     weekly_summary: boolean;
 };
@@ -115,6 +116,7 @@ export default function SettingsPage() {
         seller_submissions: true,
         seller_submission_pdf_attachment: true,
         collect_electric_meter_number: true,
+        collect_hoa_questions: true,
         contact_resolution: true,
         weekly_summary: false,
     });
@@ -1299,6 +1301,22 @@ export default function SettingsPage() {
                                     />
                                 </div>
 
+                                <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/20 p-4">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-medium text-foreground">Ask about HOA or condo association</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Ask whether the home is in an association and, on a Yes, for its name, contact, and dues.
+                                            Turning this off also applies to links already sent. Answers already collected stay on the sheet.
+                                            This preference saves automatically.
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        aria-label="Ask about HOA or condo association"
+                                        checked={notifications.collect_hoa_questions}
+                                        onCheckedChange={(checked) => handleNotificationToggle('collect_hoa_questions', checked)}
+                                    />
+                                </div>
+
                                 {intakeDefaultPacketMode === 'advanced' && (
                                     <div className="space-y-3 rounded-xl border border-border bg-muted/15 p-4">
                                         <div className="space-y-1">
@@ -1340,6 +1358,7 @@ export default function SettingsPage() {
                                             advancedModules: intakeAdvancedModules,
                                             advancedModuleExclusions: intakeAdvancedModuleExclusions,
                                             collectElectricMeterNumber: notifications.collect_electric_meter_number,
+                                            collectHoaQuestions: notifications.collect_hoa_questions,
                                         }}
                                     />
                                     <p className="text-sm text-muted-foreground">

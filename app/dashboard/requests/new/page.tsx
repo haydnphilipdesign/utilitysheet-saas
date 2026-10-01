@@ -12,6 +12,7 @@ import { AdvancedModuleConfigurator } from '@/components/advanced-modules/Advanc
 import { QuestionGapCapture } from '@/components/question-requests/QuestionGapCapture';
 import { SellerQuestionsDialog } from '@/components/seller-questions/SellerQuestionsDialog';
 import { GooglePlacesAddressInput } from '@/components/address/GooglePlacesAddressInput';
+import { collectsHoaQuestions } from '@/lib/packet/hoa';
 import {
     Dialog,
     DialogContent,
@@ -107,6 +108,7 @@ export default function NewRequestPage() {
     // Mirrors the server default in app/api/seller/[token]/route.ts, so the seller
     // question preview matches what the seller will actually be asked.
     const [collectElectricMeterNumber, setCollectElectricMeterNumber] = useState(true);
+    const [collectHoaQuestions, setCollectHoaQuestions] = useState(true);
     const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string } | null>(null);
     const [intakeCanCustomize, setIntakeCanCustomize] = useState(false);
     const [copiedIntake, setCopiedIntake] = useState(false);
@@ -148,6 +150,7 @@ export default function NewRequestPage() {
                     setCollectElectricMeterNumber(
                         accountData.account?.notification_preferences?.collect_electric_meter_number !== false
                     );
+                    setCollectHoaQuestions(collectsHoaQuestions(accountData.account?.notification_preferences));
                 }
 
                 if (intakeResponse.ok) {
@@ -963,6 +966,7 @@ export default function NewRequestPage() {
                                             advancedModules: formData.advanced_modules,
                                             advancedModuleExclusions: formData.advanced_module_exclusions,
                                             collectElectricMeterNumber,
+                                            collectHoaQuestions,
                                         }}
                                     />
                                     <p className="text-xs text-muted-foreground">

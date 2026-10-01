@@ -163,6 +163,31 @@ test.describe('Seller wizard full journey', () => {
         });
     });
 
+    test('skips the HOA question when the account has turned it off', async ({ page }) => {
+        await page.route(`**/api/seller/${TOKEN}`, async (route) => {
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify(route.request().method() === 'POST'
+                    ? { ok: true }
+                    : { ...REQUEST_RESPONSE, request: { ...REQUEST_RESPONSE.request, collect_hoa_questions: false } }),
+            });
+        });
+
+        await page.goto(`/s/${TOKEN}`);
+        await page.getByTestId('seller-welcome-continue').click();
+
+        await expect(page.getByRole('heading', { name: 'Home Basics' })).toBeVisible();
+        await expect(page.getByText('Is this home part of an HOA or condo association?')).toHaveCount(0);
+        await expect(page.getByTestId('has-hoa-yes')).toHaveCount(0);
+
+        await page.getByRole('button', { name: 'Continue' }).click();
+        await page.getByTestId('seller-utility-skip-electric').click();
+
+        await expect(page.getByRole('heading', { name: 'Review and Submit' })).toBeVisible();
+        await expect(page.getByTestId('review-hoa')).toHaveCount(0);
+    });
+
     test('"Not sure" clears selected trash days and survives to review', async ({ page }) => {
         await page.goto(`/s/${TOKEN}`);
 

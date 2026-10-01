@@ -74,6 +74,7 @@ interface SellerWizardProps {
         property_address: string;
         utility_categories: UtilityCategory[];
         collect_electric_meter_number?: boolean;
+        collect_hoa_questions?: boolean;
         packet_mode?: PacketMode;
         advanced_modules?: AdvancedModuleKey[];
         advanced_module_exclusions?: AdvancedModuleExclusions;
@@ -111,6 +112,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
     const shouldReduceMotion = useReducedMotion();
     const collectElectricMeterNumber = initialRequestData.collect_electric_meter_number !== false;
+    const collectHoaQuestions = initialRequestData.collect_hoa_questions !== false;
     const requestPacketMode: PacketMode = initialRequestData.packet_mode || 'simple';
     const requestAdvancedModules = initialRequestData.advanced_modules || [];
     const requestAdvancedModuleExclusions = normalizeAdvancedModuleExclusions(
@@ -676,6 +678,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         updateState={(updates) => setState((prev) => ({ ...prev, ...updates }))}
                         requestedUtilityCategories={initialRequestData.utility_categories}
                         configuredAdvancedModules={configuredAdvancedModules}
+                        collectHoaQuestions={collectHoaQuestions}
                         onNext={handleNext}
                     />
                 )}
@@ -726,6 +729,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         onEditAdvancedModule={handleEditAdvancedModule}
                         updateUtility={updateUtilityState}
                         collectElectricMeterNumber={collectElectricMeterNumber}
+                        collectHoaQuestions={collectHoaQuestions}
                         onSubmit={handleSubmit}
                         submitting={submitting}
                         packetMode={state.packet_mode}
