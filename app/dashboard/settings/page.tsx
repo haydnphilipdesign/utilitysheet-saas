@@ -1305,8 +1305,7 @@ export default function SettingsPage() {
                                     <div className="space-y-1">
                                         <p className="text-sm font-medium text-foreground">Ask about HOA or condo association</p>
                                         <p className="text-sm text-muted-foreground">
-                                            Ask whether the home is in an association and, on a Yes, for its name, contact, and dues.
-                                            Turning this off also applies to links already sent. Answers already collected stay on the sheet.
+                                            Ask sellers if the home is in an HOA or condo association, plus contact and dues details if it is.
                                             This preference saves automatically.
                                         </p>
                                     </div>
