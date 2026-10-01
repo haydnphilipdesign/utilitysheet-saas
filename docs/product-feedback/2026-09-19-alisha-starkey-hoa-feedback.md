@@ -5,7 +5,11 @@
 - Worked by: Claude Opus 5, with the product owner
 - Branch: `claude/utility-sheet-custom-questions-mkzek4`, merged to `main`
 - Commits: `2d77177`, `6762166`, `8bdd4a9`, `e244484`, `120e9d8`
-- Active plan: `.ai/plans/2026-09-19-hoa-question-group.md` (On hold)
+- Active plan: `.ai/plans/2026-09-19-hoa-question-group.md` (On hold when this
+  record was written. **Update 2026-10-01:** Option A confirmed, see
+  `.ai/decisions/2026-10-01-hoa-questions-in-home-basics.md`; migration applied
+  to production. Sections 6, 8.5, and 9 below describe the 2026-09-19 state;
+  section 10 covers the customer's reply.)
 - Current handoff: `.ai/CURRENT.md`
 - Related prior work: `docs/product-feedback/2026-09-03-michelle-wright-opus-evaluation.md`,
   `.ai/plans/2026-09-03-question-gap-capture.md`
@@ -274,3 +278,51 @@ Optional, neither blocking:
   it did not have before, above Additional Home Details. The ordering matches the
   PDF, but it has not been seen rendered against real data.
 - Decide what to do about the capture control, per section 5.
+
+## 10. Customer reply (received 2026-09-19, reviewed 2026-10-01)
+
+Alisha answered the owner's question about what would help. The source thread
+and her two attachments are kept locally under `user-feedback/`, which is
+untracked on purpose: it contains customer contact details and copyrighted
+forms.
+
+What she said, in substance:
+
+- She confirmed the misreading. Some associations do cover water and sewer, but
+  as a buyer or seller she would have read the old option as "are you in an HOA?".
+- She works in Oregon as a listing-side transaction coordinator. Two contract
+  sets are used statewide. She wants all association information up front,
+  including the association documents, because other contract timelines start
+  when those documents are delivered.
+- Her stated need: "mainly i need hoa information, login info if they have it
+  and everything on this doc."
+
+The two attachments:
+
+- **Oregon REALTORS Form 4.4, Association Addendum.** Section 4 is the data she
+  means: association name, management company, a contact (name, phone, email),
+  current dues per month, quarter, or year, and owned or leased parking, storage,
+  slip, and park spaces. The rest is contract terms and a list of association
+  documents the seller must deliver.
+- **OREF 024, Owner Association Addendum.** A checklist of association documents
+  and review periods. It has no seller data fields.
+
+What this changes:
+
+- It confirms the planned fields and names two that were missing, contact name
+  and contact email, plus a structured dues period. Proposed in plan section 12,
+  awaiting the owner's decision.
+- **Login information is a new, security-sensitive ask.** The recommendation is
+  not to collect portal passwords: the answer would be a seller's personal
+  account credential, stored in plaintext, on a form reachable by a link, and
+  Home Basics prints on the buyer-facing packet. The owner decides. See plan
+  section 12.
+- **Association documents are a new capability**, not a question. Collecting
+  files from the seller is a separate product decision. This is the first
+  recorded request for it.
+- None of it is evidence for a custom-question builder. Every item maps to a
+  named built-in field or to document collection.
+
+Status on 2026-10-01: Option A confirmed; the six-column migration was applied
+to production with owner authorization. The owner has not yet replied to
+Alisha's second message.

@@ -1,163 +1,112 @@
-# Current task: HOA relabel and admin view shipped; HOA question group on hold
+# Current task: HOA question group (Option A), migration applied, code not started
 
-- Date: 2026-09-19. Agent: Claude Opus 5. Branch:
-  `claude/utility-sheet-custom-questions-mkzek4`, merged to `main` and pushed
-  with explicit product-owner authorization. Status: **both shipped items
-  complete and validated.** The HOA question group remains proposed and blocked.
-- Plan: `.ai/plans/2026-09-19-hoa-question-group.md` (Proposed, not approved).
-- Consolidated record of the feedback, findings, and reasoning:
+- Date: 2026-10-01. Agent: Claude Opus 5.5 (Claude Code), taking over from the
+  2026-09-19 Claude Opus 5 session. Branch: `main`.
+- Status: **in progress, waiting on owner decisions.** Option A confirmed. The
+  migration is written, mirrored in `schema.sql`, and **applied to production**.
+  Application code is not started.
+- Plan: `.ai/plans/2026-09-19-hoa-question-group.md` (Approved, in progress).
+  Section 11 holds the migration record, section 12 the open decisions.
+- Decision: `.ai/decisions/2026-10-01-hoa-questions-in-home-basics.md` (Accepted).
+- Background, the 2026-09-19 shipped work, and the customer's reply:
   `docs/product-feedback/2026-09-19-alisha-starkey-hoa-feedback.md`.
-- Trigger: customer feedback from Alisha Starkey
-  (`admin@abovebeyondvs.com`, user `f2f7661e-19e2-4040-aa70-fa499bd45dcc`),
-  2026-09-19.
 
-## Shipped 1: HOA/Condo relabel and Home Basics display labels (`2d77177`)
+## Product-owner direction, 2026-10-01
 
-The `hoa` option on water source and sewer type means the association bills the
-utility. It rendered as a bare "HOA / Condo" with no hint, so sellers read it as
-"are you in an HOA?". That is not merely confusing:
-`SellerWizard.tsx:301-304` gates the provider step on `water_source === 'city'`
-/ `sewer_type === 'public'`, so a misread **silently drops the provider from the
-packet**. Both packet surfaces also printed the raw enum, so buyers saw
-"Water Source: hoa" (PDF) and "Hoa" (web).
+1. **Option A is confirmed:** the HOA group lives in Home Basics, available on
+   the Free plan and in both packet modes.
+2. Explicit authorization to apply `migrations-hoa-questions.sql`, and to commit
+   and push as needed.
+3. The owner supplied the customer's reply and two attachments under
+   `user-feedback/` and asked for recommendations on the two open questions.
 
-- `lib/packet/seller-questions.ts`: relabelled to "Included in HOA / Condo Fee"
-  with the hint "The association pays this bill". Added `HEATING_TYPE_OPTIONS`
-  and `getWaterSourceLabel` / `getSewerTypeLabel` / `getHeatingTypeLabel` over a
-  shared `findChoiceLabel`, which `getFuelSourceLabel` now also uses. Unknown
-  values fall back to the humanized string, preserving prior behavior.
-- `lib/pdf/packet-html.ts`, `app/packet/[token]/page.tsx`: resolve through those
-  helpers. Dropped the `capitalize` class on the web view, which would have
-  rendered the new label as "Included In HOA".
-- `components/requests/SubmittedSheetEditor.tsx`: same relabel in that file's own
-  sentence-case convention. It still declares its own option lists rather than
-  importing the shared ones. **Left deliberately**: importing would retitle every
-  option in that dropdown, an unrelated visual change. Optional cleanup only.
-- `tests/unit/home-basics-labels.test.ts` (new, 4 tests).
+## Done this session
 
-## Shipped 2: `/admin/question-requests` read-only triage view (`6762166`)
-
-The gap-capture slice shipped no admin UI by design (D4), so `question_requests`
-had never been read. This makes it readable without a psql session, including
-from a phone.
-
-- `lib/admin/question-requests.ts`: query plus pure shaping, following the
-  `lib/admin/` convention used by `operations-overview.ts`. Its paid predicate
-  deliberately mirrors `paid_accounts` in `lib/admin/operations-overview.ts`;
-  changing one side requires changing the other.
-- `app/(admin)/admin/question-requests/page.tsx`: presentation only. Totals,
-  distinct accounts, last 30 days, Free/paid split, breakdowns by capture
-  surface and packet mode, then the submissions as a wrapping list rather than a
-  wide table so it reads on a phone. Carries the fields-versus-builder decision
-  rule and a sensitivity warning about the free text.
-- **Read-only by design.** No status mutation, so no reason string and no audit
-  entry are required. Adding a write path would change that.
-- Protected by the existing `requireAdmin()` guard in `app/(admin)/layout.tsx`.
-  No new auth surface.
-- Nav entry added under Growth & Content; `ADMIN.md` route list and nav
-  paragraph updated.
-- `tests/unit/admin-question-requests.test.ts` (new, 7 tests).
-- The table exists in production: `migrations-question-requests.sql` was applied
-  2026-09-03 with authorization and verified. **No migration was needed or run.**
+- `migrations-hoa-questions.sql` (new) and `schema.sql`: six nullable columns on
+  `requests`: `has_hoa TEXT CHECK (has_hoa IN ('yes', 'no', 'not_sure'))`,
+  `hoa_name`, `hoa_management_company`, `hoa_management_phone`,
+  `hoa_dues_amount`, `hoa_portal_or_payment`. No default, backfill, index, or
+  cross-column constraint.
+- **Applied to production.** Target `.env.local` Neon database `neondb`, host
+  SHA-256 prefix `79d6a988e446` (the previously verified target). One
+  transaction, 5 second `lock_timeout`. `requests` went from 30 to 36 columns;
+  `requests_has_hoa_check` present; other constraints unchanged; 964 rows, none
+  with an HOA value set. Catalog and aggregate checks only; no credentials or
+  row data printed.
+- Decision record created; plan corrected and extended; feedback record
+  extended with the customer's reply.
+- Committed and pushed to `main` with owner authorization (see git log). The
+  push carries SQL and documentation only, no application code.
 
 ## Validation
 
-Run on the merged tree:
-
-- Full Vitest: **887 passed across 164 files**.
-- `npm exec tsc -- --noEmit`: clean.
-- Full lint: 1 error, `components/admin/EventLogTable.tsx:6` `no-explicit-any`.
-  Pre-existing, unrelated, untouched; already recorded in the 2026-09-03 notes.
+- Before applying: offline dry run in in-memory Postgres (PGlite, in the session
+  scratchpad). Old `schema.sql` plus the migration equals the new `schema.sql`
+  shape; a re-run is a no-op; the check accepts `yes`, `no`, `not_sure`, NULL
+  and rejects other values.
+- After applying: live catalog matches the reviewed SQL (above).
+- `npm test -- --run tests/unit/referral-credit-migration.test.ts`: 2 passed.
 - `npm run security:scan`: passed.
-- `npm run build`: **compiles successfully and passes TypeScript**, then fails at
-  "Collecting page data" on a missing `NEXT_PUBLIC_STACK_PROJECT_ID`. Verified
-  **pre-existing** by building clean `main`, which fails identically. This
-  container has no environment variables; it is not a regression. A full
-  production build was therefore not exercised here, and deployment is the first
-  place it runs with real configuration.
-- Not run: Playwright. No flow behavior changed.
+- Not run: full Vitest, lint, `tsc`, Playwright, build. No TypeScript changed.
 
-## Shipped 3: advanced-packet Home Basics parity (see git log)
+## Waiting on the owner (plan section 12)
 
-Raised by the product owner and confirmed: advanced mode does **not** skip Home
-Basics, so the relabel covers both modes. Verifying that surfaced a real
-inconsistency, since fixed with authorization:
+The customer's reply asks for more than the six columns hold. Proposed, **not
+approved and not built**:
 
-- The advanced packet PDF rendered Home Basics; the web page did not
-  (`app/packet/[token]/page.tsx`, `!isAdvanced ? [...] : []`), so the two
-  formats of one packet disagreed about what the buyer saw.
-- Git history shows the guard carried no rationale: it arrived in the squashed
-  initial import and was never revisited.
-- Fixed structurally rather than by deleting the guard. Both surfaces now render
-  from a shared `getHomeBasicsRows` in `lib/packet/seller-questions.ts`, so they
-  cannot diverge again.
-- **The PDF output is unchanged**, since it was already correct. No pagination
-  risk was introduced. Only the web view gained the section.
-- `tests/unit/home-basics-labels.test.ts` extended to 7 tests, including a
-  parity assertion across both packet modes.
+1. Add `hoa_management_contact`, `hoa_management_email`, and
+   `hoa_dues_frequency` (`monthly` / `quarterly` / `yearly`) to complete Oregon
+   Form 4.4 section 4 lines A to C. They would be appended to the same
+   idempotent migration file. **A second database run needs its own
+   authorization.**
+2. Leave parking and storage spaces out of the first release.
+3. **Do not collect HOA portal passwords**, which the customer asked for. This
+   is security-sensitive and the owner's call.
+4. Treat association document upload as separate demand, out of scope.
+5. Detail fields behind **Yes** only; "Not sure" and "No" still print.
+6. Add only the `has_hoa` enum to the redacted `seller_submitted` summary and
+   list it in `docs/ai-telemetry.md`. Never the free-text values.
 
-## On hold: HOA question group
+## Remaining required work
 
-**Product owner decision, 2026-09-19: hold implementation.** Not blocked on
-evidence any more, blocked on migration access.
-
-- The owner read `/admin/question-requests` and found **zero submissions**.
-- Verified before drawing any conclusion from that: `QuestionGapCapture` is
-  still mounted on both surfaces and still outside the packet-mode conditionals
-  (`app/dashboard/settings/page.tsx:1350` after the advanced block closes at
-  1333; `app/dashboard/requests/new/page.tsx:973` before it opens at 978). The
-  D2 reachability guard holds, so the instrument works and the zero is real.
-- The demand is real but arrives by email, not through the capture. The owner
-  reports repeat asks; Alisha had exactly the feedback the control exists to
-  collect and emailed instead. The control is a collapsed `<details>` in a
-  Settings section, which is low-affordance by design.
-- **Consequence:** an empty set fires neither branch of the concentrated-versus-
-  long-tail rule, so waiting on the table is no longer a sensible gate. What the
-  inbox holds is one named field plus a capability request with no fields named,
-  which is not builder evidence. The evidence gate on **HOA specifically** is
-  released. The gate on a **general custom-question builder** stands.
-- **Owner leans Option A** (Home Basics), on the grounds that it should be
-  available on the Free plan. These are the same choice: Home Basics is asked on
-  every form, in both modes, on every plan. Recorded as a direction, not a final
-  approval.
-- **Blocker:** Option A adds columns to `requests`, and the owner has no Neon
-  credentials until roughly 2026-09-30.
-- A no-migration shortcut exists via `requests.advanced_packet_data` (JSONB, on
-  every row regardless of mode) and was **rejected**: that column is named for
-  advanced packets, filtered through the advanced exclusions model, and read
-  only when `mode === 'advanced'`. Using it for Free-tier Home Basics answers
-  would create a misnamed second storage path. Not worth an eleven-day saving.
-- The owner has replied to Alisha. No customer follow-up is outstanding.
-
-No decision record was created under `.ai/decisions/`: the Option A direction is
-a lean, not a settled decision, and recording it as durable would overstate it.
-Create one when Option A is confirmed.
+1. Owner decisions above.
+2. If item 1 is approved: extend the migration and `schema.sql`, get
+   authorization, apply, verify.
+3. Implement the field group per plan sections 5, 7, and 12, using the corrected
+   file list in section 10. The seller write path is
+   `app/api/seller/[token]/route.ts:538-554`.
+4. Fix the stale "HOA / Condo" labels at
+   `components/seller-form/steps/ReviewStep.tsx:67,74` while adding the HOA rows
+   there. The 2026-09-19 relabel missed that file.
+5. Run plan section 8 validation, including `npm run test:e2e:mobile`.
 
 ## Risks and cautions
 
-- Do not treat this feedback as evidence for a custom-question builder. The
-  standing verdict
-  (`docs/product-feedback/2026-09-03-michelle-wright-opus-evaluation.md` §Idea 2)
+- `user-feedback/` is untracked and **must not be committed**: customer contact
+  details and copyrighted forms. It is not in `.gitignore`, so a blanket
+  `git add` would pick it up. Stage files by name.
+- The repository root also holds ignored copies of environment files
+  (`.env.txt`, `.env - Copy.txt`). They are ignored by `.env*` and were not
+  read for values. Only `.env.local` is the verified database target.
+- PDF pagination with all HOA fields at maximum length is unverified; read
+  `docs/pdf-system-reference.md` before touching `lib/pdf/packet-html.ts`.
+- The new columns are unused until the application code ships. They are inert
+  under the deployed code.
+- This is not evidence for a custom-question builder. The standing verdict
+  (`docs/product-feedback/2026-09-03-michelle-wright-opus-evaluation.md`, Idea 2)
   is unchanged.
-- No migration, schema change, or production data mutation was performed. The
-  merge to `main` was explicitly authorized by the product owner and triggers a
-  deployment.
 
 ## Concurrent editing
 
-None known. Working tree clean.
+None known. After the push the worktree holds only the untracked
+`user-feedback/` folder.
 
 ## Next concrete action
 
-Nothing is required until the owner has Neon credentials, expected around
-2026-09-30. Then: confirm Option A, write `migrations-hoa-questions.sql`, and
-**confirm before running it**.
-
-Two optional items, neither blocking:
-
-1. Eyeball a live handoff packet's public page. It now carries a Home Basics
-   card it did not have before, above the Additional Home Details section. The
-   ordering matches the PDF, but no one has seen it rendered against real data.
-2. Decide what to do about the capture control. A working instrument nobody uses
-   is the worst of both outcomes: either raise its affordance, or accept email
-   as the channel at this scale and log those asks by hand.
+Get the owner's answers to the six items above, then implement. If the three
+extra columns are approved, extend and re-apply the migration first, since the
+application types and Zod schemas depend on the final column set. Two optional
+items carried over, neither blocking: eyeball a live handoff packet's public
+page for the Home Basics card added in `e244484`, and decide whether to raise
+the affordance of the unused question-gap capture control or accept email as the
+channel.
