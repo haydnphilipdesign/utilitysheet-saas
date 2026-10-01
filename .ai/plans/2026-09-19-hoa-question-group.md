@@ -8,6 +8,7 @@
 - Branch: `claude/utility-sheet-custom-questions-mkzek4`
 - Source: customer feedback from Alisha Starkey (`admin@abovebeyondvs.com`,
   user `f2f7661e-19e2-4040-aa70-fa499bd45dcc`), 2026-09-19.
+- Consolidated record: `docs/product-feedback/2026-09-19-alisha-starkey-hoa-feedback.md`.
 - Related: `.ai/plans/2026-09-03-question-gap-capture.md` (Completed) is the
   instrument that decides section 6 below.
   `docs/product-feedback/2026-09-03-michelle-wright-opus-evaluation.md` §Idea 2

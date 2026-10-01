@@ -5,6 +5,8 @@
   with explicit product-owner authorization. Status: **both shipped items
   complete and validated.** The HOA question group remains proposed and blocked.
 - Plan: `.ai/plans/2026-09-19-hoa-question-group.md` (Proposed, not approved).
+- Consolidated record of the feedback, findings, and reasoning:
+  `docs/product-feedback/2026-09-19-alisha-starkey-hoa-feedback.md`.
 - Trigger: customer feedback from Alisha Starkey
   (`admin@abovebeyondvs.com`, user `f2f7661e-19e2-4040-aa70-fa499bd45dcc`),
   2026-09-19.
