@@ -7,9 +7,9 @@
 - Commits: `2d77177`, `6762166`, `8bdd4a9`, `e244484`, `120e9d8`
 - Active plan: `.ai/plans/2026-09-19-hoa-question-group.md` (On hold when this
   record was written. **Update 2026-10-01:** Option A confirmed, see
-  `.ai/decisions/2026-10-01-hoa-questions-in-home-basics.md`; migration applied
-  to production. Sections 6, 8.5, and 9 below describe the 2026-09-19 state;
-  section 10 covers the customer's reply.)
+  `.ai/decisions/2026-10-01-hoa-questions-in-home-basics.md`; plan completed
+  and shipped. Sections 6, 8.5, and 9 below describe the 2026-09-19 state;
+  section 10 covers the customer's reply and the outcome.)
 - Current handoff: `.ai/CURRENT.md`
 - Related prior work: `docs/product-feedback/2026-09-03-michelle-wright-opus-evaluation.md`,
   `.ai/plans/2026-09-03-question-gap-capture.md`
@@ -323,6 +323,16 @@ What this changes:
 - None of it is evidence for a custom-question builder. Every item maps to a
   named built-in field or to document collection.
 
-Status on 2026-10-01: Option A confirmed; the six-column migration was applied
-to production with owner authorization. The owner has not yet replied to
-Alisha's second message.
+Status on 2026-10-01: Option A confirmed and built. The HOA question group is on
+every seller form with nine stored answers (the gate, association name,
+management company, contact name, phone, email, dues amount, dues period, and
+where dues are paid or documents are found). Portal logins are not collected and
+document upload is not built; both are written up in
+`2026-10-01-hoa-deferred-capabilities.md`. A separate evaluation of custom
+questions is proposed in `.ai/plans/2026-10-01-custom-questions-evaluation.md`.
+
+The owner has not yet replied to Alisha's second message. What can be said
+truthfully: the HOA question and everything on the general-information lines of
+her Form 4.4 are now collected on every plan; the portal login is deliberately
+not collected, because the sheet goes to the buyer; uploading the documents is
+not available.
