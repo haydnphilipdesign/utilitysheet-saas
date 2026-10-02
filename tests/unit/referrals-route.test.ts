@@ -5,7 +5,7 @@ vi.mock('server-only', () => ({}));
 const {
     claimReferralCodeForAccount,
     ensureAccountActivation,
-    getIntakeLinkByAccountId,
+    getReferralIdentityForm,
     getReferralClaimState,
     getReferralCreditCountsForAccount,
     getUser,
@@ -14,7 +14,7 @@ const {
     claimReferralCodeForAccount: vi.fn(),
     getUser: vi.fn(),
     ensureAccountActivation: vi.fn(),
-    getIntakeLinkByAccountId: vi.fn(),
+    getReferralIdentityForm: vi.fn(),
     getReferralClaimState: vi.fn(),
     getReferralCreditCountsForAccount: vi.fn(),
     scheduleReferralCreditAward: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock('@/lib/stack/server', () => ({ stackServerApp: { getUser } }));
 vi.mock('@/lib/activation/ensure-account-activation', () => ({ ensureAccountActivation }));
 vi.mock('@/lib/neon/queries', () => ({
     claimReferralCodeForAccount,
-    getIntakeLinkByAccountId,
+    getReferralIdentityForm,
     getReferralClaimState,
     getReferralCreditCountsForAccount,
 }));
@@ -46,7 +46,7 @@ describe('/api/referrals', () => {
         vi.unstubAllEnvs();
         getUser.mockResolvedValue({ id: 'auth_1', primaryEmail: 'agent@example.com' });
         ensureAccountActivation.mockResolvedValue({ account: { id: 'account_1' } });
-        getIntakeLinkByAccountId.mockResolvedValue({ slug: 'referrer-slug' });
+        getReferralIdentityForm.mockResolvedValue({ slug: 'referrer-slug' });
         getReferralCreditCountsForAccount.mockResolvedValue({ earned: 0, applied: 0 });
         getReferralClaimState.mockResolvedValue({ code: null, canClaim: true, status: 'available' });
         claimReferralCodeForAccount.mockResolvedValue({ code: 'friend-code', status: 'claimed' });
@@ -80,7 +80,7 @@ describe('/api/referrals', () => {
             id: 'auth_1',
             primaryEmail: 'agent@example.com',
         });
-        expect(getIntakeLinkByAccountId).toHaveBeenCalledWith('account_1');
+        expect(getReferralIdentityForm).toHaveBeenCalledWith('account_1');
         expect(getReferralCreditCountsForAccount).toHaveBeenCalledWith('account_1');
     });
 
@@ -91,11 +91,11 @@ describe('/api/referrals', () => {
 
         expect(response.status).toBe(404);
         await expect(response.json()).resolves.toEqual({ error: 'Account not found' });
-        expect(getIntakeLinkByAccountId).not.toHaveBeenCalled();
+        expect(getReferralIdentityForm).not.toHaveBeenCalled();
     });
 
     it('returns 500 when no intake link can be loaded', async () => {
-        getIntakeLinkByAccountId.mockResolvedValue(null);
+        getReferralIdentityForm.mockResolvedValue(null);
 
         const response = await GET();
 

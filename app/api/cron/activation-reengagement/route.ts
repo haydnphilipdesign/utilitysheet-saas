@@ -57,8 +57,8 @@ export async function GET(request: Request) {
                 await sleep(RESEND_PACING_DELAY_MS);
             }
 
-            const intakeLink = await getOrCreateIntakeLink(candidate.account_id);
-            if (!intakeLink) {
+            const intakeLink = await getOrCreateIntakeLink(candidate.account_id, candidate.active_organization_id || undefined);
+            if (!intakeLink || !intakeLink.is_active) {
                 failed += 1;
                 await recordActivationOutreachAttempt({
                     accountId: candidate.account_id,

@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { savedForm } from '../fixtures/saved-seller-forms';
 
 const mocks = vi.hoisted(() => ({
+    getSellerFormMock: vi.fn(),
+    getIntakeBrandProfileMock: vi.fn(),
     getUserMock: vi.fn(),
     checkRateLimitMock: vi.fn(),
     getRateLimitHeadersMock: vi.fn(),
@@ -42,6 +45,8 @@ vi.mock('@/lib/email/email-service', () => ({
 }));
 
 vi.mock('@/lib/neon/queries', () => ({
+    getSellerForm: mocks.getSellerFormMock,
+    getIntakeBrandProfile: mocks.getIntakeBrandProfileMock,
     getRequests: vi.fn(),
     createRequest: mocks.createRequestMock,
     getDashboardStats: vi.fn(),
@@ -69,6 +74,9 @@ import { POST } from '@/app/api/requests/route';
 describe('POST /api/requests advanced gating', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.createRequestMock.mockResolvedValue({ id: 'new-request', seller_token: 'synthetic-token' });
+        mocks.getSellerFormMock.mockResolvedValue({ ...savedForm, account_id: 'acct_1' });
+        mocks.getIntakeBrandProfileMock.mockResolvedValue(null);
         mocks.getUserMock.mockResolvedValue({
             id: 'user_1',
             primaryEmail: 'agent@example.com',
@@ -112,6 +120,18 @@ describe('POST /api/requests advanced gating', () => {
             issues: [],
             source: 'local',
         });
+    });
+
+    it('snapshots an authorized selected form and preserves explicit request-only overrides', async () => {
+        const res = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701', formId: savedForm.id, formRevision: 2, collectHoaQuestions: true }) }));
+        expect(res.status).toBe(201);
+        expect(mocks.getSellerFormMock).toHaveBeenCalledWith(savedForm.id, 'acct_1', undefined);
+        expect(mocks.createRequestMock).toHaveBeenCalledWith(expect.objectContaining({ sourceFormId: savedForm.id, sourceFormRevision: 2, sellerIntro: savedForm.seller_intro, collectHoaQuestions: true, collectElectricMeterNumber: false, utilityCategories: ['electric', 'water'] }));
+    });
+    it('rejects stale or foreign form selection before creating anything', async () => {
+        const create = (revision: number) => POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701', formId: savedForm.id, formRevision: revision }) }));
+        expect((await create(1)).status).toBe(409); expect(mocks.createRequestMock).not.toHaveBeenCalled();
+        mocks.getSellerFormMock.mockResolvedValue(null); expect((await create(2)).status).toBe(404); expect(mocks.createRequestMock).not.toHaveBeenCalled();
     });
 
     it('rejects client attempts to mark a normal request as a demo', async () => {

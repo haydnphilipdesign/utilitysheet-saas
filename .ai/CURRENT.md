@@ -1,25 +1,18 @@
-# Current task: Individual request question settings shipped to main
+# Current task: Saved seller forms — all-users release
 
-- Date: 2026-10-02. Agent: Codex. Branch: `main`.
-- Status: Complete. No required implementation, migration, commit, or push work
-  remains. Feature commit `735ddb0` pushed to GitHub main with owner authorization.
-- Plan: `.ai/plans/2026-10-02-request-question-settings.md` (Completed).
-- Decision: `.ai/decisions/2026-10-02-request-question-overrides.md` (Accepted).
-- Added free HOA/condo and electric meter switches in individual creation,
-  initialized from account defaults and persisted as explicit request choices.
-  Preview, seller GET/POST, and editor meter visibility honor those choices.
-  Existing and reusable requests inherit live preferences through NULL values.
-  Updated question inventory, Settings copy, account export, schema, and tests.
-- Migration applied to verified prior Neon target on 2026-10-02: two nullable
-  boolean columns; 962 requests before and after; zero explicit overrides after
-  migration. Only aggregate/catalog checks; no production seller data writes.
-- Final validation: 951 tests across 171 Vitest files passed; TypeScript and
-  affected-file lint clean; production build succeeded; 24 mocked Playwright
-  runs passed across desktop and both mobile browsers; staged security scan and
-  diff checks passed. Runtime available: Node 22.22.2 (CI uses Node 20).
-- Prior reply draft edits and untracked `user-feedback/` excluded from all
-  commits. Preserve them; customer material must not be committed.
-- No concurrent editing known, no PR requested. Application changes are committed.
-- Optional next action: verify authenticated creation after the automatic
-  deployment completes. Deployment completion and a real production seller
-  submission were not independently checked. No required follow-up remains.
+- Date: 2026-10-02. Owner: Codex. Branch main, baseline f771115 (origin/main matched). Status: release in progress. Plan: .ai/plans/2026-10-02-saved-seller-forms.md.
+- Owner authorized release and requested all-users rollout instead of a pilot. Commercial policy unchanged: Free 1 / Pro and Teams 10 per creator/workspace, paused included, downgrade retains forms/URLs/configs; prices unchanged.
+- Taking ownership of release config/docs/tests/CI. No concurrent feature editing identified. Preserve unrelated modified docs/product-feedback/2026-10-01-alisha-starkey-reply-draft.md and untracked private user-feedback/; exclude from commit.
+- Prior completed implementation/review corrections and evidence remain in plan: 1007 tests including seven native PostgreSQL17.11 cases, 21 browser cases, build/type/security/focused lint passed. Full lint retains two unrelated baseline errors.
+- R1–R3 reviewed: owner-serialized gate/cap and commercial enforcement; account-before-form locks; stale request recovery retaining input.
+- Release change in progress: explicit SAVED_SELLER_FORMS_ROLLOUT=all with master switch and technical cap50 retained; neutral availability copy and tests. Validated: 12 rollout-control tests; full Node20 suite 177 files / 1,020 tests passed, including eight native PostgreSQL17.11 cases and original-production-schema expand/repeat-backfill/enable rehearsal. TypeScript, focused lint, tracked security scan and direct inspection of 34 new files passed. Three browser denial-copy cases passed across desktop/iPhone/Android.
+- Authorized read-only live preflight: PostgreSQL17.11, matching previously verified target host fingerprint, 964 requests /136 forms, zero invalid active memberships, old unique constraint present, expand absent. No live mutation, commit, push or deployment in this release yet.
+- Vercel CLI verifies project utilitysheet (prj_Nse9ciqeGTA4cuZOH9RyxyR28mK5), Node24.x. Connector project-inspection schema is broken; CLI works without --scope (personal owner scope flag rejected).
+- Production Vercel DATABASE_URL verified identical to local using decrypted single-variable API response without exposing it. Vercel CLI env/link commands failed; authenticated REST API reads work. Ignored .vercel/project.json added with verified IDs. No production settings changed.
+- Added GitHub release workflow for Node20/24, native PostgreSQL, tests/build/type/security; not committed or run remotely yet.
+- Remaining: actual production runtime validation; GitHub native CI; expand, compatible deploy gated off, enable migration, global activation and live checks. Recovery is gate-off and forward fix; never old account-wide writers after multi-form allocation.
+- Next action: finish release validation and commit intended files on codex/saved-forms-release for actual CI, following the staged authorized migration/deployment sequence. User requested concise updates to conserve usage; no cancellation. No real seller email or Stripe changes.
+
+## Release milestone
+- Owner explicitly requested migrations and push to main (automatic Vercel deployment). Final local production build passed. Production expand migration committed and verified: 136/136 initialized forms, all aliases present, legacy uniqueness retained. Initial psql connection with PGOPTIONS failed before SQL; retry with transaction-local timeouts succeeded.
+- Vercel production flags configured: enabled=false, rollout=all, technical cap=50. Next: commit/push main, verify compatible deployment and CI, then enable migration and activate with redeployment.

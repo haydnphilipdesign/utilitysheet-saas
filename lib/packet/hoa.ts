@@ -16,10 +16,10 @@ export const HOA_GATE_LABEL = 'HOA / Condo Association';
 export const HOA_GATE_PROMPT = 'Is this home part of an HOA or condo association?';
 export const HOA_SECTION_TITLE = 'HOA / Condo Association Details';
 export const HOA_DETAILS_CONDITION = 'Asked only when the seller answers Yes to the HOA question.';
-export const HOA_GATE_CONDITION = 'Shown while "Ask about HOA or condo association" is on for this request. Defaults come from Settings.';
+export const HOA_GATE_CONDITION = 'Shown while "Ask about HOA or condo association" is on for this request. Defaults come from the selected seller form.';
 
 /**
- * The account preference behind the Settings switch. It lives beside
+ * The legacy account preference used when a request has no explicit snapshot. It lives beside
  * `collect_electric_meter_number` in `accounts.notification_preferences`, is on
  * unless explicitly false, and is available on every plan.
  *

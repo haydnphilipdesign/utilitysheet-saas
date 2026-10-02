@@ -55,6 +55,7 @@ export {
     getDefaultBrandProfile,
     getIntakeBrandProfile,
     getBrandProfileRequestCounts,
+    getBrandProfileFormCounts,
     createBrandProfile,
     updateBrandProfile,
     deleteBrandProfile,
@@ -117,6 +118,12 @@ export {
 
 // Intake link queries
 export {
+    listSellerForms,
+    getSellerFormCount,
+    getSellerForm,
+    saveSellerForm,
+    setDefaultSellerForm,
+    getReferralIdentityForm,
     ensureIntakeLink,
     getOrCreateIntakeLink,
     getIntakeLinkByAccountId,

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 import {
     claimReferralCodeForAccount,
-    getIntakeLinkByAccountId,
+    getReferralIdentityForm,
     getReferralClaimState,
     getReferralCreditCountsForAccount,
 } from '@/lib/neon/queries';
@@ -34,7 +34,7 @@ export async function GET() {
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
 
-        const intakeLink = await getIntakeLinkByAccountId(activationState.account.id);
+        const intakeLink = await getReferralIdentityForm(activationState.account.id);
         if (!intakeLink) {
             return NextResponse.json({ error: 'Failed to load referral link' }, { status: 500 });
         }

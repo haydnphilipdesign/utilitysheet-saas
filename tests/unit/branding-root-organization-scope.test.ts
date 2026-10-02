@@ -19,7 +19,8 @@ vi.mock('@/lib/activation/ensure-account-activation', () => ({
 vi.mock('@/lib/neon/queries', () => ({
   getBrandProfiles: mocks.getBrandProfiles,
   getBrandProfileRequestCounts: mocks.getRequestCounts,
-  getIntakeLinkByAccountId: mocks.getIntakeLink,
+  getBrandProfileFormCounts: mocks.getIntakeLink,
+  listSellerForms: vi.fn().mockResolvedValue([]),
   createBrandProfile: mocks.createBrandProfile,
 }));
 
@@ -45,7 +46,7 @@ describe('GET /api/branding organization scope', () => {
       name: 'Personal profile',
     }]);
     mocks.getRequestCounts.mockResolvedValue({});
-    mocks.getIntakeLink.mockResolvedValue(null);
+    mocks.getIntakeLink.mockResolvedValue({});
   });
 
   it('does not trust a stale active-organization pointer without a live membership', async () => {

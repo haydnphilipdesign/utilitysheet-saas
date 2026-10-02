@@ -2,7 +2,7 @@ import {
     getAccountById,
     getBrandProfile,
     getDefaultBrandProfile,
-    getIntakeLinkByAccountId,
+    getReferralIdentityForm,
     getOrganizationById,
     getRequestById,
     getRequestByToken,
@@ -348,7 +348,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
     // deliverable; when they do, their packet carries the referral path too.
     const showsPoweredByVoluntarily = !forceShowPoweredBy && Boolean(brandProfile?.show_powered_by);
     const intakeLink = !isTestDrive && (forceShowPoweredBy || showsPoweredByVoluntarily)
-        ? await getIntakeLinkByAccountId(requestData.account_id)
+        ? await getReferralIdentityForm(requestData.account_id)
         : null;
     const buyerNextSteps = isPro ? normalizeSteps(brandProfile?.buyer_next_steps) : null;
 

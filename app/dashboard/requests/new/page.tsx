@@ -1,12 +1,13 @@
 'use client';
+import { QuestionCollectionSwitches } from '@/components/seller-forms/QuestionCollectionSwitches';
+import type { SavedSellerForm, SellerFormsResponse } from '@/components/seller-forms/types';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
@@ -87,6 +88,16 @@ const initialFormData: FormData = {
     send_seller_email: true,
 };
 
+function effectiveFormConfig(form: SavedSellerForm, paid: boolean) {
+    return {
+        utility_categories: form.defaultUtilityCategories,
+        packet_mode: paid ? form.defaultPacketMode : 'simple' as const,
+        advanced_modules: normalizeAdvancedModules(form.advancedModules),
+        advanced_module_exclusions: paid ? form.advancedModuleExclusions : {},
+        brand_profile_id: form.defaultBrandProfileId || '',
+    };
+}
+
 const ONBOARDING_SAMPLE_ADDRESS = '123 Maple Street, Anytown, PA 18301';
 
 export default function NewRequestPage() {
@@ -98,6 +109,13 @@ export default function NewRequestPage() {
     const [showOneOffForm, setShowOneOffForm] = useState(false);
 
     const [step, setStep] = useState(1);
+    const [savedForms, setSavedForms] = useState<SavedSellerForm[]>([]);
+    const [selectedForm, setSelectedForm] = useState<SavedSellerForm | null>(null);
+    const [loadedQuestionState, setLoadedQuestionState] = useState('');
+    const [formLoadError, setFormLoadError] = useState('');
+    const [requestError, setRequestError] = useState('');
+    const [formConflict, setFormConflict] = useState(false);
+    const [refreshingForm, setRefreshingForm] = useState(false);
     const [formData, setFormData] = useState<FormData>(initialFormData);
     const [loading, setLoading] = useState(false);
     const [brands, setBrands] = useState<BrandProfile[]>([]);
@@ -114,6 +132,15 @@ export default function NewRequestPage() {
     const [copiedIntake, setCopiedIntake] = useState(false);
     const [intakeLinkLoading, setIntakeLinkLoading] = useState(true);
 
+    function questionState(form: FormData, hoa: boolean, meter: boolean) {
+        return JSON.stringify([form.utility_categories, form.packet_mode, form.advanced_modules, form.advanced_module_exclusions, form.brand_profile_id, hoa, meter]);
+    }
+    const applyForm = useCallback((form: SavedSellerForm, paid: boolean) => {
+        const config = effectiveFormConfig(form, paid);
+        setSelectedForm(form); setIntakeLink(form.isActive ? { url: form.url, slug: form.slug } : null);
+        setFormData(prev => ({ ...prev, ...config })); setCollectHoaQuestions(form.collectHoaQuestions); setCollectElectricMeterNumber(form.collectElectricMeterNumber);
+        setLoadedQuestionState(questionState({ ...initialFormData, ...config }, form.collectHoaQuestions, form.collectElectricMeterNumber));
+    }, []);
     useEffect(() => {
         if (!isOnboarding) return;
         setFormData((prev) => ({
@@ -127,10 +154,11 @@ export default function NewRequestPage() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const [brandsResponse, accountResponse, intakeResponse] = await Promise.all([
+                const [brandsResponse, accountResponse, intakeResponse, formsResponse] = await Promise.all([
                     fetch('/api/branding'),
                     fetch('/api/account'),
                     fetch('/api/intake-link'),
+                    fetch('/api/seller-forms'),
                 ]);
                 let paidAccount = false;
 
@@ -155,7 +183,7 @@ export default function NewRequestPage() {
 
                 if (intakeResponse.ok) {
                     const data = await intakeResponse.json().catch(() => ({}));
-                    if (data.intakeLink?.url && data.intakeLink?.slug) {
+                    if (data.intakeLink?.is_active !== false && data.intakeLink?.url && data.intakeLink?.slug) {
                         setIntakeLink({ url: data.intakeLink.url, slug: data.intakeLink.slug });
                     }
                     setIntakeCanCustomize(Boolean(data.canCustomize));
@@ -176,14 +204,21 @@ export default function NewRequestPage() {
                         advanced_module_exclusions: nextExclusions,
                     }));
                 }
+                if (formsResponse.ok) {
+                    const formsData: SellerFormsResponse = await formsResponse.json();
+                    setSavedForms(formsData.forms || []);
+                    const defaultForm = (formsData.forms || []).find(f => f.id === formsData.defaultId);
+                    if (defaultForm) applyForm(defaultForm, paidAccount);
+                } else setFormLoadError('Unable to load saved forms. Retry before creating a request from a form.');
             } catch (error) {
+                setFormLoadError('Unable to load saved forms. Reload to retry.');
                 console.error('Error fetching data:', error);
             } finally {
                 setIntakeLinkLoading(false);
             }
         }
         fetchData();
-    }, []);
+    }, [applyForm]);
 
     useEffect(() => {
         trackEvent('new_request_started', {
@@ -195,6 +230,43 @@ export default function NewRequestPage() {
             });
         }
     }, [isOnboarding]);
+
+    async function recoverForm(keepSettings: boolean) {
+        if (!selectedForm) return;
+        setRefreshingForm(true);
+        try {
+            const response = await fetch('/api/seller-forms');
+            if (!response.ok) throw new Error('Unable to refresh the form. Your request has been kept. Try again.');
+            const data: SellerFormsResponse = await response.json();
+            const current = data.forms.find(f => f.id === selectedForm.id);
+            if (!current) throw new Error('This form is no longer available in this workspace. Your request has been kept. Choose another form or manual settings.');
+            setSavedForms(data.forms);
+            setIsPro(data.isPaid);
+            if (keepSettings) {
+                // Refresh provenance/intro without replacing any question, brand or contact choices.
+                setSelectedForm(current);
+                setLoadedQuestionState(questionState({ ...initialFormData, ...effectiveFormConfig(current, data.isPaid) }, current.collectHoaQuestions, current.collectElectricMeterNumber));
+                setIntakeLink(current.isActive ? { url: current.url, slug: current.slug } : null);
+            } else {
+                // applyForm changes only question/brand defaults, retaining address/contact/date/send intent.
+                applyForm(current, data.isPaid);
+            }
+            setFormConflict(false);
+            setRequestError('');
+        } catch (error) {
+            setRequestError(error instanceof Error ? error.message : 'Unable to refresh the form. Try again.');
+        } finally {
+            setRefreshingForm(false);
+        }
+    }
+
+    function selectForm(id: string) {
+        if (loadedQuestionState && loadedQuestionState !== questionState(formData, collectHoaQuestions, collectElectricMeterNumber)
+            && !window.confirm('Replace your request-only question changes with this form?')) return;
+        setFormConflict(false); setRequestError('');
+        if (!id) { setSelectedForm(null); setLoadedQuestionState(questionState(formData, collectHoaQuestions, collectElectricMeterNumber)); return; }
+        const next = savedForms.find(f => f.id === id); if (next) applyForm(next, isPro);
+    }
 
     // ─── Reusable link copy + share ───────────────────────────────────────────
 
@@ -303,9 +375,13 @@ export default function NewRequestPage() {
     };
 
     const handleCreate = async () => {
+        if (formConflict || refreshingForm) return;
         setLoading(true);
+        setRequestError('');
         try {
             const requestBody: Record<string, unknown> = {
+                formId: selectedForm?.id,
+                formRevision: selectedForm?.revision,
                 collectHoaQuestions,
                 collectElectricMeterNumber,
                 propertyAddress: formData.property_address,
@@ -330,8 +406,14 @@ export default function NewRequestPage() {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create request');
+                const errorData = await response.json().catch(() => ({}));
+                const explanation = errorData.error || errorData.message || 'Failed to create request';
+                if (response.status === 409 && errorData.code === 'FORM_REVISION_CONFLICT') {
+                    setFormConflict(true);
+                    setRequestError(explanation);
+                    return;
+                }
+                throw new Error(explanation);
             }
 
             const newRequest = await response.json();
@@ -349,7 +431,9 @@ export default function NewRequestPage() {
             setShowShareDialog(true);
         } catch (error) {
             console.error('Error creating request:', error);
-            toast.error('Failed to create request. Please check your connection and try again.');
+            const explanation = error instanceof Error ? error.message : 'Failed to create request. Please try again.';
+            setRequestError(explanation);
+            toast.error(explanation);
         } finally {
             setLoading(false);
         }
@@ -427,6 +511,27 @@ export default function NewRequestPage() {
 
     return (
         <div className="w-full max-w-2xl mx-auto">
+            <div className="space-y-2 rounded-xl border border-border p-4">
+                <Label htmlFor="requestSavedForm">Seller form</Label>
+                <select id="requestSavedForm" className="w-full rounded-md border border-input bg-background p-2" value={selectedForm?.id || ''} onChange={e => selectForm(e.target.value)} disabled={intakeLinkLoading || refreshingForm || loading}>
+                    <option value="">Manual request settings</option>{savedForms.map(f => <option key={f.id} value={f.id} disabled={!f.isActive}>{f.name}{f.isDefault ? ' (default)' : ''}{!f.isActive ? ' — paused' : ''}</option>)}
+                </select>
+                {selectedForm?.isActive === false && <p role="status" className="text-sm text-muted-foreground">This default form is paused. Choose an active form or manual settings, or reactivate it in Seller forms.</p>}
+                {formLoadError && <p role="alert" className="text-sm text-destructive">{formLoadError}</p>}
+                {requestError && <p role="alert" className="text-sm text-destructive">{requestError}</p>}
+                {formConflict && selectedForm && (
+                    <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Your address and contact details are kept. Refresh the form to retry with your current request settings, or choose to replace only the question and branding settings with its latest defaults.</p>
+                        <div className="flex flex-wrap gap-2">
+                            <Button type="button" variant="outline" disabled={refreshingForm} onClick={() => recoverForm(true)}>Refresh form and keep my settings</Button>
+                            <Button type="button" variant="outline" disabled={refreshingForm} onClick={() => recoverForm(false)}>Reload form defaults</Button>
+                        </div>
+                    </div>
+                )}
+                {selectedForm?.sellerIntro && <p className="whitespace-pre-wrap text-sm text-muted-foreground">Seller introduction: {selectedForm.sellerIntro}</p>}
+                <Link href="/dashboard/forms" className="text-sm text-primary underline">Manage forms</Link>
+            </div>
+
             {/* Onboarding banner */}
             {isOnboarding && (
                 <div className="mb-6 p-4 rounded-xl border border-primary/20 bg-primary/5">
@@ -963,16 +1068,10 @@ export default function NewRequestPage() {
                                 <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
                                     <div className="space-y-1">
                                         <Label className="text-foreground">Seller Questions</Label>
-                                        <p className="text-xs text-muted-foreground">Starts with your Settings defaults. Changes apply only to this request.</p>
+                                        <p className="text-xs text-muted-foreground">Starts with the selected form. Changes apply only to this request.</p>
                                     </div>
-                                    <div className="flex items-center justify-between gap-4">
-                                        <Label htmlFor="requestHoaQuestions" className="cursor-pointer">Ask about HOA or condo association</Label>
-                                        <Switch id="requestHoaQuestions" aria-label="Ask about HOA or condo association" checked={collectHoaQuestions} onCheckedChange={setCollectHoaQuestions} disabled={intakeLinkLoading} />
-                                    </div>
-                                    <div className="flex items-center justify-between gap-4">
-                                        <Label htmlFor="requestElectricMeterNumber" className="cursor-pointer">Collect electric meter number</Label>
-                                        <Switch id="requestElectricMeterNumber" aria-label="Collect electric meter number" checked={collectElectricMeterNumber} onCheckedChange={setCollectElectricMeterNumber} disabled={intakeLinkLoading} />
-                                    </div>
+                                    <QuestionCollectionSwitches hoa={collectHoaQuestions} meter={collectElectricMeterNumber} onHoa={setCollectHoaQuestions} onMeter={setCollectElectricMeterNumber} disabled={intakeLinkLoading} />
+
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-3">
@@ -1072,7 +1171,7 @@ export default function NewRequestPage() {
                                     </Button>
                                     <Button
                                         onClick={handleCreate}
-                                        disabled={!isStep3Valid || loading || intakeLinkLoading}
+                                        disabled={!isStep3Valid || loading || intakeLinkLoading || formConflict || refreshingForm}
                                         data-testid="new-request-create"                                    >
                                         {loading ? (
                                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>

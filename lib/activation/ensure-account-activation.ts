@@ -138,7 +138,7 @@ export async function ensureAccountActivation(user: AuthUserLike): Promise<Ensur
         activation.brandProfileCreated = Boolean(defaultBrandProfile);
     }
 
-    const intakeLinkResult = await ensureIntakeLink(account.id);
+    const intakeLinkResult = await ensureIntakeLink(account.id, activeOrganization?.id);
     activation.intakeLinkCreated = Boolean(intakeLinkResult?.created);
     activation.defaultsProvisioned = Boolean(
         activeOrganization &&

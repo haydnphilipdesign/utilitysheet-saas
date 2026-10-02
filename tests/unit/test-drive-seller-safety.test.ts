@@ -6,7 +6,7 @@ describe('test-drive seller submission safety guards', () => {
     const source = readFileSync(
         join(process.cwd(), 'app/api/seller/[token]/route.ts'),
         'utf8'
-    );
+    ).replace(/\r\n/g, '\n');
 
     it('keeps demo resubmission idempotent before persistence', () => {
         const postStart = source.indexOf('// POST /api/seller');

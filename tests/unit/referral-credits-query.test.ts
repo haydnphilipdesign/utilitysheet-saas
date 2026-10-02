@@ -27,7 +27,7 @@ function callSqlText(call: unknown[]): string {
 
 function expectCandidateIdentityAndActivation(queryText: string): void {
     expect(queryText).toContain('FROM growth_attributions ga');
-    expect(queryText).toContain('JOIN intake_links il ON ga.referral_code = il.slug');
+    expect(queryText).toContain('JOIN intake_link_aliases alias ON ga.referral_code = alias.slug');
     expect(queryText).toContain('WHERE ga.account_id = ');
     expect(queryText).toContain('il.account_id <> ga.account_id');
     expect(queryText).toContain("status = 'submitted'");
@@ -100,7 +100,7 @@ describe('referral credit queries', () => {
         await expect(getValidReferralReferrerAccountId('account_referred')).resolves.toBe('account_referrer');
 
         const queryText = callSqlText(sqlTagMock.mock.calls[0]);
-        expect(queryText).toContain('ga.referral_code = il.slug');
+        expect(queryText).toContain('ga.referral_code = alias.slug');
         expect(queryText).toContain('il.account_id <> ga.account_id');
     });
 

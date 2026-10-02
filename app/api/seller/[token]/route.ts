@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getIntakeLinkByAccountId, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getReferralIdentityForm, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
 import { NOTIFY_ADMINS_ON_SUBMISSION, buildSubmissionRecipients, normalizeWorkspaceNotificationSettings } from '@/lib/notifications/workspace-routing';
 import type { SubmissionRecipientCandidate } from '@/lib/notifications/workspace-routing';
 import { sql } from '@/lib/neon/db';
@@ -399,6 +399,7 @@ export async function GET(
 
         return NextResponse.json({
             request: {
+                seller_intro: requestData.seller_intro || null,
                 property_address: requestData.property_address,
                 utility_categories: utilityCategories,
                 collect_electric_meter_number: collectElectricMeterNumber,
@@ -803,7 +804,7 @@ export async function POST(
                     showReferralFooter = Boolean(resolvedBrandProfile?.show_powered_by);
                 }
                 const intakeLink = showReferralFooter && !isTestDriveSubmission
-                    ? await getIntakeLinkByAccountId(requestData.account_id).catch(() => null)
+                    ? await getReferralIdentityForm(requestData.account_id).catch(() => null)
                     : null;
 
                 // Per-recipient sends are independent: one failure must not block

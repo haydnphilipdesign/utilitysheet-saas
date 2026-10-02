@@ -87,10 +87,11 @@ export async function claimReferralCodeForAccount(
             FOR UPDATE OF a
         ),
         valid_referral AS (
-            SELECT il.slug
-            FROM intake_links il
+            SELECT alias.slug
+            FROM intake_link_aliases alias
+            JOIN intake_links il ON il.id = alias.intake_link_id
             JOIN account_state state ON il.account_id <> state.id
-            WHERE il.slug = ${referralCode}
+            WHERE alias.slug = ${referralCode}
             LIMIT 1
         ),
         claimed AS (
@@ -152,7 +153,8 @@ export async function awardReferralCreditForActivation(
         sql`
             SELECT referrer.id
             FROM growth_attributions ga
-            JOIN intake_links il ON ga.referral_code = il.slug
+            JOIN intake_link_aliases alias ON ga.referral_code = alias.slug
+            JOIN intake_links il ON il.id = alias.intake_link_id
             JOIN accounts referrer ON referrer.id = il.account_id
             WHERE ga.account_id = ${referredAccountId}
               AND il.account_id <> ga.account_id
@@ -178,7 +180,8 @@ export async function awardReferralCreditForActivation(
                     ga.account_id AS referred_account_id,
                     il.account_id AS referrer_account_id
                 FROM growth_attributions ga
-                JOIN intake_links il ON ga.referral_code = il.slug
+                JOIN intake_link_aliases alias ON ga.referral_code = alias.slug
+            JOIN intake_links il ON il.id = alias.intake_link_id
                 WHERE ga.account_id = ${referredAccountId}
                   AND il.account_id <> ga.account_id
                   AND (
@@ -296,7 +299,8 @@ export async function getValidReferralReferrerAccountId(
     const result = await sql`
         SELECT il.account_id AS referrer_account_id
         FROM growth_attributions ga
-        JOIN intake_links il ON ga.referral_code = il.slug
+        JOIN intake_link_aliases alias ON ga.referral_code = alias.slug
+            JOIN intake_links il ON il.id = alias.intake_link_id
         WHERE ga.account_id = ${referredAccountId}
           AND il.account_id <> ga.account_id
         LIMIT 1

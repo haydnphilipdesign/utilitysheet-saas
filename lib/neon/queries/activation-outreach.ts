@@ -3,6 +3,7 @@ import type { ActivationOutreachLog, ActivationOutreachStage, ActivationOutreach
 
 export type ActivationOutreachCandidate = {
     account_id: string;
+    active_organization_id?: string | null;
     auth_user_id: string | null;
     email: string;
     full_name: string | null;
@@ -25,6 +26,7 @@ export async function getDueActivationOutreachCandidates(limit = 50): Promise<Ac
             SELECT
                 a.id AS account_id,
                 a.auth_user_id,
+                a.active_organization_id,
                 a.email,
                 a.full_name,
                 a.created_at,
@@ -41,6 +43,7 @@ export async function getDueActivationOutreachCandidates(limit = 50): Promise<Ac
             SELECT
                 base.account_id,
                 base.auth_user_id,
+                base.active_organization_id,
                 base.email,
                 base.full_name,
                 base.created_at,

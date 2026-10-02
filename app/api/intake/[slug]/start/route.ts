@@ -3,8 +3,6 @@ import { z } from 'zod';
 import {
     createEventLog,
     createRequest,
-    getAccountById,
-    getAccountOrganizations,
     getIntakeBrandProfile,
     getIntakeLinkBySlug,
     getRequestBySellerToken,
@@ -14,10 +12,11 @@ import { intakeStartRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitU
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { getClientIp } from '@/lib/network/client-ip';
 import { formatCanonicalIntakeAddress, hasIntakeStreetNumber, validateIntakeAddress } from '@/lib/address/intake-validation';
-import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 
-type OrganizationSummary = { id: string; subscription_status?: string | null };
+import { publicFormScope } from '@/lib/seller-forms/public';
+import { formRequestFields } from '@/lib/seller-forms/config';
+import { formErrorResponse } from '@/lib/seller-forms/errors';
 
 function parseCookies(header: string | null): Record<string, string> {
     if (!header) return {};
@@ -116,14 +115,9 @@ export async function POST(
             return NextResponse.json({ error: 'Not found' }, { status: 404 });
         }
 
-        const account = await getAccountById(intakeLink.account_id);
-        if (!account || account.role === 'banned') {
-            return NextResponse.json({ error: 'Not found' }, { status: 404 });
-        }
-
-        const organizations = await getAccountOrganizations(account.id);
-        const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
-        const isPaid = account.subscription_status === 'pro' || activeOrg?.subscription_status === 'team';
+        const scope = await publicFormScope(intakeLink);
+        if (!scope) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        const { account, organization: activeOrg, isPaid } = scope;
         // No plan-limit check here: Free submissions past the monthly limit are
         // saved locked by the seller submission route.
 
@@ -143,6 +137,8 @@ export async function POST(
                     if (
                         existingRequest &&
                         existingRequest.account_id === account.id &&
+                        (existingRequest.organization_id || null) === (intakeLink.organization_id || null) &&
+                        (existingRequest.source_form_id === intakeLink.id || (!existingRequest.source_form_id && intakeLink.is_referral_identity === true)) &&
                         normalizeAddress(existingRequest.property_address) === normalizedAddress &&
                         existingRequest.status !== 'submitted'
                     ) {
@@ -166,15 +162,11 @@ export async function POST(
         );
         const utilityCategories = normalizeIntakeUtilityCategories(intakeLink.default_utility_categories);
         const structuredPropertyAddress = await buildStructuredPropertyAddress(canonicalPropertyAddress);
-        const packetMode = isPaid && intakeLink.default_packet_mode === 'advanced' ? 'advanced' : 'simple';
-        const advancedModules = packetMode === 'advanced'
-            ? normalizeAdvancedModules(intakeLink.advanced_modules)
-            : [];
-        const advancedModuleExclusions = packetMode === 'advanced'
-            ? normalizeAdvancedModuleExclusions(intakeLink.advanced_module_exclusions, advancedModules)
-            : {};
+        const fields = formRequestFields(intakeLink, isPaid);
+        const { packetMode, advancedModules, advancedModuleExclusions } = fields;
 
         const newRequest = await createRequest({
+            ...fields,
             accountId: account.id,
             organizationId: activeOrg?.id || undefined,
             brandProfileId: defaultBrand?.id,
@@ -221,6 +213,7 @@ export async function POST(
         );
         return response;
     } catch (error) {
+        if ((error as { code?: string })?.code === 'SF409') return formErrorResponse(error);
         console.error('Error starting intake link:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }

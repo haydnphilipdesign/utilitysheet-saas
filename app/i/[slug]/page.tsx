@@ -70,6 +70,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
     const [submitting, setSubmitting] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
+    const [sellerIntro, setSellerIntro] = useState<string | null>(null);
     const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
     const [accepting, setAccepting] = useState(true);
     const [address, setAddress] = useState('');
@@ -93,6 +94,7 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
 
                 if (cancelled) return;
                 setBrandProfile(data.brandProfile || null);
+                setSellerIntro(data.sellerIntro || null);
                 setAccepting(Boolean(data.accepting));
                 if (data.accepting === false) {
                     setLoadError(data?.message || 'This link is temporarily unavailable.');
@@ -367,10 +369,10 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                         ? `${brandProfile.name} needs a few utility details`
                                         : 'Share your home’s utility details'}
                                 </h1>
-                                <p className="text-sm text-muted-foreground">
-                                    {brandProfile?.name
+                                <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                                    {sellerIntro || (brandProfile?.name
                                         ? `Your agent at ${brandProfile.name} sent you this link to gather utility info for the buyer. It takes about 2 to 3 minutes, and your progress saves automatically.`
-                                        : 'Your agent sent this link to gather utility info for the buyer. It takes about 2 to 3 minutes, and your progress saves automatically.'}
+                                        : 'Your agent sent this link to gather utility info for the buyer. It takes about 2 to 3 minutes, and your progress saves automatically.')}
                                 </p>
                             </div>
                         </div>

@@ -104,7 +104,9 @@ export async function getAccountDataExport(accountId: string) {
             ORDER BY created_at ASC
         `,
         sql`
-            SELECT is_active, default_brand_profile_id, default_utility_categories,
+            SELECT id, name, seller_intro, organization_id, is_default, is_referral_identity, revision,
+                collect_hoa_questions, collect_electric_meter_number,
+                is_active, default_brand_profile_id, default_utility_categories,
                 default_packet_mode, advanced_modules, advanced_module_exclusions,
                 created_at, updated_at
             FROM intake_links
@@ -116,6 +118,7 @@ export async function getAccountDataExport(accountId: string) {
                 closing_date, status, packet_mode, advanced_modules,
                 advanced_module_exclusions, advanced_packet_data, utility_categories,
                 collect_hoa_questions, collect_electric_meter_number,
+                source_form_id, source_form_revision, seller_intro,
                 water_source, sewer_type, heating_type, has_hoa, hoa_name,
                 hoa_management_company, hoa_management_contact, hoa_management_phone,
                 hoa_management_email, hoa_dues_amount, hoa_dues_frequency,

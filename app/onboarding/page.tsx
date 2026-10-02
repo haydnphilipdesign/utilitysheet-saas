@@ -157,7 +157,7 @@ export default function OnboardingPage() {
     };
 
     const handleCopyLink = async () => {
-        if (!intakeLink?.url) return;
+        if (!intakeLink?.url || intakeLink.is_active === false) return;
 
         try {
             await navigator.clipboard.writeText(intakeLink.url);
@@ -289,14 +289,14 @@ export default function OnboardingPage() {
                             </div>
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                                 <Input
-                                    value={intakeLink?.url || ''}
+                                    value={intakeLink?.is_active === false ? 'Seller form paused — reactivate in Seller forms' : intakeLink?.url || ''}
                                     readOnly
                                     className="font-mono text-sm"
                                 />
                                 <Button
                                     type="button"
                                     onClick={handleCopyLink}
-                                    disabled={!intakeLink?.url}
+                                    disabled={!intakeLink?.url || intakeLink.is_active === false}
                                     className="sm:min-w-[132px]"
                                 >
                                     {copied ? (

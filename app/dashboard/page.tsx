@@ -1,4 +1,5 @@
 'use client';
+import { FormShareSelector } from '@/components/seller-forms/FormShareSelector';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -282,7 +283,8 @@ export default function DashboardPage() {
     const [statsLoaded, setStatsLoaded] = useState(false);
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [showSetupPrompt, setShowSetupPrompt] = useState(false);
-    const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string } | null>(null);
+    const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string; isActive?: boolean } | null>(null);
+    const selectShareForm = useCallback((form: { url: string; slug: string; isActive: boolean }) => setIntakeLink(form), []);
     const [intakeError, setIntakeError] = useState(false);
     const [loading, setLoading] = useState(true);
     const [copiedDashboardLink, setCopiedDashboardLink] = useState(false);
@@ -311,7 +313,7 @@ export default function DashboardPage() {
                 usage?: { used: number; limit: number; plan: string };
                 account?: { onboarding_completed_at?: string | null };
             }>('/api/account'),
-            fetchJson<{ intakeLink?: { url: string; slug: string } }>('/api/intake-link'),
+            fetchJson<{ intakeLink?: { url: string; slug: string; is_active?: boolean } }>('/api/intake-link'),
         ]);
 
         if (attentionResult.status === 'fulfilled') {
@@ -361,7 +363,7 @@ export default function DashboardPage() {
         }
 
         if (intakeResult.status === 'fulfilled' && intakeResult.value.intakeLink?.url) {
-            setIntakeLink(intakeResult.value.intakeLink);
+            setIntakeLink({ ...intakeResult.value.intakeLink, isActive: intakeResult.value.intakeLink.is_active !== false });
         } else {
             if (intakeResult.status === 'rejected') {
                 console.error('Error fetching reusable seller link:', intakeResult.reason);
@@ -561,7 +563,8 @@ export default function DashboardPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-4 py-4 sm:py-5">
-                    {intakeLink?.url ? (
+                    <FormShareSelector onSelect={selectShareForm} />
+                    {intakeLink?.url && intakeLink.isActive !== false ? (
                         <ReusableLinkActions
                             url={intakeLink.url}
                             copied={copiedDashboardLink}
@@ -573,7 +576,7 @@ export default function DashboardPage() {
                     ) : (
                         <div role={intakeError ? 'alert' : 'status'} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-4">
                             <p className="text-sm text-muted-foreground">
-                                Unable to load your reusable link right now.
+                                {intakeLink?.isActive === false ? 'This seller form is paused.' : 'Unable to load your reusable link right now.'}
                             </p>
                             <Button type="button" variant="outline" size="sm" onClick={loadDashboardData}>
                                 <RotateCcw />

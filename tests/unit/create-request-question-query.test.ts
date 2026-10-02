@@ -9,6 +9,6 @@ describe('createRequest question persistence', () => {
         await createRequest({ accountId: 'fixture-account', propertyAddress: '123 Test Lane', utilityCategories: ['electric'], collectHoaQuestions: value, collectElectricMeterNumber: value });
         const [strings, ...values] = sqlMock.mock.calls[0];
         expect(strings.join('')).toContain('collect_hoa_questions,\n            collect_electric_meter_number,');
-        expect(values.slice(0, 2)).toEqual([value ?? null, value ?? null]);
+        expect(values.slice(3, 5)).toEqual([value ?? null, value ?? null]);
     });
 });

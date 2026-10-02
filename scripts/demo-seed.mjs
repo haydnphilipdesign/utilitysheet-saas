@@ -211,8 +211,8 @@ async function getSingle(sql, query) {
 async function ensureNoSlugCollision(sql, config, existingAccountId) {
     const slugOwner = await getSingle(sql, sql`
         SELECT account_id
-        FROM intake_links
-        WHERE slug = ${config.intakeLink.slug}
+        FROM intake_link_aliases alias JOIN intake_links il ON il.id = alias.intake_link_id
+        WHERE alias.slug = ${config.intakeLink.slug}
         LIMIT 1
     `);
 
@@ -378,6 +378,7 @@ async function resetDemo(sql, config) {
                 FROM organization_members om
                 WHERE om.organization_id = o.id
             )
+            AND NOT EXISTS (SELECT 1 FROM intake_links il WHERE il.organization_id = o.id)
     `;
 
     await sql`
@@ -457,7 +458,7 @@ async function resetDemo(sql, config) {
     const existingIntake = await getSingle(sql, sql`
         SELECT *
         FROM intake_links
-        WHERE account_id = ${account.id}
+        WHERE account_id = ${account.id} AND is_referral_identity = TRUE
         LIMIT 1
     `);
 
@@ -470,6 +471,7 @@ async function resetDemo(sql, config) {
                 default_packet_mode = ${config.intakeLink.defaultPacketMode},
                 advanced_modules = ${config.intakeLink.advancedModules}::text[],
                 advanced_module_exclusions = ${JSON.stringify(config.intakeLink.advancedModuleExclusions)}::jsonb,
+                revision = revision + 1,
                 updated_at = NOW()
             WHERE id = ${existingIntake.id}
             RETURNING *

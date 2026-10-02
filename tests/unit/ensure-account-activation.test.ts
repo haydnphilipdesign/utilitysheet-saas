@@ -75,7 +75,7 @@ describe('ensureAccountActivation', () => {
             organizationId: 'org_1',
             name: 'Jane Smith',
         }));
-        expect(queryMocks.ensureIntakeLink).toHaveBeenCalledWith('acc_1');
+        expect(queryMocks.ensureIntakeLink).toHaveBeenCalledWith('acc_1', 'org_1');
         expect(result?.activation).toEqual(expect.objectContaining({
             accountCreated: true,
             organizationCreated: true,

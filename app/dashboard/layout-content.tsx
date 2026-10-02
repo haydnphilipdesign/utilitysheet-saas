@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Requests', href: '/dashboard/requests', icon: FileText },
+    { name: 'Seller forms', href: '/dashboard/forms', icon: FileText },
     { name: 'Branding', href: '/dashboard/branding', icon: Palette },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];

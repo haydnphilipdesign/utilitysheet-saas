@@ -19,6 +19,8 @@ const isHttpUrl = (value: string) => value.startsWith('https://') || value.start
 const allowedUtilityCategories = new Set<string>(UTILITY_CATEGORY_KEYS);
 
 export const createRequestBodySchema = z.object({
+    formId: z.string().uuid().optional(),
+    formRevision: z.number().int().positive().optional(),
     collectHoaQuestions: z.boolean().optional(),
     collectElectricMeterNumber: z.boolean().optional(),
     propertyAddress: z.string().trim().min(5).max(200),
@@ -34,7 +36,11 @@ export const createRequestBodySchema = z.object({
     sendSellerEmail: z.boolean().optional(),
 }).strict();
 
-export const intakeLinkUpdateBodySchema = z.object({
+const sellerFormFieldsSchema = z.object({
+    name: z.string().trim().min(1).max(80).optional(),
+    sellerIntro: z.string().trim().max(500).nullable().optional(),
+    collectHoaQuestions: z.boolean().optional(),
+    collectElectricMeterNumber: z.boolean().optional(),
     slug: z.string().trim().min(1).max(60).optional(),
     isActive: z.boolean().optional(),
     defaultBrandProfileId: z.string().uuid().nullable().optional(),
@@ -49,9 +55,17 @@ export const intakeLinkUpdateBodySchema = z.object({
         z.enum(ADVANCED_MODULE_KEYS as ['lawn_exterior', 'irrigation_seasonal_controls', 'mailbox_access', 'smart_home_security', 'service_providers'])
     ).optional(),
     advancedModuleExclusions: z.record(z.string(), z.array(z.string())).optional(),
-}).strict().refine((value) => Object.keys(value).length > 0, {
-    message: 'At least one seller form setting is required',
+}).strict();
+export const intakeLinkUpdateBodySchema = sellerFormFieldsSchema.extend({
+    revision: z.number().int().positive().optional(),
+}).refine(value => Object.keys(value).some(key => key !== 'revision'), { message: 'At least one seller form setting is required' });
+export const sellerFormCreateBodySchema = sellerFormFieldsSchema.extend({
+    name: z.string().trim().min(1).max(80),
+    duplicateFromId: z.string().uuid().optional(),
 });
+export const sellerFormUpdateBodySchema = sellerFormFieldsSchema.extend({
+    revision: z.number().int().positive(),
+}).refine(value => Object.keys(value).some(key => key !== 'revision'), { message: 'At least one seller form setting is required' });
 
 export const questionRequestBodySchema = z.object({
     requestedText: z.string().trim().min(3).max(300),

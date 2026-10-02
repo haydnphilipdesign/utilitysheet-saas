@@ -98,7 +98,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rows = await sql`
     SELECT a.email, a.full_name, il.slug
     FROM accounts a
-    LEFT JOIN intake_links il ON il.account_id = a.id
+    LEFT JOIN intake_links il ON il.account_id = a.id AND il.is_referral_identity = TRUE
     WHERE a.email IS NOT NULL
     ORDER BY a.created_at ASC
 `;

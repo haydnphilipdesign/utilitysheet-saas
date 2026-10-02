@@ -5,6 +5,7 @@ import { ArrowRight, Check, Home, Save } from 'lucide-react';
 import { wizardFocusRing } from '../wizard-ui';
 
 interface WelcomeStepProps {
+    sellerIntro?: string | null;
     address: string;
     onNext: () => void;
     estimatedMinutes?: number;
@@ -20,7 +21,7 @@ const TEST_DRIVE_POINTS = [
     'This test does not count toward your plan, and no one else is notified.',
 ];
 
-export function WelcomeStep({ address, onNext, estimatedMinutes, stepCount, isTestDrive = false, savesProgress = true }: WelcomeStepProps) {
+export function WelcomeStep({ sellerIntro, address, onNext, estimatedMinutes, stepCount, isTestDrive = false, savesProgress = true }: WelcomeStepProps) {
     const minutesText = (() => {
         if (!estimatedMinutes || estimatedMinutes <= 2) return 'about 2 minutes';
         if (estimatedMinutes <= 4) return 'about 3 to 4 minutes';
@@ -76,6 +77,7 @@ export function WelcomeStep({ address, onNext, estimatedMinutes, stepCount, isTe
                             {address}
                         </p>
                     </div>
+                    {sellerIntro && <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{sellerIntro}</p>}
                     <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                         {stepCount && stepCount > 0
                             ? `${stepCount} quick questions, ${minutesText}. We'll ask which services the home uses, then you can confirm the providers.`

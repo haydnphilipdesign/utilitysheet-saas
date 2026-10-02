@@ -24,7 +24,7 @@ describe('GET /api/cron/activation-reengagement', () => {
         vi.clearAllMocks();
         process.env.CRON_SECRET = 'test-secret';
 
-        getOrCreateIntakeLinkMock.mockResolvedValue({ slug: 'seller-link' });
+        getOrCreateIntakeLinkMock.mockResolvedValue({ slug: 'seller-link', is_active: true });
         recordActivationOutreachAttemptMock.mockResolvedValue({});
         sendActivationReminderEmailMock.mockResolvedValue({ success: true });
     });

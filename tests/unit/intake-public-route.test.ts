@@ -1,3 +1,4 @@
+import { savedForm } from '../fixtures/saved-seller-forms';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
@@ -24,6 +25,7 @@ describe('GET /api/intake/[slug]', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+            ...savedForm,
             slug: 'test-slug',
             account_id: 'acct-1',
             is_active: true,
@@ -54,8 +56,10 @@ describe('GET /api/intake/[slug]', () => {
 
         expect(response.status).toBe(200);
         expect(getIntakeBrandProfile).toHaveBeenCalledWith('acct-1', undefined, 'brand-2');
-        expect(await response.json()).toEqual({
+        expect(await response.json()).toMatchObject({
             accepting: true,
+            sellerIntro: savedForm.seller_intro,
+            configuration: { collectHoaQuestions: false, collectElectricMeterNumber: false, sourceFormId: savedForm.id, sourceFormRevision: 2 },
             brandProfile: {
                 name: 'Agent Brand',
                 logo_url: 'https://example.com/logo.png',
@@ -84,4 +88,14 @@ describe('GET /api/intake/[slug]', () => {
         expect(getAccountById).not.toHaveBeenCalled();
         expect(getIntakeBrandProfile).not.toHaveBeenCalled();
     });
+    it('keeps workspace A after the owner switches to B and fails closed when membership is removed', async () => {
+        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({ ...savedForm, organization_id: 'org-A' } as never);
+        vi.mocked(getAccountById).mockResolvedValue({ id: 'account-1', role: 'user', active_organization_id: 'org-B' } as never);
+        vi.mocked(getAccountOrganizations).mockResolvedValue([{ id: 'org-A' }, { id: 'org-B' }] as never);
+        expect((await GET(new Request('http://localhost'), { params: Promise.resolve({ slug: 'listing-form' }) })).status).toBe(200);
+        expect(getIntakeBrandProfile).toHaveBeenLastCalledWith('account-1', 'org-A', null);
+        vi.mocked(getAccountOrganizations).mockResolvedValue([{ id: 'org-B' }] as never);
+        expect((await GET(new Request('http://localhost'), { params: Promise.resolve({ slug: 'listing-form' }) })).status).toBe(404);
+    });
+
 });

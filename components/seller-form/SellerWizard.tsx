@@ -71,6 +71,7 @@ interface BrandProfile {
 
 interface SellerWizardProps {
     initialRequestData: {
+        seller_intro?: string | null;
         property_address: string;
         utility_categories: UtilityCategory[];
         collect_electric_meter_number?: boolean;
@@ -661,6 +662,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     return (
                         <WelcomeStep
                             key="welcome"
+                            sellerIntro={initialRequestData.seller_intro}
                             address={initialRequestData.property_address}
                             onNext={handleNext}
                             estimatedMinutes={estimatedMinutes}

@@ -42,6 +42,8 @@ async function openTab(name: string) {
     fireEvent.click(await screen.findByRole('tab', { name }));
 }
 
+vi.mock('@/components/seller-forms/FormsWorkspace', () => ({ FormsWorkspace: () => <div>Saved seller forms</div> }));
+
 describe('settings notification preferences', () => {
     it('merges seller_submission_pdf_attachment from API and auto-saves after toggles', async () => {
         const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -101,18 +103,6 @@ describe('settings notification preferences', () => {
         fireEvent.click(checkbox);
         expect(checkbox.checked).toBe(true);
 
-        await openTab('Seller Form');
-        const meterToggleLabel = await screen.findByText('Collect electric meter number');
-        const meterToggleRow = meterToggleLabel.closest('div')?.parentElement;
-        expect(meterToggleRow).not.toBeNull();
-
-        const meterCheckbox = meterToggleRow?.querySelector('input[type="checkbox"]') as HTMLInputElement;
-        expect(meterCheckbox).toBeTruthy();
-        expect(meterCheckbox.checked).toBe(false);
-
-        fireEvent.click(meterCheckbox);
-        expect(meterCheckbox.checked).toBe(true);
-
         await waitFor(() => {
             const postCalls = fetchMock.mock.calls.filter(
                 ([url, init]) => url === '/api/account' && (init as RequestInit)?.method === 'POST'
@@ -128,121 +118,7 @@ describe('settings notification preferences', () => {
 
         const postBody = JSON.parse(String((lastPostCall?.[1] as RequestInit).body));
         expect(postBody.notification_preferences.seller_submission_pdf_attachment).toBe(true);
-        expect(postBody.notification_preferences.collect_electric_meter_number).toBe(true);
-    });
-
-    it('defaults collect_electric_meter_number to ON when not set in account preferences', async () => {
-        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = typeof input === 'string' ? input : String(input);
-            const method = (init?.method || 'GET').toUpperCase();
-
-            if (url === '/api/account' && method === 'GET') {
-                return jsonResponse({
-                    account: {
-                        id: 'acc_1',
-                        full_name: 'Test User',
-                        email: 'test@example.com',
-                        notification_preferences: {},
-                    },
-                    activeOrganization: null,
-                    organizations: [],
-                    usage: { used: 0, limit: 3, plan: 'free' },
-                });
-            }
-
-            if (url === '/api/intake-link' && method === 'GET') {
-                return jsonResponse({
-                    intakeLink: {
-                        slug: 'test-link',
-                        url: 'https://example.com/i/test-link',
-                        is_active: true,
-                    },
-                    canCustomize: false,
-                });
-            }
-
-            if (url === '/api/account' && method === 'POST') {
-                return jsonResponse({ account: { id: 'acc_1' } });
-            }
-
-            return jsonResponse({ error: 'Not found' }, 404);
-        });
-
-        vi.stubGlobal('fetch', fetchMock);
-
-        render(<SettingsPage />);
-        await openTab('Seller Form');
-
-        const meterToggleLabel = await screen.findByText('Collect electric meter number');
-        const meterToggleRow = meterToggleLabel.closest('div')?.parentElement;
-        expect(meterToggleRow).not.toBeNull();
-
-        const meterCheckbox = meterToggleRow?.querySelector('input[type="checkbox"]') as HTMLInputElement;
-        expect(meterCheckbox).toBeTruthy();
-        expect(meterCheckbox.checked).toBe(true);
-    });
-
-    it('lets a Free account turn the HOA questions off, and keeps its other preferences', async () => {
-        const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = typeof input === 'string' ? input : String(input);
-            const method = (init?.method || 'GET').toUpperCase();
-
-            if (url === '/api/account' && method === 'GET') {
-                return jsonResponse({
-                    account: {
-                        id: 'acc_1',
-                        full_name: 'Test User',
-                        email: 'test@example.com',
-                        subscription_status: 'free',
-                        // No collect_hoa_questions key: every account before this setting existed.
-                        notification_preferences: { collect_electric_meter_number: false },
-                    },
-                    activeOrganization: null,
-                    organizations: [],
-                    usage: { used: 0, limit: 3, plan: 'free' },
-                });
-            }
-
-            if (url === '/api/intake-link' && method === 'GET') {
-                return jsonResponse({
-                    intakeLink: { slug: 'test-link', url: 'https://example.com/i/test-link', is_active: true },
-                    canCustomize: false,
-                });
-            }
-
-            if (url === '/api/account' && method === 'POST') {
-                return jsonResponse({ account: { id: 'acc_1' } });
-            }
-
-            return jsonResponse({ error: 'Not found' }, 404);
-        });
-
-        vi.stubGlobal('fetch', fetchMock);
-
-        render(<SettingsPage />);
-        await openTab('Seller Form');
-
-        const hoaToggleLabel = await screen.findByText('Ask about HOA or condo association');
-        const hoaCheckbox = hoaToggleLabel.closest('div')?.parentElement?.querySelector('input[type="checkbox"]') as HTMLInputElement;
-        expect(hoaCheckbox).toBeTruthy();
-        expect(hoaCheckbox.checked).toBe(true);
-        expect(hoaCheckbox.disabled).toBe(false);
-
-        fireEvent.click(hoaCheckbox);
-        expect(hoaCheckbox.checked).toBe(false);
-
-        await waitFor(() => {
-            const postCalls = fetchMock.mock.calls.filter(
-                ([url, init]) => url === '/api/account' && (init as RequestInit)?.method === 'POST'
-            );
-            expect(postCalls.length).toBeGreaterThan(0);
-        });
-
-        const lastPostCall = fetchMock.mock.calls
-            .filter(([url, init]) => url === '/api/account' && (init as RequestInit)?.method === 'POST')
-            .at(-1);
-        const postBody = JSON.parse(String((lastPostCall?.[1] as RequestInit).body));
-        expect(postBody.notification_preferences.collect_hoa_questions).toBe(false);
         expect(postBody.notification_preferences.collect_electric_meter_number).toBe(false);
     });
+
 });

@@ -26,7 +26,7 @@ vi.mock('@/lib/neon/queries', () => ({
     updateSubmittedRequestData: mocks.updateSubmittedRequestDataMock,
     getBrandProfile: vi.fn().mockResolvedValue(null),
     getDefaultBrandProfile: vi.fn().mockResolvedValue(null),
-    getIntakeLinkByAccountId: vi.fn().mockResolvedValue(null),
+    getReferralIdentityForm: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('@/lib/address/structured-address', () => ({ buildStructuredPropertyAddress: vi.fn().mockResolvedValue(null) }));
 vi.mock('@/lib/network/client-ip', () => ({ getClientIpOrNull: () => '127.0.0.1' }));

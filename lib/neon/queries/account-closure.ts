@@ -325,6 +325,8 @@ export async function removeAccountClosureData(data: {
 
     try {
         await sql.transaction([
+            // Match form writers and request-source validation: owner before forms/FKs.
+            sql`SELECT id FROM accounts WHERE id = ${id} FOR UPDATE`,
             sql`
                 SELECT CASE WHEN (
                     a.closure_status IS DISTINCT FROM 'closing'
@@ -423,6 +425,7 @@ export async function removeAccountClosureData(data: {
             `,
             sql`DELETE FROM requests WHERE organization_id = ANY(${sole}::uuid[])`,
             sql`DELETE FROM brand_profiles WHERE organization_id = ANY(${sole}::uuid[])`,
+            sql`DELETE FROM intake_links WHERE organization_id = ANY(${sole}::uuid[]) OR account_id = ${id}`,
             sql`DELETE FROM organizations WHERE id = ANY(${sole}::uuid[])`,
             sql`DELETE FROM organization_members WHERE account_id = ${id}`,
             sql`DELETE FROM requests WHERE account_id = ${id} AND organization_id IS NULL`,

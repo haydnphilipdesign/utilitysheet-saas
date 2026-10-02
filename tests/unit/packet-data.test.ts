@@ -8,7 +8,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getUtilityEntriesByRequestId: vi.fn(),
     getAccountById: vi.fn(),
     getOrganizationById: vi.fn(),
-    getIntakeLinkByAccountId: vi.fn(),
+    getReferralIdentityForm: vi.fn(),
 }));
 
 import {
@@ -21,7 +21,7 @@ import {
     getBrandProfile,
     getDefaultBrandProfile,
     getOrganizationById,
-    getIntakeLinkByAccountId,
+    getReferralIdentityForm,
     getRequestById,
     getRequestByToken,
     getUtilityEntriesByRequestId,
@@ -32,10 +32,20 @@ beforeEach(() => {
     (getOrganizationById as Mock).mockResolvedValue(null);
     (getDefaultBrandProfile as Mock).mockResolvedValue(null);
     (getUtilityEntriesByRequestId as Mock).mockResolvedValue([]);
-    (getIntakeLinkByAccountId as Mock).mockResolvedValue(null);
+    (getReferralIdentityForm as Mock).mockResolvedValue(null);
 });
 
 describe('packet-data builder', () => {
+    it('excludes seller introduction and source form provenance from buyer packet/PDF data', async () => {
+        const base = { id: 'synthetic-request', account_id: 'synthetic-account', organization_id: null, status: 'submitted', property_address: '123 Example St', created_at: '2026-10-02T12:00:00Z' };
+        (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
+        (getRequestByToken as Mock).mockResolvedValue({ ...base, seller_intro: 'PRIVATE SELLER INTRO', source_form_id: 'internal-form', source_form_revision: 4 });
+        const result = await getPacketDataByPublicToken('synthetic-token');
+        expect(result.status).toBe('ok');
+        expect(JSON.stringify(result)).not.toContain('PRIVATE SELLER INTRO');
+        expect(JSON.stringify(result)).not.toContain('internal-form');
+    });
+
     it('returns advanced branding fields for Pro accounts', async () => {
         (getRequestByToken as Mock).mockResolvedValue({
             id: 'req_1',
@@ -81,7 +91,7 @@ describe('packet-data builder', () => {
         expect(result.data.brand?.disclaimer_text).toBe('My disclaimer');
         expect(result.data.meta.show_powered_by).toBe(false);
         expect(result.data.meta.referral_code).toBeNull();
-        expect(getIntakeLinkByAccountId).not.toHaveBeenCalled();
+        expect(getReferralIdentityForm).not.toHaveBeenCalled();
     });
 
     it('forces powered-by and strips advanced fields for non-Pro accounts', async () => {
@@ -113,7 +123,7 @@ describe('packet-data builder', () => {
         });
 
         (getAccountById as Mock).mockResolvedValue({ subscription_status: 'free' });
-        (getIntakeLinkByAccountId as Mock).mockResolvedValue({ slug: 'tc-team' });
+        (getReferralIdentityForm as Mock).mockResolvedValue({ slug: 'tc-team' });
 
         const result = await getPacketDataByPublicToken('token_2');
 
@@ -159,7 +169,7 @@ describe('packet-data builder', () => {
         });
 
         (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
-        (getIntakeLinkByAccountId as Mock).mockResolvedValue({ slug: 'pro-team' });
+        (getReferralIdentityForm as Mock).mockResolvedValue({ slug: 'pro-team' });
 
         const result = await getPacketDataByPublicToken('token_optin');
 
@@ -170,7 +180,7 @@ describe('packet-data builder', () => {
         expect(result.data.meta.show_powered_by).toBe(false);
         expect(result.data.brand?.show_powered_by).toBe(true);
         expect(result.data.meta.referral_code).toBe('pro-team');
-        expect(getIntakeLinkByAccountId).toHaveBeenCalledWith('acct_optin');
+        expect(getReferralIdentityForm).toHaveBeenCalledWith('acct_optin');
     });
 
     it('marks test packets and suppresses referral acquisition data', async () => {
@@ -200,7 +210,7 @@ describe('packet-data builder', () => {
 
         expect(result.data.meta.is_demo).toBe(true);
         expect(result.data.meta.referral_code).toBeNull();
-        expect(getIntakeLinkByAccountId).not.toHaveBeenCalled();
+        expect(getReferralIdentityForm).not.toHaveBeenCalled();
     });
 
     it('returns locked when request is overage-locked and user is not paid', async () => {

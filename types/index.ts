@@ -289,6 +289,8 @@ export interface BrandProfile {
 export interface BrandProfileWithUsage extends BrandProfile {
     request_count: number;
     is_intake_default: boolean;
+    seller_form_count?: number;
+    seller_forms?: Array<{ id: string; name: string }>;
 }
 
 export interface PropertyAddressStructured {
@@ -317,6 +319,9 @@ export interface Request {
     public_token: string;
     seller_token?: string | null;
     utility_categories?: UtilityCategory[] | null;
+    source_form_id?: string | null;
+    source_form_revision?: number | null;
+    seller_intro?: string | null;
     collect_hoa_questions?: boolean | null;
     collect_electric_meter_number?: boolean | null;
     water_source?: WaterSource | null;

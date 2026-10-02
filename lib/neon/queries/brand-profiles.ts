@@ -141,6 +141,18 @@ export async function getBrandProfileRequestCounts(profileIds: string[]): Promis
     return counts;
 }
 
+/** Count every referencing form in the profile's scope, including teammate forms. */
+export async function getBrandProfileFormCounts(profileIds: string[]): Promise<Record<string, number>> {
+    if (!sql || !profileIds.length) return {};
+    const rows = await sql`SELECT il.default_brand_profile_id AS id, COUNT(*)::int AS count
+        FROM intake_links il JOIN brand_profiles bp ON bp.id = il.default_brand_profile_id
+        WHERE bp.id = ANY(${profileIds}::uuid[])
+          AND il.organization_id IS NOT DISTINCT FROM bp.organization_id
+          AND (bp.organization_id IS NOT NULL OR il.account_id = bp.account_id)
+        GROUP BY il.default_brand_profile_id`;
+    return Object.fromEntries(rows.map(row => [row.id as string, Number(row.count)]));
+}
+
 /**
  * Create a new brand profile
  */

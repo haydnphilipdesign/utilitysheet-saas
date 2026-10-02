@@ -17,7 +17,7 @@ const tiers = [
     popular: false,
     features: [
       "Try it on 3 live files per month",
-      "Reusable seller link",
+      "1 customizable seller form per creator/workspace",
       "Clean PDF and share link",
       "Completion email notifications",
       "PDF can attach to completion emails",
@@ -33,6 +33,7 @@ const tiers = [
     popular: true,
     features: [
       "Use UtilitySheet on every file",
+      "Up to 10 seller forms per creator/workspace",
       "Custom branded link",
       "Property Handoff Packet mode",
       "Edit submitted sheets after seller submission",
@@ -51,6 +52,7 @@ const tiers = [
     popular: false,
     features: [
       "Everything in Pro",
+      "Up to 10 seller forms per member in the Team workspace",
       "Shared organization workspace",
       "Any teammate with request access can edit submitted sheets",
       "Invite members and assign roles",
@@ -174,7 +176,7 @@ export function PricingSection() {
 
         <p className="mt-10 text-center text-sm text-muted-foreground">
           Teams starts at $21/month for 3 seats. All plans include a reusable
-          seller link, a web sheet, and PDF downloads.
+          seller link, a web sheet, and PDF downloads. Additional saved forms are rolling out to pilot accounts. Paused forms count toward the allowance; existing links and configurations are kept after downgrade.
         </p>
       </div>
     </section>

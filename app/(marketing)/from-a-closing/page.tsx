@@ -66,7 +66,7 @@ async function getSenderBrandName(referralCode: string | null): Promise<string |
 
         const brandProfile = await getDefaultBrandProfile(
             account.id,
-            account.active_organization_id ?? undefined
+            intakeLink.organization_id ?? undefined
         );
         return brandProfile?.name || null;
     } catch (error) {

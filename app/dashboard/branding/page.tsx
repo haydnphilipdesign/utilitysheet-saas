@@ -353,7 +353,7 @@ export default function BrandingPage() {
                                     {[
                                         brand.request_count === 1 ? 'Used by 1 request' : `Used by ${brand.request_count} requests`,
                                         brand.is_default ? 'preselected for new requests' : null,
-                                        brand.is_intake_default ? 'used by your reusable seller form' : null,
+                                        brand.is_intake_default ? 'used by saved seller forms' : null,
                                     ].filter(Boolean).join(' · ')}
                                 </p>
                                 <Link href={`/dashboard/branding/${brand.id}`}>
@@ -406,7 +406,7 @@ export default function BrandingPage() {
                                 </li>
                             )}
                             {deleteTarget.is_intake_default && (
-                                <li>Your reusable seller form uses this profile and will switch to your default profile.</li>
+                                <li>Saved seller forms using this profile will fall back to the default profile in their workspace.{deleteTarget.seller_forms?.length ? ` Your forms: ${deleteTarget.seller_forms.map(form => form.name).join(", ")}.` : ""}</li>
                             )}
                             {deleteTarget.is_default && brands.length > 1 && (
                                 <li>This is your default profile. Your oldest remaining profile will take over as the fallback until you pick a new default.</li>

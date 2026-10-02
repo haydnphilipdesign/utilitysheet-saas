@@ -301,6 +301,9 @@ export async function getRequestBySellerToken(token: string): Promise<Request | 
  * Create a new request
  */
 export async function createRequest(data: {
+    sourceFormId?: string;
+    sourceFormRevision?: number;
+    sellerIntro?: string | null;
     collectHoaQuestions?: boolean;
     collectElectricMeterNumber?: boolean;
     accountId: string;
@@ -338,6 +341,9 @@ export async function createRequest(data: {
 
     const result = await sql`
         INSERT INTO requests (
+            source_form_id,
+            source_form_revision,
+            seller_intro,
             collect_hoa_questions,
             collect_electric_meter_number,
             account_id,
@@ -363,6 +369,9 @@ export async function createRequest(data: {
             locked_reason,
             locked_at
         ) VALUES (
+            ${data.sourceFormId || null},
+            ${data.sourceFormRevision ?? null},
+            ${data.sellerIntro || null},
             ${data.collectHoaQuestions ?? null},
             ${data.collectElectricMeterNumber ?? null},
             ${data.accountId},
@@ -402,6 +411,11 @@ export async function createRequest(data: {
  * the lock is acquired, so they see a request committed by an earlier waiter.
  */
 export async function getOrCreateTestDriveRequest(data: {
+    collectHoaQuestions?: boolean;
+    collectElectricMeterNumber?: boolean;
+    sourceFormId?: string;
+    sourceFormRevision?: number;
+    sellerIntro?: string | null;
     accountId: string;
     organizationId?: string;
     brandProfileId?: string;
@@ -426,6 +440,7 @@ export async function getOrCreateTestDriveRequest(data: {
         sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`,
         sql`
             INSERT INTO requests (
+                collect_hoa_questions, collect_electric_meter_number, source_form_id, source_form_revision, seller_intro,
                 account_id,
                 organization_id,
                 brand_profile_id,
@@ -446,6 +461,7 @@ export async function getOrCreateTestDriveRequest(data: {
                 is_locked
             )
             SELECT
+                ${data.collectHoaQuestions ?? null}, ${data.collectElectricMeterNumber ?? null}, ${data.sourceFormId || null}, ${data.sourceFormRevision ?? null}, ${data.sellerIntro || null},
                 ${data.accountId},
                 ${data.organizationId || null},
                 ${data.brandProfileId || null},

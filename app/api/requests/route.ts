@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequests, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
+import { getIntakeBrandProfile, getSellerForm, getRequests, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -13,6 +13,9 @@ import { ensureAccountActivation } from '@/lib/activation/ensure-account-activat
 import { normalizeRequestListParams } from '@/lib/requests/listing';
 import { canAccessOwnedOrActiveOrganizationResource } from '@/lib/auth/organization-access';
 
+import { formRequestFields } from '@/lib/seller-forms/config';
+import { formErrorResponse } from '@/lib/seller-forms/errors';
+
 function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
     return {
         ...r,
@@ -23,6 +26,7 @@ function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
         seller_name: null,
         seller_email: null,
         seller_phone: null,
+        seller_intro: null,
         public_token: '',
         seller_token: null,
         utility_entries: undefined,
@@ -127,16 +131,18 @@ export async function POST(request: Request) {
         const organization = activeOrganization;
         const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
+        const form = parsedBody.data.formId ? await getSellerForm(parsedBody.data.formId, accountId, organizationId) : null;
+        if (parsedBody.data.formId && (!form || !form.is_active)) return NextResponse.json({ error: 'Seller form unavailable' }, { status: 404 });
+        if (form && parsedBody.data.formRevision !== form.revision) return NextResponse.json({ error: 'Form changed. Reload before creating the request.', code: 'FORM_REVISION_CONFLICT' }, { status: 409 });
+        const fields = form ? formRequestFields(form, isPaid) : null;
         const selectedUtilityCategories = parsedBody.data.utilityCategories
-            ? UTILITY_CATEGORY_KEYS.filter((c) => parsedBody.data.utilityCategories!.includes(c))
-            : UTILITY_CATEGORY_KEYS;
-        const packetMode = parsedBody.data.packetMode || 'simple';
+            ? UTILITY_CATEGORY_KEYS.filter(c => parsedBody.data.utilityCategories!.includes(c))
+            : fields?.utilityCategories || UTILITY_CATEGORY_KEYS;
+        const packetMode = parsedBody.data.packetMode ?? fields?.packetMode ?? 'simple';
         const advancedModules = packetMode === 'advanced'
-            ? normalizeAdvancedModules(parsedBody.data.advancedModules)
-            : [];
+            ? normalizeAdvancedModules(parsedBody.data.advancedModules ?? fields?.advancedModules) : [];
         const advancedModuleExclusions = packetMode === 'advanced'
-            ? normalizeAdvancedModuleExclusions(parsedBody.data.advancedModuleExclusions, advancedModules)
-            : {};
+            ? normalizeAdvancedModuleExclusions(parsedBody.data.advancedModuleExclusions ?? fields?.advancedModuleExclusions, advancedModules) : {};
 
         if (packetMode === 'advanced' && !isPaid) {
             return NextResponse.json(
@@ -154,9 +160,13 @@ export async function POST(request: Request) {
         // Automatically associate with default brand profile if not specified
         let brandProfileId = parsedBody.data.brandProfileId;
         let selectedBrandProfile = null;
+        if (form && !brandProfileId) {
+            selectedBrandProfile = await getIntakeBrandProfile(accountId, organizationId, form.default_brand_profile_id);
+            brandProfileId = selectedBrandProfile?.id;
+        }
         if (brandProfileId) {
-            selectedBrandProfile = await getBrandProfile(brandProfileId);
-            if (!selectedBrandProfile || !await canAccessOwnedOrActiveOrganizationResource(account, selectedBrandProfile)) {
+            selectedBrandProfile = selectedBrandProfile || await getBrandProfile(brandProfileId);
+            if (!selectedBrandProfile || (form && (selectedBrandProfile.organization_id || null) !== (organizationId || null)) || !await canAccessOwnedOrActiveOrganizationResource(account, selectedBrandProfile)) {
                 return NextResponse.json(
                     { error: 'Invalid Branding Profile', message: 'Choose a Branding Profile from the active workspace.' },
                     { status: 400 },
@@ -175,8 +185,11 @@ export async function POST(request: Request) {
         const structuredPropertyAddress = await buildStructuredPropertyAddress(parsedBody.data.propertyAddress);
 
         const newRequest = await createRequest({
-            collectHoaQuestions: parsedBody.data.collectHoaQuestions,
-            collectElectricMeterNumber: parsedBody.data.collectElectricMeterNumber,
+            collectHoaQuestions: parsedBody.data.collectHoaQuestions ?? fields?.collectHoaQuestions,
+            collectElectricMeterNumber: parsedBody.data.collectElectricMeterNumber ?? fields?.collectElectricMeterNumber,
+            sourceFormId: fields?.sourceFormId,
+            sourceFormRevision: fields?.sourceFormRevision,
+            sellerIntro: fields?.sellerIntro,
             accountId,
             organizationId,
             brandProfileId: brandProfileId,
@@ -255,6 +268,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json(newRequest, { status: 201 });
     } catch (error) {
+        if ((error as { code?: string })?.code === 'SF409') return formErrorResponse(error);
         console.error('Error creating request:', error);
         return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
     }

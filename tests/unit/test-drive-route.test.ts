@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
     getTestDriveRequestState: vi.fn(),
     getOrCreateTestDriveRequest: vi.fn(),
     getTestDriveLifecycleEvents: vi.fn(),
-    getIntakeLinkByAccountId: vi.fn(),
+    getOrCreateIntakeLink: vi.fn(),
     getIntakeBrandProfile: vi.fn(),
     getBrandProfile: vi.fn(),
     createEventLog: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getTestDriveRequestState: mocks.getTestDriveRequestState,
     getOrCreateTestDriveRequest: mocks.getOrCreateTestDriveRequest,
     getTestDriveLifecycleEvents: mocks.getTestDriveLifecycleEvents,
-    getIntakeLinkByAccountId: mocks.getIntakeLinkByAccountId,
+    getOrCreateIntakeLink: mocks.getOrCreateIntakeLink,
     getIntakeBrandProfile: mocks.getIntakeBrandProfile,
     getBrandProfile: mocks.getBrandProfile,
     createEventLog: mocks.createEventLog,
@@ -101,7 +101,7 @@ describe('/api/test-drive', () => {
         mocks.getTestDriveLifecycleEvents.mockResolvedValue([
             { event_type: 'test_drive_invitation_succeeded', event_data: null, created_at: '2026-07-21T10:00:00.000Z' },
         ]);
-        mocks.getIntakeLinkByAccountId.mockResolvedValue({
+        mocks.getOrCreateIntakeLink.mockResolvedValue({
             default_brand_profile_id: 'brand_1',
             default_utility_categories: ['electric', 'water'],
             default_packet_mode: 'simple',

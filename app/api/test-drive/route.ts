@@ -1,3 +1,4 @@
+import { formRequestFields } from '@/lib/seller-forms/config';
 import { NextResponse } from 'next/server';
 
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
@@ -7,7 +8,7 @@ import {
     createEventLog,
     getBrandProfile,
     getIntakeBrandProfile,
-    getIntakeLinkByAccountId,
+    getOrCreateIntakeLink,
     getOrCreateTestDriveRequest,
     getTestDriveLifecycleEvents,
     getTestDriveRequestState,
@@ -92,7 +93,7 @@ export async function POST(_request: Request) {
 
         const { account, activeOrganization, defaultBrandProfile } = activation;
         const organizationId = activeOrganization?.id || undefined;
-        const intakeLink = await getIntakeLinkByAccountId(account.id);
+        const intakeLink = await getOrCreateIntakeLink(account.id, organizationId);
         const brandProfile = await getIntakeBrandProfile(
             account.id,
             organizationId,
@@ -109,6 +110,7 @@ export async function POST(_request: Request) {
         const propertyAddressStructured = await buildStructuredPropertyAddress(TEST_DRIVE_PROPERTY_ADDRESS);
 
         const result = await getOrCreateTestDriveRequest({
+            ...(intakeLink ? formRequestFields(intakeLink, isPaid) : {}),
             accountId: account.id,
             organizationId,
             brandProfileId: brandProfile?.id,

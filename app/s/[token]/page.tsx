@@ -16,6 +16,7 @@ import { SellerWizard } from '@/components/seller-form/SellerWizard';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 
 interface RequestData {
+    seller_intro?: string | null;
     property_address: string;
     utility_categories: UtilityCategory[];
     collect_electric_meter_number?: boolean;
@@ -69,6 +70,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
             const request = data.request;
 
             const reqData: RequestData = {
+                seller_intro: request.seller_intro || null,
                 property_address: request.property_address,
                 utility_categories: request.utility_categories || UTILITY_CATEGORY_KEYS,
                 collect_electric_meter_number: request.collect_electric_meter_number !== false,

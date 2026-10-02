@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createBrandProfile, getBrandProfileRequestCounts, getBrandProfiles, getIntakeLinkByAccountId } from '@/lib/neon/queries';
+import { createBrandProfile, getBrandProfileRequestCounts, getBrandProfiles, getBrandProfileFormCounts, listSellerForms } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { brandProfileCreateBodySchema } from '@/lib/validation/schemas';
 import { normalizeMessageTemplates } from '@/lib/message-templates';
@@ -51,15 +51,18 @@ export async function GET() {
         }
 
         // Additive usage context; the response stays an array of profiles.
-        const [requestCounts, intakeLink] = await Promise.all([
+        const [requestCounts, formCounts, ownedForms] = await Promise.all([
             getBrandProfileRequestCounts(profiles.map((profile) => profile.id)),
-            getIntakeLinkByAccountId(accountId),
+            getBrandProfileFormCounts(profiles.map(profile => profile.id)),
+            listSellerForms(accountId, organizationId),
         ]);
 
         const profilesWithUsage = profiles.map((profile) => ({
             ...profile,
             request_count: requestCounts[profile.id] ?? 0,
-            is_intake_default: intakeLink?.default_brand_profile_id === profile.id,
+            is_intake_default: (formCounts[profile.id] ?? 0) > 0,
+            seller_form_count: formCounts[profile.id] ?? 0,
+            seller_forms: ownedForms.filter(form => form.default_brand_profile_id === profile.id).map(form => ({ id: form.id, name: form.name })),
         }));
 
         return NextResponse.json(profilesWithUsage);

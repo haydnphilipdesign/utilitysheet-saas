@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import {
-    getAccountById,
-    getAccountOrganizations,
     getIntakeBrandProfile,
     getIntakeLinkBySlug,
     normalizeIntakeUtilityCategories,
 } from '@/lib/neon/queries';
 
-type OrganizationSummary = { id: string; subscription_status?: string | null };
+import { publicFormScope } from '@/lib/seller-forms/public';
+import { formRequestFields } from '@/lib/seller-forms/config';
 
 export async function GET(
     request: Request,
@@ -20,14 +19,9 @@ export async function GET(
             return NextResponse.json({ error: 'Not found' }, { status: 404 });
         }
 
-        const account = await getAccountById(intakeLink.account_id);
-        if (!account || account.role === 'banned') {
-            return NextResponse.json({ error: 'Not found' }, { status: 404 });
-        }
-
-        const organizations = await getAccountOrganizations(account.id);
-        const activeOrg = (organizations as OrganizationSummary[]).find((o) => o.id === account.active_organization_id) || null;
-
+        const scope = await publicFormScope(intakeLink);
+        if (!scope) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+        const { account, organization: activeOrg } = scope;
         const brandProfile = await getIntakeBrandProfile(
             account.id,
             activeOrg?.id,
@@ -46,6 +40,8 @@ export async function GET(
 
         return NextResponse.json({
             accepting: true,
+            sellerIntro: intakeLink.seller_intro || null,
+            configuration: formRequestFields(intakeLink, scope.isPaid),
             brandProfile: publicBrandProfile,
             utility_categories: normalizeIntakeUtilityCategories(intakeLink.default_utility_categories),
         });

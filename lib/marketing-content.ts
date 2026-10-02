@@ -84,7 +84,7 @@ export const pricingTiers = [
     href: '/auth/signup',
     features: [
       '3 live files per month',
-      'Reusable seller link',
+      '1 customizable seller form per creator/workspace',
       'Simple Utility Sheet mode',
       'Dashboard view of submitted sheets',
       'Clean PDF and share link',
@@ -100,6 +100,7 @@ export const pricingTiers = [
     href: '/auth/signup?plan=pro',
     features: [
       'Use UtilitySheet on every file',
+      'Up to 10 seller forms per creator/workspace',
       'Property Handoff Packet mode',
       'Edit submitted sheets after seller submission',
       'Live updates to future PDF downloads',
@@ -117,6 +118,7 @@ export const pricingTiers = [
     href: '/auth/signup?plan=teams',
     features: [
       'Everything in Pro',
+      'Up to 10 seller forms per member in the Team workspace',
       'Shared organization workspace',
       'Any teammate with request access can edit submitted sheets',
       'Invites and user roles',

@@ -1,3 +1,4 @@
+import { savedForm } from '../fixtures/saved-seller-forms';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
@@ -55,6 +56,7 @@ describe('POST /api/intake/[slug]/start', () => {
             reset: 999999,
         } as never);
         vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+            ...savedForm,
             slug: 'test-slug',
             account_id: 'acct-1',
             is_active: true,
@@ -91,6 +93,32 @@ describe('POST /api/intake/[slug]/start', () => {
             seller_token: 'seller-token-1',
         } as never);
         vi.mocked(createEventLog).mockResolvedValue(undefined as never);
+    });
+
+    it('snapshots fixed workspace, form revision, introduction and concrete question switches', async () => {
+        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({ ...savedForm, organization_id: 'org-A' } as never);
+        vi.mocked(getAccountById).mockResolvedValue({ id: savedForm.account_id, role: 'user', subscription_status: 'free', active_organization_id: 'org-B' } as never);
+        vi.mocked(getAccountOrganizations).mockResolvedValue([{ id: 'org-A', subscription_status: 'team' }, { id: 'org-B' }] as never);
+        const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }) }), { params: Promise.resolve({ slug: 'listing-form' }) });
+        expect(response.status).toBe(200);
+        expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org-A', sourceFormId: savedForm.id, sourceFormRevision: 2, sellerIntro: savedForm.seller_intro, collectHoaQuestions: false, collectElectricMeterNumber: false }));
+    });
+
+    it.each([
+        { source_form_id: 'different-form', organization_id: null },
+        { source_form_id: savedForm.id, organization_id: 'wrong-workspace' },
+    ])('cannot resume a request from another form or workspace: %j', async provenance => {
+        const cookie = Buffer.from(JSON.stringify({ a: '123 main st austin tx 78701', t: 'previous-token' })).toString('base64url');
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({ account_id: 'acct-1', property_address: '123 Main St, Austin, TX 78701', status: 'draft', ...provenance } as never);
+        const response = await POST(new Request('http://localhost', { method: 'POST', headers: { cookie: `us_intake_test-slug=${cookie}` }, body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }) }), { params: Promise.resolve({ slug: 'test-slug' }) });
+        expect(response.status).toBe(200); expect(createRequest).toHaveBeenCalledOnce();
+    });
+
+    it('permits legacy NULL provenance resume only on the original identity and matching scope', async () => {
+        const cookie = Buffer.from(JSON.stringify({ a: '123 main st austin tx 78701', t: 'previous-token' })).toString('base64url');
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({ account_id: 'acct-1', property_address: '123 Main St, Austin, TX 78701', status: 'draft', source_form_id: null, organization_id: null } as never);
+        const response = await POST(new Request('http://localhost', { method: 'POST', headers: { cookie: `us_intake_test-slug=${cookie}` }, body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }) }), { params: Promise.resolve({ slug: 'test-slug' }) });
+        expect(await response.json()).toEqual({ sellerToken: 'previous-token' }); expect(createRequest).not.toHaveBeenCalled();
     });
 
     it('returns 400 with missingFields when address is incomplete', async () => {

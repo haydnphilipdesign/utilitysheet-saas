@@ -53,7 +53,9 @@ describe('account closure data transaction', () => {
             transfers: {},
         });
 
-        const guard = (mocks.transaction.mock.calls[0][0] as Query[])[0].text.replace(/\s+/g, ' ');
+        const queries = mocks.transaction.mock.calls[0][0] as Query[];
+        expect(queries[0].text).toContain("SELECT id FROM accounts WHERE id = ? FOR UPDATE");
+        const guard = queries[1].text.replace(/\s+/g, ' ');
         expect(guard).toContain('FROM requests r');
         expect(guard).toContain('FROM brand_profiles b');
         expect(guard).toContain('owned.organization_id');

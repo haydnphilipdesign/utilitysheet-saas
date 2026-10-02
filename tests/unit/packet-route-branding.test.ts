@@ -8,7 +8,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getDefaultBrandProfile: vi.fn(),
     getAccountById: vi.fn(),
     getOrganizationById: vi.fn(),
-    getIntakeLinkByAccountId: vi.fn(),
+    getReferralIdentityForm: vi.fn(),
 }));
 
 import { GET } from '@/app/api/packet/[token]/route';
@@ -16,7 +16,7 @@ import {
     getAccountById,
     getBrandProfile,
     getDefaultBrandProfile,
-    getIntakeLinkByAccountId,
+    getReferralIdentityForm,
     getRequestByToken,
     getUtilityEntriesByRequestId,
 } from '@/lib/neon/queries';
@@ -54,7 +54,7 @@ describe('GET /api/packet/[token]', () => {
         (getDefaultBrandProfile as Mock).mockResolvedValue(null);
         (getUtilityEntriesByRequestId as Mock).mockResolvedValue([]);
         (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
-        (getIntakeLinkByAccountId as Mock).mockResolvedValue(null);
+        (getReferralIdentityForm as Mock).mockResolvedValue(null);
 
         const response = await GET(new Request('http://localhost/api/packet/token_1'), {
             params: Promise.resolve({ token: 'token_1' }),
@@ -103,7 +103,7 @@ describe('GET /api/packet/[token]', () => {
         (getDefaultBrandProfile as Mock).mockResolvedValue(null);
         (getUtilityEntriesByRequestId as Mock).mockResolvedValue([]);
         (getAccountById as Mock).mockResolvedValue({ subscription_status: 'free' });
-        (getIntakeLinkByAccountId as Mock).mockResolvedValue({ slug: 'route-team' });
+        (getReferralIdentityForm as Mock).mockResolvedValue({ slug: 'route-team' });
 
         const response = await GET(new Request('http://localhost/api/packet/token_2'), {
             params: Promise.resolve({ token: 'token_2' }),
