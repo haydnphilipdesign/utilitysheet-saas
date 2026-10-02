@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
@@ -105,8 +106,7 @@ export default function NewRequestPage() {
     const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
     const [copied, setCopied] = useState(false);
     const [isPro, setIsPro] = useState(false);
-    // Mirrors the server default in app/api/seller/[token]/route.ts, so the seller
-    // question preview matches what the seller will actually be asked.
+    // Initialize from account defaults; these choices are saved for this request.
     const [collectElectricMeterNumber, setCollectElectricMeterNumber] = useState(true);
     const [collectHoaQuestions, setCollectHoaQuestions] = useState(true);
     const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string } | null>(null);
@@ -306,6 +306,8 @@ export default function NewRequestPage() {
         setLoading(true);
         try {
             const requestBody: Record<string, unknown> = {
+                collectHoaQuestions,
+                collectElectricMeterNumber,
                 propertyAddress: formData.property_address,
                 sellerName: formData.seller_name || undefined,
                 sellerEmail: formData.seller_email || undefined,
@@ -958,6 +960,21 @@ export default function NewRequestPage() {
                                     </div>
                                 </div>
 
+                                <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+                                    <div className="space-y-1">
+                                        <Label className="text-foreground">Seller Questions</Label>
+                                        <p className="text-xs text-muted-foreground">Starts with your Settings defaults. Changes apply only to this request.</p>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4">
+                                        <Label htmlFor="requestHoaQuestions" className="cursor-pointer">Ask about HOA or condo association</Label>
+                                        <Switch id="requestHoaQuestions" aria-label="Ask about HOA or condo association" checked={collectHoaQuestions} onCheckedChange={setCollectHoaQuestions} disabled={intakeLinkLoading} />
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4">
+                                        <Label htmlFor="requestElectricMeterNumber" className="cursor-pointer">Collect electric meter number</Label>
+                                        <Switch id="requestElectricMeterNumber" aria-label="Collect electric meter number" checked={collectElectricMeterNumber} onCheckedChange={setCollectElectricMeterNumber} disabled={intakeLinkLoading} />
+                                    </div>
+                                </div>
+
                                 <div className="flex flex-wrap items-center gap-3">
                                     <SellerQuestionsDialog
                                         configuration={{
@@ -1055,7 +1072,7 @@ export default function NewRequestPage() {
                                     </Button>
                                     <Button
                                         onClick={handleCreate}
-                                        disabled={!isStep3Valid || loading}
+                                        disabled={!isStep3Valid || loading || intakeLinkLoading}
                                         data-testid="new-request-create"                                    >
                                         {loading ? (
                                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>

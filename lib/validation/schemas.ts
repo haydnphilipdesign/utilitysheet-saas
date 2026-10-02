@@ -19,6 +19,8 @@ const isHttpUrl = (value: string) => value.startsWith('https://') || value.start
 const allowedUtilityCategories = new Set<string>(UTILITY_CATEGORY_KEYS);
 
 export const createRequestBodySchema = z.object({
+    collectHoaQuestions: z.boolean().optional(),
+    collectElectricMeterNumber: z.boolean().optional(),
     propertyAddress: z.string().trim().min(5).max(200),
     sellerName: z.string().trim().min(1).max(120).optional(),
     sellerEmail: z.string().trim().email().optional(),

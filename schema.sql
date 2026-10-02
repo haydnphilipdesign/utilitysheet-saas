@@ -131,6 +131,8 @@ CREATE TABLE IF NOT EXISTS requests (
     public_token TEXT UNIQUE NOT NULL,
     seller_token TEXT UNIQUE NOT NULL,
     utility_categories TEXT[] DEFAULT ARRAY['electric', 'gas', 'water', 'sewer', 'trash'],
+    collect_hoa_questions BOOLEAN,
+    collect_electric_meter_number BOOLEAN,
     water_source TEXT CHECK (water_source IN ('city', 'well', 'hoa', 'not_sure')),
     sewer_type TEXT CHECK (sewer_type IN ('public', 'septic', 'hoa', 'not_sure')),
     heating_type TEXT CHECK (heating_type IN ('natural_gas', 'electric', 'propane', 'oil', 'not_sure')),

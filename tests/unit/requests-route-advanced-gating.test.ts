@@ -191,4 +191,17 @@ describe('POST /api/requests advanced gating', () => {
         expect(response.status).toBe(400);
         expect(mocks.createRequestMock).not.toHaveBeenCalled();
     });
+
+    it.each([true, false])('persists %s question choices on a Free individual request', async (value) => {
+        mocks.createRequestMock.mockResolvedValue({ id: 'req_1', seller_token: 'seller-token' });
+        const response = await POST(new Request('http://localhost/api/requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ propertyAddress: '123 Test Lane', collectHoaQuestions: value, collectElectricMeterNumber: !value, sendSellerEmail: false }),
+        }));
+        expect(response.status).toBe(201);
+        expect(mocks.createRequestMock).toHaveBeenCalledWith(expect.objectContaining({
+            collectHoaQuestions: value, collectElectricMeterNumber: !value,
+        }));
+    });
 });

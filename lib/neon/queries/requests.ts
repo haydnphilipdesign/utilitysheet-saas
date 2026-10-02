@@ -301,6 +301,8 @@ export async function getRequestBySellerToken(token: string): Promise<Request | 
  * Create a new request
  */
 export async function createRequest(data: {
+    collectHoaQuestions?: boolean;
+    collectElectricMeterNumber?: boolean;
     accountId: string;
     organizationId?: string;
     brandProfileId?: string;
@@ -336,6 +338,8 @@ export async function createRequest(data: {
 
     const result = await sql`
         INSERT INTO requests (
+            collect_hoa_questions,
+            collect_electric_meter_number,
             account_id,
             organization_id,
             brand_profile_id,
@@ -359,6 +363,8 @@ export async function createRequest(data: {
             locked_reason,
             locked_at
         ) VALUES (
+            ${data.collectHoaQuestions ?? null},
+            ${data.collectElectricMeterNumber ?? null},
             ${data.accountId},
             ${data.organizationId || null},
             ${data.brandProfileId || null},

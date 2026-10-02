@@ -19,6 +19,7 @@ import {
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
 import { normalizeHoaAnswers } from '@/lib/packet/hoa';
+import { resolveRequestQuestionSettings } from '@/lib/requests/question-settings';
 import {
     buildSubmittedSheetChangedFields,
     buildSubmittedSheetEditorPayload as buildSubmittedSheetResponse,
@@ -98,7 +99,7 @@ export async function GET(
         const notificationPrefs = (context.account.notification_preferences || {}) as {
             collect_electric_meter_number?: boolean;
         };
-        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number !== false;
+        const { collectElectricMeterNumber } = resolveRequestQuestionSettings(context.requestData, notificationPrefs);
         const utilityEntries = await getUtilityEntriesByRequestId(id);
 
         return NextResponse.json(buildSubmittedSheetResponse({
@@ -196,7 +197,7 @@ export async function PATCH(
         const notificationPrefs = (context.account.notification_preferences || {}) as {
             collect_electric_meter_number?: boolean;
         };
-        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number !== false;
+        const { collectElectricMeterNumber } = resolveRequestQuestionSettings(context.requestData, notificationPrefs);
 
         if (changedFields.length === 0) {
             return NextResponse.json(buildSubmittedSheetResponse({

@@ -175,6 +175,8 @@ export async function POST(request: Request) {
         const structuredPropertyAddress = await buildStructuredPropertyAddress(parsedBody.data.propertyAddress);
 
         const newRequest = await createRequest({
+            collectHoaQuestions: parsedBody.data.collectHoaQuestions,
+            collectElectricMeterNumber: parsedBody.data.collectElectricMeterNumber,
             accountId,
             organizationId,
             brandProfileId: brandProfileId,

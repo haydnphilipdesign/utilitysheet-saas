@@ -178,7 +178,7 @@ describe('HOA questions in the seller question inventory', () => {
 
     it('lists the gate and every detail question under Home Basics', () => {
         expect(byKey('home_basics.has_hoa')?.choices).toEqual(['Yes', 'No', 'Not Sure']);
-        expect(byKey('home_basics.has_hoa')?.condition).toContain('on in Settings');
+        expect(byKey('home_basics.has_hoa')?.condition).toContain('on for this request');
         for (const field of HOA_TEXT_FIELDS) {
             expect(byKey(`home_basics.${field.key}`)?.condition).toContain('answers Yes');
         }

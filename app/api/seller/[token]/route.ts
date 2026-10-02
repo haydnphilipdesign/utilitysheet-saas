@@ -19,7 +19,8 @@ import {
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
-import { collectsHoaQuestions, normalizeHoaAnswers, resolveHoaSubmission } from '@/lib/packet/hoa';
+import { normalizeHoaAnswers, resolveHoaSubmission } from '@/lib/packet/hoa';
+import { resolveRequestQuestionSettings } from '@/lib/requests/question-settings';
 import type {
     AdvancedModuleExclusions,
     AdvancedModuleKey,
@@ -373,8 +374,7 @@ export async function GET(
         const notificationPrefs = (account?.notification_preferences || {}) as {
             collect_electric_meter_number?: boolean;
         };
-        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number !== false;
-        const collectHoaQuestions = collectsHoaQuestions(notificationPrefs);
+        const { collectElectricMeterNumber, collectHoaQuestions } = resolveRequestQuestionSettings(requestRecord, notificationPrefs);
 
         // Get AI suggestions for each category
         const utilityCategories =
@@ -496,7 +496,7 @@ export async function POST(
             weekly_summary?: boolean;
             collect_electric_meter_number?: boolean;
         };
-        const collectElectricMeterNumber = notificationPrefs.collect_electric_meter_number !== false;
+        const { collectElectricMeterNumber, collectHoaQuestions } = resolveRequestQuestionSettings(requestRecord, notificationPrefs);
 
         // Requests are metered on their first counted submission. Only apply free-plan
         // overage locking before that, so seller resubmissions never re-lock or re-count.
@@ -540,12 +540,12 @@ export async function POST(
             })
             : {};
 
-        // Leave the stored HOA answers alone when the account has the questions
+        // Leave the stored HOA answers alone when this request has the questions
         // turned off, or when a seller form loaded before they shipped sends
         // no `has_hoa` key.
         const { update: updateHoa, answers: hoa } = resolveHoaSubmission(
             parsedBody.data,
-            collectsHoaQuestions(notificationPrefs)
+            collectHoaQuestions
         );
 
         // Update request with applicability info
@@ -895,4 +895,3 @@ export async function POST(
         return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 });
     }
 }
-

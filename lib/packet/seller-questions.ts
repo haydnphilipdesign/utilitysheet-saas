@@ -369,7 +369,7 @@ function buildUtilitySection(
             label: 'Meter Number',
             sellerPrompt: 'Meter Number (optional)',
             helper: 'If available, this will be added to the final PDF.',
-            condition: 'Shown while "Collect electric meter number" is on in Settings.',
+            condition: 'Shown while "Collect electric meter number" is on for this request. Defaults come from Settings.',
         });
     }
 

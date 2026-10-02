@@ -38,6 +38,15 @@ vi.mock('@/lib/network/client-ip', () => ({
 import { GET, PATCH } from '@/app/api/requests/[id]/submitted-data/route';
 
 describe('submitted sheet editor route', () => {
+    it.each([true, false])('uses request meter choice %s even when the account default differs', async (value) => {
+        mocks.getOrCreateAccountMock.mockResolvedValue({ id: 'acct_1', subscription_status: 'pro', notification_preferences: { collect_electric_meter_number: !value } });
+        mocks.getRequestByIdMock.mockResolvedValue({ id: 'req_1', account_id: 'acct_1', status: 'submitted', property_address: '123 Test Lane', packet_mode: 'simple', utility_categories: ['electric'], collect_electric_meter_number: value });
+        mocks.getUtilityEntriesByRequestIdMock.mockResolvedValue([]);
+        const response = await GET(new Request('http://localhost/api/requests/req_1/submitted-data'), { params: Promise.resolve({ id: 'req_1' }) });
+        expect(response.status).toBe(200);
+        expect((await response.json()).editor.collectElectricMeterNumber).toBe(value);
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.getUserMock.mockResolvedValue({

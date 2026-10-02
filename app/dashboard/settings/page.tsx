@@ -1291,7 +1291,8 @@ export default function SettingsPage() {
                                     <div className="space-y-1">
                                         <p className="text-sm font-medium text-foreground">Collect electric meter number</p>
                                         <p className="text-sm text-muted-foreground">
-                                            Show an optional meter-number field when Electric is included. This preference saves automatically.
+                                            Show an optional meter-number field when Electric is included. This default saves automatically;
+                                            individual requests can use their own choice.
                                         </p>
                                     </div>
                                     <Switch
@@ -1307,7 +1308,7 @@ export default function SettingsPage() {
                                         <p className="text-sm text-muted-foreground">
                                             Ask sellers if the home is in an HOA or condo association. If it is, they can add the
                                             association&apos;s name, contact info, and dues. Turning this off won&apos;t remove answers
-                                            you&apos;ve already collected. This preference saves automatically.
+                                            you&apos;ve already collected. This default saves automatically; individual requests can use their own choice.
                                         </p>
                                     </div>
                                     <Switch

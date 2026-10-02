@@ -111,6 +111,12 @@ documents as well.
 
 ## Consequences
 
+Amended 2026-10-02: individual creation now saves request-specific HOA and
+meter choices; those override live account preferences. Existing and reusable
+requests still inherit when overrides are absent. The live-setting and
+not-copied statements below describe the original implementation; see
+`2026-10-02-request-question-overrides.md` for the current precedence rule.
+
 - Unless the account turns it off, every seller on every request sees one extra
   gate question. A No or Not Sure costs one tap. The detail questions must stay
   behind a Yes.

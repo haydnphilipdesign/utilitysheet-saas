@@ -317,6 +317,8 @@ export interface Request {
     public_token: string;
     seller_token?: string | null;
     utility_categories?: UtilityCategory[] | null;
+    collect_hoa_questions?: boolean | null;
+    collect_electric_meter_number?: boolean | null;
     water_source?: WaterSource | null;
     sewer_type?: SewerType | null;
     heating_type?: HeatingType | null;
