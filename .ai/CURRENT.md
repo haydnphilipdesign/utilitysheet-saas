@@ -16,3 +16,9 @@
 ## Release milestone
 - Owner explicitly requested migrations and push to main (automatic Vercel deployment). Final local production build passed. Production expand migration committed and verified: 136/136 initialized forms, all aliases present, legacy uniqueness retained. Initial psql connection with PGOPTIONS failed before SQL; retry with transaction-local timeouts succeeded.
 - Vercel production flags configured: enabled=false, rollout=all, technical cap=50. Next: commit/push main, verify compatible deployment and CI, then enable migration and activate with redeployment.
+
+## Production deployment and activation
+- Feature committed/pushed to main as ecc3e85. Compatible Vercel deployment dpl_GBAHRBeu3EPUpVNrmGU7Ebz7Z2NC READY on Node24 and production domains. Live health healthy/200, unauthenticated forms API401, pricing200.
+- GitHub Actions run37060760256 did not start: account locked due to billing issue (both Node20/24 jobs, zero steps). This is an external CI blocker; local 1020 tests/build/type/lint/security and Vercel production build passed. No billing changes attempted.
+- Expand rerun after compatible deployment; enable migration committed with bounded timeouts. No database transaction older than60s at drain check. All-users flag now configured true with rollout=all and cap50. This documentation push triggers activation deployment; verify READY and smoke checks next.
+- Unrelated feedback remains excluded.
