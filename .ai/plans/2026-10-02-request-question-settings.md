@@ -1,7 +1,8 @@
 # Individual request question settings
 
-- Status: Implementation complete; final validation and push pending. Authorized
-  by owner 2026-10-02.
+- Status: Completed 2026-10-02. Migration applied; feature committed as
+  `735ddb0` and pushed to GitHub main with owner authorization. No required
+  implementation or release work remains.
 - Scope: expose HOA/condo and electric meter switches during individual request
   creation, free on all plans. Other existing request configuration stays intact.
 - Verified: both seller GET/POST currently use live account preferences; request
@@ -44,3 +45,6 @@
   and production deployment are not independently verified by local tests.
 - No substantive scope deviations. Editor meter consistency and export shape
   were included to preserve the request setting across existing consumers.
+- Feature push: `735ddb0` on main. Optional follow-up: verify authenticated
+  creation after the automatic deployment completes; deployment completion was
+  not independently checked in this task.
