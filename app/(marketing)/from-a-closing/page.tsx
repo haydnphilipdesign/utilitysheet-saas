@@ -154,7 +154,7 @@ export default async function FromAClosingPage({
                         'Sellers need no account, no app, and no research. "Not sure" is always allowed.',
                         'Sellers can complete the guided form on their phone without an account.',
                         'The finished sheet arrives as a web view and PDF, ready to forward.',
-                        'The free plan covers 3 live files per month, with no credit card required.',
+                        'The free plan covers 3 submitted sheets per month, with no credit card required.',
                     ].map((item) => (
                         <li
                             key={item}

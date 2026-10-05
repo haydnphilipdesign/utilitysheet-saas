@@ -340,9 +340,9 @@ test('commercial paid limit and pilot/technical denials have distinct explanatio
         await page.keyboard.press('Escape');
     }
     await page.goto('/pricing');
-    await expect(page.getByText('1 customizable seller form per creator/workspace', { exact: true })).toBeVisible();
-    await expect(page.getByText('Up to 10 seller forms per creator/workspace', { exact: true })).toBeVisible();
-    await expect(page.getByText('Up to 10 seller forms per member in the Team workspace', { exact: true })).toBeVisible();
+    await expect(page.getByText('1 customizable seller form per workspace', { exact: true })).toBeVisible();
+    await expect(page.getByText('Up to 10 saved seller forms per workspace', { exact: true })).toBeVisible();
+    await expect(page.getByText('Up to 10 saved seller forms per member', { exact: true })).toBeVisible();
     await expect(page.getByText('$9', { exact: true })).toBeVisible();
     await expect(page.getByText('$7', { exact: true })).toBeVisible();
     await healthy(page);

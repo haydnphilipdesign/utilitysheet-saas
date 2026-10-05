@@ -16,8 +16,10 @@ const tiers = [
     cta: "Start free",
     popular: false,
     features: [
-      "Try it on 3 live files per month",
-      "1 customizable seller form per creator/workspace",
+      "3 submitted sheets per month",
+      "Unanswered requests never count",
+      "1 customizable seller form per workspace",
+      "HOA and condo association questions",
       "Clean PDF and share link",
       "Completion email notifications",
       "PDF can attach to completion emails",
@@ -33,7 +35,7 @@ const tiers = [
     popular: true,
     features: [
       "Use UtilitySheet on every file",
-      "Up to 10 seller forms per creator/workspace",
+      "Up to 10 saved seller forms per workspace",
       "Custom branded link",
       "Property Handoff Packet mode",
       "Edit submitted sheets after seller submission",
@@ -52,7 +54,7 @@ const tiers = [
     popular: false,
     features: [
       "Everything in Pro",
-      "Up to 10 seller forms per member in the Team workspace",
+      "Up to 10 saved seller forms per member",
       "Shared organization workspace",
       "Any teammate with request access can edit submitted sheets",
       "Invite members and assign roles",
@@ -176,7 +178,10 @@ export function PricingSection() {
 
         <p className="mt-10 text-center text-sm text-muted-foreground">
           Teams starts at $21/month for 3 seats. All plans include a reusable
-          seller link, a web sheet, and PDF downloads. Additional saved forms are rolling out to pilot accounts. Paused forms count toward the allowance; existing links and configurations are kept after downgrade.
+          seller link, a web sheet, and PDF downloads. The free plan counts a
+          sheet only when a seller submits it. Paused forms count toward your
+          saved-form allowance, and existing links and settings are kept if
+          you downgrade.
         </p>
       </div>
     </section>

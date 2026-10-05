@@ -119,7 +119,7 @@ export default function AboutPage() {
       </MarketingSection>
       <MarketingCtaBand
         title="Put it to work on your next file."
-        description="Start free with three live files per month. See how a simpler utility handoff fits into your day."
+        description="Start free with three submitted sheets per month. See how a simpler utility handoff fits into your day."
       />
     </div>
   );

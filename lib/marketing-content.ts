@@ -21,7 +21,22 @@ export const faqItems = [
   {
     question: 'Can I use one link for every property?',
     answer:
-      'Yes. UtilitySheet creates a reusable seller link for your workspace. Add it to your seller welcome email, listing checklist, closing-prep email, or text templates, and sellers can start by entering the property address.',
+      'Yes. UtilitySheet creates a reusable seller link for your workspace. Add it to your seller welcome email, listing checklist, closing-prep email, or text templates, and sellers can start by entering the property address. If different transactions need different questions, you can save a separate seller form for each, and every form has its own reusable link.',
+  },
+  {
+    question: 'Can I save more than one seller form?',
+    answer:
+      'Yes. Each saved seller form has its own name, reusable link, question settings, Branding Profile, and an optional short introduction for the seller. The free plan includes one customizable form per workspace. Pro includes up to ten per workspace, and Teams includes up to ten per member. Pick a form when you create an individual request, or share its link directly. You can duplicate, pause, and reactivate forms, and editing a form never changes requests that sellers have already started.',
+  },
+  {
+    question: 'Can I choose what sellers are asked?',
+    answer:
+      'Yes. On every plan you choose which utilities are included, whether sellers are asked about an HOA or condo association, and whether the electric meter number is collected. You can set these on a saved form or change them for a single request. Pro and Teams add Property Handoff Packet mode with its optional sections and per-question controls. A built-in preview shows exactly what the seller will see before you send anything.',
+  },
+  {
+    question: 'Does UtilitySheet collect HOA or condo association details?',
+    answer:
+      'Yes, on every plan. Seller forms ask whether the home is part of an HOA or condo association. No or Not sure is one tap. If the seller answers Yes, the form collects the association name, management company, contact name, phone, and email, dues, and where dues are paid or documents are found. The answers appear on the web sheet and the PDF. The question is on by default and you can turn it off for a form or for a single request.',
   },
   {
     question: 'When should I send the seller link?',
@@ -51,7 +66,7 @@ export const faqItems = [
   {
     question: 'Can I edit a submitted info sheet?',
     answer:
-      'Yes. Submitted info sheets can be edited after seller submission on Pro and Team plans. Editing happens inside the authenticated dashboard, seller and public links stay read-only after submission, and future PDF downloads reflect the latest saved version. In Team workspaces, any teammate who already has access to the request can make updates.',
+      'Yes. Submitted info sheets can be edited after seller submission on Pro and Team plans. Editing happens inside the authenticated dashboard, and future PDF downloads reflect the latest saved version. You can correct the address, provider names, phone numbers, websites, home basics, and HOA details, replace a seller’s “Not sure” with the right provider, or leave a utility off the sheet. In Team workspaces, any teammate who already has access to the request can make updates.',
   },
   {
     question: 'How do provider suggestions work?',
@@ -61,7 +76,7 @@ export const faqItems = [
   {
     question: 'What happens if I hit the free plan limit?',
     answer:
-      'Additional submissions are still saved. If they are locked because of the free-plan limit, they unlock automatically after you upgrade. Editing submitted sheets is reserved for Pro and Team workspaces.',
+      'The free plan includes three submitted sheets per month. A file only counts when the seller submits it, so creating and sending requests is never blocked, and a request the seller never answers does not use one. Submissions past the limit are still saved. They are locked until you upgrade, then unlock automatically. Editing submitted sheets is reserved for Pro and Team workspaces.',
   },
   {
     question: 'How long does it take to get started?',
@@ -80,12 +95,13 @@ export const pricingTiers = [
     name: 'Starter',
     price: 'Free',
     description:
-      'For proving the seller utility handoff workflow on a few live files each month.',
+      'For proving the seller utility handoff workflow on a few submitted sheets each month.',
     href: '/auth/signup',
     features: [
-      '3 live files per month',
-      '1 customizable seller form per creator/workspace',
+      '3 submitted sheets per month',
+      '1 customizable seller form per workspace',
       'Simple Utility Sheet mode',
+      'HOA and condo association questions',
       'Dashboard view of submitted sheets',
       'Clean PDF and share link',
       'Completion email notifications',
@@ -100,7 +116,7 @@ export const pricingTiers = [
     href: '/auth/signup?plan=pro',
     features: [
       'Use UtilitySheet on every file',
-      'Up to 10 seller forms per creator/workspace',
+      'Up to 10 saved seller forms per workspace',
       'Property Handoff Packet mode',
       'Edit submitted sheets after seller submission',
       'Live updates to future PDF downloads',
@@ -118,7 +134,7 @@ export const pricingTiers = [
     href: '/auth/signup?plan=teams',
     features: [
       'Everything in Pro',
-      'Up to 10 seller forms per member in the Team workspace',
+      'Up to 10 saved seller forms per member',
       'Shared organization workspace',
       'Any teammate with request access can edit submitted sheets',
       'Invites and user roles',
@@ -157,6 +173,21 @@ export const featureHighlights = [
       'Use the same seller intake link across listings instead of rebuilding a utility request for every property.',
   },
   {
+    title: 'Saved seller forms for different transactions',
+    description:
+      'Save a named form for each kind of file, each with its own reusable link, questions, branding, and optional note to the seller. One form is included on every plan, and Pro and Teams can save up to ten.',
+  },
+  {
+    title: 'Control over what sellers are asked',
+    description:
+      'Choose the utilities, the HOA question, and the electric meter number on every plan, for a whole form or a single request. Preview the exact seller questions before you send.',
+  },
+  {
+    title: 'HOA and condo association details',
+    description:
+      'Sellers answer one quick HOA question. A Yes collects the association name, management contact, dues, and where dues are paid, and it all prints on the sheet and PDF.',
+  },
+  {
     title: 'Simple Utility Sheet and Property Handoff Packet modes',
     description:
       'Choose core utility information, or collect utilities, home systems, access details, and service-provider information in one seller handoff.',
@@ -169,7 +200,7 @@ export const featureHighlights = [
   {
     title: 'Submitted-sheet editing on Pro and Teams',
     description:
-      'Correct capitalization, addresses, provider names, phone numbers, websites, and other seller-entered details after submission without reopening the seller form.',
+      'Correct addresses, provider names, phone numbers, websites, home basics, and HOA details after submission without reopening the seller form. Replace a “Not sure” answer with the right provider, or leave a utility off the sheet.',
   },
   {
     title: 'Clean web and PDF output',

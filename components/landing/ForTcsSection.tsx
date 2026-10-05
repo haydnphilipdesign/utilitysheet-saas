@@ -16,8 +16,8 @@ const painToOutcome = [
     {
         icon: Bell,
         title: 'Collect only the details the file needs',
-        description: 'Keep standard utility sheets fast, or add transition details like lawn care, security, mailbox, and access notes when the file needs more context.',
-        timeSaved: 'Simple or advanced',
+        description: 'Keep standard utility sheets fast, switch the HOA question on or off, or add transition details like lawn care, security, mailbox, and access notes when the file needs more context. Save a form for each kind of file.',
+        timeSaved: 'Sheet or packet',
     },
     {
         icon: FileText,

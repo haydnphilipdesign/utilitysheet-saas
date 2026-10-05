@@ -206,6 +206,12 @@ export function MarketingCapabilities() {
               "PRO + TEAMS",
               "Property Handoff Packet mode adds home systems, access details, and service contacts to the same seller handoff. Check codes and key handoff details closer to closing.",
             ],
+            [
+              "05",
+              "A form for each kind of file",
+              "1 FREE · 10 ON PRO + TEAMS",
+              "Save separate seller forms for listings, closings, or condos, each with its own link, questions, and short note to the seller. HOA and meter questions switch on or off on every plan.",
+            ],
           ].map(([number, title, label, copy]) => (
             <article key={number}>
               <span className="capability-number">{number}</span>

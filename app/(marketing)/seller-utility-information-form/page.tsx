@@ -37,7 +37,7 @@ export default function SellerUtilityInformationFormPage() {
       />
 
       <MarketingPageHero showActions
-        eyebrow="Search Intent"
+        eyebrow="Seller form"
         title="The utility form sellers can finish on their phone."
         description="Many real estate teams still collect utility details through loose checklists, emails, or text chains. UtilitySheet turns that into a guided seller form and gives your team a cleaner utility sheet at the end."
       >
@@ -57,7 +57,7 @@ export default function SellerUtilityInformationFormPage() {
           {[
             {
               title: 'Guided completion',
-              copy: 'The seller follows one flow instead of guessing which details your team still needs.',
+              copy: 'The seller follows one flow instead of guessing which details your team still needs. You choose the utilities and whether to ask about an HOA or condo association.',
             },
             {
               title: 'Cleaner provider details',

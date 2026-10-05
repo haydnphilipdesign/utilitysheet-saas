@@ -10,7 +10,7 @@ import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
   title: 'UtilitySheet Features for Seller Utility Handoffs',
   description:
-    'Explore UtilitySheet features for reusable seller links, guided utility intake, ready-to-review utility sheet PDFs, submitted-sheet editing, and branded handoffs.',
+    'Explore UtilitySheet features for reusable seller links, saved seller forms, guided utility and HOA intake, ready-to-review utility sheet PDFs, submitted-sheet editing, and branded handoffs.',
   path: '/features',
   keywords: [
     'utility sheet features',
@@ -55,7 +55,7 @@ export default function FeaturesPage() {
       >
         <div className="grid gap-6 md:grid-cols-2">
           {featureHighlights.map((feature) => (
-            <article key={feature.title} className="rounded-3xl border border-border bg-card/40 p-6 last:md:col-span-2">
+            <article key={feature.title} className="rounded-3xl border border-border bg-card/40 p-6">
               <h3 className="text-2xl font-semibold text-foreground">{feature.title}</h3>
               <p className="mt-3 leading-7 text-muted-foreground">{feature.description}</p>
             </article>

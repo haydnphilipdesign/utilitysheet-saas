@@ -11,7 +11,7 @@ import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
   title: 'UtilitySheet Pricing for Seller Utility Link Workflows',
   description:
-    'View UtilitySheet pricing for Starter, Pro, and Teams. Compare customizable saved seller forms, free requests, submitted-sheet editing, branded utility sheet output, Property Handoff Packet mode, and team workflows.',
+    'View UtilitySheet pricing for Starter, Pro, and Teams. Compare saved seller forms, free submitted sheets, submitted-sheet editing, branded utility sheet output, Property Handoff Packet mode, and team workflows.',
   path: '/pricing',
   keywords: [
     'utility sheet pricing',
@@ -40,7 +40,7 @@ export default function PricingPage() {
       <MarketingPageHero showActions
         eyebrow="Pricing"
         title="A small price for a smoother handoff."
-        description="Start with three live files per month, free. Add unlimited requests, your branding, and submitted-sheet editing with Pro. Bring your team together with Teams."
+        description="Start with three submitted sheets per month, free. Add unlimited submissions, your branding, more saved seller forms, and submitted-sheet editing with Pro. Bring your team together with Teams."
       >
         <MarketingBreadcrumbs
           items={[
@@ -63,7 +63,7 @@ export default function PricingPage() {
             'You want every seller utility form and PDF to reflect your own branding instead of UtilitySheet branding.',
             'You want Property Handoff Packet mode so the finished packet includes home systems, access details, and service providers, not just utilities.',
             'You want up to ten saved seller forms for different workflows in each workspace.',
-            'You need unlimited requests because the workflow is now part of every transaction.',
+            'You need every seller submission unlocked, with no monthly limit, because the workflow is now part of every transaction.',
             'You need to correct submitted sheets inside the dashboard instead of sending the seller back through the public form.',
             'You need teammates inside the same workspace with shared defaults, shared visibility, and shared editing access.',
           ].map((item) => (

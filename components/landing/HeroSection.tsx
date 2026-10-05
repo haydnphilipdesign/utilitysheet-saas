@@ -81,7 +81,7 @@ export function HeroSection() {
             </Link>
           </div>
           <p className="hero-fineprint">
-            3 live files per month, free. No credit card required.
+            3 submitted sheets per month, free. No credit card required.
           </p>
         </div>
         <div className="handoff-scene">

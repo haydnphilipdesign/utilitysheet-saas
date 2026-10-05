@@ -22,6 +22,7 @@ export default function RealEstateClosingUtilityChecklistPage() {
   const checklist = [
     'Confirm the property address and unit details before collecting provider information.',
     'Ask the seller to verify electric, gas, water, sewer, trash, internet, and any other relevant providers.',
+    'Ask whether the home is part of an HOA or condo association, and note the association name, management contact, and dues if it is.',
     'Collect any move-related access details, service vendors, or mailbox information your team needs for handoff.',
     'Review the information for vague or incomplete answers before sharing it forward, and clean up formatting or contact details as needed.',
     'Generate a utility sheet or packet that buyers and support staff can actually read.',

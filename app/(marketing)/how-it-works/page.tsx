@@ -64,6 +64,8 @@ export default function HowItWorksPage() {
             'If you collect details early in the listing, review the finished sheet before you share it. Providers and access details can change before closing.',
             'When the seller submits, review the finished utility sheet in the dashboard before sharing it with buyers, agents, support staff, or anyone else who needs the information.',
             'On Pro and Teams, you can correct capitalization, addresses, provider names, or contact details after submission without reopening the seller form.',
+            'If listings, closings, or condos need different questions, save a seller form for each. Every form has its own reusable link, and you can pick one when you create an individual request.',
+            'Seller forms ask about an HOA or condo association by default. Turn that question, the electric meter number, or any utility on or off for a whole form or for a single request, on every plan.',
             'Use Simple Utility Sheet mode when you just need utilities, or Property Handoff Packet mode to collect utilities, home systems, access details, and service-provider information in one seller handoff.',
             'Keep the workflow branded on paid plans so the handoff matches the rest of your client communication.',
           ].map((item) => (
