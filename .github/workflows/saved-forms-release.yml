@@ -1,8 +1,6 @@
 name: Saved forms release checks
 
 on:
-  push:
-    branches: [main, codex/saved-forms-release]
   workflow_dispatch:
 
 permissions:
