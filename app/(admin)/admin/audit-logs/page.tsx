@@ -58,6 +58,11 @@ const adminActionFilters = [
     'product_update_created',
     'product_update_published',
     'product_update_deleted',
+    'request_reminder_attempted',
+    'request_reminder_resolved',
+    'auth_reconciliation_started',
+    'auth_reconciliation_finished',
+    'triage_updated',
 ] as const satisfies readonly AdminAction[];
 
 function isAdminAction(value: string): value is AdminAction {

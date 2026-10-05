@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
     runClosure: vi.fn(),
 }));
 
+// Operational observations are best-effort and covered in ops-instrumentation.test.ts.
+vi.mock('@/lib/ops/events');
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/account/closure', () => ({ runAccountClosure: mocks.runClosure }));
 vi.mock('@/lib/neon/queries', () => ({ listStalledAccountClosures: mocks.listStalled }));

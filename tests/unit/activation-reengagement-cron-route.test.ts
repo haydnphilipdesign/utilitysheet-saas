@@ -5,6 +5,8 @@ const getOrCreateIntakeLinkMock = vi.hoisted(() => vi.fn());
 const recordActivationOutreachAttemptMock = vi.hoisted(() => vi.fn());
 const sendActivationReminderEmailMock = vi.hoisted(() => vi.fn());
 
+// Operational observations are best-effort and covered in ops-instrumentation.test.ts.
+vi.mock('@/lib/ops/events');
 vi.mock('@/lib/neon/queries', () => ({
     getDueActivationOutreachCandidates: getDueActivationOutreachCandidatesMock,
     getOrCreateIntakeLink: getOrCreateIntakeLinkMock,

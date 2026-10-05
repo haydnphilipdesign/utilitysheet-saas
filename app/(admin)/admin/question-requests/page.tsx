@@ -100,7 +100,7 @@ export default async function QuestionRequestsPage() {
                     {
                         label: 'Free accounts asking',
                         value: data.freeAccounts.toLocaleString(),
-                        hint: `${data.paidAccounts.toLocaleString()} paid`,
+                        hint: `${data.paidAccounts.toLocaleString()} with paid-plan access`,
                         icon: HelpCircle,
                     },
                 ]}
@@ -167,7 +167,7 @@ export default async function QuestionRequestsPage() {
                                         {row.user_email || row.user_name || row.account_id || 'Unknown account'}
                                     </span>
                                     <Badge variant={row.is_paid ? 'default' : 'secondary'}>
-                                        {row.is_paid ? 'Paid' : 'Free'}
+                                        {row.is_paid ? 'Paid-plan access' : 'Free'}
                                     </Badge>
                                     <span>{labelForQuestionRequestKey(QUESTION_REQUEST_CONTEXT_LABELS, row.context)}</span>
                                     {row.packet_mode

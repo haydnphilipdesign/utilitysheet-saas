@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw, UserRoundCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 type ReconcilePreview = {
     scanned: number;
@@ -62,6 +63,9 @@ export function AuthReconciliationCard() {
     const [running, setRunning] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reason, setReason] = useState('');
+    const [confirmed, setConfirmed] = useState(false);
 
     const loadPreview = useCallback(async () => {
         setLoading(true);
@@ -87,6 +91,7 @@ export function AuthReconciliationCard() {
     }, [loadPreview]);
 
     const runReconciliation = async () => {
+        if (!preview || reason.trim().length < 3 || !confirmed) return;
         setRunning(true);
         setError(null);
 
@@ -96,11 +101,20 @@ export function AuthReconciliationCard() {
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ limit: 200, scanAll: true }),
+                    body: JSON.stringify({
+                        limit: 200,
+                        scanAll: true,
+                        reason: reason.trim(),
+                        confirmed: true,
+                        reviewedEligibleCount: preview.eligibleCount,
+                    }),
                 },
                 'Verified signup sync timed out. Its final server result is unknown; refresh the preview before retrying.'
             );
             setPreview(result);
+            setConfirmOpen(false);
+            setReason('');
+            setConfirmed(false);
             router.refresh();
             await loadPreview();
         } catch (nextError) {
@@ -194,8 +208,12 @@ export function AuthReconciliationCard() {
                         <Button
                             type="button"
                             size="sm"
-                            onClick={() => void runReconciliation()}
-                            disabled={running || loading || preview.eligibleCount === 0}
+                            onClick={() => {
+                                setReason('');
+                                setConfirmed(false);
+                                setConfirmOpen(true);
+                            }}
+                            disabled={running || loading || confirmOpen || preview.eligibleCount === 0}
                         >
                             {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                             Sync verified signups
@@ -203,6 +221,53 @@ export function AuthReconciliationCard() {
                     ) : null}
                 </div>
             </div>
+
+            {confirmOpen ? (
+                <section className="mt-4 rounded-lg border border-border/70 bg-card p-3" aria-label="Confirm verified signup sync">
+                    <h3 className="text-sm font-semibold text-foreground">Sync verified signups</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Creates a UtilitySheet account for each of the {preview.eligibleCount} verified{' '}
+                        {pluralize(preview.eligibleCount, 'signup', 'signups')} in this preview. Accounts are created one at a
+                        time, so a failure part way through can leave some created. The attempt and its outcome are audited.
+                    </p>
+                    <Textarea
+                        className="mt-3"
+                        aria-label="Reason for syncing verified signups"
+                        placeholder="Reason (required)..."
+                        value={reason}
+                        maxLength={500}
+                        onChange={(event) => setReason(event.target.value)}
+                        disabled={running}
+                    />
+                    <label className="mt-3 flex items-start gap-2 text-xs text-foreground">
+                        <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={confirmed}
+                            onChange={(event) => setConfirmed(event.target.checked)}
+                            disabled={running}
+                        />
+                        <span>
+                            I reviewed this preview and want to create accounts for {preview.eligibleCount} verified{' '}
+                            {pluralize(preview.eligibleCount, 'signup', 'signups')}.
+                        </span>
+                    </label>
+                    <div className="mt-3 flex items-center justify-end gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={running}>
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => void runReconciliation()}
+                            disabled={running || reason.trim().length < 3 || !confirmed}
+                        >
+                            {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                            Create accounts
+                        </Button>
+                    </div>
+                </section>
+            ) : null}
         </div>
     );
 }

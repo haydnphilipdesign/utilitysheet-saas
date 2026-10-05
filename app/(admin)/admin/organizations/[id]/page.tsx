@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { AdminAccountPreview } from '@/components/admin/AdminAccountPreview';
+import { BillingEvidence } from '@/components/admin/BillingEvidence';
+import { buildStripeRecordLinks, describeWorkspaceBilling, getStripeModeFromKey } from '@/lib/admin/billing-context';
 import { formatAdminDate } from '@/lib/admin/date-format';
 import { getLatestRequestsForUsers } from '@/lib/admin';
 import { Building2, CreditCard, Users } from 'lucide-react';
@@ -17,6 +19,7 @@ type OrganizationRow = {
     logo_url: string | null;
     subscription_status: string | null;
     subscription_id: string | null;
+    stripe_customer_id?: string | null;
     subscription_ends_at: string | null;
     seat_quantity: number;
     created_at: string;
@@ -114,12 +117,25 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
                     </CardHeader>
                     <CardContent className="space-y-2">
                         <div className="py-1">
-                            <span className="font-medium text-sm text-muted-foreground block">Plan</span>
+                            <span className="font-medium text-sm text-muted-foreground block">Workspace entitlement</span>
                             <Badge variant={org.subscription_status === 'team' ? 'default' : 'outline'}>{org.subscription_status || 'free'}</Badge>
                         </div>
                         <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Seats</span> {org.seat_quantity || 0}</div>
-                        <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Renews / Ends</span> {org.subscription_ends_at ? formatAdminDate(org.subscription_ends_at) : 'N/A'}</div>
-                        <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Stripe Subscription</span> {org.subscription_id || 'N/A'}</div>
+                        <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Stored period end</span> {org.subscription_ends_at ? formatAdminDate(org.subscription_ends_at) : 'Not recorded'}</div>
+                        <BillingEvidence
+                            evidence={describeWorkspaceBilling({
+                                entitlement: org.subscription_status,
+                                subscriptionId: org.subscription_id,
+                                seatQuantity: org.seat_quantity,
+                                memberCount: members.length,
+                            })}
+                            links={buildStripeRecordLinks({
+                                customerId: org.stripe_customer_id,
+                                subscriptionId: org.subscription_id,
+                                mode: getStripeModeFromKey(process.env.STRIPE_SECRET_KEY),
+                            })}
+                            mode={getStripeModeFromKey(process.env.STRIPE_SECRET_KEY)}
+                        />
                     </CardContent>
                 </Card>
                 <Card>

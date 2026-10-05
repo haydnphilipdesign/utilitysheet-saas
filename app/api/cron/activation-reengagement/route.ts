@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { finishJobRun, startJobRun, type JobRunHandle } from '@/lib/ops/events';
 import {
     getDueActivationOutreachCandidates,
     getOrCreateIntakeLink,
@@ -22,6 +23,7 @@ function sleep(ms: number) {
 
 export async function GET(request: Request) {
     const startTime = Date.now();
+    let jobRun: JobRunHandle | null = null;
 
     try {
         const authHeader = request.headers.get('authorization');
@@ -36,8 +38,10 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        jobRun = await startJobRun('activation_reengagement');
         const candidates = await getDueActivationOutreachCandidates(50);
         if (candidates.length === 0) {
+            await finishJobRun(jobRun, 'success', { processed: 0, sent: 0, failed: 0 });
             return NextResponse.json({
                 success: true,
                 processed: 0,
@@ -104,6 +108,7 @@ export async function GET(request: Request) {
             }
         }
 
+        await finishJobRun(jobRun, failed > 0 ? 'partial' : 'success', { processed: candidates.length, sent, failed });
         return NextResponse.json({
             success: true,
             processed: candidates.length,
@@ -112,6 +117,7 @@ export async function GET(request: Request) {
             durationMs: Date.now() - startTime,
         });
     } catch (error) {
+        if (jobRun) await finishJobRun(jobRun, 'failed');
         console.error('Activation re-engagement cron failed:', error);
         return NextResponse.json(
             { error: 'Internal server error', durationMs: Date.now() - startTime },

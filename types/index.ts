@@ -181,7 +181,12 @@ export type AdminAction =
     | 'user_updated'
     | 'product_update_created'
     | 'product_update_published'
-    | 'product_update_deleted';
+    | 'product_update_deleted'
+    | 'auth_reconciliation_started'
+    | 'auth_reconciliation_finished'
+    | 'request_reminder_attempted'
+    | 'request_reminder_resolved'
+    | 'triage_updated';
 
 // Entities
 export interface Account {

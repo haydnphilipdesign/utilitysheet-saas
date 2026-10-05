@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
     sendReferralCreditEarnedEmail: vi.fn(),
 }));
 
+// Operational observations are best-effort and covered in ops-instrumentation.test.ts.
+vi.mock('@/lib/ops/events');
 vi.mock('server-only', () => ({}));
 
 vi.mock('next/server', () => ({

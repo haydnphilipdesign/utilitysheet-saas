@@ -126,7 +126,9 @@ export function ProductUpdatesAdmin({ updates }: { updates: ProductUpdate[] }) {
             }
 
             const message = confirmAction.type === 'publish'
-                ? 'Product Update published.'
+                ? ('alreadyPublished' in result && result.alreadyPublished
+                    ? 'This Product Update was already published. Nothing changed.'
+                    : 'Product Update published.')
                 : 'Product Update deleted.';
             setFeedback({ tone: 'success', message });
             toast.success(message);

@@ -1,45 +1,31 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { sql } from '@/lib/neon/db';
 import {
     requireAdmin,
     createAuditLogWithContext,
-    banUser,
-    unbanUser,
-    updateUserRole,
     getUserById,
-    updateUserPlan,
     assertAdminActionReason,
     assertAdminWritesEnabled,
-    countAdmins,
 } from '@/lib/admin';
-import type { UserRole, Plan } from '@/types';
 import {
-    evaluateBanPolicy,
-    evaluatePlanPolicy,
-    evaluateRoleChangePolicy,
-    evaluateUnbanPolicy,
-} from '@/lib/admin/policies';
+    AdminActionRefusal,
+    adminActionFailure,
+    beginAdminWrite,
+    type AdminActionFailure,
+} from '@/lib/admin/action-guard';
+import { accountPlanRefusal, accountRoleRefusal } from '@/lib/admin/refusals';
+import { changeAccountPlan, changeAccountRole } from '@/lib/neon/queries/admin-writes';
+import {
+    adminBanSchema,
+    adminPlanChangeSchema,
+    adminRoleChangeSchema,
+} from '@/lib/validation/admin-schemas';
 
 const IMPERSONATION_COOKIE = 'impersonator_id';
 const IMPERSONATED_USER_COOKIE = 'impersonated_user_id';
 
-type AdminActionResult =
-    | { success: true }
-    | { success: false; error: string; code?: string };
-
-async function isTeamManagedUser(activeOrganizationId: string | null): Promise<boolean> {
-    if (!activeOrganizationId || !sql) return false;
-
-    const result = await sql`
-        SELECT subscription_status
-        FROM organizations
-        WHERE id = ${activeOrganizationId}
-        LIMIT 1
-    `;
-    return result[0]?.subscription_status === 'team';
-}
+type AdminActionResult = { success: true } | AdminActionFailure;
 
 /**
  * Start impersonating a user
@@ -132,256 +118,114 @@ export async function getImpersonationStatus() {
 }
 
 /**
- * Update a user's role
+ * Update a user's role. The role change, last-admin protection and audit entry
+ * commit together; see lib/neon/queries/admin-writes.ts.
  */
-export async function updateUserRoleAction(userId: string, role: UserRole, reason: string) {
+export async function updateUserRoleAction(input: {
+    userId: string;
+    role: string;
+    expectedRole: string;
+    reason: string;
+}): Promise<AdminActionResult> {
     try {
-        const { account } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(reason);
+        const { actor } = await beginAdminWrite();
+        const parsed = adminRoleChangeSchema.parse(input);
 
-        const targetUser = await getUserById(userId);
-        if (!targetUser) {
-            return { success: false, error: 'User not found' };
-        }
-
-        const previousRole = targetUser.role;
-        const adminCount = await countAdmins();
-        const policy = evaluateRoleChangePolicy({
-            actorId: account.id,
-            targetId: targetUser.id,
-            currentRole: previousRole,
-            nextRole: role,
-            adminCount,
-            allowAdminPromotion: false,
+        const { outcome } = await changeAccountRole({
+            actor,
+            reason: parsed.reason,
+            targetId: parsed.userId,
+            nextRole: parsed.role,
+            expectedRole: parsed.expectedRole,
+            action: 'role_changed',
         });
-
-        if (!policy.allowed) {
-            await createAuditLogWithContext({
-                adminId: account.id,
-                targetUserId: userId,
-                action: 'role_changed',
-                metadata: {
-                    reason,
-                    blocked: true,
-                    policy: policy.policy,
-                    code: policy.code,
-                    previousRole,
-                    attemptedRole: role,
-                },
-            });
-            return { success: false, error: policy.message, code: policy.code } satisfies AdminActionResult;
-        }
-
-        const result = await updateUserRole(userId, role);
-
-        if (result) {
-            await createAuditLogWithContext({
-                adminId: account.id,
-                targetUserId: userId,
-                action: 'role_changed',
-                metadata: {
-                    reason,
-                    previousRole,
-                    newRole: role,
-                },
-            });
-        }
-
-        if (!result) return { success: false, error: 'Failed to update role', code: 'UNKNOWN' } satisfies AdminActionResult;
-        return { success: true } satisfies AdminActionResult;
+        if (outcome !== 'OK') throw accountRoleRefusal(outcome, 'role', parsed.role);
+        return { success: true };
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error', code: 'UNKNOWN' } satisfies AdminActionResult;
+        return adminActionFailure(error, 'user_role_change');
     }
 }
 
 /**
  * Ban a user
  */
-export async function banUserAction(userId: string, reason: string) {
+export async function banUserAction(input: {
+    userId: string;
+    expectedRole: string;
+    reason: string;
+}): Promise<AdminActionResult> {
     try {
-        const { account } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(reason);
+        const { actor } = await beginAdminWrite();
+        const parsed = adminBanSchema.parse(input);
 
-        const targetUser = await getUserById(userId);
-        if (!targetUser) {
-            return { success: false, error: 'User not found' };
-        }
-
-        const adminCount = await countAdmins();
-        const policy = evaluateBanPolicy({
-            actorId: account.id,
-            targetId: targetUser.id,
-            currentRole: targetUser.role,
-            adminCount,
+        const { outcome } = await changeAccountRole({
+            actor,
+            reason: parsed.reason,
+            targetId: parsed.userId,
+            nextRole: 'banned',
+            expectedRole: parsed.expectedRole,
+            action: 'user_banned',
         });
-
-        if (!policy.allowed) {
-            await createAuditLogWithContext({
-                adminId: account.id,
-                targetUserId: userId,
-                action: 'user_banned',
-                metadata: {
-                    reason,
-                    blocked: true,
-                    policy: policy.policy,
-                    code: policy.code,
-                    previousRole: targetUser.role,
-                    attemptedRole: 'banned',
-                },
-            });
-            return { success: false, error: policy.message, code: policy.code } satisfies AdminActionResult;
-        }
-
-        const result = await banUser(userId);
-
-        if (result) {
-            await createAuditLogWithContext({
-                adminId: account.id,
-                targetUserId: userId,
-                action: 'user_banned',
-                metadata: {
-                    reason,
-                    previousRole: targetUser.role,
-                    newRole: 'banned',
-                },
-            });
-        }
-
-        if (!result) return { success: false, error: 'Failed to ban user', code: 'UNKNOWN' } satisfies AdminActionResult;
-        return { success: true } satisfies AdminActionResult;
+        if (outcome !== 'OK') throw accountRoleRefusal(outcome, 'ban', 'banned');
+        return { success: true };
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error', code: 'UNKNOWN' } satisfies AdminActionResult;
+        return adminActionFailure(error, 'user_ban');
     }
 }
 
 /**
  * Unban a user
  */
-export async function unbanUserAction(userId: string, reason: string) {
+export async function unbanUserAction(input: {
+    userId: string;
+    expectedRole: string;
+    reason: string;
+}): Promise<AdminActionResult> {
     try {
-        const { account } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(reason);
-
-        const targetUser = await getUserById(userId);
-        if (!targetUser) {
-            return { success: false, error: 'User not found' };
+        const { actor } = await beginAdminWrite();
+        const parsed = adminBanSchema.parse(input);
+        if (parsed.expectedRole !== 'banned') {
+            throw new AdminActionRefusal('NO_OP_UNBAN', 'User is not banned.');
         }
 
-        const policy = evaluateUnbanPolicy(targetUser.role);
-        if (!policy.allowed) {
-            await createAuditLogWithContext({
-                adminId: account.id,
-                targetUserId: userId,
-                action: 'user_unbanned',
-                metadata: {
-                    reason,
-                    blocked: true,
-                    policy: policy.policy,
-                    code: policy.code,
-                    previousRole: targetUser.role,
-                    attemptedRole: 'user',
-                },
-            });
-            return { success: false, error: policy.message, code: policy.code } satisfies AdminActionResult;
-        }
-
-        const result = await unbanUser(userId);
-
-        if (result) {
-            await createAuditLogWithContext({
-                adminId: account.id,
-                targetUserId: userId,
-                action: 'user_unbanned',
-                metadata: {
-                    reason,
-                    previousRole: targetUser.role,
-                    newRole: 'user',
-                },
-            });
-        }
-
-        if (!result) return { success: false, error: 'Failed to unban user', code: 'UNKNOWN' } satisfies AdminActionResult;
-        return { success: true } satisfies AdminActionResult;
+        const { outcome } = await changeAccountRole({
+            actor,
+            reason: parsed.reason,
+            targetId: parsed.userId,
+            nextRole: 'user',
+            expectedRole: 'banned',
+            action: 'user_unbanned',
+        });
+        if (outcome !== 'OK') throw accountRoleRefusal(outcome, 'unban', 'user');
+        return { success: true };
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error', code: 'UNKNOWN' } satisfies AdminActionResult;
+        return adminActionFailure(error, 'user_unban');
     }
 }
 
 /**
- * Update a user's plan
+ * Update a user's entitlement override. Does not touch Stripe.
  */
-export async function updateUserPlanAction(userId: string, plan: Plan, reason: string) {
+export async function updateUserPlanAction(input: {
+    userId: string;
+    plan: string;
+    expectedPlan: string;
+    reason: string;
+}): Promise<AdminActionResult> {
     try {
-        const { account } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(reason);
+        const { actor } = await beginAdminWrite();
+        const parsed = adminPlanChangeSchema.parse(input);
 
-        const targetUser = await getUserById(userId);
-        if (!targetUser) {
-            return { success: false, error: 'User not found' };
-        }
-
-        if (await isTeamManagedUser(targetUser.active_organization_id)) {
-            await createAuditLogWithContext({
-                adminId: account.id,
-                targetUserId: userId,
-                action: 'plan_changed',
-                metadata: {
-                    reason,
-                    blocked: true,
-                    policy: 'organization_team_managed',
-                    code: 'ORG_TEAM_MANAGED_PLAN',
-                    attemptedPlan: plan,
-                    activeOrganizationId: targetUser.active_organization_id,
-                },
-            });
-            return {
-                success: false,
-                error: 'Plan is managed by the active Teams organization.',
-                code: 'ORG_TEAM_MANAGED_PLAN',
-            } satisfies AdminActionResult;
-        }
-
-        const previousPlan = targetUser.subscription_status;
-        const policy = evaluatePlanPolicy(previousPlan, plan);
-        if (!policy.allowed) {
-            await createAuditLogWithContext({
-                adminId: account.id,
-                targetUserId: userId,
-                action: 'plan_changed',
-                metadata: {
-                    reason,
-                    blocked: true,
-                    policy: policy.policy,
-                    code: policy.code,
-                    previousPlan,
-                    attemptedPlan: plan,
-                },
-            });
-            return { success: false, error: policy.message, code: policy.code } satisfies AdminActionResult;
-        }
-
-        const result = await updateUserPlan(userId, plan);
-
-        if (result) {
-            await createAuditLogWithContext({
-                adminId: account.id,
-                targetUserId: userId,
-                action: 'plan_changed',
-                metadata: {
-                    reason,
-                    previousPlan,
-                    newPlan: plan,
-                },
-            });
-        }
-
-        if (!result) return { success: false, error: 'Failed to update plan', code: 'UNKNOWN' } satisfies AdminActionResult;
-        return { success: true } satisfies AdminActionResult;
+        const { outcome } = await changeAccountPlan({
+            actor,
+            reason: parsed.reason,
+            targetId: parsed.userId,
+            nextPlan: parsed.plan,
+            expectedPlan: parsed.expectedPlan,
+        });
+        if (outcome !== 'OK') throw accountPlanRefusal(outcome, parsed.plan);
+        return { success: true };
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error', code: 'UNKNOWN' } satisfies AdminActionResult;
+        return adminActionFailure(error, 'user_plan_change');
     }
 }

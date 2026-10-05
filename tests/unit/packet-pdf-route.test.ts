@@ -4,6 +4,8 @@ const { createPacketPdfAttachmentForPublicTokenMock } = vi.hoisted(() => ({
     createPacketPdfAttachmentForPublicTokenMock: vi.fn(),
 }));
 
+// Operational observations are best-effort and covered in ops-instrumentation.test.ts.
+vi.mock('@/lib/ops/events');
 vi.mock('@/lib/pdf/packet-attachment', () => ({
     createPacketPdfAttachmentForPublicToken: createPacketPdfAttachmentForPublicTokenMock,
 }));

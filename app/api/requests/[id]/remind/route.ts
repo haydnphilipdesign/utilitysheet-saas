@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getRequestById, getOrCreateAccount, getBrandProfile, createEventLog } from '@/lib/neon/queries';
-import { sql } from '@/lib/neon/db';
+import { getRequestById, getOrCreateAccount } from '@/lib/neon/queries';
+import { REMINDER_COOLDOWN_SECONDS } from '@/lib/neon/queries/reminder-operations';
+import { DatabaseUnavailableError, isMissingRelationError } from '@/lib/neon/statements';
 import { stackServerApp } from '@/lib/stack/server';
-import { sendSellerReminderEmail } from '@/lib/email/email-service';
+import { executeSellerReminder, prepareSellerReminder } from '@/lib/reminders/seller-reminder';
 import { reminderRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
 import { canAccessOwnedOrActiveOrganizationResource } from '@/lib/auth/organization-access';
-
-const REMINDER_COOLDOWN_MS = 10 * 60 * 1000;
 
 export async function POST(
     request: Request,
@@ -61,80 +60,89 @@ export async function POST(
             );
         }
 
-        if (sql) {
-            const latestReminder = await sql`
-                SELECT created_at
-                FROM event_logs
-                WHERE request_id = ${requestId}
-                  AND event_type = 'reminder_sent'
-                ORDER BY created_at DESC
-                LIMIT 1
-            `;
-            const mostRecent = latestReminder[0]?.created_at ? new Date(latestReminder[0].created_at as string) : null;
-            if (mostRecent && Number.isFinite(mostRecent.getTime())) {
-                const elapsedMs = Date.now() - mostRecent.getTime();
-                if (elapsedMs < REMINDER_COOLDOWN_MS) {
-                    const retryAfter = Math.ceil((REMINDER_COOLDOWN_MS - elapsedMs) / 1000);
-                    return NextResponse.json(
-                        {
-                            error: 'Reminder recently sent. Please wait before sending another reminder.',
-                            code: 'REMINDER_COOLDOWN_ACTIVE',
-                            retryAfterSeconds: retryAfter,
-                        },
-                        {
-                            status: 429,
-                            headers: {
-                                ...getRateLimitHeaders(rateLimitResult),
-                                'Retry-After': retryAfter.toString(),
-                            },
-                        }
-                    );
-                }
+        // Same claim, cooldown and outcome record as Admin reminders, so the two
+        // paths cannot double-send. See lib/reminders/seller-reminder.ts.
+        const prepared = await prepareSellerReminder({
+            requestId,
+            adminPolicy: false,
+            request: requestData,
+            fallbackAgentName: account.full_name || user.displayName || undefined,
+        });
+        if (!prepared.ok) {
+            return NextResponse.json({ error: 'Seller email is required to send a reminder' }, { status: 400 });
+        }
+
+        const headers = getRateLimitHeaders(rateLimitResult);
+        let result: Awaited<ReturnType<typeof executeSellerReminder>>;
+        try {
+            result = await executeSellerReminder({
+                operationId: crypto.randomUUID(),
+                prepared: prepared.prepared,
+                actor: {
+                    type: 'agent',
+                    accountId: account.id,
+                    ipAddress,
+                    userAgent: request.headers.get('user-agent') || null,
+                },
+            });
+        } catch (error) {
+            if (isMissingRelationError(error) || error instanceof DatabaseUnavailableError) {
+                // Fail closed: without the operation record a double send cannot be prevented.
+                return NextResponse.json(
+                    { error: 'Temporarily unavailable. Please try again shortly.' },
+                    { status: 503 }
+                );
             }
+            throw error;
         }
 
-        // Get agent name for the email
-        let agentName: string | undefined;
-        let brandProfile = null;
-        if (requestData.brand_profile_id) {
-            brandProfile = await getBrandProfile(requestData.brand_profile_id);
-            agentName = brandProfile?.contact_name || undefined;
+        if (result.status === 'accepted' || result.status === 'accepted_unrecorded') {
+            return NextResponse.json({ success: true }, { headers });
         }
 
-        if (!agentName) {
-            agentName = account.full_name || user.displayName || undefined;
+        if (result.status === 'blocked' && result.code === 'COOLDOWN') {
+            const retryAfter = result.retryAfterSeconds ?? REMINDER_COOLDOWN_SECONDS;
+            return NextResponse.json(
+                {
+                    error: 'Reminder recently sent. Please wait before sending another reminder.',
+                    code: 'REMINDER_COOLDOWN_ACTIVE',
+                    retryAfterSeconds: retryAfter,
+                },
+                { status: 429, headers: { ...headers, 'Retry-After': retryAfter.toString() } }
+            );
         }
 
-        const result = await sendSellerReminderEmail({
-            sellerEmail: requestData.seller_email,
-            sellerName: requestData.seller_name || undefined,
-            propertyAddress: requestData.property_address,
-            closingDate: requestData.closing_date || undefined,
-            agentName,
-            brandProfile: brandProfile || undefined,
-            sellerToken: requestData.seller_token || requestData.public_token,
-        });
-
-        if (!result.success) {
-            return NextResponse.json({ error: result.error || 'Failed to send reminder' }, { status: 500 });
+        if (result.status === 'blocked' && (result.code === 'IN_FLIGHT' || result.code === 'UNRESOLVED')) {
+            return NextResponse.json(
+                {
+                    error: 'A reminder for this request is already being sent or was just attempted. Please wait before sending another.',
+                    code: result.code === 'IN_FLIGHT' ? 'REMINDER_IN_PROGRESS' : 'REMINDER_OUTCOME_PENDING',
+                },
+                { status: 409, headers }
+            );
         }
 
-        const userAgent = request.headers.get('user-agent') || null;
-        await createEventLog({
-            requestId: requestData.id,
-            eventType: 'reminder_sent',
-            eventData: {
-                actor: 'agent',
-                channel: 'email',
-            },
-            ipAddress,
-            userAgent,
-        });
+        if (result.status === 'blocked' && result.code === 'RECIPIENT_CHANGED') {
+            return NextResponse.json(
+                { error: 'The seller email changed. Refresh and try again.', code: 'REMINDER_RECIPIENT_CHANGED' },
+                { status: 409, headers }
+            );
+        }
 
-        return NextResponse.json({ success: true }, { headers: getRateLimitHeaders(rateLimitResult) });
+        if (result.status === 'unknown') {
+            return NextResponse.json(
+                {
+                    error: 'We could not confirm whether the reminder was sent. Please wait before trying again.',
+                    code: 'REMINDER_OUTCOME_UNKNOWN',
+                },
+                { status: 502, headers }
+            );
+        }
+
+        // Definitive provider rejection or a request that became ineligible. Provider detail stays in server logs.
+        return NextResponse.json({ error: 'Failed to send reminder' }, { status: 500, headers });
     } catch (error) {
-        console.error('Error sending reminder:', error);
+        console.error('Error sending reminder:', error instanceof Error ? error.name : 'unknown');
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
-

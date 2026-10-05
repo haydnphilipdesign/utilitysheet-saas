@@ -1,215 +1,329 @@
 'use server';
 
-import { sendSellerReminderEmail } from '@/lib/email/email-service';
-import { sql } from '@/lib/neon/db';
-import { createEventLog, getBrandProfile, getRequestById, updateRequestStatus } from '@/lib/neon/queries';
+import { getUserById, requireAdmin } from '@/lib/admin';
 import {
-    assertAdminActionReason,
-    assertAdminWritesEnabled,
-    createAuditLogWithContext,
-    getRequestContext,
-    requireAdmin,
-} from '@/lib/admin';
-import type { RequestStatus } from '@/types';
+    AdminActionRefusal,
+    STALE_EDIT_MESSAGE,
+    adminActionFailure,
+    beginAdminWrite,
+    type AdminActionFailure,
+} from '@/lib/admin/action-guard';
+import { requestSellerRefusal, requestStatusRefusal } from '@/lib/admin/refusals';
+import { getRequestById } from '@/lib/neon/queries';
+import { correctRequestStatus, updateRequestSellerContact } from '@/lib/neon/queries/admin-writes';
+import {
+    REMINDER_COOLDOWN_SECONDS,
+    REMINDER_RETRY_WINDOW_SECONDS,
+    REMINDER_UNKNOWN_BLOCK_SECONDS,
+    finalizeReminderAccepted,
+    getReminderHistory,
+    getReminderOperation,
+    resolveReminderNotSent,
+    type ReminderOperationRow,
+} from '@/lib/neon/queries/reminder-operations';
+import { isMissingRelationError } from '@/lib/neon/statements';
+import {
+    REMINDER_INELIGIBLE_MESSAGES,
+    executeSellerReminder,
+    prepareSellerReminder,
+} from '@/lib/reminders/seller-reminder';
+import {
+    adminReminderPreviewSchema,
+    adminReminderResolveSchema,
+    adminReminderSendSchema,
+    adminRequestSellerSchema,
+    adminRequestStatusSchema,
+} from '@/lib/validation/admin-schemas';
 
-export async function updateRequestStatusAdminAction(requestId: string, status: RequestStatus, reason: string) {
+type AdminActionResult = { success: true } | AdminActionFailure;
+
+/**
+ * Support-only status correction. It never performs a submission: metering,
+ * quota, referral credits, completion email and packet generation are untouched.
+ */
+export async function updateRequestStatusAdminAction(input: {
+    requestId: string;
+    status: string;
+    expectedStatus: string;
+    reason: string;
+}): Promise<AdminActionResult> {
     try {
-        const { account } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(reason);
+        const { actor } = await beginAdminWrite();
+        const parsed = adminRequestStatusSchema.parse(input);
 
-        const before = await getRequestById(requestId, { includeDeleted: true });
-        if (!before) {
-            return { success: false, error: 'Request not found' };
-        }
-
-        const previousStatus = before.status;
-        const updated = await updateRequestStatus(requestId, status);
-        if (!updated) {
-            return { success: false, error: 'Failed to update request status' };
-        }
-
-        await createAuditLogWithContext({
-            adminId: account.id,
-            targetUserId: before.account_id,
-            action: 'request_status_changed',
-            metadata: {
-                reason,
-                requestId,
-                previousStatus,
-                newStatus: status,
-                propertyAddress: before.property_address,
-            },
+        const { outcome } = await correctRequestStatus({
+            actor,
+            reason: parsed.reason,
+            requestId: parsed.requestId,
+            nextStatus: parsed.status,
+            expectedStatus: parsed.expectedStatus,
         });
-
-        const { ipAddress, userAgent } = await getRequestContext();
-        await createEventLog({
-            requestId,
-            eventType: 'admin_request_status_changed',
-            eventData: {
-                actor: 'admin',
-                adminId: account.id,
-                previousStatus,
-                newStatus: status,
-                reason,
-            },
-            ipAddress,
-            userAgent,
-        });
-
+        if (outcome !== 'OK') throw requestStatusRefusal(outcome);
         return { success: true };
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        return adminActionFailure(error, 'request_status_correction');
     }
 }
 
-export async function updateRequestSellerAdminAction(
-    requestId: string,
-    data: { sellerName?: string; sellerEmail?: string; sellerPhone?: string },
-    reason: string
-) {
+type SellerContactInput = { sellerName?: string | null; sellerEmail?: string | null; sellerPhone?: string | null };
+
+export async function updateRequestSellerAdminAction(input: {
+    requestId: string;
+    seller: SellerContactInput;
+    expected: SellerContactInput;
+    reason: string;
+}): Promise<AdminActionResult> {
     try {
-        const { account } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(reason);
+        const { actor } = await beginAdminWrite();
+        const parsed = adminRequestSellerSchema.parse(input);
 
-        if (!sql) {
-            return { success: false, error: 'Database not configured' };
-        }
-
-        const before = await getRequestById(requestId, { includeDeleted: true });
-        if (!before) {
-            return { success: false, error: 'Request not found' };
-        }
-
-        const sellerName = data.sellerName?.trim() || null;
-        const sellerEmail = data.sellerEmail?.trim() || null;
-        const sellerPhone = data.sellerPhone?.trim() || null;
-
-        const result = await sql`
-            UPDATE requests
-            SET
-                seller_name = ${sellerName},
-                seller_email = ${sellerEmail},
-                seller_phone = ${sellerPhone},
-                last_activity_at = NOW()
-            WHERE id = ${requestId}
-            RETURNING *
-        `;
-
-        const after = result[0];
-        if (!after) {
-            return { success: false, error: 'Failed to update request' };
-        }
-
-        await createAuditLogWithContext({
-            adminId: account.id,
-            targetUserId: before.account_id,
-            action: 'request_seller_updated',
-            metadata: {
-                reason,
-                requestId,
-                before: {
-                    seller_name: before.seller_name,
-                    seller_email: before.seller_email,
-                    seller_phone: before.seller_phone,
-                },
-                after: {
-                    seller_name: after.seller_name,
-                    seller_email: after.seller_email,
-                    seller_phone: after.seller_phone,
-                },
-                propertyAddress: before.property_address,
-            },
+        const { outcome } = await updateRequestSellerContact({
+            actor,
+            reason: parsed.reason,
+            requestId: parsed.requestId,
+            seller: parsed.seller,
+            expected: parsed.expected,
         });
-
-        const { ipAddress, userAgent } = await getRequestContext();
-        await createEventLog({
-            requestId,
-            eventType: 'admin_request_seller_updated',
-            eventData: {
-                actor: 'admin',
-                adminId: account.id,
-                reason,
-            },
-            ipAddress,
-            userAgent,
-        });
-
+        if (outcome !== 'OK') throw requestSellerRefusal(outcome);
         return { success: true };
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        return adminActionFailure(error, 'request_seller_update');
     }
 }
 
-export async function sendSellerReminderAdminAction(requestId: string, reason: string) {
+const REMINDER_MIGRATION_PENDING =
+    'Reminder tracking is not available yet (database migration pending). No reminder was sent.';
+
+export type SellerReminderPreview = {
+    eligible: boolean;
+    ineligibleReason: string | null;
+    recipient: string | null;
+    from: string | null;
+    replyTo: string | null;
+    subject: string | null;
+    /** Exact HTML that will be sent. Rendered in a sandboxed frame; never stored. */
+    html: string | null;
+    fingerprint: string | null;
+    lastSentAt: string | null;
+    cooldownSecondsRemaining: number;
+    /** An operation whose outcome must be settled before a fresh reminder. */
+    unresolved: (Pick<ReminderOperationRow, 'id' | 'state' | 'createdAt' | 'failureCode'> & { canRetry: boolean }) | null;
+    recent: Array<Pick<ReminderOperationRow, 'id' | 'state' | 'actorType' | 'createdAt' | 'deliveryStatus' | 'failureCode'>>;
+};
+
+async function loadOwner(requestId: string) {
+    const request = await getRequestById(requestId, { includeDeleted: true });
+    return request ? getUserById(request.account_id) : null;
+}
+
+/** Read-only: renders the reminder exactly as it would be sent, plus recent history. */
+export async function getSellerReminderPreviewAdminAction(
+    requestId: string
+): Promise<{ success: true; preview: SellerReminderPreview } | AdminActionFailure> {
     try {
-        const { account, user } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(reason);
+        await requireAdmin();
+        const parsed = adminReminderPreviewSchema.parse({ requestId });
 
-        const requestData = await getRequestById(requestId, { includeDeleted: true });
-        if (!requestData) {
-            return { success: false, error: 'Request not found' };
-        }
-
-        if (!requestData.seller_email) {
-            return { success: false, error: 'Seller email is required to send a reminder' };
-        }
-
-        let agentName: string | undefined;
-        let brandProfile = null;
-        if (requestData.brand_profile_id) {
-            brandProfile = await getBrandProfile(requestData.brand_profile_id);
-            agentName = brandProfile?.contact_name || undefined;
-        }
-
-        if (!agentName) {
-            agentName = account.full_name || user.displayName || account.email;
-        }
-
-        const result = await sendSellerReminderEmail({
-            sellerEmail: requestData.seller_email,
-            sellerName: requestData.seller_name || undefined,
-            propertyAddress: requestData.property_address,
-            closingDate: requestData.closing_date || undefined,
-            agentName,
-            brandProfile: brandProfile || undefined,
-            sellerToken: requestData.seller_token || requestData.public_token,
+        const prepared = await prepareSellerReminder({
+            requestId: parsed.requestId,
+            adminPolicy: true,
+            owner: await loadOwner(parsed.requestId),
         });
-
-        if (!result.success) {
-            return { success: false, error: result.error || 'Failed to send reminder' };
+        if (!prepared.ok && prepared.code === 'NOT_FOUND') {
+            throw new AdminActionRefusal('NOT_FOUND', 'Request not found');
         }
 
-        await createAuditLogWithContext({
-            adminId: account.id,
-            targetUserId: requestData.account_id,
-            action: 'request_reminder_sent',
-            metadata: {
-                reason,
-                requestId,
-                sellerEmail: requestData.seller_email,
-                propertyAddress: requestData.property_address,
+        let history: Awaited<ReturnType<typeof getReminderHistory>>;
+        try {
+            history = await getReminderHistory({ requestId: parsed.requestId });
+        } catch (error) {
+            if (isMissingRelationError(error)) throw new AdminActionRefusal('MIGRATION_PENDING', REMINDER_MIGRATION_PENDING);
+            throw error;
+        }
+
+        const now = Date.now();
+        const lastSentMs = history.lastSentAt ? Date.parse(history.lastSentAt) : NaN;
+        const cooldownSecondsRemaining = Number.isFinite(lastSentMs)
+            ? Math.max(0, Math.ceil((lastSentMs + REMINDER_COOLDOWN_SECONDS * 1000 - now) / 1000))
+            : 0;
+        const email = prepared.ok ? prepared.prepared.email : null;
+        const fingerprint = prepared.ok ? prepared.prepared.fingerprint : null;
+        const open = history.operations.find((operation) => operation.state === 'pending' || operation.state === 'unknown');
+        const openAgeMs = open ? now - Date.parse(open.createdAt) : 0;
+        const unresolved = open && (open.state === 'pending' || openAgeMs < REMINDER_UNKNOWN_BLOCK_SECONDS * 1000)
+            ? {
+                id: open.id,
+                state: open.state,
+                createdAt: open.createdAt,
+                failureCode: open.failureCode,
+                // Same payload inside the provider idempotency window: the same key can be retried safely.
+                canRetry: fingerprint === open.payloadFingerprint && openAgeMs < REMINDER_RETRY_WINDOW_SECONDS * 1000,
+            }
+            : null;
+
+        return {
+            success: true,
+            preview: {
+                eligible: prepared.ok,
+                ineligibleReason: prepared.ok ? null : REMINDER_INELIGIBLE_MESSAGES[prepared.code],
+                recipient: email?.to ?? null,
+                from: email?.from ?? null,
+                replyTo: email?.replyTo ?? null,
+                subject: email?.subject ?? null,
+                html: email?.html ?? null,
+                fingerprint,
+                lastSentAt: history.lastSentAt,
+                cooldownSecondsRemaining,
+                unresolved,
+                recent: history.operations.map(({ id, state, actorType, createdAt, deliveryStatus, failureCode }) => ({
+                    id, state, actorType, createdAt, deliveryStatus, failureCode,
+                })),
             },
-        });
+        };
+    } catch (error) {
+        return adminActionFailure(error, 'request_reminder_preview');
+    }
+}
 
-        const { ipAddress, userAgent } = await getRequestContext();
-        await createEventLog({
-            requestId,
-            eventType: 'reminder_sent',
-            eventData: {
-                actor: 'admin',
-                channel: 'email',
-                adminId: account.id,
-                reason,
-            },
-            ipAddress,
-            userAgent,
-        });
+export type SellerReminderSendResult =
+    | { success: true; state: 'accepted'; alreadyAccepted: boolean; message: string }
+    | { success: true; state: 'accepted_unrecorded'; message: string }
+    | AdminActionFailure;
 
+const BLOCKED_MESSAGES: Record<string, string> = {
+    NOT_FOUND: 'Request not found',
+    ACTOR_NOT_ADMIN: 'Admin access required',
+    REQUEST_DELETED: REMINDER_INELIGIBLE_MESSAGES.REQUEST_DELETED,
+    REQUEST_SUBMITTED: REMINDER_INELIGIBLE_MESSAGES.REQUEST_SUBMITTED,
+    OWNER_INELIGIBLE: REMINDER_INELIGIBLE_MESSAGES.OWNER_INELIGIBLE,
+    RECIPIENT_CHANGED: STALE_EDIT_MESSAGE,
+    PAYLOAD_CHANGED:
+        'The message no longer matches what was originally attempted, so that attempt cannot be retried safely. Verify it with the email provider, settle it, then review a new reminder.',
+    RETRY_WINDOW_EXPIRED:
+        'This attempt is too old to retry safely. Verify it with the email provider and settle it before sending a new reminder.',
+    OPERATION_FAILED: 'This attempt already failed. Close this dialog and review a new reminder.',
+    OPERATION_MISMATCH: 'This operation belongs to a different request. Close this dialog and review again.',
+    IN_FLIGHT: 'A reminder for this request is being sent right now. Wait a minute and refresh before trying again.',
+    UNRESOLVED:
+        'An earlier reminder has an unknown outcome. Verify it with the email provider and settle it before sending another.',
+    COOLDOWN: 'A reminder was sent recently. Wait for the cooldown before sending another.',
+};
+
+/**
+ * Sends the reviewed reminder. The preview fingerprint must still match, the
+ * attempt is audited before the provider is contacted, and resubmitting the
+ * same `operationId` resumes that operation instead of sending again.
+ */
+export async function sendSellerReminderAdminAction(input: {
+    requestId: string;
+    operationId: string;
+    reason: string;
+    confirmed: boolean;
+    expectedFingerprint: string;
+}): Promise<SellerReminderSendResult> {
+    try {
+        const { actor } = await beginAdminWrite();
+        const parsed = adminReminderSendSchema.parse(input);
+
+        const prepared = await prepareSellerReminder({
+            requestId: parsed.requestId,
+            adminPolicy: true,
+            owner: await loadOwner(parsed.requestId),
+        });
+        if (!prepared.ok) throw new AdminActionRefusal(prepared.code, REMINDER_INELIGIBLE_MESSAGES[prepared.code]);
+        if (prepared.prepared.fingerprint !== parsed.expectedFingerprint) {
+            throw new AdminActionRefusal(
+                'STALE_PREVIEW',
+                'The recipient, branding or message changed after this preview was shown. Nothing was sent. Review the updated preview before sending.'
+            );
+        }
+
+        let result: Awaited<ReturnType<typeof executeSellerReminder>>;
+        try {
+            result = await executeSellerReminder({
+                operationId: parsed.operationId,
+                prepared: prepared.prepared,
+                actor: { type: 'admin', admin: actor, reason: parsed.reason },
+            });
+        } catch (error) {
+            if (isMissingRelationError(error)) throw new AdminActionRefusal('MIGRATION_PENDING', REMINDER_MIGRATION_PENDING);
+            throw error;
+        }
+
+        switch (result.status) {
+            case 'accepted':
+                return {
+                    success: true,
+                    state: 'accepted',
+                    alreadyAccepted: result.alreadyAccepted,
+                    message: result.alreadyAccepted
+                        ? 'This reminder was already accepted by the email provider. Nothing was sent again.'
+                        : 'The email provider accepted the reminder. Acceptance is not proof of delivery.',
+                };
+            case 'accepted_unrecorded':
+                return {
+                    success: true,
+                    state: 'accepted_unrecorded',
+                    message:
+                        'The email provider accepted the reminder, but recording it failed. Do not start a new reminder: retry this one to finish recording it. It cannot be sent twice.',
+                };
+            case 'failed':
+                throw new AdminActionRefusal(
+                    'REMINDER_REJECTED',
+                    'The email provider rejected the reminder, so it was not sent. Reference code: ' + result.code + '.'
+                );
+            case 'unknown':
+                throw new AdminActionRefusal(
+                    'REMINDER_OUTCOME_UNKNOWN',
+                    'The email provider did not confirm the outcome, so the reminder may or may not have been sent. Retry this same operation (it cannot send twice), or verify it with the provider and settle it.'
+                );
+            case 'blocked':
+                throw new AdminActionRefusal(
+                    result.code === 'ACTOR_NOT_ADMIN' ? 'UNAUTHORIZED' : result.code,
+                    BLOCKED_MESSAGES[result.code] || 'The reminder could not be sent.'
+                );
+        }
+    } catch (error) {
+        return adminActionFailure(error, 'request_reminder_send');
+    }
+}
+
+/**
+ * Settles a reminder whose outcome is unknown after the operator has checked
+ * the email provider. `accepted` records the single timeline event; `failed`
+ * frees the request for a new reviewed reminder. Either way it is audited.
+ */
+export async function resolveSellerReminderAdminAction(input: {
+    operationId: string;
+    resolution: string;
+    reason: string;
+    confirmed: boolean;
+}): Promise<AdminActionResult> {
+    try {
+        const { actor } = await beginAdminWrite();
+        const parsed = adminReminderResolveSchema.parse(input);
+
+        const operation = await getReminderOperation({ operationId: parsed.operationId });
+        if (!operation) throw new AdminActionRefusal('NOT_FOUND', 'Reminder operation not found');
+
+        const settled = parsed.resolution === 'accepted'
+            ? (await finalizeReminderAccepted({
+                operationId: parsed.operationId,
+                providerMessageId: null,
+                admin: actor,
+                auditAction: 'request_reminder_resolved',
+                auditReason: parsed.reason,
+                verifiedManually: true,
+                ipAddress: actor.ipAddress,
+                userAgent: actor.userAgent,
+            })).finalized
+            : (await resolveReminderNotSent({ operationId: parsed.operationId, admin: actor, reason: parsed.reason })).resolved;
+
+        if (!settled) {
+            throw new AdminActionRefusal('STALE', 'This reminder was already settled. Refresh to see its current state.');
+        }
         return { success: true };
     } catch (error) {
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        return adminActionFailure(error, 'request_reminder_resolve');
     }
 }

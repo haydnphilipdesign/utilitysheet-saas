@@ -15,6 +15,7 @@ const adminNavigationSections = [
         name: 'Operations',
         items: [
             { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+            { name: 'Issues & Triage', href: '/admin/operations', icon: Zap },
             { name: 'Requests', href: '/admin/requests', icon: Inbox },
             { name: 'Seller Progress', href: '/admin/abandonment', icon: TrendingDown },
         ],

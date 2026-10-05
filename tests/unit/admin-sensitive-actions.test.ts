@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ProductUpdate } from '@/types';
 
 const mocks = vi.hoisted(() => ({
     requireAdmin: vi.fn(),
@@ -14,9 +13,6 @@ const mocks = vi.hoisted(() => ({
     sendTestimonialOutreachEmail: vi.fn(),
     sendTestimonialOutreachTestEmail: vi.fn(),
     buildTestimonialOutreachEmail: vi.fn(),
-    createProductUpdate: vi.fn(),
-    publishProductUpdate: vi.fn(),
-    deleteProductUpdate: vi.fn(),
 }));
 
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
@@ -42,21 +38,10 @@ vi.mock('@/lib/admin/testimonial-outreach-content', () => ({
     buildTestimonialOutreachEmail: mocks.buildTestimonialOutreachEmail,
 }));
 
-vi.mock('@/lib/neon/queries/updates', () => ({
-    createProductUpdate: mocks.createProductUpdate,
-    publishProductUpdate: mocks.publishProductUpdate,
-    deleteProductUpdate: mocks.deleteProductUpdate,
-}));
-
 import {
     sendTestimonialRequestAdminAction,
     sendTestimonialRequestTestToSelfAdminAction,
 } from '@/app/(admin)/admin/testimonial-candidates/actions';
-import {
-    createProductUpdateAdminAction,
-    deleteProductUpdateAdminAction,
-    publishProductUpdateAdminAction,
-} from '@/app/(admin)/admin/updates/actions';
 
 const adminAccount = {
     id: '11111111-1111-4111-8111-111111111111',
@@ -76,17 +61,7 @@ const recipient = {
     businessName: 'North Star TC',
 };
 
-const update: ProductUpdate = {
-    id: '33333333-3333-4333-8333-333333333333',
-    title: 'Faster packet handoff',
-    body: 'Packet sharing now opens more quickly.',
-    category: 'feature',
-    is_published: false,
-    published_at: '2026-07-17T12:00:00.000Z',
-    created_by: adminAccount.id,
-    created_at: '2026-07-17T12:00:00.000Z',
-    updated_at: '2026-07-17T12:00:00.000Z',
-};
+// Product Update writes are covered in admin-support-actions.test.ts and admin-writes.test.ts.
 
 describe('sensitive Admin server actions', () => {
     beforeEach(() => {
@@ -106,35 +81,12 @@ describe('sensitive Admin server actions', () => {
         mocks.hasSuccessfulTestimonialOutreach.mockResolvedValue(false);
         mocks.sendTestimonialOutreachEmail.mockResolvedValue({ success: true, resendEmailId: 'email_123' });
         mocks.sendTestimonialOutreachTestEmail.mockResolvedValue({ success: true, resendEmailId: 'email_test' });
-        mocks.createProductUpdate.mockResolvedValue(update);
-        mocks.publishProductUpdate.mockResolvedValue({
-            ...update,
-            is_published: true,
-            published_at: '2026-07-17T13:00:00.000Z',
-        });
-        mocks.deleteProductUpdate.mockResolvedValue(update);
         mocks.createAuditLogWithContext.mockResolvedValue({ id: 'audit_1' });
         mocks.buildTestimonialOutreachEmail.mockReturnValue({
             subject: 'Quick UtilitySheet question',
             text: 'Reviewed outreach body',
             html: '<p>Reviewed outreach body</p>',
         });
-    });
-
-    it('keeps the Admin write safety catch authoritative on the server', async () => {
-        mocks.assertAdminWritesEnabled.mockImplementationOnce(() => {
-            throw new Error('Admin writes are disabled via ADMIN_WRITES_DISABLED=true');
-        });
-
-        const result = await createProductUpdateAdminAction({
-            title: update.title,
-            body: update.body,
-            category: update.category,
-            reason: 'Prepare release notes for review',
-        });
-
-        expect(result).toEqual({ success: false, error: 'Admin writes are disabled via ADMIN_WRITES_DISABLED=true' });
-        expect(mocks.createProductUpdate).not.toHaveBeenCalled();
     });
 
     it('requires reason and explicit confirmation before testimonial outreach', async () => {
@@ -208,67 +160,6 @@ describe('sensitive Admin server actions', () => {
         expect(mocks.createAuditLogWithContext).toHaveBeenCalledWith(expect.objectContaining({
             action: 'testimonial_test_sent',
             metadata: expect.objectContaining({ reason: 'Verify the current outreach rendering' }),
-        }));
-    });
-
-    it('creates Product Updates as drafts regardless of client publication input', async () => {
-        const result = await createProductUpdateAdminAction({
-            title: update.title,
-            body: update.body,
-            category: update.category,
-            reason: 'Prepare release notes for review',
-        });
-
-        expect(result).toEqual({ success: true, update });
-        expect(mocks.createProductUpdate).toHaveBeenCalledWith({
-            title: update.title,
-            body: update.body,
-            category: update.category,
-            isPublished: false,
-            createdBy: adminAccount.id,
-        });
-        expect(mocks.createAuditLogWithContext).toHaveBeenCalledWith(expect.objectContaining({
-            action: 'product_update_created',
-            metadata: expect.objectContaining({
-                reason: 'Prepare release notes for review',
-                is_published: false,
-            }),
-        }));
-    });
-
-    it('requires confirmation and audits publication separately', async () => {
-        const result = await publishProductUpdateAdminAction(update.id, {
-            reason: 'Release verified and ready for customers',
-            confirmed: true,
-        });
-
-        expect(result.success).toBe(true);
-        expect(mocks.publishProductUpdate).toHaveBeenCalledWith(update.id);
-        expect(mocks.createAuditLogWithContext).toHaveBeenCalledWith(expect.objectContaining({
-            action: 'product_update_published',
-            metadata: expect.objectContaining({
-                updateId: update.id,
-                title: update.title,
-                reason: 'Release verified and ready for customers',
-            }),
-        }));
-    });
-
-    it('requires confirmation and audits the deleted update identity', async () => {
-        const result = await deleteProductUpdateAdminAction(update.id, {
-            reason: 'Duplicate draft created in error',
-            confirmed: true,
-        });
-
-        expect(result.success).toBe(true);
-        expect(mocks.createAuditLogWithContext).toHaveBeenCalledWith(expect.objectContaining({
-            action: 'product_update_deleted',
-            metadata: expect.objectContaining({
-                updateId: update.id,
-                title: update.title,
-                reason: 'Duplicate draft created in error',
-                wasPublished: false,
-            }),
         }));
     });
 });

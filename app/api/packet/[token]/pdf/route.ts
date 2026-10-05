@@ -3,6 +3,7 @@ import { PACKET_LOCKED_MESSAGE } from '@/lib/packet/packet-data';
 import { createPacketPdfAttachmentForPublicToken } from '@/lib/pdf/packet-attachment';
 import { packetPdfRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/network/client-ip';
+import { errorNameOf, recordOperationalEvent, recordOperationalSuccess } from '@/lib/ops/events';
 
 export const runtime = 'nodejs';
 
@@ -35,6 +36,7 @@ export async function GET(
         const attachmentResult = await createPacketPdfAttachmentForPublicToken(token);
 
         if (attachmentResult.status === 'attached') {
+            await recordOperationalSuccess({ category: 'pdf', code: 'generation_failed' });
             const safeFilename = attachmentResult.attachment.filename.replaceAll('"', '');
             return new NextResponse(new Uint8Array(attachmentResult.attachment.content), {
                 status: 200,
@@ -64,11 +66,24 @@ export async function GET(
             );
         }
 
+        // Invalid tokens, locked packets and rate limits above are expected outcomes, not incidents.
+        await recordOperationalEvent({
+            category: 'pdf',
+            code: 'generation_failed',
+            outcome: 'failure',
+            metadata: { reasonCode: 'renderer_failed' },
+        });
         return NextResponse.json(
             { error: 'Failed to generate PDF' },
             { status: 500, headers: getRateLimitHeaders(rateLimitResult) }
         );
     } catch (error) {
+        await recordOperationalEvent({
+            category: 'pdf',
+            code: 'generation_failed',
+            outcome: 'failure',
+            metadata: { reasonCode: 'route_exception', errorName: errorNameOf(error) },
+        });
         console.error('Error generating packet PDF:', error);
         return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
     }

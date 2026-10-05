@@ -10,6 +10,7 @@ import {
     updateOrganizationSubscription,
 } from '@/lib/neon/queries';
 import { applyEarnedReferralCredits } from '@/lib/referrals/referral-credit-service';
+import { errorNameOf, recordOperationalEvent, recordOperationalSuccess } from '@/lib/ops/events';
 import Stripe from 'stripe';
 
 function isPaidStripeStatus(status: Stripe.Subscription.Status) {
@@ -123,6 +124,8 @@ async function syncAccountSubscription(accountId: string, subscription: Stripe.S
 }
 
 export async function POST(request: Request) {
+    // Set only after the signature is verified, so unverified requests never become billing incidents.
+    let verifiedEvent: { id: string; type: string } | null = null;
     try {
         if (!stripe) {
             return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
@@ -143,6 +146,7 @@ export async function POST(request: Request) {
             console.error('Webhook signature verification failed:', message);
             return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
         }
+        verifiedEvent = { id: event.id, type: event.type };
 
         switch (event.type) {
             case 'checkout.session.completed': {
@@ -299,8 +303,25 @@ export async function POST(request: Request) {
                 console.log(`Unhandled event type: ${event.type}`);
         }
 
+        // Recovery is linked to an earlier failure by Stripe event identity.
+        await recordOperationalSuccess({
+            category: 'billing_webhook',
+            code: 'processing_failed',
+            providerEventId: event.id,
+            metadata: { eventType: event.type },
+        });
         return NextResponse.json({ received: true });
     } catch (error) {
+        if (verifiedEvent) {
+            await recordOperationalEvent({
+                category: 'billing_webhook',
+                code: 'processing_failed',
+                outcome: 'failure',
+                severity: 'critical',
+                providerEventId: verifiedEvent.id,
+                metadata: { eventType: verifiedEvent.type, errorName: errorNameOf(error) },
+            });
+        }
         console.error('Webhook error:', error);
         return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
     }

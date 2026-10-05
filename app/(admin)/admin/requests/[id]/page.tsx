@@ -69,6 +69,8 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                     seller_phone: request.seller_phone,
                     seller_token: request.seller_token,
                     public_token: request.public_token,
+                    is_metered: Boolean(request.metered_at),
+                    is_deleted: Boolean(request.deleted_at),
                 }}
             />
 

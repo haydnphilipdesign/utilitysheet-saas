@@ -2,6 +2,7 @@
 
 ## Routes
 - `/admin` business totals, recent request and signup activity, standing backlogs, and request lifecycle
+- `/admin/operations` service issues, reminder email evidence, scheduled job status, customer follow-up and triage (nav label `Issues & Triage`)
 - `/admin/users` user search, account inspection, and audited controls
 - `/admin/requests` request search, lifecycle inspection, and audited support actions
 - `/admin/growth` activation funnel, acquisition sources, and packet referral instrumentation
@@ -23,11 +24,35 @@ labels intentionally differ from their URL (`Seller Progress` → `/admin/abando
 
 ## Overview and Growth Split
 
-`/admin` carries only what an operator checks daily: total customer accounts, paying accounts, total
+`/admin` carries only what an operator checks daily: total customer accounts, accounts with paid-plan access, total
 requests, seller submissions in the last 7 days, the newest requests and signups, the standing backlog
 chips, and the request lifecycle bar. Analysis that is consulted occasionally lives on `/admin/growth`:
 the full activation funnel, acquisition sources, and packet referral instrumentation. Adding a metric to
 `/admin` means removing one, or it belongs on `/admin/growth`.
+
+The backlog chips on `/admin` are headed **Customer follow-up backlog**. They are cumulative
+totals, not failures. Service problems and triage live on `/admin/operations`; no metric was added to
+the overview for them.
+
+### Paid-plan access is not paying customers
+
+The figure labelled **Paid-plan access** (overview, Growth, Users, Requested Questions) counts customer
+accounts with a Pro entitlement or an active workspace on Team. Complimentary overrides count, and
+every member of a Team workspace counts separately, so two Team members are two access accounts on one
+subscription. It is not a count of paying subscriptions and must not be used to derive revenue. Use
+Stripe for revenue. The internal names (`paid_accounts`, `plan=paying`) are unchanged.
+
+Account and workspace detail pages show the account entitlement and the workspace entitlement
+separately, plus a **Billing context** card from `lib/admin/billing-context.ts`:
+
+- It states what is stored and what that does not prove. A stored Stripe subscription ID is not proof
+  of an active, paid subscription.
+- A missing Stripe ID is not flagged for complimentary Pro or Team-managed accounts. Only stored data
+  that disagrees with itself is highlighted for review.
+- Stripe customer and subscription IDs link to the Stripe dashboard only when the ID is well formed
+  and the dashboard mode can be read from this environment's Stripe key prefix. Otherwise the ID is
+  shown as text. Nothing calls Stripe, and there is no MRR calculation or automatic repair. A live
+  Stripe comparison would be an optional later read-only integration.
 
 Business totals come from `lib/admin/operations-overview.ts`. Its `paid_accounts` predicate deliberately
 mirrors the `paid_accounts` predicate in `lib/admin/activation-funnel.ts` and the `plan=paying` list
@@ -123,9 +148,42 @@ also considers member count. The Team and personal/default workspace totals in t
 unfiltered and use the same subscription-status predicate as `billing`.
 
 ## Guardrails
-- Admin write actions require a **reason** (min 3 chars) and are recorded to `admin_audit_logs`.
-- Set `ADMIN_WRITES_DISABLED=true` to hard-disable admin write actions (useful as a “safety catch” in production).
-- Client confirmations and disabled buttons improve operator safety, but server actions remain authoritative for Admin authorization, reason validation, policy checks, audit logging, and the write safety catch.
+- Admin write actions require a **reason** (3 to 500 characters) and are recorded to `admin_audit_logs`.
+- Set `ADMIN_WRITES_DISABLED=true` to hard-disable admin write actions (useful as a "safety catch" in production).
+- Client confirmations and disabled buttons improve operator safety, but server actions remain authoritative for Admin authorization, input validation, policy checks, audit logging, and the write safety catch.
+
+### Write semantics
+
+Decision record: `.ai/decisions/2026-10-05-admin-atomic-writes-and-status-corrections.md`.
+
+- **Validated at the boundary.** Every Admin action parses its arguments with the Zod schemas in
+  `lib/validation/admin-schemas.ts` (IDs, enums, seller contact fields, reasons, confirmations).
+- **Atomic with evidence.** Each write in `lib/neon/queries/admin-writes.ts` is one statement that
+  changes the record and inserts its audit entry and any request timeline event. If the audit or
+  timeline insert fails, the change rolls back. A missing database is an explicit failure.
+- **Stale edits are refused.** Actions carry the value the operator saw (`expectedRole`,
+  `expectedPlan`, `expectedStatus`, the seller contact). If it no longer matches, nothing is saved and
+  the operator is told to refresh.
+- **Policy is enforced in the database statement**, including that the actor is still an admin,
+  self-protection, Team-managed entitlement, closing accounts and last-admin protection. Role changes
+  are serialized, so two admins demoting each other cannot both succeed.
+- **Blocked policy attempts are audited** with `blocked: true`. Stale edits, no-ops and missing
+  targets write nothing.
+- **Errors are safe.** Refusals have stable codes. Unexpected failures show a short reference and log
+  the detail server-side. A failed cache refresh after a commit is not reported as a failed write.
+
+| Entry point | Semantics |
+| --- | --- |
+| Demote, ban, unban | Atomic role change. Promotion to admin is disabled here. Refused for closing or closed accounts. |
+| Entitlement override | Atomic. Free and Pro only. Refused for Team-managed accounts. Never touches Stripe. |
+| Request status correction | Atomic, support-only. See below. |
+| Request seller contact | Atomic. Refused for deleted requests. Does not reset seller activity time. |
+| Seller reminder | Durable operation with shared cooldown. See below. |
+| Product Updates | Atomic draft creation, publication and deletion. |
+| Manual signup reconciliation | Reason and confirmation required. Attempt audited before, count-only outcome after. Not atomic across accounts, and says so. |
+| Testimonial outreach | Unchanged: own outreach log, resend guard and provider idempotency key. |
+| Triage (`/admin/operations`) | Atomic with audit, versioned. Never changes the source record. |
+| Impersonation | Disabled and not implemented. Must adopt the atomic pattern before it is ever enabled. |
 
 ## Customer Outreach
 
@@ -138,7 +196,7 @@ unfiltered and use the same subscription-status predicate as `billing`.
 
 - New Product Updates are always created as drafts and are not visible to customers until a separate publish action succeeds.
 - Draft creation, publication, and deletion each require an Admin reason and create a distinct `admin_audit_logs` entry.
-- Publication and deletion require an exact-content preview plus explicit confirmation. Publication is idempotent for already-published records; deletion returns the affected record for audit evidence.
+- Publication and deletion require an exact-content preview plus explicit confirmation. Each commits together with its audit entry. Publishing an already-published update is a truthful no-op with no second audit entry and no new publication time; deleting an already-deleted update reports that it was not found.
 - There is no reason-policy exception for Product Update writes.
 
 ## Audit Evidence
@@ -149,11 +207,91 @@ unfiltered and use the same subscription-status predicate as `billing`.
 
 ## Request Admin Actions
 On `/admin/requests/[id]`:
-- Change request status
+- Correct request status
 - Edit seller contact info
 - Send reminder email to seller
 
-Each action writes an audit log entry and also emits a request `event_logs` entry (for timeline visibility).
+Each action writes an audit log entry and a request `event_logs` entry in the same statement as the change. None of them is available for a deleted request.
+
+### Status corrections are not submissions
+
+`metered_at` is the only authority for a first seller submission. A correction changes the displayed
+`status` and nothing else: it never sets or clears `metered_at`, does not reset `last_activity_at`,
+and does not consume quota, award referral credit, send a completion email or generate a packet.
+
+| Request | Correction allowed |
+| --- | --- |
+| No recorded submission, Draft/Sent/In progress | Between Draft, Sent and In progress. Submitted cannot be chosen. |
+| Recorded submission, Submitted | None. Use submitted-sheet editing. |
+| Recorded submission, not Submitted | Restore to Submitted only. |
+| Submitted with no recorded submission | None. Test drives are submitted without metering, and some older records may look like this. Review by hand; nothing repairs them automatically. |
+| Deleted | None. |
+
+The dialog explains which case applies. The customer-facing status route is unchanged.
+
+### Seller reminders
+
+Decision record: `.ai/decisions/2026-10-05-seller-reminder-operations.md`.
+
+- The dialog shows the property, recipient, sender, reply-to, subject, the exact rendered message in
+  a sandboxed frame, the last reminder and recent attempts. It requires a reason and explicit
+  confirmation. If the recipient, branding or template changed after the preview was shown, nothing is
+  sent and the operator reviews again.
+- Admin reminders go only to requests that are not deleted, not submitted and have no recorded
+  submission, with a valid seller email and an owner who is not banned or closing. Drafts are
+  eligible. There is no override for an ineligible request.
+- A 10 minute cooldown per request is shared with the customer's own reminder button and enforced in
+  the database, including against simultaneous clicks from two sessions. There is no override.
+- Outcomes are distinct: **accepted by the provider** (not proof of delivery), **rejected, not sent**,
+  and **outcome unknown** (timeout or provider fault). An unknown outcome blocks new reminders for
+  that request for 24 hours, can be retried safely with the same provider key for 23 hours if the
+  message is unchanged, or can be settled by hand as sent or not sent after checking the provider.
+- If the provider accepted but recording failed, retrying the same attempt only completes the record.
+- Delivered, bounced and spam-complaint evidence appears only once the Resend delivery webhook is
+  registered. Reminders sent before this existed stay unknown.
+- The reminder names the owning account or its Branding Profile contact as the agent, not the Admin.
+- Requires `migrations-reminder-operations.sql`. Without it no reminder is sent and the dialog says so.
+
+## Operations: issues, evidence and triage
+
+`/admin/operations`. Decision record: `.ai/decisions/2026-10-05-operations-monitoring-and-triage.md`.
+Procedures: `docs/admin-operations-runbook.md`.
+
+- **Service issues**: unexpected packet PDF failures, verified billing webhook events that failed
+  processing, completion email send failures, reminder bounces/complaints/failures, reminders with an
+  unknown outcome, and scheduled jobs that failed, partly failed or are overdue. Each shows why it
+  exists, first and last occurrence, count, whether a later success was observed, and a next step.
+- **Evidence**: reminder email counts for 30 days, the three scheduled jobs, and a plain statement of
+  what the page can and cannot establish.
+- **Customer follow-up**: open requests with no seller activity for 7+ days and accounts that never
+  started. These are not failures. Totals are raw counts that triage never changes, and they link to
+  the existing filtered lists.
+- **Triage**: acknowledge, snooze, resolve or reopen with a reason and an optional private plain-text
+  note (maximum 1,000 characters; do not paste credentials or seller answers). Changes are audited
+  and versioned. Resolving does not claim the failure recovered. An expired snooze or a new failure
+  after resolution returns the item to the queue. A dismissed follow-up stays dismissed unless the
+  record becomes active and goes quiet again.
+- The page never renders a missing table or failed query as zero. It distinguishes not installed,
+  could not load, no observations yet, stale and genuinely quiet.
+- Expected outcomes are not incidents: invalid packet links, locked packets, rate limits and
+  unverified webhook signatures.
+
+Data sources (all additive; see the runbook's source table for blind spots):
+`operational_events`, `job_runs`, `ops_alert_state` (`migrations-operational-events.sql`),
+`reminder_operations` (`migrations-reminder-operations.sql`), `admin_triage_items`
+(`migrations-admin-triage.sql`). Metadata is an allowlist of short scalars; no tokens, seller answers,
+email bodies, provider payloads or raw exceptions are stored or shown.
+
+Limits that are deliberate:
+
+- It cannot detect a database or site outage, because it needs the database to load. That needs an
+  external uptime probe, which is documented but not provisioned.
+- Only reminder email has delivery evidence. Other email has none.
+- PDF failures are not tied to a request, because the route only has the private packet link.
+- Only the three jobs scheduled in `vercel.json` are monitored. The weekly summary is unscheduled and
+  is never reported overdue.
+- Alerts, the delivery webhook, the monitor schedule and retention pruning are all off until the
+  owner activates them (runbook section 5.5).
 
 ## Account Entitlement Overrides
 

@@ -13,6 +13,7 @@ import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { markAiSuggestionSelection } from '@/lib/neon/queries/ai-telemetry';
 import { buildSellerSubmittedEventSummary } from '@/lib/telemetry/seller-submission';
 import { scheduleReferralCreditAward } from '@/lib/referrals/award-referral-credit';
+import { errorNameOf, recordOperationalEvent, recordOperationalSuccess } from '@/lib/ops/events';
 import {
     filterAdvancedPacketDataByExclusions,
     getAdvancedModuleVisibleFieldKeys,
@@ -825,6 +826,22 @@ export async function POST(
                     )
                 );
 
+                // Best-effort observation of the completion email; it cannot affect the seller response.
+                const failedDeliveries = deliveryResults.filter(
+                    (result) => result.status === 'rejected' || !result.value.success
+                ).length;
+                if (failedDeliveries > 0) {
+                    await recordOperationalEvent({
+                        category: 'email',
+                        code: 'completion_send_failed',
+                        outcome: 'failure',
+                        requestId: requestData.id,
+                        metadata: { recipientCount: deliveryResults.length, failedCount: failedDeliveries },
+                    });
+                } else {
+                    await recordOperationalSuccess({ category: 'email', code: 'completion_send_failed' });
+                }
+
                 if (isTestDriveSubmission) {
                     const firstResult = deliveryResults[0];
                     const deliverySucceeded = firstResult?.status === 'fulfilled'
@@ -846,6 +863,13 @@ export async function POST(
                     });
                 }
             } catch (emailError) {
+                await recordOperationalEvent({
+                    category: 'email',
+                    code: 'completion_send_failed',
+                    outcome: 'failure',
+                    requestId: requestData.id,
+                    metadata: { reasonCode: 'route_exception', errorName: errorNameOf(emailError) },
+                });
                 console.error('Failed to send TC completion notification email:', emailError);
                 if (isTestDriveSubmission) {
                     await createEventLog({

@@ -404,10 +404,33 @@ export async function sendSellerNotificationEmail({
     }
 }
 
+export type SellerReminderEmail = {
+    from: string;
+    to: string;
+    subject: string;
+    html: string;
+    replyTo: string | null;
+};
+
+export type SellerReminderSendResult = {
+    success: boolean;
+    error?: string;
+    /** Provider message ID when the provider accepted the message. */
+    messageId?: string;
+    /** Provider error name for a returned (not thrown) rejection. */
+    errorCode?: string;
+    /** True when the request threw before any provider response (timeout, network, configuration). */
+    threw?: boolean;
+};
+
+const SELLER_REMINDER_FROM = 'UtilitySheet <noreply@utilitysheet.com>';
+
 /**
- * Sends a reminder email to the seller for an existing utility sheet request.
+ * Deterministic seller reminder rendering. The Admin preview and every send
+ * call this one function, so the reviewed subject, body, branding, sender and
+ * reply-to are exactly what is sent.
  */
-export async function sendSellerReminderEmail({
+export function buildSellerReminderEmail({
     sellerEmail,
     sellerName,
     propertyAddress,
@@ -415,7 +438,7 @@ export async function sendSellerReminderEmail({
     agentName,
     brandProfile,
     sellerToken,
-}: SendSellerNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
+}: SendSellerNotificationEmailParams): SellerReminderEmail {
     const baseUrl = getAppBaseUrl();
     const sellerFormUrl = `${baseUrl}/s/${sellerToken}`;
 
@@ -491,31 +514,56 @@ export async function sendSellerReminderEmail({
         complianceLine: brandProfile?.compliance_line || null,
     });
 
-    const replyTo = safeReplyToEmail(brandProfile?.contact_email);
+    return {
+        from: SELLER_REMINDER_FROM,
+        to: sellerEmail,
+        subject,
+        html: emailHtml,
+        replyTo: safeReplyToEmail(brandProfile?.contact_email),
+    };
+}
 
+/** Sends an already-built reminder. Retries of one operation must reuse its idempotency key. */
+export async function sendBuiltSellerReminderEmail(
+    email: SellerReminderEmail,
+    options: { idempotencyKey?: string } = {}
+): Promise<SellerReminderSendResult> {
     try {
-        const { data, error } = await getResend().emails.send({
-            from: 'UtilitySheet <noreply@utilitysheet.com>',
-            to: sellerEmail,
-            subject,
-            html: emailHtml,
-            ...(replyTo ? { replyTo } : {}),
-        });
+        const { data, error } = await getResend().emails.send(
+            {
+                from: email.from,
+                to: email.to,
+                subject: email.subject,
+                html: email.html,
+                ...(email.replyTo ? { replyTo: email.replyTo } : {}),
+            },
+            options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined
+        );
 
         if (error) {
             console.error('Failed to send seller reminder email:', error);
-            return { success: false, error: error.message };
+            return { success: false, error: error.message, errorCode: error.name };
         }
 
         console.log('Seller reminder email sent successfully:', data?.id);
-        return { success: true };
+        return { success: true, messageId: data?.id };
     } catch (error) {
         console.error('Error sending seller reminder email:', error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
+            threw: true,
         };
     }
+}
+
+/**
+ * Sends a reminder email to the seller for an existing utility sheet request.
+ */
+export async function sendSellerReminderEmail(
+    params: SendSellerNotificationEmailParams
+): Promise<SellerReminderSendResult> {
+    return sendBuiltSellerReminderEmail(buildSellerReminderEmail(params));
 }
 
 interface SendOrganizationInviteEmailParams {

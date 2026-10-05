@@ -115,24 +115,32 @@ export function AdminUserControls({ user, className }: { user: ManagedUser; clas
 
                 switch (confirmAction.type) {
                     case 'demote':
-                        result = await updateUserRoleAction(user.id, 'user', reasonText);
+                        result = await updateUserRoleAction({
+                            userId: user.id, role: 'user', expectedRole: user.role, reason: reasonText,
+                        });
                         break;
                     case 'ban':
-                        result = await banUserAction(user.id, reasonText);
+                        result = await banUserAction({ userId: user.id, expectedRole: user.role, reason: reasonText });
                         break;
                     case 'unban':
-                        result = await unbanUserAction(user.id, reasonText);
+                        result = await unbanUserAction({ userId: user.id, expectedRole: user.role, reason: reasonText });
                         break;
                     case 'setProEntitlement':
-                        result = await updateUserPlanAction(user.id, 'pro', reasonText);
+                        result = await updateUserPlanAction({
+                            userId: user.id, plan: 'pro', expectedPlan: user.subscription_status, reason: reasonText,
+                        });
                         break;
                     case 'setFreeEntitlement':
-                        result = await updateUserPlanAction(user.id, 'free', reasonText);
+                        result = await updateUserPlanAction({
+                            userId: user.id, plan: 'free', expectedPlan: user.subscription_status, reason: reasonText,
+                        });
                         break;
                 }
 
                 if (!result.success) {
                     toast.error(result.error || 'Action failed');
+                    // A stale or already-applied change means this view is out of date.
+                    if (result.code === 'STALE' || result.code?.startsWith('NO_OP')) router.refresh();
                     return;
                 }
 
@@ -191,6 +199,7 @@ export function AdminUserControls({ user, className }: { user: ManagedUser; clas
                         aria-label={`Reason for ${getActionCopy(confirmAction.type).title}`}
                         placeholder="Reason (required)..."
                         value={reason}
+                        maxLength={500}
                         onChange={(event) => setReason(event.target.value)}
                         disabled={isPending}
                     />

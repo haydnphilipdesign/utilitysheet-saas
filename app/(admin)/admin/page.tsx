@@ -134,9 +134,9 @@ export default async function AdminDashboardPage() {
                         icon={UsersRound}
                     />
                     <HeadlineMetric
-                        label="Paid"
+                        label="Paid-plan access"
                         value={summary.paidAccounts.toLocaleString()}
-                        context={`${summary.paidRate}% of users · ${summary.proAccounts} Pro · ${summary.teamAccounts} Team`}
+                        context={`${summary.paidRate}% of users · ${summary.proAccounts} Pro · ${summary.teamAccounts} Team members · accounts, not subscriptions`}
                         href="/admin/users?plan=paying&role=user"
                         icon={Building2}
                     />
@@ -184,9 +184,10 @@ export default async function AdminDashboardPage() {
 
             <section className="space-y-3" aria-labelledby="attention-heading">
                 <div>
-                    <h2 id="attention-heading" className="text-sm font-semibold tracking-tight text-foreground">Needs attention</h2>
+                    <h2 id="attention-heading" className="text-sm font-semibold tracking-tight text-foreground">Customer follow-up backlog</h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                        Standing backlogs. These are cumulative totals, not new activity.
+                        Standing backlogs, not failures. These are cumulative totals, not new activity. Service problems and triage are on{' '}
+                        <Link href="/admin/operations" className="font-medium text-foreground underline underline-offset-2">Issues &amp; Triage</Link>.
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

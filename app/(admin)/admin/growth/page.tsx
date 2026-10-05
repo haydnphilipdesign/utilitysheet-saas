@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PAID_PLAN_ACCESS_EXPLANATION } from '@/lib/admin/billing-context';
 import { CheckCircle2, CircleAlert, Eye, MousePointerClick, UserPlus } from 'lucide-react';
 import { AdminPageHeader } from '@/components/admin/primitives';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -171,7 +172,7 @@ export default async function AdminGrowthPage() {
                                 href="/admin/users?plan=paying&role=user"
                                 className="flex items-center justify-between gap-3 rounded-lg border border-border/70 p-3 text-sm transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                                <span className="text-muted-foreground">Paying accounts</span>
+                                <span className="text-muted-foreground" title={PAID_PLAN_ACCESS_EXPLANATION}>Accounts with paid-plan access</span>
                                 <span className="font-semibold tabular-nums text-foreground">
                                     {activation.paidAccounts.toLocaleString()}
                                 </span>

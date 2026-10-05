@@ -117,7 +117,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                     { label: 'Accounts', value: stats.total.toLocaleString(), detail: 'matching current filters', icon: Users },
                     { label: 'Admins', value: stats.admins.toLocaleString(), detail: 'privileged accounts', icon: Shield },
                     { label: 'Restricted', value: stats.banned.toLocaleString(), detail: 'banned accounts', icon: Ban },
-                    { label: 'Paid access', value: `${stats.pro} Pro · ${stats.team} Team`, detail: `${stats.canceled} canceled overrides`, icon: Sparkles },
+                    { label: 'Paid-plan access', value: `${stats.pro} Pro · ${stats.team} Team`, detail: `Accounts, not subscriptions · ${stats.canceled} canceled`, icon: Sparkles },
                 ].map((item) => (
                     <div key={item.label} className="flex items-center gap-3 border-b border-border/70 p-3 last:border-b-0 sm:[&:nth-child(odd)]:border-r xl:border-b-0 xl:border-r xl:last:border-r-0">
                         <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -168,7 +168,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                                 className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
                             >
                                 <option value="">All entitlements</option>
-                                <option value="paying">Paying (Pro or Team)</option>
+                                <option value="paying">Paid-plan access (Pro or Team)</option>
                                 <option value="free">Free</option>
                                 <option value="pro">Pro</option>
                                 <option value="team">Team</option>

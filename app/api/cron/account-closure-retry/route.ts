@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { runAccountClosure } from '@/lib/account/closure';
 import { listStalledAccountClosures } from '@/lib/neon/queries';
+import { finishJobRun, startJobRun } from '@/lib/ops/events';
 
 const STALLED_AFTER_MINUTES = 15;
 const MAX_ATTEMPTS = 5;
@@ -25,6 +26,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const jobRun = await startJobRun('account_closure_retry');
     try {
         const stalled = await listStalledAccountClosures({
             olderThanMinutes: STALLED_AFTER_MINUTES,
@@ -58,8 +60,11 @@ export async function GET(request: Request) {
             route: '/api/cron/account-closure-retry',
             ...summary,
         }));
+        // Closures that exhausted their retries need support review: the run did not fully succeed.
+        await finishJobRun(jobRun, summary.stuck > 0 ? 'partial' : 'success', summary);
         return NextResponse.json(summary);
     } catch {
+        await finishJobRun(jobRun, 'failed');
         console.error(JSON.stringify({
             level: 'error',
             message: 'Account closure retry cron failed',

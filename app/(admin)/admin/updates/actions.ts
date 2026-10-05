@@ -2,27 +2,28 @@
 
 import { revalidatePath } from 'next/cache';
 import {
-    assertAdminActionConfirmed,
-    assertAdminActionReason,
-    assertAdminWritesEnabled,
-    createAuditLogWithContext,
-    requireAdmin,
-} from '@/lib/admin';
+    AdminActionRefusal,
+    adminActionFailure,
+    afterCommit,
+    beginAdminWrite,
+    type AdminActionFailure,
+} from '@/lib/admin/action-guard';
 import {
-    createProductUpdate,
-    deleteProductUpdate,
-    publishProductUpdate,
-} from '@/lib/neon/queries/updates';
-import type { ProductUpdate, UpdateCategory } from '@/types';
+    createProductUpdateDraft,
+    deleteProductUpdateAtomic,
+    publishProductUpdateAtomic,
+} from '@/lib/neon/queries/admin-writes';
+import { adminConfirmedUpdateSchema, adminProductUpdateCreateSchema } from '@/lib/validation/admin-schemas';
+import type { ProductUpdate } from '@/types';
 
 type ProductUpdateActionResult =
-    | { success: true; update: ProductUpdate }
-    | { success: false; error: string };
+    | { success: true; update: ProductUpdate; alreadyPublished?: boolean }
+    | AdminActionFailure;
 
 type CreateProductUpdateInput = {
     title: string;
     body: string;
-    category: UpdateCategory;
+    category: string;
     reason: string;
 };
 
@@ -31,58 +32,29 @@ type ConfirmedProductUpdateInput = {
     confirmed: boolean;
 };
 
-function isUpdateCategory(value: string): value is UpdateCategory {
-    return value === 'bugfix' || value === 'feature' || value === 'announcement';
-}
+const refresh = (operation: string) => afterCommit(operation, () => revalidatePath('/admin/updates'));
 
-function actionError(error: unknown) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' } as const;
-}
-
+/** The draft and its audit entry commit together. Publication is a separate action. */
 export async function createProductUpdateAdminAction(
     input: CreateProductUpdateInput
 ): Promise<ProductUpdateActionResult> {
     try {
-        const { account } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(input.reason);
+        const { actor } = await beginAdminWrite();
+        const parsed = adminProductUpdateCreateSchema.parse(input);
 
-        const title = input.title.trim();
-        const body = input.body.trim();
-        const category = input.category;
-        const reason = input.reason.trim();
-
-        if (title.length < 3) return { success: false, error: 'Title must be at least 3 characters' };
-        if (body.length < 3) return { success: false, error: 'Body must be at least 3 characters' };
-        if (!isUpdateCategory(category)) return { success: false, error: 'Invalid category' };
-
-        const created = await createProductUpdate({
-            title,
-            body,
-            category,
-            isPublished: false,
-            createdBy: account.id,
+        const result = await createProductUpdateDraft({
+            actor,
+            reason: parsed.reason,
+            title: parsed.title,
+            body: parsed.body,
+            category: parsed.category,
         });
+        if (result.outcome !== 'OK') throw new AdminActionRefusal('UNAUTHORIZED', 'Admin access required');
 
-        if (!created) return { success: false, error: 'Failed to create update' };
-
-        await createAuditLogWithContext({
-            adminId: account.id,
-            targetUserId: null,
-            action: 'product_update_created',
-            metadata: {
-                reason,
-                updateId: created.id,
-                title: created.title,
-                category: created.category,
-                is_published: false,
-            },
-        });
-
-        revalidatePath('/admin/updates');
-        return { success: true, update: created };
+        refresh('product_update_create');
+        return { success: true, update: result.update };
     } catch (error) {
-        return actionError(error);
+        return adminActionFailure(error, 'product_update_create');
     }
 }
 
@@ -91,33 +63,22 @@ export async function publishProductUpdateAdminAction(
     input: ConfirmedProductUpdateInput
 ): Promise<ProductUpdateActionResult> {
     try {
-        const { account } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(input.reason);
-        assertAdminActionConfirmed(input.confirmed);
+        const { actor } = await beginAdminWrite();
+        const parsed = adminConfirmedUpdateSchema.parse({ updateId, ...input });
 
-        const published = await publishProductUpdate(updateId);
-        if (!published) {
-            return { success: false, error: 'Update was not found or is already published' };
+        const result = await publishProductUpdateAtomic({ actor, reason: parsed.reason, updateId: parsed.updateId });
+        if (result.outcome === 'NOT_FOUND') {
+            throw new AdminActionRefusal('NOT_FOUND', 'Update was not found. It may have been deleted.');
         }
+        if (result.outcome === 'ACTOR_NOT_ADMIN') throw new AdminActionRefusal('UNAUTHORIZED', 'Admin access required');
 
-        await createAuditLogWithContext({
-            adminId: account.id,
-            targetUserId: null,
-            action: 'product_update_published',
-            metadata: {
-                reason: input.reason.trim(),
-                updateId: published.id,
-                title: published.title,
-                category: published.category,
-                publishedAt: published.published_at,
-            },
-        });
-
-        revalidatePath('/admin/updates');
-        return { success: true, update: published };
+        refresh('product_update_publish');
+        // A repeat publication changes nothing and writes no second audit entry.
+        return result.outcome === 'ALREADY_PUBLISHED'
+            ? { success: true, update: result.update!, alreadyPublished: true }
+            : { success: true, update: result.update! };
     } catch (error) {
-        return actionError(error);
+        return adminActionFailure(error, 'product_update_publish');
     }
 }
 
@@ -126,31 +87,17 @@ export async function deleteProductUpdateAdminAction(
     input: ConfirmedProductUpdateInput
 ): Promise<ProductUpdateActionResult> {
     try {
-        const { account } = await requireAdmin();
-        assertAdminWritesEnabled();
-        assertAdminActionReason(input.reason);
-        assertAdminActionConfirmed(input.confirmed);
+        const { actor } = await beginAdminWrite();
+        const parsed = adminConfirmedUpdateSchema.parse({ updateId, ...input });
 
-        const deleted = await deleteProductUpdate(updateId);
-        if (!deleted) return { success: false, error: 'Update was not found or has already been deleted' };
+        const result = await deleteProductUpdateAtomic({ actor, reason: parsed.reason, updateId: parsed.updateId });
+        if (result.outcome !== 'OK') {
+            throw new AdminActionRefusal('NOT_FOUND', 'Update was not found or has already been deleted');
+        }
 
-        await createAuditLogWithContext({
-            adminId: account.id,
-            targetUserId: null,
-            action: 'product_update_deleted',
-            metadata: {
-                reason: input.reason.trim(),
-                updateId: deleted.id,
-                title: deleted.title,
-                category: deleted.category,
-                wasPublished: deleted.is_published,
-            },
-        });
-
-        revalidatePath('/admin/updates');
-        return { success: true, update: deleted };
+        refresh('product_update_delete');
+        return { success: true, update: result.update };
     } catch (error) {
-        return actionError(error);
+        return adminActionFailure(error, 'product_update_delete');
     }
 }
-

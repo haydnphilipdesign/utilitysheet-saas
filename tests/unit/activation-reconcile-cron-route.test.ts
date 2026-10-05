@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const reconcileAuthUsersMock = vi.hoisted(() => vi.fn());
 
+// Operational observations are best-effort and covered in ops-instrumentation.test.ts.
+vi.mock('@/lib/ops/events');
 vi.mock('@/lib/activation/reconcile-auth-users', () => ({
     reconcileAuthUsers: reconcileAuthUsersMock,
 }));

@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BillingEvidence } from '@/components/admin/BillingEvidence';
+import { buildStripeRecordLinks, describeAccountBilling, getStripeModeFromKey } from '@/lib/admin/billing-context';
 import { formatAdminDate } from '@/lib/admin/date-format';
 import type { AdminAuditLogRow } from '@/lib/admin';
 import type { AdminUserRow, EffectivePlan, Request } from '@/types';
@@ -62,6 +64,18 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         ? 'team'
         : (user.subscription_status || 'free');
     const managedUser: AdminUserRow = { ...user, effective_subscription_status: effectivePlan };
+    const stripeMode = getStripeModeFromKey(process.env.STRIPE_SECRET_KEY);
+    const billingEvidence = describeAccountBilling({
+        entitlement: user.subscription_status || 'free',
+        teamManaged: effectivePlan === 'team',
+        customerId: user.stripe_customer_id,
+        subscriptionId: user.subscription_id,
+    });
+    const stripeLinks = buildStripeRecordLinks({
+        customerId: user.stripe_customer_id,
+        subscriptionId: user.subscription_id,
+        mode: stripeMode,
+    });
     const initials = user.full_name
         ? user.full_name.split(' ').map((name) => name[0]).join('').slice(0, 2).toUpperCase()
         : user.email.slice(0, 2).toUpperCase();
@@ -122,7 +136,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                 </Card>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <Card className="border-border/70 bg-card shadow-sm">
                     <CardHeader><CardTitle className="text-sm font-medium">Contact information</CardTitle></CardHeader>
                     <CardContent className="space-y-3 text-sm">
@@ -136,10 +150,31 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                     <CardContent className="space-y-3 text-sm">
                         <div><span className="block text-xs text-muted-foreground">Effective access</span><span className="capitalize">{effectivePlan}</span></div>
                         <div>
-                            <span className="block text-xs text-muted-foreground">Account override</span>
+                            <span className="block text-xs text-muted-foreground">Account entitlement</span>
                             <span className="capitalize">{user.subscription_status}</span>
                         </div>
-                        <p className="text-xs leading-relaxed text-muted-foreground">Account entitlement is not a statement of Stripe subscription state.</p>
+                        <div>
+                            <span className="block text-xs text-muted-foreground">Workspace entitlement</span>
+                            <span className="capitalize">
+                                {user.active_organization_id ? (user.active_organization_subscription_status || 'free') : 'No active workspace'}
+                            </span>
+                        </div>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            Effective access is Team when the active workspace is on Team; otherwise it is the account entitlement.
+                            Entitlement is not a statement of Stripe subscription state.
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-border/70 bg-card shadow-sm">
+                    <CardHeader><CardTitle className="text-sm font-medium">Billing context</CardTitle></CardHeader>
+                    <CardContent>
+                        <BillingEvidence evidence={billingEvidence} links={stripeLinks} mode={stripeMode} />
+                        {user.subscription_ends_at ? (
+                            <p className="mt-3 text-xs text-muted-foreground">
+                                Stored period end: {formatAdminDate(user.subscription_ends_at)}. Recorded by the last billing webhook; not re-checked here.
+                            </p>
+                        ) : null}
                     </CardContent>
                 </Card>
 

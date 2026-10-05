@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { reconcileAuthUsers } from '@/lib/activation/reconcile-auth-users';
+import { finishJobRun, startJobRun } from '@/lib/ops/events';
 
 export async function GET(request: Request) {
     const startTime = Date.now();
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const jobRun = await startJobRun('activation_reconcile');
     try {
         const result = await reconcileAuthUsers({
             execute: true,
@@ -40,6 +42,14 @@ export async function GET(request: Request) {
             durationMs: Date.now() - startTime,
         }));
 
+        await finishJobRun(jobRun, result.failures.length > 0 ? 'partial' : 'success', {
+            scanned: result.scanned,
+            eligible: result.eligibleCount,
+            created: result.createdCount,
+            skipped: result.skipped.length,
+            failures: result.failures.length,
+        });
+
         return NextResponse.json({
             success: true,
             scanned: result.scanned,
@@ -57,6 +67,7 @@ export async function GET(request: Request) {
             error: error instanceof Error ? error.message : String(error),
             durationMs: Date.now() - startTime,
         }));
+        await finishJobRun(jobRun, 'failed');
         return NextResponse.json(
             { error: 'Internal server error', durationMs: Date.now() - startTime },
             { status: 500 }

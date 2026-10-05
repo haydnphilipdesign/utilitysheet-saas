@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
     request: vi.fn(), account: vi.fn(), sql: vi.fn(), event: vi.fn(),
 }));
+// Operational observations are best-effort and covered in ops-instrumentation.test.ts.
+vi.mock('@/lib/ops/events');
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/neon/queries', () => ({
     getRequestBySellerToken: mocks.request,

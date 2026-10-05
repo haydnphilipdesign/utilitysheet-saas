@@ -24,6 +24,11 @@ const actionLabels: Record<string, string> = {
     request_status_changed: 'Request status changed',
     request_seller_updated: 'Seller information updated',
     request_reminder_sent: 'Seller reminder sent',
+    request_reminder_attempted: 'Seller reminder attempted',
+    request_reminder_resolved: 'Seller reminder outcome settled',
+    auth_reconciliation_started: 'Signup reconciliation started',
+    auth_reconciliation_finished: 'Signup reconciliation finished',
+    triage_updated: 'Triage item updated',
     testimonial_request_sent: 'Testimonial request sent',
     testimonial_test_sent: 'Testimonial test sent',
     user_updated: 'User updated',
@@ -85,11 +90,25 @@ function buildSummary(action: string, metadata: Record<string, unknown>) {
     const title = metadataString(metadata, 'title');
     switch (action) {
         case 'request_status_changed':
-            return `Changed request status from ${titleCase(metadata.previousStatus)} to ${titleCase(metadata.newStatus)}.`;
+            return `${metadata.correction === true ? 'Corrected' : 'Changed'} request status from ${titleCase(metadata.previousStatus)} to ${titleCase(metadata.newStatus)}.`;
         case 'request_seller_updated':
             return 'Updated seller contact information for a request.';
         case 'request_reminder_sent':
-            return 'Sent a seller reminder for a request.';
+            return 'Sent a seller reminder for a request (accepted by the email provider).';
+        case 'request_reminder_attempted':
+            return metadata.resumed === true
+                ? 'Retried an earlier seller reminder attempt. See the following entry for its outcome.'
+                : 'Started a seller reminder attempt. See the following entry for its outcome.';
+        case 'request_reminder_resolved':
+            return metadata.resolution === 'accepted'
+                ? 'Recorded an unresolved seller reminder as sent after manual verification.'
+                : 'Recorded an unresolved seller reminder as not sent after manual verification.';
+        case 'auth_reconciliation_started':
+            return 'Started a manual sync of verified signups.';
+        case 'auth_reconciliation_finished':
+            return `Manual signup sync finished: ${titleCase(metadata.outcome)}.`;
+        case 'triage_updated':
+            return `Triage item ${titleCase(metadata.triageAction)}: ${String(metadata.sourceKey || 'unknown item')}.`;
         case 'testimonial_request_sent':
             return metadata.result === 'dry_run'
                 ? 'Recorded a dry run of testimonial outreach; no email was sent.'
@@ -109,8 +128,10 @@ function buildSummary(action: string, metadata: Record<string, unknown>) {
         case 'product_update_deleted':
             return `Deleted the Product Update${title ? ` “${title}”` : ''}.`;
         case 'role_changed':
+            if (metadata.blocked) return 'Blocked an attempted user role change.';
             return `Changed user role from ${titleCase(metadata.previousRole)} to ${titleCase(metadata.newRole)}.`;
         case 'plan_changed':
+            if (metadata.blocked) return 'Blocked an attempted entitlement change.';
             return `Changed account entitlement from ${titleCase(metadata.previousPlan)} to ${titleCase(metadata.newPlan)}.`;
         case 'user_banned':
             return metadata.blocked ? 'Blocked an attempted user ban.' : 'Banned a user account.';

@@ -684,3 +684,107 @@ BEGIN
 END $$;
 DROP TRIGGER IF EXISTS validate_request_source_form ON requests;
 CREATE TRIGGER validate_request_source_form BEFORE INSERT ON requests FOR EACH ROW EXECUTE FUNCTION validate_request_source_form();
+
+-- Durable seller reminder operations. See migrations-reminder-operations.sql.
+CREATE TABLE IF NOT EXISTS reminder_operations (
+    -- Supplied by the caller and reused on retry. Also the provider idempotency key.
+    id UUID PRIMARY KEY,
+    -- Reminders have no meaning without their request; removing it removes these rows.
+    request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+    purpose TEXT NOT NULL DEFAULT 'seller_reminder' CHECK (purpose IN ('seller_reminder')),
+    actor_type TEXT NOT NULL CHECK (actor_type IN ('admin', 'agent')),
+    actor_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    reason TEXT CHECK (reason IS NULL OR char_length(reason) <= 500),
+    recipient_email TEXT NOT NULL CHECK (char_length(recipient_email) <= 254),
+    -- SHA-256 of the exact rendered payload. A retry must reproduce it.
+    payload_fingerprint TEXT NOT NULL CHECK (payload_fingerprint ~ '^[a-f0-9]{64}$'),
+    state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending', 'accepted', 'failed', 'unknown')),
+    provider_message_id TEXT CHECK (provider_message_id IS NULL OR char_length(provider_message_id) <= 200),
+    failure_code TEXT CHECK (failure_code IS NULL OR char_length(failure_code) <= 80),
+    attempt_count INT NOT NULL DEFAULT 1,
+    -- Provider delivery evidence (see migrations-operational-events.sql). NULL means unknown.
+    delivery_status TEXT CHECK (delivery_status IS NULL OR delivery_status IN ('delivered', 'delayed', 'bounced', 'complained', 'failed')),
+    delivery_updated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    accepted_at TIMESTAMPTZ,
+    finalized_at TIMESTAMPTZ
+);
+
+-- At most one in-flight reminder per request, enforced by the database.
+CREATE UNIQUE INDEX IF NOT EXISTS reminder_operations_one_pending
+    ON reminder_operations(request_id, purpose) WHERE state = 'pending';
+CREATE INDEX IF NOT EXISTS idx_reminder_operations_request_created
+    ON reminder_operations(request_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reminder_operations_provider_message
+    ON reminder_operations(provider_message_id) WHERE provider_message_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_reminder_operations_unresolved
+    ON reminder_operations(updated_at) WHERE state IN ('pending', 'unknown');
+
+-- Operational observations, job runs and alert state. See migrations-operational-events.sql.
+CREATE TABLE IF NOT EXISTS operational_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category TEXT NOT NULL CHECK (category IN ('email', 'pdf', 'billing_webhook')),
+    code TEXT NOT NULL CHECK (char_length(code) BETWEEN 1 AND 80),
+    outcome TEXT NOT NULL CHECK (outcome IN ('failure', 'success')),
+    severity TEXT NOT NULL DEFAULT 'warning' CHECK (severity IN ('info', 'warning', 'critical')),
+    -- Stable grouping key for an incident, for example 'pdf:generation_failed'.
+    fingerprint TEXT NOT NULL CHECK (char_length(fingerprint) BETWEEN 1 AND 160),
+    -- References survive deletion of the customer record as NULL; history never blocks account closure.
+    request_id UUID REFERENCES requests(id) ON DELETE SET NULL,
+    account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    -- Stripe event ID or Resend webhook message ID. Deduplicates provider retries.
+    provider_event_id TEXT CHECK (provider_event_id IS NULL OR char_length(provider_event_id) <= 200),
+    correlation_id TEXT CHECK (correlation_id IS NULL OR char_length(correlation_id) <= 200),
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    -- Provider redeliveries of the same event bump this instead of adding rows.
+    attempts INT NOT NULL DEFAULT 1,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS operational_events_provider_dedupe
+    ON operational_events(category, provider_event_id, outcome) WHERE provider_event_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_operational_events_occurred ON operational_events(occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_operational_events_fingerprint ON operational_events(fingerprint, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_operational_events_category_outcome
+    ON operational_events(category, outcome, occurred_at DESC);
+
+-- One row per scheduled job execution. Summary holds counts only.
+CREATE TABLE IF NOT EXISTS job_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    job_name TEXT NOT NULL CHECK (char_length(job_name) BETWEEN 1 AND 80),
+    status TEXT NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'success', 'partial', 'failed')),
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    finished_at TIMESTAMPTZ,
+    duration_ms INT,
+    summary JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+CREATE INDEX IF NOT EXISTS idx_job_runs_name_started ON job_runs(job_name, started_at DESC);
+
+-- Notification state per alert condition, so an unchanged state is never re-sent.
+CREATE TABLE IF NOT EXISTS ops_alert_state (
+    alert_key TEXT PRIMARY KEY CHECK (char_length(alert_key) BETWEEN 1 AND 120),
+    status TEXT NOT NULL CHECK (status IN ('firing', 'ok')),
+    episode_started_at TIMESTAMPTZ,
+    last_notified_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Admin triage state. See migrations-admin-triage.sql.
+CREATE TABLE IF NOT EXISTS admin_triage_items (
+    source_key TEXT PRIMARY KEY CHECK (char_length(source_key) BETWEEN 3 AND 200),
+    kind TEXT NOT NULL CHECK (kind IN ('service', 'follow_up')),
+    state TEXT NOT NULL CHECK (state IN ('open', 'acknowledged', 'snoozed', 'resolved')),
+    snoozed_until TIMESTAMPTZ,
+    -- Private internal note. Plain text, never included in alerts or external messages.
+    note TEXT CHECK (note IS NULL OR char_length(note) <= 1000),
+    -- Incremented on every change; a write must name the version it read.
+    version INT NOT NULL DEFAULT 1,
+    updated_by UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    state_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (state <> 'snoozed' OR snoozed_until IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS idx_admin_triage_items_state ON admin_triage_items(state, updated_at DESC);
