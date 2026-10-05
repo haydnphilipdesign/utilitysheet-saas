@@ -5,6 +5,7 @@
 - `/admin/users` user search, account inspection, and audited controls
 - `/admin/requests` request search, lifecycle inspection, and audited support actions
 - `/admin/growth` activation funnel, acquisition sources, and packet referral instrumentation
+- `/admin/telemetry` saved-form inventory and usage, request-event counts, and AI run summaries (7/30/90 days)
 - `/admin/question-requests` read-only triage of seller-form questions customers requested but could not find
 - `/admin/organizations` workspace search and Team/personal workspace totals; Team organizations are distinguished from personal/default workspaces in Admin copy
 - `/admin/abandonment` seller-progress monitoring (route retained for compatibility)
@@ -32,6 +33,68 @@ Business totals come from `lib/admin/operations-overview.ts`. Its `paid_accounts
 mirrors the `paid_accounts` predicate in `lib/admin/activation-funnel.ts` and the `plan=paying` list
 filter, so the overview, the growth funnel, and the user list cannot disagree. Both modules count only
 `role = 'user'` accounts.
+
+## Telemetry
+
+`/admin/telemetry?days=30` supports rolling 7, 30 and 90 day windows (30 by default).
+Queries authorize with `requireAdmin` before database access and render dynamically. The page shows
+aggregates only; it never reads event payloads, seller answers, form names/intros, or capability tokens.
+
+- **Inventory** is a current snapshot of forms owned by `role = 'user'` accounts, including paused and
+  automatically provisioned forms. Multiple-form adoption counts distinct accounts with at least two
+  forms within one creator/workspace scope; separate workspace defaults do not count. The adoption
+  denominator is accounts with forms, not all accounts or paid/eligible accounts.
+- **Actual use** is a cohort of requests created within the selected rolling window, excluding demo,
+  deleted and admin-owned requests. Distinct `source_form_id` values measure used forms. Multiple-form
+  users have requests from at least two forms in the same creator/workspace scope. Completion counts
+  attributed requests with `metered_at` present as of viewing, divided by attributed requests; this is
+  not the count of submissions arriving during the window. NULL provenance remains unattributed.
+- **Request events** counts event occurrences and distinct requests by event type, using event time,
+  including events on older requests. The top 50 types are shown. Repeated events are not unique users.
+- **AI runs** groups recorded runs by feature and outcome using run time, counts cache hits, and averages
+  latency across fresh runs only. Both event and AI summaries require a retained, non-demo customer
+  request; unlinked AI runs are excluded. No observations and unavailable data have different states.
+
+The source is existing `intake_links`, `requests`, `event_logs`, and `ai_generation_runs` data, queried
+under `lib/neon/queries/admin-telemetry.ts`. No new collection or migration is required. Records deleted
+through existing lifecycle policies stop contributing; this is not an immutable historical warehouse.
+Friday's saved-form release provided request attribution, but not dedicated create/duplicate/copy-link
+action history. Vercel browser analytics is a separate source and is not imported into this page.
+Growth and Seller Progress retain their existing reports. Future telemetry sections should define
+their cohort, denominator, timestamp, exclusions and privacy rules just as explicitly.
+
+### Product usage reports
+
+The same page adds these database-backed reports, without new collection or migrations:
+
+- **Seller completion:** real requests created within the selected window; distinct recorded opens,
+  first submissions (`metered_at`), and median hours from first recorded open to first submission.
+  Only nonnegative, matched intervals contribute to the median; the sample count and completions
+  without recorded opens are shown. Endpoint access is not verified human viewing, and elapsed time
+  is not active form-filling time. Recent cohorts have less opportunity to complete.
+- **Workflow preferences:** earliest recorded `request_created` event classifies reusable intake
+  (`source=intake_link`) or agent creation (`actor=agent`), otherwise unknown. Only these allowlisted
+  metadata fields are read. Current request mode and distinct enabled modules show configuration
+  usage, not whether sellers answered a section. Module percentages use Handoff Packet requests.
+- **Provider assistance outcomes:** current utility entries on requests first submitted in the
+  selected window (regardless of creation date), grouped by category and entry method. Each category's
+  denominator includes unknown, NULL/unclassified and not-applicable entries. This measures final
+  entry-method mix, not AI impression acceptance. Later edits can change results; names/text are not read.
+- **Repeat usage:** distinct accounts creating real requests in adjacent equal rolling windows;
+  returning accounts belong to both, divided by the previous window's accounts. This is request
+  creation activity, not login retention or weekly cohort retention.
+- **Follow-up/corrections:** distinct requests in the creation cohort with reminders, seller return
+  link sends or edits after first submission. Completion after reminder requires the first submission
+  to follow the earliest reminder; its denominator is reminded requests. Edit rate uses submitted
+  requests. Neither sequence nor association establishes causation.
+- **Test-drive conversion:** accounts whose earliest recorded completion of an explicitly marked
+  self-serve demo falls within the window; count those with a later real submission through now.
+  Other demos are excluded; repeated submissions do not reset the first-completion cohort. Follow-up
+  time varies and this is not evidence of a causal lift. Retained-record limitations still apply.
+
+Zero denominators and missing timing samples display a dash. All reports use customer-owned retained
+records; real-use reports exclude demos/deleted requests. Test-drive analysis is the explicit exception
+for marked demos. Counts reflect records through viewing time and respect existing deletion policies.
 
 ## List Filters
 

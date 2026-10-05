@@ -1,7 +1,7 @@
 # Saved Seller Forms: Implementation Plan
 
 - Date: 2026-10-02. Author: Codex. Baseline: `main`, following `735ddb0`.
-- Status: **Release in progress.** Local implementation/review corrections complete. Owner authorized release and requested all-users availability instead of a pilot.
+- Status: **Implementation and production rollout completed.** All-users deployment verified; GitHub CI remains externally blocked by account billing.
 - Confirmed: fixed workspace per form; approved Free 1 / Pro and Teams 10 per creator/workspace. Prices unchanged; rollout disabled.
 - Decision: `../decisions/2026-10-02-saved-form-workspace-boundary.md`.
 - Owner authorized the release sequence (migrations, commit/push/deploy and verification); global rollout selected on 2026-10-02. Preserve unrelated feedback files.
@@ -265,3 +265,5 @@ Release validation milestone: explicit global rollout and neutral denial copy im
 Production expand applied with bounded transaction-local timeouts; 136 forms initialized and aliases complete, old uniqueness preserved. Build passed. Owner explicitly requested main push, so CI runs on main alongside the gated compatible deployment. Production rollout remains disabled until enable migration.
 
 Release milestone: ecc3e85 pushed main; compatible Vercel deployment READY with Node24. Live health/forms auth/pricing smoke passed. Expand rerun and enable migration committed; all-users flag configured true (cap50), pending activation deployment. GitHub CI could not start because account billing is locked, not because tests failed. Local full validation passed; CI must be rerun after billing is resolved.
+
+Final release verification: main e932872 pushed; activation deployment dpl_6uuH4L5PGxKaHr7BjLsFJxmXQbyK READY on production domains. Flags true/all/50 verified, health healthy200, forms API unauthenticated401, pricing200, dev fixture404. 136 initialized forms and aliases preserved; old uniqueness removed and three scoped indexes present. No required migration/deployment work remains. Authenticated live creation was not exercised. External follow-up: resolve GitHub billing lock and rerun CI; remote test execution never started. Final handoff updates remain local after release push.

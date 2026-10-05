@@ -32,6 +32,7 @@ const adminNavigationSections = [
         name: 'Growth & Content',
         items: [
             { name: 'Growth', href: '/admin/growth', icon: TrendingUp },
+            { name: 'Telemetry', href: '/admin/telemetry', icon: FileText },
             { name: 'Requested Questions', href: '/admin/question-requests', icon: MessageSquareQuote },
             { name: 'Customer Outreach', href: '/admin/testimonial-candidates', icon: Sparkles },
             { name: 'Updates', href: '/admin/updates', icon: Megaphone },
