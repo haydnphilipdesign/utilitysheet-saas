@@ -246,6 +246,12 @@ type AnalyticsEventMap = {
     source: "onboarding" | "dashboard";
     success: boolean;
   };
+  // Never carries the message text.
+  feedback_dialog_opened: BasePayload;
+  feedback_submitted: BasePayload & {
+    category: "bug" | "idea" | "question" | "general";
+    success: boolean;
+  };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

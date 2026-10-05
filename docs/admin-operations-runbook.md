@@ -21,7 +21,7 @@ Never paste passwords, API keys, recovery codes, seller links or seller answers 
 
 - **Growth** (`/admin/growth`): activation and first submissions.
 - **Telemetry** (`/admin/telemetry`): completion, repeat use, AI outcomes.
-- **Requested Questions** and any customer feedback.
+- **Requested Questions** (`/admin/question-requests`) and **Feedback** (`/admin/feedback`): read what is new, reply from the notification email where a reply helps, then mark each item reviewed or resolved.
 - **Audit Logs**: skim for anything you do not recognise.
 
 ### Monthly

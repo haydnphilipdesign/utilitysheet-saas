@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
+import { FEEDBACK_CATEGORIES, FEEDBACK_MESSAGE_MAX_LENGTH } from '@/lib/feedback/constants';
 import { inferSubmittedSheetUtilityStatus } from '@/lib/submitted-sheet/editor';
 import { HOA_TEXT_FIELDS, type HoaTextFieldKey } from '@/lib/packet/hoa';
 import {
@@ -73,7 +74,16 @@ export const questionRequestBodySchema = z.object({
     packetMode: z.enum(['simple', 'advanced']).optional(),
 });
 
-const waterSourceEnum = z.enum(['city', 'well', 'hoa', 'not_sure']);
+export const feedbackBodySchema = z.object({
+    message: z.string().trim().min(1).max(FEEDBACK_MESSAGE_MAX_LENGTH),
+    category: z.enum(FEEDBACK_CATEGORIES).default('general'),
+    // Context is a convenience for whoever reads the feedback. A malformed
+    // value is dropped rather than costing the customer their message.
+    pagePath: z.string().max(300).regex(/^\/[^\s?#]*$/).optional().catch(undefined),
+    viewport: z.string().regex(/^\d{2,5}x\d{2,5}$/).optional().catch(undefined),
+});
+
+const waterSourceEnum =z.enum(['city', 'well', 'hoa', 'not_sure']);
 const sewerTypeEnum = z.enum(['public', 'septic', 'hoa', 'not_sure']);
 const heatingTypeEnum = z.enum(['natural_gas', 'propane', 'oil', 'electric', 'not_sure']);
 const heatingFuelEnum = z.enum(['natural_gas', 'propane', 'oil', 'electric']);

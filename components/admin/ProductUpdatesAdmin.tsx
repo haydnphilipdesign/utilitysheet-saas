@@ -70,8 +70,8 @@ export function ProductUpdatesAdmin({ updates }: { updates: ProductUpdate[] }) {
     const [confirmError, setConfirmError] = useState('');
     const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
 
-    const createValid = title.trim().length >= 3 && body.trim().length >= 3 && createReason.trim().length >= 3;
-    const confirmValid = confirmReason.trim().length >= 3 && confirmed;
+    const createValid = title.trim().length >= 3 && body.trim().length >= 3;
+    const confirmValid = confirmed;
 
     const closeConfirm = () => {
         setConfirmAction(null);
@@ -89,7 +89,7 @@ export function ProductUpdatesAdmin({ updates }: { updates: ProductUpdate[] }) {
                 title: title.trim(),
                 body: body.trim(),
                 category,
-                reason: createReason.trim(),
+                ...(createReason.trim() ? { reason: createReason.trim() } : {}),
             });
 
             if (!result.success) {
@@ -114,7 +114,7 @@ export function ProductUpdatesAdmin({ updates }: { updates: ProductUpdate[] }) {
         setConfirmError('');
 
         startTransition(async () => {
-            const input = { reason: confirmReason.trim(), confirmed: true };
+            const input = { ...(confirmReason.trim() ? { reason: confirmReason.trim() } : {}), confirmed: true };
             const result = confirmAction.type === 'publish'
                 ? await publishProductUpdateAdminAction(confirmAction.update.id, input)
                 : await deleteProductUpdateAdminAction(confirmAction.update.id, input);
@@ -143,7 +143,7 @@ export function ProductUpdatesAdmin({ updates }: { updates: ProductUpdate[] }) {
                 <CardHeader>
                     <CardTitle>New update</CardTitle>
                     <CardDescription>
-                        Save a draft first. Publication is a separate reviewed and audited action.
+                        Save a draft first. Publication is a separate, confirmed and audited action.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -190,7 +190,8 @@ export function ProductUpdatesAdmin({ updates }: { updates: ProductUpdate[] }) {
                         value={createReason}
                         onChange={setCreateReason}
                         disabled={isPending}
-                        placeholder="Why is this Product Update draft being created?"
+                        optional
+                        placeholder="A note for the audit log, if you want one."
                     />
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -299,9 +300,8 @@ export function ProductUpdatesAdmin({ updates }: { updates: ProductUpdate[] }) {
                                     value={confirmReason}
                                     onChange={setConfirmReason}
                                     disabled={isPending}
-                                    placeholder={confirmAction.type === 'publish'
-                                        ? 'Why is this update ready to publish?'
-                                        : 'Why should this update be deleted?'}
+                                    optional
+                                    placeholder="A note for the audit log, if you want one."
                                 />
                                 {confirmError ? (
                                     <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">

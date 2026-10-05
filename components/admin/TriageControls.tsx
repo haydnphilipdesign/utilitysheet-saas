@@ -61,10 +61,9 @@ export function TriageControls({
     const [reason, setReason] = useState('');
     const [note, setNote] = useState('');
     const [snoozeDays, setSnoozeDays] = useState(7);
-    const reasonOk = reason.trim().length >= 3;
 
     const submit = () => {
-        if (!action || !reasonOk) return;
+        if (!action) return;
         startTransition(async () => {
             const result = await updateTriageAdminAction({
                 sourceKey: item.sourceKey,
@@ -72,7 +71,7 @@ export function TriageControls({
                 expectedVersion: item.version,
                 ...(action === 'snooze' ? { snoozeDays } : {}),
                 ...(note.trim() ? { note: note.trim() } : {}),
-                reason: reason.trim(),
+                ...(reason.trim() ? { reason: reason.trim() } : {}),
             });
             if (!result.success) {
                 toast.error(result.error);
@@ -145,7 +144,7 @@ export function TriageControls({
                     ) : null}
                     <Textarea
                         aria-label={`Reason to ${ACTION_LABELS[action].toLowerCase()} this item`}
-                        placeholder="Reason (required, audited)..."
+                        placeholder="Reason (optional, audited)..."
                         value={reason}
                         maxLength={500}
                         onChange={(event) => setReason(event.target.value)}
@@ -163,7 +162,7 @@ export function TriageControls({
                         <Button type="button" size="sm" variant="outline" onClick={() => setAction(null)} disabled={isPending}>
                             Cancel
                         </Button>
-                        <Button type="button" size="sm" onClick={submit} disabled={!reasonOk || isPending}>
+                        <Button type="button" size="sm" onClick={submit} disabled={isPending}>
                             {ACTION_LABELS[action]}
                         </Button>
                     </div>

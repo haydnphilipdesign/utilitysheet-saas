@@ -259,6 +259,16 @@ describe('Product Update writes', () => {
     const draft = () =>
         createProductUpdateDraft({ db: exec, actor: actorA, reason, title: 'Faster packets', body: 'Details', category: 'feature' });
 
+    it('audits a draft created without a reason', async () => {
+        const result = await createProductUpdateDraft({
+            db: exec, actor: actorA, reason: null, title: 'Quiet fix', body: 'Details', category: 'bugfix',
+        });
+        expect(result.outcome).toBe('OK');
+        const audit = await one('SELECT action, metadata FROM admin_audit_logs');
+        expect(audit).toMatchObject({ action: 'product_update_created', metadata: { updateId: result.update!.id } });
+        expect(audit.metadata).not.toHaveProperty('reason');
+    });
+
     it('creates drafts only, with audit evidence in the same statement', async () => {
         const result = await draft();
         expect(result.outcome).toBe('OK');

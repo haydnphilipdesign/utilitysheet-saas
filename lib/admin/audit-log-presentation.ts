@@ -29,6 +29,7 @@ const actionLabels: Record<string, string> = {
     auth_reconciliation_started: 'Signup reconciliation started',
     auth_reconciliation_finished: 'Signup reconciliation finished',
     triage_updated: 'Triage item updated',
+    feedback_status_changed: 'Feedback status changed',
     testimonial_request_sent: 'Testimonial request sent',
     testimonial_test_sent: 'Testimonial test sent',
     user_updated: 'User updated',
@@ -109,6 +110,8 @@ function buildSummary(action: string, metadata: Record<string, unknown>) {
             return `Manual signup sync finished: ${titleCase(metadata.outcome)}.`;
         case 'triage_updated':
             return `Triage item ${titleCase(metadata.triageAction)}: ${String(metadata.sourceKey || 'unknown item')}.`;
+        case 'feedback_status_changed':
+            return `Changed customer feedback from ${titleCase(metadata.previousStatus)} to ${titleCase(metadata.newStatus)}.`;
         case 'testimonial_request_sent':
             return metadata.result === 'dry_run'
                 ? 'Recorded a dry run of testimonial outreach; no email was sent.'

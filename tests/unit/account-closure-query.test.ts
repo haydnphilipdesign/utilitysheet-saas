@@ -40,6 +40,7 @@ describe('account closure data transaction', () => {
         expect(sql).toContain('UPDATE brand_profiles b SET account_id = t.value::uuid');
         expect(sql).toContain('DELETE FROM requests WHERE account_id = ? AND organization_id IS NULL');
         expect(sql).toContain('DELETE FROM intake_links WHERE account_id = ?');
+        expect(sql).toContain('DELETE FROM feedback_submissions WHERE account_id = ?');
         expect(sql).toContain("SET status = 'forfeited'");
         expect(sql).toContain("subscription_status = CASE WHEN subscription_id IS NULL THEN 'free' ELSE 'canceled' END");
         expect(sql).not.toContain('subscription_id = NULL');

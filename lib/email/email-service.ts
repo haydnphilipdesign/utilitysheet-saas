@@ -2,6 +2,7 @@ import { getResend } from '@/lib/resend';
 import type { BrandProfile } from '@/types';
 import { DEFAULT_MESSAGE_TEMPLATES, escapeHtml, firstNameFromFullName, plainTextToHtml, renderTemplate } from '@/lib/message-templates';
 import { createPacketPdfAttachmentForRequest } from '@/lib/pdf/packet-attachment';
+import { FEEDBACK_CATEGORY_LABELS, type FeedbackCategory } from '@/lib/feedback/constants';
 
 function getAppBaseUrl(): string {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -873,20 +874,28 @@ function generateSellerReminderHtml({
 }
 
 interface SendFeedbackEmailParams {
-    userEmail: string;
+    userEmail: string | null;
     message: string;
     userId?: string;
     userName?: string;
+    category?: FeedbackCategory;
+    pagePath?: string | null;
+    /** True when the message is also in the Admin feedback inbox. */
+    stored?: boolean;
 }
 
 /**
  * Sends a feedback email to the admin/support team.
+ * Every customer-controlled value is escaped before it reaches the HTML body.
  */
 export async function sendFeedbackEmail({
     userEmail,
     message,
     userId,
     userName,
+    category = 'general',
+    pagePath,
+    stored = false,
 }: SendFeedbackEmailParams): Promise<{ success: boolean; error?: string }> {
     try {
         const feedbackEmail = process.env.FEEDBACK_EMAIL;
@@ -896,19 +905,27 @@ export async function sendFeedbackEmail({
             return { success: false, error: 'Configuration error' };
         }
 
+        const sender = userName || userEmail || 'a customer';
+        const safeEmail = userEmail ? escapeHtml(userEmail) : 'No email on file';
+        const safeFrom = userName ? `${escapeHtml(userName)} (${safeEmail})` : safeEmail;
+        const categoryLabel = FEEDBACK_CATEGORY_LABELS[category];
+
         const { error } = await getResend().emails.send({
             from: 'UtilitySheet Feedback <feedback@utilitysheet.com>',
             to: feedbackEmail,
-            replyTo: userEmail,
-            subject: `New Feedback from ${userName || userEmail}`,
+            ...(userEmail ? { replyTo: userEmail } : {}),
+            subject: `New Feedback (${categoryLabel}) from ${sender}`.replace(/[\r\n]+/g, ' '),
             html: `
                 <div>
                     <h2>New Feedback Received</h2>
-                    <p><strong>From:</strong> ${userName ? `${userName} (${userEmail})` : userEmail}</p>
-                    ${userId ? `<p><strong>User ID:</strong> ${userId}</p>` : ''}
+                    <p><strong>From:</strong> ${safeFrom}</p>
+                    ${userId ? `<p><strong>User ID:</strong> ${escapeHtml(userId)}</p>` : ''}
+                    <p><strong>Type:</strong> ${escapeHtml(categoryLabel)}</p>
+                    ${pagePath ? `<p><strong>Page:</strong> ${escapeHtml(pagePath)}</p>` : ''}
                     <hr />
                     <h3>Message:</h3>
-                    <p style="white-space: pre-wrap;">${message}</p>
+                    <p style="white-space: pre-wrap;">${escapeHtml(message)}</p>
+                    ${stored ? `<hr /><p><a href="${escapeHtml(getAppBaseUrl())}/admin/feedback">Open the feedback inbox</a></p>` : ''}
                 </div>
             `,
         });

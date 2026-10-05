@@ -19,11 +19,12 @@ export type AdminActor = {
     userAgent: string | null;
 };
 
-type WriteContext = { actor: AdminActor; reason: string; db?: StatementExecutor };
+/** `reason` is null only for the low-risk writes whose schema makes it optional. */
+type WriteContext = { actor: AdminActor; reason: string | null; db?: StatementExecutor };
 
 function baseMetadata(context: WriteContext, extra: Record<string, unknown> = {}) {
     return JSON.stringify({
-        reason: context.reason,
+        ...(context.reason ? { reason: context.reason } : {}),
         ...(context.actor.userAgent ? { userAgent: context.actor.userAgent } : {}),
         ...extra,
     });

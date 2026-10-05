@@ -8,6 +8,7 @@
 - `/admin/growth` activation funnel, acquisition sources, and packet referral instrumentation
 - `/admin/telemetry` saved-form inventory and usage, request-event counts, and AI run summaries (7/30/90 days)
 - `/admin/question-requests` read-only triage of seller-form questions customers requested but could not find
+- `/admin/feedback` customer feedback inbox: messages from the dashboard Feedback button with page context, and an audited review status (nav label `Feedback`, under Customers)
 - `/admin/organizations` workspace search and Team/personal workspace totals; Team organizations are distinguished from personal/default workspaces in Admin copy
 - `/admin/abandonment` seller-progress monitoring (route retained for compatibility)
 - `/admin/testimonial-candidates` customer outreach and advocacy-candidate review (route retained for compatibility)
@@ -148,7 +149,14 @@ also considers member count. The Team and personal/default workspace totals in t
 unfiltered and use the same subscription-status predicate as `billing`.
 
 ## Guardrails
-- Admin write actions require a **reason** (3 to 500 characters) and are recorded to `admin_audit_logs`.
+- Every Admin write is recorded to `admin_audit_logs`.
+- Writes that change a customer's account, access, request or seller contact, or that send email,
+  require a **reason** (3 to 500 characters): role and ban changes, entitlement overrides, request
+  status and seller contact corrections, seller reminders, signup reconciliation and testimonial outreach.
+- For writes that touch no customer record the reason is **optional** (owner decision, 2026-10-05,
+  `.ai/decisions/2026-10-05-optional-admin-reasons.md`): Product Updates, Operations triage and
+  feedback status. They are still audited, and Product Update publication and deletion still need
+  the explicit confirmation.
 - Set `ADMIN_WRITES_DISABLED=true` to hard-disable admin write actions (useful as a "safety catch" in production).
 - Client confirmations and disabled buttons improve operator safety, but server actions remain authoritative for Admin authorization, input validation, policy checks, audit logging, and the write safety catch.
 
@@ -183,7 +191,24 @@ Decision record: `.ai/decisions/2026-10-05-admin-atomic-writes-and-status-correc
 | Manual signup reconciliation | Reason and confirmation required. Attempt audited before, count-only outcome after. Not atomic across accounts, and says so. |
 | Testimonial outreach | Unchanged: own outreach log, resend guard and provider idempotency key. |
 | Triage (`/admin/operations`) | Atomic with audit, versioned. Never changes the source record. |
+| Feedback status (`/admin/feedback`) | Atomic with audit, versioned, reason optional. Internal only: never contacts the customer or changes the message. The audit entry holds neither the message nor the private note. |
 | Impersonation | Disabled and not implemented. Must adopt the atomic pattern before it is ever enabled. |
+
+## Customer Feedback
+
+- The dashboard Feedback dialog posts to `/api/feedback`, which stores a row in `feedback_submissions`
+  (`migrations-feedback-submissions.sql`) and then sends a notification email to `FEEDBACK_EMAIL`. The
+  row is the record. The request succeeds if either the row or the email succeeded, and the inbox flags
+  rows whose email notice failed.
+- Each row carries the account, active workspace, optional type (bug, idea, question), page path
+  without query string, viewport and user agent. Account and workspace are resolved on the server.
+- Reply to the customer from the notification email (reply-to is their address). Status (new, reviewed,
+  resolved) and the private note are internal only.
+- Messages are customer free text. Do not copy them into logs, analytics, audit metadata or AI tools.
+- Until the migration is run the page says the inbox is not installed and feedback is email-only.
+- Account closure deletes the closing account's feedback rows.
+- Plan and decision: `.ai/plans/2026-10-05-feedback-inbox.md`,
+  `.ai/decisions/2026-10-05-stored-feedback-and-admin-inbox.md`.
 
 ## Customer Outreach
 
@@ -195,9 +220,9 @@ Decision record: `.ai/decisions/2026-10-05-admin-atomic-writes-and-status-correc
 ## Product Updates
 
 - New Product Updates are always created as drafts and are not visible to customers until a separate publish action succeeds.
-- Draft creation, publication, and deletion each require an Admin reason and create a distinct `admin_audit_logs` entry.
+- Draft creation, publication, and deletion each create a distinct `admin_audit_logs` entry. The Admin reason is optional and is stored in that entry when given.
 - Publication and deletion require an exact-content preview plus explicit confirmation. Each commits together with its audit entry. Publishing an already-published update is a truthful no-op with no second audit entry and no new publication time; deleting an already-deleted update reports that it was not found.
-- There is no reason-policy exception for Product Update writes.
+- Product Update writes are covered by the optional-reason rule in Guardrails. The confirmation step is not optional.
 
 ## Audit Evidence
 
@@ -266,7 +291,7 @@ Procedures: `docs/admin-operations-runbook.md`.
 - **Customer follow-up**: open requests with no seller activity for 7+ days and accounts that never
   started. These are not failures. Totals are raw counts that triage never changes, and they link to
   the existing filtered lists.
-- **Triage**: acknowledge, snooze, resolve or reopen with a reason and an optional private plain-text
+- **Triage**: acknowledge, snooze, resolve or reopen with an optional reason and an optional private plain-text
   note (maximum 1,000 characters; do not paste credentials or seller answers). Changes are audited
   and versioned. Resolving does not claim the failure recovered. An expired snooze or a new failure
   after resolution returns the item to the queue. A dismissed follow-up stays dismissed unless the

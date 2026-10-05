@@ -40,7 +40,30 @@ describe('ProductUpdatesAdmin', () => {
         mocks.remove.mockResolvedValue({ success: true, update: draft });
     });
 
-    it('creates a draft with a required reason and no default publish control', async () => {
+    it('saves a draft and publishes without a reason, because Product Update reasons are optional', async () => {
+        const { unmount } = render(<ProductUpdatesAdmin updates={[]} />);
+        fireEvent.change(screen.getByLabelText(/^title$/i), { target: { value: draft.title } });
+        fireEvent.change(screen.getByLabelText(/^body$/i), { target: { value: draft.body } });
+        fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
+
+        await waitFor(() => expect(mocks.create).toHaveBeenCalledWith({
+            title: draft.title, body: draft.body, category: 'announcement',
+        }));
+        unmount();
+
+        render(<ProductUpdatesAdmin updates={[draft]} />);
+        fireEvent.click(screen.getByRole('button', { name: /preview and publish faster packet handoff/i }));
+        const dialog = screen.getByRole('dialog', { name: /preview and publish product update/i });
+        const publishButton = screen.getByRole('button', { name: /^publish update$/i });
+        // The reviewed-preview confirmation is still required.
+        expect(publishButton).toBeDisabled();
+        fireEvent.click(within(dialog).getByRole('checkbox', { name: /confirm it should be visible to customers/i }));
+        fireEvent.click(publishButton);
+
+        await waitFor(() => expect(mocks.publish).toHaveBeenCalledWith(draft.id, { confirmed: true }));
+    });
+
+    it('creates a draft with its reason and no default publish control', async () => {
         render(<ProductUpdatesAdmin updates={[]} />);
 
         expect(screen.queryByRole('checkbox', { name: /visible to users/i })).not.toBeInTheDocument();

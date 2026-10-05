@@ -124,7 +124,7 @@ export async function applyTriageAction(input: {
     expectedVersion: number;
     snoozedUntil: Date | null;
     note: string | null;
-    reason: string;
+    reason: string | null;
     actor: AdminActor;
     db?: StatementExecutor;
 }): Promise<{ outcome: TriageWriteOutcome; version: number | null }> {
@@ -177,7 +177,7 @@ export async function applyTriageAction(input: {
             input.actor.adminId,
             input.expectedVersion,
             JSON.stringify({
-                reason: input.reason,
+                ...(input.reason ? { reason: input.reason } : {}),
                 ...(input.actor.userAgent ? { userAgent: input.actor.userAgent } : {}),
             }),
             input.action,

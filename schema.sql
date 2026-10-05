@@ -191,6 +191,29 @@ CREATE TABLE IF NOT EXISTS question_requests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Stored customer feedback and its Admin review state. See migrations-feedback-submissions.sql.
+-- `message` is customer free text: never copy it into logs, analytics, audit metadata or AI calls.
+CREATE TABLE IF NOT EXISTS feedback_submissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
+    category TEXT NOT NULL DEFAULT 'general'
+        CHECK (category IN ('bug', 'idea', 'question', 'general')),
+    message TEXT NOT NULL CHECK (char_length(message) BETWEEN 1 AND 2000),
+    page_path TEXT CHECK (page_path IS NULL OR char_length(page_path) <= 300),
+    viewport TEXT CHECK (viewport IS NULL OR char_length(viewport) <= 20),
+    user_agent TEXT CHECK (user_agent IS NULL OR char_length(user_agent) <= 400),
+    email_status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (email_status IN ('pending', 'sent', 'failed')),
+    status TEXT NOT NULL DEFAULT 'new'
+        CHECK (status IN ('new', 'reviewed', 'resolved')),
+    note TEXT CHECK (note IS NULL OR char_length(note) <= 1000),
+    version INT NOT NULL DEFAULT 1,
+    updated_by UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    status_changed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Utility Entries table (seller responses)
 CREATE TABLE IF NOT EXISTS utility_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -397,6 +420,12 @@ CREATE INDEX IF NOT EXISTS idx_question_requests_created_at
     ON question_requests(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_question_requests_account_created_at
     ON question_requests(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feedback_submissions_created_at
+    ON feedback_submissions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feedback_submissions_status_created_at
+    ON feedback_submissions(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feedback_submissions_account_created_at
+    ON feedback_submissions(account_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_utility_entries_request_id ON utility_entries(request_id);
 CREATE INDEX IF NOT EXISTS idx_brand_profiles_account_id ON brand_profiles(account_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_stripe_customer_id ON accounts(stripe_customer_id);

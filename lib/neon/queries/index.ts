@@ -149,6 +149,7 @@ export { recordGrowthReferralEvent } from './growth-referral-events';
 
 export type { QuestionRequestContext, QuestionRequestPacketMode } from './question-requests';
 export { createQuestionRequest } from './question-requests';
+export { createFeedbackSubmission, setFeedbackEmailStatus } from './feedback';
 
 export type {
     AwardedReferralCredit,

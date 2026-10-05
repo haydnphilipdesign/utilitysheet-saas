@@ -4,6 +4,8 @@
  * Shared types and interfaces for email templates and sending functions.
  */
 
+import type { FeedbackCategory } from '@/lib/feedback/constants';
+
 export interface SendSellerNotificationEmailParams {
     sellerEmail: string;
     sellerName?: string;
@@ -22,10 +24,14 @@ export interface GenerateEmailHtmlParams {
 }
 
 export interface SendFeedbackEmailParams {
-    userEmail: string;
+    userEmail: string | null;
     message: string;
     userId?: string;
     userName?: string;
+    category?: FeedbackCategory;
+    pagePath?: string | null;
+    /** True when the message is also in the Admin feedback inbox. */
+    stored?: boolean;
 }
 
 export interface SendTCCompletionNotificationEmailParams {

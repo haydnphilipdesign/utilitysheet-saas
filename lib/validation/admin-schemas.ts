@@ -14,6 +14,18 @@ export const adminReasonSchema = z
     .min(3, 'Admin action requires a reason (min 3 characters)')
     .max(ADMIN_REASON_MAX_LENGTH, `Reason must be ${ADMIN_REASON_MAX_LENGTH} characters or fewer`);
 
+/**
+ * For low-risk writes that touch no customer record: Product Updates, Operations
+ * triage and feedback status. The write is still audited; the reason is a note
+ * the operator may leave. See `.ai/decisions/2026-10-05-optional-admin-reasons.md`.
+ */
+export const adminOptionalReasonSchema = z
+    .string()
+    .trim()
+    .max(ADMIN_REASON_MAX_LENGTH, `Reason must be ${ADMIN_REASON_MAX_LENGTH} characters or fewer`)
+    .nullish()
+    .transform((value) => value || null);
+
 const userRoleEnum = z.enum(['user', 'admin', 'banned']);
 /** Admin overrides only move between Free and Pro; cancellation belongs to billing. */
 const overridePlanEnum = z.enum(['free', 'pro']);
@@ -81,12 +93,12 @@ export const adminProductUpdateCreateSchema = z.object({
     title: z.string().trim().min(3, 'Title must be at least 3 characters').max(200),
     body: z.string().trim().min(3, 'Body must be at least 3 characters').max(10_000),
     category: z.enum(['bugfix', 'feature', 'announcement'], { message: 'Invalid category' }),
-    reason: adminReasonSchema,
+    reason: adminOptionalReasonSchema,
 }).strict();
 
 export const adminConfirmedUpdateSchema = z.object({
     updateId: adminIdSchema,
-    reason: adminReasonSchema,
+    reason: adminOptionalReasonSchema,
     confirmed: z.literal(true, { message: 'Admin action requires explicit confirmation' }),
 }).strict();
 
@@ -127,10 +139,19 @@ export const adminTriageActionSchema = z.object({
     expectedVersion: z.number().int().min(0),
     snoozeDays: z.number().int().min(1).max(90).optional(),
     note: z.string().trim().max(ADMIN_TRIAGE_NOTE_MAX_LENGTH).optional().transform((value) => value || null),
-    reason: adminReasonSchema,
+    reason: adminOptionalReasonSchema,
 }).strict().refine((value) => value.action !== 'snooze' || value.snoozeDays !== undefined, {
     message: 'Choose how long to snooze this item',
     path: ['snoozeDays'],
 });
 
-export type AdminTriageActionInput = z.infer<typeof adminTriageActionSchema>;
+export const adminFeedbackStatusSchema = z.object({
+    feedbackId: adminIdSchema,
+    status: z.enum(['new', 'reviewed', 'resolved']),
+    /** Version the operator saw. */
+    expectedVersion: z.number().int().min(1),
+    note: z.string().trim().max(ADMIN_TRIAGE_NOTE_MAX_LENGTH).optional().transform((value) => value || null),
+    reason: adminOptionalReasonSchema,
+}).strict();
+
+export type AdminTriageActionInput =z.infer<typeof adminTriageActionSchema>;

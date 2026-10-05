@@ -273,7 +273,7 @@ describe('triage action', () => {
         expect(call.snoozedUntil.getTime()).toBeGreaterThan(Date.now() + 6.9 * 24 * 60 * 60 * 1000);
 
         for (const invalid of [
-            { ...input, sourceKey: 'accounts; DROP' }, { ...input, action: 'delete' }, { ...input, reason: '' },
+            { ...input, sourceKey: 'accounts; DROP' }, { ...input, action: 'delete' }, { ...input, reason: 'r'.repeat(501) },
             { ...input, snoozeDays: undefined }, { ...input, snoozeDays: 400 }, { ...input, note: 'n'.repeat(1001) },
             { ...input, expectedVersion: -1 }, { ...input, kind: 'service' },
         ]) {
@@ -281,6 +281,10 @@ describe('triage action', () => {
         }
         expect(await updateTriageAdminAction({ ...input, sourceKey: 'unknown_prefix:abc' })).toMatchObject({ success: false, code: 'INVALID_INPUT' });
         expect(mocks.applyTriage).toHaveBeenCalledTimes(1);
+
+        // The reason is optional for triage: a blank one is accepted and passed on as null.
+        expect(await updateTriageAdminAction({ ...input, reason: '' })).toEqual({ success: true });
+        expect(mocks.applyTriage.mock.calls[1][0]).toMatchObject({ reason: null });
     });
 
     it('refuses non-admins, disabled writes, stale views and a missing table with clear outcomes', async () => {

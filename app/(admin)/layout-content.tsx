@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, FileText, Inbox, LayoutDashboard, Megaphone, Menu, MessageSquareQuote, Shield, Sparkles, TrendingDown, TrendingUp, Users, X, Zap } from 'lucide-react';
+import { Building2, FileText, Inbox, LayoutDashboard, Megaphone, Menu, MessageSquare, MessageSquareQuote, Shield, Sparkles, TrendingDown, TrendingUp, Users, X, Zap } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,7 @@ const adminNavigationSections = [
         items: [
             { name: 'Users', href: '/admin/users', icon: Users },
             { name: 'Workspaces', href: '/admin/organizations', icon: Building2 },
+            { name: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
         ],
     },
     {

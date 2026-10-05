@@ -24,11 +24,11 @@ type CreateProductUpdateInput = {
     title: string;
     body: string;
     category: string;
-    reason: string;
+    reason?: string;
 };
 
 type ConfirmedProductUpdateInput = {
-    reason: string;
+    reason?: string;
     confirmed: boolean;
 };
 

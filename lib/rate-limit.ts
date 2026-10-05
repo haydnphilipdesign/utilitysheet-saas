@@ -207,6 +207,24 @@ export const questionRequestRatelimit: RateLimitPolicy = {
     prefix: 'ratelimit:question-request',
 };
 
+/**
+ * Rate limiter for authenticated feedback submissions
+ * Limit: 5 messages per 10 minutes per account
+ */
+export const feedbackRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(5, "10 m"),
+            analytics: true,
+            prefix: "ratelimit:feedback",
+        })
+        : null,
+    limit: 5,
+    windowMs: 10 * 60 * 1000,
+    prefix: 'ratelimit:feedback',
+};
+
 export const accountSecurityRatelimit: RateLimitPolicy = {
     limiter: redis
         ? new Ratelimit({

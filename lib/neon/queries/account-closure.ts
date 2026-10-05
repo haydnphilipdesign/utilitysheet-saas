@@ -432,6 +432,7 @@ export async function removeAccountClosureData(data: {
             sql`DELETE FROM brand_profiles WHERE account_id = ${id} AND organization_id IS NULL`,
             sql`DELETE FROM intake_links WHERE account_id = ${id}`,
             sql`DELETE FROM question_requests WHERE account_id = ${id}`,
+            sql`DELETE FROM feedback_submissions WHERE account_id = ${id}`,
             sql`DELETE FROM growth_attributions WHERE account_id = ${id}`,
             sql`DELETE FROM activation_outreach_logs WHERE account_id = ${id}`,
             sql`

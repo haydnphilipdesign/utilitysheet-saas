@@ -203,14 +203,14 @@ describe('TriageControls', () => {
         note: '<b>plain</b> text note', snoozedUntil: null, updatedByEmail: 'admin@example.com', stateChangedAt: '2026-10-01T00:00:00Z',
     };
 
-    it('renders the note as plain text and submits a reasoned snooze with the version it saw', async () => {
+    it('renders the note as plain text and submits a snooze with its reason and the version it saw', async () => {
         const { container } = render(<TriageControls item={item} resolveHint="Resolving does not mean recovery." />);
         expect(screen.getByText('<b>plain</b> text note')).toBeInTheDocument();
         expect(container.querySelector('b')).toBeNull();
 
         fireEvent.click(screen.getByRole('button', { name: 'Snooze' }));
         const submit = screen.getAllByRole('button', { name: 'Snooze' }).at(-1)!;
-        expect(submit).toBeDisabled();
+        expect(submit).toBeEnabled();
         expect(screen.getByPlaceholderText(/do not paste passwords, tokens or seller answers/i)).toBeInTheDocument();
         fireEvent.change(screen.getByLabelText(/reason to snooze this item/i), { target: { value: 'Fix ships Tuesday' } });
         fireEvent.change(screen.getByRole('combobox'), { target: { value: '14' } });
@@ -220,6 +220,17 @@ describe('TriageControls', () => {
             sourceKey: item.sourceKey, action: 'snooze', expectedVersion: 3, snoozeDays: 14, reason: 'Fix ships Tuesday',
         }));
         await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+    });
+
+    it('submits without a reason, because triage reasons are optional', async () => {
+        render(<TriageControls item={item} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Acknowledge' }));
+        fireEvent.click(screen.getAllByRole('button', { name: 'Acknowledge' }).at(-1)!);
+
+        await waitFor(() => expect(mocks.triage).toHaveBeenCalledWith({
+            sourceKey: item.sourceKey, action: 'acknowledge', expectedVersion: 3,
+        }));
     });
 
     it('explains returned items, limits actions by state and refreshes after a stale write', async () => {

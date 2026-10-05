@@ -23,7 +23,7 @@ export async function updateTriageAdminAction(input: {
     expectedVersion: number;
     snoozeDays?: number;
     note?: string;
-    reason: string;
+    reason?: string;
 }): Promise<{ success: true } | AdminActionFailure> {
     try {
         const { actor } = await beginAdminWrite();
