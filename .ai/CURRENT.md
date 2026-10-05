@@ -29,7 +29,7 @@ New: `lib/neon/statements.ts`, `lib/neon/queries/admin-writes.ts`, `lib/neon/que
 
 Modified: Admin actions (`users`, `requests`, `updates`), Admin pages (overview, growth, users, user detail, workspace detail, request detail, question requests, audit logs, layout nav), `auth-reconciliation-card.tsx`, `components/admin/{AdminUserControls,RequestAdminActions,ProductUpdatesAdmin}.tsx`, API routes (`admin/activation/reconcile`, `requests/[id]/remind`, `packet/[token]/pdf`, `billing/webhook`, `seller/[token]`, three cron routes), `lib/email/email-service.ts`, `lib/admin/audit-log-presentation.ts`, `lib/validation/schemas.ts`, `types/index.ts`, `schema.sql`, `ADMIN.md`, and nine existing test files (mock for the new observation module; superseded Product Update action tests moved).
 
-Not changed: `vercel.json`, `package.json`, `package-lock.json`, the shared `updateRequestStatus`, PDF builder, Stripe entitlement logic. `.env.example` has local placeholders but is git-ignored here; the tracked reference is runbook section 7.
+Not changed: `package.json`, `package-lock.json`, the shared `updateRequestStatus`, PDF builder, Stripe entitlement logic. `.env.example` has local placeholders but is git-ignored here; the tracked reference is runbook section 7.
 
 ## Validation performed (2026-10-05)
 
@@ -54,7 +54,7 @@ Still open:
 
 1. Confirm the Vercel deployment of the pushed commit is healthy, then do the smoke checks (runbook 5.4).
 2. Authenticated browser verification (runbook 5.6) was skipped before release by owner decision; still worth doing.
-3. Optional activation, each separate and off until done: Resend webhook + `RESEND_WEBHOOK_SECRET`; alert destination + `OPS_ALERTS_ENABLED`; monitor schedule in `vercel.json`; `OPS_RETENTION_PRUNE_ENABLED`; external uptime probe. The owner asked for guidance on these next.
+3. Activation status (2026-10-05): owner reports the Resend webhook and the `OPS_*` variables are set in Vercel (not verified from here). Monitor schedule added to `vercel.json` (every 15 minutes) and pushed on owner request. No external uptime probe exists yet. Original list, for reference: Resend webhook + `RESEND_WEBHOOK_SECRET`; alert destination + `OPS_ALERTS_ENABLED`; monitor schedule in `vercel.json`; `OPS_RETENTION_PRUNE_ENABLED`; external uptime probe. The owner asked for guidance on these next.
 4. Owner-only checks: provider MFA/recovery (runbook 3) and recovery rehearsal (runbook 4). All statuses there are "unverified".
 
 ## Risks and things the next agent should verify, not assume

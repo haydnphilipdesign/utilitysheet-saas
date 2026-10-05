@@ -225,7 +225,7 @@ Until this is done, delivery shows as "not confirmed" everywhere. That is accura
 
 Default thresholds: three unexpected PDF failures in 15 minutes; any unrecovered billing webhook failure; any bounce, complaint or send failure in 24 hours; a scheduled job failed, or more than 26 hours without success. One message when a condition starts, one when it clears. These are starting points, not validated benchmarks; override with the `OPS_ALERT_*` variables in `.env.example`.
 
-**c. Schedule the monitor route.** Changes `vercel.json`, which changes deployment behaviour, so it was deliberately not done.
+**c. Schedule the monitor route.** Done 2026-10-05 on owner request: `vercel.json` runs `/api/cron/ops-monitor` every 15 minutes (Vercel Pro). The entry is shown here for reference.
 
 Add to the `crons` array and deploy:
 
