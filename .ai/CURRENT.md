@@ -1,3 +1,11 @@
+# Latest small change: dashboard "What's new" cards open the update (committed and pushed; post-deploy check pending)
+
+- Date: 2026-10-06. Agent: Claude Opus 5.5. Branch: main, committed as "Link dashboard What's new cards to the update details" on top of 0b22c39 and pushed to `origin/main` on the owner's instruction. Whether the push produced a healthy production deployment was not verified from here. No plan (tiny change). No concurrent editing known.
+- Owner report: the dashboard "What's new" cards showed only title, category and date, with no way to open the details.
+- Change: each card in `app/dashboard/page.tsx` is now a link to `/dashboard/updates#update-<id>` with a "Read details" label and hover/focus styling. `app/dashboard/updates/page.tsx` gives each post the matching `id` and a scroll margin. No data, API or copy changes to the updates themselves.
+- Validation: `tsc --noEmit` clean; ESLint on the two files clean; the two product update unit tests pass (3 tests). Not verified: a signed-in browser check that the link scrolls to the right post under the sticky header.
+- No required work remains. Next action: after the deployment, owner clicks a "What's new" card on the dashboard and confirms it lands on the right post.
+
 # Also current (separate session): packet and PDF handoff value formatting (completed, committed on main, not pushed)
 
 - Date: 2026-10-06. Agent: Claude Opus 5.5, a different session from the task below. Branch: main, committed on the owner's instruction as "Print handoff answers on the packet and PDF the way the seller Review step shows them" on top of e53bb1a. Not pushed. This is the record the note below asks for about the packet files.

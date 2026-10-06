@@ -767,15 +767,20 @@ export default function DashboardPage() {
                         ) : (
                             <div className="grid gap-3 md:grid-cols-3">
                                 {updates.map((update) => (
-                                    <div key={update.id} className="rounded-lg border border-border bg-background/40 p-3">
+                                    <Link
+                                        key={update.id}
+                                        href={`/dashboard/updates#update-${update.id}`}
+                                        className="group rounded-lg border border-border bg-background/40 p-3 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    >
                                         <div className="flex flex-wrap items-center gap-2">
                                             <span className="font-medium text-foreground">{update.title}</span>
                                             <Badge variant="secondary" className="capitalize">{update.category}</Badge>
                                         </div>
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            {format(new Date(update.published_at), 'MMM d, yyyy')}
+                                        <p className="mt-1 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                                            <span>{format(new Date(update.published_at), 'MMM d, yyyy')}</span>
+                                            <span className="group-hover:text-foreground">Read details</span>
                                         </p>
-                                    </div>
+                                    </Link>
                                 ))}
                             </div>
                         )}

@@ -42,7 +42,7 @@ export default async function DashboardUpdatesPage() {
                         <p className="text-sm text-muted-foreground">No updates yet.</p>
                     ) : (
                         updates.map((u) => (
-                            <div key={u.id} className="rounded-lg border border-border p-4 bg-background/40">
+                            <div key={u.id} id={`update-${u.id}`} className="scroll-mt-24 rounded-lg border border-border p-4 bg-background/40">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <h3 className="font-semibold text-foreground">{u.title}</h3>
                                     <Badge className={categoryBadgeClass(u.category)}>{categoryLabel(u.category)}</Badge>
