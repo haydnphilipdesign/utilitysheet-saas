@@ -32,6 +32,16 @@ interface HomeBasicsStepProps {
 }
 
 export function HomeBasicsStep({ state, updateState, requestedUtilityCategories, configuredAdvancedModules, collectHoaQuestions = true, onNext }: HomeBasicsStepProps) {
+    const hideHoaBilling = collectHoaQuestions && state.has_hoa === 'no';
+    const pendingChoices = hideHoaBilling ? (state.hoaUtilityReselection || []) : [];
+    const waterOptions = WATER_SOURCE_OPTIONS.filter((option) => !hideHoaBilling || option.id !== 'hoa');
+    const sewerOptions = SEWER_TYPE_OPTIONS.filter((option) => !hideHoaBilling || option.id !== 'hoa');
+    const selectUtility = (field: 'water_source' | 'sewer_type', value: WaterSource | SewerType) => {
+        updateState({
+            [field]: value,
+            hoaUtilityReselection: pendingChoices.filter((pending) => pending !== field),
+        });
+    };
     const optionalUtilities = [
         { id: 'trash' as const, label: 'Trash & Recycling', icon: Trash2 },
         { id: 'internet' as const, label: 'Internet', icon: Wifi },
@@ -107,20 +117,56 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 <p className="text-sm sm:text-base text-muted-foreground">Let&apos;s start with the essentials.</p>
             </div>
 
+            {/* HOA / Condo Association */}
+            {collectHoaQuestions && (
+                <div className="space-y-3 sm:space-y-4">
+                    <div>
+                        <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                            <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            {HOA_GATE_PROMPT}
+                        </label>
+                        <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Homeowners, condo, and townhome associations all count.</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                        {HAS_HOA_OPTIONS.map((opt) => (
+                            <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => updateState({ has_hoa: opt.id })}
+                                aria-pressed={state.has_hoa === opt.id}
+                                data-testid={`has-hoa-${opt.id}`}
+                                className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-center transition-all active:scale-95 ${wizardFocusRing} ${state.has_hoa === opt.id
+                                    ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
+                                    : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
+                                    }`}
+                            >
+                                <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {pendingChoices.length > 0 && (
+                <p role="status" className="text-sm text-[color:var(--brand-accent)]">
+                    Since this home is not part of an association, please update your {pendingChoices.map((field) => field === 'water_source' ? 'water' : 'sewer').join(' and ')} selection{pendingChoices.length > 1 ? 's' : ''}.
+                </p>
+            )}
+
             {/* Water Source */}
             <div className="space-y-3 sm:space-y-4">
                 <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                     <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Water Source
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                    {WATER_SOURCE_OPTIONS.map((opt) => (
+                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
+                    {waterOptions.map((opt) => (
                         <button
                             key={opt.id}
                             type="button"
-                            onClick={() => updateState({ water_source: opt.id as WaterSource })}
-                            aria-pressed={state.water_source === opt.id}
-                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.water_source === opt.id
+                            onClick={() => selectUtility('water_source', opt.id)}
+                            aria-pressed={!pendingChoices.includes('water_source') && state.water_source === opt.id}
+                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${!pendingChoices.includes('water_source') && state.water_source === opt.id
                                 ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
@@ -140,14 +186,14 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     <Waves className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Sewer Type
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                    {SEWER_TYPE_OPTIONS.map((opt) => (
+                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
+                    {sewerOptions.map((opt) => (
                         <button
                             key={opt.id}
                             type="button"
-                            onClick={() => updateState({ sewer_type: opt.id as SewerType })}
-                            aria-pressed={state.sewer_type === opt.id}
-                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.sewer_type === opt.id
+                            onClick={() => selectUtility('sewer_type', opt.id)}
+                            aria-pressed={!pendingChoices.includes('sewer_type') && state.sewer_type === opt.id}
+                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${!pendingChoices.includes('sewer_type') && state.sewer_type === opt.id
                                 ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
@@ -251,42 +297,15 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 </motion.div>
             )}
 
-            {/* HOA / Condo Association */}
-            {collectHoaQuestions && (
-            <div className="space-y-3 sm:space-y-4">
-                <div>
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
-                        <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        {HOA_GATE_PROMPT}
-                    </label>
-                    <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Homeowners, condo, and townhome associations all count.</p>
-                </div>
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    {HAS_HOA_OPTIONS.map((opt) => (
-                        <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => updateState({ has_hoa: opt.id })}
-                            aria-pressed={state.has_hoa === opt.id}
-                            data-testid={`has-hoa-${opt.id}`}
-                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-center transition-all active:scale-95 ${wizardFocusRing} ${state.has_hoa === opt.id
-                                ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
-                                : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
-                                }`}
-                        >
-                            <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
-                        </button>
-                    ))}
-                </div>
-
                 {/* Association details - only after a Yes */}
-                {state.has_hoa === 'yes' && (
+                {collectHoaQuestions && state.has_hoa === 'yes' && (
                     <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         className="rounded-xl border border-border bg-card/50 p-3 sm:p-4 space-y-3"
                         data-testid="hoa-details"
                     >
+                        <h4 className="font-medium text-sm sm:text-base">HOA / Condo Association Details</h4>
                         <p className="text-xs text-muted-foreground">Fill in what you know. You can skip anything you don&apos;t have handy.</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {HOA_TEXT_FIELDS.map((field) => (
@@ -343,8 +362,6 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         </div>
                     </motion.div>
                 )}
-            </div>
-            )}
 
             {(availableOptionalUtilities.length > 0 || showAdvancedModuleSelector) && (
                 <div className="pt-2 flex items-center gap-3">
@@ -474,7 +491,8 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 <button
                     type="button"
                     onClick={onNext}
-                    className={`w-full py-3 sm:py-4 text-center font-semibold text-sm sm:text-base ${wizardPrimaryButton}`}
+                    disabled={pendingChoices.length > 0}
+                    className={`w-full py-3 sm:py-4 text-center font-semibold text-sm sm:text-base ${wizardPrimaryButton} disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     Continue
                 </button>

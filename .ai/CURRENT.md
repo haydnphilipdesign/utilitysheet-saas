@@ -1,4 +1,29 @@
-# Current task: Stored customer feedback, Admin feedback inbox, and optional Admin reasons (migrated, committed and pushed; post-deploy check pending)
+# Current task: HOA-first seller flow (completed)
+
+- Date: 2026-10-06. Agent: Codex. Branch: main. No concurrent work known.
+- Plan: `.ai/plans/2026-10-06-hoa-first-flow.md` completed. Decision amendment: `.ai/decisions/2026-10-01-hoa-questions-in-home-basics.md`.
+- Membership question is first when enabled; contact/dues fields remain below core basics with their own heading. Only explicit No hides water/sewer HOA billing choices. Yes never auto-selects billing; unanswered/Not Sure/disabled keep choices.
+- Conflicting choices are cleared, explained, and must be reselected (Not Sure is valid). Draft-only pending markers survive autosave, return conflicting resumed drafts to Home Basics, and are omitted from submissions. Corrected public choices reach provider steps.
+- Changed: `components/seller-form/SellerWizard.tsx`, `components/seller-form/steps/HomeBasicsStep.tsx`, `lib/packet/seller-questions.ts` (inventory order/help), `tests/unit/seller-wizard-hoa-flow.test.tsx`, `tests/saved-seller-forms.spec.ts` (new mocked preview test), plan/decision/current docs.
+- Validation: 57 focused unit tests across HOA/advanced wizard and inventory/dialog passed; two new preview Playwright cases passed Desktop Chrome and Mobile Chrome. TypeScript passed. Focused ESLint: zero errors, six existing hook warnings in SellerWizard. Diff check passed. Initial test issues fixed and relevant checks rerun.
+- Runtime: Node 22.22.2 on PATH (CI uses 20). No API/schema/PDF changes, live writes, commit, push, deployment or migrations.
+- Prior uncommitted preview sizing/subtitle changes in SellerLayout, FormEditor, FormsWorkspace and existing saved-form browser assertions preserved.
+- No required work remains. Next action: owner review of local changes. Optional release only with explicit authorization.
+
+## Previous task: Seller forms preview desktop and tablet sizing (completed)
+
+- Date: 2026-10-06. Agent: Codex. Branch: main. No concurrent editing known.
+- Fixed `FormEditor.tsx`: use `sm:max-w-4xl` to override DialogContent's `sm:max-w-sm`, preserving its mobile viewport margin.
+- `SellerLayout.tsx` now clips decorative gradients within their background layer, eliminating horizontal overflow and focus-induced sideways scrolling.
+- Root cause: the default desktop breakpoint cap squeezed four-column seller choices into a narrow modal.
+- Added geometry/overflow assertions to the existing saved-form preview Playwright flow in `tests/saved-seller-forms.spec.ts`.
+- Prior requested subtitle update in `FormsWorkspace.tsx` remains uncommitted and preserved.
+- Validation: focused saved-form Playwright passed on Desktop Chrome and Mobile Chrome; fixture screenshots reviewed at 1440x1000, 1024x1366 and 412x915. No page errors; buttons remain readable and all three have zero horizontal overflow. TypeScript passed; focused ESLint passed with two existing img warnings in SellerLayout; git diff --check passed.
+- Browser plugin not available; using repository Playwright with development-only fixture and mocked APIs (no live writes).
+- Runtime available on PATH: Node 22.22.2 (CI uses 20).
+- No required work remains. Next action: owner review of local changes. No commit, push, deployment or database actions authorized/performed.
+
+## Previous task context: Stored customer feedback, Admin feedback inbox, and optional Admin reasons (migrated, committed and pushed; post-deploy check pending)
 
 - Date: 2026-10-05. Last agent: Claude Opus. Branch: main, committed as "Store customer feedback, add an Admin feedback inbox, and make low-risk Admin reasons optional" on top of 3af4b56 and pushed to `origin/main`.
 - Status: **implementation complete. On 2026-10-05 the owner authorized running the migration, committing and pushing to main; all three were done.** No required implementation work remains. Whether the push produced a healthy production deployment was not verified from here.

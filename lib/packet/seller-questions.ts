@@ -255,17 +255,25 @@ function buildFullHomeBasicsSection(): SellerQuestionSection {
         handoffOnly: false,
         questions: [
             {
+                key: 'home_basics.has_hoa',
+                label: HOA_GATE_LABEL,
+                sellerPrompt: HOA_GATE_PROMPT,
+                helper: 'A Yes leads to a few optional questions about the association.',
+                condition: HOA_GATE_CONDITION,
+                choices: HAS_HOA_OPTIONS.map((option) => option.label),
+            },
+            {
                 key: 'home_basics.water_source',
                 label: 'Water Source',
                 sellerPrompt: 'Water Source',
-                helper: 'Public water leads to a water provider question.',
+                helper: 'Public water leads to a water provider question. The HOA billing option is hidden when the seller answers No to the enabled association question.',
                 choices: WATER_SOURCE_OPTIONS.map((option) => option.label),
             },
             {
                 key: 'home_basics.sewer_type',
                 label: 'Sewer Type',
                 sellerPrompt: 'Sewer Type',
-                helper: 'Public sewer leads to a wastewater authority question.',
+                helper: 'Public sewer leads to a wastewater authority question. The HOA billing option is hidden when the seller answers No to the enabled association question.',
                 choices: SEWER_TYPE_OPTIONS.map((option) => option.label),
             },
             {
@@ -282,14 +290,6 @@ function buildFullHomeBasicsSection(): SellerQuestionSection {
                 helper: 'This determines which heating provider we ask about next.',
                 condition: 'Asked only when the seller selects more than one fuel source.',
                 choices: FUEL_SOURCE_OPTIONS.map((option) => option.label),
-            },
-            {
-                key: 'home_basics.has_hoa',
-                label: HOA_GATE_LABEL,
-                sellerPrompt: HOA_GATE_PROMPT,
-                helper: 'A Yes leads to a few optional questions about the association.',
-                condition: HOA_GATE_CONDITION,
-                choices: HAS_HOA_OPTIONS.map((option) => option.label),
             },
             ...HOA_TEXT_FIELDS.flatMap((field): SellerQuestion[] => {
                 const question: SellerQuestion = {

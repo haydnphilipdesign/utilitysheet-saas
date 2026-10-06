@@ -33,6 +33,8 @@ import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { createEmptyHoaAnswers } from '@/lib/packet/hoa';
 
 export interface WizardState extends HoaAnswers {
+    /** Draft-only: choices cleared after an explicit No need seller confirmation. */
+    hoaUtilityReselection?: ('water_source' | 'sewer_type')[];
     water_source: WaterSource;
     sewer_type: SewerType;
     heating_type: HeatingType;
@@ -45,6 +47,21 @@ export interface WizardState extends HoaAnswers {
     advanced_module_exclusions: AdvancedModuleExclusions;
     advanced: AdvancedPacketData;
     utilities: Record<UtilityCategory, UtilityWizardState>;
+}
+
+function reconcileHoaUtilityChoices(state: WizardState, enabled: boolean): WizardState {
+    if (!enabled || state.has_hoa !== 'no') {
+        return { ...state, hoaUtilityReselection: [] };
+    }
+    const pending = new Set(state.hoaUtilityReselection || []);
+    const next = { ...state };
+    for (const field of ['water_source', 'sewer_type'] as const) {
+        if (next[field] === 'hoa') {
+            next[field] = 'not_sure';
+            pending.add(field);
+        }
+    }
+    return { ...next, hoaUtilityReselection: [...pending] };
 }
 
 export interface UtilityWizardState {
@@ -178,10 +195,17 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
             // Merge over the initial state so a draft saved before a question
             // existed keeps that question's default instead of dropping the key.
-            const draftState = parsed.state;
+            const draftState = reconcileHoaUtilityChoices({
+                ...parsed.state,
+                has_hoa: parsed.state.has_hoa === undefined
+                    ? initialRequestData.hoa?.has_hoa ?? null
+                    : parsed.state.has_hoa,
+            }, collectHoaQuestions);
             setState((prev) => ({ ...prev, ...draftState }));
             if (typeof parsed.currentStep === 'number') {
-                setCurrentStep(Math.max(0, Math.min(Step.SUCCESS, parsed.currentStep)) as Step);
+                setCurrentStep(draftState.hoaUtilityReselection?.length
+                    ? Step.HOME_BASICS
+                    : Math.max(0, Math.min(Step.SUCCESS, parsed.currentStep)) as Step);
             }
             if (typeof parsed.utilityIndex === 'number') {
                 setUtilityIndex(Math.max(0, parsed.utilityIndex));
@@ -565,7 +589,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             const response = await fetch(`/api/seller/${token}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(state),
+                body: JSON.stringify({ ...state, hoaUtilityReselection: undefined }),
             });
 
             if (response.ok) {
@@ -677,7 +701,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     <HomeBasicsStep
                         key="basics"
                         state={state}
-                        updateState={(updates) => setState((prev) => ({ ...prev, ...updates }))}
+                        updateState={(updates) => setState((prev) => reconcileHoaUtilityChoices({ ...prev, ...updates }, collectHoaQuestions))}
                         requestedUtilityCategories={initialRequestData.utility_categories}
                         configuredAdvancedModules={configuredAdvancedModules}
                         collectHoaQuestions={collectHoaQuestions}

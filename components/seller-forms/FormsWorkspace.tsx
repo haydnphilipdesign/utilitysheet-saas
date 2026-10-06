@@ -49,8 +49,7 @@ export function FormsWorkspace() {
                 <div>
                     <h1 className="text-2xl font-semibold">Seller forms</h1>
                     <p className="text-sm text-muted-foreground">
-                        Save a form for each workflow. Each link stays in{' '}
-                        {data?.workspaceName || 'its workspace'}.
+                        Create reusable forms and share a link with your sellers.
                     </p>
                 </div>
                 {data && <FormCreationAction capabilities={data.capabilities} />}

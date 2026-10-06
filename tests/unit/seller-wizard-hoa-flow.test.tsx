@@ -28,13 +28,13 @@ const emptySuggestions = {
     oil: [],
 } as Record<UtilityCategory, ProviderSuggestion[]>;
 
-function renderWizard(hoa?: HoaAnswers, collectHoaQuestions?: boolean) {
+function renderWizard(hoa?: HoaAnswers, collectHoaQuestions?: boolean, utilityCategories: UtilityCategory[] = ['electric']) {
     return render(
         <SellerWizard
             token="seller-wizard-hoa-test-token"
             initialRequestData={{
                 property_address: '123 Test Lane',
-                utility_categories: ['electric'],
+                utility_categories: utilityCategories,
                 collect_electric_meter_number: false,
                 collect_hoa_questions: collectHoaQuestions,
                 packet_mode: 'simple',
@@ -93,6 +93,102 @@ describe('SellerWizard HOA question', () => {
 
         fireEvent.click(screen.getByTestId('has-hoa-not_sure'));
         expect(screen.queryByTestId('hoa-details')).not.toBeInTheDocument();
+    });
+
+    it('puts membership first and keeps association details after core utility choices', () => {
+        renderWizard();
+        openHomeBasics();
+        expect(screen.getAllByRole('button')[0]).toHaveAttribute('data-testid', 'has-hoa-yes');
+        fireEvent.click(screen.getByTestId('has-hoa-yes'));
+        const fuel = screen.getByText('Fuel Sources');
+        expect(fuel.compareDocumentPosition(screen.getByTestId('hoa-details')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
+        expect(screen.getAllByRole('button', { name: /included in hoa/i })[0]).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('filters only for No and restores choices for Not Sure or Yes', () => {
+        renderWizard();
+        openHomeBasics();
+        expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
+        fireEvent.click(screen.getByTestId('has-hoa-no'));
+        expect(screen.queryByRole('button', { name: /included in hoa/i })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^continue$/i })).toBeEnabled();
+        for (const answer of ['not_sure', 'yes']) {
+            fireEvent.click(screen.getByTestId(`has-hoa-${answer}`));
+            expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
+        }
+    });
+
+    it('requires replacement of both conflicting answers and submits the corrected choices', async () => {
+        renderWizard();
+        openHomeBasics();
+        fireEvent.click(screen.getByTestId('has-hoa-yes'));
+        screen.getAllByRole('button', { name: /included in hoa/i }).forEach(button => fireEvent.click(button));
+        fireEvent.click(screen.getByTestId('has-hoa-no'));
+        expect(screen.getByRole('status')).toHaveTextContent('water and sewer selections');
+        expect(screen.getByRole('button', { name: /^continue$/i })).toBeDisabled();
+        fireEvent.click(screen.getByRole('button', { name: 'Private Well' }));
+        expect(screen.getByRole('status')).toHaveTextContent('sewer selection');
+        expect(screen.getByRole('button', { name: /^continue$/i })).toBeDisabled();
+        // Not Sure is an explicit, valid replacement rather than a silent default.
+        fireEvent.click(screen.getAllByRole('button', { name: /^Not Sure$/ })[2]);
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        continueToReview();
+        const body = await submitAndReadBody(fetchMock);
+        expect(body).toMatchObject({ has_hoa: 'no', water_source: 'well', sewer_type: 'not_sure' });
+        expect(body).not.toHaveProperty('hoaUtilityReselection');
+    });
+
+    it('asks for providers after a conflicting HOA answer is replaced with public utilities', () => {
+        renderWizard(undefined, true, ['electric', 'water', 'sewer']);
+        openHomeBasics();
+        screen.getAllByRole('button', { name: /included in hoa/i }).forEach(button => fireEvent.click(button));
+        fireEvent.click(screen.getByTestId('has-hoa-no'));
+        fireEvent.click(screen.getByRole('button', { name: /Public Water/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Public Sewer/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+        fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
+        fireEvent.click(screen.getByTestId('seller-utility-skip-water'));
+        fireEvent.click(screen.getByTestId('seller-utility-skip-sewer'));
+        expect(screen.getByText('Review and Submit')).toBeInTheDocument();
+    });
+
+    it('preserves an unaffected water answer when only sewer conflicts', () => {
+        renderWizard();
+        openHomeBasics();
+        fireEvent.click(screen.getByRole('button', { name: /Public Water/ }));
+        fireEvent.click(screen.getAllByRole('button', { name: /included in hoa/i })[1]);
+        fireEvent.click(screen.getByTestId('has-hoa-no'));
+        expect(screen.getByRole('button', { name: /Public Water/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('status')).toHaveTextContent('sewer selection');
+        fireEvent.click(screen.getByRole('button', { name: 'Septic System' }));
+        expect(screen.getByRole('button', { name: /^continue$/i })).toBeEnabled();
+    });
+
+    it.each([false, true])('returns conflicting or pending resumed drafts to Home Basics (pending=%s)', (alreadyCleared) => {
+        localStorage.setItem('us_seller_draft:seller-wizard-hoa-test-token', JSON.stringify({
+            v: 2, currentStep: 4, state: {
+                has_hoa: 'no', water_source: alreadyCleared ? 'not_sure' : 'hoa', sewer_type: 'public',
+                ...(alreadyCleared ? { hoaUtilityReselection: ['water_source'] } : {}),
+            },
+        }));
+        renderWizard();
+        expect(screen.getByRole('heading', { name: 'Home Basics' })).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('water selection');
+        expect(screen.getByRole('button', { name: /^continue$/i })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Public Sewer/ })).toHaveAttribute('aria-pressed', 'true');
+        fireEvent.click(screen.getByRole('button', { name: /Public Water/ }));
+        expect(screen.getByRole('button', { name: /^continue$/i })).toBeEnabled();
+    });
+
+    it('keeps HOA billing available for a disabled question even with a stored No', () => {
+        localStorage.setItem('us_seller_draft:seller-wizard-hoa-test-token', JSON.stringify({
+            v: 2, currentStep: 1, state: { has_hoa: 'no', water_source: 'hoa' },
+        }));
+        renderWizard(undefined, false);
+        expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
+        expect(screen.getAllByRole('button', { name: /included in hoa/i })[0]).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: /^continue$/i })).toBeEnabled();
     });
 
     it('costs a No one tap and sends no association details', async () => {

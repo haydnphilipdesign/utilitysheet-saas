@@ -157,6 +157,18 @@ test('two forms have independent settings; draft preview sends no writes and sta
             .getByText('<b>Draft introduction</b>', { exact: true }),
     ).toBeVisible();
     await expect(page.getByRole('dialog').locator('b')).toHaveCount(0);
+    await page.getByTestId('seller-welcome-continue').click();
+    const previewDialog = page.getByRole('dialog');
+    await expect(previewDialog.getByRole('heading', { name: 'Home Basics' })).toBeVisible();
+    const waterChoice = previewDialog.getByRole('button', { name: /Public Water/ });
+    await expect(waterChoice).toBeVisible();
+    const choiceBounds = await waterChoice.boundingBox();
+    expect(choiceBounds!.width).toBeGreaterThan(120);
+    expect(choiceBounds!.height).toBeLessThan(160);
+    const dialogBounds = await previewDialog.boundingBox();
+    expect(choiceBounds!.x).toBeGreaterThanOrEqual(dialogBounds!.x);
+    expect(choiceBounds!.x + choiceBounds!.width).toBeLessThanOrEqual(dialogBounds!.x + dialogBounds!.width);
+    await expect.poll(() => previewDialog.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
     expect(state.writes).toHaveLength(0);
     await page.keyboard.press('Escape');
     await page
@@ -346,4 +358,34 @@ test('commercial paid limit and pilot/technical denials have distinct explanatio
     await expect(page.getByText('$9', { exact: true })).toBeVisible();
     await expect(page.getByText('$7', { exact: true })).toBeVisible();
     await healthy(page);
+});
+
+
+test('HOA-first preview filters billing choices and explains conflicting answers', async ({ page }) => {
+    const state = await mocks(page);
+    await page.goto(`/test-fixtures/seller-forms?id=${first}`);
+    await page.getByRole('switch', { name: 'Ask about HOA or condo association' }).click();
+    await page.getByRole('button', { name: 'Preview seller form', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByTestId('seller-welcome-continue').click();
+    const yes = dialog.getByTestId('has-hoa-yes');
+    const water = dialog.getByRole('button', { name: /Public Water/ });
+    await expect(yes).toBeVisible();
+    expect((await yes.boundingBox())!.y).toBeLessThan((await water.boundingBox())!.y);
+    await yes.click();
+    await expect(dialog.getByTestId('hoa-details')).toBeVisible();
+    const choices = dialog.getByRole('button', { name: /Included in HOA/ });
+    await choices.nth(0).click();
+    await choices.nth(1).click();
+    await dialog.getByTestId('has-hoa-no').click();
+    await expect(choices).toHaveCount(0);
+    await expect(dialog.getByRole('status')).toContainText('water and sewer selections');
+    await expect(dialog.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
+    await water.click();
+    await dialog.getByRole('button', { name: /Public Sewer/ }).click();
+    await expect(dialog.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled();
+    await expect.poll(() => dialog.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    await dialog.getByTestId('has-hoa-not_sure').click();
+    await expect(choices).toHaveCount(2);
+    expect(state.writes).toHaveLength(0);
 });

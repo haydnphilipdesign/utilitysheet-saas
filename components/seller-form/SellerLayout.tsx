@@ -183,7 +183,7 @@ export function SellerLayout(props: SellerLayoutProps) {
     return (
         <div className="min-h-screen bg-background text-foreground selection:bg-primary/30" style={accentStyle as CSSProperties}>
             {/* Background Gradients */}
-            <div className="fixed inset-0 z-0 pointer-events-none">
+            <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-slate-900/10 rounded-full blur-[128px]" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[128px]" />
             </div>

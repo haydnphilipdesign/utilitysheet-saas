@@ -136,3 +136,10 @@ not-copied statements below describe the original implementation; see
 - `hoa_portal_or_payment` is free text on a public, token-addressed form that
   prints on the buyer's packet. Its warning text is a real mitigation and is
   covered by tests.
+
+
+## Amendment: HOA-first seller flow (2026-10-06)
+
+Owner approved asking membership first in Home Basics, with conditional contact/dues details remaining after utility basics. When the question is enabled and the seller explicitly answers No, hide the water/sewer HOA billing choices. Yes never implies association-paid utilities; Not Sure, unanswered, or disabled questions retain those choices.
+
+Changing to No clears only conflicting HOA billing selections and requires explicit replacement, with an inline explanation; Not Sure is a valid replacement. Drafts persist pending replacements and resume at Home Basics when necessary. This prevents contradictory seller answers without guessing the utility arrangement. Item 5 still applies to storage and historical packets: membership and billing remain separate values, and this change does not rewrite collected data or change coordinator editing/API contracts.

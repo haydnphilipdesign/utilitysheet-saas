@@ -566,7 +566,7 @@ export function FormEditor({ id }: { id: string }) {
                         </CardContent>
                     </Card>
                     <Dialog open={preview} onOpenChange={setPreview}>
-                        <DialogContent className="h-[90dvh] max-w-4xl overflow-y-auto">
+                        <DialogContent className="h-[90dvh] sm:max-w-4xl overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>Seller preview</DialogTitle>
                                 <DialogDescription>
