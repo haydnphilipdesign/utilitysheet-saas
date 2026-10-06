@@ -36,6 +36,14 @@
 - Admin reminders still refuse reopened (metered) requests. Two different requests can still both pass the Free limit check when submitted at the same moment (unchanged).
 - Full list in the plan's Outcome sections.
 
+## Findings 10 and 11: data check done, nothing implemented (2026-10-06)
+
+- Owner authorized read-only aggregate counts; results and recommendations are in the plan under "Findings 10 and 11: data check". The only repository change is that section and this note, both uncommitted.
+- Finding 10: internet and cable name the same provider on 79% of sheets that have both, so a "Same as Internet" offer on Cable/TV is supported. Water and sewer match on only 28%; skip or defer.
+- Finding 11: water and sewer both left "Not Sure" on 1.1% of sheets, so leave the preselection alone. The optional-utilities opt-in looks under-answered (no trash row on 31% and no internet row on 47% of sheets that requested them); worth acting on, needs an owner decision on how.
+- Owner decisions 2026-10-06 for the next seller-form change (not started; details and verified facts in the plan under "Next seller-form change: owner decisions"): water and sewer start unselected and are required ("Not Sure" remains a valid answer; the HOA question stays skippable); trash is always asked when requested instead of being an opt-in tick box, with a "no trash service" answer; Cable/TV offers "Same as Internet". No sewer shortcut.
+- Recommended next sessions (fresh chats, starting from this file and the plan): (a) that seller-form change; (b) small follow-ups: Admin labels for the two new timeline events, Admin reminder eligibility for reopened requests, older "about 2 minutes" copy, a product update announcing reopen; (c) packet and PDF value formatting, which must follow `docs/pdf-system-reference.md`; (d) the Free-limit race, which touches billing entitlements and needs its own plan.
+
 ## Next action
 
 Owner confirms the deployment and does the smoke check above. Optional: a product update announcing reopen, Admin labels for the two new timeline events, a signed-in fixture so the request page can be browser-tested.

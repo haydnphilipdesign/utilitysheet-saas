@@ -451,3 +451,48 @@ The owner authorized applying the migration and pushing to GitHub `main`. Done i
 - Production migration applied 2026-10-06 by Claude Opus on explicit owner authorization: `migrations-seller-edit-sessions.sql`, 2 statements in one Neon HTTP transaction against the `.env.local` target (`neondb/public`, PostgreSQL 17.11, sanitized host fingerprint `79d6a988e446`, the same target as earlier recorded production migrations). Preflight: neither column existed. After: `seller_edit_version` (integer, not null, default 0) and `seller_submission_key` (text, nullable) present; all 972 requests at version 0 with no key; counts unchanged (160 accounts, 972 requests, 768 submitted, 3537 utility entries, 11022 events).
 - Committed on `main` on top of 164ccb4 as "Make submitted requests read-only with coordinator reopen and smooth the seller form", containing findings 2 to 9 and finding 1, and pushed to `origin/main`.
 - Not verified from here: whether the push produced a healthy production deployment, and the feature running against the hosted database.
+
+## Findings 10 and 11: data check (2026-10-06)
+
+Owner authorized read-only aggregate counts on 2026-10-06. Run by Claude Opus against the `.env.local` target (fingerprint `79d6a988e446`), SELECT only, counts only, no rows or personal data read out. Scope: 732 submitted, non-deleted, non-test requests. Nothing was implemented.
+
+Finding 11, water and sewer preselected as "Not Sure":
+
+- Both left "Not Sure": 8 of 732 (1.1%). Water alone 19 (2.6%), sewer alone 16 (2.2%). Last 90 days: 5 of 295.
+- Of those 8, 7 still named at least one provider, so the seller was engaging, not tapping through.
+- Conclusion: the preselection is not causing a measurable problem. Recommendation: leave it. Adding two required taps for everyone is not justified.
+
+Finding 11, optional utilities (the opt-in section under "Optional"):
+
+- Requested but no row on the sheet: trash 224 of 729 (31%), internet 337 of 722 (47%), cable 565 of 719 (79%).
+- The data cannot separate "the home does not have it" from "the seller did not tick it". Cable at 79% is believable. Trash at 31% and internet at 47% look too high to be all real absences, which points at the opt-in being overlooked or read as skippable.
+- Conclusion: this is the part of finding 11 worth acting on, and it is still a hypothesis. Options to weigh in an implementation session: ask trash as an ordinary question with a "no trash service / not sure" answer; change the divider label from "Optional" so it does not read as skippable; or ask each as an explicit Yes / No. Needs an owner decision because it changes what every seller is asked.
+
+Finding 10, same provider for paired utilities:
+
+- Internet and cable both named on 126 sheets: identical name on 100 (79%), and a further 10 share the first word. Strong support for offering "Same as Internet" on the Cable/TV step.
+- Water and sewer both named on 424 sheets: identical on 118 (28%), a further 112 (26%) share only the first word (typically the same town with differently named departments). An identical-name shortcut would be right about a quarter of the time. Weak support; if built, it must stay an offer and never a default.
+- Recommendation: build the shortcut for Cable/TV. Skip or defer Sewer.
+
+Caveats: values reflect the sheet as stored now, so a few may have been corrected by a coordinator after submission (1 of the 8 both-"Not Sure" sheets had been edited). Names were compared after lower-casing and stripping punctuation.
+
+## Next seller-form change: owner decisions (2026-10-06, not implemented)
+
+Status: decided by the owner in chat on 2026-10-06, not started. A fresh session should write its own short plan from this before editing.
+
+1. Water Source and Sewer Type start with nothing selected and are required: Continue is unavailable, with the reason shown, until each has an answer. "Not Sure" stays one tap away as a deliberate answer. This matches the provider steps, which already need a deliberate answer. (The owner first chose "not required, like HOA" and then changed to required the same day, because these two answers decide which provider steps appear.) The HOA question stays skippable.
+2. Trash & Recycling is no longer behind the opt-in tick box. When the request includes trash, its step always appears, like Electric. Keep "I'm not sure" and add an answer for "No trash service at this home". The "Do you have these utilities?" tick boxes then cover only Internet and Cable/TV.
+3. Cable/TV offers "Same as Internet: <name>" as its first choice when Internet has a named provider. An offer, never a default. No equivalent for Sewer after Water.
+4. Leave alone: primary heat source (preselected from the seller's own first tap) and the irrigation dropdown (displays "Not sure" but stores nothing until chosen).
+
+Verified facts a session will need (2026-10-06):
+
+- Because the answers are required, a submission always carries a value: `sellerSubmissionBodySchema`, the seller route, storage, the packet and the coordinator editor need no change. The unanswered state exists only in the wizard (state type, initial state, drafts).
+- `reconcileHoaUtilityChoices` in `SellerWizard.tsx` resets a conflicting HOA billing choice to `'not_sure'` and tracks it in `hoaUtilityReselection`. With a real unanswered state it can reset to unanswered, and the separate pending list may become unnecessary, since "unanswered and required" is the same rule. Keep the explanation shown to the seller.
+- `lib/seller-form/prefill.ts` maps a missing stored value to `'not_sure'` for a reopened request. It should become unanswered, which sends that seller to Home Basics first (the coordinator editor can store "Not set").
+- Drafts saved before the change hold `'not_sure'` for untouched questions; they cannot be told apart from a deliberate "Not Sure" and should load as they are.
+- The saved-form preview and the public demo use the same wizard and get the same rule.
+- Trash visibility is decided in the `visibleUtilities` memo in `SellerWizard.tsx` (`optional_utilities` includes trash) and mirrored in `lib/packet/seller-questions.ts` (`OPTIONAL_UTILITY_CATEGORIES`, the inventory conditions). Both must change together. "No trash service" needs a representation: the 2026-09-14 decision says a utility with no row is omitted from the sheet, which fits.
+- Local drafts and reopened prefill may hold `optional_utilities` with or without trash; old drafts must still load.
+- Tests that will need updating include the wizard journey specs and unit tests that rely on trash being opt-in or on "Not Sure" being pressed by default.
+
