@@ -51,6 +51,12 @@ function openHomeBasics() {
     fireEvent.click(screen.getByRole('button', { name: /get started/i }));
 }
 
+/** Water and sewer are required; these two answers add no provider steps. */
+function answerBasics() {
+    fireEvent.click(screen.getByRole('button', { name: 'Private Well' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Septic System' }));
+}
+
 function continueToReview() {
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
@@ -112,6 +118,9 @@ describe('SellerWizard HOA question', () => {
         expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
         fireEvent.click(screen.getByTestId('has-hoa-no'));
         expect(screen.queryByRole('button', { name: /included in hoa/i })).not.toBeInTheDocument();
+        // Nothing was cleared, so there is nothing to explain.
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        answerBasics();
         expect(screen.getByRole('button', { name: /^continue$/i })).toBeEnabled();
         for (const answer of ['not_sure', 'yes']) {
             fireEvent.click(screen.getByTestId(`has-hoa-${answer}`));
@@ -183,7 +192,7 @@ describe('SellerWizard HOA question', () => {
 
     it('keeps HOA billing available for a disabled question even with a stored No', () => {
         localStorage.setItem('us_seller_draft:seller-wizard-hoa-test-token', JSON.stringify({
-            v: 2, currentStep: 1, state: { has_hoa: 'no', water_source: 'hoa' },
+            v: 2, currentStep: 1, state: { has_hoa: 'no', water_source: 'hoa', sewer_type: 'septic' },
         }));
         renderWizard(undefined, false);
         expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
@@ -198,6 +207,7 @@ describe('SellerWizard HOA question', () => {
         fireEvent.click(screen.getByTestId('has-hoa-no'));
         expect(screen.queryByTestId('hoa-details')).not.toBeInTheDocument();
 
+        answerBasics();
         continueToReview();
         expect(within(screen.getByTestId('review-hoa')).getByText('No')).toBeInTheDocument();
 
@@ -216,6 +226,7 @@ describe('SellerWizard HOA question', () => {
         fireEvent.change(screen.getByLabelText('Dues'), { target: { value: '$240' } });
         fireEvent.click(screen.getByTestId('hoa-dues-frequency-quarterly'));
 
+        answerBasics();
         continueToReview();
         const review = within(screen.getByTestId('review-hoa'));
         expect(review.getByText('Yes')).toBeInTheDocument();
@@ -243,6 +254,7 @@ describe('SellerWizard HOA question', () => {
     it('shows a skipped gate as not answered rather than guessing', () => {
         renderWizard();
         openHomeBasics();
+        answerBasics();
         continueToReview();
 
         expect(within(screen.getByTestId('review-hoa')).getByText('Not answered')).toBeInTheDocument();
@@ -264,6 +276,7 @@ describe('SellerWizard HOA question', () => {
 
         expect(screen.getByLabelText('Association Name')).toHaveValue('Lakeview Commons HOA');
 
+        answerBasics();
         continueToReview();
         const body = await submitAndReadBody(fetchMock);
         expect(body).toMatchObject({ has_hoa: 'yes', hoa_name: 'Lakeview Commons HOA', hoa_management_phone: '(555) 204-8890' });
@@ -274,6 +287,7 @@ describe('SellerWizard HOA question', () => {
         openHomeBasics();
 
         fireEvent.click(screen.getAllByRole('button', { name: /included in hoa \/ condo fee/i })[0]);
+        fireEvent.click(screen.getByRole('button', { name: 'Septic System' }));
         continueToReview();
 
         expect(screen.getByText('Included in HOA / Condo Fee')).toBeInTheDocument();
@@ -288,6 +302,7 @@ describe('SellerWizard HOA question', () => {
         expect(screen.queryByText('Is this home part of an HOA or condo association?')).not.toBeInTheDocument();
         expect(screen.queryByTestId('has-hoa-yes')).not.toBeInTheDocument();
 
+        answerBasics();
         continueToReview();
         expect(screen.queryByTestId('review-hoa')).not.toBeInTheDocument();
     });

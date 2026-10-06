@@ -1,4 +1,40 @@
-# Current task: Read-only after submission with coordinator reopen, plus UX findings 2 to 9 (migrated, committed and pushed; post-deploy check pending)
+# Current task: Seller form, required water and sewer, trash always asked, "Same as Internet" (complete, uncommitted)
+
+- Date: 2026-10-06. Last agent: Claude Opus. Branch: main at bd94750 with uncommitted changes. No concurrent work known. No ownership warnings.
+- Status: implementation and validation complete. No required work remains. Nothing was committed, pushed, deployed, migrated or emailed, and no database was touched.
+- Plan (completed, with Outcome): `.ai/plans/2026-10-06-seller-form-required-basics-trash-cable.md`. Decision: `.ai/decisions/2026-10-06-required-basics-trash-always-asked-same-as-internet.md`.
+
+## What changed
+
+- Water Source and Sewer Type start unanswered and are required on Home Basics; the reason is shown at the disabled Continue. "Not Sure" is a normal answer. HOA stays skippable. An HOA No still clears an "Included in HOA / Condo Fee" choice and explains why; the cleared question is simply unanswered.
+- Trash & Recycling is a step whenever the request includes trash. New answer "No trash service at this home" sends the trash entry as hidden, so no row is stored, and skips the pickup questions. Tick boxes cover Internet and Cable/TV.
+- Cable/TV shows "Same as Internet: <name>" first when Internet has a named provider; it stores the name as a typed entry with no contact details.
+- Reopened requests: an empty stored water or sewer value opens Home Basics first, then returns to Review; a requested trash with no row opens the trash step first (owner decision, replacing an earlier prefill of "No trash service"). Old drafts keep "Not Sure" and are taken to the trash step if they are past it without an answer.
+- Question inventory updated to match. `seller_utility_skipped` gained the reason `no_service`.
+- Unchanged: submission schema, seller route, storage, packet, PDF, coordinator editor.
+
+## Files
+
+`components/seller-form/SellerWizard.tsx`, `steps/HomeBasicsStep.tsx`, `steps/UtilityStep.tsx`, `steps/ReviewStep.tsx`, `lib/seller-form/prefill.ts`, `lib/packet/seller-questions.ts`, `lib/analytics/events.ts`; tests `tests/unit/seller-wizard-required-basics-trash-cable.test.tsx` (new), `seller-wizard-{hoa-flow,reopen,review-navigation,advanced-flow}`, `utility-step-meter-flow`, `seller-questions-{inventory,dialog}`, and specs `seller-wizard-journey`, `seller-wizard-review-edit`, `seller-reopen`, `test-drive-journey`.
+
+## Validation (Node 22.22.2; CI uses 20)
+
+- Full Vitest: 197 files passed, 1 skipped; 1332 tests passed, 8 skipped.
+- `tsc --noEmit` clean. ESLint on changed files: 0 errors, 8 pre-existing warnings.
+- Playwright, mocked APIs, Desktop Chrome and Mobile Chrome: 57 passed, 1 skipped by design.
+- `git diff --check` clean; `security:scan` passed.
+- Not verified: Mobile Safari, a real phone, screen readers, hosted database, `next build`.
+
+## Owner decisions (settled 2026-10-06)
+
+1. Reopened sheet with no trash row: ask the trash step before Review. Implemented.
+2. Keep the `no_service` analytics reason.
+
+## Next action
+
+Commit and push need the owner's explicit go-ahead; neither has been done. No migration is needed. The post-deploy checks for the previous task (below) are still open.
+
+# Previous task: Read-only after submission with coordinator reopen, plus UX findings 2 to 9 (migrated, committed and pushed; post-deploy check pending)
 
 - Date: 2026-10-06. Last agent: Claude Opus. Branch: main, committed as "Make submitted requests read-only with coordinator reopen and smooth the seller form" on top of 164ccb4 and pushed to `origin/main`. No concurrent work known. No ownership warnings.
 - Status: implementation complete. On 2026-10-06 the owner authorized applying the migration and pushing to main; both were done, migration first. No required implementation work remains. Whether the push produced a healthy production deployment was not verified from here.

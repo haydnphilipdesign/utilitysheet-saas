@@ -77,10 +77,13 @@ function postedBodies(fetchMock: ReturnType<typeof vi.fn>) {
 function completeFirstSessionToReview() {
     click(/get started/i);
     click(/public water/i);
+    click(/septic system/i);
     click(/^continue$/i);
     click(/ppl electric/i);
     click(/^continue$/i);
     click(/city water authority/i);
+    // Trash is always asked when the request includes it.
+    click('No trash service at this home');
     expect(heading('Review and Submit')).toBeInTheDocument();
 }
 
@@ -91,14 +94,18 @@ describe('stored sheet to seller form', () => {
             sewer_type: 'septic',
             fuels_present: ['oil'],
             primary_heating_type: 'oil',
-            optional_utilities: ['trash'],
+            // Trash is no longer a tick box; a row on the sheet is a trash answer.
+            optional_utilities: [],
         });
     });
 
     it('keeps an electric heating type that has no fuel provider and tolerates empty values', () => {
         expect(sellerPrefillToWizardState({ water_source: null, sewer_type: 'bogus', heating_type: 'electric', utilities: [] })).toMatchObject({
-            water_source: 'not_sure', sewer_type: 'not_sure', fuels_present: ['electric'], primary_heating_type: 'electric', optional_utilities: [],
+            // An empty or invalid stored value is unanswered, not "Not Sure".
+            water_source: null, sewer_type: null, fuels_present: ['electric'], primary_heating_type: 'electric', optional_utilities: [],
         });
+        // "No trash service" is never assumed from a missing row.
+        expect(sellerPrefillToWizardState(storedSheet)).not.toHaveProperty('no_trash_service');
         expect(sellerPrefillToWizardState({ water_source: 'well', sewer_type: null, heating_type: 'not_sure', utilities: [] })).toMatchObject({
             fuels_present: [], primary_heating_type: null,
         });

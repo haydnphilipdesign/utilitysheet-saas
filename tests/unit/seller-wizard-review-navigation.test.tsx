@@ -58,6 +58,7 @@ const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('butto
 function completeToReview({ meter = false }: { meter?: boolean } = {}) {
     click(/get started/i);
     click(/public water/i);
+    click(/septic system/i);
     click(/^continue$/i);
     click(/ppl electric/i);
     if (meter) {
@@ -97,6 +98,7 @@ describe('SellerWizard revisiting answers', () => {
         expect(screen.queryByText(/^\d+ of \d+$/)).not.toBeInTheDocument();
 
         click(/public water/i);
+        click(/septic system/i);
         click(/^continue$/i);
         expect(screen.getByText('2 of 4')).toBeInTheDocument();
     });
@@ -105,6 +107,7 @@ describe('SellerWizard revisiting answers', () => {
         renderWizard();
         click(/get started/i);
         click(/public water/i);
+        click(/septic system/i);
         click(/^continue$/i);
         click(/ppl electric/i);
         expect(heading('Water Provider')).toBeInTheDocument();
@@ -195,6 +198,7 @@ describe('SellerWizard revisiting answers', () => {
         renderWizard({ advancedModules: ['service_providers', 'mailbox_access'] });
         click(/get started/i);
         click(/public water/i);
+        click(/septic system/i);
         // Opt out of Mailbox & Home Access on the first pass.
         fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
         click(/^continue$/i);
@@ -218,6 +222,7 @@ describe('SellerWizard revisiting answers', () => {
         renderWizard({ advancedModules: ['service_providers', 'mailbox_access'] });
         click(/get started/i);
         click(/public water/i);
+        click(/septic system/i);
         fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
         click(/^continue$/i);
         click(/ppl electric/i);

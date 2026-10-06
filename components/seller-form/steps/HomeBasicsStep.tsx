@@ -2,10 +2,10 @@
 
 import { Fragment } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Droplets, Flame, Waves, Wifi, Tv, Trash2, Check, Flower2, ShieldCheck, Wrench, KeyRound } from 'lucide-react';
+import { Building2, Droplets, Flame, Waves, Wifi, Tv, Check, Flower2, ShieldCheck, Wrench, KeyRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
-import type { AdvancedModuleKey, SewerType, UtilityCategory, WaterSource } from '@/types';
+import type { AdvancedModuleKey, UtilityCategory } from '@/types';
 import { ADVANCED_MODULE_KEYS } from '@/lib/packet/modules';
 import {
     FUEL_SOURCE_OPTIONS,
@@ -33,17 +33,14 @@ interface HomeBasicsStepProps {
 
 export function HomeBasicsStep({ state, updateState, requestedUtilityCategories, configuredAdvancedModules, collectHoaQuestions = true, onNext }: HomeBasicsStepProps) {
     const hideHoaBilling = collectHoaQuestions && state.has_hoa === 'no';
-    const pendingChoices = hideHoaBilling ? (state.hoaUtilityReselection || []) : [];
+    // Choices an explicit No just cleared, so the seller is told why they are empty.
+    const clearedChoices = hideHoaBilling ? (state.hoaUtilityReselection || []) : [];
+    const missingChoices = (['water_source', 'sewer_type'] as const).filter((field) => !state[field]);
+    const describeChoices = (fields: readonly ('water_source' | 'sewer_type')[]) =>
+        fields.map((field) => field === 'water_source' ? 'water' : 'sewer').join(' and ');
     const waterOptions = WATER_SOURCE_OPTIONS.filter((option) => !hideHoaBilling || option.id !== 'hoa');
     const sewerOptions = SEWER_TYPE_OPTIONS.filter((option) => !hideHoaBilling || option.id !== 'hoa');
-    const selectUtility = (field: 'water_source' | 'sewer_type', value: WaterSource | SewerType) => {
-        updateState({
-            [field]: value,
-            hoaUtilityReselection: pendingChoices.filter((pending) => pending !== field),
-        });
-    };
     const optionalUtilities = [
-        { id: 'trash' as const, label: 'Trash & Recycling', icon: Trash2 },
         { id: 'internet' as const, label: 'Internet', icon: Wifi },
         { id: 'cable' as const, label: 'Cable/TV', icon: Tv },
     ] satisfies { id: UtilityCategory; label: string; icon: LucideIcon }[];
@@ -147,9 +144,9 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 </div>
             )}
 
-            {pendingChoices.length > 0 && (
+            {clearedChoices.length > 0 && (
                 <p role="status" className="text-sm text-[color:var(--brand-accent)]">
-                    Since this home is not part of an association, please update your {pendingChoices.map((field) => field === 'water_source' ? 'water' : 'sewer').join(' and ')} selection{pendingChoices.length > 1 ? 's' : ''}.
+                    Since this home is not part of an association, please update your {describeChoices(clearedChoices)} selection{clearedChoices.length > 1 ? 's' : ''}.
                 </p>
             )}
 
@@ -164,9 +161,9 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         <button
                             key={opt.id}
                             type="button"
-                            onClick={() => selectUtility('water_source', opt.id)}
-                            aria-pressed={!pendingChoices.includes('water_source') && state.water_source === opt.id}
-                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${!pendingChoices.includes('water_source') && state.water_source === opt.id
+                            onClick={() => updateState({ water_source: opt.id })}
+                            aria-pressed={state.water_source === opt.id}
+                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.water_source === opt.id
                                 ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
@@ -191,9 +188,9 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         <button
                             key={opt.id}
                             type="button"
-                            onClick={() => selectUtility('sewer_type', opt.id)}
-                            aria-pressed={!pendingChoices.includes('sewer_type') && state.sewer_type === opt.id}
-                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${!pendingChoices.includes('sewer_type') && state.sewer_type === opt.id
+                            onClick={() => updateState({ sewer_type: opt.id })}
+                            aria-pressed={state.sewer_type === opt.id}
+                            className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.sewer_type === opt.id
                                 ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
@@ -491,15 +488,15 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 <button
                     type="button"
                     onClick={onNext}
-                    disabled={pendingChoices.length > 0}
-                    aria-describedby={pendingChoices.length > 0 ? 'basics-continue-blocked' : undefined}
+                    disabled={missingChoices.length > 0}
+                    aria-describedby={missingChoices.length > 0 ? 'basics-continue-blocked' : undefined}
                     className={`w-full py-3 sm:py-4 text-center font-semibold text-sm sm:text-base ${wizardPrimaryButton} disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     Continue
                 </button>
-                {pendingChoices.length > 0 && (
+                {missingChoices.length > 0 && (
                     <p id="basics-continue-blocked" className="mt-2 text-center text-xs text-muted-foreground">
-                        Choose a {pendingChoices.map((field) => field === 'water_source' ? 'water' : 'sewer').join(' and ')} option above to continue.
+                        Choose a {describeChoices(missingChoices)} option above to continue.
                     </p>
                 )}
             </div>

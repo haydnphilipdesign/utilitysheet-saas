@@ -8,7 +8,7 @@ import { AdvancedModuleKey, AdvancedPacketData, TrashUtilityExtra, UtilityCatego
 import { ADVANCED_MODULE_LABELS, getAdvancedAnswerRows } from '@/lib/packet/modules';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { HOA_GATE_LABEL, getHasHoaLabel, getHoaDetailRows } from '@/lib/packet/hoa';
-import { getFuelSourceLabel, getSewerTypeLabel, getWaterSourceLabel } from '@/lib/packet/seller-questions';
+import { NO_TRASH_SERVICE_LABEL, getFuelSourceLabel, getSewerTypeLabel, getWaterSourceLabel } from '@/lib/packet/seller-questions';
 import { wizardFocusRing, wizardTextInput } from '../wizard-ui';
 
 // Category-specific icons (same as UtilityStep)
@@ -157,11 +157,19 @@ export function ReviewStep({
                     <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
                         <div>
                             <p className="text-muted-foreground mb-0.5 sm:mb-1 text-xs sm:text-sm">Water</p>
-                            <p className="text-foreground text-sm sm:text-base">{getWaterSourceLabel(state.water_source)}</p>
+                            <p className="text-foreground text-sm sm:text-base">
+                                {state.water_source
+                                    ? getWaterSourceLabel(state.water_source)
+                                    : <span className="text-muted-foreground italic text-xs sm:text-sm">Not answered</span>}
+                            </p>
                         </div>
                         <div>
                             <p className="text-muted-foreground mb-0.5 sm:mb-1 text-xs sm:text-sm">Sewer</p>
-                            <p className="text-foreground text-sm sm:text-base">{getSewerTypeLabel(state.sewer_type)}</p>
+                            <p className="text-foreground text-sm sm:text-base">
+                                {state.sewer_type
+                                    ? getSewerTypeLabel(state.sewer_type)
+                                    : <span className="text-muted-foreground italic text-xs sm:text-sm">Not answered</span>}
+                            </p>
                         </div>
                         <div className="col-span-2">
                             <p className="text-muted-foreground mb-1 text-xs sm:text-sm">Fuels Present</p>
@@ -221,10 +229,11 @@ export function ReviewStep({
                             const Icon = iconConfig?.icon || Zap;
                             const colorClass = iconConfig?.color || 'text-slate-500';
                             const showMeterInput = collectElectricMeterNumber && cat === 'electric';
+                            const noTrashService = cat === 'trash' && state.no_trash_service === true;
                             const trashExtra = cat === 'trash' && utilState?.extra && typeof utilState.extra === 'object'
                                 ? (utilState.extra as TrashUtilityExtra)
                                 : null;
-                            const trashScheduleLines = cat === 'trash' ? getTrashScheduleLines(trashExtra) : [];
+                            const trashScheduleLines = cat === 'trash' && !noTrashService ? getTrashScheduleLines(trashExtra) : [];
 
                             return (
                                 <div key={cat} className="py-2 border-b border-border/50 last:border-0 last:pb-0">
@@ -236,12 +245,14 @@ export function ReviewStep({
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-xs sm:text-sm font-medium text-muted-foreground">{label}</p>
                                                 <p className="text-sm sm:text-base text-foreground font-medium truncate">
-                                                    {utilState?.display_name || <span className="italic text-muted-foreground">Not sure</span>}
+                                                    {noTrashService
+                                                        ? NO_TRASH_SERVICE_LABEL
+                                                        : utilState?.display_name || <span className="italic text-muted-foreground">Not sure</span>}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0">
-                                            {utilState?.entry_mode !== null && (
+                                            {(utilState?.entry_mode !== null || noTrashService) && (
                                                 <div className="p-1 rounded-full bg-[var(--brand-accent-soft)]">
                                                     <Check className="h-3 w-3 sm:h-4 sm:w-4 text-[color:var(--brand-accent)]" />
                                                 </div>

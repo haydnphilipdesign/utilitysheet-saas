@@ -112,10 +112,53 @@ test.describe('Seller form after submission', () => {
         expect(await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)).toBeNull();
     });
 
+    test('a reopened sheet with no stored sewer answer asks Home Basics first, then returns to Review', async ({ page }) => {
+        await mockApi(page, { ...REOPENED_REQUEST, prefill: { ...REOPENED_REQUEST.prefill, sewer_type: null } });
+        await page.goto(`/s/${TOKEN}`);
+
+        await expect(page.getByRole('heading', { name: 'Home Basics' })).toBeVisible();
+        await expect(page.getByRole('button', { name: /Public Water/ })).toHaveAttribute('aria-pressed', 'true');
+        const next = page.getByRole('button', { name: 'Continue', exact: true });
+        await expect(next).toBeDisabled();
+        await expect(page.getByText('Choose a sewer option above to continue.')).toBeVisible();
+
+        await page.getByRole('button', { name: 'Septic System' }).click();
+        await next.click();
+
+        // The stored provider answers are not asked again.
+        await expect(page.getByRole('heading', { name: 'Review and Submit' })).toBeVisible();
+        await expect(page.getByTestId('review-reopened-notice')).toBeVisible();
+        await expect(page.getByText('Corrected Power Co')).toBeVisible();
+    });
+
+    test('a reopened sheet with no trash entry asks about trash before Review', async ({ page }) => {
+        await mockApi(page, { ...REOPENED_REQUEST, utility_categories: ['electric', 'water', 'trash'] });
+        await page.goto(`/s/${TOKEN}`);
+
+        // The seller is asked, not shown an answer they never gave.
+        await expect(page.getByRole('heading', { name: 'Trash & Recycling Provider' })).toBeVisible();
+        await expect(page.getByTestId('seller-utility-current-trash')).toHaveCount(0);
+        await page.getByRole('button', { name: 'No trash service at this home' }).click();
+
+        await expect(page.getByRole('heading', { name: 'Review and Submit' })).toBeVisible();
+        await expect(page.getByTestId('review-reopened-notice')).toBeVisible();
+        await expect(page.getByText('Corrected Power Co')).toBeVisible();
+        await expect(page.getByText('No trash service at this home')).toBeVisible();
+
+        const submission = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith(`/api/seller/${TOKEN}`));
+        await page.getByRole('button', { name: /submit/i }).click();
+        const body = (await submission).postDataJSON();
+        expect(body.edit_version).toBe(1);
+        expect(body.utilities.trash).toMatchObject({ hidden: true });
+        expect(body.utilities.electric).toMatchObject({ display_name: 'Corrected Power Co' });
+    });
+
     test('a tab from an earlier session is told to reload and cannot submit', async ({ page }) => {
         await mockApi(page, OPEN_REQUEST, { status: 409, body: { code: 'STALE_SESSION' } });
         await page.goto(`/s/${TOKEN}`);
         await page.getByTestId('seller-welcome-continue').click();
+        await page.getByRole('button', { name: 'Private Well' }).click();
+        await page.getByRole('button', { name: 'Septic System' }).click();
         await page.getByRole('button', { name: 'Continue', exact: true }).click();
         await page.getByTestId('seller-utility-skip-electric').click();
         await page.getByRole('button', { name: /submit/i }).click();
@@ -131,6 +174,8 @@ test.describe('Seller form after submission', () => {
         await mockApi(page, OPEN_REQUEST, { status: 409, body: { code: 'ALREADY_SUBMITTED' } });
         await page.goto(`/s/${TOKEN}`);
         await page.getByTestId('seller-welcome-continue').click();
+        await page.getByRole('button', { name: 'Private Well' }).click();
+        await page.getByRole('button', { name: 'Septic System' }).click();
         await page.getByRole('button', { name: 'Continue', exact: true }).click();
         await page.getByTestId('seller-utility-skip-electric').click();
         await page.getByRole('button', { name: /submit/i }).click();

@@ -33,17 +33,25 @@ import {
 } from '@/lib/packet/modules';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { createEmptyHoaAnswers } from '@/lib/packet/hoa';
+import { FUEL_UTILITY_CATEGORY_BY_FUEL, OPTIONAL_UTILITY_CATEGORIES } from '@/lib/packet/seller-questions';
+
+type RequiredBasicsField = 'water_source' | 'sewer_type';
+const REQUIRED_BASICS_FIELDS: RequiredBasicsField[] = ['water_source', 'sewer_type'];
 
 export interface WizardState extends HoaAnswers {
-    /** Draft-only: choices cleared after an explicit No need seller confirmation. */
-    hoaUtilityReselection?: ('water_source' | 'sewer_type')[];
-    water_source: WaterSource;
-    sewer_type: SewerType;
+    /** Draft-only: choices an explicit No cleared, so Home Basics can explain why they are empty. */
+    hoaUtilityReselection?: RequiredBasicsField[];
+    /** Null until the seller answers. Both are required before leaving Home Basics. */
+    water_source: WaterSource | null;
+    sewer_type: SewerType | null;
     heating_type: HeatingType;
     fuels_present: string[];
     primary_heating_type: string | null;
     trash_handled_by: 'municipal' | 'private' | 'not_sure';
+    /** Internet and Cable/TV, when the seller ticked them. */
     optional_utilities: UtilityCategory[];
+    /** Draft-only: the seller answered "No trash service at this home", which keeps trash off the sheet. */
+    no_trash_service: boolean;
     packet_mode: PacketMode;
     advanced_modules: AdvancedModuleKey[];
     advanced_module_exclusions: AdvancedModuleExclusions;
@@ -65,19 +73,72 @@ function digestOf(value: string): string {
     return `${value.length}:${hash}`;
 }
 
+function unansweredBasics(state: WizardState): RequiredBasicsField[] {
+    return REQUIRED_BASICS_FIELDS.filter((field) => !state[field]);
+}
+
+/**
+ * An explicit No to the HOA question clears an "Included in HOA / Condo Fee"
+ * choice. The cleared question is unanswered and therefore required again;
+ * the list only remembers why, and drops a field once it is answered.
+ */
 function reconcileHoaUtilityChoices(state: WizardState, enabled: boolean): WizardState {
     if (!enabled || state.has_hoa !== 'no') {
         return { ...state, hoaUtilityReselection: [] };
     }
-    const pending = new Set(state.hoaUtilityReselection || []);
+    const cleared = new Set(state.hoaUtilityReselection || []);
     const next = { ...state };
-    for (const field of ['water_source', 'sewer_type'] as const) {
+    for (const field of REQUIRED_BASICS_FIELDS) {
         if (next[field] === 'hoa') {
-            next[field] = 'not_sure';
-            pending.add(field);
+            next[field] = null;
+            cleared.add(field);
         }
     }
-    return { ...next, hoaUtilityReselection: [...pending] };
+    return {
+        ...next,
+        hoaUtilityReselection: REQUIRED_BASICS_FIELDS.filter((field) => cleared.has(field) && !next[field]),
+    };
+}
+
+/**
+ * The provider steps this seller is asked, in order. Mirrored by
+ * getSellerQuestionPreview in lib/packet/seller-questions.ts; both must change
+ * together.
+ */
+function getVisibleUtilities(
+    state: Pick<WizardState, 'water_source' | 'sewer_type' | 'fuels_present' | 'optional_utilities'>,
+    requested: UtilityCategory[]
+): UtilityCategory[] {
+    const requestedCategories = new Set<UtilityCategory>(requested);
+    const nextUtilities: UtilityCategory[] = ['electric'];
+
+    if (requestedCategories.has('water') && state.water_source === 'city') {
+        nextUtilities.push('water');
+    }
+    if (requestedCategories.has('sewer') && state.sewer_type === 'public') {
+        nextUtilities.push('sewer');
+    }
+
+    state.fuels_present.forEach((fuel) => {
+        const mapped = FUEL_UTILITY_CATEGORY_BY_FUEL[fuel];
+        if (mapped && requestedCategories.has(mapped)) {
+            nextUtilities.push(mapped);
+        }
+    });
+
+    // Asked whenever it is requested, like Electric; the seller can answer
+    // that the home has no trash service.
+    if (requestedCategories.has('trash')) {
+        nextUtilities.push('trash');
+    }
+
+    OPTIONAL_UTILITY_CATEGORIES.forEach((cat) => {
+        if (requestedCategories.has(cat) && state.optional_utilities.includes(cat)) {
+            nextUtilities.push(cat);
+        }
+    });
+
+    return Array.from(new Set(nextUtilities));
 }
 
 export interface UtilityWizardState {
@@ -147,8 +208,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     const editVersion = initialRequestData.edit_version ?? 0;
     const collectHoaQuestionsInitially = initialRequestData.collect_hoa_questions !== false;
-    // A reopened request starts from the stored sheet. If that sheet holds HOA
-    // billing choices that conflict with a No, Home Basics asks again first.
+    // A reopened request starts from the stored sheet. If that sheet has no
+    // water or sewer answer, or an HOA billing choice that conflicts with a No,
+    // Home Basics asks first. If trash was requested and the sheet has no trash
+    // row, the trash step asks first: the seller is never shown an answer they
+    // did not give.
     const [initialWizardState] = useState<WizardState | null>(() => {
         if (!initialRequestData.prefill) return null;
         const packetMode: PacketMode = initialRequestData.packet_mode || 'simple';
@@ -159,6 +223,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             ...createEmptyHoaAnswers(),
             ...initialRequestData.hoa,
             trash_handled_by: 'not_sure',
+            no_trash_service: false,
             packet_mode: packetMode,
             advanced_modules: packetMode === 'advanced'
                 ? getEffectiveAdvancedModules(ADVANCED_MODULE_KEYS.filter((moduleKey) => modules.includes(moduleKey)), exclusions)
@@ -169,18 +234,29 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         } as WizardState, collectHoaQuestionsInitially);
     });
     const startsFromStoredSheet = initialWizardState !== null;
+    const storedSheetNeedsBasics = initialWizardState !== null && unansweredBasics(initialWizardState).length > 0;
+    const [storedSheetTrashIndex] = useState(() => {
+        if (!initialWizardState || initialWizardState.utilities.trash?.entry_mode) return -1;
+        return getVisibleUtilities(initialWizardState, initialRequestData.utility_categories).indexOf('trash');
+    });
+    const storedSheetNeedsAnswers = storedSheetNeedsBasics || storedSheetTrashIndex >= 0;
     const [currentStep, setCurrentStep] = useState<Step>(() => {
         if (!initialWizardState) return Step.WELCOME;
-        return initialWizardState.hoaUtilityReselection?.length ? Step.HOME_BASICS : Step.REVIEW;
+        if (storedSheetNeedsBasics) return Step.HOME_BASICS;
+        return storedSheetTrashIndex >= 0 ? Step.UTILITIES : Step.REVIEW;
     });
     // Set when the server refuses this page's answers for good.
     const [terminalNotice, setTerminalNotice] = useState<'submitted' | 'stale' | null>(null);
     const [submissionAttempt, setSubmissionAttempt] = useState<{ key: string; digest: string } | null>(null);
-    const [utilityIndex, setUtilityIndex] = useState(0);
+    const [utilityIndex, setUtilityIndex] = useState(storedSheetNeedsBasics ? 0 : Math.max(0, storedSheetTrashIndex));
     const [advancedModuleIndex, setAdvancedModuleIndex] = useState(0);
-    const [navigationMode, setNavigationMode] = useState<NavigationMode>('linear');
+    // A stored sheet with something still to ask goes on to Review afterwards,
+    // stopping only at provider steps that have no answer.
+    const [navigationMode, setNavigationMode] = useState<NavigationMode>(storedSheetNeedsAnswers ? 'catch_up' : 'linear');
     // Handoff sections that were enabled when Home Basics was reopened from Review.
-    const [reviewedAdvancedModules, setReviewedAdvancedModules] = useState<AdvancedModuleKey[]>([]);
+    const [reviewedAdvancedModules, setReviewedAdvancedModules] = useState<AdvancedModuleKey[]>(
+        () => (storedSheetNeedsAnswers ? initialWizardState?.advanced_modules ?? [] : [])
+    );
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<{ kind: 'network' | 'server' | 'rate_limit' | 'unknown'; message: string } | null>(null);
     const [autosaveFlash, setAutosaveFlash] = useState(false);
@@ -207,8 +283,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     );
 
     const [state, setState] = useState<WizardState>(() => initialWizardState ?? ({
-        water_source: 'not_sure',
-        sewer_type: 'not_sure',
+        water_source: null,
+        sewer_type: null,
         heating_type: 'not_sure',
         fuels_present: [],
         primary_heating_type: null,
@@ -216,6 +292,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         ...initialRequestData.hoa,
         trash_handled_by: 'not_sure',
         optional_utilities: [],
+        no_trash_service: false,
         packet_mode: requestPacketMode,
         advanced_modules: configuredAdvancedModules,
         advanced_module_exclusions: requestAdvancedModuleExclusions,
@@ -225,39 +302,26 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     // Derived during render, not in an effect, so a restored draft's provider-step
     // index is checked against the restored answers instead of the defaults.
-    const visibleUtilities = useMemo(() => {
-        const requestedCategories = new Set<UtilityCategory>(initialRequestData.utility_categories);
-        const nextUtilities: UtilityCategory[] = ['electric'];
-
-        if (requestedCategories.has('water') && state.water_source === 'city') {
-            nextUtilities.push('water');
-        }
-        if (requestedCategories.has('sewer') && state.sewer_type === 'public') {
-            nextUtilities.push('sewer');
-        }
-
-        const fuelMap: Record<string, UtilityCategory> = {
-            natural_gas: 'gas',
-            propane: 'propane',
-            oil: 'oil',
-        };
-
-        state.fuels_present.forEach((fuel) => {
-            const mapped = fuelMap[fuel];
-            if (mapped && requestedCategories.has(mapped)) {
-                nextUtilities.push(mapped);
-            }
-        });
-
-        const preservedCategories: UtilityCategory[] = ['trash', 'internet', 'cable'];
-        preservedCategories.forEach((cat) => {
-            if (requestedCategories.has(cat) && state.optional_utilities.includes(cat)) {
-                nextUtilities.push(cat);
-            }
-        });
-
-        return Array.from(new Set(nextUtilities));
-    }, [state.water_source, state.sewer_type, state.fuels_present, state.optional_utilities, initialRequestData.utility_categories]);
+    const visibleUtilities = useMemo(
+        () => getVisibleUtilities(
+            {
+                water_source: state.water_source,
+                sewer_type: state.sewer_type,
+                fuels_present: state.fuels_present,
+                optional_utilities: state.optional_utilities,
+            },
+            initialRequestData.utility_categories
+        ),
+        [state.water_source, state.sewer_type, state.fuels_present, state.optional_utilities, initialRequestData.utility_categories]
+    );
+    // The steps that reach the sheet: "no trash service" keeps its step, so the
+    // seller can change the answer, but stores no trash row.
+    const sheetUtilities = useMemo(
+        () => (state.no_trash_service ? visibleUtilities.filter((category) => category !== 'trash') : visibleUtilities),
+        [visibleUtilities, state.no_trash_service]
+    );
+    const hasUtilityAnswer = (category: UtilityCategory) =>
+        Boolean(state.utilities[category]?.entry_mode) || (category === 'trash' && state.no_trash_service);
     const enabledAdvancedModules = state.packet_mode === 'advanced' ? state.advanced_modules : [];
     const orderedAdvancedModules = useMemo(
         () => getEffectiveAdvancedModules(enabledAdvancedModules, state.advanced_module_exclusions),
@@ -303,33 +367,69 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
             // Merge over the initial state so a draft saved before a question
             // existed keeps that question's default instead of dropping the key.
-            const draftState = reconcileHoaUtilityChoices({
+            const savedState: WizardState = {
+                ...state,
                 ...parsed.state,
                 has_hoa: parsed.state.has_hoa === undefined
                     ? initialRequestData.hoa?.has_hoa ?? null
                     : parsed.state.has_hoa,
-            }, collectHoaQuestions);
-            setState((prev) => ({ ...prev, ...draftState }));
-            if (typeof parsed.currentStep === 'number') {
-                setCurrentStep(draftState.hoaUtilityReselection?.length
-                    ? Step.HOME_BASICS
-                    : Math.max(0, Math.min(Step.SUCCESS, parsed.currentStep)) as Step);
+            };
+            // An HOA reset used to be stored as 'not_sure' plus this marker. It
+            // was never the seller's answer, so it loads as unanswered. Any other
+            // 'not_sure' in an older draft is kept as it is.
+            for (const field of REQUIRED_BASICS_FIELDS) {
+                if (parsed.state.hoaUtilityReselection?.includes(field)) savedState[field] = null;
             }
-            if (typeof parsed.utilityIndex === 'number') {
-                setUtilityIndex(Math.max(0, parsed.utilityIndex));
+            // Saved while trash was an opt-in tick box.
+            if (parsed.state.no_trash_service === undefined) {
+                if (parsed.state.optional_utilities?.includes('trash')) {
+                    savedState.no_trash_service = false;
+                } else if (savedState.utilities?.trash) {
+                    // An answer behind a box the seller later unticked: ask afresh.
+                    const otherUtilities = { ...savedState.utilities } as Partial<WizardState['utilities']>;
+                    delete otherUtilities.trash;
+                    savedState.utilities = otherUtilities as WizardState['utilities'];
+                }
             }
+            const draftState = reconcileHoaUtilityChoices(savedState, collectHoaQuestions);
+            setState(draftState);
+
+            let draftStep = typeof parsed.currentStep === 'number'
+                ? Math.max(0, Math.min(Step.SUCCESS, parsed.currentStep)) as Step
+                : null;
+            let draftUtilityIndex = typeof parsed.utilityIndex === 'number' ? Math.max(0, parsed.utilityIndex) : null;
+            const savedNavigationMode = parsed.navigationMode ?? parsed.advancedNavigationMode;
+            let draftNavigationMode = parsed.v === 2 && savedNavigationMode && NAVIGATION_MODES.includes(savedNavigationMode)
+                ? savedNavigationMode
+                : null;
+            let draftReviewedModules = parsed.v === 2 && Array.isArray(parsed.reviewedAdvancedModules)
+                ? ADVANCED_MODULE_KEYS.filter((moduleKey) => parsed.reviewedAdvancedModules?.includes(moduleKey))
+                : null;
+
+            if (draftStep !== null && draftStep > Step.HOME_BASICS) {
+                const trashIndex = getVisibleUtilities(draftState, initialRequestData.utility_categories).indexOf('trash');
+                const trashUnanswered = trashIndex >= 0 && !draftState.no_trash_service && !draftState.utilities.trash?.entry_mode;
+                if (unansweredBasics(draftState).length > 0) {
+                    draftStep = Step.HOME_BASICS;
+                } else if (trashUnanswered && (draftStep > Step.UTILITIES || (draftUtilityIndex ?? 0) > trashIndex)) {
+                    // The draft is past a trash step it was never asked. Ask it
+                    // now, then go back to Review if that is where it was headed.
+                    const returnsToReview = draftStep === Step.REVIEW
+                        || (draftNavigationMode !== null && draftNavigationMode !== 'linear');
+                    draftStep = Step.UTILITIES;
+                    draftUtilityIndex = trashIndex;
+                    draftNavigationMode = returnsToReview ? 'catch_up' : 'linear';
+                    if (returnsToReview) draftReviewedModules = [...ADVANCED_MODULE_KEYS];
+                }
+            }
+
+            if (draftStep !== null) setCurrentStep(draftStep);
+            if (draftUtilityIndex !== null) setUtilityIndex(draftUtilityIndex);
             if (parsed.v === 2 && typeof parsed.advancedModuleIndex === 'number') {
                 setAdvancedModuleIndex(Math.max(0, parsed.advancedModuleIndex));
             }
-            const draftNavigationMode = parsed.navigationMode ?? parsed.advancedNavigationMode;
-            if (parsed.v === 2 && draftNavigationMode && NAVIGATION_MODES.includes(draftNavigationMode)) {
-                setNavigationMode(draftNavigationMode);
-            }
-            if (parsed.v === 2 && Array.isArray(parsed.reviewedAdvancedModules)) {
-                setReviewedAdvancedModules(
-                    ADVANCED_MODULE_KEYS.filter((moduleKey) => parsed.reviewedAdvancedModules?.includes(moduleKey))
-                );
-            }
+            if (draftNavigationMode) setNavigationMode(draftNavigationMode);
+            if (draftReviewedModules) setReviewedAdvancedModules(draftReviewedModules);
         } catch {
             // ignore
         }
@@ -449,14 +549,12 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     }, [currentStep, utilityIndex, visibleUtilities, token, isDemo, suggestionsByCategory, loadingSuggestions]);
 
     useEffect(() => {
-        const uniqueUtils = visibleUtilities;
-
         setState((prev) => {
             const nextUtilitiesState = { ...prev.utilities };
-            const visibleSet = new Set(uniqueUtils);
+            const sheetSet = new Set(sheetUtilities);
             let hasChanges = false;
 
-            uniqueUtils.forEach((cat) => {
+            visibleUtilities.forEach((cat) => {
                 if (!nextUtilitiesState[cat]) {
                     nextUtilitiesState[cat] = {
                         entry_mode: null,
@@ -466,15 +564,16 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         hidden: false,
                     };
                     hasChanges = true;
-                } else if (nextUtilitiesState[cat].hidden) {
+                } else if (nextUtilitiesState[cat].hidden && sheetSet.has(cat)) {
                     nextUtilitiesState[cat] = { ...nextUtilitiesState[cat], hidden: false };
                     hasChanges = true;
                 }
             });
 
+            // A hidden entry is not stored by the server.
             Object.entries(nextUtilitiesState).forEach(([cat, utilState]) => {
                 const category = cat as UtilityCategory;
-                if (!visibleSet.has(category) && utilState && utilState.hidden === false) {
+                if (!sheetSet.has(category) && utilState && utilState.hidden === false) {
                     nextUtilitiesState[category] = { ...utilState, hidden: true };
                     hasChanges = true;
                 }
@@ -482,7 +581,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
             return hasChanges ? { ...prev, utilities: nextUtilitiesState } : prev;
         });
-    }, [visibleUtilities]);
+    }, [visibleUtilities, sheetUtilities]);
 
     useEffect(() => {
         if (currentStep !== Step.UTILITIES) return;
@@ -567,7 +666,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     // answer yet, then handoff sections that edit enabled, then go back to Review.
     const continueCatchUp = (utilityFrom: number, advancedFrom: number) => {
         const nextUtility = visibleUtilities.findIndex(
-            (category, index) => index >= utilityFrom && !state.utilities[category]?.entry_mode
+            (category, index) => index >= utilityFrom && !hasUtilityAnswer(category)
         );
         if (nextUtility >= 0) {
             setUtilityIndex(nextUtility);
@@ -699,11 +798,34 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const updateUtilityState = (cat: UtilityCategory, updates: Partial<UtilityWizardState>) => {
         setState((prev) => ({
             ...prev,
+            // Any provider answer for trash replaces "no trash service".
+            ...(cat === 'trash' && updates.entry_mode ? { no_trash_service: false } : {}),
             utilities: {
                 ...prev.utilities,
                 [cat]: { ...prev.utilities[cat], ...updates },
             },
         }));
+    };
+
+    const declineTrashService = () => {
+        setState((prev) => ({
+            ...prev,
+            no_trash_service: true,
+            utilities: {
+                ...prev.utilities,
+                trash: {
+                    ...prev.utilities.trash,
+                    entry_mode: null,
+                    display_name: null,
+                    raw_text: null,
+                    canonical_id: null,
+                    confidence_score: null,
+                    contact_phone: null,
+                    contact_url: null,
+                },
+            },
+        }));
+        handleNext();
     };
 
     const updateAdvanced = (updates: Partial<AdvancedPacketData>) => {
@@ -724,7 +846,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             await new Promise((resolve) => setTimeout(resolve, 500));
             trackEvent('seller_submitted', {
                 source: 'seller_flow',
-                utility_count: visibleUtilities.length,
+                utility_count: sheetUtilities.length,
                 location: 'demo_seller_flow',
                 packet_mode: state.packet_mode,
             });
@@ -742,7 +864,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
         // One key per set of answers: a retry after a lost response is
         // recognized by the server, while changed answers count as new.
-        const answers = JSON.stringify({ ...state, hoaUtilityReselection: undefined });
+        const answers = JSON.stringify({ ...state, hoaUtilityReselection: undefined, no_trash_service: undefined });
         const digest = digestOf(answers);
         const attempt = submissionAttempt?.digest === digest
             ? submissionAttempt
@@ -784,7 +906,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 } else {
                     trackEvent('seller_submitted', {
                         source: 'seller_flow',
-                        utility_count: visibleUtilities.length,
+                        utility_count: sheetUtilities.length,
                         location: 'seller_flow',
                         packet_mode: state.packet_mode,
                     });
@@ -846,7 +968,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     default: return 'Progress';
                 }
             })()}
-            completedCount={visibleUtilities.filter((cat) => state.utilities[cat]?.entry_mode !== null).length}
+            completedCount={visibleUtilities.filter((cat) => state.utilities[cat]?.entry_mode !== null || hasUtilityAnswer(cat)).length}
             totalCount={visibleUtilities.length}
             brandProfile={brandProfile}
             stepNumber={currentStep === Step.HOME_BASICS ? undefined : currentStepNumber}
@@ -900,6 +1022,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         token={token}
                         collectElectricMeterNumber={collectElectricMeterNumber}
                         isReviewEdit={navigationMode === 'review_edit'}
+                        onNoService={visibleUtilities[utilityIndex] === 'trash' ? declineTrashService : undefined}
                         onNext={handleNext}
                         onBack={handleBack}
                     />

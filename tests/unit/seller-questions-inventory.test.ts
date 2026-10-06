@@ -160,7 +160,36 @@ describe('getSellerQuestionPreview', () => {
         expect(homeBasics?.condition).toBeUndefined();
         expect(byKey('home_basics.water_source')?.condition).toBeUndefined();
         expect(byKey('home_basics.primary_heating_type')?.condition).toContain('more than one fuel source');
-        expect(byKey('home_basics.optional_utilities')?.condition).toContain('Trash & Recycling');
+        expect(byKey('home_basics.optional_utilities')?.condition).toBe('Asked only when Internet or Cable/TV is included.');
+        expect(byKey('home_basics.optional_utilities')?.choices).toEqual(['Internet', 'Cable/TV']);
+    });
+
+    it('describes water and sewer as required with nothing selected to start', () => {
+        const homeBasics = getSellerQuestionPreview(config()).find((section) => section.key === 'home_basics');
+        for (const key of ['home_basics.water_source', 'home_basics.sewer_type']) {
+            const question = homeBasics?.questions.find((item) => item.key === key);
+            expect(question?.helper).toContain('Required');
+            expect(question?.helper).toContain('Not Sure is a valid answer');
+            expect(question?.choices).toContain('Not Sure');
+        }
+    });
+
+    it('describes trash as always asked, with a no-service answer that skips the pickup questions', () => {
+        const trash = getSellerQuestionPreview(config()).find((section) => section.key === 'utility.trash');
+        expect(trash?.condition).toContain('Always asked when Trash & Recycling is included');
+        expect(trash?.condition).toContain('No trash service at this home');
+        for (const key of ['utility.trash.pickup_days', 'utility.trash.has_recycling']) {
+            expect(trash?.questions.find((question) => question.key === key)?.condition).toContain('No trash service at this home');
+        }
+    });
+
+    it('mentions the Same as Internet offer on Cable/TV only', () => {
+        const sections = getSellerQuestionInventory();
+        const provider = (category: string) => sections
+            .find((section) => section.key === `utility.${category}`)
+            ?.questions.find((question) => question.key === `utility.${category}.provider`);
+        expect(provider('cable')?.helper).toContain('Same as Internet');
+        expect(provider('sewer')?.helper).not.toContain('Same as');
     });
 
     it('honors the electric meter preference', () => {

@@ -50,6 +50,7 @@ test.describe('Seller wizard: revisiting answers', () => {
         await expect(page.getByRole('heading', { name: 'Home Basics' })).toBeVisible();
         await expect(page.locator('header').getByText(/\d+ of \d+/)).toHaveCount(0);
         await page.getByRole('button', { name: 'Public Water' }).click();
+        await page.getByRole('button', { name: 'Septic System' }).click();
         await page.getByRole('button', { name: 'Continue', exact: true }).click();
         await expect(page.locator('header').getByText('2 of 6')).toBeVisible();
 
@@ -122,6 +123,8 @@ test.describe('Seller wizard: revisiting answers', () => {
         test.skip(!isMobile, 'Sizes are only reduced on wider screens.');
         await page.goto(`/s/${TOKEN}`);
         await page.getByTestId('seller-welcome-continue').click();
+        await page.getByRole('button', { name: 'Private Well' }).click();
+        await page.getByRole('button', { name: 'Septic System' }).click();
         await page.getByRole('button', { name: 'Continue', exact: true }).click();
         await page.getByRole('button', { name: 'PPL Electric Utilities' }).click();
 

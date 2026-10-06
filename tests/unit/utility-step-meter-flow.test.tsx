@@ -30,6 +30,7 @@ function createWizardState(): WizardState {
         ...createEmptyHoaAnswers(),
         trash_handled_by: 'not_sure',
         optional_utilities: [],
+        no_trash_service: false,
         packet_mode: 'simple',
         advanced_modules: [],
         advanced_module_exclusions: {},

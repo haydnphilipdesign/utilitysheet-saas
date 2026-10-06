@@ -79,8 +79,15 @@ function renderSimpleWizard() {
     );
 }
 
+/** Water and sewer are required; these two answers add no provider steps. */
+function answerBasics() {
+    fireEvent.click(screen.getByRole('button', { name: 'Private Well' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Septic System' }));
+}
+
 function advanceToFirstAdvancedModule() {
     fireEvent.click(screen.getByRole('button', { name: /get started/i }));
+    answerBasics();
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
     fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
 }
@@ -135,6 +142,7 @@ describe('SellerWizard advanced module step flow', () => {
         fireEvent.click(screen.getByTestId('advanced-group-smart_home_security'));
         fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
 
+        answerBasics();
         fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
         fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
 
@@ -165,6 +173,7 @@ describe('SellerWizard advanced module step flow', () => {
         renderAdvancedWizard({ advanced_modules: [] });
 
         fireEvent.click(screen.getByRole('button', { name: /get started/i }));
+        answerBasics();
         fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
         fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
 

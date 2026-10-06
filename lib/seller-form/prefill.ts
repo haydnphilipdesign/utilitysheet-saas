@@ -91,8 +91,9 @@ export function buildSellerPrefill(
 }
 
 export interface SellerPrefillState {
-    water_source: 'city' | 'well' | 'hoa' | 'not_sure';
-    sewer_type: 'public' | 'septic' | 'hoa' | 'not_sure';
+    /** Null when the sheet holds no usable value; the seller is asked again. */
+    water_source: 'city' | 'well' | 'hoa' | 'not_sure' | null;
+    sewer_type: 'public' | 'septic' | 'hoa' | 'not_sure' | null;
     fuels_present: string[];
     primary_heating_type: string | null;
     optional_utilities: UtilityCategory[];
@@ -104,7 +105,9 @@ export interface SellerPrefillState {
  *
  * The sheet stores one heating type, not the list of fuels the seller ticked,
  * so the list is rebuilt from the fuel providers on the sheet plus the heating
- * type. Optional utilities are the ones that have a row.
+ * type. Optional utilities are the ones that have a row. A sheet with no trash
+ * row carries no trash answer: "no trash service" is not stored, so it cannot
+ * be told apart from never having been asked, and the wizard asks.
  */
 export function sellerPrefillToWizardState(prefill: SellerPrefill): SellerPrefillState {
     const categories = new Set(prefill.utilities.map((utility) => utility.category));
@@ -118,10 +121,10 @@ export function sellerPrefillToWizardState(prefill: SellerPrefill): SellerPrefil
     return {
         water_source: (prefill.water_source && WATER_SOURCES.has(prefill.water_source)
             ? prefill.water_source
-            : 'not_sure') as SellerPrefillState['water_source'],
+            : null) as SellerPrefillState['water_source'],
         sewer_type: (prefill.sewer_type && SEWER_TYPES.has(prefill.sewer_type)
             ? prefill.sewer_type
-            : 'not_sure') as SellerPrefillState['sewer_type'],
+            : null) as SellerPrefillState['sewer_type'],
         fuels_present: fuels,
         primary_heating_type: heatingType ?? (fuels.length === 1 ? fuels[0] : null),
         optional_utilities: OPTIONAL_UTILITY_CATEGORIES.filter((category) => categories.has(category)),

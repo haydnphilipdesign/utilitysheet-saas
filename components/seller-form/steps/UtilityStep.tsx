@@ -23,7 +23,7 @@ import { WizardState } from '../SellerWizard';
 import { UtilityCategory, ProviderSuggestion, TrashPickupDay, TrashUtilityExtra } from '@/types';
 import { trackEvent } from '@/lib/analytics/events';
 import { dedupeProviderSuggestions } from '@/lib/providers/canonicalize';
-import { UTILITY_PROVIDER_HELPERS, getUtilityProviderPrompt } from '@/lib/packet/seller-questions';
+import { NO_TRASH_SERVICE_LABEL, UTILITY_PROVIDER_HELPERS, getUtilityProviderPrompt } from '@/lib/packet/seller-questions';
 import { PickupDaySelector, type PickupDaySpecial } from '../PickupDaySelector';
 import { wizardFocusRing, wizardGhostButton, wizardPrimaryButton, wizardSecondaryButton, wizardTextInput } from '../wizard-ui';
 
@@ -63,6 +63,8 @@ interface UtilityStepProps {
     collectElectricMeterNumber?: boolean;
     /** True when this step was opened from a Review row and returns there. */
     isReviewEdit?: boolean;
+    /** Trash only: records "no trash service" and moves on, skipping the pickup questions. */
+    onNoService?: () => void;
     onNext: () => void;
     onBack: () => void;
 }
@@ -77,6 +79,7 @@ export function UtilityStep({
     token,
     collectElectricMeterNumber = false,
     isReviewEdit = false,
+    onNoService,
     onNext,
     onBack,
 }: UtilityStepProps) {
@@ -134,7 +137,14 @@ export function UtilityStep({
     const shouldGateTrashDetails = category === 'trash';
     // An answer given earlier (before Back, an edit from Review, or a restored
     // draft) is shown so the seller can keep it without answering again.
-    const hasAnswer = Boolean(currentUtilityState?.entry_mode);
+    const serviceDeclined = category === 'trash' && state.no_trash_service === true;
+    const hasAnswer = Boolean(currentUtilityState?.entry_mode) || serviceDeclined;
+    // Offered on Cable/TV only, and only once Internet has a provider name.
+    const internetAnswer = category === 'cable' ? state.utilities.internet : undefined;
+    const internetProviderName = internetAnswer && !internetAnswer.hidden && internetAnswer.entry_mode && internetAnswer.entry_mode !== 'unknown'
+        ? (internetAnswer.display_name || '').trim()
+        : '';
+    const offerSameAsInternet = internetProviderName !== '' && currentUtilityState?.display_name !== internetProviderName;
     const continueLabel = isReviewEdit ? 'Save & Return to Review' : 'Continue';
 
     const currentTrashExtra: TrashUtilityExtra =
@@ -240,6 +250,25 @@ export function UtilityStep({
         advanceOrShowDetails();
     };
 
+    // Copies the name only: the contact details are looked up for Cable/TV itself.
+    const handleSameAsInternet = () => {
+        updateState(category, {
+            entry_mode: 'free_text',
+            display_name: internetProviderName,
+            raw_text: internetProviderName,
+            canonical_id: null,
+            confidence_score: null,
+            contact_phone: null,
+            contact_url: null,
+        });
+        advanceOrShowDetails();
+    };
+
+    const handleNoService = () => {
+        trackSkip('no_service');
+        onNoService?.();
+    };
+
     const handleSkip = () => {
         trackSkip('i_dont_know');
         updateState(category, {
@@ -274,6 +303,10 @@ export function UtilityStep({
     };
 
     const handleKeepAnswer = () => {
+        if (serviceDeclined) {
+            onNext();
+            return;
+        }
         if (currentUtilityState?.entry_mode !== 'unknown') {
             advanceOrShowDetails();
             return;
@@ -294,7 +327,7 @@ export function UtilityStep({
     const providerPrompt = getUtilityProviderPrompt(category, categoryLabel);
     const providerHelper = UTILITY_PROVIDER_HELPERS[category];
 
-    const trackSkip = (reason: 'i_dont_know' | 'skipped_section' = 'i_dont_know') => {
+    const trackSkip = (reason: 'i_dont_know' | 'skipped_section' | 'no_service' = 'i_dont_know') => {
         trackEvent('seller_utility_skipped', {
             category,
             reason,
@@ -344,7 +377,7 @@ export function UtilityStep({
                             Your answer
                         </p>
                         <p className="text-sm sm:text-base font-semibold text-foreground break-words">
-                            {currentUtilityState?.display_name || 'Not sure'}
+                            {serviceDeclined ? NO_TRASH_SERVICE_LABEL : currentUtilityState?.display_name || 'Not sure'}
                         </p>
                     </div>
                     <button
@@ -361,6 +394,19 @@ export function UtilityStep({
 
             {mode === 'view' && (
                 <div className="space-y-4 sm:space-y-6">
+                    {offerSameAsInternet && (
+                        <button
+                            type="button"
+                            onClick={handleSameAsInternet}
+                            data-testid="seller-utility-same-as-internet"
+                            className={`w-full flex items-center justify-between p-3 sm:p-4 bg-muted/50 hover:bg-muted border border-border hover:border-ring rounded-xl text-left transition-all group active:scale-[0.98] ${wizardFocusRing}`}
+                        >
+                            <span className="font-medium text-foreground text-sm sm:text-base break-words min-w-0">
+                                Same as Internet: {internetProviderName}
+                            </span>
+                            <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
+                        </button>
+                    )}
                     {loadingSuggestions ? (
                         <div className="bg-muted/50 border border-border rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center space-y-4 sm:space-y-6" role="status">
                             <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted flex items-center justify-center">
@@ -469,6 +515,16 @@ export function UtilityStep({
                                 </button>
                             </div>
                         </div>
+                    )}
+                    {category === 'trash' && onNoService && !serviceDeclined && (
+                        <button
+                            type="button"
+                            onClick={handleNoService}
+                            data-testid="seller-utility-no-service-trash"
+                            className={`w-full py-3 sm:py-3.5 text-sm ${wizardSecondaryButton}`}
+                        >
+                            {NO_TRASH_SERVICE_LABEL}
+                        </button>
                     )}
                 </div>
             )}

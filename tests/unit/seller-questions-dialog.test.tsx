@@ -72,7 +72,7 @@ describe('SellerQuestionsDialog', () => {
             within(preview).getByText(/Asked when the seller answers Public Water on Home Basics/i)
         ).toBeInTheDocument();
         expect(
-            within(preview).getByText(/Asked when the seller confirms the home has Trash & Recycling/i)
+            within(preview).getByText(/Always asked when Trash & Recycling is included/i)
         ).toBeInTheDocument();
     });
 

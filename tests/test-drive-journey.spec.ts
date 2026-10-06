@@ -149,6 +149,8 @@ test.describe('first-use guide and seller test', () => {
         await page.getByTestId('seller-welcome-continue').click();
         await expect(page.getByRole('heading', { name: 'Home Basics' })).toBeVisible();
         await expect(page.getByTestId('seller-save-link-open')).toHaveCount(0);
+        await page.getByRole('button', { name: 'Private Well' }).click();
+        await page.getByRole('button', { name: 'Septic System' }).click();
         await page.getByRole('button', { name: 'Continue' }).click();
 
         await expect(page.getByRole('heading', { name: 'Electric Provider' })).toBeVisible();

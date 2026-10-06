@@ -140,7 +140,10 @@ export function getHomeBasicsRows(request: {
 }
 
 /** Utility categories the seller opts into on Home Basics rather than always seeing. */
-export const OPTIONAL_UTILITY_CATEGORIES: UtilityCategory[] = ['trash', 'internet', 'cable'];
+export const OPTIONAL_UTILITY_CATEGORIES: UtilityCategory[] = ['internet', 'cable'];
+
+/** The trash answer that leaves Trash & Recycling off the finished sheet. */
+export const NO_TRASH_SERVICE_LABEL = 'No trash service at this home';
 
 /** Fuel selections that unlock a heating-provider utility step. */
 export const FUEL_UTILITY_CATEGORY_BY_FUEL: Record<string, UtilityCategory> = {
@@ -266,14 +269,14 @@ function buildFullHomeBasicsSection(): SellerQuestionSection {
                 key: 'home_basics.water_source',
                 label: 'Water Source',
                 sellerPrompt: 'Water Source',
-                helper: 'Public water leads to a water provider question. The HOA billing option is hidden when the seller answers No to the enabled association question.',
+                helper: 'Required, and nothing is selected to start; Not Sure is a valid answer. Public water leads to a water provider question. The HOA billing option is hidden when the seller answers No to the enabled association question.',
                 choices: WATER_SOURCE_OPTIONS.map((option) => option.label),
             },
             {
                 key: 'home_basics.sewer_type',
                 label: 'Sewer Type',
                 sellerPrompt: 'Sewer Type',
-                helper: 'Public sewer leads to a wastewater authority question. The HOA billing option is hidden when the seller answers No to the enabled association question.',
+                helper: 'Required, and nothing is selected to start; Not Sure is a valid answer. Public sewer leads to a wastewater authority question. The HOA billing option is hidden when the seller answers No to the enabled association question.',
                 choices: SEWER_TYPE_OPTIONS.map((option) => option.label),
             },
             {
@@ -317,12 +320,14 @@ function buildFullHomeBasicsSection(): SellerQuestionSection {
                 label: 'Optional Utilities',
                 sellerPrompt: 'Do you have these utilities?',
                 helper: "Choose any that apply. We'll only ask about utilities you have.",
-                condition: 'Asked only when Trash & Recycling, Internet, or Cable/TV is included.',
+                condition: 'Asked only when Internet or Cable/TV is included.',
                 choices: OPTIONAL_UTILITY_CATEGORIES.map((category) => UTILITY_CATEGORY_LABELS[category]),
             },
         ],
     };
 }
+
+const TRASH_DETAILS_CONDITION = `Not asked when the seller answers "${NO_TRASH_SERVICE_LABEL}".`;
 
 function getUtilityCondition(category: UtilityCategory): string | undefined {
     if (category === 'electric') {
@@ -343,6 +348,9 @@ function getUtilityCondition(category: UtilityCategory): string | undefined {
     if (category === 'oil') {
         return 'Asked when the seller selects Heating Oil on Home Basics.';
     }
+    if (category === 'trash') {
+        return `Always asked when Trash & Recycling is included. Answering "${NO_TRASH_SERVICE_LABEL}" leaves it off the sheet.`;
+    }
     if (OPTIONAL_UTILITY_CATEGORIES.includes(category)) {
         return `Asked when the seller confirms the home has ${UTILITY_CATEGORY_LABELS[category]}.`;
     }
@@ -359,7 +367,9 @@ function buildUtilitySection(
             key: `utility.${category}.provider`,
             label: `${label} Provider`,
             sellerPrompt: getUtilityProviderPrompt(category, label),
-            helper: UTILITY_PROVIDER_HELPERS[category],
+            helper: category === 'cable'
+                ? `${UTILITY_PROVIDER_HELPERS.cable} Offers "Same as Internet" first when the seller named an internet provider.`
+                : UTILITY_PROVIDER_HELPERS[category],
         },
     ];
 
@@ -380,12 +390,14 @@ function buildUtilitySection(
                 label: 'Trash Pickup Days',
                 sellerPrompt: 'Which days is trash picked up?',
                 helper: 'Pick all that apply. "Not sure" is fine.',
+                condition: TRASH_DETAILS_CONDITION,
             },
             {
                 key: 'utility.trash.has_recycling',
                 label: 'Recycling Pickup',
                 sellerPrompt: 'Is there recycling pickup at this home?',
                 helper: 'Optional. This helps the buyer plan ahead.',
+                condition: TRASH_DETAILS_CONDITION,
                 choices: ['Yes', 'No', 'Not sure'],
             },
             {
@@ -452,7 +464,7 @@ export function getSellerQuestionInventory(): SellerQuestionSection[] {
 /**
  * The sections a seller will actually be asked under `config`.
  *
- * The utility rules mirror the visibility effect in
+ * The utility rules mirror getVisibleUtilities in
  * components/seller-form/SellerWizard.tsx. Electric is always included because
  * the wizard always shows it. Both places must change together.
  */

@@ -198,7 +198,7 @@ type AnalyticsEventMap = {
   };
   seller_utility_skipped: BasePayload & {
     category: string;
-    reason: "i_dont_know" | "skipped_section";
+    reason: "i_dont_know" | "skipped_section" | "no_service";
   };
   seller_provider_search_no_results_committed: BasePayload & {
     category: string;
