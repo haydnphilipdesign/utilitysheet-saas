@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildPacketPdfHtml } from '@/lib/pdf/packet-html';
 import { BRAND_PROFILE_LIMITS } from '@/lib/branding/limits';
+import { ADVANCED_MODULE_LABELS, getAdvancedAnswerRows } from '@/lib/packet/modules';
+import type { AdvancedModuleKey } from '@/types';
 
 describe('buildPacketPdfHtml shared packet PDF rendering', () => {
     it('uses the shared document shell and content blocks in advanced mode', () => {
@@ -498,5 +500,84 @@ describe('buildPacketPdfHtml shared packet PDF rendering', () => {
         });
 
         expect(result.html).toContain('Recycling pickup: Tuesday, Friday');
+    });
+
+    describe('handoff answers from the shared Review rows', () => {
+        const sectionFor = (moduleKey: AdvancedModuleKey, answers: Record<string, unknown>) => ({
+            key: moduleKey,
+            title: ADVANCED_MODULE_LABELS[moduleKey],
+            fields: getAdvancedAnswerRows(moduleKey, answers),
+        });
+        const render = (sections: ReturnType<typeof sectionFor>[]) => buildPacketPdfHtml({
+            mode: 'advanced',
+            request: {
+                id: 'req_handoff_values',
+                property_address: '112 Morris Place, Bushkill, PA 18324',
+                created_at: '2026-07-06T12:00:00.000Z',
+            },
+            brand: null,
+            utilities: [],
+            advanced_sections: sections,
+        }).html;
+        const printedValues = (html: string) => [...html.matchAll(
+            /<div class="detail-label">([^<]*)<\/div>\s*<div class="detail-value">([^<]*)<\/div>/g,
+        )].map((match) => [match[1], match[2]]);
+
+        it('prints a full irrigation section with readable coded values', () => {
+            const html = render([sectionFor('irrigation_seasonal_controls', {
+                has_irrigation_system: 'yes',
+                irrigation_provider_name: 'BlueSprinkler Co.',
+                irrigation_provider_phone: '(555) 222-3344',
+                watering_days: ['mon', 'wed'],
+                irrigation_season_start_month: 'apr',
+                irrigation_season_end_month: 'oct',
+                irrigation_notes: 'Controller is in garage by entry door',
+            })]);
+
+            expect(printedValues(html)).toEqual([
+                ['Has Irrigation System', 'Yes'],
+                ['Irrigation Provider', 'BlueSprinkler Co.'],
+                ['Irrigation Phone', '(555) 222-3344'],
+                ['Watering Days', 'Mon, Wed'],
+                ['Season Start Month', 'April'],
+                ['Season End Month', 'October'],
+                ['Irrigation Notes', 'Controller is in garage by entry door'],
+            ]);
+            // Seven answers: three full rows and one row with an empty partner cell.
+            expect(html.match(/<tr class="detail-row">/g)).toHaveLength(4);
+            expect(html.match(/<td class="detail-cell detail-cell-empty">/g)).toHaveLength(1);
+        });
+
+        it('prints Not sure for the irrigation answer', () => {
+            const html = render([sectionFor('irrigation_seasonal_controls', { has_irrigation_system: 'not_sure' })]);
+            expect(printedValues(html)).toEqual([['Has Irrigation System', 'Not sure']]);
+        });
+
+        it('prints free text that looks like a code exactly as typed', () => {
+            const html = render([
+                sectionFor('irrigation_seasonal_controls', {
+                    has_irrigation_system: 'yes',
+                    irrigation_notes: 'mon',
+                }),
+                sectionFor('mailbox_access', {
+                    mailbox_number: 'no',
+                    garage_door_code: '0420',
+                    parking_instructions: 'not_sure, ask on sat',
+                }),
+            ]);
+
+            expect(printedValues(html)).toEqual([
+                ['Has Irrigation System', 'Yes'],
+                ['Irrigation Notes', 'mon'],
+                ['Mailbox Number', 'no'],
+                ['Garage Door Code', '0420'],
+                ['Parking Instructions', 'not_sure, ask on sat'],
+            ]);
+        });
+
+        it('still escapes typed text', () => {
+            const html = render([sectionFor('mailbox_access', { mailbox_location: '<b>mon</b> & "sat"' })]);
+            expect(html).toContain('<div class="detail-value">&lt;b&gt;mon&lt;/b&gt; &amp; &quot;sat&quot;</div>');
+        });
     });
 });

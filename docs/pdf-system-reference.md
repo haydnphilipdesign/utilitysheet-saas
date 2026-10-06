@@ -126,7 +126,9 @@ Enabled modules and field exclusions are applied before rendering. Empty section
 
 Field order and labels come from `ADVANCED_MODULE_FIELD_METADATA`, not JSON object insertion order and not database-key title-casing. This is why the packet displays deliberate labels such as `Plumber` instead of generated labels such as `Plumber Provider Name`.
 
-Scalar display values are trimmed. Whole-value `yes` and `no` strings become `Yes` and `No`. Arrays are joined with `, ` while preserving their entered items.
+Display values come from `getAdvancedAnswerRows` in `lib/packet/modules.ts`, the same function the seller's Review step uses, so Review, the public packet, and the PDF print handoff answers identically (changed October 6, 2026; the packet previously had its own formatter). Only the four coded fields are translated: the irrigation choice (`Yes`, `No`, `Not sure`), watering days (`Mon, Wed`), and the two season months (`April`). A value in a coded field that is not a known code is printed as stored. Every other field is the seller's own text and is printed exactly as stored, so a mailbox number typed as `no` stays `no`. Blank answers are left out.
+
+The same function applies the irrigation rule at print time: when "Is there an irrigation system?" is included and answered No, only the No is printed. Submissions since October 6, 2026 are stored that way already; an older sheet that still holds a provider or schedule next to a No keeps that data in the database, but the packet and PDF do not print it (owner decision, October 6, 2026). If the question itself is excluded, a stored No is not shown and does not hide anything.
 
 ## Pagination model
 

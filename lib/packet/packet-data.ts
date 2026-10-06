@@ -18,9 +18,9 @@ import type {
 } from '@/types';
 import { normalizeHoaAnswers } from '@/lib/packet/hoa';
 import {
-    ADVANCED_MODULE_FIELD_METADATA,
     ADVANCED_MODULE_LABELS,
     filterAdvancedPacketDataByExclusions,
+    getAdvancedAnswerRows,
     getEffectiveAdvancedModules,
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
@@ -282,32 +282,19 @@ export function buildPacketUtilities(rawUtilities: RawUtilityRow[]): PacketUtili
     }));
 }
 
-function formatAdvancedDisplayValue(raw: unknown): string | null {
-    if (raw === null || raw === undefined) return null;
-    const value = Array.isArray(raw) ? raw.join(', ') : String(raw).trim();
-
-    if (!value) return null;
-    if (value.toLowerCase() === 'yes') return 'Yes';
-    if (value.toLowerCase() === 'no') return 'No';
-    return value;
-}
-
+// Rows come from getAdvancedAnswerRows, the same function the seller's Review
+// step uses, so the packet and the PDF print handoff answers the way Review does.
 function normalizeAdvancedSections(
     modules: AdvancedModuleKey[],
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
+    exclusions: AdvancedModuleExclusions
 ): PacketAdvancedSection[] {
     return modules.map((moduleKey) => {
-        const sectionData = normalizeObject(data[moduleKey]);
-        const fields: PacketAdvancedField[] = ADVANCED_MODULE_FIELD_METADATA[moduleKey]
-            .flatMap(({ key, label }) => {
-                const value = formatAdvancedDisplayValue(sectionData[key]);
-                if (value === null) return [];
-                return [{
-                    key,
-                    label,
-                    value,
-                }];
-            });
+        const fields: PacketAdvancedField[] = getAdvancedAnswerRows(
+            moduleKey,
+            normalizeObject(data[moduleKey]),
+            exclusions
+        );
 
         return {
             key: moduleKey,
@@ -402,7 +389,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
         )
         : {};
     const advancedSections = mode === 'advanced'
-        ? normalizeAdvancedSections(effectiveAdvancedModules, filteredAdvancedPacketData)
+        ? normalizeAdvancedSections(effectiveAdvancedModules, filteredAdvancedPacketData, advancedModuleExclusions)
         : [];
 
     return {

@@ -509,73 +509,209 @@ describe('packet-data builder', () => {
         ]);
     });
 
-    it('normalizes advanced fields in metadata order with canonical labels and values', async () => {
+    async function advancedSectionsFor(
+        modules: string[],
+        advancedPacketData: Record<string, unknown>,
+        exclusions?: Record<string, string[]>
+    ) {
         (getRequestByToken as Mock).mockResolvedValue({
-            id: 'req_advanced_order',
-            account_id: 'acct_advanced_order',
+            id: 'req_advanced_values',
+            account_id: 'acct_advanced_values',
             organization_id: null,
             brand_profile_id: null,
             property_address: '888 Maple St, Town, ST 00000',
             created_at: '2026-01-01T00:00:00.000Z',
             status: 'submitted',
             packet_mode: 'advanced',
-            advanced_modules: ['smart_home_security', 'irrigation_seasonal_controls'],
-            advanced_packet_data: {
-                smart_home_security: {
-                    smart_home_notes: '  Keep Existing Capitalization  ',
-                    smart_doorbell_brand: 'Ring',
-                    security_system_brand: 'yEs',
-                    smart_thermostat_brand: 'Nest',
-                },
-                irrigation_seasonal_controls: {
-                    has_irrigation_system: 'no',
-                    watering_days: [' Monday ', 'THURSDAY'],
-                    irrigation_notes: ['no'],
-                },
-            },
+            advanced_modules: modules,
+            advanced_module_exclusions: exclusions,
+            advanced_packet_data: advancedPacketData,
         });
         (getAccountById as Mock).mockResolvedValue({ subscription_status: 'pro' });
 
-        const result = await getPacketDataByPublicToken('token_advanced_order');
-
+        const result = await getPacketDataByPublicToken('token_advanced_values');
         expect(result.status).toBe('ok');
-        if (result.status !== 'ok') return;
+        if (result.status !== 'ok') throw new Error('expected packet data');
+        return result.data.advanced_sections || [];
+    }
 
-        const smartHomeFields = result.data.advanced_sections
-            ?.find((section) => section.key === 'smart_home_security')
-            ?.fields ?? [];
-        expect(smartHomeFields.map((field) => field.key)).toEqual([
-            'security_system_brand',
-            'smart_thermostat_brand',
-            'smart_doorbell_brand',
-            'smart_home_notes',
+    const fieldsOf = (sections: Awaited<ReturnType<typeof advancedSectionsFor>>, key: string) =>
+        sections.find((section) => section.key === key)?.fields ?? [];
+
+    it('prints advanced fields in metadata order with canonical labels', async () => {
+        const sections = await advancedSectionsFor(['smart_home_security'], {
+            smart_home_security: {
+                smart_home_notes: 'Keep Existing Capitalization',
+                smart_doorbell_brand: 'Ring',
+                security_system_brand: 'ADT',
+                smart_thermostat_brand: 'Nest',
+            },
+        });
+
+        expect(fieldsOf(sections, 'smart_home_security')).toEqual([
+            { key: 'security_system_brand', label: 'Security System Brand', value: 'ADT' },
+            { key: 'smart_thermostat_brand', label: 'Smart Thermostat Brand', value: 'Nest' },
+            { key: 'smart_doorbell_brand', label: 'Smart Doorbell Brand', value: 'Ring' },
+            { key: 'smart_home_notes', label: 'Smart Home Notes', value: 'Keep Existing Capitalization' },
         ]);
-        expect(smartHomeFields.map((field) => field.label)).toEqual([
-            'Security System Brand',
-            'Smart Thermostat Brand',
-            'Smart Doorbell Brand',
-            'Smart Home Notes',
+    });
+
+    it('prints each coded handoff field the way the seller Review step shows it', async () => {
+        const sections = await advancedSectionsFor(['irrigation_seasonal_controls'], {
+            irrigation_seasonal_controls: {
+                has_irrigation_system: 'yes',
+                irrigation_provider_name: 'BlueSprinkler Co.',
+                irrigation_provider_phone: '(555) 222-3344',
+                watering_days: ['mon', 'wed'],
+                irrigation_season_start_month: 'apr',
+                irrigation_season_end_month: 'oct',
+                irrigation_notes: 'Controller is in garage by entry door',
+            },
+        });
+
+        expect(fieldsOf(sections, 'irrigation_seasonal_controls')).toEqual([
+            { key: 'has_irrigation_system', label: 'Has Irrigation System', value: 'Yes' },
+            { key: 'irrigation_provider_name', label: 'Irrigation Provider', value: 'BlueSprinkler Co.' },
+            { key: 'irrigation_provider_phone', label: 'Irrigation Phone', value: '(555) 222-3344' },
+            { key: 'watering_days', label: 'Watering Days', value: 'Mon, Wed' },
+            { key: 'irrigation_season_start_month', label: 'Season Start Month', value: 'April' },
+            { key: 'irrigation_season_end_month', label: 'Season End Month', value: 'October' },
+            { key: 'irrigation_notes', label: 'Irrigation Notes', value: 'Controller is in garage by entry door' },
         ]);
-        expect(smartHomeFields.map((field) => field.value)).toEqual([
-            'Yes',
-            'Nest',
-            'Ring',
-            'Keep Existing Capitalization',
+    });
+
+    it.each([
+        ['yes', 'Yes'],
+        ['no', 'No'],
+        ['not_sure', 'Not sure'],
+    ])('prints the irrigation answer %s as %s', async (stored, printed) => {
+        const sections = await advancedSectionsFor(['irrigation_seasonal_controls'], {
+            irrigation_seasonal_controls: { has_irrigation_system: stored },
+        });
+        expect(fieldsOf(sections, 'irrigation_seasonal_controls')).toEqual([
+            { key: 'has_irrigation_system', label: 'Has Irrigation System', value: printed },
         ]);
+    });
 
-        const irrigationField = result.data.advanced_sections
-            ?.find((section) => section.key === 'irrigation_seasonal_controls')
-            ?.fields.find((field) => field.key === 'has_irrigation_system');
-        expect(irrigationField?.value).toBe('No');
+    it('prints every weekday and month code as its label', async () => {
+        const months: Array<[string, string]> = [
+            ['jan', 'January'], ['feb', 'February'], ['mar', 'March'], ['apr', 'April'],
+            ['may', 'May'], ['jun', 'June'], ['jul', 'July'], ['aug', 'August'],
+            ['sep', 'September'], ['oct', 'October'], ['nov', 'November'], ['dec', 'December'],
+        ];
+        for (const [code, label] of months) {
+            const sections = await advancedSectionsFor(['irrigation_seasonal_controls'], {
+                irrigation_seasonal_controls: {
+                    watering_days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+                    irrigation_season_start_month: code,
+                    irrigation_season_end_month: code,
+                },
+            });
+            expect(fieldsOf(sections, 'irrigation_seasonal_controls').map((field) => field.value)).toEqual([
+                'Mon, Tue, Wed, Thu, Fri, Sat, Sun',
+                label,
+                label,
+            ]);
+        }
+    });
 
-        const wateringDaysField = result.data.advanced_sections
-            ?.find((section) => section.key === 'irrigation_seasonal_controls')
-            ?.fields.find((field) => field.key === 'watering_days');
-        expect(wateringDaysField?.value).toBe(' Monday , THURSDAY');
+    it('leaves a coded field alone when the stored value is not a known code', async () => {
+        const sections = await advancedSectionsFor(['irrigation_seasonal_controls'], {
+            irrigation_seasonal_controls: {
+                watering_days: ['Monday', 'constructor'],
+                irrigation_season_start_month: 'Late spring',
+            },
+        });
+        expect(fieldsOf(sections, 'irrigation_seasonal_controls').map((field) => field.value)).toEqual([
+            'Monday, constructor',
+            'Late spring',
+        ]);
+    });
 
-        const irrigationNotesField = result.data.advanced_sections
-            ?.find((section) => section.key === 'irrigation_seasonal_controls')
-            ?.fields.find((field) => field.key === 'irrigation_notes');
-        expect(irrigationNotesField?.value).toBe('No');
+    it('passes free text, phone numbers and access codes through unchanged even when they look like codes', async () => {
+        const typed = {
+            lawn_exterior: {
+                lawn_care_provider_name: 'apr',
+                lawn_care_provider_phone: '555.123.4567 ext 9',
+                lawn_exterior_notes: 'mon and wed mowing, not_sure about snow',
+            },
+            irrigation_seasonal_controls: {
+                has_irrigation_system: 'yes',
+                irrigation_provider_name: 'yes',
+                irrigation_notes: 'mon',
+            },
+            mailbox_access: {
+                mailbox_number: 'no',
+                garage_door_code: '0420',
+                parking_instructions: 'NO street parking on sat',
+            },
+            smart_home_security: {
+                security_system_brand: 'yEs',
+                smart_home_notes: 'Yes',
+            },
+        };
+        const sections = await advancedSectionsFor(
+            ['lawn_exterior', 'irrigation_seasonal_controls', 'mailbox_access', 'smart_home_security'],
+            typed
+        );
+
+        for (const [moduleKey, answers] of Object.entries(typed)) {
+            for (const [fieldKey, value] of Object.entries(answers)) {
+                if (fieldKey === 'has_irrigation_system') continue;
+                const printed = fieldsOf(sections, moduleKey).find((field) => field.key === fieldKey)?.value;
+                expect(printed, `${moduleKey}.${fieldKey}`).toBe(value);
+            }
+        }
+    });
+
+    it('prints only the No for an older sheet that stored irrigation No together with details', async () => {
+        const stored = {
+            irrigation_seasonal_controls: {
+                has_irrigation_system: 'no',
+                irrigation_provider_name: 'BlueSprinkler Co.',
+                irrigation_provider_phone: '(555) 222-3344',
+                watering_days: ['mon', 'wed'],
+                irrigation_season_start_month: 'apr',
+                irrigation_notes: 'Controller is in garage by entry door',
+            },
+        };
+        const before = JSON.stringify(stored);
+        const sections = await advancedSectionsFor(['irrigation_seasonal_controls'], stored);
+
+        expect(fieldsOf(sections, 'irrigation_seasonal_controls')).toEqual([
+            { key: 'has_irrigation_system', label: 'Has Irrigation System', value: 'No' },
+        ]);
+        // Hidden at print only; the stored sheet is not touched.
+        expect(JSON.stringify(stored)).toBe(before);
+    });
+
+    it('keeps irrigation details when the stored No belongs to a question that is not included', async () => {
+        const sections = await advancedSectionsFor(
+            ['irrigation_seasonal_controls'],
+            {
+                irrigation_seasonal_controls: {
+                    has_irrigation_system: 'no',
+                    irrigation_provider_name: 'BlueSprinkler Co.',
+                    watering_days: ['mon', 'wed'],
+                },
+            },
+            { irrigation_seasonal_controls: ['has_irrigation_system'] }
+        );
+
+        expect(fieldsOf(sections, 'irrigation_seasonal_controls')).toEqual([
+            { key: 'irrigation_provider_name', label: 'Irrigation Provider', value: 'BlueSprinkler Co.' },
+            { key: 'watering_days', label: 'Watering Days', value: 'Mon, Wed' },
+        ]);
+    });
+
+    it('leaves out blank answers and sections with nothing answered', async () => {
+        const sections = await advancedSectionsFor(['irrigation_seasonal_controls', 'mailbox_access'], {
+            irrigation_seasonal_controls: { watering_days: [], irrigation_season_start_month: null, irrigation_notes: '   ' },
+            mailbox_access: { mailbox_number: '12B', mailbox_location: '' },
+        });
+        expect(sections.map((section) => section.key)).toEqual(['mailbox_access']);
+        expect(fieldsOf(sections, 'mailbox_access')).toEqual([
+            { key: 'mailbox_number', label: 'Mailbox Number', value: '12B' },
+        ]);
     });
 });

@@ -389,10 +389,18 @@ export interface AdvancedAnswerRow {
     value: string;
 }
 
+function formatAdvancedCode(codes: Record<string, string>, part: string): string {
+    return Object.prototype.hasOwnProperty.call(codes, part) ? codes[part] : part;
+}
+
 /**
  * The answered questions in one handoff section, labelled the way the seller
  * was asked. Only coded fields are translated; free text, phone numbers and
  * access codes are shown exactly as typed.
+ *
+ * This is the one definition of how handoff answers read. The seller's Review
+ * step, the public packet and the PDF all print these rows, so they cannot
+ * disagree.
  */
 export function getAdvancedAnswerRows(
     moduleKey: AdvancedModuleKey,
@@ -415,7 +423,7 @@ export function getAdvancedAnswerRows(
             return {
                 key: field.key,
                 label: field.label,
-                value: (codes ? parts.map((part) => codes[part] || part) : parts).join(', '),
+                value: (codes ? parts.map((part) => formatAdvancedCode(codes, part)) : parts).join(', '),
             };
         })
         .filter((row) => row.value !== '');

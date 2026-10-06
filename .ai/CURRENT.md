@@ -1,3 +1,15 @@
+# Also current (separate session): packet and PDF handoff value formatting (completed, committed on main, not pushed)
+
+- Date: 2026-10-06. Agent: Claude Opus 5.5, a different session from the task below. Branch: main, committed on the owner's instruction as "Print handoff answers on the packet and PDF the way the seller Review step shows them" on top of e53bb1a. Not pushed. This is the record the note below asks for about the packet files.
+- Status: implementation and validation complete. No required work remains. Not authorized and not done: push, deploy, migrations, database access, changing stored sheets, real email.
+- Plan (completed, with Outcome): `.ai/plans/2026-10-06-packet-handoff-value-formatting.md`. Decision: `.ai/decisions/2026-10-06-handoff-answers-one-display-definition.md`.
+- What changed: the public packet and the PDF now print handoff answers from `getAdvancedAnswerRows` in `lib/packet/modules.ts`, the function the seller's Review step uses (`Mon, Wed`, `April`, `Not sure`). Typed text, phone numbers and access codes print exactly as stored. Owner decision: an irrigation No prints only the No even when an older sheet still stores details; stored data is untouched.
+- Files in the commit: `lib/packet/modules.ts`, `lib/packet/packet-data.ts`, `docs/pdf-system-reference.md`, `tests/unit/packet-data.test.ts`, `tests/unit/packet-html.test.ts`, `tests/packet-responsive.spec.ts`, the plan and the decision record. `lib/pdf/packet-html.ts` and the packet page were not edited.
+- Validation (Node 22.22.2; CI uses 20): full Vitest 199 files passed, 1 skipped, 1354 tests passed, 8 skipped; `tsc --noEmit` clean; ESLint on changed files clean; packet browser spec 9 passed on Desktop Chrome, Mobile Safari and Mobile Chrome; `security:scan` and `git diff --check` clean. Sample Advanced PDFs from synthetic data: 2 pages before and after, same row heights and page break.
+- Not verified: real stored sheets, the hosted PDF runtime, the email attachment end to end, `next build`.
+- Concurrent editing warning: other sessions were active in this worktree during this task (reopen follow-ups, and a Free-limit plan file). None of their files were touched.
+- Next action: owner decides when to push and deploy. Optional: derive the two form option lists from the shared labels.
+
 # Current task: Reopen follow-ups (committed on main, not pushed; release pending)
 
 - Date: 2026-10-06. Last agent: Claude Opus. Branch: main, committed on the owner's instruction as "Label reopen events, let Admin remind reopened requests, drop time claims, and announce reopen" on top of 56e47ba. Not pushed. Concurrent work warning: uncommitted packet changes that are not part of this task appeared in the worktree during the session (`lib/packet/modules.ts`, `lib/packet/packet-data.ts`, `tests/unit/packet-data.test.ts`, untracked `.ai/plans/2026-10-06-packet-handoff-value-formatting.md`). They were left untouched and uncommitted; their owner should record their state here.
