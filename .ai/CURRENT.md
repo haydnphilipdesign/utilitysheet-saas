@@ -1,7 +1,7 @@
-# Current task: Seller form, required water and sewer, trash always asked, "Same as Internet" (complete, uncommitted)
+# Current task: Seller form, required water and sewer, trash always asked, "Same as Internet" (committed and pushed; post-deploy check pending)
 
-- Date: 2026-10-06. Last agent: Claude Opus. Branch: main at bd94750 with uncommitted changes. No concurrent work known. No ownership warnings.
-- Status: implementation and validation complete. No required work remains. Nothing was committed, pushed, deployed, migrated or emailed, and no database was touched.
+- Date: 2026-10-06. Last agent: Claude Opus. Branch: main, committed as 2dbb88f "Require water and sewer answers, always ask trash, and offer Same as Internet" and pushed to `origin/main` on the owner's instruction. No concurrent work known. No ownership warnings.
+- Status: implementation and validation complete. No required work remains. No migration was needed, no email was sent and no database was touched. Whether the push produced a healthy production deployment was not verified from here.
 - Plan (completed, with Outcome): `.ai/plans/2026-10-06-seller-form-required-basics-trash-cable.md`. Decision: `.ai/decisions/2026-10-06-required-basics-trash-always-asked-same-as-internet.md`.
 
 ## What changed
@@ -32,7 +32,7 @@
 
 ## Next action
 
-Commit and push need the owner's explicit go-ahead; neither has been done. No migration is needed. The post-deploy checks for the previous task (below) are still open.
+Owner confirms the Vercel deployment of 2dbb88f is healthy and tries one seller link: Continue on Home Basics should stay disabled until water and sewer are answered, and a request that includes trash should show the trash step with "No trash service at this home". The post-deploy checks for the previous task (below) are still open.
 
 # Previous task: Read-only after submission with coordinator reopen, plus UX findings 2 to 9 (migrated, committed and pushed; post-deploy check pending)
 

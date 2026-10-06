@@ -1,6 +1,6 @@
 # Seller form: required water and sewer, trash always asked, "Same as Internet"
 
-- Status: completed 2026-10-06 (Claude Opus). Uncommitted; no required work remains. Decision record: `.ai/decisions/2026-10-06-required-basics-trash-always-asked-same-as-internet.md`.
+- Status: completed 2026-10-06 (Claude Opus). Committed as 2dbb88f and pushed to `origin/main` on the owner's instruction; no required work remains. Decision record: `.ai/decisions/2026-10-06-required-basics-trash-always-asked-same-as-internet.md`.
 - Source of decisions: `.ai/plans/2026-10-06-ux-form-logic-review.md`, "Next seller-form change: owner decisions (2026-10-06)". Evidence: "Findings 10 and 11: data check" in the same file.
 - Must not break: `.ai/decisions/2026-10-06-read-only-after-submission-and-reopen.md` (editing sessions, drafts tied to a session, prefill for reopened requests).
 - Not authorized: migrations, production database access, real email, commit, push, deploy.
