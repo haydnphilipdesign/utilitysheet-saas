@@ -333,7 +333,7 @@ export function FormEditor({ id }: { id: string }) {
                                     {draft.sellerIntro?.length || 0}/500
                                 </p>
                             </div>
-                            {data.linkBase && (id === 'new' || (form && !form.isBaseForm)) && (
+                            {data.linkBase && (
                                 <div className="space-y-2">
                                     <Label htmlFor="formSuffix">Link ending</Label>
                                     <Input
@@ -349,7 +349,10 @@ export function FormEditor({ id }: { id: string }) {
                                         placeholder="For example: closing"
                                     />
                                     <p id="formSuffixHelp" className="break-all text-xs text-muted-foreground">
-                                        Your link will be {data.linkBase.url}
+                                        {form?.isDefault
+                                            ? `As your default form, this opens from ${data.linkBase.url}. Its own link is `
+                                            : 'Your link will be '}
+                                        {data.linkBase.url}
                                         {draft.suffix ? `/${draft.suffix}` : '/…'}.
                                         Previously shared endings keep working.
                                     </p>
@@ -371,18 +374,11 @@ export function FormEditor({ id }: { id: string }) {
                             {!draft.isActive && (
                                 <p className="text-sm text-muted-foreground">
                                     Paused. Existing seller requests stay
-                                    available, including if this is your default
-                                    form.
+                                    available.
+                                    {form?.isDefault
+                                        ? ' This is your default form, so your base link cannot start new requests while it is paused.'
+                                        : ''}
                                 </p>
-                            )}
-                            {form?.isBaseForm && (
-                                <div className="space-y-2">
-                                    <p className="break-all text-sm">{form.url}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        This form opens from your base link and has no ending.
-                                        {' '}Manage the base link in <Link className="text-primary underline" href="/dashboard/forms">Seller forms</Link>.
-                                    </p>
-                                </div>
                             )}
                             <div className="space-y-2">
                                 <Label htmlFor="formBrand">

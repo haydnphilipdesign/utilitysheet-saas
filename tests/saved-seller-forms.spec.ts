@@ -7,8 +7,8 @@ function form(id: string, name: string, hoa: boolean) {
         name,
         slug: name.toLowerCase(),
         url: `https://example.com/i/listing${id === first ? '' : `/${name.toLowerCase()}`}`,
-        isBaseForm: id === first,
-        linkSuffix: id === first ? null : name.toLowerCase(),
+        endingUrl: `https://example.com/i/listing/${id === first ? 'intake' : name.toLowerCase()}`,
+        linkSuffix: id === first ? 'intake' : name.toLowerCase(),
         revision: 2,
         organizationId: 'workspace-A',
         isDefault: id === first,
@@ -38,8 +38,13 @@ async function mocks(page: Page) {
     const linkBase = {
         slug: 'listing', url: 'https://example.com/i/listing', revision: 2,
         formId: first, formName: 'Listing', isActive: true,
-        reservedSuffixes: [{ suffix: 'closing', formId: second }],
+        reservedSuffixes: [{ suffix: 'intake', formId: first }, { suffix: 'closing', formId: second }],
     };
+    // The default shares the bare base; every form keeps its own ending link.
+    const relink = () => forms.forEach(f => {
+        f.endingUrl = `${linkBase.url}/${f.linkSuffix}`;
+        f.url = f.isDefault ? linkBase.url : f.endingUrl;
+    });
     const access = { isPaid: true, capabilities: { canCreate: true, reason: null as string | null, usage: 2, allowance: 10, totalUsage: 2, upgradeRequired: false, pilotAvailable: true, message: '' } };
     await page.route('**/api/**', async (route) => {
         const req = route.request();
@@ -62,25 +67,28 @@ async function mocks(page: Page) {
                 return json({ error: 'That ending was already shared. Choose another.', code: 'SUFFIX_IN_USE' }, 409);
             return json({}, 400);
         }
-        if (path === '/api/seller-forms')
+        if (path === '/api/seller-forms') {
+            const opened = forms.find(f => f.isDefault)!;
             return json({
                 forms,
-                linkBase: { ...linkBase, isActive: forms[0].isActive },
+                linkBase: { ...linkBase, formId: opened.id, formName: opened.name, isActive: opened.isActive },
                 defaultId: forms.find(f => f.isDefault)?.id,
                 isPaid: access.isPaid,
                 workspaceName: 'Workspace A',
                 capabilities: access.capabilities,
                 brandProfiles: [],
             });
+        }
         if (path === '/api/seller-form-link-base') {
             if (conflict) return json({ error: 'Form changed. Reload before saving.', code: 'FORM_REVISION_CONFLICT' }, 409);
             Object.assign(linkBase, { slug: req.postDataJSON().base, revision: linkBase.revision + 1 });
             linkBase.url = `https://example.com/i/${linkBase.slug}`;
-            forms.forEach(f => { f.url = `${linkBase.url}${f.isBaseForm ? '' : `/${f.linkSuffix}`}`; });
+            relink();
             return json({ linkBase });
         }
         if (path === `/api/seller-forms/${second}/default`) {
             forms.forEach(f => { f.isDefault = f.id === second; });
+            relink();
             return json({ form: forms[1] });
         }
         if (path === `/api/seller-forms/${second}`) {
@@ -90,7 +98,7 @@ async function mocks(page: Page) {
             Object.assign(forms[1], body, { revision: forms[1].revision + 1 });
             if (body.suffix) {
                 forms[1].linkSuffix = body.suffix;
-                forms[1].url = `${linkBase.url}/${body.suffix}`;
+                relink();
                 linkBase.reservedSuffixes.push({ suffix: body.suffix, formId: second });
             }
             return json({ form: forms[1] });
@@ -164,7 +172,7 @@ async function healthy(page: Page) {
     ).toBeLessThanOrEqual(0);
 }
 
-test('base rename refreshes canonical copies and changing the default keeps the base pinned', async ({ page }, testInfo) => {
+test('base rename refreshes canonical copies and a confirmed default change moves the base link', async ({ page }, testInfo) => {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(() => {
@@ -177,14 +185,28 @@ test('base rename refreshes canonical copies and changing the default keeps the 
     await expect(page.getByLabel('Base link name')).toHaveValue('listing');
     await page.getByLabel('Base link name').fill('jane-smith');
     await page.getByRole('button', { name: 'Save base link', exact: true }).click();
-    const closing = page.locator('[data-slot="card"]').filter({ has: page.getByText('Closing', { exact: true }) });
+    const formCards = page.locator('[data-slot="card"]').filter({ has: page.getByRole('button', { name: 'Copy link', exact: true }) });
+    const closing = formCards.filter({ has: page.getByText('Closing', { exact: true }) });
+    const listing = formCards.filter({ has: page.getByText('Listing', { exact: true }) });
+    await expect(listing.getByText('Also opens from https://example.com/i/jane-smith/intake', { exact: true })).toBeVisible();
     await expect(closing.getByText('https://example.com/i/jane-smith/closing', { exact: true })).toBeVisible();
     expect(state.writes[0]).toMatchObject({ url: '/api/seller-form-link-base', body: { base: 'jane-smith', revision: 2 } });
     await closing.getByRole('button', { name: 'Copy link', exact: true }).click();
     expect(await page.evaluate(() => (window as unknown as Window & { copiedLinks: string[] }).copiedLinks)).toEqual(['https://example.com/i/jane-smith/closing']);
+    // Declining the confirmation changes nothing.
+    const prompts: string[] = [];
+    page.once('dialog', dialog => { prompts.push(dialog.message()); void dialog.dismiss(); });
+    await closing.getByRole('button', { name: 'Make default' }).click();
+    expect(prompts[0]).toContain('https://example.com/i/jane-smith will open it from now on');
+    expect(state.writes).toHaveLength(1);
+    await expect(page.getByText(/The base link currently opens/)).toContainText('Listing');
+    page.once('dialog', dialog => void dialog.accept());
     await closing.getByRole('button', { name: 'Make default' }).click();
     await expect(closing.getByText('Default', { exact: true })).toBeVisible();
-    await expect(page.getByText(/The base link opens/)).toContainText('Listing');
+    await expect(page.getByText(/The base link currently opens/)).toContainText('Closing');
+    await expect(closing.getByText('https://example.com/i/jane-smith', { exact: true })).toBeVisible();
+    await expect(closing.getByText('Also opens from https://example.com/i/jane-smith/closing', { exact: true })).toBeVisible();
+    await expect(listing.getByText('https://example.com/i/jane-smith/intake', { exact: true })).toBeVisible();
     await expect(page.getByLabel('Base link name')).toHaveValue('jane-smith');
     await healthy(page);
     await page.screenshot({ path: testInfo.outputPath('shared-base-links.png'), fullPage: true });

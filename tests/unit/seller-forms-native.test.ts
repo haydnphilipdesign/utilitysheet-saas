@@ -204,6 +204,7 @@ describe
                     ),
                 );
                 await a.query(readFileSync('migrations-seller-form-base-links.sql', 'utf8'));
+                await a.query(readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'));
                 expect(
                     await a.query(
                         "SELECT COUNT(*) FROM pg_constraint WHERE conrelid='requests'::regclass AND contype='f' AND confrelid='accounts'::regclass;",
@@ -360,7 +361,7 @@ describe
                 }
             }, 15000);
 
-            it('keeps the base pinned through default changes racing a base rename', async () => {
+            it('keeps the base owner pinned through default changes racing a base rename', async () => {
                 const { owner, form } = await seed();
                 const child = await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,NULL,NULL,'{"name":"Closing","suffix":"closing"}','${randomUUID()}',50,TRUE);`);
                 await a.query('BEGIN;');
@@ -385,8 +386,13 @@ describe
                 // The old saved-form application does not send a suffix key.
                 const child = await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,NULL,NULL,'{"name":"Private old name"}','${randomUUID()}',50,TRUE);`);
                 await a.query(readFileSync('migrations-seller-form-base-links.sql', 'utf8'));
+                await a.query(readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'));
                 await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,'${child}',1,'{"name":"Changed only"}','unused',50);`);
                 expect(await a.query(`SELECT root_form_id FROM seller_form_link_namespaces WHERE account_id='${owner}';`)).toBe(form);
+                // The base owner keeps one current ending and may rename it.
+                expect(await a.query(`SELECT count(*) FROM seller_form_suffix_aliases WHERE form_id='${form}' AND is_current;`)).toBe('1');
+                await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,'${form}',1,'{"suffix":"main"}','unused',50);`);
+                expect(await a.query(`SELECT suffix FROM seller_form_suffix_aliases WHERE form_id='${form}' AND is_current;`)).toBe('main');
                 expect(await a.query(`SELECT suffix LIKE 'form-%' FROM seller_form_suffix_aliases WHERE form_id='${child}' AND is_current;`)).toBe('t');
             }, 15000);
 

@@ -32,10 +32,11 @@ export function formErrorResponse(error: unknown) {
             },
             { status: 409 },
         );
+    // Only raised by a database that predates migrations-seller-form-default-base-link.sql.
     if (code === 'SF422')
         return NextResponse.json(
             {
-                error: 'This form uses the base link and has no link ending.',
+                error: 'This form cannot have its own link ending yet. Try again later.',
                 code: 'BASE_FORM_HAS_NO_ENDING',
             },
             { status: 400 },

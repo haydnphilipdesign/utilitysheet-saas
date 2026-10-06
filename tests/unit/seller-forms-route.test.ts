@@ -61,7 +61,8 @@ function enablePilot() {
 }
 const linkScope = () => ({
     rootFormId: savedForm.id, baseSlug: 'jane-smith', baseRevision: 2,
-    baseFormName: 'Listing', baseIsActive: true, suffixes: {}, reserved: [],
+    defaultFormId: savedForm.id, defaultFormName: 'Listing', defaultIsActive: true,
+    suffixes: {} as Record<string, string>, reserved: [],
 });
 describe('shared base and form-ending APIs', () => {
     it('renames the server-selected base with its own optimistic revision', async () => {
@@ -71,11 +72,23 @@ describe('shared base and form-ending APIs', () => {
         expect(m.links).toHaveBeenCalledWith(savedForm.account_id, 'org-A');
         expect(m.save).toHaveBeenCalledExactlyOnceWith(savedForm.account_id, 'org-A', savedForm.id, 2, { slug: 'jane-team' });
     });
-    it('does not select the current default as the base after a default switch', async () => {
+    it('renames the base on the form that owns the name, not on the current default', async () => {
         const root = '00000000-0000-4000-8000-000000000099';
         m.links.mockResolvedValue({ ...linkScope(), rootFormId: root });
         await renameBase(request({ base: 'new-base', revision: 2 }));
         expect(m.save.mock.calls[0][2]).toBe(root);
+    });
+    it('shares the bare link for the default and the ending link for other forms', async () => {
+        m.links.mockResolvedValue({ ...linkScope(), suffixes: { [savedForm.id]: 'listing' } });
+        const asDefault = await (await GET())!.json();
+        expect(asDefault.forms[0].url).toMatch(/\/i\/jane-smith$/);
+        expect(asDefault.forms[0].endingUrl).toMatch(/\/i\/jane-smith\/listing$/);
+        expect(asDefault.linkBase).toMatchObject({ formId: savedForm.id, formName: 'Listing' });
+        m.links.mockResolvedValue({ ...linkScope(), defaultFormId: 'another-form', defaultFormName: 'Closing', suffixes: { [savedForm.id]: 'listing' } });
+        const notDefault = await (await GET())!.json();
+        expect(notDefault.forms[0].url).toMatch(/\/i\/jane-smith\/listing$/);
+        expect(notDefault.linkBase).toMatchObject({ formId: 'another-form', formName: 'Closing' });
+        expect(notDefault.forms[0]).not.toHaveProperty('isBaseForm');
     });
     it.each([{ base: 'UPPER', revision: 2 }, { base: 'valid', revision: 2, organizationId: 'forged' }, { base: 'valid' }])('rejects unsafe base inputs %j without writing', async body => {
         expect((await renameBase(request(body))).status).toBe(400);
@@ -98,11 +111,13 @@ describe('shared base and form-ending APIs', () => {
         const res = await renameBase(request({ base: 'taken-base', revision: 2 }));
         expect((await res.json()).code).toBe('SLUG_IN_USE');
     });
-    it('rejects an ending on the base and maps a historical suffix collision', async () => {
+    it('lets the form that owns the base name set an ending and maps a historical suffix collision', async () => {
         m.links.mockResolvedValue(linkScope());
-        const invalid = await PATCH(request({ suffix: 'listing', revision: 2 }), params);
-        expect(invalid!.status).toBe(400);
-        expect(m.save).not.toHaveBeenCalled();
+        const owner = await PATCH(request({ suffix: 'listing', revision: 2 }), params);
+        expect(owner!.status).toBe(200);
+        expect(m.save).toHaveBeenCalledExactlyOnceWith(savedForm.account_id, 'org-A', savedForm.id, 2, { suffix: 'listing' });
+        const invalid = await PATCH(request({ suffix: 'Not Valid', revision: 2 }), params);
+        expect((await invalid!.json()).code).toBe('INVALID_SUFFIX');
         m.links.mockResolvedValue({ ...linkScope(), rootFormId: 'other-root', suffixes: { [savedForm.id]: 'listing' } });
         m.save.mockRejectedValueOnce({ code: 'SF423' });
         const collision = await PATCH(request({ suffix: 'reserved', revision: 2 }), params);

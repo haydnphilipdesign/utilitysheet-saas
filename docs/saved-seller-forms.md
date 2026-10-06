@@ -36,19 +36,27 @@ tokens/URLs. Account closure deletes forms/aliases before deleting organizations
 
 ## Shared base links and form endings
 
-For example, `/i/jane-smith` opens the base form, while
-`/i/jane-smith/closing` opens another saved form. The Base link setting belongs
-to one creator in a fixed workspace, never the currently selected workspace of
-a public visitor. Other workspace members do not gain editing rights.
+For example, `/i/jane-smith` opens the default form, while
+`/i/jane-smith/closing` always opens the Closing form. The Base link setting
+belongs to one creator in a fixed workspace, never the currently selected
+workspace of a public visitor. Other workspace members do not gain editing rights.
 
-The existing default is selected once as the base form during initialization
-(oldest form if no default exists). Its identity stays pinned. Changing the
-dashboard default changes initial selection for sharing and new requests, but
-does not change what the bare base opens. Pausing the base stops its own starts;
-an active sibling's nested link remains available.
+The bare base link follows the default (owner decision, 2026-10-06, replacing
+the earlier pinned rule). "Make default" changes what the bare link and every
+earlier base name open, including where they were already shared, so the
+dashboard asks for confirmation first. Every form, including the default, also
+has its own permanent ending, so each form keeps a fixed address whatever the
+default is. The default form's card shows the bare link and lists its ending
+link as a second address. Pausing the default makes the bare link unavailable;
+other active forms still open from their endings.
 
-Edit the shared base above the form list. Non-base forms have a Link ending
-field and full preview; the base form directs the user back to that setting.
+The form that was the default at initialization (oldest if none) owns the base
+name in storage (`root_form_id`). That ownership is permanent and only matters
+for renaming the base and for referral codes; it no longer decides what the
+bare link opens.
+
+Edit the shared base above the form list. Every form has a Link ending field
+and full preview.
 New/duplicate drafts suggest a unique ending from the name, visibly before save.
 Editing the suggestion makes it independent of later name changes. Internal
 names remain private: migration backfill uses opaque `form-<id-derived>` endings
@@ -57,9 +65,13 @@ Pro/Teams in the fixed scope. Downgrade retains all published links and allows
 ordinary form edits, pause and reactivation.
 
 Every flat slug is still permanently bound in `intake_link_aliases`. All aliases
-of the pinned base form identify the same `seller_form_link_namespaces` row.
+of the form that owns the base name identify the same
+`seller_form_link_namespaces` row, and `getIntakeLinkByBaseSlug` resolves any of
+them to that scope's default form. A flat slug of any other form still opens
+that form. `getIntakeLinkBySlug` keeps returning the alias owner and remains the
+referral-code lookup.
 Each `seller_form_suffix_aliases` entry permanently binds an ending to its
-original non-base form; one entry per form is current. Renames retain every
+original form; one entry per form is current. Renames retain every
 earlier alias, including old-base/new-ending and new-base/old-ending combinations.
 Published endings cannot be claimed by another form even after pause or rename.
 Database writers serialize on the account row and retain optimistic revisions.
@@ -70,7 +82,9 @@ Nested APIs are `/api/intake/[slug]/forms/[suffix]` and their `/start` child, so
 ending named `start` cannot collide with the original flat start endpoint.
 New resume cookies and rate limits use the immutable target form ID. Legacy
 cookies are accepted only after checking that their flat alias belongs to that
-target, then checking account, fixed scope, source form, address and status.
+target (including the cookie named after the slug in the URL, because the bare
+link may now open a form that does not own that slug), then checking account,
+fixed scope, source form, address and status.
 Alias checks query only the bounded cookie candidates; very old aliases are not
 excluded merely because the form has many newer aliases. Unknown links share an
 IP limit, and persistent-limit outages continue to fail closed.
@@ -83,6 +97,15 @@ records cascade from forms explicitly removed during account closure; export
 continues excluding URL identities/capability tokens.
 
 ### Base-link migration and release
+
+Two files, always in this order: `migrations-seller-form-base-links.sql`, then
+`migrations-seller-form-default-base-link.sql`. The second gives every form that
+owns a base name its own ending and lets it be renamed; it is additive,
+rerunnable and safe under the previously deployed application, and must be
+applied before deploying the application in which the bare link follows the
+default (otherwise a non-default owner of the base name has no link of its own).
+Rerunning the first file reinstalls its earlier writers, so always rerun the
+second after it.
 
 `migrations-seller-form-base-links.sql` must precede the new application deployment.
 It adds schema/guards/compatible writers in one transaction and backfills in a

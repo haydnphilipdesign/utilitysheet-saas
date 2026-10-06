@@ -565,9 +565,11 @@ DROP TRIGGER IF EXISTS register_seller_form_alias ON intake_links;
 CREATE TRIGGER register_seller_form_alias AFTER INSERT OR UPDATE OF slug ON intake_links
     FOR EACH ROW EXECUTE FUNCTION register_seller_form_alias();
 
--- Shared base links. See migrations-seller-form-base-links.sql.
--- The base form is pinned once. Its flat slug and every entry it owns in
--- intake_link_aliases are the base aliases; no second global slug registry.
+-- Shared base links. See migrations-seller-form-base-links.sql and
+-- migrations-seller-form-default-base-link.sql.
+-- The root form is pinned once and only owns the base name: its flat slug and
+-- every entry it owns in intake_link_aliases are the base aliases. The bare
+-- base link opens the workspace's default form, not necessarily the root.
 CREATE TABLE IF NOT EXISTS seller_form_link_namespaces (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -620,8 +622,8 @@ BEGIN
     SELECT * INTO ns FROM seller_form_link_namespaces WHERE id = NEW.namespace_id;
     SELECT * INTO f FROM intake_links WHERE id = NEW.form_id;
     IF ns.id IS NULL OR f.id IS NULL OR f.account_id <> ns.account_id
-        OR f.organization_id IS DISTINCT FROM ns.organization_id OR f.id = ns.root_form_id THEN
-        RAISE EXCEPTION 'Link ending must belong to a non-base form of the same creator and workspace';
+        OR f.organization_id IS DISTINCT FROM ns.organization_id THEN
+        RAISE EXCEPTION 'Link ending must belong to a form of the same creator and workspace';
     END IF;
     RETURN NEW;
 END $$;
@@ -631,7 +633,7 @@ CREATE TRIGGER guard_seller_form_suffix_alias BEFORE INSERT OR UPDATE ON seller_
 
 -- Idempotent per creator/workspace. Callers hold the owner row lock (the
 -- intake_links insert trigger, save_seller_form, or the backfill below).
--- Pins the base once (default, else oldest) and gives every other form without
+-- Pins the base owner once (default, else oldest) and gives every form without
 -- a current ending either the requested one or an opaque ID-derived one.
 -- Internal form names are private and never become URL text here.
 CREATE OR REPLACE FUNCTION initialize_seller_form_links(p_account UUID, p_org UUID, p_form UUID, p_suffix TEXT)
@@ -649,7 +651,7 @@ BEGIN
         IF ns.id IS NULL THEN RETURN; END IF;
     END IF;
     FOR g IN SELECT il.id FROM intake_links il
-        WHERE il.account_id = p_account AND il.organization_id IS NOT DISTINCT FROM p_org AND il.id <> ns.root_form_id
+        WHERE il.account_id = p_account AND il.organization_id IS NOT DISTINCT FROM p_org
           AND NOT EXISTS (SELECT 1 FROM seller_form_suffix_aliases x WHERE x.form_id = il.id AND x.is_current)
         ORDER BY il.created_at, il.id
     LOOP
@@ -744,7 +746,7 @@ RETURNS SETOF intake_links LANGUAGE sql AS $$
     SELECT * FROM ensure_seller_form(p_account, p_org, p_slug, FALSE, NULL);
 $$;
 
--- Accepts an optional "suffix" key for a non-base form's link ending.
+-- Accepts an optional "suffix" key for the form's link ending.
 CREATE OR REPLACE FUNCTION save_seller_form(p_account UUID, p_org UUID, p_id UUID, p_revision INTEGER, p_config JSONB, p_slug TEXT, p_max_forms INTEGER, p_can_create BOOLEAN)
 RETURNS SETOF intake_links LANGUAGE plpgsql AS $$
 DECLARE a accounts; f intake_links; ns seller_form_link_namespaces;
@@ -767,7 +769,7 @@ BEGIN
         IF (SELECT COUNT(*) FROM intake_links WHERE account_id = p_account) >= p_max_forms THEN
             RAISE EXCEPTION 'Form creation technical cap reached' USING ERRCODE = 'SF429';
         END IF;
-        -- Hand the reviewed ending to the insert trigger; a base form ignores it.
+        -- Hand the reviewed ending to the insert trigger.
         PERFORM set_config('seller_forms.requested_suffix', COALESCE(p_config->>'suffix', ''), TRUE);
         INSERT INTO intake_links(account_id, organization_id, scope_initialized, slug, is_default, is_referral_identity)
         VALUES (p_account, p_org, TRUE, p_slug,
@@ -787,7 +789,6 @@ BEGIN
         PERFORM initialize_seller_form_links(p_account, p_org, NULL, NULL);
         SELECT * INTO ns FROM seller_form_link_namespaces
             WHERE account_id = p_account AND organization_id IS NOT DISTINCT FROM p_org;
-        IF ns.root_form_id = f.id THEN RAISE EXCEPTION 'The base form has no link ending' USING ERRCODE = 'SF422'; END IF;
         IF NOT EXISTS (SELECT 1 FROM seller_form_suffix_aliases x
             WHERE x.form_id = f.id AND x.is_current AND x.suffix = p_config->>'suffix') THEN
             IF EXISTS (SELECT 1 FROM seller_form_suffix_aliases x

@@ -44,7 +44,7 @@ export function BaseLinkEditor({ base, isPaid, onSaved }: {
             <CardHeader><CardTitle>Base link</CardTitle></CardHeader>
             <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                    Other forms add an ending to this link. Previously shared links keep working.
+                    Your base link opens your default form. Every form also has its own link, which adds an ending to this one. Previously shared links keep working.
                 </p>
                 <div className="flex flex-wrap items-end gap-3">
                     <div className="min-w-0 flex-1 space-y-2">
@@ -58,8 +58,8 @@ export function BaseLinkEditor({ base, isPaid, onSaved }: {
                 </div>
                 <p id="sellerFormBasePreview" className="break-all text-sm">{preview}</p>
                 <p className="text-sm text-muted-foreground">
-                    The base link opens <span className="font-medium">{base.formName}</span>{!base.isActive ? ' (paused)' : ''}.
-                    {' '}Changing your default form does not change this destination.
+                    The base link currently opens <span className="font-medium">{base.formName}</span>{!base.isActive ? ' (paused, so sellers cannot start from it)' : ''}.
+                    {' '}Make another form the default to change this.
                 </p>
                 {!isPaid && <p className="text-sm text-muted-foreground">
                     Customize links on <Link href="/dashboard/settings?tab=billing" className="text-primary underline">Pro or Teams</Link>.

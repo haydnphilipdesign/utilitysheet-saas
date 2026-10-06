@@ -9,7 +9,7 @@ import {
     createEventLog,
     createRequest,
     getIntakeBrandProfile,
-    getIntakeLinkBySlug,
+    getIntakeLinkByBaseSlug,
     getIntakeLinkBySuffix,
     getRequestBySellerToken,
     getSellerFormAliasSlugs,
@@ -40,7 +40,7 @@ const COOKIE_ATTRIBUTES = `Path=/; Max-Age=${60 * 60 * 24 * 14}; SameSite=Lax; H
 
 /** Unknown, foreign and malformed links all resolve to null. */
 async function resolveTarget(target: IntakeTarget): Promise<IntakeLink | null> {
-    if (target.suffix === undefined) return getIntakeLinkBySlug(target.slug);
+    if (target.suffix === undefined) return getIntakeLinkByBaseSlug(target.slug);
     if (!isValidLinkSuffix(target.suffix)) return null;
     return getIntakeLinkBySuffix(target.slug, target.suffix);
 }
@@ -205,16 +205,15 @@ export async function intakeStartResponse(request: Request, target: IntakeTarget
             (name) => name.startsWith(LEGACY_COOKIE_PREFIX) && !name.startsWith(FORM_COOKIE_PREFIX),
         );
         if (legacyNames.length > 0) {
+            // The bare link opens the default form, which may not own the slug in
+            // the URL, so even this link's own slug cookie needs its alias proven.
             const flatName = `${LEGACY_COOKIE_PREFIX}${slug}`;
-            // A flat link resolved through its own slug, so that alias is already proven.
-            const own = target.suffix === undefined && cookies[flatName] ? [flatName] : [];
-            const others = legacyNames.filter((name) => !own.includes(name)).slice(0, MAX_LEGACY_RESUME_COOKIES - own.length);
-            const aliases = others.length > 0
-                ? new Set((await getSellerFormAliasSlugs(intakeLink.id, others.map(name => name.slice(LEGACY_COOKIE_PREFIX.length)))).map((alias) => `${LEGACY_COOKIE_PREFIX}${alias}`))
-                : new Set<string>();
-            [...own, ...others.filter((name) => aliases.has(name))]
-                .slice(0, MAX_LEGACY_RESUME_COOKIES)
-                .forEach((name) => candidates.push(cookies[name]));
+            const names = [
+                ...legacyNames.filter((name) => name === flatName),
+                ...legacyNames.filter((name) => name !== flatName),
+            ].slice(0, MAX_LEGACY_RESUME_COOKIES);
+            const aliases = new Set((await getSellerFormAliasSlugs(intakeLink.id, names.map(name => name.slice(LEGACY_COOKIE_PREFIX.length)))).map((alias) => `${LEGACY_COOKIE_PREFIX}${alias}`));
+            names.filter((name) => aliases.has(name)).forEach((name) => candidates.push(cookies[name]));
         }
 
         for (const existingCookie of candidates) {

@@ -6,7 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import type { SellerFormsResponse } from './types';
+import type { SavedSellerForm, SellerFormsResponse } from './types';
 import { BaseLinkEditor } from './BaseLinkEditor';
 
 export function FormsWorkspace() {
@@ -27,7 +27,15 @@ export function FormsWorkspace() {
     useEffect(() => {
         void load();
     }, []);
-    async function makeDefault(id: string) {
+    async function makeDefault({ id, name }: SavedSellerForm) {
+        // The base link follows the default, so this changes links already shared.
+        if (
+            data?.linkBase &&
+            !window.confirm(
+                `Make "${name}" your default form?\n\n${data.linkBase.url} will open it from now on, including where you have already shared that link. "${data.linkBase.formName}" stays available at its own link.`,
+            )
+        )
+            return;
         setBusy(id);
         try {
             const res = await fetch(`/api/seller-forms/${id}/default`, {
@@ -84,7 +92,6 @@ export function FormsWorkspace() {
                                 {form.isDefault && (
                                     <Badge variant="outline">Default</Badge>
                                 )}
-                                {form.isBaseForm && <Badge variant="outline">Base link</Badge>}
                                 <Badge variant="secondary">
                                     {form.isActive ? 'Active' : 'Paused'}
                                 </Badge>
@@ -101,6 +108,11 @@ export function FormsWorkspace() {
                                     : ''}
                             </p>
                             <p className="break-all text-sm">{form.url}</p>
+                            {form.endingUrl && form.endingUrl !== form.url && (
+                                <p className="break-all text-xs text-muted-foreground">
+                                    Also opens from {form.endingUrl}
+                                </p>
+                            )}
                             {!form.isActive && (
                                 <p className="text-sm text-muted-foreground">
                                     New starts are paused. Existing requests
@@ -146,7 +158,7 @@ export function FormsWorkspace() {
                                     <Button
                                         variant="ghost"
                                         disabled={busy !== null}
-                                        onClick={() => makeDefault(form.id)}
+                                        onClick={() => makeDefault(form)}
                                     >
                                         Make default
                                     </Button>

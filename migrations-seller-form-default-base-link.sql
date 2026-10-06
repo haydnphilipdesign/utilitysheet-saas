@@ -1,55 +1,12 @@
--- Shared seller-form base links: one base per creator/workspace, form endings.
--- Additive and rerunnable. Rehearse locally. Applying this to any live database
--- requires owner authorization. Apply before deploying code that reads it.
--- Partly superseded: always apply migrations-seller-form-default-base-link.sql
--- after this file, including after any rerun, because this file reinstalls the
--- earlier writers that refuse an ending on the base owner.
+-- Base link follows the default form: every form, including the one that owns
+-- the base name, gets its own permanent ending, so the bare base link can open
+-- whichever form is the default. Follows migrations-seller-form-base-links.sql.
+-- Additive and rerunnable. Safe under the previously deployed application, which
+-- never sends an ending for the base owner. Applying this to any live database
+-- requires owner authorization. Apply before deploying code that relies on it.
 --
--- Part 1: schema, guards and compatible writers. Short DDL transaction; the
--- backfill is separate so it never holds table locks while taking owner locks.
+-- Part 1: guards and writers.
 BEGIN;
-
--- The base form is pinned once. Its flat slug and every entry it owns in
--- intake_link_aliases are the base aliases; no second global slug registry.
-CREATE TABLE IF NOT EXISTS seller_form_link_namespaces (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    organization_id UUID REFERENCES organizations(id) ON DELETE RESTRICT,
-    root_form_id UUID NOT NULL UNIQUE REFERENCES intake_links(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE UNIQUE INDEX IF NOT EXISTS seller_form_link_namespaces_personal
-    ON seller_form_link_namespaces(account_id) WHERE organization_id IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS seller_form_link_namespaces_workspace
-    ON seller_form_link_namespaces(account_id, organization_id) WHERE organization_id IS NOT NULL;
-
--- Every published ending stays reserved to its form inside the namespace.
-CREATE TABLE IF NOT EXISTS seller_form_suffix_aliases (
-    namespace_id UUID NOT NULL REFERENCES seller_form_link_namespaces(id) ON DELETE CASCADE,
-    suffix TEXT NOT NULL CHECK (suffix ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND length(suffix) BETWEEN 3 AND 60),
-    form_id UUID NOT NULL REFERENCES intake_links(id) ON DELETE CASCADE,
-    is_current BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (namespace_id, suffix)
-);
-CREATE UNIQUE INDEX IF NOT EXISTS seller_form_suffix_aliases_current
-    ON seller_form_suffix_aliases(form_id) WHERE is_current;
-CREATE INDEX IF NOT EXISTS seller_form_suffix_aliases_form ON seller_form_suffix_aliases(form_id);
-
--- Foreign keys do not prove owner/scope; these guards do, and keep identity permanent.
-CREATE OR REPLACE FUNCTION guard_seller_form_link_namespace() RETURNS trigger LANGUAGE plpgsql AS $$
-DECLARE f intake_links;
-BEGIN
-    IF TG_OP = 'UPDATE' THEN RAISE EXCEPTION 'Seller form base identity is permanent'; END IF;
-    SELECT * INTO f FROM intake_links WHERE id = NEW.root_form_id;
-    IF NOT FOUND OR f.account_id <> NEW.account_id OR f.organization_id IS DISTINCT FROM NEW.organization_id THEN
-        RAISE EXCEPTION 'Seller form base must belong to its creator and workspace';
-    END IF;
-    RETURN NEW;
-END $$;
-DROP TRIGGER IF EXISTS guard_seller_form_link_namespace ON seller_form_link_namespaces;
-CREATE TRIGGER guard_seller_form_link_namespace BEFORE INSERT OR UPDATE ON seller_form_link_namespaces
-    FOR EACH ROW EXECUTE FUNCTION guard_seller_form_link_namespace();
 
 CREATE OR REPLACE FUNCTION guard_seller_form_suffix_alias() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE ns seller_form_link_namespaces; f intake_links;
@@ -63,18 +20,15 @@ BEGIN
     SELECT * INTO ns FROM seller_form_link_namespaces WHERE id = NEW.namespace_id;
     SELECT * INTO f FROM intake_links WHERE id = NEW.form_id;
     IF ns.id IS NULL OR f.id IS NULL OR f.account_id <> ns.account_id
-        OR f.organization_id IS DISTINCT FROM ns.organization_id OR f.id = ns.root_form_id THEN
-        RAISE EXCEPTION 'Link ending must belong to a non-base form of the same creator and workspace';
+        OR f.organization_id IS DISTINCT FROM ns.organization_id THEN
+        RAISE EXCEPTION 'Link ending must belong to a form of the same creator and workspace';
     END IF;
     RETURN NEW;
 END $$;
-DROP TRIGGER IF EXISTS guard_seller_form_suffix_alias ON seller_form_suffix_aliases;
-CREATE TRIGGER guard_seller_form_suffix_alias BEFORE INSERT OR UPDATE ON seller_form_suffix_aliases
-    FOR EACH ROW EXECUTE FUNCTION guard_seller_form_suffix_alias();
 
 -- Idempotent per creator/workspace. Callers hold the owner row lock (the
 -- intake_links insert trigger, save_seller_form, or the backfill below).
--- Pins the base once (default, else oldest) and gives every other form without
+-- Pins the base owner once (default, else oldest) and gives every form without
 -- a current ending either the requested one or an opaque ID-derived one.
 -- Internal form names are private and never become URL text here.
 CREATE OR REPLACE FUNCTION initialize_seller_form_links(p_account UUID, p_org UUID, p_form UUID, p_suffix TEXT)
@@ -92,7 +46,7 @@ BEGIN
         IF ns.id IS NULL THEN RETURN; END IF;
     END IF;
     FOR g IN SELECT il.id FROM intake_links il
-        WHERE il.account_id = p_account AND il.organization_id IS NOT DISTINCT FROM p_org AND il.id <> ns.root_form_id
+        WHERE il.account_id = p_account AND il.organization_id IS NOT DISTINCT FROM p_org
           AND NOT EXISTS (SELECT 1 FROM seller_form_suffix_aliases x WHERE x.form_id = il.id AND x.is_current)
         ORDER BY il.created_at, il.id
     LOOP
@@ -118,20 +72,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- Covers every allocating path, including ensure, create, duplicate, the
--- compatibility overloads and old insert writers. The BEFORE INSERT trigger
--- already holds the owner row lock.
-CREATE OR REPLACE FUNCTION initialize_seller_form_link() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-    PERFORM initialize_seller_form_links(NEW.account_id, NEW.organization_id, NEW.id,
-        NULLIF(current_setting('seller_forms.requested_suffix', TRUE), ''));
-    RETURN NEW;
-END $$;
-DROP TRIGGER IF EXISTS initialize_seller_form_link ON intake_links;
-CREATE TRIGGER initialize_seller_form_link AFTER INSERT ON intake_links
-    FOR EACH ROW EXECUTE FUNCTION initialize_seller_form_link();
-
--- Same writer as before plus an optional "suffix" key. Old callers never send it.
+-- Same writer; the base owner may now rename its ending like any other form.
 CREATE OR REPLACE FUNCTION save_seller_form(p_account UUID, p_org UUID, p_id UUID, p_revision INTEGER, p_config JSONB, p_slug TEXT, p_max_forms INTEGER, p_can_create BOOLEAN)
 RETURNS SETOF intake_links LANGUAGE plpgsql AS $$
 DECLARE a accounts; f intake_links; ns seller_form_link_namespaces;
@@ -154,7 +95,7 @@ BEGIN
         IF (SELECT COUNT(*) FROM intake_links WHERE account_id = p_account) >= p_max_forms THEN
             RAISE EXCEPTION 'Form creation technical cap reached' USING ERRCODE = 'SF429';
         END IF;
-        -- Hand the reviewed ending to the insert trigger; a base form ignores it.
+        -- Hand the reviewed ending to the insert trigger.
         PERFORM set_config('seller_forms.requested_suffix', COALESCE(p_config->>'suffix', ''), TRUE);
         INSERT INTO intake_links(account_id, organization_id, scope_initialized, slug, is_default, is_referral_identity)
         VALUES (p_account, p_org, TRUE, p_slug,
@@ -174,7 +115,6 @@ BEGIN
         PERFORM initialize_seller_form_links(p_account, p_org, NULL, NULL);
         SELECT * INTO ns FROM seller_form_link_namespaces
             WHERE account_id = p_account AND organization_id IS NOT DISTINCT FROM p_org;
-        IF ns.root_form_id = f.id THEN RAISE EXCEPTION 'The base form has no link ending' USING ERRCODE = 'SF422'; END IF;
         IF NOT EXISTS (SELECT 1 FROM seller_form_suffix_aliases x
             WHERE x.form_id = f.id AND x.is_current AND x.suffix = p_config->>'suffix') THEN
             IF EXISTS (SELECT 1 FROM seller_form_suffix_aliases x
@@ -205,15 +145,12 @@ BEGIN
 END $$;
 COMMIT;
 
--- Part 2: backfill existing forms, owner row first (the same order as every
--- writer). Rerunning changes nothing: bases stay pinned and endings stay put.
+-- Part 2: give each existing base owner an ending, owner row first (the same
+-- order as every writer). Rerunning changes nothing.
 BEGIN;
 DO $$
 DECLARE r RECORD;
 BEGIN
-    IF EXISTS (SELECT 1 FROM intake_links WHERE NOT scope_initialized) THEN
-        RAISE EXCEPTION 'Base link backfill requires every form to have a fixed workspace';
-    END IF;
     FOR r IN SELECT DISTINCT account_id FROM intake_links ORDER BY account_id LOOP
         PERFORM 1 FROM accounts WHERE id = r.account_id FOR UPDATE;
         PERFORM initialize_seller_form_links(s.account_id, s.organization_id, NULL, NULL)
@@ -223,16 +160,12 @@ BEGIN
     IF EXISTS (
         SELECT 1 FROM intake_links il WHERE NOT EXISTS (
             SELECT 1 FROM seller_form_link_namespaces n
-            WHERE n.account_id = il.account_id AND n.organization_id IS NOT DISTINCT FROM il.organization_id
-              AND (n.root_form_id = il.id OR EXISTS (SELECT 1 FROM seller_form_suffix_aliases x
-                  WHERE x.namespace_id = n.id AND x.form_id = il.id AND x.is_current)))
-    ) OR EXISTS (
-        SELECT 1 FROM seller_form_link_namespaces n JOIN intake_links il ON il.id = n.root_form_id
-        WHERE il.account_id <> n.account_id OR il.organization_id IS DISTINCT FROM n.organization_id
+            JOIN seller_form_suffix_aliases x ON x.namespace_id = n.id AND x.form_id = il.id AND x.is_current
+            WHERE n.account_id = il.account_id AND n.organization_id IS NOT DISTINCT FROM il.organization_id)
     ) OR EXISTS (
         SELECT 1 FROM seller_form_suffix_aliases x
         JOIN seller_form_link_namespaces n ON n.id = x.namespace_id JOIN intake_links il ON il.id = x.form_id
         WHERE il.account_id <> n.account_id OR il.organization_id IS DISTINCT FROM n.organization_id
-    ) THEN RAISE EXCEPTION 'Base link backfill left an inconsistent form identity'; END IF;
+    ) THEN RAISE EXCEPTION 'Base link backfill left a form without its own ending'; END IF;
 END $$;
 COMMIT;

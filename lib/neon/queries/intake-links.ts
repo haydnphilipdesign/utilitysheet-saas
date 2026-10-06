@@ -84,9 +84,27 @@ export async function getIntakeLinkBySlug(slug: string): Promise<IntakeLink | nu
 }
 
 /**
- * Nested link: the base must be a flat alias of a namespace's base form, then
+ * Bare link: a base name opens the default form of its creator/workspace, so
+ * it follows "Make default". Any other form's own flat slug still opens that
+ * form. Use getIntakeLinkBySlug when the alias owner itself is wanted.
+ */
+export async function getIntakeLinkByBaseSlug(slug: string): Promise<IntakeLink | null> {
+    if (!sql) return null;
+    const rows = await sql`SELECT il.* FROM intake_link_aliases a
+        LEFT JOIN seller_form_link_namespaces n ON n.root_form_id = a.intake_link_id
+        JOIN LATERAL (SELECT t.* FROM intake_links t
+            WHERE (n.id IS NULL AND t.id = a.intake_link_id)
+               OR (n.id IS NOT NULL AND t.account_id = n.account_id AND t.organization_id IS NOT DISTINCT FROM n.organization_id)
+            ORDER BY t.is_default DESC, t.created_at, t.id LIMIT 1) il ON TRUE
+        WHERE a.slug = ${slug}`;
+    return rows[0] as IntakeLink || null;
+}
+
+/**
+ * Nested link: the base must be a flat alias of a namespace's base owner, then
  * the ending resolves inside that namespace. Another form's flat slug is never
- * a base, and the base form does not have to be active for a sibling to open.
+ * a base, and neither the base owner nor the default has to be active for a
+ * sibling to open.
  */
 export async function getIntakeLinkBySuffix(slug: string, suffix: string): Promise<IntakeLink | null> {
     if (!sql) return null;
@@ -110,10 +128,14 @@ export async function getSellerFormAliasSlugs(formId: string, candidates?: strin
 /** Base and endings for one creator/workspace, in one query for any list size. */
 export async function getSellerFormLinkScope(accountId: string, organizationId?: string | null): Promise<SellerFormLinkScope | null> {
     if (!sql) return null;
-    const rows = await sql`SELECT n.root_form_id, r.slug AS base_slug, r.revision AS base_revision, r.name AS base_form_name, r.is_active AS base_is_active,
+    const rows = await sql`SELECT n.root_form_id, r.slug AS base_slug, r.revision AS base_revision,
+            d.id AS default_form_id, d.name AS default_form_name, d.is_active AS default_is_active,
             COALESCE((SELECT json_agg(json_build_object('form_id', s.form_id, 'suffix', s.suffix, 'is_current', s.is_current) ORDER BY s.created_at, s.suffix)
                 FROM seller_form_suffix_aliases s WHERE s.namespace_id = n.id), '[]'::json) AS aliases
         FROM seller_form_link_namespaces n JOIN intake_links r ON r.id = n.root_form_id
+        JOIN LATERAL (SELECT t.id, t.name, t.is_active FROM intake_links t
+            WHERE t.account_id = n.account_id AND t.organization_id IS NOT DISTINCT FROM n.organization_id
+            ORDER BY t.is_default DESC, t.created_at, t.id LIMIT 1) d ON TRUE
         WHERE n.account_id = ${accountId}::uuid AND n.organization_id IS NOT DISTINCT FROM ${organizationId || null}::uuid`;
     const row = rows[0];
     if (!row) return null;
@@ -122,8 +144,9 @@ export async function getSellerFormLinkScope(accountId: string, organizationId?:
         rootFormId: row.root_form_id,
         baseSlug: row.base_slug,
         baseRevision: Number(row.base_revision),
-        baseFormName: row.base_form_name,
-        baseIsActive: row.base_is_active === true,
+        defaultFormId: row.default_form_id,
+        defaultFormName: row.default_form_name,
+        defaultIsActive: row.default_is_active === true,
         suffixes: Object.fromEntries(aliases.filter(alias => alias.is_current).map(alias => [alias.form_id, alias.suffix])),
         reserved: aliases.map(alias => ({ suffix: alias.suffix, formId: alias.form_id })),
     };

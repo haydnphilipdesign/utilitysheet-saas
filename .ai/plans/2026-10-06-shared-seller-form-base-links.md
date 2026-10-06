@@ -2,6 +2,7 @@
 
 - Date: 2026-10-06. Author: Codex. Baseline: `main` at `ccd4eda`; clean worktree at planning startup.
 - Status: **Implementation, local validation and authorized live migration completed (Codex, 2026-10-06).** No required implementation or migration work remains. Owner explicitly requested the migration after local completion; commit/push/deployment remain separately gated and were not performed.
+- Superseded in part (2026-10-06): the pinned bare base (section 1, items 2, 3 and 7) was replaced by `2026-10-06-base-link-follows-default.md`. The rest of this plan stands.
 - Intended result: choose one custom base link for a creator's forms in a fixed workspace, then identify additional forms with an editable URL ending.
 - Related: `2026-10-02-saved-seller-forms.md`; decisions `../decisions/2026-10-02-saved-form-{workspace-boundary,storage-and-snapshots,commercial-policy}.md`.
 - No runtime code, schema, database, deployment, billing or email changes made during planning. No other active editor known; recheck before implementation.

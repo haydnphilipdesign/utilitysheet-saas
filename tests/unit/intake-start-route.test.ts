@@ -2,7 +2,7 @@ import { savedForm } from '../fixtures/saved-seller-forms';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
-    getIntakeLinkBySlug: vi.fn(),
+    getIntakeLinkByBaseSlug: vi.fn(),
     getIntakeLinkBySuffix: vi.fn(),
     getSellerFormAliasSlugs: vi.fn(),
     getAccountById: vi.fn(),
@@ -43,7 +43,7 @@ import {
     getAccountById,
     getAccountOrganizations,
     getIntakeBrandProfile,
-    getIntakeLinkBySlug,
+    getIntakeLinkByBaseSlug,
     getIntakeLinkBySuffix,
     getSellerFormAliasSlugs,
     getMonthlyUsage,
@@ -61,7 +61,7 @@ describe('POST /api/intake/[slug]/start', () => {
             remaining: 19,
             reset: 999999,
         } as never);
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({
             ...savedForm,
             slug: 'test-slug',
             account_id: 'acct-1',
@@ -105,7 +105,7 @@ describe('POST /api/intake/[slug]/start', () => {
     });
 
     it('snapshots fixed workspace, form revision, introduction and concrete question switches', async () => {
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({ ...savedForm, organization_id: 'org-A' } as never);
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({ ...savedForm, organization_id: 'org-A' } as never);
         vi.mocked(getAccountById).mockResolvedValue({ id: savedForm.account_id, role: 'user', subscription_status: 'free', active_organization_id: 'org-B' } as never);
         vi.mocked(getAccountOrganizations).mockResolvedValue([{ id: 'org-A', subscription_status: 'team' }, { id: 'org-B' }] as never);
         const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }) }), { params: Promise.resolve({ slug: 'listing-form' }) });
@@ -122,14 +122,14 @@ describe('POST /api/intake/[slug]/start', () => {
         const response = await nestedStart(startRequest(), nestedParams());
         expect(response.status).toBe(200);
         expect(getIntakeLinkBySuffix).toHaveBeenCalledWith('jane', 'closing');
-        expect(getIntakeLinkBySlug).not.toHaveBeenCalled();
+        expect(getIntakeLinkByBaseSlug).not.toHaveBeenCalled();
         expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({ sourceFormId: savedForm.id, sourceFormRevision: 2, sellerIntro: savedForm.seller_intro }));
         expect(response.headers.get('set-cookie')).toContain(`us_intake_f_${savedForm.id}=`);
         expect(response.headers.get('set-cookie')).toContain('HttpOnly');
         expect(checkRateLimit).toHaveBeenLastCalledWith(expect.anything(), `form:${savedForm.id}:1.2.3.4`, expect.anything());
     });
     it('shares rate identity across renamed bases and flat/nested aliases', async () => {
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({ ...savedForm, account_id: 'acct-1' });
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({ ...savedForm, account_id: 'acct-1' });
         await POST(startRequest(), { params: Promise.resolve({ slug: 'old-flat' }) });
         await nestedStart(startRequest(), nestedParams('new-base', 'closing'));
         expect(vi.mocked(checkRateLimit).mock.calls.map(call => call[1])).toEqual([
@@ -188,9 +188,20 @@ describe('POST /api/intake/[slug]/start', () => {
         expect(response.status).toBe(200); expect(createRequest).toHaveBeenCalledOnce();
     });
 
+    it('ignores the base slug cookie when the bare link now opens a default that does not own that slug', async () => {
+        const cookie = Buffer.from(JSON.stringify({ a: '123 main st austin tx 78701', t: 'previous-token' })).toString('base64url');
+        vi.mocked(getSellerFormAliasSlugs).mockResolvedValue([]);
+        const response = await POST(new Request('http://localhost', { method: 'POST', headers: { cookie: `us_intake_test-slug=${cookie}` }, body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }) }), { params: Promise.resolve({ slug: 'test-slug' }) });
+        expect(response.status).toBe(200);
+        expect(getSellerFormAliasSlugs).toHaveBeenCalledWith(expect.any(String), ['test-slug']);
+        expect(getRequestBySellerToken).not.toHaveBeenCalled();
+        expect(createRequest).toHaveBeenCalledOnce();
+    });
+
     it('permits legacy NULL provenance resume only on the original identity and matching scope', async () => {
         const cookie = Buffer.from(JSON.stringify({ a: '123 main st austin tx 78701', t: 'previous-token' })).toString('base64url');
         vi.mocked(getRequestBySellerToken).mockResolvedValue({ account_id: 'acct-1', property_address: '123 Main St, Austin, TX 78701', status: 'draft', source_form_id: null, organization_id: null } as never);
+        vi.mocked(getSellerFormAliasSlugs).mockResolvedValue(['test-slug']);
         const response = await POST(new Request('http://localhost', { method: 'POST', headers: { cookie: `us_intake_test-slug=${cookie}` }, body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }) }), { params: Promise.resolve({ slug: 'test-slug' }) });
         expect(await response.json()).toEqual({ sellerToken: 'previous-token' }); expect(createRequest).not.toHaveBeenCalled();
     });
@@ -276,7 +287,7 @@ describe('POST /api/intake/[slug]/start', () => {
     });
 
     it('uses saved Branding Profile and utility-category defaults for a new request', async () => {
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({
             slug: 'test-slug',
             account_id: 'acct-1',
             is_active: true,
@@ -310,7 +321,7 @@ describe('POST /api/intake/[slug]/start', () => {
     });
 
     it('returns a generic 404 for an inactive reusable form', async () => {
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({
             slug: 'test-slug',
             account_id: 'acct-1',
             is_active: false,
@@ -348,7 +359,7 @@ describe('POST /api/intake/[slug]/start', () => {
     });
 
     it('uses reusable-link advanced module defaults for paid accounts', async () => {
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({
             slug: 'test-slug',
             account_id: 'acct-1',
             is_active: true,
@@ -380,7 +391,7 @@ describe('POST /api/intake/[slug]/start', () => {
     });
 
     it('falls back to simple mode for free accounts even when reusable-link default is advanced', async () => {
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({
             slug: 'test-slug',
             account_id: 'acct-1',
             is_active: true,

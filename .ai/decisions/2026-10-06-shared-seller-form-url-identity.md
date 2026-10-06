@@ -2,6 +2,7 @@
 
 - Date: 2026-10-06. Status: accepted, implemented/validated locally, and migration applied with explicit owner authorization. Application deployment remains pending separate authorization.
 - Plan: `../plans/2026-10-06-shared-seller-form-base-links.md`.
+- **Amended 2026-10-06** by `../plans/2026-10-06-base-link-follows-default.md`: the bare base link now follows the default form. See "Amendment" below; where it conflicts with the original text, the amendment wins.
 
 ## Context and decision
 
@@ -24,6 +25,29 @@ closure removes the form. Base/ending renames support historical combinations
 without redirects. PostgreSQL mutations keep account-first locking, commercial
 allocation controls and expected revisions. Pro/Teams customizations retain
 the existing fixed-scope paid rules; downgrade keeps links and configuration.
+
+## Amendment: the bare base link follows the default (2026-10-06)
+
+Owner decision in chat, made with the trade-off stated: the bare link and every
+earlier base name open the workspace's **default** form, so "Make default"
+repoints links that were already shared. The dashboard confirms before the
+switch. To keep every form addressable, every form (including the one that owns
+the base name) has its own permanent ending; the default's ending link keeps
+working beside the bare link.
+
+`root_form_id` stays immutable but now only records which form owns the base
+name (base renames, referral-code lookup). Unchanged: one namespace per creator
+and fixed workspace, permanent reservation of base names and endings, legacy
+flat links of other forms, referral identity, snapshots, capability tokens and
+paid gating. Rejected again: an account-wide base and reassigning published
+endings. Reason for the reversal: with a pinned base the owner had no way to
+change what their main link opens, and "Default" versus "Base link" were two
+concepts that looked like one.
+
+Consequence: a second additive migration,
+`migrations-seller-form-default-base-link.sql` (applied 2026-10-06 with owner
+authorization), must be applied before the
+application that resolves the bare link by default.
 
 ## Rationale and alternatives
 

@@ -1,17 +1,20 @@
 /**
- * Shared base links: one base per creator/workspace, an ending per other form.
+ * Shared base links: one base per creator/workspace that opens the default
+ * form, and a permanent ending for every form.
  * Pure helpers, safe for client and server. See docs/saved-seller-forms.md.
  */
 
 /** Link identity of one creator/workspace, read in a single bounded query. */
 export interface SellerFormLinkScope {
-    /** The form the bare base link opens. Pinned once; never follows the default. */
+    /** The form that owns the base name. Pinned once; renaming the base edits it. */
     rootFormId: string;
     baseSlug: string;
     baseRevision: number;
-    baseFormName: string;
-    baseIsActive: boolean;
-    /** Current ending per non-base form ID. */
+    /** The form the bare base link opens: the workspace default. */
+    defaultFormId: string;
+    defaultFormName: string;
+    defaultIsActive: boolean;
+    /** Current ending per form ID. */
     suffixes: Record<string, string>;
     /** Every ending ever published here, with the form it stays bound to. */
     reserved: Array<{ suffix: string; formId: string }>;
@@ -60,16 +63,24 @@ export function suggestLinkSuffix(name: string, taken: Iterable<string>) {
     throw new Error('Unable to suggest a link ending');
 }
 
-/** Canonical public path. The base form stays bare; other forms add their ending. */
+/** A form's own permanent path, whether or not it is the default. */
+export function sellerFormEndingPath(
+    form: { id: string },
+    scope: SellerFormLinkScope | null,
+) {
+    const suffix = scope?.suffixes[form.id];
+    return scope && suffix ? `/i/${scope.baseSlug}/${suffix}` : null;
+}
+
+/** Canonical public path. The default form is bare; other forms add their ending. */
 export function sellerFormLinkPath(
     form: { id: string; slug: string },
     scope: SellerFormLinkScope | null,
 ) {
     if (!scope) return `/i/${form.slug}`;
-    if (form.id === scope.rootFormId) return `/i/${scope.baseSlug}`;
-    const suffix = scope.suffixes[form.id];
+    if (form.id === scope.defaultFormId) return `/i/${scope.baseSlug}`;
     // A form without an ending still has its own published flat link.
-    return suffix ? `/i/${scope.baseSlug}/${suffix}` : `/i/${form.slug}`;
+    return sellerFormEndingPath(form, scope) ?? `/i/${form.slug}`;
 }
 
 export function appBaseUrl() {

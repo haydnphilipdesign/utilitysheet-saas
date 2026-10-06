@@ -2,7 +2,7 @@ import { savedForm } from '../fixtures/saved-seller-forms';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
-    getIntakeLinkBySlug: vi.fn(),
+    getIntakeLinkByBaseSlug: vi.fn(),
     getAccountById: vi.fn(),
     getAccountOrganizations: vi.fn(),
     getIntakeBrandProfile: vi.fn(),
@@ -18,13 +18,13 @@ import {
     getAccountById,
     getAccountOrganizations,
     getIntakeBrandProfile,
-    getIntakeLinkBySlug,
+    getIntakeLinkByBaseSlug,
 } from '@/lib/neon/queries';
 
 describe('GET /api/intake/[slug]', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({
             ...savedForm,
             slug: 'test-slug',
             account_id: 'acct-1',
@@ -73,7 +73,7 @@ describe('GET /api/intake/[slug]', () => {
     });
 
     it('returns a generic 404 without loading private data when paused', async () => {
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({
             slug: 'test-slug',
             account_id: 'acct-1',
             is_active: false,
@@ -89,7 +89,7 @@ describe('GET /api/intake/[slug]', () => {
         expect(getIntakeBrandProfile).not.toHaveBeenCalled();
     });
     it('keeps workspace A after the owner switches to B and fails closed when membership is removed', async () => {
-        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({ ...savedForm, organization_id: 'org-A' } as never);
+        vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({ ...savedForm, organization_id: 'org-A' } as never);
         vi.mocked(getAccountById).mockResolvedValue({ id: 'account-1', role: 'user', active_organization_id: 'org-B' } as never);
         vi.mocked(getAccountOrganizations).mockResolvedValue([{ id: 'org-A' }, { id: 'org-B' }] as never);
         expect((await GET(new Request('http://localhost'), { params: Promise.resolve({ slug: 'listing-form' }) })).status).toBe(200);

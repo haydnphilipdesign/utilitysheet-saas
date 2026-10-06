@@ -9,10 +9,10 @@ export interface SavedSellerForm {
     id: string;
     name: string;
     slug: string;
-    /** Canonical share link: the bare base for the base form, base plus ending otherwise. */
+    /** Canonical share link: the bare base for the default form, base plus ending otherwise. */
     url: string;
-    /** The form the bare base link opens. Independent of the default. */
-    isBaseForm: boolean;
+    /** This form's own permanent link (base plus ending), default or not. */
+    endingUrl: string | null;
     linkSuffix: string | null;
     revision: number;
     organizationId: string | null;
@@ -31,8 +31,9 @@ export interface SavedSellerForm {
 export interface SellerFormLinkBase {
     slug: string;
     url: string;
-    /** Revision of the base form; required to rename the base. */
+    /** Revision of the form that owns the base name; required to rename the base. */
     revision: number;
+    /** The default form, which the bare base link opens. */
     formId: string;
     formName: string;
     isActive: boolean;

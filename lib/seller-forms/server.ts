@@ -19,6 +19,7 @@ import { validateIntakeSlug } from '@/lib/neon/queries/intake-links';
 import {
     appBaseUrl,
     isValidLinkSuffix,
+    sellerFormEndingPath,
     sellerFormLinkPath,
     type SellerFormLinkScope,
 } from './links';
@@ -77,9 +78,10 @@ export function serializeLinkBase(links: SellerFormLinkScope | null) {
         slug: links.baseSlug,
         url: `${appBaseUrl()}/i/${links.baseSlug}`,
         revision: links.baseRevision,
-        formId: links.rootFormId,
-        formName: links.baseFormName,
-        isActive: links.baseIsActive,
+        // The form the bare link opens: the default, not the owner of the name.
+        formId: links.defaultFormId,
+        formName: links.defaultFormName,
+        isActive: links.defaultIsActive,
         reservedSuffixes: links.reserved,
     };
 }
@@ -94,6 +96,7 @@ export function serializeSellerForm(
     allowedBrandIds?: Set<string>,
 ) {
     const config = formConfiguration(form);
+    const endingPath = sellerFormEndingPath(form, links);
     if (
         config.defaultBrandProfileId &&
         allowedBrandIds &&
@@ -105,7 +108,7 @@ export function serializeSellerForm(
         id: form.id,
         slug: form.slug,
         url: `${appBaseUrl()}${sellerFormLinkPath(form, links)}`,
-        isBaseForm: links?.rootFormId === form.id,
+        endingUrl: endingPath ? `${appBaseUrl()}${endingPath}` : null,
         linkSuffix: links?.suffixes[form.id] ?? null,
         revision: form.revision,
         organizationId: form.organization_id,
@@ -120,24 +123,14 @@ export async function validateFormPatch(
     current?: IntakeLink,
     links?: SellerFormLinkScope | null,
 ) {
-    if (patch.suffix !== undefined) {
-        if (!isValidLinkSuffix(patch.suffix))
-            return NextResponse.json(
-                {
-                    error: 'Link ending must be 3 to 60 lowercase letters, numbers, and dashes.',
-                    code: 'INVALID_SUFFIX',
-                },
-                { status: 400 },
-            );
-        if (current && links?.rootFormId === current.id)
-            return NextResponse.json(
-                {
-                    error: 'This form uses the base link and has no link ending.',
-                    code: 'BASE_FORM_HAS_NO_ENDING',
-                },
-                { status: 400 },
-            );
-    }
+    if (patch.suffix !== undefined && !isValidLinkSuffix(patch.suffix))
+        return NextResponse.json(
+            {
+                error: 'Link ending must be 3 to 60 lowercase letters, numbers, and dashes.',
+                code: 'INVALID_SUFFIX',
+            },
+            { status: 400 },
+        );
     if (patch.slug !== undefined) {
         try {
             validateIntakeSlug(patch.slug);

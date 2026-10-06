@@ -128,6 +128,7 @@ export {
     getOrCreateIntakeLink,
     getIntakeLinkByAccountId,
     getIntakeLinkBySlug,
+    getIntakeLinkByBaseSlug,
     getIntakeLinkBySuffix,
     getSellerFormAliasSlugs,
     getSellerFormLinkScope,

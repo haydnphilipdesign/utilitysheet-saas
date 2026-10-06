@@ -22,6 +22,7 @@ vi.mock('@/lib/neon/db', () => ({
     generateToken: () => crypto.randomUUID().replace(/-/g, ''),
 }));
 import {
+    getIntakeLinkByBaseSlug,
     getIntakeLinkBySlug,
     getIntakeLinkBySuffix,
     getSellerFormAliasSlugs,
@@ -35,8 +36,10 @@ const forPglite = (sql: string) =>
     sql
         .replace('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";', '')
         .replaceAll('uuid_generate_v4()', 'gen_random_uuid()');
+// Always in this order: the second file supersedes writers the first installs.
 const migration = forPglite(
-    readFileSync('migrations-seller-form-base-links.sql', 'utf8'),
+    readFileSync('migrations-seller-form-base-links.sql', 'utf8') +
+        readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'),
 );
 const rows = async (sql: string, params: unknown[] = []) =>
     (await db.query<Record<string, unknown>>(sql, params)).rows;
@@ -94,7 +97,7 @@ afterAll(async () => {
 });
 
 describe.sequential('shared base links: migration and atomic writers', () => {
-    it('pins each base once, gives other forms opaque endings and rewrites nothing', async () => {
+    it('pins each base owner once, gives every form an opaque ending and rewrites nothing', async () => {
         expect(
             await rows(
                 'SELECT account_id, organization_id, root_form_id FROM seller_form_link_namespaces ORDER BY root_form_id',
@@ -107,10 +110,14 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         ]);
         expect(
             await rows(
-                'SELECT form_id, suffix, is_current FROM seller_form_suffix_aliases ORDER BY suffix',
+                'SELECT form_id, suffix, is_current FROM seller_form_suffix_aliases ORDER BY suffix, form_id',
             ),
         ).toEqual([
+            // Base owners get an ending too; the same text is fine across namespaces.
+            { form_id: base, suffix: 'form-10000000', is_current: true },
+            { form_id: teamForm, suffix: 'form-10000000', is_current: true },
             { form_id: bobSecond, suffix: 'form-10000000', is_current: true },
+            { form_id: bobFirst, suffix: 'form-100000000000', is_current: true },
             { form_id: listing, suffix: 'form-11111111', is_current: true },
             { form_id: closing, suffix: 'form-111111119999', is_current: true },
         ]);
@@ -137,7 +144,9 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         expect((await getIntakeLinkBySuffix('jane-smith', 'form-11111111'))?.id).toBe(listing);
         expect((await getIntakeLinkBySuffix('jane-old', 'form-11111111'))?.id).toBe(listing);
         expect((await getIntakeLinkBySuffix('jane-smith', 'form-11111111'))?.is_active).toBe(true);
-        expect((await getIntakeLinkBySlug('jane-smith'))?.is_active).toBe(false);
+        expect((await getIntakeLinkByBaseSlug('jane-smith'))?.id).toBe(base);
+        expect((await getIntakeLinkByBaseSlug('jane-smith'))?.is_active).toBe(false);
+        expect((await getIntakeLinkBySuffix('jane-smith', 'form-10000000'))?.id).toBe(base);
         // Another form's flat slug is not a base; other namespaces stay separate.
         expect(await getIntakeLinkBySuffix('listing-flat', 'form-111111119999')).toBeNull();
         expect(await getIntakeLinkBySuffix('team-form', 'form-11111111')).toBeNull();
@@ -147,8 +156,10 @@ describe.sequential('shared base links: migration and atomic writers', () => {
             rootFormId: base,
             baseSlug: 'jane-smith',
             baseRevision: 1,
-            baseIsActive: false,
-            suffixes: { [listing]: 'form-11111111', [closing]: 'form-111111119999' },
+            defaultFormId: base,
+            defaultFormName: 'Private base name',
+            defaultIsActive: false,
+            suffixes: { [base]: 'form-10000000', [listing]: 'form-11111111', [closing]: 'form-111111119999' },
         });
         expect((await getSellerFormAliasSlugs(base)).sort()).toEqual(['jane-old', 'jane-smith']);
     });
@@ -177,10 +188,13 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         ]);
     });
 
-    it('rejects an ending on the base form, stale revisions and invalid text without changes', async () => {
+    it('lets the base owner rename its ending and rejects stale revisions and invalid text without changes', async () => {
+        expect((await saveSellerForm(jane, undefined, base, 1, { suffix: 'main' }))?.revision).toBe(2);
+        expect((await getIntakeLinkBySuffix('jane-smith', 'main'))?.id).toBe(base);
+        expect((await getIntakeLinkBySuffix('jane-old', 'form-10000000'))?.id).toBe(base);
         await expect(
-            saveSellerForm(jane, undefined, base, 1, { suffix: 'not-allowed' }),
-        ).rejects.toMatchObject({ code: 'SF422' });
+            saveSellerForm(jane, undefined, closing, 1, { suffix: 'main' }),
+        ).rejects.toMatchObject({ code: 'SF423' });
         await expect(
             saveSellerForm(jane, undefined, listing, 1, { suffix: 'stale-ending' }),
         ).rejects.toMatchObject({ code: 'SF409' });
@@ -189,11 +203,11 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         ).rejects.toThrow('lowercase');
         expect(await getIntakeLinkBySuffix('jane-smith', 'stale-ending')).toBeNull();
         expect(await revision(listing)).toBe(4);
-        expect(await revision(base)).toBe(1);
+        expect(await revision(base)).toBe(2);
     });
 
     it('renames the base while old and new bases open the same forms with any of their endings', async () => {
-        await saveSellerForm(jane, undefined, base, 1, { slug: 'jane-team' });
+        await saveSellerForm(jane, undefined, base, 2, { slug: 'jane-team' });
         for (const [slug, suffix] of [
             ['jane-team', 'listing'],
             ['jane-smith', 'listing'],
@@ -202,8 +216,8 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         ])
             expect((await getIntakeLinkBySuffix(slug, suffix))?.id).toBe(listing);
         for (const slug of ['jane-team', 'jane-smith', 'jane-old'])
-            expect((await getIntakeLinkBySlug(slug))?.id).toBe(base);
-        expect((await getIntakeLinkBySlug('listing-flat'))?.id).toBe(listing);
+            expect((await getIntakeLinkByBaseSlug(slug))?.id).toBe(base);
+        expect((await getIntakeLinkByBaseSlug('listing-flat'))?.id).toBe(listing);
         expect((await getSellerFormLinkScope(jane))?.baseSlug).toBe('jane-team');
         // A published base can never be claimed by another creator.
         await expect(
@@ -212,16 +226,30 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         expect((await getSellerFormLinkScope(bob))?.baseSlug).toBe('bob-first');
     });
 
-    it('never repoints the bare base when the default changes', async () => {
+    it('moves every base name to the new default while each ending keeps its own form', async () => {
         await setDefaultSellerForm(jane, undefined, listing);
         expect((await rows('SELECT is_default FROM intake_links WHERE id=$1', [listing]))[0].is_default).toBe(true);
-        expect((await getSellerFormLinkScope(jane))?.rootFormId).toBe(base);
+        expect(await getSellerFormLinkScope(jane)).toMatchObject({
+            rootFormId: base, baseSlug: 'jane-team', defaultFormId: listing, defaultIsActive: true,
+        });
+        for (const slug of ['jane-team', 'jane-smith', 'jane-old'])
+            expect((await getIntakeLinkByBaseSlug(slug))?.id).toBe(listing);
+        // The referral-code lookup still returns the form that owns the name.
         expect((await getIntakeLinkBySlug('jane-team'))?.id).toBe(base);
+        expect((await getIntakeLinkBySuffix('jane-team', 'main'))?.id).toBe(base);
         expect((await getIntakeLinkBySuffix('jane-team', 'listing'))?.id).toBe(listing);
+        // Other workspaces and creators are untouched.
+        expect((await getIntakeLinkByBaseSlug('team-form'))?.id).toBe(teamForm);
+        expect((await getIntakeLinkByBaseSlug('bob-first'))?.id).toBe(bobFirst);
+        // A paused default closes the bare link without affecting an ending.
+        await saveSellerForm(jane, undefined, listing, await revision(listing), { isActive: false });
+        expect((await getIntakeLinkByBaseSlug('jane-team'))?.is_active).toBe(false);
+        expect((await getIntakeLinkBySuffix('jane-team', 'form-111111119999'))?.is_active).toBe(true);
+        await saveSellerForm(jane, undefined, listing, await revision(listing), { isActive: true });
         // The legacy flat slug of a non-base form changes only that form's own alias.
         await saveSellerForm(jane, undefined, listing, await revision(listing), { slug: 'listing-renamed' });
         expect((await getSellerFormLinkScope(jane))?.baseSlug).toBe('jane-team');
-        expect((await getIntakeLinkBySlug('listing-flat'))?.id).toBe(listing);
+        expect((await getIntakeLinkByBaseSlug('listing-flat'))?.id).toBe(listing);
         expect(await getIntakeLinkBySuffix('listing-renamed', 'form-111111119999')).toBeNull();
     });
 
@@ -249,11 +277,14 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         const teamListing = await saveSellerForm(jane, team, null, null, { name: 'Team listing', suffix: 'listing' });
         expect((await getIntakeLinkBySuffix('team-form', 'listing'))?.id).toBe(teamListing!.id);
         expect((await getIntakeLinkBySuffix('jane-team', 'listing'))?.id).toBe(listing);
-        // A first form in a new scope becomes that scope's base and has no ending.
+        // A first form in a new scope owns that scope's base name and gets an ending too.
         const carol = '00000000-0000-4000-8000-0000000000d1';
         await rows("INSERT INTO accounts(id,email) VALUES ($1,'carol@example.test')", [carol]);
-        const first = (await rows('SELECT id FROM ensure_seller_form($1,NULL,$2)', [carol, 'carol-form']))[0].id;
-        expect(await getSellerFormLinkScope(carol)).toMatchObject({ rootFormId: first, baseSlug: 'carol-form', suffixes: {} });
+        const first = String((await rows('SELECT id FROM ensure_seller_form($1,NULL,$2)', [carol, 'carol-form']))[0].id);
+        expect(await getSellerFormLinkScope(carol)).toMatchObject({
+            rootFormId: first, baseSlug: 'carol-form', defaultFormId: first,
+            suffixes: { [first]: `form-${first.replace(/-/g, '').slice(0, 8)}` },
+        });
     });
 
     it('retains every link after downgrade and still enforces the allowance', async () => {
@@ -284,9 +315,6 @@ describe.sequential('shared base links: migration and atomic writers', () => {
             rows("INSERT INTO seller_form_suffix_aliases(namespace_id,suffix,form_id) VALUES ($1,'foreign',$2)", [namespace, bobSecond]),
         ).rejects.toThrow('same creator and workspace');
         await expect(
-            rows("INSERT INTO seller_form_suffix_aliases(namespace_id,suffix,form_id) VALUES ($1,'on-base',$2)", [namespace, base]),
-        ).rejects.toThrow('non-base form');
-        await expect(
             rows("INSERT INTO seller_form_suffix_aliases(namespace_id,suffix,form_id) VALUES ($1,'x',$2)", [namespace, closing]),
         ).rejects.toThrow('check');
         await expect(
@@ -295,18 +323,19 @@ describe.sequential('shared base links: migration and atomic writers', () => {
     });
 
     it('leaves no namespace or ending behind when account closure deletes the forms', async () => {
+        const bobEndings = () => rows('SELECT x.form_id FROM seller_form_suffix_aliases x JOIN seller_form_link_namespaces n ON n.id=x.namespace_id WHERE n.account_id=$1', [bob]);
         // Mirrors lib/neon/queries/account-closure.ts: forms are deleted explicitly.
         await rows('DELETE FROM intake_links WHERE account_id=$1', [jane]);
         expect(await rows('SELECT 1 FROM seller_form_link_namespaces WHERE account_id=$1', [jane])).toHaveLength(0);
         expect(
             await rows('SELECT 1 FROM seller_form_suffix_aliases x JOIN seller_form_link_namespaces n ON n.id=x.namespace_id WHERE n.account_id=$1', [jane]),
         ).toHaveLength(0);
-        expect(await rows('SELECT 1 FROM seller_form_suffix_aliases')).toHaveLength(1);
+        expect(await bobEndings()).toHaveLength(2);
         expect(await rows('DELETE FROM organizations WHERE id=$1 RETURNING id', [team])).toHaveLength(1);
         expect((await rows('SELECT status FROM requests'))).toHaveLength(1);
-        // Deleting only a non-base form removes its endings and keeps the namespace.
+        // Deleting a form that does not own the base name removes only its endings.
         await rows('DELETE FROM intake_links WHERE id=$1', [bobSecond]);
-        expect(await rows('SELECT 1 FROM seller_form_suffix_aliases')).toHaveLength(0);
+        expect(await bobEndings()).toEqual([{ form_id: bobFirst }]);
         expect((await getSellerFormLinkScope(bob))?.rootFormId).toBe(bobFirst);
     });
 });
@@ -327,8 +356,11 @@ it('boots the current schema with base links and accepts the migration on top', 
             (await fresh.query('SELECT root_form_id FROM seller_form_link_namespaces')).rows,
         ).toEqual([{ root_form_id: first }]);
         expect(
-            (await fresh.query('SELECT form_id, suffix, is_current FROM seller_form_suffix_aliases')).rows,
-        ).toEqual([{ form_id: second, suffix: 'closing', is_current: true }]);
+            (await fresh.query('SELECT form_id, suffix, is_current FROM seller_form_suffix_aliases ORDER BY suffix')).rows,
+        ).toEqual([
+            { form_id: second, suffix: 'closing', is_current: true },
+            { form_id: first, suffix: `form-${first.replace(/-/g, '').slice(0, 8)}`, is_current: true },
+        ]);
     } finally {
         await fresh.close();
     }
