@@ -20,6 +20,12 @@ export interface SellerFormLinkScope {
     reserved: Array<{ suffix: string; formId: string }>;
 }
 
+/**
+ * Prefix of every link the product hands out. `/i/...` is the earlier prefix
+ * and keeps opening the same forms, so links already shared never break.
+ */
+export const SELLER_FORM_LINK_PREFIX = '/form';
+
 export const LINK_SUFFIX_MIN = 3;
 export const LINK_SUFFIX_MAX = 60;
 const LINK_SUFFIX_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -69,7 +75,7 @@ export function sellerFormEndingPath(
     scope: SellerFormLinkScope | null,
 ) {
     const suffix = scope?.suffixes[form.id];
-    return scope && suffix ? `/i/${scope.baseSlug}/${suffix}` : null;
+    return scope && suffix ? `${SELLER_FORM_LINK_PREFIX}/${scope.baseSlug}/${suffix}` : null;
 }
 
 /** Canonical public path. The default form is bare; other forms add their ending. */
@@ -77,10 +83,10 @@ export function sellerFormLinkPath(
     form: { id: string; slug: string },
     scope: SellerFormLinkScope | null,
 ) {
-    if (!scope) return `/i/${form.slug}`;
-    if (form.id === scope.defaultFormId) return `/i/${scope.baseSlug}`;
+    if (!scope) return `${SELLER_FORM_LINK_PREFIX}/${form.slug}`;
+    if (form.id === scope.defaultFormId) return `${SELLER_FORM_LINK_PREFIX}/${scope.baseSlug}`;
     // A form without an ending still has its own published flat link.
-    return sellerFormEndingPath(form, scope) ?? `/i/${form.slug}`;
+    return sellerFormEndingPath(form, scope) ?? `${SELLER_FORM_LINK_PREFIX}/${form.slug}`;
 }
 
 export function appBaseUrl() {

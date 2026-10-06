@@ -36,8 +36,12 @@ tokens/URLs. Account closure deletes forms/aliases before deleting organizations
 
 ## Shared base links and form endings
 
-For example, `/i/jane-smith` opens the default form, while
-`/i/jane-smith/closing` always opens the Closing form. The Base link setting
+Links are handed out under `/form/`. The earlier `/i/` prefix serves the same
+pages and stays live permanently, so links shared before the change keep
+working; only the prefix the product displays and copies changed.
+
+For example, `/form/jane-smith` opens the default form, while
+`/form/jane-smith/closing` always opens the Closing form. The Base link setting
 belongs to one creator in a fixed workspace, never the currently selected
 workspace of a public visitor. Other workspace members do not gain editing rights.
 

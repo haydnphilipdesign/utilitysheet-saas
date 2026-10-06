@@ -18,6 +18,7 @@ import { getAdvancedModuleIncludedFieldCount } from '@/lib/packet/modules';
 import { validateIntakeSlug } from '@/lib/neon/queries/intake-links';
 import {
     appBaseUrl,
+    SELLER_FORM_LINK_PREFIX,
     isValidLinkSuffix,
     sellerFormEndingPath,
     sellerFormLinkPath,
@@ -76,7 +77,7 @@ export function serializeLinkBase(links: SellerFormLinkScope | null) {
     if (!links) return null;
     return {
         slug: links.baseSlug,
-        url: `${appBaseUrl()}/i/${links.baseSlug}`,
+        url: `${appBaseUrl()}${SELLER_FORM_LINK_PREFIX}/${links.baseSlug}`,
         revision: links.baseRevision,
         // The form the bare link opens: the default, not the owner of the name.
         formId: links.defaultFormId,

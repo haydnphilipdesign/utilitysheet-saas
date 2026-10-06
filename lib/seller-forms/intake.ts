@@ -1,6 +1,6 @@
 /**
- * Public reusable-link handlers shared by the flat (`/i/base`) and nested
- * (`/i/base/ending`) shapes. The target form is always resolved server-side;
+ * Public reusable-link handlers shared by the flat (`/form/base`, earlier `/i/base`) and nested
+ * (`/form/base/ending`) shapes. The target form is always resolved server-side;
  * limits and draft resume key on that form, never on the URL text.
  */
 import { NextResponse } from 'next/server';

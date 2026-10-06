@@ -81,12 +81,12 @@ describe('shared base and form-ending APIs', () => {
     it('shares the bare link for the default and the ending link for other forms', async () => {
         m.links.mockResolvedValue({ ...linkScope(), suffixes: { [savedForm.id]: 'listing' } });
         const asDefault = await (await GET())!.json();
-        expect(asDefault.forms[0].url).toMatch(/\/i\/jane-smith$/);
-        expect(asDefault.forms[0].endingUrl).toMatch(/\/i\/jane-smith\/listing$/);
+        expect(asDefault.forms[0].url).toMatch(/\/form\/jane-smith$/);
+        expect(asDefault.forms[0].endingUrl).toMatch(/\/form\/jane-smith\/listing$/);
         expect(asDefault.linkBase).toMatchObject({ formId: savedForm.id, formName: 'Listing' });
         m.links.mockResolvedValue({ ...linkScope(), defaultFormId: 'another-form', defaultFormName: 'Closing', suffixes: { [savedForm.id]: 'listing' } });
         const notDefault = await (await GET())!.json();
-        expect(notDefault.forms[0].url).toMatch(/\/i\/jane-smith\/listing$/);
+        expect(notDefault.forms[0].url).toMatch(/\/form\/jane-smith\/listing$/);
         expect(notDefault.linkBase).toMatchObject({ formId: 'another-form', formName: 'Closing' });
         expect(notDefault.forms[0]).not.toHaveProperty('isBaseForm');
     });

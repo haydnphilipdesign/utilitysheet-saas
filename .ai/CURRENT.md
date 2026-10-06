@@ -14,6 +14,12 @@
 - Treat .env.local as live. Keep the owner's exported chat `2026-10-06-140605-pastedcontent-id8b0d.txt` reference-only (it is tracked as of `02b4f2a`; raise with the owner whether it should stay in the repository). Local Node 20 runtime: `C:/Users/haydn/AppData/Local/Temp/utilitysheet-node20-validation/node-v20.19.0-win-x64`; native PG bin: `C:/Users/haydn/AppData/Local/Temp/utilitysheet-saved-forms-native/pgsql/bin`.
 - Next concrete action: owner confirms the deployment and runs the hosted smoke checks above.
 
+## Follow-up: `/form/` link prefix (2026-10-06, Claude Opus 5.5), committed and pushed
+
+- Owner asked for a readable prefix while keeping `/i/`. Added `app/form/[slug]` (layout, page, `[suffix]/page`) as re-exports of the `/i/` pages; `SELLER_FORM_LINK_PREFIX = '/form'` in `lib/seller-forms/links.ts` now builds every displayed/copied link (cards, base setting, share controls, activation reminder). `/i/` routes, public APIs, cookies and storage are untouched, so old links keep working. `app/robots.ts` also disallows `/form/`. Docs updated. `scripts/demo-seed.mjs` still prints an `/i/` link, which remains valid.
+- Validation: `tsc`, ESLint on changed files, full Vitest 201/202 files then the one stale assertion fixed and its file rerun green (full suite not rerun after that fix), production build lists both `/form/*` and `/i/*` routes, intake browser spec passes on Desktop Chrome (it exercises `/i/` only). The `/form/` pages were not opened in a browser.
+- No schema change. Committed and pushed to main with owner authorization. Deployment and a hosted check of a `/form/` link are owner checks, not performed here. Tiny change, no separate plan or decision record.
+
 ## Prior completed work and still-open owner checks
 
 Current main contains `ccd4eda` (dashboard update detail links), `0b22c39` (Free-limit submission serialization/Team usage), `396a382` (packet handoff value formatting), `e53bb1a` (reopen follow-ups) and `2dbb88f` (required basics/trash/Cable flow). Related plans retain implementation and validation details:

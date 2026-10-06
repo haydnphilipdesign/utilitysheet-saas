@@ -8,15 +8,15 @@ const scope: SellerFormLinkScope = {
 };
 describe('seller form public link helpers', () => {
     it('keeps the default bare and uses the namespace ending for another form', () => {
-        expect(sellerFormLinkPath({ id: 'base', slug: 'jane' }, scope)).toBe('/i/jane');
-        expect(sellerFormLinkPath({ id: 'other', slug: 'old-flat' }, scope)).toBe('/i/jane/closing');
-        expect(sellerFormLinkPath({ id: 'other', slug: 'old-flat' }, null)).toBe('/i/old-flat');
+        expect(sellerFormLinkPath({ id: 'base', slug: 'jane' }, scope)).toBe('/form/jane');
+        expect(sellerFormLinkPath({ id: 'other', slug: 'old-flat' }, scope)).toBe('/form/jane/closing');
+        expect(sellerFormLinkPath({ id: 'other', slug: 'old-flat' }, null)).toBe('/form/old-flat');
     });
     it('moves the bare link with the default while every form keeps its own ending', () => {
         const moved = { ...scope, defaultFormId: 'other' };
-        expect(sellerFormLinkPath({ id: 'other', slug: 'old-flat' }, moved)).toBe('/i/jane');
-        expect(sellerFormLinkPath({ id: 'base', slug: 'jane' }, moved)).toBe('/i/jane/listing');
-        expect(sellerFormEndingPath({ id: 'other' }, moved)).toBe('/i/jane/closing');
+        expect(sellerFormLinkPath({ id: 'other', slug: 'old-flat' }, moved)).toBe('/form/jane');
+        expect(sellerFormLinkPath({ id: 'base', slug: 'jane' }, moved)).toBe('/form/jane/listing');
+        expect(sellerFormEndingPath({ id: 'other' }, moved)).toBe('/form/jane/closing');
         expect(sellerFormEndingPath({ id: 'unknown' }, moved)).toBeNull();
         expect(sellerFormEndingPath({ id: 'other' }, null)).toBeNull();
     });
