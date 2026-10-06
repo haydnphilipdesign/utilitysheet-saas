@@ -565,6 +565,129 @@ DROP TRIGGER IF EXISTS register_seller_form_alias ON intake_links;
 CREATE TRIGGER register_seller_form_alias AFTER INSERT OR UPDATE OF slug ON intake_links
     FOR EACH ROW EXECUTE FUNCTION register_seller_form_alias();
 
+-- Shared base links. See migrations-seller-form-base-links.sql.
+-- The base form is pinned once. Its flat slug and every entry it owns in
+-- intake_link_aliases are the base aliases; no second global slug registry.
+CREATE TABLE IF NOT EXISTS seller_form_link_namespaces (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    organization_id UUID REFERENCES organizations(id) ON DELETE RESTRICT,
+    root_form_id UUID NOT NULL UNIQUE REFERENCES intake_links(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS seller_form_link_namespaces_personal
+    ON seller_form_link_namespaces(account_id) WHERE organization_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS seller_form_link_namespaces_workspace
+    ON seller_form_link_namespaces(account_id, organization_id) WHERE organization_id IS NOT NULL;
+
+-- Every published ending stays reserved to its form inside the namespace.
+CREATE TABLE IF NOT EXISTS seller_form_suffix_aliases (
+    namespace_id UUID NOT NULL REFERENCES seller_form_link_namespaces(id) ON DELETE CASCADE,
+    suffix TEXT NOT NULL CHECK (suffix ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND length(suffix) BETWEEN 3 AND 60),
+    form_id UUID NOT NULL REFERENCES intake_links(id) ON DELETE CASCADE,
+    is_current BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (namespace_id, suffix)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS seller_form_suffix_aliases_current
+    ON seller_form_suffix_aliases(form_id) WHERE is_current;
+CREATE INDEX IF NOT EXISTS seller_form_suffix_aliases_form ON seller_form_suffix_aliases(form_id);
+
+-- Foreign keys do not prove owner/scope; these guards do, and keep identity permanent.
+CREATE OR REPLACE FUNCTION guard_seller_form_link_namespace() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE f intake_links;
+BEGIN
+    IF TG_OP = 'UPDATE' THEN RAISE EXCEPTION 'Seller form base identity is permanent'; END IF;
+    SELECT * INTO f FROM intake_links WHERE id = NEW.root_form_id;
+    IF NOT FOUND OR f.account_id <> NEW.account_id OR f.organization_id IS DISTINCT FROM NEW.organization_id THEN
+        RAISE EXCEPTION 'Seller form base must belong to its creator and workspace';
+    END IF;
+    RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS guard_seller_form_link_namespace ON seller_form_link_namespaces;
+CREATE TRIGGER guard_seller_form_link_namespace BEFORE INSERT OR UPDATE ON seller_form_link_namespaces
+    FOR EACH ROW EXECUTE FUNCTION guard_seller_form_link_namespace();
+
+CREATE OR REPLACE FUNCTION guard_seller_form_suffix_alias() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE ns seller_form_link_namespaces; f intake_links;
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        IF NEW.namespace_id <> OLD.namespace_id OR NEW.suffix <> OLD.suffix OR NEW.form_id <> OLD.form_id THEN
+            RAISE EXCEPTION 'Published link endings are permanent';
+        END IF;
+        RETURN NEW;
+    END IF;
+    SELECT * INTO ns FROM seller_form_link_namespaces WHERE id = NEW.namespace_id;
+    SELECT * INTO f FROM intake_links WHERE id = NEW.form_id;
+    IF ns.id IS NULL OR f.id IS NULL OR f.account_id <> ns.account_id
+        OR f.organization_id IS DISTINCT FROM ns.organization_id OR f.id = ns.root_form_id THEN
+        RAISE EXCEPTION 'Link ending must belong to a non-base form of the same creator and workspace';
+    END IF;
+    RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS guard_seller_form_suffix_alias ON seller_form_suffix_aliases;
+CREATE TRIGGER guard_seller_form_suffix_alias BEFORE INSERT OR UPDATE ON seller_form_suffix_aliases
+    FOR EACH ROW EXECUTE FUNCTION guard_seller_form_suffix_alias();
+
+-- Idempotent per creator/workspace. Callers hold the owner row lock (the
+-- intake_links insert trigger, save_seller_form, or the backfill below).
+-- Pins the base once (default, else oldest) and gives every other form without
+-- a current ending either the requested one or an opaque ID-derived one.
+-- Internal form names are private and never become URL text here.
+CREATE OR REPLACE FUNCTION initialize_seller_form_links(p_account UUID, p_org UUID, p_form UUID, p_suffix TEXT)
+RETURNS VOID LANGUAGE plpgsql AS $$
+DECLARE ns seller_form_link_namespaces; g RECORD; v_hex TEXT; v_len INTEGER; v_suffix TEXT;
+BEGIN
+    SELECT * INTO ns FROM seller_form_link_namespaces
+        WHERE account_id = p_account AND organization_id IS NOT DISTINCT FROM p_org;
+    IF NOT FOUND THEN
+        INSERT INTO seller_form_link_namespaces(account_id, organization_id, root_form_id)
+            SELECT il.account_id, il.organization_id, il.id FROM intake_links il
+            WHERE il.account_id = p_account AND il.organization_id IS NOT DISTINCT FROM p_org
+            ORDER BY il.is_default DESC, il.created_at, il.id LIMIT 1
+        RETURNING * INTO ns;
+        IF ns.id IS NULL THEN RETURN; END IF;
+    END IF;
+    FOR g IN SELECT il.id FROM intake_links il
+        WHERE il.account_id = p_account AND il.organization_id IS NOT DISTINCT FROM p_org AND il.id <> ns.root_form_id
+          AND NOT EXISTS (SELECT 1 FROM seller_form_suffix_aliases x WHERE x.form_id = il.id AND x.is_current)
+        ORDER BY il.created_at, il.id
+    LOOP
+        IF g.id = p_form AND p_suffix IS NOT NULL THEN
+            IF EXISTS (SELECT 1 FROM seller_form_suffix_aliases x
+                WHERE x.namespace_id = ns.id AND x.suffix = p_suffix AND x.form_id <> g.id) THEN
+                RAISE EXCEPTION 'Link ending already published' USING ERRCODE = 'SF423';
+            END IF;
+            v_suffix := p_suffix;
+        ELSE
+            v_hex := replace(g.id::text, '-', ''); v_len := 8;
+            LOOP
+                v_suffix := 'form-' || left(v_hex, v_len);
+                EXIT WHEN NOT EXISTS (SELECT 1 FROM seller_form_suffix_aliases x
+                    WHERE x.namespace_id = ns.id AND x.suffix = v_suffix AND x.form_id <> g.id);
+                v_len := v_len + 4;
+                IF v_len > 32 THEN RAISE EXCEPTION 'Unable to generate a link ending'; END IF;
+            END LOOP;
+        END IF;
+        INSERT INTO seller_form_suffix_aliases(namespace_id, suffix, form_id, is_current)
+            VALUES (ns.id, v_suffix, g.id, TRUE)
+            ON CONFLICT (namespace_id, suffix) DO UPDATE SET is_current = TRUE;
+    END LOOP;
+END $$;
+
+-- Covers every allocating path, including ensure, create, duplicate, the
+-- compatibility overloads and old insert writers. The BEFORE INSERT trigger
+-- already holds the owner row lock.
+CREATE OR REPLACE FUNCTION initialize_seller_form_link() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    PERFORM initialize_seller_form_links(NEW.account_id, NEW.organization_id, NEW.id,
+        NULLIF(current_setting('seller_forms.requested_suffix', TRUE), ''));
+    RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS initialize_seller_form_link ON intake_links;
+CREATE TRIGGER initialize_seller_form_link AFTER INSERT ON intake_links
+    FOR EACH ROW EXECUTE FUNCTION initialize_seller_form_link();
+
 ALTER TABLE requests
     ADD COLUMN IF NOT EXISTS source_form_id UUID REFERENCES intake_links(id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS source_form_revision INTEGER,
@@ -621,9 +744,10 @@ RETURNS SETOF intake_links LANGUAGE sql AS $$
     SELECT * FROM ensure_seller_form(p_account, p_org, p_slug, FALSE, NULL);
 $$;
 
+-- Accepts an optional "suffix" key for a non-base form's link ending.
 CREATE OR REPLACE FUNCTION save_seller_form(p_account UUID, p_org UUID, p_id UUID, p_revision INTEGER, p_config JSONB, p_slug TEXT, p_max_forms INTEGER, p_can_create BOOLEAN)
 RETURNS SETOF intake_links LANGUAGE plpgsql AS $$
-DECLARE a accounts; f intake_links;
+DECLARE a accounts; f intake_links; ns seller_form_link_namespaces;
 BEGIN
     SELECT * INTO a FROM accounts WHERE id = p_account FOR UPDATE;
     IF NOT FOUND OR a.role = 'banned' OR a.closure_status <> 'active' THEN RETURN; END IF;
@@ -643,10 +767,13 @@ BEGIN
         IF (SELECT COUNT(*) FROM intake_links WHERE account_id = p_account) >= p_max_forms THEN
             RAISE EXCEPTION 'Form creation technical cap reached' USING ERRCODE = 'SF429';
         END IF;
+        -- Hand the reviewed ending to the insert trigger; a base form ignores it.
+        PERFORM set_config('seller_forms.requested_suffix', COALESCE(p_config->>'suffix', ''), TRUE);
         INSERT INTO intake_links(account_id, organization_id, scope_initialized, slug, is_default, is_referral_identity)
         VALUES (p_account, p_org, TRUE, p_slug,
             NOT EXISTS (SELECT 1 FROM intake_links WHERE account_id = p_account AND organization_id IS NOT DISTINCT FROM p_org),
             NOT EXISTS (SELECT 1 FROM intake_links WHERE account_id = p_account AND is_referral_identity)) RETURNING * INTO f;
+        PERFORM set_config('seller_forms.requested_suffix', '', TRUE);
     ELSE
         SELECT * INTO f FROM intake_links WHERE id = p_id AND account_id = p_account AND organization_id IS NOT DISTINCT FROM p_org FOR UPDATE;
         IF NOT FOUND THEN RETURN; END IF;
@@ -656,6 +783,23 @@ BEGIN
         SELECT 1 FROM brand_profiles WHERE id = (p_config->>'defaultBrandProfileId')::uuid
         AND organization_id IS NOT DISTINCT FROM p_org AND (p_org IS NOT NULL OR account_id = p_account)
     ) THEN RAISE EXCEPTION 'Invalid Branding Profile'; END IF;
+    IF p_id IS NOT NULL AND p_config->>'suffix' IS NOT NULL THEN
+        PERFORM initialize_seller_form_links(p_account, p_org, NULL, NULL);
+        SELECT * INTO ns FROM seller_form_link_namespaces
+            WHERE account_id = p_account AND organization_id IS NOT DISTINCT FROM p_org;
+        IF ns.root_form_id = f.id THEN RAISE EXCEPTION 'The base form has no link ending' USING ERRCODE = 'SF422'; END IF;
+        IF NOT EXISTS (SELECT 1 FROM seller_form_suffix_aliases x
+            WHERE x.form_id = f.id AND x.is_current AND x.suffix = p_config->>'suffix') THEN
+            IF EXISTS (SELECT 1 FROM seller_form_suffix_aliases x
+                WHERE x.namespace_id = ns.id AND x.suffix = p_config->>'suffix' AND x.form_id <> f.id) THEN
+                RAISE EXCEPTION 'Link ending already published' USING ERRCODE = 'SF423';
+            END IF;
+            UPDATE seller_form_suffix_aliases SET is_current = FALSE WHERE form_id = f.id AND is_current;
+            INSERT INTO seller_form_suffix_aliases(namespace_id, suffix, form_id, is_current)
+                VALUES (ns.id, p_config->>'suffix', f.id, TRUE)
+                ON CONFLICT (namespace_id, suffix) DO UPDATE SET is_current = TRUE;
+        END IF;
+    END IF;
     UPDATE intake_links SET
         name = COALESCE(p_config->>'name', f.name),
         seller_intro = CASE WHEN p_config ? 'sellerIntro' THEN NULLIF(btrim(p_config->>'sellerIntro'), '') ELSE f.seller_intro END,
@@ -717,6 +861,12 @@ BEGIN
 END $$;
 DROP TRIGGER IF EXISTS validate_request_source_form ON requests;
 CREATE TRIGGER validate_request_source_form BEFORE INSERT ON requests FOR EACH ROW EXECUTE FUNCTION validate_request_source_form();
+
+-- Existing forms get their pinned base and endings; rerunning changes nothing.
+DO $$ BEGIN
+    PERFORM initialize_seller_form_links(s.account_id, s.organization_id, NULL, NULL)
+        FROM (SELECT DISTINCT account_id, organization_id FROM intake_links) s;
+END $$;
 
 -- Durable seller reminder operations. See migrations-reminder-operations.sql.
 CREATE TABLE IF NOT EXISTS reminder_operations (

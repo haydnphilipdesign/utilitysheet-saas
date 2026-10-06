@@ -203,6 +203,7 @@ describe
                         'utf8',
                     ),
                 );
+                await a.query(readFileSync('migrations-seller-form-base-links.sql', 'utf8'));
                 expect(
                     await a.query(
                         "SELECT COUNT(*) FROM pg_constraint WHERE conrelid='requests'::regclass AND contype='f' AND confrelid='accounts'::regclass;",
@@ -318,6 +319,76 @@ describe
                 },
                 15000,
             );
+
+            it('serializes concurrent suffix allocation and rolls back the losing form', async () => {
+                const { owner } = await seed();
+                await a.query('BEGIN;');
+                let pending: Promise<{ value?: string; error?: Error }> | undefined;
+                try {
+                    const winner = await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,NULL,NULL,'{"name":"One","suffix":"closing"}','${randomUUID()}',50,TRUE);`);
+                    pending = b.query(`SELECT id FROM save_seller_form('${owner}',NULL,NULL,NULL,'{"name":"Two","suffix":"closing"}','${randomUUID()}',50,TRUE);`)
+                        .then(value => ({ value }), error => ({ error }));
+                    await waitForBlock(a, b);
+                    await a.query('COMMIT;');
+                    expect((await pending).error?.message).toContain('SF423');
+                    expect(await a.query(`SELECT count(*) FROM intake_links WHERE account_id='${owner}';`)).toBe('2');
+                    expect(await a.query(`SELECT form_id FROM seller_form_suffix_aliases WHERE suffix='closing' AND form_id='${winner}';`)).toBe(winner);
+                } finally {
+                    await a.query('ROLLBACK;');
+                    await pending;
+                }
+            }, 15000);
+
+            it('reserves a base globally when two different creators claim it', async () => {
+                const first = await seed();
+                const second = await seed();
+                const slug = `shared-${randomUUID()}`;
+                await a.query('BEGIN;');
+                let pending: Promise<{ value?: string; error?: Error }> | undefined;
+                try {
+                    await a.query(`SELECT id FROM save_seller_form('${first.owner}',NULL,'${first.form}',1,'{"slug":"${slug}"}','unused',50,TRUE);`);
+                    pending = b.query(`SELECT id FROM save_seller_form('${second.owner}',NULL,'${second.form}',1,'{"slug":"${slug}"}','unused',50,TRUE);`)
+                        .then(value => ({ value }), error => ({ error }));
+                    await waitForBlock(a, b);
+                    await a.query('COMMIT;');
+                    expect((await pending).error?.message).toContain('23505');
+                    expect(await a.query(`SELECT intake_link_id FROM intake_link_aliases WHERE slug='${slug}';`)).toBe(first.form);
+                    expect(await a.query(`SELECT revision FROM intake_links WHERE id='${second.form}';`)).toBe('1');
+                } finally {
+                    await a.query('ROLLBACK;');
+                    await pending;
+                }
+            }, 15000);
+
+            it('keeps the base pinned through default changes racing a base rename', async () => {
+                const { owner, form } = await seed();
+                const child = await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,NULL,NULL,'{"name":"Closing","suffix":"closing"}','${randomUUID()}',50,TRUE);`);
+                await a.query('BEGIN;');
+                let pending: Promise<{ value?: string; error?: Error }> | undefined;
+                try {
+                    await a.query(`SELECT id FROM set_default_seller_form('${owner}',NULL,'${child}');`);
+                    pending = b.query(`SELECT id FROM save_seller_form('${owner}',NULL,'${form}',1,'{"slug":"renamed-${randomUUID()}"}','unused',50,TRUE);`)
+                        .then(value => ({ value }), error => ({ error }));
+                    await waitForBlock(a, b);
+                    await a.query('COMMIT;');
+                    expect((await pending).error?.message).toContain('SF409');
+                    expect(await a.query(`SELECT root_form_id FROM seller_form_link_namespaces WHERE account_id='${owner}';`)).toBe(form);
+                    expect(await a.query(`SELECT id FROM intake_links WHERE account_id='${owner}' AND is_default;`)).toBe(child);
+                } finally {
+                    await a.query('ROLLBACK;');
+                    await pending;
+                }
+            }, 15000);
+
+            it('retains nested identity through a repeated migration and compatible old writer calls', async () => {
+                const { owner, form } = await seed();
+                // The old saved-form application does not send a suffix key.
+                const child = await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,NULL,NULL,'{"name":"Private old name"}','${randomUUID()}',50,TRUE);`);
+                await a.query(readFileSync('migrations-seller-form-base-links.sql', 'utf8'));
+                await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,'${child}',1,'{"name":"Changed only"}','unused',50);`);
+                expect(await a.query(`SELECT root_form_id FROM seller_form_link_namespaces WHERE account_id='${owner}';`)).toBe(form);
+                expect(await a.query(`SELECT suffix LIKE 'form-%' FROM seller_form_suffix_aliases WHERE form_id='${child}' AND is_current;`)).toBe('t');
+            }, 15000);
 
             it('waits on account before form: a racing save completes and start gets a recoverable revision conflict', async () => {
                 const { owner, form } = await seed();

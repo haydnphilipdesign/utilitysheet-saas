@@ -1,7 +1,7 @@
 # Saved seller forms
 
-Saved forms provide named question configurations with independent reusable
-URLs. Manage them in **Seller forms**; Settings' existing `?tab=link` entry opens
+Saved forms provide named question configurations under one reusable base link
+per creator/workspace. Manage them in **Seller forms**; Settings' existing `?tab=link` entry opens
 the same manager. Forms remain owned by their creator in their fixed workspace.
 The default controls first selection for sharing and individual creation;
 choosing a different form for one transaction does not change that default.
@@ -33,6 +33,85 @@ Branding usage includes every referencing form in the profile's scope; deleted
 profiles fall back only inside that workspace. Account export includes form
 configuration and request provenance/intro and continues excluding capability
 tokens/URLs. Account closure deletes forms/aliases before deleting organizations.
+
+## Shared base links and form endings
+
+For example, `/i/jane-smith` opens the base form, while
+`/i/jane-smith/closing` opens another saved form. The Base link setting belongs
+to one creator in a fixed workspace, never the currently selected workspace of
+a public visitor. Other workspace members do not gain editing rights.
+
+The existing default is selected once as the base form during initialization
+(oldest form if no default exists). Its identity stays pinned. Changing the
+dashboard default changes initial selection for sharing and new requests, but
+does not change what the bare base opens. Pausing the base stops its own starts;
+an active sibling's nested link remains available.
+
+Edit the shared base above the form list. Non-base forms have a Link ending
+field and full preview; the base form directs the user back to that setting.
+New/duplicate drafts suggest a unique ending from the name, visibly before save.
+Editing the suggestion makes it independent of later name changes. Internal
+names remain private: migration backfill uses opaque `form-<id-derived>` endings
+instead of silently publishing existing names. Custom base/ending edits require
+Pro/Teams in the fixed scope. Downgrade retains all published links and allows
+ordinary form edits, pause and reactivation.
+
+Every flat slug is still permanently bound in `intake_link_aliases`. All aliases
+of the pinned base form identify the same `seller_form_link_namespaces` row.
+Each `seller_form_suffix_aliases` entry permanently binds an ending to its
+original non-base form; one entry per form is current. Renames retain every
+earlier alias, including old-base/new-ending and new-base/old-ending combinations.
+Published endings cannot be claimed by another form even after pause or rename.
+Database writers serialize on the account row and retain optimistic revisions.
+Legacy `slug` API fields continue to mean flat slugs, not nested paths.
+
+Both public pages use `IntakeLinkScreen` and the same metadata/start handlers.
+Nested APIs are `/api/intake/[slug]/forms/[suffix]` and their `/start` child, so an
+ending named `start` cannot collide with the original flat start endpoint.
+New resume cookies and rate limits use the immutable target form ID. Legacy
+cookies are accepted only after checking that their flat alias belongs to that
+target, then checking account, fixed scope, source form, address and status.
+Alias checks query only the bounded cookie candidates; very old aliases are not
+excluded merely because the form has many newer aliases. Unknown links share an
+IP limit, and persistent-limit outages continue to fail closed.
+
+Canonical URL serialization supplies cards, selected-form sharing, compatibility
+APIs and activation reminders. Referral codes still use the account's original
+referral identity form and flat aliases. Requests, seller tokens, packet links,
+captured answers, commercial limits and prices are unchanged. Namespace/ending
+records cascade from forms explicitly removed during account closure; export
+continues excluding URL identities/capability tokens.
+
+### Base-link migration and release
+
+`migrations-seller-form-base-links.sql` must precede the new application deployment.
+It adds schema/guards/compatible writers in one transaction and backfills in a
+second transaction using account-first locks. New inserts during this interval
+initialize their link records through a trigger. Re-running the migration must
+leave pinned roots, current endings, existing aliases and requests unchanged.
+The first transaction can succeed while the backfill fails; in that case retain
+the compatible additive schema, fix the reported precondition and rerun before
+deployment. Do not deploy the new readers until both parts and postconditions pass.
+
+Release requires the owner's separate authorization. Review the target and confirm
+the existing saved-forms migrations are present; obtain aggregate preflight counts
+for forms, flat aliases and requests, and check for uninitialized scopes. Apply
+the reviewed migration using a runner that supports its explicit transaction
+boundaries. Verify no form lacks its pinned base/current ending, no namespace or
+ending crosses creator/scope, existing counts/IDs/flat aliases are preserved, and
+no request has changed. Do not log seller data or credentials. Then deploy the
+compatible application and use authorized synthetic accounts to verify bare,
+nested and historical links; suffix/base rename; default and pause independence;
+draft resume; downgrade and a fixed-workspace submission.
+
+The new readers expect the migration: missing tables return a generic operation
+error rather than pretending a failed query was an absent namespace. Existing
+flat public intake handlers remain usable until the new deployment. Once nested
+links publish, rolling back to application code without nested resolvers breaks
+them. Keep schema and alias reservations; forward-fix or deploy a recovery version
+retaining nested reads/starts. Never reclaim names or rewrite collected data.
+
+Decision: `.ai/decisions/2026-10-06-shared-seller-form-url-identity.md`.
 
 ## Approved commercial policy
 

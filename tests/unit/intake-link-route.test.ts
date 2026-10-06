@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { savedForm } from '../fixtures/saved-seller-forms';
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), activation: vi.fn(), profiles: vi.fn(), ensure: vi.fn(), save: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getUser: vi.fn(), activation: vi.fn(), profiles: vi.fn(), ensure: vi.fn(), save: vi.fn(), links: vi.fn() }));
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/stack/server', () => ({ stackServerApp: { getUser: mocks.getUser } }));
 vi.mock('@/lib/activation/ensure-account-activation', () => ({ ensureAccountActivation: mocks.activation }));
-vi.mock('@/lib/neon/queries', () => ({ getBrandProfiles: mocks.profiles, getOrCreateIntakeLink: mocks.ensure, saveSellerForm: mocks.save }));
+vi.mock('@/lib/neon/queries', () => ({ getBrandProfiles: mocks.profiles, getOrCreateIntakeLink: mocks.ensure, saveSellerForm: mocks.save, getSellerFormLinkScope: mocks.links }));
 import { GET, POST } from '@/app/api/intake-link/route';
 function post(body: unknown) { return POST(new Request('http://localhost/api/intake-link', { method: 'POST', body: JSON.stringify(body) })); }
 beforeEach(() => {
@@ -13,6 +13,7 @@ beforeEach(() => {
     mocks.activation.mockResolvedValue({ account: { id: 'account-1', subscription_status: 'free' }, activeOrganization: null });
     mocks.profiles.mockResolvedValue([]); mocks.ensure.mockResolvedValue(savedForm);
     mocks.save.mockResolvedValue({ ...savedForm, revision: 3 });
+    mocks.links.mockResolvedValue(null);
 });
 describe('legacy intake adapter', () => {
     it('retains response shape while selecting the scoped default', async () => {

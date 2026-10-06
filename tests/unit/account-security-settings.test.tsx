@@ -63,6 +63,13 @@ const securitySummary = {
 
 const recentAuthRequired = () => jsonResponse({ error: 'Recent sign-in required', code: 'RECENT_AUTH_REQUIRED' }, 403);
 
+async function openPasswordConfirmation() {
+    const button = await screen.findByRole('button', { name: 'Confirm password' });
+    // The locked state renders during the initial fetch, before it is actionable.
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+}
+
 describe('AccountSecuritySettings', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -93,7 +100,7 @@ describe('AccountSecuritySettings', () => {
         expect(screen.getByText(/stay unlocked for five minutes/i)).toBeInTheDocument();
         expect(screen.queryByText(/verify/i)).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Confirm password' }));
+        await openPasswordConfirmation();
         const dialog = await screen.findByRole('dialog');
         expect(dialog).toHaveAccessibleName('Confirm your password');
         expect(dialog).toHaveAccessibleDescription(/won’t be asked again for five minutes/);
@@ -105,7 +112,7 @@ describe('AccountSecuritySettings', () => {
         mocks.signInWithCredential.mockResolvedValue({ status: 'error', error: new Error('bad') });
         render(<AccountSecuritySettings />);
 
-        fireEvent.click(await screen.findByRole('button', { name: 'Confirm password' }));
+        await openPasswordConfirmation();
         fireEvent.change(await screen.findByLabelText('Password'), { target: { value: 'wrong-password' } });
         fireEvent.click(screen.getAllByRole('button', { name: 'Confirm password' }).at(-1)!);
 
@@ -123,7 +130,7 @@ describe('AccountSecuritySettings', () => {
         mocks.signInWithCredential.mockResolvedValue({ status: 'ok' });
         render(<AccountSecuritySettings />);
 
-        fireEvent.click(await screen.findByRole('button', { name: 'Confirm password' }));
+        await openPasswordConfirmation();
         fireEvent.change(await screen.findByLabelText('Password'), { target: { value: 'right-password' } });
         fireEvent.click(screen.getAllByRole('button', { name: 'Confirm password' }).at(-1)!);
 

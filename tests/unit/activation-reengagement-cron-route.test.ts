@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getDueActivationOutreachCandidatesMock = vi.hoisted(() => vi.fn());
 const getOrCreateIntakeLinkMock = vi.hoisted(() => vi.fn());
+const getSellerFormLinkScopeMock = vi.hoisted(() => vi.fn());
 const recordActivationOutreachAttemptMock = vi.hoisted(() => vi.fn());
 const sendActivationReminderEmailMock = vi.hoisted(() => vi.fn());
 
@@ -10,6 +11,7 @@ vi.mock('@/lib/ops/events');
 vi.mock('@/lib/neon/queries', () => ({
     getDueActivationOutreachCandidates: getDueActivationOutreachCandidatesMock,
     getOrCreateIntakeLink: getOrCreateIntakeLinkMock,
+    getSellerFormLinkScope: getSellerFormLinkScopeMock,
     recordActivationOutreachAttempt: recordActivationOutreachAttemptMock,
 }));
 
@@ -26,7 +28,8 @@ describe('GET /api/cron/activation-reengagement', () => {
         vi.clearAllMocks();
         process.env.CRON_SECRET = 'test-secret';
 
-        getOrCreateIntakeLinkMock.mockResolvedValue({ slug: 'seller-link', is_active: true });
+        getOrCreateIntakeLinkMock.mockResolvedValue({ id: 'form-1', account_id: 'acct_1', organization_id: null, slug: 'seller-link', is_active: true });
+        getSellerFormLinkScopeMock.mockResolvedValue(null);
         recordActivationOutreachAttemptMock.mockResolvedValue({});
         sendActivationReminderEmailMock.mockResolvedValue({ success: true });
     });

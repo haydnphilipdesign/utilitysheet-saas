@@ -15,6 +15,8 @@ import {
     formErrorResponse,
     ownedForm,
     sellerFormContext,
+    sellerFormLinks,
+    serializeLinkBase,
     serializeSellerForm,
     validateFormPatch,
 } from '@/lib/seller-forms/server';
@@ -24,17 +26,19 @@ export async function GET() {
         const c = await sellerFormContext();
         if ('error' in c) return c.error!;
         await getOrCreateIntakeLink(c.state.account.id, c.organizationId);
-        const forms = await listSellerForms(
-            c.state.account.id,
-            c.organizationId,
-        );
+        const [forms, links] = await Promise.all([
+            listSellerForms(c.state.account.id, c.organizationId),
+            sellerFormLinks(c),
+        ]);
         return NextResponse.json({
             forms: forms.map((f) =>
                 serializeSellerForm(
                     f,
+                    links,
                     new Set(c.brandProfiles.map((p) => p.id)),
                 ),
             ),
+            linkBase: serializeLinkBase(links),
             defaultId: forms.find((f) => f.is_default)?.id || null,
             capabilities: sellerFormCapabilities(c.state.account.id, c.isPaid, forms.length, await getSellerFormCount(c.state.account.id)),
             isPaid: c.isPaid,
@@ -78,7 +82,8 @@ export async function POST(request: Request) {
             { ...copied, ...patch },
             source || undefined,
         );
-        const invalid = await validateFormPatch(c, config, source || undefined);
+        // No current form: a new form's reviewed ending is checked by the atomic writer.
+        const invalid = await validateFormPatch(c, config, source || undefined, null);
         if (invalid) return invalid;
         const saved = await saveSellerForm(
             c.state.account.id,
@@ -89,7 +94,7 @@ export async function POST(request: Request) {
         );
         return saved
             ? NextResponse.json(
-                  { form: serializeSellerForm(saved) },
+                  { form: serializeSellerForm(saved, await sellerFormLinks(c)) },
                   { status: 201 },
               )
             : NextResponse.json({ error: 'Not found' }, { status: 404 });

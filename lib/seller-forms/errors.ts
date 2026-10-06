@@ -24,6 +24,22 @@ export function formErrorResponse(error: unknown) {
             },
             { status: 429 },
         );
+    if (code === 'SF423')
+        return NextResponse.json(
+            {
+                error: 'That link ending is already used by another of your forms, or was shared before. Choose another.',
+                code: 'SUFFIX_IN_USE',
+            },
+            { status: 409 },
+        );
+    if (code === 'SF422')
+        return NextResponse.json(
+            {
+                error: 'This form uses the base link and has no link ending.',
+                code: 'BASE_FORM_HAS_NO_ENDING',
+            },
+            { status: 400 },
+        );
     if (code === '23505')
         return NextResponse.json(
             {

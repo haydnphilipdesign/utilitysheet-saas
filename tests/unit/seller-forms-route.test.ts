@@ -10,6 +10,7 @@ const m = vi.hoisted(() => ({
     get: vi.fn(),
     save: vi.fn(),
     setDefault: vi.fn(),
+    links: vi.fn(),
 }));
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/stack/server', () => ({ stackServerApp: { getUser: m.user } }));
@@ -24,10 +25,12 @@ vi.mock('@/lib/neon/queries', () => ({
     getSellerForm: m.get,
     saveSellerForm: m.save,
     setDefaultSellerForm: m.setDefault,
+    getSellerFormLinkScope: m.links,
 }));
 import { GET, POST } from '@/app/api/seller-forms/route';
 import { PATCH } from '@/app/api/seller-forms/[id]/route';
 import { POST as makeDefault } from '@/app/api/seller-forms/[id]/default/route';
+import { PATCH as renameBase } from '@/app/api/seller-form-link-base/route';
 const params = { params: Promise.resolve({ id: savedForm.id }) };
 const request = (body: unknown) =>
     new Request('http://localhost/api/seller-forms', {
@@ -49,12 +52,72 @@ beforeEach(() => {
     m.get.mockResolvedValue(savedForm);
     m.save.mockResolvedValue(savedForm);
     m.setDefault.mockResolvedValue(savedForm);
+    m.links.mockResolvedValue(null);
 });
 function enablePilot() {
     vi.stubEnv('SAVED_SELLER_FORMS_ENABLED', 'true');
     vi.stubEnv('SAVED_SELLER_FORMS_PILOT_ACCOUNT_IDS', savedForm.account_id);
     vi.stubEnv('SAVED_SELLER_FORMS_TECHNICAL_CAP', '20');
 }
+const linkScope = () => ({
+    rootFormId: savedForm.id, baseSlug: 'jane-smith', baseRevision: 2,
+    baseFormName: 'Listing', baseIsActive: true, suffixes: {}, reserved: [],
+});
+describe('shared base and form-ending APIs', () => {
+    it('renames the server-selected base with its own optimistic revision', async () => {
+        m.links.mockResolvedValue(linkScope());
+        const res = await renameBase(request({ base: 'jane-team', revision: 2 }));
+        expect(res.status).toBe(200);
+        expect(m.links).toHaveBeenCalledWith(savedForm.account_id, 'org-A');
+        expect(m.save).toHaveBeenCalledExactlyOnceWith(savedForm.account_id, 'org-A', savedForm.id, 2, { slug: 'jane-team' });
+    });
+    it('does not select the current default as the base after a default switch', async () => {
+        const root = '00000000-0000-4000-8000-000000000099';
+        m.links.mockResolvedValue({ ...linkScope(), rootFormId: root });
+        await renameBase(request({ base: 'new-base', revision: 2 }));
+        expect(m.save.mock.calls[0][2]).toBe(root);
+    });
+    it.each([{ base: 'UPPER', revision: 2 }, { base: 'valid', revision: 2, organizationId: 'forged' }, { base: 'valid' }])('rejects unsafe base inputs %j without writing', async body => {
+        expect((await renameBase(request(body))).status).toBe(400);
+        expect(m.save).not.toHaveBeenCalled();
+    });
+    it('requires authentication and a paid fixed scope for base changes', async () => {
+        m.user.mockResolvedValue(null);
+        expect((await renameBase(request({ base: 'new-base', revision: 2 }))).status).toBe(401);
+        m.user.mockResolvedValue({ id: 'user-1' });
+        m.activation.mockResolvedValue({ account: { id: savedForm.account_id, subscription_status: 'free' }, activeOrganization: null });
+        m.links.mockResolvedValue(linkScope());
+        expect((await renameBase(request({ base: 'new-base', revision: 2 }))).status).toBe(403);
+        expect(m.save).not.toHaveBeenCalled();
+    });
+    it('reports stale base edits and reserved-base collisions', async () => {
+        m.links.mockResolvedValue(linkScope());
+        m.save.mockRejectedValueOnce({ code: 'SF409' });
+        expect((await renameBase(request({ base: 'new-base', revision: 1 }))).status).toBe(409);
+        m.save.mockRejectedValueOnce({ code: '23505' });
+        const res = await renameBase(request({ base: 'taken-base', revision: 2 }));
+        expect((await res.json()).code).toBe('SLUG_IN_USE');
+    });
+    it('rejects an ending on the base and maps a historical suffix collision', async () => {
+        m.links.mockResolvedValue(linkScope());
+        const invalid = await PATCH(request({ suffix: 'listing', revision: 2 }), params);
+        expect(invalid!.status).toBe(400);
+        expect(m.save).not.toHaveBeenCalled();
+        m.links.mockResolvedValue({ ...linkScope(), rootFormId: 'other-root', suffixes: { [savedForm.id]: 'listing' } });
+        m.save.mockRejectedValueOnce({ code: 'SF423' });
+        const collision = await PATCH(request({ suffix: 'reserved', revision: 2 }), params);
+        expect(collision!.status).toBe(409);
+        expect((await collision!.json()).code).toBe('SUFFIX_IN_USE');
+    });
+    it('retains a published ending on downgrade and blocks a customization', async () => {
+        m.activation.mockResolvedValue({ account: { id: savedForm.account_id, subscription_status: 'free' }, activeOrganization: null });
+        m.links.mockResolvedValue({ ...linkScope(), rootFormId: 'other-root', suffixes: { [savedForm.id]: 'listing' } });
+        expect((await PATCH(request({ suffix: 'listing', name: 'Still editable', revision: 2 }), params))!.status).toBe(200);
+        m.save.mockClear();
+        expect((await PATCH(request({ suffix: 'new-ending', revision: 2 }), params))!.status).toBe(403);
+        expect(m.save).not.toHaveBeenCalled();
+    });
+});
 describe('creator scoped saved form APIs', () => {
     it('requires authentication for reads and writes', async () => {
         m.user.mockResolvedValue(null);

@@ -4,6 +4,7 @@ import {
     formErrorResponse,
     ownedForm,
     sellerFormContext,
+    sellerFormLinks,
     serializeSellerForm,
 } from '@/lib/seller-forms/server';
 export async function POST(
@@ -22,7 +23,9 @@ export async function POST(
             form.id,
         );
         return saved
-            ? NextResponse.json({ form: serializeSellerForm(saved) })
+            ? NextResponse.json({
+                  form: serializeSellerForm(saved, await sellerFormLinks(c)),
+              })
             : NextResponse.json({ error: 'Not found' }, { status: 404 });
     } catch (error) {
         return formErrorResponse(error);

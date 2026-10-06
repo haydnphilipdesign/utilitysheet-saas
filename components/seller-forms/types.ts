@@ -9,7 +9,11 @@ export interface SavedSellerForm {
     id: string;
     name: string;
     slug: string;
+    /** Canonical share link: the bare base for the base form, base plus ending otherwise. */
     url: string;
+    /** The form the bare base link opens. Independent of the default. */
+    isBaseForm: boolean;
+    linkSuffix: string | null;
     revision: number;
     organizationId: string | null;
     isDefault: boolean;
@@ -24,8 +28,20 @@ export interface SavedSellerForm {
     collectHoaQuestions: boolean;
     collectElectricMeterNumber: boolean;
 }
+export interface SellerFormLinkBase {
+    slug: string;
+    url: string;
+    /** Revision of the base form; required to rename the base. */
+    revision: number;
+    formId: string;
+    formName: string;
+    isActive: boolean;
+    /** Every ending ever shared in this workspace stays bound to its form. */
+    reservedSuffixes: Array<{ suffix: string; formId: string }>;
+}
 export interface SellerFormsResponse {
     forms: SavedSellerForm[];
+    linkBase: SellerFormLinkBase | null;
     defaultId: string | null;
     isPaid: boolean;
     workspaceName: string;

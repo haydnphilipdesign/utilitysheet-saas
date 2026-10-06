@@ -6,6 +6,7 @@ import {
     formErrorResponse,
     ownedForm,
     sellerFormContext,
+    sellerFormLinks,
     serializeSellerForm,
     validateFormPatch,
 } from '@/lib/seller-forms/server';
@@ -16,7 +17,9 @@ export async function GET(_request: Request, { params }: Params) {
         if ('error' in c) return c.error!;
         const form = await ownedForm(c, (await params).id);
         return form
-            ? NextResponse.json({ form: serializeSellerForm(form) })
+            ? NextResponse.json({
+                  form: serializeSellerForm(form, await sellerFormLinks(c)),
+              })
             : NextResponse.json({ error: 'Not found' }, { status: 404 });
     } catch (error) {
         return formErrorResponse(error);
@@ -38,7 +41,12 @@ export async function PATCH(request: Request, { params }: Params) {
                 { status: 400 },
             );
         const { revision, ...patch } = parsed.data;
-        const invalid = await validateFormPatch(c, patch, form);
+        const invalid = await validateFormPatch(
+            c,
+            patch,
+            form,
+            patch.suffix !== undefined ? await sellerFormLinks(c) : null,
+        );
         if (invalid) return invalid;
         const saved = await saveSellerForm(
             c.state.account.id,
@@ -48,7 +56,9 @@ export async function PATCH(request: Request, { params }: Params) {
             normalizeFormPatch(patch, form),
         );
         return saved
-            ? NextResponse.json({ form: serializeSellerForm(saved) })
+            ? NextResponse.json({
+                  form: serializeSellerForm(saved, await sellerFormLinks(c)),
+              })
             : NextResponse.json({ error: 'Not found' }, { status: 404 });
     } catch (error) {
         return formErrorResponse(error);

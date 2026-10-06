@@ -4,6 +4,7 @@ import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode, UtilityCa
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerFormCreationCapability } from '@/lib/seller-forms/config';
 import type { SellerFormPatch } from '@/lib/seller-forms/config';
+import { linkSuffixError, type SellerFormLinkScope } from '@/lib/seller-forms/links';
 
 export interface IntakeLink {
     id: string;
@@ -82,6 +83,52 @@ export async function getIntakeLinkBySlug(slug: string): Promise<IntakeLink | nu
     return rows[0] as IntakeLink || null;
 }
 
+/**
+ * Nested link: the base must be a flat alias of a namespace's base form, then
+ * the ending resolves inside that namespace. Another form's flat slug is never
+ * a base, and the base form does not have to be active for a sibling to open.
+ */
+export async function getIntakeLinkBySuffix(slug: string, suffix: string): Promise<IntakeLink | null> {
+    if (!sql) return null;
+    const rows = await sql`SELECT il.* FROM intake_link_aliases a
+        JOIN seller_form_link_namespaces n ON n.root_form_id = a.intake_link_id
+        JOIN seller_form_suffix_aliases s ON s.namespace_id = n.id AND s.suffix = ${suffix}
+        JOIN intake_links il ON il.id = s.form_id
+        WHERE a.slug = ${slug}`;
+    return rows[0] as IntakeLink || null;
+}
+
+/** Published flat aliases of one form; used to recognize its legacy resume cookies. */
+export async function getSellerFormAliasSlugs(formId: string, candidates?: string[]): Promise<string[]> {
+    if (!sql) return [];
+    const rows = candidates
+        ? await sql`SELECT slug FROM intake_link_aliases WHERE intake_link_id = ${formId}::uuid AND slug = ANY(${candidates}::text[])`
+        : await sql`SELECT slug FROM intake_link_aliases WHERE intake_link_id = ${formId}::uuid ORDER BY created_at DESC`;
+    return rows.map(row => String(row.slug));
+}
+
+/** Base and endings for one creator/workspace, in one query for any list size. */
+export async function getSellerFormLinkScope(accountId: string, organizationId?: string | null): Promise<SellerFormLinkScope | null> {
+    if (!sql) return null;
+    const rows = await sql`SELECT n.root_form_id, r.slug AS base_slug, r.revision AS base_revision, r.name AS base_form_name, r.is_active AS base_is_active,
+            COALESCE((SELECT json_agg(json_build_object('form_id', s.form_id, 'suffix', s.suffix, 'is_current', s.is_current) ORDER BY s.created_at, s.suffix)
+                FROM seller_form_suffix_aliases s WHERE s.namespace_id = n.id), '[]'::json) AS aliases
+        FROM seller_form_link_namespaces n JOIN intake_links r ON r.id = n.root_form_id
+        WHERE n.account_id = ${accountId}::uuid AND n.organization_id IS NOT DISTINCT FROM ${organizationId || null}::uuid`;
+    const row = rows[0];
+    if (!row) return null;
+    const aliases = (typeof row.aliases === 'string' ? JSON.parse(row.aliases) : row.aliases) as Array<{ form_id: string; suffix: string; is_current: boolean }>;
+    return {
+        rootFormId: row.root_form_id,
+        baseSlug: row.base_slug,
+        baseRevision: Number(row.base_revision),
+        baseFormName: row.base_form_name,
+        baseIsActive: row.base_is_active === true,
+        suffixes: Object.fromEntries(aliases.filter(alias => alias.is_current).map(alias => [alias.form_id, alias.suffix])),
+        reserved: aliases.map(alias => ({ suffix: alias.suffix, formId: alias.form_id })),
+    };
+}
+
 /** Explicit global referral identity; independent of active scope and default. */
 export async function getIntakeLinkByAccountId(accountId: string): Promise<IntakeLink | null> {
     if (!sql) return null;
@@ -122,6 +169,10 @@ export async function getOrCreateIntakeLink(accountId: string, organizationId?: 
 export async function saveSellerForm(accountId: string, organizationId: string | undefined, id: string | null, revision: number | null, config: SellerFormPatch): Promise<IntakeLink | null> {
     if (!sql) return null;
     if (config.slug !== undefined) validateIntakeSlug(config.slug);
+    if (config.suffix !== undefined) {
+        const invalid = linkSuffixError(config.suffix);
+        if (invalid) throw new Error(invalid);
+    }
     const rows = await sql`SELECT * FROM save_seller_form(${accountId}::uuid, ${organizationId || null}::uuid, ${id}::uuid, ${revision}::integer, ${JSON.stringify(config)}::jsonb, ${generateToken().slice(0, 10)}, ${sellerFormCreationCapability(accountId).technicalCap}::integer, ${sellerFormCreationCapability(accountId).canCreate}::boolean)`;
     return rows[0] as IntakeLink || null;
 }

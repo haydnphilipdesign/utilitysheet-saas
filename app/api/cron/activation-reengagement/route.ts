@@ -3,8 +3,10 @@ import { finishJobRun, startJobRun, type JobRunHandle } from '@/lib/ops/events';
 import {
     getDueActivationOutreachCandidates,
     getOrCreateIntakeLink,
+    getSellerFormLinkScope,
     recordActivationOutreachAttempt,
 } from '@/lib/neon/queries';
+import { sellerFormLinkPath } from '@/lib/seller-forms/links';
 import { sendActivationReminderEmail } from '@/lib/email/email-service';
 
 const RESEND_PACING_DELAY_MS = 250;
@@ -75,13 +77,15 @@ export async function GET(request: Request) {
                 continue;
             }
 
+            // The same canonical link the dashboard shares for this form.
+            const links = await getSellerFormLinkScope(intakeLink.account_id, intakeLink.organization_id);
             const result = await sendActivationReminderEmail({
                 toEmail: candidate.email,
                 fullName: candidate.full_name || undefined,
                 stage: candidate.stage,
                 setupUrl: `${baseUrl}/onboarding`,
                 dashboardUrl: `${baseUrl}/dashboard`,
-                sellerLinkUrl: `${baseUrl}/i/${intakeLink.slug}`,
+                sellerLinkUrl: `${baseUrl}${sellerFormLinkPath(intakeLink, links)}`,
             });
 
             if (result.success) {

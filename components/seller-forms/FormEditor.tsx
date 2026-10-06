@@ -44,6 +44,7 @@ import type {
 } from '@/types';
 import type { SavedSellerForm, SellerFormsResponse } from './types';
 import { toast } from 'sonner';
+import { linkSuffixError, suggestLinkSuffix } from '@/lib/seller-forms/links';
 
 type Draft = Pick<
     SavedSellerForm,
@@ -57,7 +58,7 @@ type Draft = Pick<
     | 'advancedModuleExclusions'
     | 'collectHoaQuestions'
     | 'collectElectricMeterNumber'
-> & { slug?: string };
+> & { suffix?: string };
 const emptyDraft: Draft = {
     name: '',
     sellerIntro: null,
@@ -82,7 +83,7 @@ function draftOf(f: SavedSellerForm, duplicate = false): Draft {
         advancedModuleExclusions: f.advancedModuleExclusions,
         collectHoaQuestions: f.collectHoaQuestions,
         collectElectricMeterNumber: f.collectElectricMeterNumber,
-        ...(duplicate ? {} : { slug: f.slug }),
+        ...(duplicate ? {} : f.linkSuffix ? { suffix: f.linkSuffix } : {}),
     };
 }
 export function FormEditor({ id }: { id: string }) {
@@ -97,6 +98,7 @@ export function FormEditor({ id }: { id: string }) {
     const [busy, setBusy] = useState(false);
     const [conflict, setConflict] = useState(false);
     const [preview, setPreview] = useState(params.get('preview') === '1');
+    const [suffixEdited, setSuffixEdited] = useState(false);
     const dirty = baseline !== '' && JSON.stringify(draft) !== baseline;
     useEffect(() => {
         let canceled = false;
@@ -119,6 +121,8 @@ export function FormEditor({ id }: { id: string }) {
                 const next = source
                     ? draftOf(source, id === 'new')
                     : { ...emptyDraft };
+                if (id === 'new' && body.linkBase)
+                    next.suffix = suggestLinkSuffix(next.name, body.linkBase.reservedSuffixes.map(a => a.suffix));
                 if (!canceled) {
                     if (brandResponse.ok) setBrands(await brandResponse.json());
                     setData(body);
@@ -150,7 +154,11 @@ export function FormEditor({ id }: { id: string }) {
         setError('');
         try {
             const patch = { ...draft };
-            if (form?.slug === patch.slug) delete patch.slug;
+            if (form?.linkSuffix === patch.suffix) delete patch.suffix;
+            if (patch.suffix !== undefined) {
+                const invalid = linkSuffixError(patch.suffix);
+                if (invalid) throw new Error(invalid);
+            }
             // Retain stored paid selections on downgrade; only send actual changes.
             if (!data?.isPaid) {
                 delete (patch as Partial<Draft>).advancedModules;
@@ -291,6 +299,9 @@ export function FormEditor({ id }: { id: string }) {
                                         setDraft({
                                             ...draft,
                                             name: e.target.value,
+                                            ...(id === 'new' && data.linkBase && !suffixEdited
+                                                ? { suffix: suggestLinkSuffix(e.target.value, data.linkBase.reservedSuffixes.map(a => a.suffix)) }
+                                                : {}),
                                         })
                                     }
                                     placeholder="For example: Listing information"
@@ -322,6 +333,29 @@ export function FormEditor({ id }: { id: string }) {
                                     {draft.sellerIntro?.length || 0}/500
                                 </p>
                             </div>
+                            {data.linkBase && (id === 'new' || (form && !form.isBaseForm)) && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="formSuffix">Link ending</Label>
+                                    <Input
+                                        id="formSuffix"
+                                        value={draft.suffix || ''}
+                                        disabled={!data.isPaid}
+                                        maxLength={60}
+                                        aria-describedby="formSuffixHelp"
+                                        onChange={(e) => {
+                                            setSuffixEdited(true);
+                                            setDraft({ ...draft, suffix: e.target.value });
+                                        }}
+                                        placeholder="For example: closing"
+                                    />
+                                    <p id="formSuffixHelp" className="break-all text-xs text-muted-foreground">
+                                        Your link will be {data.linkBase.url}
+                                        {draft.suffix ? `/${draft.suffix}` : '/…'}.
+                                        Previously shared endings keep working.
+                                    </p>
+                                    {!data.isPaid && <p className="text-xs text-muted-foreground">Customize links on Pro or Teams. Your existing links keep working.</p>}
+                                </div>
+                            )}
                             <div className="flex items-center justify-between gap-4">
                                 <Label htmlFor="formActive">
                                     Accept new starts
@@ -341,25 +375,12 @@ export function FormEditor({ id }: { id: string }) {
                                     form.
                                 </p>
                             )}
-                            {form && (
+                            {form?.isBaseForm && (
                                 <div className="space-y-2">
-                                    <Label htmlFor="formSlug">
-                                        Reusable link
-                                    </Label>
-                                    <Input
-                                        id="formSlug"
-                                        value={draft.slug || ''}
-                                        disabled={!data.isPaid}
-                                        onChange={(e) =>
-                                            setDraft({
-                                                ...draft,
-                                                slug: e.target.value,
-                                            })
-                                        }
-                                    />
+                                    <p className="break-all text-sm">{form.url}</p>
                                     <p className="text-xs text-muted-foreground">
-                                        Published links continue to work when
-                                        you change the link name.
+                                        This form opens from your base link and has no ending.
+                                        {' '}Manage the base link in <Link className="text-primary underline" href="/dashboard/forms">Seller forms</Link>.
                                     </p>
                                 </div>
                             )}

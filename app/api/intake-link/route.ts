@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getOrCreateIntakeLink } from '@/lib/neon/queries';
 import { intakeLinkUpdateBodySchema } from '@/lib/validation/schemas';
-import { formErrorResponse, saveDefaultForm, sellerFormContext, serializeSellerForm } from '@/lib/seller-forms/server';
+import { formErrorResponse, saveDefaultForm, sellerFormContext, sellerFormLinks, serializeSellerForm } from '@/lib/seller-forms/server';
 
 // Legacy shape adapter to the authenticated workspace's default; one atomic save.
 export async function GET() {
@@ -9,7 +9,7 @@ export async function GET() {
         const c = await sellerFormContext(); if ('error' in c) return c.error!;
         const form = await getOrCreateIntakeLink(c.state.account.id, c.organizationId);
         if (!form) return NextResponse.json({ error: 'Workspace form unavailable during rollout' }, { status: 409 });
-        return NextResponse.json({ intakeLink: serializeSellerForm(form, new Set(c.brandProfiles.map(p => p.id))),
+        return NextResponse.json({ intakeLink: serializeSellerForm(form, await sellerFormLinks(c), new Set(c.brandProfiles.map(p => p.id))),
             brandProfiles: c.brandProfiles.map(p => ({ id: p.id, name: p.name, isDefault: p.is_default })),
             canCustomize: c.isPaid, companyName: c.state.account.company_name || '' });
     } catch (error) { return formErrorResponse(error); }

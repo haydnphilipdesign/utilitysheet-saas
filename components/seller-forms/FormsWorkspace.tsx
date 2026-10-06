@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { SellerFormsResponse } from './types';
+import { BaseLinkEditor } from './BaseLinkEditor';
 
 export function FormsWorkspace() {
     const [data, setData] = useState<SellerFormsResponse | null>(null);
@@ -63,6 +64,10 @@ export function FormsWorkspace() {
                 </div>
             )}
             {!data && !error && <p role="status">Loading seller forms…</p>}
+            {data?.linkBase && <BaseLinkEditor
+                key={`${data.linkBase.slug}:${data.linkBase.revision}`}
+                base={data.linkBase} isPaid={data.isPaid} onSaved={load}
+            />}
             {data && <div className="space-y-1 text-sm text-muted-foreground">
                 <p>{data.capabilities.usage} of {data.capabilities.allowance} forms in this workspace (including paused forms).</p>
                 {data.capabilities.usage > data.capabilities.allowance && <p>Your existing forms, links and configurations are kept. You can edit or reactivate them; incoming submissions use your current plan. Upgrade to restore paid features and create up to ten forms.</p>}
@@ -79,6 +84,7 @@ export function FormsWorkspace() {
                                 {form.isDefault && (
                                     <Badge variant="outline">Default</Badge>
                                 )}
+                                {form.isBaseForm && <Badge variant="outline">Base link</Badge>}
                                 <Badge variant="secondary">
                                     {form.isActive ? 'Active' : 'Paused'}
                                 </Badge>

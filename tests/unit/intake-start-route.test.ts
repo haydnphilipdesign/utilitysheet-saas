@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
     getIntakeLinkBySlug: vi.fn(),
+    getIntakeLinkBySuffix: vi.fn(),
+    getSellerFormAliasSlugs: vi.fn(),
     getAccountById: vi.fn(),
     getAccountOrganizations: vi.fn(),
     getMonthlyUsage: vi.fn(),
@@ -33,6 +35,8 @@ vi.mock('@/lib/network/client-ip', () => ({
 }));
 
 import { POST } from '@/app/api/intake/[slug]/start/route';
+import { POST as nestedStart } from '@/app/api/intake/[slug]/forms/[suffix]/start/route';
+import { GET as nestedMetadata } from '@/app/api/intake/[slug]/forms/[suffix]/route';
 import {
     createEventLog,
     createRequest,
@@ -40,11 +44,13 @@ import {
     getAccountOrganizations,
     getIntakeBrandProfile,
     getIntakeLinkBySlug,
+    getIntakeLinkBySuffix,
+    getSellerFormAliasSlugs,
     getMonthlyUsage,
     getRequestBySellerToken,
 } from '@/lib/neon/queries';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
-import { checkRateLimit } from '@/lib/rate-limit';
+import { checkRateLimit, isRateLimitUnavailable } from '@/lib/rate-limit';
 
 describe('POST /api/intake/[slug]/start', () => {
     beforeEach(() => {
@@ -64,6 +70,9 @@ describe('POST /api/intake/[slug]/start', () => {
             advanced_modules: [],
             advanced_module_exclusions: {},
         } as never);
+        vi.mocked(getIntakeLinkBySuffix).mockResolvedValue({ ...savedForm, account_id: 'acct-1', is_referral_identity: false });
+        vi.mocked(getSellerFormAliasSlugs).mockResolvedValue(['very-old-flat']);
+        vi.mocked(isRateLimitUnavailable).mockReturnValue(false);
         vi.mocked(getAccountById).mockResolvedValue({
             id: 'acct-1',
             role: 'user',
@@ -102,6 +111,71 @@ describe('POST /api/intake/[slug]/start', () => {
         const response = await POST(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }) }), { params: Promise.resolve({ slug: 'listing-form' }) });
         expect(response.status).toBe(200);
         expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org-A', sourceFormId: savedForm.id, sourceFormRevision: 2, sellerIntro: savedForm.seller_intro, collectHoaQuestions: false, collectElectricMeterNumber: false }));
+    });
+
+    const nestedParams = (slug = 'jane', suffix = 'closing') => ({ params: Promise.resolve({ slug, suffix }) });
+    const startRequest = (cookie = '') => new Request('http://localhost/api/intake/jane/forms/closing/start', {
+        method: 'POST', headers: { cookie }, body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }),
+    });
+    const resumeCookie = Buffer.from(JSON.stringify({ a: '123 main st austin tx 78701', t: 'previous-token' })).toString('base64url');
+    it('starts the exact nested form and keeps its source snapshot and form-keyed cookie', async () => {
+        const response = await nestedStart(startRequest(), nestedParams());
+        expect(response.status).toBe(200);
+        expect(getIntakeLinkBySuffix).toHaveBeenCalledWith('jane', 'closing');
+        expect(getIntakeLinkBySlug).not.toHaveBeenCalled();
+        expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({ sourceFormId: savedForm.id, sourceFormRevision: 2, sellerIntro: savedForm.seller_intro }));
+        expect(response.headers.get('set-cookie')).toContain(`us_intake_f_${savedForm.id}=`);
+        expect(response.headers.get('set-cookie')).toContain('HttpOnly');
+        expect(checkRateLimit).toHaveBeenLastCalledWith(expect.anything(), `form:${savedForm.id}:1.2.3.4`, expect.anything());
+    });
+    it('shares rate identity across renamed bases and flat/nested aliases', async () => {
+        vi.mocked(getIntakeLinkBySlug).mockResolvedValue({ ...savedForm, account_id: 'acct-1' });
+        await POST(startRequest(), { params: Promise.resolve({ slug: 'old-flat' }) });
+        await nestedStart(startRequest(), nestedParams('new-base', 'closing'));
+        expect(vi.mocked(checkRateLimit).mock.calls.map(call => call[1])).toEqual([
+            `form:${savedForm.id}:1.2.3.4`, `form:${savedForm.id}:1.2.3.4`,
+        ]);
+    });
+    it.each(['draft', 'in_progress'])('resumes the same form across its nested aliases (%s)', async status => {
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({ account_id: 'acct-1', organization_id: null, source_form_id: savedForm.id, property_address: '123 Main St, Austin, TX 78701', status } as never);
+        const res = await nestedStart(startRequest(`us_intake_f_${savedForm.id}=${resumeCookie}`), nestedParams('renamed-base'));
+        expect(await res.json()).toEqual({ sellerToken: 'previous-token' });
+        expect(createRequest).not.toHaveBeenCalled();
+    });
+    it('does not read a sibling base cookie for a nested form at the same address', async () => {
+        await nestedStart(startRequest(`us_intake_jane=${resumeCookie}; us_intake_f_other=${resumeCookie}`), nestedParams());
+        expect(getRequestBySellerToken).not.toHaveBeenCalled();
+        expect(createRequest).toHaveBeenCalledOnce();
+    });
+    it('migrates a matching historical flat-alias cookie when visiting a nested link', async () => {
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({ account_id: 'acct-1', organization_id: null, source_form_id: savedForm.id, property_address: '123 Main St, Austin, TX 78701', status: 'draft' } as never);
+        const response = await nestedStart(startRequest(`us_intake_very-old-flat=${resumeCookie}`), nestedParams());
+        expect(getSellerFormAliasSlugs).toHaveBeenCalledWith(savedForm.id, ['very-old-flat']);
+        expect(await response.json()).toEqual({ sellerToken: 'previous-token' });
+        expect(response.headers.get('set-cookie')).toContain(`us_intake_f_${savedForm.id}=`);
+        expect(createRequest).not.toHaveBeenCalled();
+    });
+    it.each([{ source_form_id: 'sibling', status: 'draft' }, { source_form_id: savedForm.id, status: 'submitted' }, { source_form_id: null, status: 'draft' }])('rejects unsafe nested resume provenance: %j', async provenance => {
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({ account_id: 'acct-1', organization_id: null, property_address: '123 Main St, Austin, TX 78701', ...provenance } as never);
+        await nestedStart(startRequest(`us_intake_f_${savedForm.id}=${resumeCookie}`), nestedParams());
+        expect(createRequest).toHaveBeenCalledOnce();
+    });
+    it('serves only the active target configuration and fails closed for lost fixed membership', async () => {
+        const metadata = await nestedMetadata(new Request('http://localhost'), nestedParams());
+        expect(metadata.status).toBe(200);
+        expect((await metadata.json()).sellerIntro).toBe(savedForm.seller_intro);
+        vi.mocked(getIntakeLinkBySuffix).mockResolvedValue({ ...savedForm, organization_id: 'lost-org' });
+        expect((await nestedMetadata(new Request('http://localhost'), nestedParams())).status).toBe(404);
+        expect((await nestedStart(startRequest(), nestedParams())).status).toBe(404);
+        expect(createRequest).not.toHaveBeenCalled();
+    });
+    it('limits unknown endings per IP and refuses starts if the persistent limiter is unavailable', async () => {
+        vi.mocked(getIntakeLinkBySuffix).mockResolvedValue(null);
+        expect((await nestedStart(startRequest(), nestedParams())).status).toBe(404);
+        expect(checkRateLimit).toHaveBeenLastCalledWith(expect.anything(), 'unknown:1.2.3.4', expect.anything());
+        vi.mocked(isRateLimitUnavailable).mockReturnValue(true);
+        expect((await nestedStart(startRequest(), nestedParams('another'))).status).toBe(503);
+        expect(createRequest).not.toHaveBeenCalled();
     });
 
     it.each([

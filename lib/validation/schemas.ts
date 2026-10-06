@@ -43,6 +43,8 @@ const sellerFormFieldsSchema = z.object({
     collectHoaQuestions: z.boolean().optional(),
     collectElectricMeterNumber: z.boolean().optional(),
     slug: z.string().trim().min(1).max(60).optional(),
+    // Link ending of a non-base form under the workspace's shared base link.
+    suffix: z.string().trim().min(1).max(60).optional(),
     isActive: z.boolean().optional(),
     defaultBrandProfileId: z.string().uuid().nullable().optional(),
     defaultUtilityCategories: z
@@ -67,6 +69,11 @@ export const sellerFormCreateBodySchema = sellerFormFieldsSchema.extend({
 export const sellerFormUpdateBodySchema = sellerFormFieldsSchema.extend({
     revision: z.number().int().positive(),
 }).refine(value => Object.keys(value).some(key => key !== 'revision'), { message: 'At least one seller form setting is required' });
+
+export const sellerFormLinkBaseBodySchema = z.object({
+    base: z.string().trim().min(1).max(60),
+    revision: z.number().int().positive(),
+}).strict();
 
 export const questionRequestBodySchema = z.object({
     requestedText: z.string().trim().min(3).max(300),

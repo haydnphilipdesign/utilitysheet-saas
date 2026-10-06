@@ -6,7 +6,9 @@ function form(id: string, name: string, hoa: boolean) {
         id,
         name,
         slug: name.toLowerCase(),
-        url: `https://example.com/i/${name.toLowerCase()}`,
+        url: `https://example.com/i/listing${id === first ? '' : `/${name.toLowerCase()}`}`,
+        isBaseForm: id === first,
+        linkSuffix: id === first ? null : name.toLowerCase(),
         revision: 2,
         organizationId: 'workspace-A',
         isDefault: id === first,
@@ -33,6 +35,11 @@ async function mocks(page: Page) {
         body: Record<string, unknown>;
     }[] = [];
     let conflict = false;
+    const linkBase = {
+        slug: 'listing', url: 'https://example.com/i/listing', revision: 2,
+        formId: first, formName: 'Listing', isActive: true,
+        reservedSuffixes: [{ suffix: 'closing', formId: second }],
+    };
     const access = { isPaid: true, capabilities: { canCreate: true, reason: null as string | null, usage: 2, allowance: 10, totalUsage: 2, upgradeRequired: false, pilotAvailable: true, message: '' } };
     await page.route('**/api/**', async (route) => {
         const req = route.request();
@@ -49,15 +56,45 @@ async function mocks(page: Page) {
                 method: req.method(),
                 body: req.postDataJSON() || {},
             });
+        if (path === '/api/seller-forms' && req.method() === 'POST') {
+            const body = req.postDataJSON();
+            if (linkBase.reservedSuffixes.some(a => a.suffix === body.suffix))
+                return json({ error: 'That ending was already shared. Choose another.', code: 'SUFFIX_IN_USE' }, 409);
+            return json({}, 400);
+        }
         if (path === '/api/seller-forms')
             return json({
                 forms,
-                defaultId: first,
+                linkBase: { ...linkBase, isActive: forms[0].isActive },
+                defaultId: forms.find(f => f.isDefault)?.id,
                 isPaid: access.isPaid,
                 workspaceName: 'Workspace A',
                 capabilities: access.capabilities,
                 brandProfiles: [],
             });
+        if (path === '/api/seller-form-link-base') {
+            if (conflict) return json({ error: 'Form changed. Reload before saving.', code: 'FORM_REVISION_CONFLICT' }, 409);
+            Object.assign(linkBase, { slug: req.postDataJSON().base, revision: linkBase.revision + 1 });
+            linkBase.url = `https://example.com/i/${linkBase.slug}`;
+            forms.forEach(f => { f.url = `${linkBase.url}${f.isBaseForm ? '' : `/${f.linkSuffix}`}`; });
+            return json({ linkBase });
+        }
+        if (path === `/api/seller-forms/${second}/default`) {
+            forms.forEach(f => { f.isDefault = f.id === second; });
+            return json({ form: forms[1] });
+        }
+        if (path === `/api/seller-forms/${second}`) {
+            const body = req.postDataJSON();
+            const taken = linkBase.reservedSuffixes.find(a => a.suffix === body.suffix && a.formId !== second);
+            if (taken) return json({ error: 'That ending was already shared. Choose another.', code: 'SUFFIX_IN_USE' }, 409);
+            Object.assign(forms[1], body, { revision: forms[1].revision + 1 });
+            if (body.suffix) {
+                forms[1].linkSuffix = body.suffix;
+                forms[1].url = `${linkBase.url}/${body.suffix}`;
+                linkBase.reservedSuffixes.push({ suffix: body.suffix, formId: second });
+            }
+            return json({ form: forms[1] });
+        }
         if (path === `/api/seller-forms/${first}`) {
             if (conflict)
                 return json(
@@ -101,6 +138,7 @@ async function mocks(page: Page) {
     return {
         forms,
         access,
+        linkBase,
         writes,
         stale: () => {
             conflict = true;
@@ -125,6 +163,74 @@ async function healthy(page: Page) {
         ),
     ).toBeLessThanOrEqual(0);
 }
+
+test('base rename refreshes canonical copies and changing the default keeps the base pinned', async ({ page }, testInfo) => {
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.addInitScript(() => {
+        const state = window as unknown as Window & { copiedLinks: string[] };
+        state.copiedLinks = [];
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (text: string) => { state.copiedLinks.push(text); } } });
+    });
+    const state = await mocks(page);
+    await page.goto('/test-fixtures/seller-forms');
+    await expect(page.getByLabel('Base link name')).toHaveValue('listing');
+    await page.getByLabel('Base link name').fill('jane-smith');
+    await page.getByRole('button', { name: 'Save base link', exact: true }).click();
+    const closing = page.locator('[data-slot="card"]').filter({ has: page.getByText('Closing', { exact: true }) });
+    await expect(closing.getByText('https://example.com/i/jane-smith/closing', { exact: true })).toBeVisible();
+    expect(state.writes[0]).toMatchObject({ url: '/api/seller-form-link-base', body: { base: 'jane-smith', revision: 2 } });
+    await closing.getByRole('button', { name: 'Copy link', exact: true }).click();
+    expect(await page.evaluate(() => (window as unknown as Window & { copiedLinks: string[] }).copiedLinks)).toEqual(['https://example.com/i/jane-smith/closing']);
+    await closing.getByRole('button', { name: 'Make default' }).click();
+    await expect(closing.getByText('Default', { exact: true })).toBeVisible();
+    await expect(page.getByText(/The base link opens/)).toContainText('Listing');
+    await expect(page.getByLabel('Base link name')).toHaveValue('jane-smith');
+    await healthy(page);
+    await page.screenshot({ path: testInfo.outputPath('shared-base-links.png'), fullPage: true });
+    expect(errors).toEqual([]);
+});
+
+test('suffix editing keeps configuration and duplicate collisions keep the unsaved draft', async ({ page }, testInfo) => {
+    const state = await mocks(page);
+    await page.goto(`/test-fixtures/seller-forms?id=${second}`);
+    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing');
+    await expect(page.getByLabel('Legacy reusable link')).toHaveCount(0);
+    await page.getByLabel('Link ending', { exact: true }).fill('detailed');
+    await page.getByRole('button', { name: 'Save form', exact: true }).click();
+    await expect(page.getByText('Seller form saved')).toBeVisible();
+    expect(state.writes[0].body).toMatchObject({ suffix: 'detailed', revision: 2 });
+    expect(state.writes[0].body).not.toHaveProperty('slug');
+    expect(state.forms[1].url).toBe('https://example.com/i/listing/detailed');
+    await page.goto(`/test-fixtures/seller-forms?id=new&duplicate=${second}`);
+    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing-copy');
+    await page.getByLabel('Internal form name').fill('Listing');
+    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('listing');
+    await page.getByLabel('Link ending', { exact: true }).fill('closing');
+    await page.getByRole('button', { name: 'Save form', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'That ending was already shared' })).toBeVisible();
+    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing');
+    await expect(page.getByLabel('Internal form name')).toHaveValue('Listing');
+    await healthy(page);
+    await page.screenshot({ path: testInfo.outputPath('suffix-collision.png'), fullPage: true });
+});
+
+test('downgrade keeps canonical links and prevents link edits while ordinary form edits work', async ({ page }) => {
+    const state = await mocks(page);
+    state.access.isPaid = false;
+    await page.goto('/test-fixtures/seller-forms');
+    await expect(page.getByLabel('Base link name')).toBeDisabled();
+    await expect(page.getByRole('link', { name: 'Pro or Teams', exact: true })).toHaveAttribute('href', '/dashboard/settings?tab=billing');
+    await page.goto(`/test-fixtures/seller-forms?id=${second}`);
+    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing');
+    await expect(page.getByLabel('Link ending', { exact: true })).toBeDisabled();
+    await page.getByLabel('Internal form name').fill('Retained configuration');
+    await page.getByRole('button', { name: 'Save form', exact: true }).click();
+    await expect(page.getByText('Seller form saved')).toBeVisible();
+    expect(state.writes[0].body).not.toHaveProperty('suffix');
+    expect(state.forms[1].url).toBe('https://example.com/i/listing/closing');
+    await healthy(page);
+});
 test('two forms have independent settings; draft preview sends no writes and stale saves keep the draft', async ({
     page,
 }) => {
@@ -135,7 +241,7 @@ test('two forms have independent settings; draft preview sends no writes and sta
     await expect(
         page.getByRole('heading', { name: 'Seller forms' }),
     ).toBeVisible();
-    await expect(page.getByText('Listing', { exact: true })).toBeVisible();
+    await expect(page.locator('[data-slot="card"]').getByText('Listing', { exact: true })).toHaveCount(2);
     await expect(page.getByText('Closing', { exact: true })).toBeVisible();
     await healthy(page);
     await page.goto(`/test-fixtures/seller-forms?id=${first}`);
@@ -211,7 +317,7 @@ test('duplication stays an unsaved draft and a paused default cannot be shared',
     await page.goto('/test-fixtures/seller-forms');
     const listing = page
         .locator('[data-slot="card"]')
-        .filter({ hasText: 'Listing' });
+        .filter({ has: page.getByText('Listing', { exact: true }) });
     await expect(
         listing.getByRole('button', { name: 'Copy link', exact: true }),
     ).toBeDisabled();

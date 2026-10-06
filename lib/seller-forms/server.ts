@@ -5,6 +5,7 @@ import {
     getBrandProfiles,
     getOrCreateIntakeLink,
     getSellerForm,
+    getSellerFormLinkScope,
     saveSellerForm,
 } from '@/lib/neon/queries';
 import type { IntakeLink } from '@/lib/neon/queries/intake-links';
@@ -15,6 +16,12 @@ import {
 } from './config';
 import { getAdvancedModuleIncludedFieldCount } from '@/lib/packet/modules';
 import { validateIntakeSlug } from '@/lib/neon/queries/intake-links';
+import {
+    appBaseUrl,
+    isValidLinkSuffix,
+    sellerFormLinkPath,
+    type SellerFormLinkScope,
+} from './links';
 
 export async function sellerFormContext() {
     const user = await stackServerApp.getUser();
@@ -55,15 +62,37 @@ export type FormContext = Exclude<
     { error: NextResponse }
 >;
 
+/** Link identity of the authenticated creator's current workspace. */
+export function sellerFormLinks(context: FormContext) {
+    return getSellerFormLinkScope(
+        context.state.account.id,
+        context.organizationId,
+    );
+}
+
+/** The shared base setting shown above the forms list. */
+export function serializeLinkBase(links: SellerFormLinkScope | null) {
+    if (!links) return null;
+    return {
+        slug: links.baseSlug,
+        url: `${appBaseUrl()}/i/${links.baseSlug}`,
+        revision: links.baseRevision,
+        formId: links.rootFormId,
+        formName: links.baseFormName,
+        isActive: links.baseIsActive,
+        reservedSuffixes: links.reserved,
+    };
+}
+
+/**
+ * `links` is required so no caller can publish a non-canonical URL by
+ * accident. `slug` stays the form's own flat slug, never a nested path.
+ */
 export function serializeSellerForm(
     form: IntakeLink,
+    links: SellerFormLinkScope | null,
     allowedBrandIds?: Set<string>,
 ) {
-    const base =
-        process.env.NEXT_PUBLIC_APP_URL ||
-        (process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : 'http://localhost:3000');
     const config = formConfiguration(form);
     if (
         config.defaultBrandProfileId &&
@@ -75,7 +104,9 @@ export function serializeSellerForm(
         ...config,
         id: form.id,
         slug: form.slug,
-        url: `${base}/i/${form.slug}`,
+        url: `${appBaseUrl()}${sellerFormLinkPath(form, links)}`,
+        isBaseForm: links?.rootFormId === form.id,
+        linkSuffix: links?.suffixes[form.id] ?? null,
         revision: form.revision,
         organizationId: form.organization_id,
         isDefault: form.is_default,
@@ -87,7 +118,26 @@ export async function validateFormPatch(
     context: FormContext,
     patch: SellerFormPatch,
     current?: IntakeLink,
+    links?: SellerFormLinkScope | null,
 ) {
+    if (patch.suffix !== undefined) {
+        if (!isValidLinkSuffix(patch.suffix))
+            return NextResponse.json(
+                {
+                    error: 'Link ending must be 3 to 60 lowercase letters, numbers, and dashes.',
+                    code: 'INVALID_SUFFIX',
+                },
+                { status: 400 },
+            );
+        if (current && links?.rootFormId === current.id)
+            return NextResponse.json(
+                {
+                    error: 'This form uses the base link and has no link ending.',
+                    code: 'BASE_FORM_HAS_NO_ENDING',
+                },
+                { status: 400 },
+            );
+    }
     if (patch.slug !== undefined) {
         try {
             validateIntakeSlug(patch.slug);
@@ -101,6 +151,10 @@ export async function validateFormPatch(
     if (
         !context.isPaid &&
         ((patch.slug !== undefined && patch.slug !== current?.slug) ||
+            // Editing a published ending is paid; a new form's reviewed ending is not an edit.
+            (current !== undefined &&
+                patch.suffix !== undefined &&
+                patch.suffix !== links?.suffixes[current.id]) ||
             (patch.defaultPacketMode === 'advanced' &&
                 current?.default_packet_mode !== 'advanced') ||
             (patch.advancedModules !== undefined &&
@@ -175,7 +229,12 @@ export async function saveDefaultForm(
             { error: 'Workspace form unavailable during rollout' },
             { status: 409 },
         );
-    const error = await validateFormPatch(context, patch, form);
+    const error = await validateFormPatch(
+        context,
+        patch,
+        form,
+        await sellerFormLinks(context),
+    );
     if (error) return error;
     const saved = await saveSellerForm(
         context.state.account.id,
@@ -188,6 +247,7 @@ export async function saveDefaultForm(
         ? NextResponse.json({
               intakeLink: serializeSellerForm(
                   saved,
+                  await sellerFormLinks(context),
                   new Set(context.brandProfiles.map((p) => p.id)),
               ),
           })
