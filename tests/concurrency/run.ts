@@ -28,6 +28,7 @@ import { applyTriageAction } from '@/lib/ops/triage';
 import {
     cancelRequestReopen,
     reopenSubmittedRequest,
+    sellerSubmissionStatements,
     submitSellerRequest,
     type SubmitSellerRequestInput,
 } from '@/lib/neon/queries/seller-submission';
@@ -254,7 +255,7 @@ async function main() {
                 category: 'electric', entry_mode: 'free_text', display_name: provider, raw_text: provider, canonical_id: null,
                 confidence_score: null, contact_phone: null, contact_url: null, meter_number: null, extra: {},
             }],
-            isTestDrive: false, shouldLock: false, eventData: { actor: 'seller' }, ipAddress: null, userAgent: null,
+            isTestDrive: false, eventData: { actor: 'seller' }, ipAddress: null, userAgent: null,
             ...overrides,
         });
         const reopenActor = { requestId: REQ, actorAccountId: USER, ipAddress: null, userAgent: null };
@@ -346,6 +347,115 @@ async function main() {
             if (await text(`SELECT status AS v FROM requests WHERE id = '${REQ}'`) !== 'submitted') closeOk = false;
         }
         check('resubmission racing close-without-changes: exactly one takes effect (25 races)', closeOk);
+
+        // 8. Free monthly limit across different requests of one owner.
+        const USER_2 = '00000000-0000-4000-8000-0000000000b2';
+        const FREE_REQ = (n: number) => uuid(8000 + n);
+        const OTHER_REQ = uuid(8100);
+        const c = await connect();
+        const d = await connect();
+        clients.push(c, d);
+        const dbC = executorFor(c);
+        const dbD = executorFor(d);
+        /** `counted` earlier submissions this month, plus four open requests for USER and one for USER_2. */
+        const resetUsage = async (counted: number, plan = 'free') => {
+            await reset();
+            await setup.query(`
+                UPDATE accounts SET subscription_status = '${plan}' WHERE id = '${USER}';
+                INSERT INTO accounts (id, email, role) VALUES ('${USER_2}', 'user2@example.com', 'user');
+                INSERT INTO requests (id, account_id, property_address, status, public_token, seller_token)
+                    SELECT ('00000000-0000-4000-8000-' || lpad((8000 + n)::text, 12, '0'))::uuid, '${USER}', n || ' Free St', 'sent', 'fpub' || n, 'fsel' || n
+                    FROM generate_series(1, 4) AS n;
+                INSERT INTO requests (id, account_id, property_address, status, public_token, seller_token)
+                    VALUES ('${OTHER_REQ}', '${USER_2}', '1 Other St', 'sent', 'opub', 'osel');
+                INSERT INTO requests (account_id, property_address, status, public_token, seller_token, metered_at)
+                    SELECT '${USER}', n || ' Earlier St', 'submitted', 'epub' || n, 'esel' || n, NOW()
+                    FROM generate_series(1, ${counted}) AS n;
+            `);
+        };
+        const first = (db: StatementExecutor, n: number) => submission(db, `Power ${n}`, { requestId: FREE_REQ(n) });
+        const unlockedCount = () => scalar(`SELECT COUNT(*)::int AS n FROM requests WHERE id IN ('${FREE_REQ(1)}','${FREE_REQ(2)}','${FREE_REQ(3)}','${FREE_REQ(4)}') AND metered_at IS NOT NULL AND is_locked = FALSE`);
+        const lockedCount = () => scalar(`SELECT COUNT(*)::int AS n FROM requests WHERE account_id = '${USER}' AND metered_at IS NOT NULL AND is_locked AND locked_reason = 'monthly_limit'`);
+        const heldInput = (n: number) => ({
+            requestId: FREE_REQ(n), editVersion: 0, submissionKey: `held-${n}`, waterSource: 'city', sewerType: 'public', heatingType: null,
+            updateHoa: false, hoa: createEmptyHoaAnswers(), advancedPacketData: {}, entries: [], isTestDrive: false,
+            eventData: { actor: 'seller' }, ipAddress: null, userAgent: null,
+        });
+
+        // 8a. What the lock is for: the same statement without it lets a second
+        // submission through while the first is uncommitted, and both stay unlocked.
+        await resetUsage(2);
+        const [, withoutLockA] = sellerSubmissionStatements(heldInput(1));
+        const [, withoutLockB] = sellerSubmissionStatements(heldInput(2));
+        await a.query('BEGIN');
+        await a.query(withoutLockA.text, withoutLockA.params);
+        await b.query(withoutLockB.text, withoutLockB.params);
+        await a.query('COMMIT');
+        check('without the advisory lock the count alone lets two submissions past one remaining slot (the race)',
+            await unlockedCount() === 2 && await lockedCount() === 0);
+
+        // 8b. With it: one slot left, two different requests at once.
+        let limitOk = true;
+        for (let i = 0; i < 25; i += 1) {
+            await resetUsage(2);
+            const outcomes = (await Promise.all([first(dbA, 1), first(dbB, 2)])).map((r) => r.outcome);
+            if (outcomes.join() !== 'ACCEPTED,ACCEPTED') limitOk = false;
+            if (await unlockedCount() !== 1 || await lockedCount() !== 1) limitOk = false;
+        }
+        check('one slot left, two requests at once: both stored, exactly one unlocked and one locked (25 races)', limitOk);
+
+        // 8c. Held interleaving: the second waits, then counts the first's committed submission.
+        await resetUsage(2);
+        await a.query('BEGIN');
+        for (const statement of sellerSubmissionStatements(heldInput(1))) await a.query(statement.text, statement.params);
+        let secondSettled = false;
+        const second = first(dbB, 2).then((result) => { secondSettled = true; return result; });
+        // 8d. A different owner is not held up by it.
+        const otherOwner = await submission(dbC, 'Other Power', { requestId: OTHER_REQ });
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        check('second submission for the same owner waits while the first is uncommitted', secondSettled === false);
+        check('a different owner submits without waiting, unlocked',
+            otherOwner.outcome === 'ACCEPTED' && (otherOwner.request as { is_locked?: boolean } | null)?.is_locked === false, otherOwner.outcome);
+        await a.query('COMMIT');
+        const secondResult = await second;
+        check('after the first commits, the waiting submission is stored locked',
+            secondResult.outcome === 'ACCEPTED' && (secondResult.request as { is_locked?: boolean } | null)?.is_locked === true
+            && await unlockedCount() === 1, secondResult.outcome);
+
+        // 8e. Four at once from nothing used: three unlocked, never more.
+        let burstOk = true;
+        for (let i = 0; i < 25; i += 1) {
+            await resetUsage(0);
+            const outcomes = (await Promise.all([first(dbA, 1), first(dbB, 2), first(dbC, 3), first(dbD, 4)])).map((r) => r.outcome);
+            if (outcomes.some((o) => o !== 'ACCEPTED')) burstOk = false;
+            if (await unlockedCount() !== 3 || await lockedCount() !== 1) burstOk = false;
+        }
+        check('four requests at once from zero used: exactly three unlocked, one locked (25 races)', burstOk);
+
+        // 8f. A paid owner is never locked, however many arrive together.
+        let paidOk = true;
+        for (let i = 0; i < 10; i += 1) {
+            await resetUsage(5, 'pro');
+            await Promise.all([first(dbA, 1), first(dbB, 2), first(dbC, 3), first(dbD, 4)]);
+            if (await unlockedCount() !== 4 || await lockedCount() !== 0) paidOk = false;
+        }
+        check('Pro owner over the count, four at once: none locked (10 races)', paidOk);
+
+        // 8g. A resubmission after a reopen races a first submission with the limit reached.
+        let resubmitOk = true;
+        for (let i = 0; i < 15; i += 1) {
+            await resetUsage(3);
+            await setup.query(`UPDATE requests SET status = 'in_progress', seller_edit_version = 1, metered_at = '2026-01-15T12:00:00Z' WHERE id = '${FREE_REQ(1)}'`);
+            const [again, fresh] = await Promise.all([
+                submission(dbA, 'Corrected Power', { requestId: FREE_REQ(1), editVersion: 1, submissionKey: 'session-1' }),
+                first(dbB, 2),
+            ]);
+            if (again.outcome !== 'ACCEPTED' || fresh.outcome !== 'ACCEPTED') resubmitOk = false;
+            const kept = await text(`SELECT (is_locked = FALSE AND metered_at = '2026-01-15T12:00:00Z')::text AS v FROM requests WHERE id = '${FREE_REQ(1)}'`);
+            const freshLocked = await text(`SELECT is_locked::text AS v FROM requests WHERE id = '${FREE_REQ(2)}'`);
+            if (kept !== 'true' || freshLocked !== 'true') resubmitOk = false;
+        }
+        check('resubmission racing a first submission at the limit: resubmission unlocked with its original metering, the new one locked (15 races)', resubmitOk);
     } finally {
         for (const client of clients) await client.end().catch(() => undefined);
         await server.stop().catch(() => undefined);

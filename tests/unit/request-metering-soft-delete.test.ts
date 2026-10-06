@@ -66,6 +66,8 @@ describe('Requests: metering + soft-delete', () => {
         const usageQueryText = callSqlText(sqlMock.mock.calls[0]);
         expect(usageQueryText).toContain('metered_at');
         expect(usageQueryText).not.toContain("status != 'draft'");
+        // Sheets submitted in a Team workspace never use the Free allowance.
+        expect(usageQueryText).toContain("o.subscription_status = 'team'");
     });
 
     it('creates sent requests unmetered so they only count once a seller submits', async () => {

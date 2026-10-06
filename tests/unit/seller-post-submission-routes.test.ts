@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-    requestByToken: vi.fn(), requestById: vi.fn(), account: vi.fn(), usage: vi.fn(), entries: vi.fn(),
+    requestByToken: vi.fn(), requestById: vi.fn(), account: vi.fn(), organization: vi.fn(), usage: vi.fn(), entries: vi.fn(),
     sql: vi.fn(), event: vi.fn(), submit: vi.fn(), reopen: vi.fn(), cancel: vi.fn(), updateStatus: vi.fn(),
     completionEmail: vi.fn(), alertEmail: vi.fn(), reminderEmail: vi.fn(), referral: vi.fn(), suggestion: vi.fn(),
     getUser: vi.fn(), getOrCreateAccount: vi.fn(), canAccess: vi.fn(), rateLimit: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getOrCreateAccount: mocks.getOrCreateAccount,
     getDefaultBrandProfile: vi.fn(async () => null),
     getBrandProfile: vi.fn(async () => null),
-    getOrganizationById: vi.fn(async () => null),
+    getOrganizationById: mocks.organization,
     getOrganizationAdminRecipients: vi.fn(async () => []),
     getReferralIdentityForm: vi.fn(async () => null),
     getMonthlyUsage: mocks.usage,
@@ -95,7 +95,8 @@ beforeEach(() => {
     mocks.requestByToken.mockResolvedValue(stored);
     mocks.requestById.mockResolvedValue({ ...stored, status: 'submitted' });
     mocks.account.mockResolvedValue({ email: 'owner@example.test', full_name: 'Owner', subscription_status: 'free', notification_preferences: {} });
-    mocks.usage.mockResolvedValue({ plan: 'free', used: 0, limit: 3 });
+    mocks.organization.mockResolvedValue(null);
+    mocks.usage.mockResolvedValue({ plan: 'free', used: 3, limit: 3 });
     mocks.entries.mockResolvedValue([]);
     mocks.submit.mockResolvedValue({ outcome: 'ACCEPTED', request: { id: 'request-1' }, currentEditVersion: 0 });
     mocks.completionEmail.mockResolvedValue({ success: true });
@@ -114,7 +115,7 @@ describe('seller submission route', () => {
         expect(mocks.submit).toHaveBeenCalledTimes(1);
         expect(mocks.submit.mock.calls[0][0]).toMatchObject({
             requestId: 'request-1', editVersion: 0, submissionKey: 'retry-key-0001',
-            waterSource: 'city', isTestDrive: false, shouldLock: false,
+            waterSource: 'city', isTestDrive: false,
         });
         expect(mocks.submit.mock.calls[0][0].entries.map((row: { category: string }) => row.category)).toEqual(['electric', 'water']);
         expect(mocks.completionEmail).toHaveBeenCalledTimes(1);
@@ -135,7 +136,7 @@ describe('seller submission route', () => {
         const input = mocks.submit.mock.calls[0][0];
         expect(Object.keys(input).sort()).toEqual([
             'advancedPacketData', 'editVersion', 'entries', 'eventData', 'heatingType', 'hoa', 'ipAddress',
-            'isTestDrive', 'requestId', 'sewerType', 'shouldLock', 'submissionKey', 'updateHoa', 'userAgent', 'waterSource',
+            'isTestDrive', 'requestId', 'sewerType', 'submissionKey', 'updateHoa', 'userAgent', 'waterSource',
         ]);
         expect(input).toMatchObject({ requestId: 'request-1', isTestDrive: false });
         expect(JSON.stringify(input)).not.toMatch(/Different Street|attacker|another-request|Not Requested/);
@@ -183,28 +184,50 @@ describe('seller submission route', () => {
         expect(mocks.submit).not.toHaveBeenCalled();
     });
 
-    it('locks only a first counted submission that is over the Free limit', async () => {
-        mocks.usage.mockResolvedValue({ plan: 'free', used: 3, limit: 3 });
+    it('leaves the Free limit to the stored submission: no usage read and no lock input', async () => {
         await submit(answers);
-        expect(mocks.submit.mock.calls[0][0].shouldLock).toBe(true);
-    });
-
-    it('never re-locks or re-counts a resubmission, even with the Free limit reached', async () => {
-        mocks.requestByToken.mockResolvedValue({ ...stored, metered_at: '2026-09-01T12:00:00.000Z', seller_edit_version: 1 });
-        mocks.usage.mockResolvedValue({ plan: 'free', used: 3, limit: 3 });
-        await submit({ ...answers, edit_version: 1, submission_key: 'retry-key-0002' });
 
         expect(mocks.usage).not.toHaveBeenCalled();
-        expect(mocks.submit.mock.calls[0][0]).toMatchObject({ shouldLock: false, editVersion: 1 });
+        expect(mocks.submit.mock.calls[0][0]).not.toHaveProperty('shouldLock');
         expect(mocks.completionEmail.mock.calls[0][0].propertyAddress).toBe(ADDRESS);
     });
 
-    it('keeps an existing over-limit lock in force for a Free account', async () => {
-        mocks.requestByToken.mockResolvedValue({ ...stored, metered_at: '2026-09-01T12:00:00.000Z', is_locked: true });
+    it('hides a submission that was stored locked and skips contact lookups for it', async () => {
+        mocks.submit.mockResolvedValueOnce({ outcome: 'ACCEPTED', request: { id: 'request-1', is_locked: true }, currentEditVersion: 0 });
         await submit(answers);
 
-        expect(mocks.submit.mock.calls[0][0].shouldLock).toBe(false);
-        expect(mocks.completionEmail.mock.calls[0][0].propertyAddress).toBe('Locked — upgrade to view');
+        expect(mocks.completionEmail.mock.calls[0][0]).toMatchObject({ propertyAddress: 'Locked — upgrade to view', sellerName: undefined });
+        expect(mocks.alertEmail).not.toHaveBeenCalled();
+        expect(mocks.sql).not.toHaveBeenCalled();
+    });
+
+    it('goes by the stored row, not the row read before the write', async () => {
+        // Read as locked, stored unlocked (cannot happen today; proves which one is used).
+        mocks.requestByToken.mockResolvedValue({ ...stored, is_locked: true });
+        await submit(answers);
+        expect(mocks.completionEmail.mock.calls[0][0].propertyAddress).toBe(ADDRESS);
+    });
+
+    it.each([
+        ['a Pro owner', { subscription_status: 'pro' }, null],
+        ['a Team workspace', { subscription_status: 'free' }, { id: 'org-1', subscription_status: 'team' }],
+    ])('shows a locked sheet to %s', async (_label, accountPlan, organization) => {
+        mocks.account.mockResolvedValue({ email: 'owner@example.test', full_name: 'Owner', notification_preferences: {}, ...accountPlan });
+        mocks.requestByToken.mockResolvedValue({ ...stored, organization_id: organization ? 'org-1' : null });
+        mocks.organization.mockResolvedValue(organization);
+        mocks.submit.mockResolvedValueOnce({ outcome: 'ACCEPTED', request: { id: 'request-1', is_locked: true }, currentEditVersion: 0 });
+        await submit(answers);
+
+        expect(mocks.completionEmail.mock.calls[0][0].propertyAddress).toBe(ADDRESS);
+    });
+
+    it('passes a resubmission through with its session and no usage read', async () => {
+        mocks.requestByToken.mockResolvedValue({ ...stored, metered_at: '2026-09-01T12:00:00.000Z', seller_edit_version: 1 });
+        await submit({ ...answers, edit_version: 1, submission_key: 'retry-key-0002' });
+
+        expect(mocks.usage).not.toHaveBeenCalled();
+        expect(mocks.submit.mock.calls[0][0]).toMatchObject({ editVersion: 1 });
+        expect(mocks.completionEmail.mock.calls[0][0].propertyAddress).toBe(ADDRESS);
     });
 
     it('keeps a contact already on the sheet when a reopened request is resubmitted', async () => {

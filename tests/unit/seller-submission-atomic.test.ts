@@ -62,7 +62,6 @@ function submission(overrides: Partial<SubmitSellerRequestInput> = {}): SubmitSe
         advancedPacketData: {},
         entries: [entry('electric', 'First Power'), entry('water', 'First Water')],
         isTestDrive: false,
-        shouldLock: false,
         eventData: { actor: 'seller' },
         ipAddress: '203.0.113.9',
         userAgent: 'vitest',
@@ -72,8 +71,8 @@ function submission(overrides: Partial<SubmitSellerRequestInput> = {}): SubmitSe
 
 const actor = { actorAccountId: OWNER, ipAddress: null, userAgent: null };
 
-async function seedRequest(columns: Record<string, unknown> = {}) {
-    await db.exec('DELETE FROM requests');
+async function seedRequest(columns: Record<string, unknown> = {}, options: { keep?: boolean } = {}) {
+    if (!options.keep) await db.exec('DELETE FROM requests');
     const row = {
         id: REQUEST,
         account_id: OWNER,
@@ -207,15 +206,158 @@ describe('seller submission statement', () => {
         expect((await requestRow()).metered_at).toBeNull();
     });
 
-    it('locks only when told this first counted submission is over the limit', async () => {
-        await submitSellerRequest(submission({ shouldLock: true }));
-        expect(await requestRow()).toMatchObject({ is_locked: true, locked_reason: 'monthly_limit' });
-    });
-
     it('reports a deleted or unknown request as not found', async () => {
         await db.query('UPDATE requests SET deleted_at = NOW() WHERE id = $1', [REQUEST]);
         expect((await submitSellerRequest(submission())).outcome).toBe('NOT_FOUND');
         expect((await submitSellerRequest(submission({ requestId: '00000000-0000-4000-8000-00000000ffff' }))).outcome).toBe('NOT_FOUND');
+    });
+});
+
+describe('Free monthly limit, decided when the submission is stored', () => {
+    const MONTH_START = "date_trunc('month', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'";
+    let seeded = 0;
+
+    /** Other requests of an account, as earlier submissions would have left them. */
+    async function seedOthers(count: number, columns: { accountId?: string; organizationId?: string | null; meteredAt?: string | null; set?: string } = {}) {
+        for (let i = 0; i < count; i += 1) {
+            seeded += 1;
+            // meteredAt and set are SQL written in this file, never input.
+            await db.query(
+                `INSERT INTO requests (account_id, organization_id, property_address, public_token, seller_token, status, metered_at)
+                 VALUES ($1, $2, $3, $4, $5, 'submitted', ${columns.meteredAt === undefined ? 'NOW()' : columns.meteredAt ?? 'NULL'})`,
+                [columns.accountId ?? OWNER, columns.organizationId === undefined ? ORG : columns.organizationId, `${seeded} Earlier Road`, `public-${seeded}`, `seller-${seeded}`]
+            );
+            if (columns.set) await db.query(`UPDATE requests SET ${columns.set} WHERE public_token = $1`, [`public-${seeded}`]);
+        }
+    }
+    const setPlans = (account: string, organization: string) => db.exec(`
+        UPDATE accounts SET subscription_status = '${account}' WHERE id = '${OWNER}';
+        UPDATE organizations SET subscription_status = '${organization}' WHERE id = '${ORG}';
+    `);
+    const lockState = async () => {
+        const row = await requestRow();
+        return { is_locked: row.is_locked, locked_reason: row.locked_reason, metered: row.metered_at !== null, locked_at: row.locked_at !== null };
+    };
+    const unlocked = { is_locked: false, locked_reason: null, metered: true, locked_at: false };
+    const locked = { is_locked: true, locked_reason: 'monthly_limit', metered: true, locked_at: true };
+
+    beforeEach(async () => { await setPlans('free', 'free'); });
+    afterAll(async () => { await setPlans('free', 'free'); });
+
+    it('stores the last allowed submission unlocked and the next one locked', async () => {
+        await seedOthers(2);
+        expect((await submitSellerRequest(submission())).request).toMatchObject({ is_locked: false });
+        expect(await lockState()).toEqual(unlocked);
+
+        // The request above is now the third counted one.
+        await seedRequest({ id: '00000000-0000-4000-8000-0000000000f2', public_token: 'public-next', seller_token: 'seller-next' }, { keep: true });
+        const next = await submitSellerRequest(submission({ requestId: '00000000-0000-4000-8000-0000000000f2', submissionKey: 'next' }));
+        expect(next.outcome).toBe('ACCEPTED');
+        expect(next.request).toMatchObject({ is_locked: true, locked_reason: 'monthly_limit' });
+        // Locked submissions do not count, so the first one is untouched.
+        expect(await lockState()).toEqual(unlocked);
+    });
+
+    it('locks at the limit and keeps metering the locked submission', async () => {
+        await seedOthers(3);
+        await submitSellerRequest(submission());
+        expect(await lockState()).toEqual(locked);
+    });
+
+    it('counts soft-deleted rows and rows in another workspace of the same owner', async () => {
+        await seedOthers(1, { set: 'deleted_at = NOW()' });
+        await seedOthers(2, { organizationId: null });
+        await submitSellerRequest(submission());
+        expect(await lockState()).toEqual(locked);
+    });
+
+    it('does not count locked, test-drive, unmetered, earlier-month or other-account rows', async () => {
+        await seedOthers(3, { set: 'is_locked = TRUE' });
+        await seedOthers(3, { set: 'is_demo = TRUE' });
+        await seedOthers(3, { meteredAt: null });
+        await seedOthers(3, { meteredAt: `${MONTH_START} - INTERVAL '1 second'` });
+        await seedOthers(3, { accountId: OTHER });
+        await submitSellerRequest(submission());
+        expect(await lockState()).toEqual(unlocked);
+    });
+
+    it('does not count the owner\'s submissions in a Team workspace against another workspace', async () => {
+        const TEAM_ORG = '00000000-0000-4000-8000-0000000000e4';
+        await db.query(
+            "INSERT INTO organizations (id, name, slug, subscription_status) VALUES ($1, 'Team Workspace', 'team-fixture', 'team') ON CONFLICT (id) DO UPDATE SET subscription_status = 'team'",
+            [TEAM_ORG]
+        );
+        await seedOthers(10, { organizationId: TEAM_ORG });
+        await seedOthers(2);
+        await submitSellerRequest(submission());
+        expect(await lockState()).toEqual(unlocked);
+
+        // Once that workspace is no longer on Team, its sheets count like any other.
+        await db.query("UPDATE organizations SET subscription_status = 'free' WHERE id = $1", [TEAM_ORG]);
+        await seedRequest({ id: '00000000-0000-4000-8000-0000000000f3', public_token: 'public-after', seller_token: 'seller-after' }, { keep: true });
+        const after = await submitSellerRequest(submission({ requestId: '00000000-0000-4000-8000-0000000000f3', submissionKey: 'after' }));
+        expect(after.request).toMatchObject({ is_locked: true });
+    });
+
+    it('counts a submission metered at the first instant of the UTC month', async () => {
+        await seedOthers(3, { meteredAt: MONTH_START });
+        await submitSellerRequest(submission());
+        expect(await lockState()).toEqual(locked);
+    });
+
+    it('never locks a Pro owner or a request in a Team workspace', async () => {
+        await seedOthers(5);
+        await setPlans('pro', 'free');
+        await submitSellerRequest(submission());
+        expect(await lockState()).toEqual(unlocked);
+
+        await seedRequest();
+        await seedOthers(5);
+        await setPlans('free', 'team');
+        await submitSellerRequest(submission());
+        expect(await lockState()).toEqual(unlocked);
+    });
+
+    it('never locks or recounts a resubmission after a reopen, even over the limit', async () => {
+        await submitSellerRequest(submission());
+        await db.query('UPDATE requests SET metered_at = $2 WHERE id = $1', [REQUEST, METERED_AT]);
+        await seedOthers(5);
+        await reopenSubmittedRequest({ executor: exec, requestId: REQUEST, ...actor });
+
+        const result = await submitSellerRequest(submission({ editVersion: 1, submissionKey: 'key-session-1' }));
+        expect(result.outcome).toBe('ACCEPTED');
+        const stored = await requestRow();
+        expect(stored).toMatchObject({ is_locked: false, locked_reason: null, locked_at: null });
+        expect(new Date(stored.metered_at as string).toISOString()).toBe(METERED_AT);
+    });
+
+    it('never removes an existing lock, on any plan', async () => {
+        const lockedAt = '2026-09-02T08:00:00.000Z';
+        for (const plan of ['free', 'pro']) {
+            await seedRequest({ is_locked: true, locked_reason: 'monthly_limit', locked_at: lockedAt, metered_at: METERED_AT });
+            await setPlans(plan, 'free');
+            expect((await submitSellerRequest(submission())).outcome).toBe('ACCEPTED');
+            const stored = await requestRow();
+            expect(stored).toMatchObject({ is_locked: true, locked_reason: 'monthly_limit' });
+            expect(new Date(stored.locked_at as string).toISOString()).toBe(lockedAt);
+            expect(new Date(stored.metered_at as string).toISOString()).toBe(METERED_AT);
+        }
+    });
+
+    it('never meters or locks a test-drive request, whatever the caller says', async () => {
+        await seedOthers(5);
+        for (const isTestDrive of [true, false]) {
+            await db.query('DELETE FROM requests WHERE id = $1', [REQUEST]);
+            await seedRequest({ is_demo: true }, { keep: true });
+            await submitSellerRequest(submission({ isTestDrive }));
+            expect(await lockState()).toEqual({ is_locked: false, locked_reason: null, metered: false, locked_at: false });
+        }
+    });
+
+    it('writes no lock for a refused submission', async () => {
+        await seedOthers(5);
+        expect((await submitSellerRequest(submission({ editVersion: 4 }))).outcome).toBe('STALE_SESSION');
+        expect(await requestRow()).toMatchObject({ is_locked: false, metered_at: null, status: 'in_progress' });
     });
 });
 
@@ -280,8 +422,6 @@ describe('reopen and editing sessions', () => {
                 editVersion: version,
                 submissionKey: `key-session-${version}`,
                 entries: [entry('electric', `Power ${version}`, { contact_phone: '555-0100', meter_number: `M-${version}` })],
-                // The route never asks for a lock on an already metered request.
-                shouldLock: false,
             }));
             expect(result.outcome).toBe('ACCEPTED');
             // Every earlier session is refused.

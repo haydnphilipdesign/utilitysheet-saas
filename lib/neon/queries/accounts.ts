@@ -1,6 +1,7 @@
 /**
  * Account-related database queries
  */
+import { FREE_MONTHLY_SUBMISSION_LIMIT } from '@/lib/constants';
 import { sql } from '@/lib/neon/db';
 
 function normalizeTimestamp(value?: Date | string | null) {
@@ -252,30 +253,36 @@ export async function getAccountsWithWeeklySummaryEnabled() {
 }
 
 /**
- * Get monthly usage for an account (counts requests created this month)
+ * Get monthly usage for an account: counted seller submissions this UTC calendar
+ * month. Display only. The limit is enforced when a submission is stored
+ * (lib/neon/queries/seller-submission.ts), which counts the same way.
  */
 export async function getMonthlyUsage(
     accountId: string,
     organizationId?: string
 ): Promise<{ used: number; limit: number; plan: string }> {
-    if (!sql) return { used: 0, limit: 3, plan: 'free' };
+    if (!sql) return { used: 0, limit: FREE_MONTHLY_SUBMISSION_LIMIT, plan: 'free' };
 
     // Count metered requests in the current calendar month.
     // Drafts are not metered and do not count against plan limits.
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-    // Usage is tracked per account (subscription lives on accounts), regardless of organization context.
+    // Usage is tracked per account across its workspaces, except that submissions in a
+    // Team workspace never use the Free allowance.
     // Free plan limits apply to *unlocked* requests; over-limit submissions are stored as locked.
     const query = sql`
         SELECT COUNT(*) as count
-        FROM requests
-        WHERE account_id = ${accountId}
-            AND metered_at IS NOT NULL
-            AND metered_at >= ${startOfMonth.toISOString()}
-            AND (is_demo = FALSE OR is_demo IS NULL)
-            AND is_locked = FALSE
+        FROM requests r
+        WHERE r.account_id = ${accountId}
+            AND r.metered_at IS NOT NULL
+            AND r.metered_at >= ${startOfMonth.toISOString()}
+            AND (r.is_demo = FALSE OR r.is_demo IS NULL)
+            AND r.is_locked = FALSE
+            AND NOT EXISTS (
+                SELECT 1 FROM organizations o
+                WHERE o.id = r.organization_id AND o.subscription_status = 'team'
+            )
     `;
 
     const result = await query;
@@ -314,10 +321,9 @@ export async function getMonthlyUsage(
         }
     }
 
-    // Free plan = 3 requests per month
     return {
         used,
-        limit: 3,
+        limit: FREE_MONTHLY_SUBMISSION_LIMIT,
         plan: 'free',
     };
 }

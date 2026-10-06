@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getReferralIdentityForm, getMonthlyUsage, getUtilityEntriesByRequestId, createEventLog } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getReferralIdentityForm, getUtilityEntriesByRequestId, createEventLog } from '@/lib/neon/queries';
 import { submitSellerRequest, type SellerSubmissionEntryRow } from '@/lib/neon/queries/seller-submission';
 import { buildSellerPrefill } from '@/lib/seller-form/prefill';
 import { NOTIFY_ADMINS_ON_SUBMISSION, buildSubmissionRecipients, normalizeWorkspaceNotificationSettings } from '@/lib/notifications/workspace-routing';
@@ -538,19 +538,6 @@ export async function POST(
         };
         const { collectElectricMeterNumber, collectHoaQuestions } = resolveRequestQuestionSettings(requestRecord, notificationPrefs);
 
-        // Requests are metered on their first counted submission. Only apply free-plan
-        // overage locking before that, so seller resubmissions never re-lock or re-count.
-        const isUnmetered = requestRecord.metered_at == null;
-        let shouldLock = false;
-        if (!isTestDriveSubmission && !isPaid && isUnmetered) {
-            const usage = await getMonthlyUsage(requestData.account_id, requestData.organization_id ?? undefined);
-            if (usage.plan === 'free' && usage.used >= usage.limit) {
-                shouldLock = true;
-            }
-        }
-
-        const accessLocked = (Boolean(requestRecord.is_locked) || shouldLock) && !isPaid;
-
         const requestedCategories = new Set<string>(
             requestRecord.utility_categories || UTILITY_CATEGORY_KEYS
         );
@@ -679,7 +666,8 @@ export async function POST(
         // The request, its provider rows and the event are stored together or
         // not at all, and only for the current editing session of a request
         // that is not already submitted. A failure here stores nothing, so the
-        // seller can retry.
+        // seller can retry. The same write meters a first submission and decides
+        // the Free monthly limit, so simultaneous submissions cannot both pass.
         const persisted = await submitSellerRequest({
             requestId: requestData.id,
             editVersion,
@@ -692,7 +680,6 @@ export async function POST(
             advancedPacketData,
             entries: entryRows,
             isTestDrive: isTestDriveSubmission,
-            shouldLock,
             eventData: {
                 ...buildSellerSubmittedEventSummary({
                     ...parsedBody.data,
@@ -730,6 +717,8 @@ export async function POST(
 
         // Everything below runs only for the accepted submission and can no
         // longer affect what was stored or the seller's response.
+        const accessLocked = Boolean((persisted.request as SellerRequestRecord | null)?.is_locked) && !isPaid;
+
         for (const selection of suggestionSelections) {
             await markAiSuggestionSelection(selection).catch((selectionError) => {
                 console.error('Failed to record suggestion selection:', selectionError);

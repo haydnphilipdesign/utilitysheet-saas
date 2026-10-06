@@ -1,4 +1,5 @@
-import { getStatementExecutor, type SqlRow, type StatementExecutor } from '@/lib/neon/statements';
+import { FREE_MONTHLY_SUBMISSION_LIMIT } from '@/lib/constants';
+import { getStatementExecutor, type SqlRow, type SqlStatement, type StatementExecutor } from '@/lib/neon/statements';
 import type { HoaAnswers, Request } from '@/types';
 
 /*
@@ -14,6 +15,11 @@ import type { HoaAnswers, Request } from '@/types';
  * made on the locked row, and the request, its provider rows and the event are
  * stored together or not at all. Nothing here ever writes the property address,
  * owner, workspace, tokens or question configuration.
+ *
+ * A submission also decides the Free monthly limit, which depends on the
+ * owner's other requests. It therefore runs behind a per-owner advisory lock
+ * taken as a separate first statement of the same transaction, the way the
+ * reminder claim does. See .ai/decisions/2026-09-15-submission-based-free-metering.md.
  */
 
 type Executable = { executor?: StatementExecutor };
@@ -58,24 +64,59 @@ export interface SubmitSellerRequestInput extends Executable {
     entries: SellerSubmissionEntryRow[];
     /** Test-drive submissions are never metered. */
     isTestDrive: boolean;
-    /** True only when this first counted submission is over the Free monthly limit. */
-    shouldLock: boolean;
     eventData: Record<string, unknown>;
     ipAddress: string | null;
     userAgent: string | null;
 }
 
-export async function submitSellerRequest(
-    input: SubmitSellerRequestInput
-): Promise<{ outcome: SellerSubmissionOutcome; request: Request | null; currentEditVersion: number | null }> {
-    const rows = await executor(input).run({
+/**
+ * The two statements run as one transaction. The advisory lock serializes
+ * submissions for one owner; in READ COMMITTED the statement after it starts
+ * from a fresh snapshot, so it counts whatever the previous holder committed.
+ * Counting inside a single statement would not do that: two submissions for
+ * different requests would each count from a snapshot without the other.
+ * Do not run this at a stricter isolation level.
+ */
+export function sellerSubmissionStatements(input: Omit<SubmitSellerRequestInput, 'executor'>): SqlStatement[] {
+    const lock: SqlStatement = {
+        // Keyed on the stored owner, not on anything read before this transaction.
+        text: `
+            SELECT pg_advisory_xact_lock(hashtextextended('utilitysheet:free-usage:' || account_id::text, 0))
+            FROM requests WHERE id = $1::uuid
+        `,
+        params: [input.requestId],
+    };
+    const submission: SqlStatement = {
         text: `
             WITH target AS (
-                SELECT id, status, deleted_at, seller_edit_version, seller_submission_key
+                SELECT id, account_id, organization_id, status, deleted_at, is_demo, metered_at,
+                    seller_edit_version, seller_submission_key
                 FROM requests WHERE id = $1::uuid FOR UPDATE
+            ),
+            usage AS (
+                -- Same definition as getMonthlyUsage: the owner's counted, unlocked
+                -- submissions this UTC calendar month, deleted or not, in every
+                -- workspace except one on Team (paid work never uses the Free allowance).
+                SELECT COUNT(*)::int AS used
+                FROM requests u
+                WHERE u.account_id = (SELECT account_id FROM target)
+                  AND u.metered_at >= date_trunc('month', NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'
+                  AND COALESCE(u.is_demo, FALSE) = FALSE
+                  AND u.is_locked = FALSE
+                  AND NOT EXISTS (SELECT 1 FROM organizations o WHERE o.id = u.organization_id AND o.subscription_status = 'team')
             ),
             decision AS (
                 SELECT t.id, t.seller_edit_version AS current_edit_version,
+                    -- Only a first counted submission can be locked: never a test
+                    -- drive, a resubmission after a reopen, or a paid owner or workspace.
+                    (
+                        NOT $19::boolean
+                        AND NOT COALESCE(t.is_demo, FALSE)
+                        AND t.metered_at IS NULL
+                        AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.id = t.account_id AND a.subscription_status = 'pro')
+                        AND NOT EXISTS (SELECT 1 FROM organizations o WHERE o.id = t.organization_id AND o.subscription_status = 'team')
+                        AND (SELECT used FROM usage) >= $20::int
+                    ) AS should_lock,
                     CASE
                         WHEN t.deleted_at IS NOT NULL THEN 'NOT_FOUND'
                         WHEN t.status = 'submitted'
@@ -107,11 +148,11 @@ export async function submitSellerRequest(
                     seller_submission_key = $3::text,
                     last_activity_at = NOW(),
                     -- Set once. A resubmission after a reopen is never counted again.
-                    metered_at = CASE WHEN $19::boolean THEN r.metered_at ELSE COALESCE(r.metered_at, NOW()) END,
+                    metered_at = CASE WHEN $19::boolean OR COALESCE(r.is_demo, FALSE) THEN r.metered_at ELSE COALESCE(r.metered_at, NOW()) END,
                     -- A lock is only ever added here, never removed.
-                    is_locked = CASE WHEN $20::boolean THEN TRUE ELSE r.is_locked END,
-                    locked_reason = CASE WHEN $20::boolean THEN 'monthly_limit' ELSE r.locked_reason END,
-                    locked_at = CASE WHEN $20::boolean THEN COALESCE(r.locked_at, NOW()) ELSE r.locked_at END
+                    is_locked = CASE WHEN d.should_lock THEN TRUE ELSE r.is_locked END,
+                    locked_reason = CASE WHEN d.should_lock THEN 'monthly_limit' ELSE r.locked_reason END,
+                    locked_at = CASE WHEN d.should_lock THEN COALESCE(r.locked_at, NOW()) ELSE r.locked_at END
                 FROM decision d
                 WHERE r.id = d.id AND d.outcome = 'ACCEPTED'
                 RETURNING r.*
@@ -169,14 +210,22 @@ export async function submitSellerRequest(
             JSON.stringify(input.advancedPacketData || {}),
             JSON.stringify(input.entries),
             input.isTestDrive,
-            input.shouldLock,
+            FREE_MONTHLY_SUBMISSION_LIMIT,
             JSON.stringify(input.eventData || {}),
             input.ipAddress,
             input.userAgent,
         ],
-    });
+    };
 
-    return readOutcome<SellerSubmissionOutcome>(rows);
+    return [lock, submission];
+}
+
+export async function submitSellerRequest(
+    input: SubmitSellerRequestInput
+): Promise<{ outcome: SellerSubmissionOutcome; request: Request | null; currentEditVersion: number | null }> {
+    const results = await executor(input).transaction(sellerSubmissionStatements(input));
+
+    return readOutcome<SellerSubmissionOutcome>(results[1] ?? []);
 }
 
 export type ReopenOutcome =

@@ -14,6 +14,9 @@ export const UTILITY_CATEGORIES: { key: UtilityCategory; label: string; icon: st
 
 export const UTILITY_CATEGORY_KEYS: UtilityCategory[] = UTILITY_CATEGORIES.map((c) => c.key);
 
+/** Unlocked seller submissions a Free account gets per calendar month (UTC). */
+export const FREE_MONTHLY_SUBMISSION_LIMIT = 3;
+
 // Default buyer next steps for info sheets
 export const DEFAULT_BUYER_STEPS = [
     'Contact each utility provider above to set up new service in your name.',

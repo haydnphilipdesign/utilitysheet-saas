@@ -10,7 +10,38 @@
 - Concurrent editing warning: other sessions were active in this worktree during this task (reopen follow-ups, and a Free-limit plan file). None of their files were touched.
 - Next action: owner decides when to push and deploy. Optional: derive the two form option lists from the shared labels.
 
-# Current task: Reopen follow-ups (committed on main, not pushed; release pending)
+# Current task: Free-limit submission race and Team-workspace usage (committed and pushed; post-deploy check pending)
+
+- Date: 2026-10-06. Last agent: Claude Opus. Branch: main, committed as "Decide the Free monthly limit where the submission is stored and stop counting Team workspace sheets" on top of 396a382 and pushed to `origin/main` on the owner's instruction. The push also carried the two earlier unpushed commits (e53bb1a reopen follow-ups, 396a382 packet formatting), so the reopen product update is published by this deploy.
+- Status: **implementation and validation complete. No required work remains.** Whether the push produced a healthy production deployment was not verified from here. Not done: migrations (none needed), database access, Stripe, email.
+- Plan (completed, with Outcome): `.ai/plans/2026-10-06-free-limit-submission-race.md`. Decision amended: `.ai/decisions/2026-09-15-submission-based-free-metering.md`.
+- No concurrent editing warnings.
+
+## What changed
+
+- A seller submission now takes a per-owner advisory lock and then stores the submission, as two statements in one transaction (`sellerSubmissionStatements` in `lib/neon/queries/seller-submission.ts`). The submission statement reads the plan and the month's count and decides the Free lock itself. Two different requests of one Free account can no longer both pass the limit.
+- The seller route no longer reads usage or passes a lock flag; it takes the locked state from the stored row.
+- Owner decision (same day): sheets submitted in a workspace that is on Team no longer count toward the owner's Free usage in their other workspace. Applied in the submission statement and in `getMonthlyUsage`.
+- The month is the UTC calendar month, explicit in SQL and in `getMonthlyUsage`. The limit is `FREE_MONTHLY_SUBMISSION_LIMIT` in `lib/constants.ts`, still 3.
+- Unchanged: prices, limits, plans, read-time unlock for paid viewers. No migration, no `schema.sql` change.
+- Do not merge the two statements or raise the isolation level: a single statement counts from one snapshot and would reopen the race.
+
+## Files
+
+`lib/neon/queries/seller-submission.ts`, `app/api/seller/[token]/route.ts`, `lib/neon/queries/accounts.ts`, `lib/constants.ts`; tests `tests/unit/seller-submission-atomic.test.ts`, `tests/unit/seller-post-submission-routes.test.ts`, `tests/unit/test-drive-seller-safety.test.ts`, `tests/unit/request-metering-soft-delete.test.ts`, `tests/concurrency/run.ts`, `tests/concurrency/README.md`; the plan, the decision record and this file.
+
+## Validation (Node 22.22.2; CI uses 20)
+
+- Full Vitest: 199 files passed, 1 skipped; 1367 tests passed, 8 skipped.
+- Concurrency harness, four real connections on a disposable local PostgreSQL 18.4: all 28 checks passed, 8 new, including one that shows the race when the lock statement is left out.
+- `tsc --noEmit` clean; ESLint on changed files clean; `git diff --check` clean; `security:scan` passed.
+- Not verified: anything against Neon (READ COMMITTED and the advisory lock under the HTTP `transaction` call are inferred from the reminder claim, which relies on the same behavior in production); that the production server time zone is UTC; submission latency; Playwright; `next build`.
+
+## Next action
+
+Owner confirms the Vercel deployment is healthy, then submits one test request on a Free account and confirms it is stored and usage rises by one. The post-deploy checks listed under the earlier tasks below are still open, and now include the reopen product update banner.
+
+# Previous task: Reopen follow-ups (committed on main as e53bb1a, not pushed; release pending)
 
 - Date: 2026-10-06. Last agent: Claude Opus. Branch: main, committed on the owner's instruction as "Label reopen events, let Admin remind reopened requests, drop time claims, and announce reopen" on top of 56e47ba. Not pushed. Concurrent work warning: uncommitted packet changes that are not part of this task appeared in the worktree during the session (`lib/packet/modules.ts`, `lib/packet/packet-data.ts`, `tests/unit/packet-data.test.ts`, untracked `.ai/plans/2026-10-06-packet-handoff-value-formatting.md`). They were left untouched and uncommitted; their owner should record their state here.
 - Status: all four items implemented on the owner's approval of the recommendations (2026-10-06). No required work remains. Not done and not authorized: push, deploy, migrations, database access, real email, publishing through Admin.

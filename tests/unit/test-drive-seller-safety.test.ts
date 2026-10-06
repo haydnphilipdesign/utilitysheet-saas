@@ -20,7 +20,14 @@ describe('test-drive seller submission safety guards', () => {
     });
 
     it('gates quota locking, referral awards, admin fan-out, contact resolution, and acquisition content', () => {
-        expect(source).toContain('if (!isTestDriveSubmission && !isPaid && isUnmetered)');
+        // The quota decision is made where the submission is stored; behavior is
+        // covered in seller-submission-atomic.test.ts.
+        const submissionSource = readFileSync(
+            join(process.cwd(), 'lib/neon/queries/seller-submission.ts'),
+            'utf8'
+        ).replace(/\r\n/g, '\n');
+        expect(submissionSource).toContain('NOT $19::boolean\n                        AND NOT COALESCE(t.is_demo, FALSE)\n                        AND t.metered_at IS NULL');
+        expect(source).not.toContain('getMonthlyUsage');
         expect(source).toContain('if (!isTestDriveSubmission) {\n            scheduleReferralCreditAward');
         expect(source).toContain('if (!isTestDriveSubmission && organization?.id)');
         expect(source).toContain('if (!accessLocked && !isUtilitySheetDemoSubmission && !isTestDriveSubmission)');

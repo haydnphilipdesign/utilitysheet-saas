@@ -23,4 +23,16 @@ Free accounts get 3 requests per month. Dashboard-created requests were metered 
 - Existing never-submitted metered rows are cleared by `migrations-requests-submission-metering.sql`, run after deploy.
 - Admin activity windows and testimonial counts that read `metered_at` now reflect submissions.
 - A request sent in one month and submitted in the next counts in the submission month.
-- Two simultaneous submissions at one slot remaining can both stay unlocked (known race, not addressed).
+- Two simultaneous submissions at one slot remaining could both stay unlocked. Addressed 2026-10-06; see the amendment below.
+
+## Amendment 2026-10-06: the limit is decided where the submission is stored
+
+Owner approved (plan `.ai/plans/2026-10-06-free-limit-submission-race.md`, Option B).
+
+- The seller route no longer reads usage. `submitSellerRequest` runs two statements in one transaction: a per-owner `pg_advisory_xact_lock`, then the submission statement, which reads the plan and the month's count and decides the lock on the locked request row.
+- The lock must be a separate first statement. A single statement counts from one snapshot, so two submissions for different requests would not see each other. Do not merge the two statements or raise the isolation level above READ COMMITTED.
+- The month is the UTC calendar month, now stated explicitly in SQL and in `getMonthlyUsage` (previously inherited from the server time zone, which is UTC in production).
+- The limit is `FREE_MONTHLY_SUBMISSION_LIMIT` in `lib/constants.ts`, still 3.
+- Submissions in a workspace that is on Team do not count toward the owner's Free usage (owner decision, same day). Every account has its own workspace and can also be a member of a Team workspace; before this, a member's Team sheets used up the Free allowance of their own workspace. The check uses the workspace's plan at the time of counting, so if a Team workspace stops being on Team during the month, its sheets from that month count again.
+- Unchanged: the count is otherwise owner-wide across workspaces, soft-deleted rows count, locked rows do not, sheets submitted while the account was on Pro count after a downgrade in the same month, and a paid viewer sees locked sheets at read time. No migration.
+- Rejected: counting inside one statement without the lock (narrows the race, does not close it); a usage counter table (migration and a second source of truth).

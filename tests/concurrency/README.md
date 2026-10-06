@@ -45,3 +45,6 @@ Last run: 2026-10-05, PostgreSQL 18.4 (embedded), all 12 checks passed.
 - Simultaneous seller submissions: one accepted, one refused, one sheet and one event. The same key twice is one accepted and one duplicate.
 - A submission from an earlier editing session that waits behind an uncommitted reopen is refused as stale once the reopen commits, and its retry key is not treated as a duplicate.
 - Two reopens at once, and a resubmission racing close-without-changes: exactly one takes effect.
+- Free monthly limit across different requests of one owner: the submission statement without its advisory lock lets two past one remaining slot (kept as a demonstration of the race); with the lock, one slot gives exactly one unlocked sheet, four at once from zero give exactly three, the waiting submission is stored locked after the first commits, a different owner does not wait, a Pro owner is never locked, and a resubmission after a reopen keeps its metering and stays unlocked.
+
+Last run: 2026-10-06, PostgreSQL 18.4 (embedded), all 28 checks passed.
