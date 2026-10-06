@@ -17,6 +17,7 @@ import {
     filterAdvancedPacketDataByExclusions,
     normalizeAdvancedModuleExclusions,
     normalizeAdvancedModules,
+    normalizeConditionalAdvancedAnswers,
 } from '@/lib/packet/modules';
 import { normalizeHoaAnswers } from '@/lib/packet/hoa';
 import { resolveRequestQuestionSettings } from '@/lib/requests/question-settings';
@@ -150,10 +151,14 @@ export async function PATCH(
             )
             : {};
 
+        // Normalized before the merge below, so stored excluded fields survive.
         const visibleAdvancedData = packetMode === 'advanced'
-            ? filterAdvancedPacketDataByExclusions(
-                parsedBody.data.advanced || {},
-                advancedModules,
+            ? normalizeConditionalAdvancedAnswers(
+                filterAdvancedPacketDataByExclusions(
+                    parsedBody.data.advanced || {},
+                    advancedModules,
+                    advancedModuleExclusions
+                ),
                 advancedModuleExclusions
             )
             : {};

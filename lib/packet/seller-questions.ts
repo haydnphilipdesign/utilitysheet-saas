@@ -287,7 +287,7 @@ function buildFullHomeBasicsSection(): SellerQuestionSection {
                 key: 'home_basics.primary_heating_type',
                 label: 'Primary Heat Source',
                 sellerPrompt: 'Which is the primary heat source?',
-                helper: 'This determines which heating provider we ask about next.',
+                helper: "Shown as the home's heating type on the finished sheet.",
                 condition: 'Asked only when the seller selects more than one fuel source.',
                 choices: FUEL_SOURCE_OPTIONS.map((option) => option.label),
             },

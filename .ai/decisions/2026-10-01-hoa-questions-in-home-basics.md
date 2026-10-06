@@ -143,3 +143,7 @@ not-copied statements below describe the original implementation; see
 Owner approved asking membership first in Home Basics, with conditional contact/dues details remaining after utility basics. When the question is enabled and the seller explicitly answers No, hide the water/sewer HOA billing choices. Yes never implies association-paid utilities; Not Sure, unanswered, or disabled questions retain those choices.
 
 Changing to No clears only conflicting HOA billing selections and requires explicit replacement, with an inline explanation; Not Sure is a valid replacement. Drafts persist pending replacements and resume at Home Basics when necessary. This prevents contradictory seller answers without guessing the utility arrangement. Item 5 still applies to storage and historical packets: membership and billing remain separate values, and this change does not rewrite collected data or change coordinator editing/API contracts.
+
+## Amendment: seller resubmission (2026-10-06)
+
+The statements above about a seller resubmitting, and about earlier HOA answers being returned to prefill a resubmission, now apply only while a coordinator has reopened the request. A submitted request is read-only for the seller link, and the seller route returns no HOA or handoff answers for it. See `2026-10-06-read-only-after-submission-and-reopen.md`. The rule that a secret must not be added to this group still holds, because the answers are returned again during a reopen.

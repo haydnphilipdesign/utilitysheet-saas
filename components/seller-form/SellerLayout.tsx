@@ -105,7 +105,8 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
                     placeholder="you@example.com"
                     onChange={(e) => { setEmail(e.target.value); setError(null); }}
                     disabled={submitting}
-                    className="flex-1 h-9 rounded-md border border-border bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent-border)]"
+                    aria-label="Email address"
+                    className="flex-1 h-11 sm:h-9 rounded-md border border-border bg-background/60 px-3 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent-border)]"
                     data-testid="seller-save-link-email"
                 />
                 <button

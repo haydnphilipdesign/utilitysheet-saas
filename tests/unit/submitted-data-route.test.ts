@@ -295,6 +295,62 @@ describe('submitted sheet editor route', () => {
         ]);
     });
 
+    it('stores only the irrigation No on a coordinator edit and keeps excluded stored fields', async () => {
+        const storedRequest = {
+            id: 'req_1',
+            account_id: 'acct_1',
+            organization_id: null,
+            property_address: '123 Main St',
+            status: 'submitted',
+            updated_at: '2026-03-31T12:00:00.000Z',
+            packet_mode: 'advanced',
+            utility_categories: ['electric'],
+            advanced_modules: ['irrigation_seasonal_controls'],
+            advanced_module_exclusions: { irrigation_seasonal_controls: ['irrigation_notes'] },
+            advanced_packet_data: {
+                irrigation_seasonal_controls: {
+                    has_irrigation_system: 'yes',
+                    irrigation_provider_name: 'GreenSprout',
+                    irrigation_notes: 'Excluded stored note',
+                },
+            },
+        };
+        mocks.getRequestByIdMock.mockResolvedValue(storedRequest);
+        mocks.getUtilityEntriesByRequestIdMock.mockResolvedValue([]);
+        mocks.updateSubmittedRequestDataMock.mockResolvedValue(storedRequest);
+
+        const response = await PATCH(
+            new Request('http://localhost/api/requests/req_1/submitted-data', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    updatedAt: '2026-03-31T12:00:00.000Z',
+                    propertyAddress: '123 Main St',
+                    // The editor keeps hidden details in memory and still sends them.
+                    advanced: {
+                        irrigation_seasonal_controls: {
+                            has_irrigation_system: 'no',
+                            irrigation_provider_name: 'GreenSprout',
+                            watering_days: ['mon'],
+                        },
+                    },
+                    utilities: {},
+                }),
+            }),
+            { params: Promise.resolve({ id: 'req_1' }) }
+        );
+
+        expect(response.status).toBe(200);
+        const updateCall = mocks.updateSubmittedRequestDataMock.mock.calls[0][1];
+        expect(updateCall.advancedPacketData).toEqual({
+            irrigation_seasonal_controls: {
+                has_irrigation_system: 'no',
+                irrigation_notes: 'Excluded stored note',
+            },
+        });
+        expect(updateCall.eventData.changed_fields).toEqual(['advanced_irrigation_seasonal_controls']);
+    });
+
     it('returns conflict when the request was edited elsewhere', async () => {
         mocks.getRequestByIdMock.mockResolvedValue({
             id: 'req_1',

@@ -1,5 +1,5 @@
 import React, { ComponentPropsWithoutRef, useState } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { UtilityStep } from '@/components/seller-form/steps/UtilityStep';
 import type { WizardState } from '@/components/seller-form/SellerWizard';
@@ -124,20 +124,97 @@ describe('UtilityStep electric meter flow', () => {
         expect(onNext).toHaveBeenCalledTimes(1);
     });
 
-    it('continue without meter clears meter and advances', async () => {
+    it('offers a single Continue on the meter step and keeps what was typed', () => {
         const onNext = vi.fn();
         render(<StatefulUtilityStep onNext={onNext} />);
 
         fireEvent.click(screen.getByRole('button', { name: /met-ed/i }));
+        fireEvent.change(screen.getByTestId('seller-electric-meter-number'), { target: { value: 'ELEC-12345' } });
 
-        const input = screen.getByTestId('seller-electric-meter-number') as HTMLInputElement;
-        fireEvent.change(input, { target: { value: 'ELEC-12345' } });
-        fireEvent.click(screen.getByRole('button', { name: /continue without meter number/i }));
+        expect(screen.queryByRole('button', { name: /without meter number/i })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-        await waitFor(() => {
-            expect((screen.getByTestId('seller-electric-meter-number') as HTMLInputElement).value).toBe('');
-        });
+        expect(readUtilityState().electric.meter_number).toBe('ELEC-12345');
         expect(onNext).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows no earlier answer before the seller has answered', () => {
+        render(<StatefulUtilityStep />);
+        expect(screen.queryByTestId('seller-utility-current-electric')).not.toBeInTheDocument();
+    });
+
+    it('keeps a named answer and its meter number when returning to the provider list', () => {
+        const onNext = vi.fn();
+        render(<StatefulUtilityStep onNext={onNext} />);
+
+        fireEvent.click(screen.getByRole('button', { name: /met-ed/i }));
+        fireEvent.change(screen.getByTestId('seller-electric-meter-number'), { target: { value: 'ELEC-12345' } });
+        fireEvent.click(screen.getByRole('button', { name: /change provider/i }));
+
+        expect(screen.getByTestId('seller-utility-current-electric')).toHaveTextContent('Met-Ed (FirstEnergy)');
+        fireEvent.click(screen.getByTestId('seller-utility-keep-electric'));
+
+        expect(screen.getByTestId('seller-electric-meter-number')).toHaveValue('ELEC-12345');
+        expect(readUtilityState().electric).toMatchObject({ entry_mode: 'suggested_confirmed', display_name: 'Met-Ed (FirstEnergy)' });
+        expect(onNext).not.toHaveBeenCalled();
+    });
+
+    it('keeps a typed-in provider answer', async () => {
+        const onNext = vi.fn();
+        vi.stubGlobal('fetch', vi.fn(async () => new Response('[]', { status: 200 })));
+        try {
+            render(<StatefulUtilityStep category="water" onNext={onNext} suggestions={[]} />);
+
+            fireEvent.click(screen.getByRole('button', { name: /search providers/i }));
+            fireEvent.change(screen.getByTestId('seller-provider-search-input'), { target: { value: 'Hilltop Water Co-op' } });
+            fireEvent.click(await screen.findByTestId('seller-provider-use-typed'));
+            expect(onNext).toHaveBeenCalledTimes(1);
+
+            // The parent would move on; staying mounted here stands in for coming Back.
+            fireEvent.click(await screen.findByRole('button', { name: /cancel search/i }));
+            expect(screen.getByTestId('seller-utility-current-water')).toHaveTextContent('Hilltop Water Co-op');
+            fireEvent.click(screen.getByTestId('seller-utility-keep-water'));
+
+            expect(readUtilityState().water).toMatchObject({ entry_mode: 'free_text', display_name: 'Hilltop Water Co-op' });
+            expect(onNext).toHaveBeenCalledTimes(2);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it('keeps a "Not sure" answer without opening the meter step', () => {
+        const onNext = vi.fn();
+        const { unmount } = render(<StatefulUtilityStep onNext={onNext} />);
+        fireEvent.click(screen.getByTestId('seller-utility-skip-electric'));
+        expect(onNext).toHaveBeenCalledTimes(1);
+
+        expect(screen.getByTestId('seller-utility-current-electric')).toHaveTextContent('Not sure');
+        fireEvent.click(screen.getByTestId('seller-utility-keep-electric'));
+
+        expect(screen.queryByTestId('seller-electric-meter-number')).not.toBeInTheDocument();
+        expect(readUtilityState().electric.entry_mode).toBe('unknown');
+        expect(onNext).toHaveBeenCalledTimes(2);
+        unmount();
+    });
+
+    it('keeps a trash answer and its schedule, reopening the schedule step', () => {
+        const onNext = vi.fn();
+        render(
+            <StatefulUtilityStep
+                category="trash"
+                onNext={onNext}
+                suggestions={[{ display_name: 'City Waste Services', confidence: 0.9 }]}
+            />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /city waste services/i }));
+        fireEvent.click(screen.getByTestId('seller-trash-pickup-day-thu'));
+        fireEvent.click(screen.getByRole('button', { name: /change provider/i }));
+        fireEvent.click(screen.getByTestId('seller-utility-keep-trash'));
+
+        expect(screen.getByTestId('seller-trash-details-step')).toBeInTheDocument();
+        expect(readUtilityState().trash.extra).toMatchObject({ trash_pickup_days: ['thu'] });
+        expect(onNext).not.toHaveBeenCalled();
     });
 
     it('electric "I don\'t know" skips meter step and advances immediately', () => {

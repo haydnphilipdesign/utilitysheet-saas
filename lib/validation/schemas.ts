@@ -479,6 +479,10 @@ const advancedModuleDataSchema = z.object({
 }).partial();
 
 export const sellerSubmissionBodySchema = z.object({
+    /** The editing session the form was loaded in. Absent from older tabs, which means the first session. */
+    edit_version: z.number().int().min(0).max(1_000_000).optional(),
+    /** Random per-attempt key so a retry after a lost response is not refused. */
+    submission_key: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/).optional(),
     water_source: waterSourceEnum,
     sewer_type: sewerTypeEnum,
     heating_type: heatingTypeEnum,

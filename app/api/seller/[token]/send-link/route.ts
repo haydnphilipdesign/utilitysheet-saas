@@ -49,6 +49,12 @@ export async function POST(
             }
         }
 
+        // The email is a link back to an unfinished form. A submitted request is
+        // read-only, so there is nothing to come back to.
+        if (requestData.status === 'submitted') {
+            return NextResponse.json({ error: 'This form has already been submitted.' }, { status: 409 });
+        }
+
         let brandProfile = null;
         if (requestData.brand_profile_id && sql) {
             const result = await sql`SELECT * FROM brand_profiles WHERE id = ${requestData.brand_profile_id}`;

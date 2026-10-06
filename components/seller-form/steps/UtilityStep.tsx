@@ -61,6 +61,8 @@ interface UtilityStepProps {
     loadingSuggestions?: boolean;
     token: string;
     collectElectricMeterNumber?: boolean;
+    /** True when this step was opened from a Review row and returns there. */
+    isReviewEdit?: boolean;
     onNext: () => void;
     onBack: () => void;
 }
@@ -74,6 +76,7 @@ export function UtilityStep({
     loadingSuggestions = false,
     token,
     collectElectricMeterNumber = false,
+    isReviewEdit = false,
     onNext,
     onBack,
 }: UtilityStepProps) {
@@ -129,6 +132,10 @@ export function UtilityStep({
     const currentUtilityState = state.utilities[category];
     const shouldGateElectricMeter = collectElectricMeterNumber && category === 'electric';
     const shouldGateTrashDetails = category === 'trash';
+    // An answer given earlier (before Back, an edit from Review, or a restored
+    // draft) is shown so the seller can keep it without answering again.
+    const hasAnswer = Boolean(currentUtilityState?.entry_mode);
+    const continueLabel = isReviewEdit ? 'Save & Return to Review' : 'Continue';
 
     const currentTrashExtra: TrashUtilityExtra =
         currentUtilityState?.extra && typeof currentUtilityState.extra === 'object' && !Array.isArray(currentUtilityState.extra)
@@ -266,12 +273,17 @@ export function UtilityStep({
         onBack();
     };
 
-    const handleContinueWithMeter = () => {
-        onNext();
-    };
-
-    const handleContinueWithoutMeter = () => {
-        updateState(category, { meter_number: null });
+    const handleKeepAnswer = () => {
+        if (currentUtilityState?.entry_mode !== 'unknown') {
+            advanceOrShowDetails();
+            return;
+        }
+        // Mirrors handleSkip: "Not sure" has no meter step, but trash still
+        // asks for the pickup schedule.
+        if (shouldGateTrashDetails) {
+            setMode('trash_details');
+            return;
+        }
         onNext();
     };
 
@@ -320,6 +332,31 @@ export function UtilityStep({
 
             {providerHelper && mode === 'view' && (
                 <p className="text-xs text-muted-foreground -mt-2 sm:-mt-4">{providerHelper}</p>
+            )}
+
+            {mode === 'view' && hasAnswer && (
+                <div
+                    className="rounded-xl border border-[color:var(--brand-accent-border)] bg-[var(--brand-accent-softer)] p-3 sm:p-4 space-y-3"
+                    data-testid={`seller-utility-current-${category}`}
+                >
+                    <div>
+                        <p className="text-[11px] sm:text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-1">
+                            Your answer
+                        </p>
+                        <p className="text-sm sm:text-base font-semibold text-foreground break-words">
+                            {currentUtilityState?.display_name || 'Not sure'}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleKeepAnswer}
+                        data-testid={`seller-utility-keep-${category}`}
+                        className={`w-full py-3 text-sm sm:text-base ${wizardPrimaryButton}`}
+                    >
+                        Keep this answer
+                    </button>
+                    <p className="text-xs text-muted-foreground">Or choose a different answer below.</p>
+                </div>
             )}
 
             {mode === 'view' && (
@@ -566,28 +603,21 @@ export function UtilityStep({
                             onChange={(e) => updateState(category, { meter_number: e.target.value })}
                             placeholder="Enter the electric meter number"
                             maxLength={64}
-                            className={`py-2.5 px-3 text-sm rounded-lg ${wizardTextInput}`}
+                            className={`py-2.5 px-3 text-base sm:text-sm rounded-lg ${wizardTextInput}`}
                             data-testid="seller-electric-meter-number"
                         />
                         <p className="text-[11px] sm:text-xs text-muted-foreground mt-1.5">
-                            If available, this will be added to the final PDF.
+                            If available, this will be added to the final PDF. Leave it blank if you don&apos;t have it.
                         </p>
                     </div>
 
                     <div className="grid grid-cols-1 gap-2 sm:gap-3">
                         <button
                             type="button"
-                            onClick={handleContinueWithMeter}
+                            onClick={onNext}
                             className={`w-full py-3 text-sm sm:text-base ${wizardPrimaryButton}`}
                         >
-                            Continue
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleContinueWithoutMeter}
-                            className={`w-full py-3 bg-transparent border border-border text-muted-foreground hover:text-foreground rounded-xl font-medium transition-colors active:scale-[0.98] text-sm sm:text-base ${wizardFocusRing}`}
-                        >
-                            Continue without meter number
+                            {continueLabel}
                         </button>
                     </div>
 
@@ -674,7 +704,7 @@ export function UtilityStep({
                             onClick={onNext}
                             className={`w-full py-3 text-sm sm:text-base ${wizardPrimaryButton}`}
                         >
-                            Continue
+                            {continueLabel}
                         </button>
                     </div>
 

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getReferralIdentityForm, getMonthlyUsage, createEventLog } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getReferralIdentityForm, getMonthlyUsage, getUtilityEntriesByRequestId, createEventLog } from '@/lib/neon/queries';
+import { submitSellerRequest, type SellerSubmissionEntryRow } from '@/lib/neon/queries/seller-submission';
+import { buildSellerPrefill } from '@/lib/seller-form/prefill';
 import { NOTIFY_ADMINS_ON_SUBMISSION, buildSubmissionRecipients, normalizeWorkspaceNotificationSettings } from '@/lib/notifications/workspace-routing';
 import type { SubmissionRecipientCandidate } from '@/lib/notifications/workspace-routing';
 import { sql } from '@/lib/neon/db';
@@ -18,6 +20,7 @@ import {
     filterAdvancedPacketDataByExclusions,
     getAdvancedModuleVisibleFieldKeys,
     normalizeAdvancedModuleExclusions,
+    normalizeConditionalAdvancedAnswers,
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
 import { normalizeHoaAnswers, resolveHoaSubmission } from '@/lib/packet/hoa';
@@ -41,7 +44,13 @@ type SellerRequestRecord = StoredRequest & {
     advanced_packet_data?: Record<string, unknown> | null;
     metered_at?: string | null;
     is_locked?: boolean | null;
+    seller_edit_version?: number | null;
 };
+
+function readEditVersion(record: SellerRequestRecord): number {
+    const version = Number(record.seller_edit_version ?? 0);
+    return Number.isInteger(version) && version > 0 ? version : 0;
+}
 
 type SellerUtilityExtra = {
     tank?: string | null;
@@ -371,6 +380,24 @@ export async function GET(
             contact_phone: brandProfile.contact_phone,
             contact_website: brandProfile.contact_website,
         } : null;
+        const editVersion = readEditVersion(requestRecord);
+
+        // A submitted request is read-only for this link until a coordinator
+        // reopens it, so nothing beyond what the notice needs is returned.
+        // Test-drive requests keep their own idempotent flow.
+        if (requestData.status === 'submitted' && requestRecord.is_demo !== true) {
+            return NextResponse.json({
+                request: {
+                    property_address: requestData.property_address,
+                    status: 'submitted',
+                    edit_version: editVersion,
+                    is_demo: false,
+                },
+                brandProfile: publicBrandProfile,
+                suggestions: {},
+            });
+        }
+
         const account = await getAccountById(requestData.account_id);
         const notificationPrefs = (account?.notification_preferences || {}) as {
             collect_electric_meter_number?: boolean;
@@ -398,6 +425,15 @@ export async function GET(
             )
             : {};
 
+        // After a reopen the seller starts from the sheet as it is stored now,
+        // including coordinator corrections.
+        const prefill = editVersion > 0
+            ? buildSellerPrefill(requestRecord, await getUtilityEntriesByRequestId(requestData.id), {
+                requestedCategories: utilityCategories,
+                collectElectricMeterNumber,
+            })
+            : undefined;
+
         return NextResponse.json({
             request: {
                 seller_intro: requestData.seller_intro || null,
@@ -406,6 +442,8 @@ export async function GET(
                 collect_electric_meter_number: collectElectricMeterNumber,
                 collect_hoa_questions: collectHoaQuestions,
                 status: requestData.status,
+                edit_version: editVersion,
+                prefill,
                 packet_mode: requestRecord.packet_mode || 'simple',
                 advanced_modules: configuredAdvancedModules,
                 advanced_module_exclusions: configuredAdvancedModuleExclusions,
@@ -526,10 +564,14 @@ export async function POST(
                 configuredAdvancedModules
             )
             : {};
+        // Normalized before the merge below, so stored excluded fields survive.
         const submittedVisibleAdvancedData = packetMode === 'advanced'
-            ? filterAdvancedPacketDataByExclusions(
-                parsedBody.data.advanced || {},
-                configuredAdvancedModules,
+            ? normalizeConditionalAdvancedAnswers(
+                filterAdvancedPacketDataByExclusions(
+                    parsedBody.data.advanced || {},
+                    configuredAdvancedModules,
+                    configuredAdvancedModuleExclusions
+                ),
                 configuredAdvancedModuleExclusions
             )
             : {};
@@ -550,41 +592,12 @@ export async function POST(
             collectHoaQuestions
         );
 
-        // Update request with applicability info
-        await sql`
-            UPDATE requests SET
-            water_source = ${parsedBody.data.water_source || null},
-            sewer_type = ${parsedBody.data.sewer_type || null},
-            heating_type = ${parsedBody.data.primary_heating_type || null},
-            has_hoa = CASE WHEN ${updateHoa}::boolean THEN ${hoa.has_hoa}::text ELSE has_hoa END,
-            hoa_name = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_name}::text ELSE hoa_name END,
-            hoa_management_company = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_company}::text ELSE hoa_management_company END,
-            hoa_management_contact = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_contact}::text ELSE hoa_management_contact END,
-            hoa_management_phone = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_phone}::text ELSE hoa_management_phone END,
-            hoa_management_email = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_management_email}::text ELSE hoa_management_email END,
-            hoa_dues_amount = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_dues_amount}::text ELSE hoa_dues_amount END,
-            hoa_dues_frequency = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_dues_frequency}::text ELSE hoa_dues_frequency END,
-            hoa_portal_or_payment = CASE WHEN ${updateHoa}::boolean THEN ${hoa.hoa_portal_or_payment}::text ELSE hoa_portal_or_payment END,
-            advanced_packet_data = ${JSON.stringify(advancedPacketData)}::jsonb,
-            status = 'submitted',
-            last_activity_at = NOW(),
-            metered_at = CASE
-                WHEN ${isTestDriveSubmission} THEN metered_at
-                ELSE COALESCE(metered_at, NOW())
-            END,
-            is_locked = CASE WHEN ${shouldLock} THEN TRUE ELSE is_locked END,
-            locked_reason = CASE WHEN ${shouldLock} THEN 'monthly_limit' ELSE locked_reason END,
-            locked_at = CASE WHEN ${shouldLock} THEN COALESCE(locked_at, NOW()) ELSE locked_at END
-            WHERE id = ${requestData.id}
-        `;
-
-        // Delete existing entries and insert new ones
-        await sql`DELETE FROM utility_entries WHERE request_id = ${requestData.id}`;
-
-        // Track entries that may need contact resolution
+        // Build every provider row first; nothing is written until the single
+        // statement below.
+        const entryRows: SellerSubmissionEntryRow[] = [];
         const contactResolutionTargets: ContactResolutionTarget[] = [];
+        const suggestionSelections: Parameters<typeof markAiSuggestionSelection>[0][] = [];
 
-        // Insert utility entries
         for (const [category, entry] of Object.entries(parsedBody.data.utilities || {})) {
             if (!requestedCategories.has(category)) {
                 continue;
@@ -625,36 +638,21 @@ export async function POST(
                     ? Math.max(0, Math.min(1, e.confidence_score))
                     : null;
 
-                await sql`
-                    INSERT INTO utility_entries (
-                        request_id,
-                        category,
-                        entry_mode,
-                        display_name,
-                        raw_text,
-                        canonical_id,
-                        confidence_score,
-                        contact_phone,
-                        contact_url,
-                        meter_number,
-                        extra
-                    ) VALUES (
-                        ${requestData.id},
-                        ${typedCategory},
-                        ${finalEntryMode},
-                        ${e.display_name || null},
-                        ${finalRawText || null},
-                        ${finalCanonicalId},
-                        ${finalConfidenceScore},
-                        ${submittedPhone},
-                        ${submittedUrl},
-                        ${finalMeterNumber},
-                        ${JSON.stringify(finalExtra)}::jsonb
-                    )
-                `;
+                entryRows.push({
+                    category: typedCategory,
+                    entry_mode: finalEntryMode,
+                    display_name: e.display_name || null,
+                    raw_text: finalRawText || null,
+                    canonical_id: finalCanonicalId,
+                    confidence_score: finalConfidenceScore,
+                    contact_phone: submittedPhone,
+                    contact_url: submittedUrl,
+                    meter_number: finalMeterNumber,
+                    extra: finalExtra,
+                });
 
                 if (!isTestDriveSubmission && (finalEntryMode === 'suggested_confirmed' || finalEntryMode === 'search_selected')) {
-                    await markAiSuggestionSelection({
+                    suggestionSelections.push({
                         requestId: requestData.id,
                         category: typedCategory,
                         selectedName: e.display_name || finalRawText || null,
@@ -676,6 +674,68 @@ export async function POST(
             }
         }
 
+        const editVersion = parsedBody.data.edit_version ?? 0;
+
+        // The request, its provider rows and the event are stored together or
+        // not at all, and only for the current editing session of a request
+        // that is not already submitted. A failure here stores nothing, so the
+        // seller can retry.
+        const persisted = await submitSellerRequest({
+            requestId: requestData.id,
+            editVersion,
+            submissionKey: parsedBody.data.submission_key ?? null,
+            waterSource: parsedBody.data.water_source || null,
+            sewerType: parsedBody.data.sewer_type || null,
+            heatingType: parsedBody.data.primary_heating_type || null,
+            updateHoa,
+            hoa,
+            advancedPacketData,
+            entries: entryRows,
+            isTestDrive: isTestDriveSubmission,
+            shouldLock,
+            eventData: {
+                ...buildSellerSubmittedEventSummary({
+                    ...parsedBody.data,
+                    // Only an answer that was actually asked and stored is counted.
+                    has_hoa: updateHoa ? hoa.has_hoa : null,
+                    packet_mode: packetMode,
+                    advanced_modules: configuredAdvancedModules,
+                    advanced_module_exclusions: configuredAdvancedModuleExclusions,
+                }),
+                edit_version: editVersion,
+            },
+            ipAddress,
+            userAgent,
+        });
+
+        if (persisted.outcome === 'NOT_FOUND') {
+            return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+        }
+        if (persisted.outcome === 'DUPLICATE') {
+            // A retry of a submission that was stored but whose response was lost.
+            return NextResponse.json({ success: true, alreadySubmitted: true });
+        }
+        if (persisted.outcome === 'ALREADY_SUBMITTED') {
+            return NextResponse.json(
+                { error: 'This form has already been submitted.', code: 'ALREADY_SUBMITTED' },
+                { status: 409 }
+            );
+        }
+        if (persisted.outcome === 'STALE_SESSION') {
+            return NextResponse.json(
+                { error: 'This form was updated after this page was opened. Reload to continue.', code: 'STALE_SESSION' },
+                { status: 409 }
+            );
+        }
+
+        // Everything below runs only for the accepted submission and can no
+        // longer affect what was stored or the seller's response.
+        for (const selection of suggestionSelections) {
+            await markAiSuggestionSelection(selection).catch((selectionError) => {
+                console.error('Failed to record suggestion selection:', selectionError);
+            });
+        }
+
         // Attempt contact resolution for missing contact info
         const unresolvedEntries: { category: string; displayName?: string }[] = [];
         const seenContactTargets = new Set<string>();
@@ -688,6 +748,10 @@ export async function POST(
                 const dedupeKey = `${target.category}:${normalizedProviderName}`;
                 if (seenContactTargets.has(dedupeKey)) continue;
                 seenContactTargets.add(dedupeKey);
+
+                // On a resubmission after a reopen the contact came from the
+                // stored sheet, possibly corrected by the coordinator. Keep it.
+                if (editVersion > 0 && target.hadSubmittedContact) continue;
 
                 const historicalMatch = await findHistoricalContactMatch({
                     requestId: requestData.id,
@@ -740,22 +804,6 @@ export async function POST(
                 }
             }
         }
-
-        // Log event
-        await createEventLog({
-            requestId: requestData.id,
-            eventType: 'seller_submitted',
-            eventData: buildSellerSubmittedEventSummary({
-                ...parsedBody.data,
-                // Only an answer that was actually asked and stored is counted.
-                has_hoa: updateHoa ? hoa.has_hoa : null,
-                packet_mode: packetMode,
-                advanced_modules: configuredAdvancedModules,
-                advanced_module_exclusions: configuredAdvancedModuleExclusions,
-            }),
-            ipAddress,
-            userAgent,
-        });
 
         if (!isTestDriveSubmission) {
             scheduleReferralCreditAward(requestData.account_id);

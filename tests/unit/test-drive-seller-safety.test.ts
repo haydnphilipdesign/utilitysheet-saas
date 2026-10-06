@@ -14,7 +14,7 @@ describe('test-drive seller submission safety guards', () => {
             "requestRecord.is_demo === true && requestRecord.status === 'submitted'",
             postStart
         );
-        const requestUpdate = source.indexOf('UPDATE requests SET', postStart);
+        const requestUpdate = source.indexOf('await submitSellerRequest(', postStart);
         expect(idempotencyGuard).toBeGreaterThan(postStart);
         expect(idempotencyGuard).toBeLessThan(requestUpdate);
     });
@@ -30,7 +30,9 @@ describe('test-drive seller submission safety guards', () => {
     });
 
     it('forces one owner-only PDF recipient and persists delivery outcome after core submission writes', () => {
-        const sellerEvent = source.indexOf("eventType: 'seller_submitted'");
+        // The request, provider rows and seller_submitted event are one statement.
+        const sellerEvent = source.indexOf('await submitSellerRequest(');
+        expect(sellerEvent).toBeGreaterThan(-1);
         const recipientBranch = source.indexOf('const submissionRecipients = isTestDriveSubmission');
         const deliveryEvent = source.indexOf("'test_drive_delivery_succeeded'");
         expect(source).toContain('account?.email');

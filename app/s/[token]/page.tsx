@@ -13,6 +13,9 @@ import type {
     UtilityCategory,
 } from '@/types';
 import { SellerWizard } from '@/components/seller-form/SellerWizard';
+import { SellerLayout } from '@/components/seller-form/SellerLayout';
+import { SellerStatusNotice } from '@/components/seller-form/steps/SellerStatusNotice';
+import type { SellerPrefill } from '@/lib/seller-form/prefill';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 
 interface RequestData {
@@ -27,6 +30,10 @@ interface RequestData {
     advanced_packet_data?: AdvancedPacketData;
     hoa?: HoaAnswers;
     is_demo?: boolean;
+    edit_version?: number;
+    prefill?: SellerPrefill;
+    /** Read-only: already sent and not reopened by the agent. */
+    submitted?: boolean;
 }
 
 interface BrandProfile {
@@ -81,7 +88,19 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 advanced_packet_data: request.advanced_packet_data || {},
                 hoa: request.hoa || undefined,
                 is_demo: request.is_demo === true,
+                edit_version: Number.isInteger(request.edit_version) ? request.edit_version : 0,
+                prefill: request.prefill || undefined,
+                submitted: request.status === 'submitted' && request.is_demo !== true,
             };
+
+            if (reqData.submitted) {
+                // The answers are on the sheet; a leftover local copy has no use.
+                try {
+                    localStorage.removeItem(`us_seller_draft:${resolvedParams.token}`);
+                } catch {
+                    // ignore
+                }
+            }
 
             setRequestData(reqData);
             setSuggestions(data.suggestions || {});
@@ -132,8 +151,24 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
         );
     }
 
+    if (requestData.submitted) {
+        return (
+            <SellerLayout
+                progress={100}
+                address={requestData.property_address}
+                stepName="Submitted"
+                completedCount={0}
+                totalCount={0}
+                brandProfile={brandProfile}
+            >
+                <SellerStatusNotice kind="submitted" address={requestData.property_address} brandProfile={brandProfile} />
+            </SellerLayout>
+        );
+    }
+
     return (
         <SellerWizard
+            key={`session-${requestData.edit_version ?? 0}`}
             initialRequestData={requestData}
             initialSuggestions={suggestions}
             token={resolvedParams.token}

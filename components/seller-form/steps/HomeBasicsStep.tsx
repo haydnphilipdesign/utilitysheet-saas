@@ -121,13 +121,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {collectHoaQuestions && (
                 <div className="space-y-3 sm:space-y-4">
                     <div>
-                        <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                        <p id="basics-hoa-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                             <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             {HOA_GATE_PROMPT}
-                        </label>
+                        </p>
                         <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Homeowners, condo, and townhome associations all count.</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3" role="group" aria-labelledby="basics-hoa-label">
                         {HAS_HOA_OPTIONS.map((opt) => (
                             <button
                                 key={opt.id}
@@ -155,11 +155,11 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             {/* Water Source */}
             <div className="space-y-3 sm:space-y-4">
-                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                <p id="basics-water-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                     <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Water Source
-                </label>
-                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
+                </p>
+                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`} role="group" aria-labelledby="basics-water-label">
                     {waterOptions.map((opt) => (
                         <button
                             key={opt.id}
@@ -182,11 +182,11 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             {/* Sewer Type */}
             <div className="space-y-3 sm:space-y-4">
-                <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                <p id="basics-sewer-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                     <Waves className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Sewer Type
-                </label>
-                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
+                </p>
+                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`} role="group" aria-labelledby="basics-sewer-label">
                     {sewerOptions.map((opt) => (
                         <button
                             key={opt.id}
@@ -210,13 +210,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {/* Heating Fuels */}
             <div className="space-y-3 sm:space-y-4">
                 <div>
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                    <p id="basics-fuels-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                         <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Fuel Sources
-                    </label>
+                    </p>
                     <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Select all that apply to your home.</p>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3" role="group" aria-labelledby="basics-fuels-label">
                     {FUEL_SOURCE_OPTIONS.map((fuel) => {
                         const isSelected = state.fuels_present.includes(fuel.id);
                         return (
@@ -268,13 +268,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     className="space-y-3 sm:space-y-4"
                 >
                     <div>
-                        <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                        <p id="basics-primary-heat-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                             <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Which is the primary heat source?
-                        </label>
-                        <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">This determines which heating provider we ask about next.</p>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Shown as the home&apos;s heating type on the finished sheet.</p>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3" role="group" aria-labelledby="basics-primary-heat-label">
                         {state.fuels_present.map((fuelId) => {
                             const label = getFuelSourceLabel(fuelId);
 
@@ -374,7 +374,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {/* Optional Utilities */}
             {availableOptionalUtilities.length > 0 && (
                 <div className="space-y-3 sm:space-y-4">
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                    <p id="basics-optional-utilities-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                         <span className="inline-flex -space-x-1">
                             {availableOptionalUtilities.slice(0, 3).map((u) => {
                                 const Icon = u.icon;
@@ -386,11 +386,11 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             })}
                         </span>
                         Do you have these utilities?
-                    </label>
+                    </p>
                     <p className="text-xs text-muted-foreground -mt-1 sm:-mt-2">
                         Choose any that apply. We&apos;ll only ask about utilities you have.
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3" role="group" aria-labelledby="basics-optional-utilities-label">
                         {availableOptionalUtilities.map((util) => {
                             const isSelected = state.optional_utilities.includes(util.id);
                             const Icon = util.icon;
@@ -430,7 +430,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             {showAdvancedModuleSelector && (
                 <div className="space-y-3 sm:space-y-4">
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                    <p id="basics-handoff-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
                         <span className="inline-flex -space-x-1">
                             <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
                                 <Flower2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent)]" />
@@ -443,11 +443,11 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             </span>
                         </span>
                         Optional handoff details
-                    </label>
+                    </p>
                     <p className="text-xs text-muted-foreground -mt-1 sm:-mt-2">
                         These help the next owner take over smoothly. Each section you pick adds one short page. You can skip any field later.
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3" role="group" aria-labelledby="basics-handoff-label">
                         {advancedGroups.map((group) => {
                             const availableKeys = group.moduleKeys.filter((moduleKey) => configuredAdvancedModuleSet.has(moduleKey));
                             if (availableKeys.length === 0) return null;
@@ -492,10 +492,16 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     type="button"
                     onClick={onNext}
                     disabled={pendingChoices.length > 0}
+                    aria-describedby={pendingChoices.length > 0 ? 'basics-continue-blocked' : undefined}
                     className={`w-full py-3 sm:py-4 text-center font-semibold text-sm sm:text-base ${wizardPrimaryButton} disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     Continue
                 </button>
+                {pendingChoices.length > 0 && (
+                    <p id="basics-continue-blocked" className="mt-2 text-center text-xs text-muted-foreground">
+                        Choose a {pendingChoices.map((field) => field === 'water_source' ? 'water' : 'sewer').join(' and ')} option above to continue.
+                    </p>
+                )}
             </div>
         </motion.div>
     );

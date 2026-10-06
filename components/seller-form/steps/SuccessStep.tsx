@@ -2,10 +2,9 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Rocket, ArrowRight, FileDown, Loader2, Mail, Phone, Send, Check } from 'lucide-react';
+import { CheckCircle2, Rocket, ArrowRight, FileDown, Loader2, Mail, Phone } from 'lucide-react';
 import Link from 'next/link';
 import type { WizardState } from '../SellerWizard';
-import { trackEvent } from '@/lib/analytics/events';
 import { TestDriveSuccess } from './TestDriveSuccess';
 
 interface BrandContact {
@@ -24,50 +23,12 @@ interface SuccessStepProps {
         state: WizardState;
     };
     brandProfile?: BrandContact | null;
-    sellerToken?: string;
     propertyAddress?: string;
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export function SuccessStep({ isDemo = false, isTestDrive = false, demoData, brandProfile, sellerToken, propertyAddress }: SuccessStepProps) {
+export function SuccessStep({ isDemo = false, isTestDrive = false, demoData, brandProfile, propertyAddress }: SuccessStepProps) {
     const [downloading, setDownloading] = useState(false);
     const [downloaded, setDownloaded] = useState(false);
-    const [confirmEmail, setConfirmEmail] = useState('');
-    const [confirmSubmitting, setConfirmSubmitting] = useState(false);
-    const [confirmSent, setConfirmSent] = useState(false);
-    const [confirmError, setConfirmError] = useState<string | null>(null);
-
-    const handleSendConfirmation = async () => {
-        if (!sellerToken) return;
-        const trimmed = confirmEmail.trim();
-        if (!EMAIL_PATTERN.test(trimmed)) {
-            setConfirmError('Please enter a valid email.');
-            return;
-        }
-        setConfirmSubmitting(true);
-        setConfirmError(null);
-        try {
-            const res = await fetch(`/api/seller/${encodeURIComponent(sellerToken)}/send-link`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: trimmed }),
-            });
-            if (res.ok) {
-                setConfirmSent(true);
-                trackEvent('seller_success_email_confirmation_requested', { success: true, location: 'seller_flow' });
-            } else {
-                const body = await res.json().catch(() => null);
-                setConfirmError(body?.error || 'Could not send. Please try again.');
-                trackEvent('seller_success_email_confirmation_requested', { success: false, location: 'seller_flow' });
-            }
-        } catch {
-            setConfirmError('Network error. Please try again.');
-            trackEvent('seller_success_email_confirmation_requested', { success: false, location: 'seller_flow' });
-        } finally {
-            setConfirmSubmitting(false);
-        }
-    };
 
     const handleDownloadPdf = async () => {
         if (!demoData) return;
@@ -199,42 +160,9 @@ export function SuccessStep({ isDemo = false, isTestDrive = false, demoData, bra
                         <li>Your agent reviews the info and prepares a packet for the buyer.</li>
                         <li>If anything is unclear, your agent may reach out to confirm.</li>
                         <li>You can safely close this page. The link is now read-only.</li>
+                        <li>If something needs correcting later, ask your agent to reopen the form.</li>
                     </ul>
                 </div>
-
-                {sellerToken && !confirmSent && (
-                    <div className="rounded-xl border border-border bg-card/40 p-4 text-left space-y-2">
-                        <p className="text-sm font-medium text-foreground">Want a copy?</p>
-                        <p className="text-xs text-muted-foreground">We&apos;ll email you a link so you can revisit what you submitted anytime.</p>
-                        <div className="flex gap-2 pt-1">
-                            <input
-                                type="email"
-                                inputMode="email"
-                                autoComplete="email"
-                                value={confirmEmail}
-                                placeholder="you@example.com"
-                                onChange={(e) => { setConfirmEmail(e.target.value); setConfirmError(null); }}
-                                disabled={confirmSubmitting}
-                                className="flex-1 h-10 rounded-md border border-border bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color:var(--brand-accent-border)]"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleSendConfirmation}
-                                disabled={confirmSubmitting}
-                                className="inline-flex items-center gap-1.5 rounded-md bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white text-sm font-medium px-3 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                            >
-                                {confirmSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                Send
-                            </button>
-                        </div>
-                        {confirmError && <p className="text-xs text-red-400">{confirmError}</p>}
-                    </div>
-                )}
-                {confirmSent && (
-                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
-                        <Check className="h-4 w-4" /> Sent. Check your inbox.
-                    </div>
-                )}
 
                 {(brandProfile?.contact_email || brandProfile?.contact_phone) && (
                     <div className="text-left rounded-xl border border-border bg-card/40 p-4 space-y-2">

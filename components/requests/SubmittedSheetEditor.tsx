@@ -1068,8 +1068,15 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
 
                     {visibleAdvancedModules.map((moduleKey) => {
                         const visibleKeys = new Set(getAdvancedModuleVisibleFieldKeys(moduleKey, data.request.advancedModuleExclusions));
-                        const fields = ADVANCED_MODULE_FIELD_METADATA[moduleKey].filter((field) => visibleKeys.has(field.key));
                         const moduleData = (data.editor.advanced?.[moduleKey] || {}) as Record<string, unknown>;
+                        // A No answer leaves the irrigation details off the sheet. They stay in
+                        // this form's memory, so switching back restores them until saved.
+                        const irrigationAnsweredNo = moduleKey === 'irrigation_seasonal_controls'
+                            && visibleKeys.has('has_irrigation_system')
+                            && moduleData.has_irrigation_system === 'no';
+                        const fields = ADVANCED_MODULE_FIELD_METADATA[moduleKey].filter((field) => (
+                            visibleKeys.has(field.key) && (!irrigationAnsweredNo || field.key === 'has_irrigation_system')
+                        ));
 
                         return (
                             <section
@@ -1162,6 +1169,11 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                                             </Field>
                                         );
                                     })}
+                                    {irrigationAnsweredNo ? (
+                                        <p className="text-sm text-muted-foreground lg:col-span-2">
+                                            Irrigation details are left off the sheet while this is No.
+                                        </p>
+                                    ) : null}
                                 </div>
                             </section>
                         );

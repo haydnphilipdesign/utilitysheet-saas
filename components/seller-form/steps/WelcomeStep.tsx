@@ -8,8 +8,6 @@ interface WelcomeStepProps {
     sellerIntro?: string | null;
     address: string;
     onNext: () => void;
-    estimatedMinutes?: number;
-    stepCount?: number;
     isTestDrive?: boolean;
     /** False for the public demo, which never stores a draft. */
     savesProgress?: boolean;
@@ -21,14 +19,7 @@ const TEST_DRIVE_POINTS = [
     'This test does not count toward your plan, and no one else is notified.',
 ];
 
-export function WelcomeStep({ sellerIntro, address, onNext, estimatedMinutes, stepCount, isTestDrive = false, savesProgress = true }: WelcomeStepProps) {
-    const minutesText = (() => {
-        if (!estimatedMinutes || estimatedMinutes <= 2) return 'about 2 minutes';
-        if (estimatedMinutes <= 4) return 'about 3 to 4 minutes';
-        if (estimatedMinutes <= 6) return 'about 5 minutes';
-        return 'about 6 to 8 minutes';
-    })();
-
+export function WelcomeStep({ sellerIntro, address, onNext, isTestDrive = false, savesProgress = true }: WelcomeStepProps) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -79,9 +70,7 @@ export function WelcomeStep({ sellerIntro, address, onNext, estimatedMinutes, st
                     </div>
                     {sellerIntro && <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{sellerIntro}</p>}
                     <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                        {stepCount && stepCount > 0
-                            ? `${stepCount} quick questions, ${minutesText}. We'll ask which services the home uses, then you can confirm the providers.`
-                            : `This takes ${minutesText}. We'll ask which services the home uses, then you can confirm the providers.`}
+                        A few short steps. We&apos;ll ask which services the home uses, then you can confirm the providers.
                     </p>
                     {savesProgress ? (
                         <p className="text-xs text-muted-foreground/80 inline-flex items-center gap-1.5 justify-center">

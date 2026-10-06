@@ -201,8 +201,10 @@ describe('scheduleReferralCreditAward', () => {
             join(process.cwd(), 'app/api/seller/[token]/route.ts'),
             'utf8'
         );
-        const utilityInsertIndex = routeSource.indexOf('INSERT INTO utility_entries');
-        const sellerSubmittedEventIndex = routeSource.indexOf("eventType: 'seller_submitted'");
+        // Provider rows and the seller_submitted event are written by one
+        // statement; refused outcomes return before anything is scheduled.
+        const utilityInsertIndex = routeSource.indexOf('await submitSellerRequest(');
+        const sellerSubmittedEventIndex = routeSource.indexOf("persisted.outcome === 'STALE_SESSION'");
         const scheduleIndex = routeSource.indexOf(
             'scheduleReferralCreditAward(requestData.account_id);'
         );

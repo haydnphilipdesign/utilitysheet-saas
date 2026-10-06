@@ -35,6 +35,15 @@ export async function POST(
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
+        // Nothing is left for the seller to do on a submitted request. After a
+        // reopen the request is in progress again and can be reminded.
+        if (requestData.status === 'submitted') {
+            return NextResponse.json(
+                { error: 'This request is already submitted. Reopen it for the seller before sending a reminder.' },
+                { status: 409 }
+            );
+        }
+
         if (!requestData.seller_email) {
             return NextResponse.json({ error: 'Seller email is required to send a reminder' }, { status: 400 });
         }

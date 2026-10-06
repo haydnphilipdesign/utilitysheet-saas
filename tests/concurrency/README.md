@@ -8,13 +8,13 @@ connections to a disposable local PostgreSQL server.
 It is not part of `npm test` or CI because the repository does not depend on a
 PostgreSQL server or the `pg` client. Run it by hand after changing
 `lib/neon/queries/admin-writes.ts`, `lib/neon/queries/reminder-operations.ts`,
-`lib/ops/triage.ts`, or the locking strategy.
+`lib/ops/triage.ts`, `lib/neon/queries/seller-submission.ts`, or the locking strategy.
 
 ## Safety
 
 - Starts its own server on `127.0.0.1` in a temporary directory and removes it afterward.
 - Reads no `DATABASE_URL` and has no way to reach a hosted database.
-- Loads `schema.sql` and the three new migration files into that local server only.
+- Loads `schema.sql` and the migration files it names into that local server only.
 
 ## Running
 
@@ -42,3 +42,6 @@ The script prints one `PASS`/`FAIL` line per check and exits non-zero on failure
 - Two operators triaging the same item at once: one wins, the other is told to refresh.
 
 Last run: 2026-10-05, PostgreSQL 18.4 (embedded), all 12 checks passed.
+- Simultaneous seller submissions: one accepted, one refused, one sheet and one event. The same key twice is one accepted and one duplicate.
+- A submission from an earlier editing session that waits behind an uncommitted reopen is refused as stale once the reopen commits, and its retry key is not treated as a duplicate.
+- Two reopens at once, and a resubmission racing close-without-changes: exactly one takes effect.

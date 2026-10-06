@@ -347,6 +347,8 @@ export interface Request {
     advanced_packet_data?: AdvancedPacketData | null;
     is_demo?: boolean | null;
     metered_at?: string | null;
+    /** Seller editing session; above 0 once a coordinator has reopened the request. */
+    seller_edit_version?: number | null;
     is_locked?: boolean | null;
     can_edit_submitted_sheet?: boolean | null;
     locked_reason?: string | null;

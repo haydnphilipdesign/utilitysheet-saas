@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import type { AdvancedModuleExclusions, AdvancedModuleKey, AdvancedPacketData } from '@/types';
 import { ADVANCED_MODULE_LABELS, getAdvancedModuleVisibleFieldKeys } from '@/lib/packet/modules';
 import { trackEvent } from '@/lib/analytics/events';
+import { wizardFocusRing } from '../wizard-ui';
 
 interface AdvancedDetailsStepProps {
     moduleKey: AdvancedModuleKey;
@@ -86,7 +87,7 @@ function Field({
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
                     rows={3}
-                    className="w-full rounded-md border border-input bg-background/60 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+                    className="w-full rounded-md border border-input bg-background/60 px-3 py-2 text-base sm:text-sm text-foreground placeholder:text-muted-foreground"
                 />
             ) : (
                 <input
@@ -95,7 +96,7 @@ function Field({
                     value={value || ''}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
-                    className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground"
+                    className="h-11 sm:h-10 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground placeholder:text-muted-foreground"
                 />
             )}
             {helperText && <p className="text-xs text-muted-foreground">{helperText}</p>}
@@ -250,7 +251,7 @@ export function AdvancedDetailsStep({
                                     has_irrigation_system: e.target.value as 'yes' | 'no' | 'not_sure',
                                 },
                             })}
-                            className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
+                            className="h-11 sm:h-10 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground"
                         >
                             <option value="not_sure">Not sure</option>
                             <option value="yes">Yes</option>
@@ -281,8 +282,8 @@ export function AdvancedDetailsStep({
                             },
                         })}
                     />)}
-                    {!hideIrrigationDetails && renderIfVisible('watering_days', <div className="space-y-2 sm:col-span-2">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Watering Days</span>
+                    {!hideIrrigationDetails && renderIfVisible('watering_days', <div className="space-y-2 sm:col-span-2" role="group" aria-labelledby="irrigation-watering-days-label">
+                        <span id="irrigation-watering-days-label" className="text-xs text-muted-foreground uppercase tracking-wide">Watering Days</span>
                         <div className="flex flex-wrap gap-1.5 pb-1">
                             {[
                                 { id: 'every_day' as const, label: 'Every day' },
@@ -295,7 +296,7 @@ export function AdvancedDetailsStep({
                                     key={preset.id}
                                     type="button"
                                     onClick={() => setQuickWateringDays(preset.id)}
-                                    className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                    className={`min-h-11 rounded-full border border-border bg-muted/30 px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors ${wizardFocusRing}`}
                                 >
                                     {preset.label}
                                 </button>
@@ -311,7 +312,7 @@ export function AdvancedDetailsStep({
                                         data-testid={`irrigation-day-${day.value}`}
                                         aria-pressed={isSelected}
                                         onClick={() => toggleWateringDay(day.value)}
-                                        className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                                        className={`min-h-11 min-w-11 rounded-md border px-3 text-xs font-medium transition-colors ${wizardFocusRing} ${
                                             isSelected
                                                 ? 'border-[color:var(--brand-accent-border)] bg-[var(--brand-accent-soft)] text-[color:var(--brand-accent)]'
                                                 : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -335,7 +336,7 @@ export function AdvancedDetailsStep({
                                     irrigation_season_start_month: e.target.value || null,
                                 },
                             })}
-                            className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
+                            className="h-11 sm:h-10 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground"
                         >
                             <option value="">Not sure</option>
                             {MONTH_OPTIONS.map((month) => (
@@ -356,7 +357,7 @@ export function AdvancedDetailsStep({
                                     irrigation_season_end_month: e.target.value || null,
                                 },
                             })}
-                            className="h-10 w-full rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
+                            className="h-11 sm:h-10 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground"
                         >
                             <option value="">Not sure</option>
                             {MONTH_OPTIONS.map((month) => (
@@ -611,14 +612,14 @@ export function AdvancedDetailsStep({
                     <button
                         type="button"
                         onClick={onBack}
-                        className="flex-1 py-3 rounded-xl font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        className={`flex-1 py-3 rounded-xl font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors ${wizardFocusRing}`}
                     >
                         Back
                     </button>
                     <button
                         type="button"
                         onClick={onNext}
-                        className="flex-[2] py-3 rounded-xl font-semibold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors"
+                        className={`flex-[2] py-3 rounded-xl font-semibold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors ${wizardFocusRing}`}
                         data-testid="advanced-continue"
                     >
                         {isReviewEdit ? 'Save & Return to Review' : 'Continue'}
@@ -628,7 +629,7 @@ export function AdvancedDetailsStep({
                     <button
                         type="button"
                         onClick={handleSkipSection}
-                        className="w-full py-2.5 rounded-xl text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        className={`w-full min-h-11 rounded-xl text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors ${wizardFocusRing}`}
                         data-testid="advanced-skip-section"
                     >
                         Skip this section

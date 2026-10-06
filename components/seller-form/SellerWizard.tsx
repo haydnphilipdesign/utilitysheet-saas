@@ -22,6 +22,8 @@ import { UtilityStep } from './steps/UtilityStep';
 import { AdvancedDetailsStep } from './steps/AdvancedDetailsStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { SuccessStep } from './steps/SuccessStep';
+import { SellerStatusNotice } from './steps/SellerStatusNotice';
+import { sellerPrefillToWizardState, type SellerPrefill } from '@/lib/seller-form/prefill';
 import { trackEvent } from '@/lib/analytics/events';
 import {
     ADVANCED_MODULE_KEYS,
@@ -47,6 +49,20 @@ export interface WizardState extends HoaAnswers {
     advanced_module_exclusions: AdvancedModuleExclusions;
     advanced: AdvancedPacketData;
     utilities: Record<UtilityCategory, UtilityWizardState>;
+}
+
+function createSubmissionKey(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}-${Math.random().toString(36).slice(2, 14)}`;
+}
+
+/** Cheap fingerprint so a retry reuses its key only while the answers are unchanged. */
+function digestOf(value: string): string {
+    let hash = 5381;
+    for (let index = 0; index < value.length; index += 1) {
+        hash = ((hash << 5) + hash + value.charCodeAt(index)) | 0;
+    }
+    return `${value.length}:${hash}`;
 }
 
 function reconcileHoaUtilityChoices(state: WizardState, enabled: boolean): WizardState {
@@ -98,6 +114,10 @@ interface SellerWizardProps {
         advanced_module_exclusions?: AdvancedModuleExclusions;
         advanced_packet_data?: AdvancedPacketData;
         hoa?: HoaAnswers;
+        /** Seller editing session from the server; above 0 after a coordinator reopen. */
+        edit_version?: number;
+        /** The stored sheet, sent when the request was reopened. */
+        prefill?: SellerPrefill;
     };
     initialSuggestions: Record<UtilityCategory, ProviderSuggestion[]>;
     token: string;
@@ -106,7 +126,14 @@ interface SellerWizardProps {
     isTestDrive?: boolean;
 }
 
-type AdvancedNavigationMode = 'linear' | 'review_edit';
+/*
+ * linear: the first pass, in order.
+ * review_edit: one provider or handoff section opened from Review; returns there.
+ * catch_up: Home Basics was edited from Review; only the provider steps and
+ *   handoff sections that edit newly added are visited before returning.
+ */
+type NavigationMode = 'linear' | 'review_edit' | 'catch_up';
+const NAVIGATION_MODES: NavigationMode[] = ['linear', 'review_edit', 'catch_up'];
 
 export function SellerWizard({ initialRequestData, initialSuggestions, token, brandProfile, isDemo = false, isTestDrive = false }: SellerWizardProps) {
     enum Step {
@@ -118,10 +145,42 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         SUCCESS = 5,
     }
 
-    const [currentStep, setCurrentStep] = useState<Step>(Step.WELCOME);
+    const editVersion = initialRequestData.edit_version ?? 0;
+    const collectHoaQuestionsInitially = initialRequestData.collect_hoa_questions !== false;
+    // A reopened request starts from the stored sheet. If that sheet holds HOA
+    // billing choices that conflict with a No, Home Basics asks again first.
+    const [initialWizardState] = useState<WizardState | null>(() => {
+        if (!initialRequestData.prefill) return null;
+        const packetMode: PacketMode = initialRequestData.packet_mode || 'simple';
+        const modules = initialRequestData.advanced_modules || [];
+        const exclusions = normalizeAdvancedModuleExclusions(initialRequestData.advanced_module_exclusions || {}, modules);
+        return reconcileHoaUtilityChoices({
+            heating_type: 'not_sure',
+            ...createEmptyHoaAnswers(),
+            ...initialRequestData.hoa,
+            trash_handled_by: 'not_sure',
+            packet_mode: packetMode,
+            advanced_modules: packetMode === 'advanced'
+                ? getEffectiveAdvancedModules(ADVANCED_MODULE_KEYS.filter((moduleKey) => modules.includes(moduleKey)), exclusions)
+                : [],
+            advanced_module_exclusions: exclusions,
+            advanced: initialRequestData.advanced_packet_data || {},
+            ...sellerPrefillToWizardState(initialRequestData.prefill),
+        } as WizardState, collectHoaQuestionsInitially);
+    });
+    const startsFromStoredSheet = initialWizardState !== null;
+    const [currentStep, setCurrentStep] = useState<Step>(() => {
+        if (!initialWizardState) return Step.WELCOME;
+        return initialWizardState.hoaUtilityReselection?.length ? Step.HOME_BASICS : Step.REVIEW;
+    });
+    // Set when the server refuses this page's answers for good.
+    const [terminalNotice, setTerminalNotice] = useState<'submitted' | 'stale' | null>(null);
+    const [submissionAttempt, setSubmissionAttempt] = useState<{ key: string; digest: string } | null>(null);
     const [utilityIndex, setUtilityIndex] = useState(0);
     const [advancedModuleIndex, setAdvancedModuleIndex] = useState(0);
-    const [advancedNavigationMode, setAdvancedNavigationMode] = useState<AdvancedNavigationMode>('linear');
+    const [navigationMode, setNavigationMode] = useState<NavigationMode>('linear');
+    // Handoff sections that were enabled when Home Basics was reopened from Review.
+    const [reviewedAdvancedModules, setReviewedAdvancedModules] = useState<AdvancedModuleKey[]>([]);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<{ kind: 'network' | 'server' | 'rate_limit' | 'unknown'; message: string } | null>(null);
     const [autosaveFlash, setAutosaveFlash] = useState(false);
@@ -147,7 +206,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         [requestPacketMode, requestAdvancedModuleExclusions, requestAdvancedModules]
     );
 
-    const [state, setState] = useState<WizardState>(() => ({
+    const [state, setState] = useState<WizardState>(() => initialWizardState ?? ({
         water_source: 'not_sure',
         sewer_type: 'not_sure',
         heating_type: 'not_sure',
@@ -164,7 +223,41 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         utilities: {} as Record<UtilityCategory, UtilityWizardState>,
     }));
 
-    const [visibleUtilities, setVisibleUtilities] = useState<UtilityCategory[]>([]);
+    // Derived during render, not in an effect, so a restored draft's provider-step
+    // index is checked against the restored answers instead of the defaults.
+    const visibleUtilities = useMemo(() => {
+        const requestedCategories = new Set<UtilityCategory>(initialRequestData.utility_categories);
+        const nextUtilities: UtilityCategory[] = ['electric'];
+
+        if (requestedCategories.has('water') && state.water_source === 'city') {
+            nextUtilities.push('water');
+        }
+        if (requestedCategories.has('sewer') && state.sewer_type === 'public') {
+            nextUtilities.push('sewer');
+        }
+
+        const fuelMap: Record<string, UtilityCategory> = {
+            natural_gas: 'gas',
+            propane: 'propane',
+            oil: 'oil',
+        };
+
+        state.fuels_present.forEach((fuel) => {
+            const mapped = fuelMap[fuel];
+            if (mapped && requestedCategories.has(mapped)) {
+                nextUtilities.push(mapped);
+            }
+        });
+
+        const preservedCategories: UtilityCategory[] = ['trash', 'internet', 'cable'];
+        preservedCategories.forEach((cat) => {
+            if (requestedCategories.has(cat) && state.optional_utilities.includes(cat)) {
+                nextUtilities.push(cat);
+            }
+        });
+
+        return Array.from(new Set(nextUtilities));
+    }, [state.water_source, state.sewer_type, state.fuels_present, state.optional_utilities, initialRequestData.utility_categories]);
     const enabledAdvancedModules = state.packet_mode === 'advanced' ? state.advanced_modules : [];
     const orderedAdvancedModules = useMemo(
         () => getEffectiveAdvancedModules(enabledAdvancedModules, state.advanced_module_exclusions),
@@ -189,9 +282,24 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 currentStep?: number;
                 utilityIndex?: number;
                 advancedModuleIndex?: number;
-                advancedNavigationMode?: AdvancedNavigationMode;
+                /** Written before navigationMode existed. */
+                advancedNavigationMode?: NavigationMode;
+                navigationMode?: NavigationMode;
+                reviewedAdvancedModules?: AdvancedModuleKey[];
+                editVersion?: number;
+                submissionAttempt?: { key?: unknown; digest?: unknown } | null;
             };
             if ((parsed?.v !== 1 && parsed?.v !== 2) || !parsed.state) return;
+
+            // A draft from an earlier editing session, or one left behind after
+            // a submission, must not replace the answers the server holds now.
+            if ((parsed.editVersion ?? 0) !== editVersion || parsed.currentStep === Step.SUCCESS) {
+                localStorage.removeItem(draftStorageKey);
+                return;
+            }
+            if (typeof parsed.submissionAttempt?.key === 'string' && typeof parsed.submissionAttempt?.digest === 'string') {
+                setSubmissionAttempt({ key: parsed.submissionAttempt.key, digest: parsed.submissionAttempt.digest });
+            }
 
             // Merge over the initial state so a draft saved before a question
             // existed keeps that question's default instead of dropping the key.
@@ -213,8 +321,14 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             if (parsed.v === 2 && typeof parsed.advancedModuleIndex === 'number') {
                 setAdvancedModuleIndex(Math.max(0, parsed.advancedModuleIndex));
             }
-            if (parsed.v === 2 && parsed.advancedNavigationMode) {
-                setAdvancedNavigationMode(parsed.advancedNavigationMode);
+            const draftNavigationMode = parsed.navigationMode ?? parsed.advancedNavigationMode;
+            if (parsed.v === 2 && draftNavigationMode && NAVIGATION_MODES.includes(draftNavigationMode)) {
+                setNavigationMode(draftNavigationMode);
+            }
+            if (parsed.v === 2 && Array.isArray(parsed.reviewedAdvancedModules)) {
+                setReviewedAdvancedModules(
+                    ADVANCED_MODULE_KEYS.filter((moduleKey) => parsed.reviewedAdvancedModules?.includes(moduleKey))
+                );
             }
         } catch {
             // ignore
@@ -224,17 +338,22 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
     useEffect(() => {
         if (isDemo) return;
+        // Nothing is kept once the answers are sent or can no longer be sent.
+        if (currentStep === Step.SUCCESS || terminalNotice) return;
         const timeout = setTimeout(() => {
             try {
                 localStorage.setItem(
                     draftStorageKey,
                     JSON.stringify({
                         v: 2,
+                        editVersion,
+                        submissionAttempt,
                         state,
                         currentStep,
                         utilityIndex,
                         advancedModuleIndex,
-                        advancedNavigationMode,
+                        navigationMode,
+                        reviewedAdvancedModules,
                     })
                 );
                 if (currentStep > Step.WELCOME && currentStep < Step.SUCCESS) {
@@ -249,7 +368,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
         return () => clearTimeout(timeout);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [draftStorageKey, state, currentStep, utilityIndex, advancedModuleIndex, advancedNavigationMode, isDemo]);
+    }, [draftStorageKey, state, currentStep, utilityIndex, advancedModuleIndex, navigationMode, reviewedAdvancedModules, isDemo, editVersion, submissionAttempt, terminalNotice]);
 
     useEffect(() => () => {
         if (autosaveFlashTimer.current) clearTimeout(autosaveFlashTimer.current);
@@ -330,38 +449,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     }, [currentStep, utilityIndex, visibleUtilities, token, isDemo, suggestionsByCategory, loadingSuggestions]);
 
     useEffect(() => {
-        const requestedCategories = new Set<UtilityCategory>(initialRequestData.utility_categories);
-        const nextUtilities: UtilityCategory[] = ['electric'];
-
-        if (requestedCategories.has('water') && state.water_source === 'city') {
-            nextUtilities.push('water');
-        }
-        if (requestedCategories.has('sewer') && state.sewer_type === 'public') {
-            nextUtilities.push('sewer');
-        }
-
-        const fuelMap: Record<string, UtilityCategory> = {
-            natural_gas: 'gas',
-            propane: 'propane',
-            oil: 'oil',
-        };
-
-        state.fuels_present.forEach((fuel) => {
-            const mapped = fuelMap[fuel];
-            if (mapped && requestedCategories.has(mapped)) {
-                nextUtilities.push(mapped);
-            }
-        });
-
-        const preservedCategories: UtilityCategory[] = ['trash', 'internet', 'cable'];
-        preservedCategories.forEach((cat) => {
-            if (requestedCategories.has(cat) && state.optional_utilities.includes(cat)) {
-                nextUtilities.push(cat);
-            }
-        });
-
-        const uniqueUtils = Array.from(new Set(nextUtilities));
-        setVisibleUtilities(uniqueUtils);
+        const uniqueUtils = visibleUtilities;
 
         setState((prev) => {
             const nextUtilitiesState = { ...prev.utilities };
@@ -394,7 +482,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
             return hasChanges ? { ...prev, utilities: nextUtilitiesState } : prev;
         });
-    }, [state.water_source, state.sewer_type, state.fuels_present, state.optional_utilities, initialRequestData.utility_categories]);
+    }, [visibleUtilities]);
 
     useEffect(() => {
         if (currentStep !== Step.UTILITIES) return;
@@ -408,7 +496,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             setAdvancedModuleIndex(0);
             if (currentStep === Step.ADVANCED_DETAILS) {
                 setCurrentStep(Step.REVIEW);
-                setAdvancedNavigationMode('linear');
+                setNavigationMode('linear');
             }
             return;
         }
@@ -470,26 +558,72 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     else if (currentStep === Step.SUCCESS) progress = 100;
     progress = Math.min(Math.max(progress, 0), 100);
 
+    const returnToReview = () => {
+        setNavigationMode('linear');
+        setCurrentStep(Step.REVIEW);
+    };
+
+    // After Home Basics is edited from Review: visit provider steps that have no
+    // answer yet, then handoff sections that edit enabled, then go back to Review.
+    const continueCatchUp = (utilityFrom: number, advancedFrom: number) => {
+        const nextUtility = visibleUtilities.findIndex(
+            (category, index) => index >= utilityFrom && !state.utilities[category]?.entry_mode
+        );
+        if (nextUtility >= 0) {
+            setUtilityIndex(nextUtility);
+            setCurrentStep(Step.UTILITIES);
+            return;
+        }
+
+        const nextModule = orderedAdvancedModules.findIndex(
+            (moduleKey, index) => index >= advancedFrom && !reviewedAdvancedModules.includes(moduleKey)
+        );
+        if (nextModule >= 0) {
+            setAdvancedModuleIndex(nextModule);
+            setCurrentStep(Step.ADVANCED_DETAILS);
+            return;
+        }
+
+        returnToReview();
+    };
+
     const handleNext = () => {
         if (currentStep === Step.WELCOME) {
             setCurrentStep(Step.HOME_BASICS);
         } else if (currentStep === Step.HOME_BASICS) {
+            if (navigationMode === 'catch_up') {
+                continueCatchUp(0, 0);
+                return;
+            }
             setCurrentStep(Step.UTILITIES);
             setUtilityIndex(0);
         } else if (currentStep === Step.UTILITIES) {
+            if (navigationMode === 'review_edit') {
+                returnToReview();
+                return;
+            }
+            if (navigationMode === 'catch_up') {
+                // The step just answered still reads as unanswered in this render.
+                continueCatchUp(utilityIndex + 1, 0);
+                return;
+            }
+
             if (utilityIndex < visibleUtilities.length - 1) {
                 setUtilityIndex((prev) => prev + 1);
             } else if (hasAdvancedStep) {
                 setAdvancedModuleIndex(0);
-                setAdvancedNavigationMode('linear');
+                setNavigationMode('linear');
                 setCurrentStep(Step.ADVANCED_DETAILS);
             } else {
                 setCurrentStep(Step.REVIEW);
             }
         } else if (currentStep === Step.ADVANCED_DETAILS) {
-            if (advancedNavigationMode === 'review_edit') {
-                setCurrentStep(Step.REVIEW);
-                setAdvancedNavigationMode('linear');
+            if (navigationMode === 'review_edit') {
+                returnToReview();
+                return;
+            }
+            if (navigationMode === 'catch_up') {
+                continueCatchUp(visibleUtilities.length, advancedModuleIndex + 1);
                 return;
             }
 
@@ -505,15 +639,27 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         if (currentStep === Step.HOME_BASICS) {
             setCurrentStep(Step.WELCOME);
         } else if (currentStep === Step.UTILITIES) {
+            if (navigationMode === 'review_edit') {
+                returnToReview();
+                return;
+            }
+            if (navigationMode === 'catch_up') {
+                setCurrentStep(Step.HOME_BASICS);
+                return;
+            }
+
             if (utilityIndex > 0) {
                 setUtilityIndex((prev) => prev - 1);
             } else {
                 setCurrentStep(Step.HOME_BASICS);
             }
         } else if (currentStep === Step.ADVANCED_DETAILS) {
-            if (advancedNavigationMode === 'review_edit') {
-                setCurrentStep(Step.REVIEW);
-                setAdvancedNavigationMode('linear');
+            if (navigationMode === 'review_edit') {
+                returnToReview();
+                return;
+            }
+            if (navigationMode === 'catch_up') {
+                setCurrentStep(Step.HOME_BASICS);
                 return;
             }
 
@@ -525,7 +671,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             }
         } else if (currentStep === Step.REVIEW) {
             if (hasAdvancedStep) {
-                setAdvancedNavigationMode('linear');
+                setNavigationMode('linear');
                 setAdvancedModuleIndex(Math.max(0, orderedAdvancedModules.length - 1));
                 setCurrentStep(Step.ADVANCED_DETAILS);
             } else {
@@ -536,7 +682,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     };
 
     const handleEditBasics = () => {
-        setAdvancedNavigationMode('linear');
+        setReviewedAdvancedModules(orderedAdvancedModules);
+        setNavigationMode('catch_up');
         setCurrentStep(Step.HOME_BASICS);
     };
 
@@ -545,7 +692,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         if (targetIndex < 0) return;
 
         setAdvancedModuleIndex(targetIndex);
-        setAdvancedNavigationMode('review_edit');
+        setNavigationMode('review_edit');
         setCurrentStep(Step.ADVANCED_DETAILS);
     };
 
@@ -585,12 +732,44 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             return;
         }
 
+        const clearDraft = () => {
+            try {
+                localStorage.removeItem(draftStorageKey);
+            } catch {
+                // ignore
+            }
+        };
+
+        // One key per set of answers: a retry after a lost response is
+        // recognized by the server, while changed answers count as new.
+        const answers = JSON.stringify({ ...state, hoaUtilityReselection: undefined });
+        const digest = digestOf(answers);
+        const attempt = submissionAttempt?.digest === digest
+            ? submissionAttempt
+            : { key: createSubmissionKey(), digest };
+        if (attempt !== submissionAttempt) setSubmissionAttempt(attempt);
+
         try {
             const response = await fetch(`/api/seller/${token}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...state, hoaUtilityReselection: undefined }),
+                body: JSON.stringify({
+                    ...JSON.parse(answers),
+                    edit_version: editVersion,
+                    submission_key: attempt.key,
+                }),
             });
+
+            const refusal = response.status === 409
+                ? ((await response.clone().json().catch(() => null)) as { code?: string } | null)?.code
+                : null;
+            if (refusal === 'ALREADY_SUBMITTED' || refusal === 'STALE_SESSION') {
+                // These answers can never be accepted, so they are not kept.
+                clearDraft();
+                setTerminalNotice(refusal === 'ALREADY_SUBMITTED' ? 'submitted' : 'stale');
+                setSubmitting(false);
+                return;
+            }
 
             if (response.ok) {
                 try {
@@ -670,32 +849,32 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             completedCount={visibleUtilities.filter((cat) => state.utilities[cat]?.entry_mode !== null).length}
             totalCount={visibleUtilities.length}
             brandProfile={brandProfile}
-            stepNumber={currentStepNumber}
+            stepNumber={currentStep === Step.HOME_BASICS ? undefined : currentStepNumber}
             stepTotal={totalSteps}
             autosaveFlash={autosaveFlash}
             sellerToken={isDemo ? undefined : token}
-            showSaveLink={!isDemo && !isTestDrive && currentStep > Step.WELCOME && currentStep < Step.SUCCESS}
+            showSaveLink={!isDemo && !isTestDrive && !terminalNotice && currentStep > Step.WELCOME && currentStep < Step.SUCCESS}
             isTestDrive={isTestDrive}
         >
+            {terminalNotice && (
+                <SellerStatusNotice
+                    kind={terminalNotice}
+                    address={initialRequestData.property_address}
+                    brandProfile={brandProfile}
+                />
+            )}
+            {!terminalNotice && (
             <AnimatePresence mode={shouldReduceMotion ? 'sync' : 'wait'} initial={!shouldReduceMotion}>
-                {currentStep === Step.WELCOME && (() => {
-                    const utilityCount = Math.max(1, visibleUtilities.length || initialRequestData.utility_categories.length);
-                    const advancedCount = orderedAdvancedModules.length;
-                    const totalSteps = 1 /* basics */ + utilityCount + advancedCount + 1 /* review */;
-                    const estimatedMinutes = Math.max(2, Math.round(utilityCount * 0.5 + advancedCount * 1.0 + 1));
-                    return (
-                        <WelcomeStep
-                            key="welcome"
-                            sellerIntro={initialRequestData.seller_intro}
-                            address={initialRequestData.property_address}
-                            onNext={handleNext}
-                            estimatedMinutes={estimatedMinutes}
-                            stepCount={totalSteps}
-                            isTestDrive={isTestDrive}
-                            savesProgress={!isDemo}
-                        />
-                    );
-                })()}
+                {currentStep === Step.WELCOME && (
+                    <WelcomeStep
+                        key="welcome"
+                        sellerIntro={initialRequestData.seller_intro}
+                        address={initialRequestData.property_address}
+                        onNext={handleNext}
+                        isTestDrive={isTestDrive}
+                        savesProgress={!isDemo}
+                    />
+                )}
 
                 {currentStep === Step.HOME_BASICS && (
                     <HomeBasicsStep
@@ -720,6 +899,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         loadingSuggestions={!!loadingSuggestions[visibleUtilities[utilityIndex]] && !Object.prototype.hasOwnProperty.call(suggestionsByCategory, visibleUtilities[utilityIndex])}
                         token={token}
                         collectElectricMeterNumber={collectElectricMeterNumber}
+                        isReviewEdit={navigationMode === 'review_edit'}
                         onNext={handleNext}
                         onBack={handleBack}
                     />
@@ -727,11 +907,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
 
                 {currentStep === Step.ADVANCED_DETAILS && currentAdvancedModule && (
                     <AdvancedDetailsStep
-                        key={`advanced-details-${currentAdvancedModule}-${advancedNavigationMode}`}
+                        key={`advanced-details-${currentAdvancedModule}-${navigationMode}`}
                         moduleKey={currentAdvancedModule}
                         moduleIndex={advancedModuleIndex}
                         moduleCount={orderedAdvancedModules.length}
-                        isReviewEdit={advancedNavigationMode === 'review_edit'}
+                        isReviewEdit={navigationMode === 'review_edit'}
                         moduleExclusions={state.advanced_module_exclusions}
                         advanced={state.advanced}
                         updateAdvanced={updateAdvanced}
@@ -748,7 +928,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         onBack={handleBack}
                         onEditBasics={handleEditBasics}
                         onEditUtility={(index) => {
-                            setAdvancedNavigationMode('linear');
+                            setNavigationMode('review_edit');
                             setCurrentStep(Step.UTILITIES);
                             setUtilityIndex(index);
                         }}
@@ -756,6 +936,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         updateUtility={updateUtilityState}
                         collectElectricMeterNumber={collectElectricMeterNumber}
                         collectHoaQuestions={collectHoaQuestions}
+                        reopened={startsFromStoredSheet}
                         onSubmit={handleSubmit}
                         submitting={submitting}
                         packetMode={state.packet_mode}
@@ -798,11 +979,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                             state,
                         } : undefined}
                         brandProfile={brandProfile || undefined}
-                        sellerToken={isDemo ? undefined : token}
                         propertyAddress={initialRequestData.property_address}
                     />
                 )}
             </AnimatePresence>
+            )}
         </SellerLayout>
     );
 }

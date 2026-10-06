@@ -50,7 +50,7 @@ const REQUEST_ID = '33333333-3333-4333-8333-333333333333';
 const account = { id: 'acct-1', full_name: 'Olivia Owner' };
 const requestRecord = {
     id: REQUEST_ID, account_id: 'acct-1', property_address: '1 Open St <b>', seller_name: 'Sam Seller',
-    seller_email: 'sam@example.com', seller_token: 'seller-capability-token', public_token: 'pub', status: 'submitted',
+    seller_email: 'sam@example.com', seller_token: 'seller-capability-token', public_token: 'pub', status: 'in_progress',
     brand_profile_id: null, closing_date: null,
 } as unknown as SellerRequest;
 
@@ -90,6 +90,15 @@ describe('customer reminder endpoint', () => {
         expect(mocks.resendSend).not.toHaveBeenCalled();
     });
 
+    it('refuses a submitted request, which has nothing left for the seller to do', async () => {
+        mocks.getRequestById.mockResolvedValueOnce({ ...requestRecord, status: 'submitted' });
+        const response = await post();
+        expect(response.status).toBe(409);
+        expect((await response.json()).error).toMatch(/reopen it for the seller/i);
+        expect(mocks.claim).not.toHaveBeenCalled();
+        expect(mocks.resendSend).not.toHaveBeenCalled();
+    });
+
     it('claims as the agent, sends with the operation key, then records one accepted reminder', async () => {
         const response = await post();
         expect(response.status).toBe(200);
@@ -100,7 +109,7 @@ describe('customer reminder endpoint', () => {
             requestId: REQUEST_ID, recipientEmail: 'sam@example.com',
             actor: { type: 'agent', accountId: 'acct-1', ipAddress: '198.51.100.7', userAgent: 'vitest' },
         });
-        // The customer path keeps its existing eligibility: a submitted request can still be reminded.
+        // An open request, including one reopened for the seller, can be reminded.
         expect(mocks.resendSend).toHaveBeenCalledWith(
             expect.objectContaining({ to: 'sam@example.com', from: 'UtilitySheet <noreply@utilitysheet.com>' }),
             { idempotencyKey: `seller-reminder/${claim.operationId}` }

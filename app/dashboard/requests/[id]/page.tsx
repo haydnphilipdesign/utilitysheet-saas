@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Loader2, Mail, Download, Lock, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Copy, ExternalLink, Loader2, Mail, Download, Lock, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { DeleteRequestDialog } from '@/components/requests/DeleteRequestDialog';
+import { ReopenRequestDialog } from '@/components/requests/ReopenRequestDialog';
 import type { Request } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -33,6 +34,8 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     const [downloadingPdf, setDownloadingPdf] = useState(false);
     const [updatingMode, setUpdatingMode] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [reopenOpen, setReopenOpen] = useState(false);
+    const [closingReopen, setClosingReopen] = useState(false);
 
     const sellerToken = request?.seller_token || request?.public_token || '';
     const sellerLink = useMemo(() => {
@@ -93,6 +96,28 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
             toast.error('Failed to send reminder');
         } finally {
             setSendingReminder(false);
+        }
+    };
+
+    const handleCloseReopen = async () => {
+        if (!request) return;
+        setClosingReopen(true);
+        try {
+            const res = await fetch(`/api/requests/${request.id}/reopen`, { method: 'DELETE' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                toast.error(data.error || 'Failed to close request');
+                return;
+            }
+            // Editing access comes from the plan check on a fresh load.
+            const refreshed = await fetch(`/api/requests/${request.id}`);
+            setRequest(refreshed.ok ? await refreshed.json() : data);
+            toast.success('Closed. The info sheet is available again, unchanged.');
+        } catch (error) {
+            console.error('Error closing reopened request:', error);
+            toast.error('Failed to close request');
+        } finally {
+            setClosingReopen(false);
         }
     };
 
@@ -193,6 +218,9 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     const modeSwitchAllowed = !isLocked && (request.status === 'draft' || request.status === 'sent');
     const canRemind = !isLocked && (request.status === 'sent' || request.status === 'in_progress') && !!request.seller_email;
     const canViewPacket = !isLocked && request.status === 'submitted';
+    const canReopen = canViewPacket && request.is_demo !== true;
+    // Reopened by a coordinator and waiting for the seller to submit again.
+    const isReopened = !isLocked && request.status === 'in_progress' && Number(request.seller_edit_version ?? 0) > 0;
     const deleteDialog = (
         <DeleteRequestDialog
             request={deleteOpen ? request : null}
@@ -274,9 +302,78 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
         );
     }
 
+    const sellerLinkRow = (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+            <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Seller form</p>
+                <p className="text-sm text-foreground truncate">{sellerLink}</p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-input"
+                    aria-label="Copy seller form link"
+                    onClick={() => copyToClipboard(sellerLink, 'Seller link copied')}
+                >
+                    <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-input"
+                    aria-label="Open seller form in new tab"
+                    onClick={() => window.open(sellerLink, '_blank')}
+                >
+                    <ExternalLink className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+    );
+    const infoSheetLinkRow = (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+            <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Utility info sheet</p>
+                <p className="text-sm text-foreground truncate">
+                    {canViewPacket ? packetLink : 'Available after seller submission'}
+                </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-input"
+                    aria-label="Copy info sheet link"
+                    onClick={() => copyToClipboard(packetLink, 'Info sheet link copied')}
+                    disabled={!canViewPacket}
+                >
+                    <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-input"
+                    aria-label="Open info sheet in new tab"
+                    onClick={() => window.open(packetLink, '_blank')}
+                    disabled={!canViewPacket}
+                >
+                    <ExternalLink className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+    );
+
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             {deleteDialog}
+            <ReopenRequestDialog
+                request={reopenOpen ? request : null}
+                onClose={() => setReopenOpen(false)}
+                onReopened={(updated) => {
+                    setReopenOpen(false);
+                    setRequest({ ...updated, can_edit_submitted_sheet: false });
+                }}
+            />
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-1 min-w-0">
                     <Button
@@ -299,15 +396,28 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                        variant="outline"
-                        className="border-input text-foreground hover:bg-muted"
-                        onClick={() => copyToClipboard(sellerLink, 'Seller link copied')}
-                        disabled={!sellerLink}
-                    >
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy Seller Link
-                    </Button>
+                    {/* Once the sheet exists, sharing it is the next step; the seller link stays in Links below. */}
+                    {canViewPacket ? (
+                        <Button
+                            variant="outline"
+                            className="border-input text-foreground hover:bg-muted"
+                            onClick={() => copyToClipboard(packetLink, 'Info sheet link copied')}
+                            disabled={!packetLink}
+                        >
+                            <Copy className="mr-2 h-4 w-4" />
+                            Copy Info Sheet Link
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="outline"
+                            className="border-input text-foreground hover:bg-muted"
+                            onClick={() => copyToClipboard(sellerLink, 'Seller link copied')}
+                            disabled={!sellerLink}
+                        >
+                            <Copy className="mr-2 h-4 w-4" />
+                            Copy Seller Link
+                        </Button>
+                    )}
                     {canRemind && (
                         <Button
                             variant="outline"
@@ -333,6 +443,30 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     </Button>
                 </div>
             </div>
+
+            {isReopened && (
+                <div
+                    role="status"
+                    data-testid="request-reopened-notice"
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">Reopened for the seller</p>
+                        <p className="text-sm text-muted-foreground">
+                            The seller link is editable and starts from the current info sheet. The info sheet link and PDF are unavailable until the seller submits again. Their submission will replace the sheet.
+                        </p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        className="shrink-0 border-input text-foreground hover:bg-muted"
+                        onClick={handleCloseReopen}
+                        disabled={closingReopen}
+                    >
+                        {closingReopen ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {closingReopen ? 'Closing…' : 'Close Without Changes'}
+                    </Button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="border-border bg-card/50 lg:col-span-2">
@@ -367,63 +501,17 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         <div className="space-y-3">
                             <p className="text-sm font-medium text-foreground">Links</p>
                             <div className="space-y-2">
-                                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
-                                    <div className="min-w-0">
-                                        <p className="text-xs text-muted-foreground">Seller form</p>
-                                        <p className="text-sm text-foreground truncate">{sellerLink}</p>
-                                    </div>
-                                    <div className="flex gap-2 shrink-0">
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="border-input"
-                                            aria-label="Copy seller form link"
-                                            onClick={() => copyToClipboard(sellerLink, 'Seller link copied')}
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="border-input"
-                                            aria-label="Open seller form in new tab"
-                                            onClick={() => window.open(sellerLink, '_blank')}
-                                        >
-                                            <ExternalLink className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
-                                    <div className="min-w-0">
-                                        <p className="text-xs text-muted-foreground">Utility info sheet</p>
-                                        <p className="text-sm text-foreground truncate">
-                                            {canViewPacket ? packetLink : 'Available after seller submission'}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-2 shrink-0">
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="border-input"
-                                            aria-label="Copy info sheet link"
-                                            onClick={() => copyToClipboard(packetLink, 'Info sheet link copied')}
-                                            disabled={!canViewPacket}
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="border-input"
-                                            aria-label="Open info sheet in new tab"
-                                            onClick={() => window.open(packetLink, '_blank')}
-                                            disabled={!canViewPacket}
-                                        >
-                                            <ExternalLink className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
+                                {canViewPacket ? (
+                                    <>
+                                        {infoSheetLinkRow}
+                                        {sellerLinkRow}
+                                    </>
+                                ) : (
+                                    <>
+                                        {sellerLinkRow}
+                                        {infoSheetLinkRow}
+                                    </>
+                                )}
                             </div>
                         </div>
 
@@ -506,6 +594,22 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             <p className="text-xs text-muted-foreground">
                                 Submitted-sheet editing is a Pro and Team feature inside the dashboard.
                             </p>
+                        ) : null}
+
+                        {canReopen ? (
+                            <div className="space-y-1.5">
+                                <Button
+                                    variant="outline"
+                                    className="w-full border-input text-foreground hover:bg-muted"
+                                    onClick={() => setReopenOpen(true)}
+                                >
+                                    <RotateCcw className="mr-2 h-4 w-4" />
+                                    Reopen for Seller
+                                </Button>
+                                <p className="text-xs text-muted-foreground">
+                                    Lets the seller correct their answers. Does not use another submission.
+                                </p>
+                            </div>
                         ) : null}
                     </CardContent>
                 </Card>

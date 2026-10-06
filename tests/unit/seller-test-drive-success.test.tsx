@@ -30,7 +30,7 @@ describe('seller test-drive completion', () => {
         const fetchMock = vi.fn(() => jsonResponse(completed));
         vi.stubGlobal('fetch', fetchMock);
 
-        render(<SuccessStep isTestDrive sellerToken="seller-token" brandProfile={{ name: 'Maple Realty' }} propertyAddress="[TEST] 123 Maple Street" />);
+        render(<SuccessStep isTestDrive brandProfile={{ name: 'Maple Realty' }} propertyAddress="[TEST] 123 Maple Street" />);
 
         expect(screen.getByRole('heading', { name: 'Your test is complete' })).toBeInTheDocument();
         expect(fetchMock).toHaveBeenCalledWith('/api/test-drive');
@@ -87,10 +87,12 @@ describe('seller test-drive completion', () => {
     it('keeps the real seller completion unchanged', () => {
         const fetchMock = vi.fn();
         vi.stubGlobal('fetch', fetchMock);
-        render(<SuccessStep sellerToken="seller-token" brandProfile={{ name: 'Maple Realty' }} />);
+        render(<SuccessStep brandProfile={{ name: 'Maple Realty' }} />);
         expect(screen.getByRole('heading', { name: 'All Done!' })).toBeInTheDocument();
         expect(screen.getByText(/Maple Realty has been notified/)).toBeInTheDocument();
-        expect(screen.getByText(/want a copy/i)).toBeInTheDocument();
+        // It cannot show a copy, and the link it emailed led back to the form.
+        expect(screen.queryByText(/want a copy/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/ask your agent to reopen the form/i)).toBeInTheDocument();
         expect(fetchMock).not.toHaveBeenCalled();
     });
 

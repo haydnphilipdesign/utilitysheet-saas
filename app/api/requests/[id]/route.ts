@@ -114,6 +114,16 @@ export async function PATCH(
             return invalidRequestBodyResponse('INVALID_REQUEST_UPDATE', 'Invalid request update payload');
         }
 
+        // Submitted is entered by a seller submission and left through reopen
+        // (app/api/requests/[id]/reopen). A plain status edit would skip the
+        // metering, the stored sheet and the editing-session checks.
+        if (requestData.status === 'submitted' || parsedBody.data.status === 'submitted') {
+            return NextResponse.json(
+                { error: 'Status locked', message: 'A submitted request can only be changed by reopening it for the seller.' },
+                { status: 409 }
+            );
+        }
+
         const updated = await updateRequestStatus(id, parsedBody.data.status);
         if (!updated) {
             return NextResponse.json({ error: 'Failed to update request' }, { status: 500 });

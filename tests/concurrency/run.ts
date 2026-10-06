@@ -25,6 +25,13 @@ import {
 } from '@/lib/neon/queries/admin-writes';
 import { claimReminderOperation, reminderClaimStatements } from '@/lib/neon/queries/reminder-operations';
 import { applyTriageAction } from '@/lib/ops/triage';
+import {
+    cancelRequestReopen,
+    reopenSubmittedRequest,
+    submitSellerRequest,
+    type SubmitSellerRequestInput,
+} from '@/lib/neon/queries/seller-submission';
+import { createEmptyHoaAnswers } from '@/lib/packet/hoa';
 
 const modulesDir = process.env.PG_HARNESS_MODULES;
 if (!modulesDir) {
@@ -96,7 +103,7 @@ async function main() {
         clients.push(setup);
         await setup.query(readFileSync('schema.sql', 'utf8'));
         // schema.sql mirrors the new migrations; re-applying each one also proves it is idempotent.
-        for (const migration of ['migrations-reminder-operations.sql', 'migrations-operational-events.sql', 'migrations-admin-triage.sql']) {
+        for (const migration of ['migrations-reminder-operations.sql', 'migrations-operational-events.sql', 'migrations-admin-triage.sql', 'migrations-seller-edit-sessions.sql']) {
             await setup.query(readFileSync(migration, 'utf8'));
         }
 
@@ -237,6 +244,108 @@ async function main() {
             if (await scalar(`SELECT COUNT(*)::int AS n FROM admin_audit_logs WHERE action = 'triage_updated'`) !== 1) triageOk = false;
         }
         check('concurrent triage of one item: one OK, one STALE, one audit entry (15 races)', triageOk);
+
+        // 7. Seller submission and coordinator reopen (lib/neon/queries/seller-submission.ts).
+        const submission = (db: StatementExecutor, provider: string, overrides: Partial<SubmitSellerRequestInput> = {}) => submitSellerRequest({
+            executor: db, requestId: REQ, editVersion: 0, submissionKey: `key-${provider}`,
+            waterSource: 'city', sewerType: 'public', heatingType: null, updateHoa: false, hoa: createEmptyHoaAnswers(),
+            advancedPacketData: {},
+            entries: [{
+                category: 'electric', entry_mode: 'free_text', display_name: provider, raw_text: provider, canonical_id: null,
+                confidence_score: null, contact_phone: null, contact_url: null, meter_number: null, extra: {},
+            }],
+            isTestDrive: false, shouldLock: false, eventData: { actor: 'seller' }, ipAddress: null, userAgent: null,
+            ...overrides,
+        });
+        const reopenActor = { requestId: REQ, actorAccountId: USER, ipAddress: null, userAgent: null };
+        const text = async (query: string) => String((await setup.query(query)).rows[0]?.v ?? '');
+        const providers = () => text(`SELECT string_agg(display_name, ',' ORDER BY display_name) AS v FROM utility_entries WHERE request_id = '${REQ}'`);
+        const submittedEvents = () => scalar(`SELECT COUNT(*)::int AS n FROM event_logs WHERE request_id = '${REQ}' AND event_type = 'seller_submitted'`);
+
+        // 7a. Two different submissions at once: one sheet, one event, never a mix.
+        let submitOk = true;
+        for (let i = 0; i < 25; i += 1) {
+            await reset();
+            const results = await Promise.all([submission(dbA, 'Power A'), submission(dbB, 'Power B')]);
+            const outcomes = results.map((r) => r.outcome).sort();
+            const winner = results[0].outcome === 'ACCEPTED' ? 'Power A' : 'Power B';
+            if (outcomes.join() !== 'ACCEPTED,ALREADY_SUBMITTED') submitOk = false;
+            if (await providers() !== winner) submitOk = false;
+            if (await submittedEvents() !== 1) submitOk = false;
+        }
+        check('simultaneous submissions: one ACCEPTED, one ALREADY_SUBMITTED, one sheet and event (25 races)', submitOk);
+
+        // 7b. The same submission sent twice at once (double tap, or an early retry).
+        let duplicateOk = true;
+        for (let i = 0; i < 25; i += 1) {
+            await reset();
+            const outcomes = (await Promise.all([
+                submission(dbA, 'Power A', { submissionKey: 'same-key' }),
+                submission(dbB, 'Power A', { submissionKey: 'same-key' }),
+            ])).map((r) => r.outcome).sort();
+            if (outcomes.join() !== 'ACCEPTED,DUPLICATE') duplicateOk = false;
+            if (await submittedEvents() !== 1) duplicateOk = false;
+        }
+        check('same key twice at once: one ACCEPTED, one DUPLICATE, one event (25 races)', duplicateOk);
+
+        // 7c. A tab from the first session submits while a reopen is still uncommitted.
+        await reset();
+        await submission(dbA, 'Stored Power');
+        await a.query('BEGIN');
+        await reopenSubmittedRequest({ executor: dbA, ...reopenActor });
+        let staleSettled = false;
+        const staleTab = submission(dbB, 'Stale Tab Power', { submissionKey: 'stale-tab' })
+            .then((result) => { staleSettled = true; return result; });
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        check('old-session submission waits while a reopen is uncommitted', staleSettled === false);
+        await a.query('COMMIT');
+        const staleResult = await staleTab;
+        check('after the reopen commits, the old-session submission is refused as STALE_SESSION',
+            staleResult.outcome === 'STALE_SESSION', staleResult);
+        check('the reopened sheet is untouched by the old-session tab',
+            await providers() === 'Stored Power' && await text(`SELECT status AS v FROM requests WHERE id = '${REQ}'`) === 'in_progress');
+
+        // 7d. The first session's lost-response retry arrives during the reopen.
+        await reset();
+        await submission(dbA, 'Stored Power', { submissionKey: 'lost-response' });
+        await a.query('BEGIN');
+        await reopenSubmittedRequest({ executor: dbA, ...reopenActor });
+        const lateRetry = submission(dbB, 'Stored Power', { submissionKey: 'lost-response' });
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await a.query('COMMIT');
+        check('a retry key from the earlier session is not a duplicate once reopened',
+            (await lateRetry).outcome === 'STALE_SESSION');
+
+        // 7e. Reopen racing a second reopen, and a current-session submission racing close-without-changes.
+        let reopenOk = true;
+        for (let i = 0; i < 15; i += 1) {
+            await reset();
+            await submission(dbA, 'Stored Power');
+            const outcomes = (await Promise.all([
+                reopenSubmittedRequest({ executor: dbA, ...reopenActor }),
+                reopenSubmittedRequest({ executor: dbB, ...reopenActor }),
+            ])).map((r) => r.outcome).sort();
+            if (outcomes.join() !== 'NOT_SUBMITTED,OK') reopenOk = false;
+            if (await scalar(`SELECT seller_edit_version AS n FROM requests WHERE id = '${REQ}'`) !== 1) reopenOk = false;
+        }
+        check('two reopens at once: one OK, one refused, one new session (15 races)', reopenOk);
+
+        let closeOk = true;
+        for (let i = 0; i < 25; i += 1) {
+            await reset();
+            await submission(dbA, 'Stored Power');
+            await reopenSubmittedRequest({ executor: dbA, ...reopenActor });
+            const [submitted, closed] = await Promise.all([
+                submission(dbA, 'Resubmitted Power', { editVersion: 1, submissionKey: 'session-1' }),
+                cancelRequestReopen({ executor: dbB, ...reopenActor }),
+            ]);
+            const sheet = await providers();
+            const sellerWon = submitted.outcome === 'ACCEPTED' && closed.outcome === 'NOT_REOPENED' && sheet === 'Resubmitted Power';
+            const closeWon = submitted.outcome === 'ALREADY_SUBMITTED' && closed.outcome === 'OK' && sheet === 'Stored Power';
+            if (!sellerWon && !closeWon) closeOk = false;
+            if (await text(`SELECT status AS v FROM requests WHERE id = '${REQ}'`) !== 'submitted') closeOk = false;
+        }
+        check('resubmission racing close-without-changes: exactly one takes effect (25 races)', closeOk);
     } finally {
         for (const client of clients) await client.end().catch(() => undefined);
         await server.stop().catch(() => undefined);

@@ -5,10 +5,10 @@ import { Check, Pencil, Loader2, ArrowRight, Zap, Droplets, Flame, Fuel, FlameKi
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import { AdvancedModuleKey, AdvancedPacketData, TrashUtilityExtra, UtilityCategory } from '@/types';
-import { ADVANCED_MODULE_LABELS } from '@/lib/packet/modules';
+import { ADVANCED_MODULE_LABELS, getAdvancedAnswerRows } from '@/lib/packet/modules';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { HOA_GATE_LABEL, getHasHoaLabel, getHoaDetailRows } from '@/lib/packet/hoa';
-import { getSewerTypeLabel, getWaterSourceLabel } from '@/lib/packet/seller-questions';
+import { getFuelSourceLabel, getSewerTypeLabel, getWaterSourceLabel } from '@/lib/packet/seller-questions';
 import { wizardFocusRing, wizardTextInput } from '../wizard-ui';
 
 // Category-specific icons (same as UtilityStep)
@@ -33,6 +33,8 @@ interface ReviewStepProps {
     updateUtility?: (category: UtilityCategory, updates: { meter_number?: string | null }) => void;
     collectElectricMeterNumber?: boolean;
     collectHoaQuestions?: boolean;
+    /** True when the agent reopened a submitted form and these are the stored answers. */
+    reopened?: boolean;
     onSubmit: () => Promise<void>;
     submitting: boolean;
     packetMode?: 'simple' | 'advanced';
@@ -52,6 +54,7 @@ export function ReviewStep({
     updateUtility,
     collectElectricMeterNumber = false,
     collectHoaQuestions = true,
+    reopened = false,
     onSubmit,
     submitting,
     packetMode = 'simple',
@@ -126,6 +129,16 @@ export function ReviewStep({
                 <p className="text-sm sm:text-base text-muted-foreground">Please review your information below.</p>
             </div>
 
+            {reopened && (
+                <p
+                    role="status"
+                    data-testid="review-reopened-notice"
+                    className="rounded-xl border border-[color:var(--brand-accent-border)] bg-[var(--brand-accent-softer)] p-3 sm:p-4 text-sm text-foreground"
+                >
+                    Your agent reopened this form so you can make corrections. These are the answers on file now. Change what you need with Edit, then submit again.
+                </p>
+            )}
+
             <div className="space-y-4 sm:space-y-6">
                 {/* Home Basics Summary */}
                 <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
@@ -134,9 +147,10 @@ export function ReviewStep({
                         <button
                             type="button"
                             onClick={onEditBasics}
-                            className={`flex items-center gap-1 text-xs text-[color:var(--brand-accent)] hover:opacity-80 transition-opacity rounded-md px-1 py-0.5 ${wizardFocusRing}`}
+                            aria-label="Edit Home Basics"
+                            className={`inline-flex min-h-11 items-center gap-1 text-xs text-[color:var(--brand-accent)] hover:opacity-80 transition-opacity rounded-md px-2 -mr-2 ${wizardFocusRing}`}
                         >
-                            <Pencil className="h-3 w-3" />
+                            <Pencil className="h-3 w-3" aria-hidden="true" />
                             Edit
                         </button>
                     </div>
@@ -154,8 +168,8 @@ export function ReviewStep({
                             <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-2">
                                 {state.fuels_present.length > 0 ? (
                                     state.fuels_present.map(f => (
-                                        <span key={f} className="px-2 py-0.5 sm:py-1 rounded bg-muted text-foreground text-xs capitalize">
-                                            {f.replace('_', ' ')}
+                                        <span key={f} className="px-2 py-0.5 sm:py-1 rounded bg-muted text-foreground text-xs">
+                                            {getFuelSourceLabel(f)}
                                         </span>
                                     ))
                                 ) : (
@@ -165,8 +179,8 @@ export function ReviewStep({
                             {state.primary_heating_type && (
                                 <div>
                                     <p className="text-muted-foreground mb-0.5 text-xs">Primary Heat</p>
-                                    <span className="text-foreground text-sm capitalize font-medium">
-                                        {state.primary_heating_type.replace('_', ' ')}
+                                    <span className="text-foreground text-sm font-medium">
+                                        {getFuelSourceLabel(state.primary_heating_type)}
                                     </span>
                                 </div>
                             )}
@@ -226,7 +240,7 @@ export function ReviewStep({
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2 shrink-0">
+                                        <div className="flex items-center gap-1 shrink-0">
                                             {utilState?.entry_mode !== null && (
                                                 <div className="p-1 rounded-full bg-[var(--brand-accent-soft)]">
                                                     <Check className="h-3 w-3 sm:h-4 sm:w-4 text-[color:var(--brand-accent)]" />
@@ -236,10 +250,11 @@ export function ReviewStep({
                                                 <button
                                                     type="button"
                                                     onClick={() => onEditUtility(index)}
-                                                    className={`p-1.5 sm:p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors ${wizardFocusRing}`}
+                                                    className={`inline-flex h-11 w-11 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors ${wizardFocusRing}`}
+                                                    aria-label={`Edit ${label}`}
                                                     title={`Edit ${label}`}
                                                 >
-                                                    <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                                    <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
                                                 </button>
                                             )}
                                         </div>
@@ -256,7 +271,7 @@ export function ReviewStep({
                                                 maxLength={64}
                                                 onChange={(e) => updateUtility?.(cat, { meter_number: e.target.value })}
                                                 placeholder="Enter electric meter number"
-                                                className={`py-2 px-3 text-sm rounded-lg ${wizardTextInput}`}
+                                                className={`py-2.5 px-3 text-base sm:text-sm rounded-lg ${wizardTextInput}`}
                                                 data-testid="review-electric-meter-number"
                                             />
                                         </div>
@@ -281,15 +296,11 @@ export function ReviewStep({
                         </div>
                         <div className="space-y-3">
                             {advancedModules.map((moduleKey) => {
-                                const moduleData = advancedData[moduleKey];
-                                const rowItems = moduleData
-                                    ? Object.entries(moduleData)
-                                        .filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
-                                        .map(([key, value]) => ({
-                                            key,
-                                            value: Array.isArray(value) ? value.join(', ') : String(value),
-                                        }))
-                                    : [];
+                                const rowItems = getAdvancedAnswerRows(
+                                    moduleKey,
+                                    advancedData[moduleKey],
+                                    state.advanced_module_exclusions
+                                );
 
                                 return (
                                     <div key={moduleKey} className="rounded-lg border border-border/60 p-3">
@@ -299,10 +310,11 @@ export function ReviewStep({
                                                 <button
                                                     type="button"
                                                     onClick={() => onEditAdvancedModule(moduleKey)}
-                                                    className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-[color:var(--brand-accent)] hover:bg-muted hover:opacity-80 transition-colors ${wizardFocusRing}`}
+                                                    className={`inline-flex min-h-11 items-center gap-1 rounded-md px-2 -mr-2 text-xs text-[color:var(--brand-accent)] hover:bg-muted hover:opacity-80 transition-colors ${wizardFocusRing}`}
+                                                    aria-label={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
                                                     title={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
                                                 >
-                                                    <Pencil className="h-3 w-3" />
+                                                    <Pencil className="h-3 w-3" aria-hidden="true" />
                                                     Edit
                                                 </button>
                                             )}
@@ -312,8 +324,8 @@ export function ReviewStep({
                                         ) : (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {rowItems.map((row) => (
-                                                    <div key={row.key} className="text-xs sm:text-sm">
-                                                        <span className="text-muted-foreground">{row.key.replaceAll('_', ' ')}: </span>
+                                                    <div key={row.key} className="text-xs sm:text-sm break-words">
+                                                        <span className="text-muted-foreground">{row.label}: </span>
                                                         <span className="text-foreground">{row.value}</span>
                                                     </div>
                                                 ))}

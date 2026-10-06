@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
-    request: vi.fn(), account: vi.fn(), sql: vi.fn(), event: vi.fn(),
+    request: vi.fn(), account: vi.fn(), sql: vi.fn(), event: vi.fn(), submit: vi.fn(),
 }));
 // Operational observations are best-effort and covered in ops-instrumentation.test.ts.
 vi.mock('@/lib/ops/events');
@@ -18,6 +18,7 @@ vi.mock('@/lib/neon/queries', () => ({
     createEventLog: mocks.event,
 }));
 vi.mock('@/lib/neon/db', () => ({ sql: mocks.sql }));
+vi.mock('@/lib/neon/queries/seller-submission', () => ({ submitSellerRequest: mocks.submit }));
 vi.mock('@/lib/rate-limit', () => ({
     formSubmissionRatelimit: {}, checkRateLimit: vi.fn(async () => ({ success: true })),
     getRateLimitHeaders: vi.fn(() => ({})), isRateLimitUnavailable: vi.fn(() => false),
@@ -40,6 +41,7 @@ describe('seller API request question overrides', () => {
         vi.clearAllMocks();
         mocks.sql.mockResolvedValue([]);
         mocks.event.mockResolvedValue(undefined);
+        mocks.submit.mockResolvedValue({ outcome: 'ACCEPTED', request: {}, currentEditVersion: 0 });
     });
 
     it.each([true, false, null])('uses %s consistently in GET and POST against opposite account defaults', async (value) => {
@@ -61,13 +63,8 @@ describe('seller API request question overrides', () => {
             }),
         }), context);
         expect(submitted.status).toBe(200);
-        const requestUpdate = mocks.sql.mock.calls.find(([strings]) => strings.join('').includes('has_hoa = CASE'))!;
-        const [updateStrings, ...updateValues] = requestUpdate;
-        const hoaIndex = updateStrings.findIndex((part: string) => part.includes('has_hoa = CASE WHEN'));
-        expect(updateValues[hoaIndex]).toBe(effective);
-        const utilityInsert = mocks.sql.mock.calls.find(([strings]) => strings.join('').includes('INSERT INTO utility_entries'))!;
-        const [insertStrings, ...insertValues] = utilityInsert;
-        const columns = insertStrings.join('').match(/INSERT INTO utility_entries\s*\(([^)]+)\)/)[1].split(',').map((column: string) => column.trim());
-        expect(insertValues[columns.indexOf('meter_number')]).toBe(effective ? 'METER-FIXTURE' : null);
+        const stored = mocks.submit.mock.calls[0][0];
+        expect(stored.updateHoa).toBe(effective);
+        expect(stored.entries[0].meter_number).toBe(effective ? 'METER-FIXTURE' : null);
     });
 });

@@ -311,3 +311,112 @@ export function normalizeAdvancedModules(input?: string[] | null): AdvancedModul
     }
     return unique.size > 0 ? Array.from(unique) : [...ADVANCED_MODULE_DEFAULTS];
 }
+
+const IRRIGATION_MODULE_KEY: AdvancedModuleKey = 'irrigation_seasonal_controls';
+const IRRIGATION_GATE_FIELD_KEY = 'has_irrigation_system';
+
+/**
+ * Drops the irrigation detail answers when the seller or coordinator answers No
+ * to "Is there an irrigation system?", so a sheet cannot say No and also name a
+ * provider and schedule.
+ *
+ * Pass data already filtered by `filterAdvancedPacketDataByExclusions`, before
+ * merging stored excluded fields back in. The rule only applies while the gate
+ * question itself is asked: with the gate excluded, a No stored earlier is
+ * hidden from whoever is answering and must not erase what they can see.
+ * Excluded detail fields are never in `visibleData`, so the merge that follows
+ * still restores them untouched.
+ */
+export function normalizeConditionalAdvancedAnswers<TData extends Record<string, unknown>>(
+    visibleData: TData,
+    exclusions?: AdvancedModuleExclusions | null
+): TData {
+    const section = visibleData?.[IRRIGATION_MODULE_KEY];
+    if (!section || typeof section !== 'object' || Array.isArray(section)) return visibleData;
+    if ((section as Record<string, unknown>)[IRRIGATION_GATE_FIELD_KEY] !== 'no') return visibleData;
+    if (!getAdvancedModuleVisibleFieldKeys(IRRIGATION_MODULE_KEY, exclusions).includes(IRRIGATION_GATE_FIELD_KEY)) {
+        return visibleData;
+    }
+
+    return {
+        ...visibleData,
+        [IRRIGATION_MODULE_KEY]: { [IRRIGATION_GATE_FIELD_KEY]: 'no' },
+    };
+}
+
+const ADVANCED_CHOICE_LABELS: Record<string, string> = {
+    yes: 'Yes',
+    no: 'No',
+    not_sure: 'Not sure',
+};
+
+const ADVANCED_WEEKDAY_LABELS: Record<string, string> = {
+    mon: 'Mon',
+    tue: 'Tue',
+    wed: 'Wed',
+    thu: 'Thu',
+    fri: 'Fri',
+    sat: 'Sat',
+    sun: 'Sun',
+};
+
+const ADVANCED_MONTH_LABELS: Record<string, string> = {
+    jan: 'January',
+    feb: 'February',
+    mar: 'March',
+    apr: 'April',
+    may: 'May',
+    jun: 'June',
+    jul: 'July',
+    aug: 'August',
+    sep: 'September',
+    oct: 'October',
+    nov: 'November',
+    dec: 'December',
+};
+
+/** Fields whose stored value is a code. Everything else is the seller's own text. */
+const ADVANCED_CODED_FIELD_LABELS: Record<string, Record<string, string>> = {
+    has_irrigation_system: ADVANCED_CHOICE_LABELS,
+    watering_days: ADVANCED_WEEKDAY_LABELS,
+    irrigation_season_start_month: ADVANCED_MONTH_LABELS,
+    irrigation_season_end_month: ADVANCED_MONTH_LABELS,
+};
+
+export interface AdvancedAnswerRow {
+    key: string;
+    label: string;
+    value: string;
+}
+
+/**
+ * The answered questions in one handoff section, labelled the way the seller
+ * was asked. Only coded fields are translated; free text, phone numbers and
+ * access codes are shown exactly as typed.
+ */
+export function getAdvancedAnswerRows(
+    moduleKey: AdvancedModuleKey,
+    sectionData: unknown,
+    exclusions?: AdvancedModuleExclusions | null
+): AdvancedAnswerRow[] {
+    if (!sectionData || typeof sectionData !== 'object' || Array.isArray(sectionData)) return [];
+    const normalized = normalizeConditionalAdvancedAnswers({ [moduleKey]: sectionData }, exclusions)[moduleKey] as Record<string, unknown>;
+    const visibleKeys = new Set(getAdvancedModuleVisibleFieldKeys(moduleKey, exclusions));
+
+    return ADVANCED_MODULE_FIELD_METADATA[moduleKey]
+        .filter((field) => visibleKeys.has(field.key))
+        .map((field) => {
+            const raw = normalized[field.key];
+            const codes = ADVANCED_CODED_FIELD_LABELS[field.key];
+            const parts = (Array.isArray(raw) ? raw : [raw])
+                .filter((part) => part !== null && part !== undefined)
+                .map((part) => String(part))
+                .filter((part) => part.trim() !== '');
+            return {
+                key: field.key,
+                label: field.label,
+                value: (codes ? parts.map((part) => codes[part] || part) : parts).join(', '),
+            };
+        })
+        .filter((row) => row.value !== '');
+}

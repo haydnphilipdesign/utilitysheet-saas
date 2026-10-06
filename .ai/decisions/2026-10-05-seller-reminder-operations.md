@@ -39,3 +39,7 @@ Admin reminders had no cooldown, accepted deleted and submitted requests, sent w
 - The customer endpoint returns generic errors instead of raw provider messages, and new 409/502 codes for in-flight and unknown outcomes.
 - Customer reminders on already-submitted requests remain possible. That is pre-existing behaviour, noted as a product follow-up.
 - Phase 4 adds provider delivery evidence to `reminder_operations.delivery_status`; historical reminders remain unknown.
+
+## Amendment: customer reminders on submitted requests (2026-10-06)
+
+Item 9 said the customer endpoint keeps its previous eligibility, which included submitted requests. It now refuses a submitted request with a 409, because the seller has nothing left to do. A request a coordinator has reopened is in progress and can be reminded by the coordinator. Admin eligibility is unchanged, so Admin reminders still refuse any metered request, including a reopened one. See `2026-10-06-read-only-after-submission-and-reopen.md`.

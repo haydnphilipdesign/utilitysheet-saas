@@ -153,7 +153,11 @@ CREATE TABLE IF NOT EXISTS requests (
     is_locked BOOLEAN NOT NULL DEFAULT FALSE,
     locked_reason TEXT,
     locked_at TIMESTAMPTZ,
-    deleted_at TIMESTAMPTZ
+    deleted_at TIMESTAMPTZ,
+    -- Seller editing session; each reopen or close-without-changes adds 1.
+    seller_edit_version INTEGER NOT NULL DEFAULT 0,
+    -- Retry key of the accepted submission in the current session.
+    seller_submission_key TEXT
 );
 
 CREATE TABLE IF NOT EXISTS intake_links (
