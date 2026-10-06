@@ -4,6 +4,9 @@
 -- Additive and rerunnable. Safe under the previously deployed application, which
 -- never sends an ending for the base owner. Applying this to any live database
 -- requires owner authorization. Apply before deploying code that relies on it.
+-- Always apply migrations-seller-form-readable-endings.sql after this file,
+-- including after any rerun: this file reinstalls the earlier code-style
+-- ending generator.
 --
 -- Part 1: guards and writers.
 BEGIN;

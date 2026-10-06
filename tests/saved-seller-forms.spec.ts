@@ -182,9 +182,9 @@ test('base rename refreshes canonical copies and a confirmed default change move
     });
     const state = await mocks(page);
     await page.goto('/test-fixtures/seller-forms');
-    await expect(page.getByLabel('Base link name')).toHaveValue('listing');
-    await page.getByLabel('Base link name').fill('jane-smith');
-    await page.getByRole('button', { name: 'Save base link', exact: true }).click();
+    await expect(page.getByLabel('Link name', { exact: true })).toHaveValue('listing');
+    await page.getByLabel('Link name', { exact: true }).fill('jane-smith');
+    await page.getByRole('button', { name: 'Save link name', exact: true }).click();
     const formCards = page.locator('[data-slot="card"]').filter({ has: page.getByRole('button', { name: 'Copy link', exact: true }) });
     const closing = formCards.filter({ has: page.getByText('Closing', { exact: true }) });
     const listing = formCards.filter({ has: page.getByText('Listing', { exact: true }) });
@@ -197,20 +197,55 @@ test('base rename refreshes canonical copies and a confirmed default change move
     const prompts: string[] = [];
     page.once('dialog', dialog => { prompts.push(dialog.message()); void dialog.dismiss(); });
     await closing.getByRole('button', { name: 'Make default' }).click();
-    expect(prompts[0]).toContain('https://example.com/i/jane-smith will open it from now on');
+    expect(prompts[0]).toContain('Your main link (https://example.com/i/jane-smith) will open it from now on');
     expect(state.writes).toHaveLength(1);
-    await expect(page.getByText(/The base link currently opens/)).toContainText('Listing');
+    await expect(page.getByText(/Your main link currently opens/)).toContainText('Listing');
     page.once('dialog', dialog => void dialog.accept());
     await closing.getByRole('button', { name: 'Make default' }).click();
     await expect(closing.getByText('Default', { exact: true })).toBeVisible();
-    await expect(page.getByText(/The base link currently opens/)).toContainText('Closing');
+    await expect(page.getByText(/Your main link currently opens/)).toContainText('Closing');
     await expect(closing.getByText('https://example.com/i/jane-smith', { exact: true })).toBeVisible();
     await expect(closing.getByText('Also opens from https://example.com/i/jane-smith/closing', { exact: true })).toBeVisible();
     await expect(listing.getByText('https://example.com/i/jane-smith/intake', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('Base link name')).toHaveValue('jane-smith');
+    await expect(page.getByLabel('Link name', { exact: true })).toHaveValue('jane-smith');
     await healthy(page);
     await page.screenshot({ path: testInfo.outputPath('shared-base-links.png'), fullPage: true });
     expect(errors).toEqual([]);
+});
+
+test('a form link is renamed in place on its card and a taken ending keeps the draft', async ({ page }) => {
+    const state = await mocks(page);
+    await page.goto('/test-fixtures/seller-forms');
+    const formCards = page.locator('[data-slot="card"]').filter({ has: page.getByRole('button', { name: 'Copy link', exact: true }) });
+    const closing = formCards.filter({ has: page.getByText('Closing', { exact: true }) });
+    await closing.getByRole('button', { name: 'Rename link', exact: true }).click();
+    const ending = page.getByLabel('Link ending for Closing');
+    await expect(ending).toHaveValue('closing');
+    await ending.fill('Not Valid');
+    await closing.getByRole('button', { name: 'Save link', exact: true }).click();
+    await expect(closing.getByRole('alert')).toContainText('lowercase');
+    expect(state.writes).toHaveLength(0);
+    await ending.fill('intake');
+    await closing.getByRole('button', { name: 'Save link', exact: true }).click();
+    await expect(closing.getByRole('alert')).toContainText('That ending was already shared');
+    await expect(ending).toHaveValue('intake');
+    await ending.fill('closing-docs');
+    await closing.getByRole('button', { name: 'Save link', exact: true }).click();
+    await expect(closing.getByText('https://example.com/i/listing/closing-docs', { exact: true })).toBeVisible();
+    await expect(ending).toHaveCount(0);
+    expect(state.writes.at(-1)).toMatchObject({ url: `/api/seller-forms/${second}`, method: 'PATCH', body: { suffix: 'closing-docs', revision: 2 } });
+    // The default form's own link is renamable too; its main link is untouched.
+    const listing = formCards.filter({ has: page.getByText('Listing', { exact: true }) });
+    await listing.getByRole('button', { name: 'Rename link', exact: true }).click();
+    await expect(page.getByLabel('Link ending for Listing')).toHaveValue('intake');
+    await listing.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(listing.getByText('https://example.com/i/listing', { exact: true })).toBeVisible();
+    await healthy(page);
+    // Free keeps links but offers no rename.
+    state.access.isPaid = false;
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Rename link', exact: true })).toHaveCount(0);
 });
 
 test('suffix editing keeps configuration and duplicate collisions keep the unsaved draft', async ({ page }, testInfo) => {
@@ -241,7 +276,7 @@ test('downgrade keeps canonical links and prevents link edits while ordinary for
     const state = await mocks(page);
     state.access.isPaid = false;
     await page.goto('/test-fixtures/seller-forms');
-    await expect(page.getByLabel('Base link name')).toBeDisabled();
+    await expect(page.getByLabel('Link name', { exact: true })).toBeDisabled();
     await expect(page.getByRole('link', { name: 'Pro or Teams', exact: true })).toHaveAttribute('href', '/dashboard/settings?tab=billing');
     await page.goto(`/test-fixtures/seller-forms?id=${second}`);
     await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing');

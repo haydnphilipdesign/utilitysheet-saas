@@ -20,6 +20,19 @@
 - Validation: `tsc`, ESLint on changed files, full Vitest 201/202 files then the one stale assertion fixed and its file rerun green (full suite not rerun after that fix), production build lists both `/form/*` and `/i/*` routes, intake browser spec passes on Desktop Chrome (it exercises `/i/` only). The `/form/` pages were not opened in a browser.
 - No schema change. Committed and pushed to main with owner authorization. Deployment and a hosted check of a `/form/` link are owner checks, not performed here. Tiny change, no separate plan or decision record.
 
+## Uncommitted follow-up: "Main link" wording and in-place link renaming (2026-10-06, Claude Opus 5.5)
+
+- Owner asked for friendlier wording than "Base link" and for renaming each form's link on the Seller forms page. `BaseLinkEditor` now reads "Main link" / "Link name" with the fixed prefix shown beside the field (the separate preview line was removed). New `components/seller-forms/FormLinkEnding.tsx` renders each card's link plus a "Rename link" control (paid only) that PATCHes `/api/seller-forms/[id]` with `{ suffix, revision }`; no server or schema change beyond two error strings in `app/api/seller-form-link-base/route.ts`. The Link ending field in the form editor is unchanged. Internal names (`linkBase`, `BaseLinkEditor`, the API path) still say "base".
+- Validation: `tsc`, ESLint on changed files, `tests/saved-seller-forms.spec.ts` 36/36 across Desktop Chrome, Mobile Safari and Mobile Chrome including a new in-place rename test; desktop and phone screenshots reviewed. Full Vitest not rerun (no unit-tested code changed). Not checked in a signed-in browser.
+- Not committed, pushed or deployed; needs owner authorization.
+
+## Uncommitted follow-up: readable automatic endings (2026-10-06, Claude Opus 5.5)
+
+- Owner chose (in chat) readable automatic endings including existing ones. New `migrations-seller-form-readable-endings.sql`, mirrored in `schema.sql`: `initialize_seller_form_links` now assigns the lowest free `form-N` per namespace instead of `form-<hex>`; a rerunnable backfill switches each current ending that is exactly `form-` plus the leading hex of its own form ID to `form-N` (creation order), leaving the old ending reserved and resolvable. No revision bump, no change to forms, flat aliases or requests. `main` was considered for the first form and rejected because it would clash with the "Main link" wording once that form is not the default.
+- `migrations-seller-form-default-base-link.sql` gained a header note only (apply the readable-endings file after it). Tests updated: storage and native. Docs updated.
+- Validation (Node 20.19.0): full Vitest with native PostgreSQL, 202 files / 1421 tests passed; `tsc`; security scan; `git diff --check`. Browser spec not rerun after this change (no UI code changed in it).
+- **Not applied to Neon, not committed, not pushed.** Each needs owner authorization. Safe order: migration any time (no application code depends on it); it shares one commit with the "Main link" follow-up above unless the owner wants them split.
+
 ## Prior completed work and still-open owner checks
 
 Current main contains `ccd4eda` (dashboard update detail links), `0b22c39` (Free-limit submission serialization/Team usage), `396a382` (packet handoff value formatting), `e53bb1a` (reopen follow-ups) and `2dbb88f` (required basics/trash/Cable flow). Related plans retain implementation and validation details:

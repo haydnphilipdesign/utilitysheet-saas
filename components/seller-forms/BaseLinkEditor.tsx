@@ -17,7 +17,7 @@ export function BaseLinkEditor({ base, isPaid, onSaved }: {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [stale, setStale] = useState(false);
-    const preview = `${base.url.slice(0, -base.slug.length)}${slug}`;
+    const prefix = base.url.slice(0, -base.slug.length);
     async function save() {
         setBusy(true);
         setError('');
@@ -30,36 +30,36 @@ export function BaseLinkEditor({ base, isPaid, onSaved }: {
             const body = await res.json();
             if (!res.ok) {
                 setStale(body.code === 'FORM_REVISION_CONFLICT');
-                throw new Error(body.message || body.error || 'Unable to save base link');
+                throw new Error(body.message || body.error || 'Unable to save link name');
             }
             await onSaved();
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Unable to save base link');
+            setError(e instanceof Error ? e.message : 'Unable to save link name');
         } finally {
             setBusy(false);
         }
     }
     return (
         <Card>
-            <CardHeader><CardTitle>Base link</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Main link</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                    Your base link opens your default form. Every form also has its own link, which adds an ending to this one. Previously shared links keep working.
+                <p id="sellerFormBaseHelp" className="text-sm text-muted-foreground">
+                    Your main link opens your default form. Each form also has its own link, which adds an ending to this one. Links you have already shared keep working.
                 </p>
-                <div className="flex flex-wrap items-end gap-3">
-                    <div className="min-w-0 flex-1 space-y-2">
-                        <Label htmlFor="sellerFormBase">Base link name</Label>
-                        <Input id="sellerFormBase" value={slug} disabled={!isPaid || busy}
-                            onChange={e => setSlug(e.target.value)} aria-describedby="sellerFormBasePreview" />
+                <div className="space-y-2">
+                    <Label htmlFor="sellerFormBase">Link name</Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="break-all text-sm text-muted-foreground">{prefix}</span>
+                        <Input id="sellerFormBase" className="min-w-32 flex-1" value={slug} disabled={!isPaid || busy}
+                            onChange={e => setSlug(e.target.value)} aria-describedby="sellerFormBaseHelp" />
+                        {isPaid && <Button onClick={save} disabled={busy || stale || slug === base.slug || !slug.trim()}>
+                            {busy ? 'Saving…' : 'Save link name'}
+                        </Button>}
                     </div>
-                    {isPaid && <Button onClick={save} disabled={busy || stale || slug === base.slug || !slug.trim()}>
-                        {busy ? 'Saving…' : 'Save base link'}
-                    </Button>}
                 </div>
-                <p id="sellerFormBasePreview" className="break-all text-sm">{preview}</p>
                 <p className="text-sm text-muted-foreground">
-                    The base link currently opens <span className="font-medium">{base.formName}</span>{!base.isActive ? ' (paused, so sellers cannot start from it)' : ''}.
-                    {' '}Make another form the default to change this.
+                    Your main link currently opens <span className="font-medium">{base.formName}</span>{!base.isActive ? ' (paused, so sellers cannot start from it)' : ''}.
+                    {' '}To change that, choose Make default on another form.
                 </p>
                 {!isPaid && <p className="text-sm text-muted-foreground">
                     Customize links on <Link href="/dashboard/settings?tab=billing" className="text-primary underline">Pro or Teams</Link>.

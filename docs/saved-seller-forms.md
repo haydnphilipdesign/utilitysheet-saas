@@ -63,8 +63,13 @@ Edit the shared base above the form list. Every form has a Link ending field
 and full preview.
 New/duplicate drafts suggest a unique ending from the name, visibly before save.
 Editing the suggestion makes it independent of later name changes. Internal
-names remain private: migration backfill uses opaque `form-<id-derived>` endings
-instead of silently publishing existing names. Custom base/ending edits require
+names remain private: a form that is not given an ending (the first form of a
+workspace, old writers, backfills) gets the lowest free `form-N` in its
+workspace instead of silently publishing its name. Earlier ID-derived endings
+(`form-<hex>`) were replaced as the current ending by
+`migrations-seller-form-readable-endings.sql` and stay reserved, so they keep
+opening the same form. The dashboard calls the base the Main link, and each
+form card can rename its own ending in place. Custom base/ending edits require
 Pro/Teams in the fixed scope. Downgrade retains all published links and allows
 ordinary form edits, pause and reactivation.
 
@@ -102,8 +107,11 @@ continues excluding URL identities/capability tokens.
 
 ### Base-link migration and release
 
-Two files, always in this order: `migrations-seller-form-base-links.sql`, then
-`migrations-seller-form-default-base-link.sql`. The second gives every form that
+Three files, always in this order: `migrations-seller-form-base-links.sql`,
+`migrations-seller-form-default-base-link.sql`, then
+`migrations-seller-form-readable-endings.sql` (readable `form-N` automatic
+endings; changes no form, flat alias or request row). Each later file replaces
+functions an earlier one installs, so after rerunning one, rerun those after it. The second gives every form that
 owns a base name its own ending and lets it be renamed; it is additive,
 rerunnable and safe under the previously deployed application, and must be
 applied before deploying the application in which the bare link follows the

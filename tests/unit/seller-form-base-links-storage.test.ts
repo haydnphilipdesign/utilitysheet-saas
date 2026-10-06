@@ -36,10 +36,11 @@ const forPglite = (sql: string) =>
     sql
         .replace('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";', '')
         .replaceAll('uuid_generate_v4()', 'gen_random_uuid()');
-// Always in this order: the second file supersedes writers the first installs.
+// Always in this order: each file supersedes functions the previous one installs.
 const migration = forPglite(
     readFileSync('migrations-seller-form-base-links.sql', 'utf8') +
-        readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'),
+        readFileSync('migrations-seller-form-default-base-link.sql', 'utf8') +
+        readFileSync('migrations-seller-form-readable-endings.sql', 'utf8'),
 );
 const rows = async (sql: string, params: unknown[] = []) =>
     (await db.query<Record<string, unknown>>(sql, params)).rows;
@@ -97,7 +98,7 @@ afterAll(async () => {
 });
 
 describe.sequential('shared base links: migration and atomic writers', () => {
-    it('pins each base owner once, gives every form an opaque ending and rewrites nothing', async () => {
+    it('pins each base owner once, gives every form a readable ending and rewrites nothing', async () => {
         expect(
             await rows(
                 'SELECT account_id, organization_id, root_form_id FROM seller_form_link_namespaces ORDER BY root_form_id',
@@ -110,16 +111,29 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         ]);
         expect(
             await rows(
-                'SELECT form_id, suffix, is_current FROM seller_form_suffix_aliases ORDER BY suffix, form_id',
+                'SELECT form_id, suffix FROM seller_form_suffix_aliases WHERE is_current ORDER BY suffix, form_id',
             ),
         ).toEqual([
-            // Base owners get an ending too; the same text is fine across namespaces.
-            { form_id: base, suffix: 'form-10000000', is_current: true },
-            { form_id: teamForm, suffix: 'form-10000000', is_current: true },
-            { form_id: bobSecond, suffix: 'form-10000000', is_current: true },
-            { form_id: bobFirst, suffix: 'form-100000000000', is_current: true },
-            { form_id: listing, suffix: 'form-11111111', is_current: true },
-            { form_id: closing, suffix: 'form-111111119999', is_current: true },
+            // Numbered per namespace in creation order; base owners get one too.
+            { form_id: base, suffix: 'form-1' },
+            { form_id: teamForm, suffix: 'form-1' },
+            { form_id: bobFirst, suffix: 'form-1' },
+            { form_id: bobSecond, suffix: 'form-2' },
+            { form_id: listing, suffix: 'form-2' },
+            { form_id: closing, suffix: 'form-3' },
+        ]);
+        // The earlier ID-derived endings stay reserved to the same forms.
+        expect(
+            await rows(
+                'SELECT form_id, suffix FROM seller_form_suffix_aliases WHERE NOT is_current ORDER BY suffix, form_id',
+            ),
+        ).toEqual([
+            { form_id: base, suffix: 'form-10000000' },
+            { form_id: teamForm, suffix: 'form-10000000' },
+            { form_id: bobSecond, suffix: 'form-10000000' },
+            { form_id: bobFirst, suffix: 'form-100000000000' },
+            { form_id: listing, suffix: 'form-11111111' },
+            { form_id: closing, suffix: 'form-111111119999' },
         ]);
         expect(
             (await rows("SELECT suffix FROM seller_form_suffix_aliases WHERE suffix ILIKE '%private%' OR suffix ILIKE '%listing%'")),
@@ -159,7 +173,7 @@ describe.sequential('shared base links: migration and atomic writers', () => {
             defaultFormId: base,
             defaultFormName: 'Private base name',
             defaultIsActive: false,
-            suffixes: { [base]: 'form-10000000', [listing]: 'form-11111111', [closing]: 'form-111111119999' },
+            suffixes: { [base]: 'form-1', [listing]: 'form-2', [closing]: 'form-3' },
         });
         expect((await getSellerFormAliasSlugs(base)).sort()).toEqual(['jane-old', 'jane-smith']);
     });
@@ -184,6 +198,7 @@ describe.sequential('shared base links: migration and atomic writers', () => {
             await rows('SELECT suffix, is_current FROM seller_form_suffix_aliases WHERE form_id=$1 ORDER BY suffix', [listing]),
         ).toEqual([
             { suffix: 'form-11111111', is_current: false },
+            { suffix: 'form-2', is_current: false },
             { suffix: 'listing', is_current: true },
         ]);
     });
@@ -262,17 +277,14 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         ).rejects.toMatchObject({ code: 'SF423' });
         expect(await rows('SELECT id FROM intake_links WHERE account_id=$1', [jane])).toHaveLength(count);
         const generated = await saveSellerForm(jane, undefined, null, null, { name: 'No ending sent' });
-        expect((await getSellerFormLinkScope(jane))?.suffixes[generated!.id]).toBe(
-            `form-${generated!.id.replace(/-/g, '').slice(0, 8)}`,
-        );
+        // Lowest free number: form-1 to form-3 belong to the first three forms.
+        expect((await getSellerFormLinkScope(jane))?.suffixes[generated!.id]).toBe('form-4');
         // The requested ending does not leak to a later insert in the session.
         // A valid additional-row insert must supply the existing default and
         // referral flags; their TRUE defaults are for first-ever provisioning.
         await rows('INSERT INTO intake_links(account_id,slug,is_default,is_referral_identity) VALUES ($1,$2,FALSE,FALSE)', [jane, 'old-writer']);
         const oldWriter = String((await rows("SELECT id FROM intake_links WHERE slug='old-writer'"))[0].id);
-        expect((await getSellerFormLinkScope(jane))?.suffixes[oldWriter]).toBe(
-            `form-${oldWriter.replace(/-/g, '').slice(0, 8)}`,
-        );
+        expect((await getSellerFormLinkScope(jane))?.suffixes[oldWriter]).toBe('form-5');
         // The same ending is valid in another namespace of the same creator.
         const teamListing = await saveSellerForm(jane, team, null, null, { name: 'Team listing', suffix: 'listing' });
         expect((await getIntakeLinkBySuffix('team-form', 'listing'))?.id).toBe(teamListing!.id);
@@ -283,7 +295,7 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         const first = String((await rows('SELECT id FROM ensure_seller_form($1,NULL,$2)', [carol, 'carol-form']))[0].id);
         expect(await getSellerFormLinkScope(carol)).toMatchObject({
             rootFormId: first, baseSlug: 'carol-form', defaultFormId: first,
-            suffixes: { [first]: `form-${first.replace(/-/g, '').slice(0, 8)}` },
+            suffixes: { [first]: 'form-1' },
         });
     });
 
@@ -323,7 +335,7 @@ describe.sequential('shared base links: migration and atomic writers', () => {
     });
 
     it('leaves no namespace or ending behind when account closure deletes the forms', async () => {
-        const bobEndings = () => rows('SELECT x.form_id FROM seller_form_suffix_aliases x JOIN seller_form_link_namespaces n ON n.id=x.namespace_id WHERE n.account_id=$1', [bob]);
+        const bobEndings = () => rows('SELECT x.form_id FROM seller_form_suffix_aliases x JOIN seller_form_link_namespaces n ON n.id=x.namespace_id WHERE n.account_id=$1 AND x.is_current', [bob]);
         // Mirrors lib/neon/queries/account-closure.ts: forms are deleted explicitly.
         await rows('DELETE FROM intake_links WHERE account_id=$1', [jane]);
         expect(await rows('SELECT 1 FROM seller_form_link_namespaces WHERE account_id=$1', [jane])).toHaveLength(0);
@@ -359,7 +371,7 @@ it('boots the current schema with base links and accepts the migration on top', 
             (await fresh.query('SELECT form_id, suffix, is_current FROM seller_form_suffix_aliases ORDER BY suffix')).rows,
         ).toEqual([
             { form_id: second, suffix: 'closing', is_current: true },
-            { form_id: first, suffix: `form-${first.replace(/-/g, '').slice(0, 8)}`, is_current: true },
+            { form_id: first, suffix: 'form-1', is_current: true },
         ]);
     } finally {
         await fresh.close();

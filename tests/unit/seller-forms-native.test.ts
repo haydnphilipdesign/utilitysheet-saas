@@ -205,6 +205,7 @@ describe
                 );
                 await a.query(readFileSync('migrations-seller-form-base-links.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'));
+                await a.query(readFileSync('migrations-seller-form-readable-endings.sql', 'utf8'));
                 expect(
                     await a.query(
                         "SELECT COUNT(*) FROM pg_constraint WHERE conrelid='requests'::regclass AND contype='f' AND confrelid='accounts'::regclass;",
@@ -387,13 +388,14 @@ describe
                 const child = await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,NULL,NULL,'{"name":"Private old name"}','${randomUUID()}',50,TRUE);`);
                 await a.query(readFileSync('migrations-seller-form-base-links.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'));
+                await a.query(readFileSync('migrations-seller-form-readable-endings.sql', 'utf8'));
                 await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,'${child}',1,'{"name":"Changed only"}','unused',50);`);
                 expect(await a.query(`SELECT root_form_id FROM seller_form_link_namespaces WHERE account_id='${owner}';`)).toBe(form);
                 // The base owner keeps one current ending and may rename it.
                 expect(await a.query(`SELECT count(*) FROM seller_form_suffix_aliases WHERE form_id='${form}' AND is_current;`)).toBe('1');
                 await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,'${form}',1,'{"suffix":"main"}','unused',50);`);
                 expect(await a.query(`SELECT suffix FROM seller_form_suffix_aliases WHERE form_id='${form}' AND is_current;`)).toBe('main');
-                expect(await a.query(`SELECT suffix LIKE 'form-%' FROM seller_form_suffix_aliases WHERE form_id='${child}' AND is_current;`)).toBe('t');
+                expect(await a.query(`SELECT suffix FROM seller_form_suffix_aliases WHERE form_id='${child}' AND is_current;`)).toBe('form-2');
             }, 15000);
 
             it('waits on account before form: a racing save completes and start gets a recoverable revision conflict', async () => {

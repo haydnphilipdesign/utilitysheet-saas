@@ -565,8 +565,9 @@ DROP TRIGGER IF EXISTS register_seller_form_alias ON intake_links;
 CREATE TRIGGER register_seller_form_alias AFTER INSERT OR UPDATE OF slug ON intake_links
     FOR EACH ROW EXECUTE FUNCTION register_seller_form_alias();
 
--- Shared base links. See migrations-seller-form-base-links.sql and
--- migrations-seller-form-default-base-link.sql.
+-- Shared base links. See migrations-seller-form-base-links.sql,
+-- migrations-seller-form-default-base-link.sql and
+-- migrations-seller-form-readable-endings.sql (apply in that order).
 -- The root form is pinned once and only owns the base name: its flat slug and
 -- every entry it owns in intake_link_aliases are the base aliases. The bare
 -- base link opens the workspace's default form, not necessarily the root.
@@ -634,11 +635,11 @@ CREATE TRIGGER guard_seller_form_suffix_alias BEFORE INSERT OR UPDATE ON seller_
 -- Idempotent per creator/workspace. Callers hold the owner row lock (the
 -- intake_links insert trigger, save_seller_form, or the backfill below).
 -- Pins the base owner once (default, else oldest) and gives every form without
--- a current ending either the requested one or an opaque ID-derived one.
+-- a current ending either the requested one or the lowest free "form-N".
 -- Internal form names are private and never become URL text here.
 CREATE OR REPLACE FUNCTION initialize_seller_form_links(p_account UUID, p_org UUID, p_form UUID, p_suffix TEXT)
 RETURNS VOID LANGUAGE plpgsql AS $$
-DECLARE ns seller_form_link_namespaces; g RECORD; v_hex TEXT; v_len INTEGER; v_suffix TEXT;
+DECLARE ns seller_form_link_namespaces; g RECORD; v_n INTEGER; v_suffix TEXT;
 BEGIN
     SELECT * INTO ns FROM seller_form_link_namespaces
         WHERE account_id = p_account AND organization_id IS NOT DISTINCT FROM p_org;
@@ -662,13 +663,13 @@ BEGIN
             END IF;
             v_suffix := p_suffix;
         ELSE
-            v_hex := replace(g.id::text, '-', ''); v_len := 8;
+            v_n := 1;
             LOOP
-                v_suffix := 'form-' || left(v_hex, v_len);
+                v_suffix := 'form-' || v_n;
                 EXIT WHEN NOT EXISTS (SELECT 1 FROM seller_form_suffix_aliases x
                     WHERE x.namespace_id = ns.id AND x.suffix = v_suffix AND x.form_id <> g.id);
-                v_len := v_len + 4;
-                IF v_len > 32 THEN RAISE EXCEPTION 'Unable to generate a link ending'; END IF;
+                v_n := v_n + 1;
+                IF v_n > 100000 THEN RAISE EXCEPTION 'Unable to generate a link ending'; END IF;
             END LOOP;
         END IF;
         INSERT INTO seller_form_suffix_aliases(namespace_id, suffix, form_id, is_current)

@@ -21,7 +21,7 @@ export async function PATCH(request: Request) {
         );
         if (!parsed.success)
             return NextResponse.json(
-                { error: 'Invalid base link', code: 'INVALID_LINK_BASE' },
+                { error: 'Invalid link name', code: 'INVALID_LINK_BASE' },
                 { status: 400 },
             );
         const { base, revision } = parsed.data;
@@ -33,7 +33,7 @@ export async function PATCH(request: Request) {
                     error:
                         error instanceof Error
                             ? error.message
-                            : 'Invalid base link',
+                            : 'Invalid link name',
                     code: 'INVALID_SLUG',
                 },
                 { status: 400 },

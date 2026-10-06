@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { SavedSellerForm, SellerFormsResponse } from './types';
 import { BaseLinkEditor } from './BaseLinkEditor';
+import { FormLinkEnding } from './FormLinkEnding';
 
 export function FormsWorkspace() {
     const [data, setData] = useState<SellerFormsResponse | null>(null);
@@ -28,11 +29,11 @@ export function FormsWorkspace() {
         void load();
     }, []);
     async function makeDefault({ id, name }: SavedSellerForm) {
-        // The base link follows the default, so this changes links already shared.
+        // The main link follows the default, so this changes links already shared.
         if (
             data?.linkBase &&
             !window.confirm(
-                `Make "${name}" your default form?\n\n${data.linkBase.url} will open it from now on, including where you have already shared that link. "${data.linkBase.formName}" stays available at its own link.`,
+                `Make "${name}" your default form?\n\nYour main link (${data.linkBase.url}) will open it from now on, including where you have already shared it. "${data.linkBase.formName}" stays available at its own link.`,
             )
         )
             return;
@@ -107,12 +108,13 @@ export function FormsWorkspace() {
                                     ? ' · Handoff sections'
                                     : ''}
                             </p>
-                            <p className="break-all text-sm">{form.url}</p>
-                            {form.endingUrl && form.endingUrl !== form.url && (
-                                <p className="break-all text-xs text-muted-foreground">
-                                    Also opens from {form.endingUrl}
-                                </p>
-                            )}
+                            <FormLinkEnding
+                                key={`${form.id}:${form.revision}`}
+                                form={form}
+                                mainUrl={data.linkBase?.url ?? null}
+                                canRename={data.isPaid}
+                                onSaved={load}
+                            />
                             {!form.isActive && (
                                 <p className="text-sm text-muted-foreground">
                                     New starts are paused. Existing requests

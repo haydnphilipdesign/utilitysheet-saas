@@ -376,7 +376,7 @@ export function FormEditor({ id }: { id: string }) {
                                     Paused. Existing seller requests stay
                                     available.
                                     {form?.isDefault
-                                        ? ' This is your default form, so your base link cannot start new requests while it is paused.'
+                                        ? ' This is your default form, so your main link cannot start new requests while it is paused.'
                                         : ''}
                                 </p>
                             )}
