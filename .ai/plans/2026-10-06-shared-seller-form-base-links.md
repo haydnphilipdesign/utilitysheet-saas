@@ -1,7 +1,7 @@
 # Shared seller-form base links
 
 - Date: 2026-10-06. Author: Codex. Baseline: `main` at `ccd4eda`; clean worktree at planning startup.
-- Status: **Completed locally and validated (Codex, 2026-10-06).** Owner approved the proposed contract in section 1 for local implementation. No required local implementation or validation remains. Live migration and release remain separately gated and were not performed.
+- Status: **Implementation, local validation and authorized live migration completed (Codex, 2026-10-06).** No required implementation or migration work remains. Owner explicitly requested the migration after local completion; commit/push/deployment remain separately gated and were not performed.
 - Intended result: choose one custom base link for a creator's forms in a fixed workspace, then identify additional forms with an editable URL ending.
 - Related: `2026-10-02-saved-seller-forms.md`; decisions `../decisions/2026-10-02-saved-form-{workspace-boundary,storage-and-snapshots,commercial-policy}.md`.
 - No runtime code, schema, database, deployment, billing or email changes made during planning. No other active editor known; recheck before implementation.
@@ -170,7 +170,8 @@ storage/helper/API/native tests and saved-form/intake browser specs;
 closure code were inspected and preserved; schema cascades and tests verify
 cleanup, and no new URL fields were added to export.
 
-Release boundary: migration not run against any existing/hosted database. No
+Release boundary at local completion: migration had not yet run against any
+existing/hosted database; its later authorized application is recorded below. No
 real email, commit, push, deployment or deployment-setting changes. New source
 files inspected directly for sensitive patterns; the owner's exported chat is
 reference-only and remains untracked, excluded from staging. The concrete
@@ -194,7 +195,25 @@ Final verification, on Node 20.19.0 to match CI's major version:
 
 No required local work remains. Recommended next action: review the uncommitted
 patch and release instructions, then obtain explicit owner authorization for
-target-specific live migration/commit/push/deployment. Hosted smoke checks after
+commit/push/deployment. Hosted smoke checks after
 an authorized release and actual GitHub CI observation remain release work;
 neither is represented as performed. Do not stage the exported chat or generated
 test/build artifacts.
+
+### Authorized live migration (2026-10-06)
+
+Owner explicitly requested running the migration after local completion. Applied
+the reviewed SQL to the configured Neon database using psql 17, stop-on-error and
+transaction-local lock/statement timeouts. Both transactions committed. Startup
+timeout options were initially rejected by the pooler before any SQL executed;
+transaction-local settings resolved this runner issue without migration changes.
+
+Preflight: existing saved-form writer/allowance/UUID functions present, obsolete
+global uniqueness absent, zero uninitialized forms or invalid current aliases;
+new tables absent. Postflight: 136 namespaces, 1 suffix alias, zero unmapped forms,
+root/suffix scope mismatches or duplicate current endings; all new guards and
+insert initialization enabled. All 137 forms, 138 flat aliases and 975 requests
+preserved exactly according to counts and server-side whole-row fingerprints.
+Only aggregate results emitted; no credentials or customer rows retained. The
+temporary runner was removed. No required migration work remains; application
+commit/push/deployment and hosted smoke checks still require owner authorization.

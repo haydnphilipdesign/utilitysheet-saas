@@ -1,6 +1,6 @@
 # Shared seller-form URL identity
 
-- Date: 2026-10-06. Status: accepted and implemented/validated locally; live migration/release not authorized or performed.
+- Date: 2026-10-06. Status: accepted, implemented/validated locally, and migration applied with explicit owner authorization. Application deployment remains pending separate authorization.
 - Plan: `../plans/2026-10-06-shared-seller-form-base-links.md`.
 
 ## Context and decision
