@@ -10,7 +10,7 @@
 - `/admin/question-requests` read-only triage of seller-form questions customers requested but could not find
 - `/admin/feedback` customer feedback inbox: messages from the dashboard Feedback button with page context, and an audited review status (nav label `Feedback`, under Customers)
 - `/admin/organizations` workspace search and Team/personal workspace totals; Team organizations are distinguished from personal/default workspaces in Admin copy
-- `/admin/abandonment` seller-progress monitoring (route retained for compatibility)
+- `/admin/abandonment` seller-progress monitoring (route retained for compatibility). Requests a coordinator reopened are counted like any in-progress request and their rows are marked Reopened.
 - `/admin/testimonial-candidates` customer outreach and advocacy-candidate review (route retained for compatibility)
 - `/admin/updates` draft, review, publication, and deletion of customer-facing Product Updates
 - `/admin/audit-logs` audit log viewer
@@ -264,7 +264,9 @@ Decision record: `.ai/decisions/2026-10-05-seller-reminder-operations.md`.
   sent and the operator reviews again.
 - Admin reminders go only to requests that are not deleted, not submitted and have no recorded
   submission, with a valid seller email and an owner who is not banned or closing. Drafts are
-  eligible. There is no override for an ineligible request.
+  eligible. The one exception to the recorded-submission rule is a request a coordinator reopened
+  for the seller (in progress, with an editing session above 0): it can be reminded, as the
+  coordinator already can. There is no override for an ineligible request.
 - A 10 minute cooldown per request is shared with the customer's own reminder button and enforced in
   the database, including against simultaneous clicks from two sessions. There is no override.
 - Outcomes are distinct: **accepted by the provider** (not proof of delivery), **rejected, not sent**,

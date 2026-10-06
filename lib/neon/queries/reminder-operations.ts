@@ -105,7 +105,7 @@ export function reminderClaimStatements(input: {
         {
             text: `
                 WITH req AS (
-                    SELECT r.id, r.account_id, r.status, r.metered_at, r.deleted_at, r.seller_email, r.property_address,
+                    SELECT r.id, r.account_id, r.status, r.metered_at, r.seller_edit_version, r.deleted_at, r.seller_email, r.property_address,
                         a.role AS owner_role, a.closure_status AS owner_closure_status
                     FROM requests r
                     JOIN accounts a ON a.id = r.account_id
@@ -142,7 +142,8 @@ export function reminderClaimStatements(input: {
                             WHEN EXISTS (SELECT 1 FROM existing e WHERE e.state = 'accepted') THEN 'ALREADY_ACCEPTED'
                             WHEN EXISTS (SELECT 1 FROM existing e WHERE e.state = 'failed') THEN 'OPERATION_FAILED'
                             WHEN q.deleted_at IS NOT NULL THEN 'REQUEST_DELETED'
-                            WHEN $8::boolean AND (q.status = 'submitted' OR q.metered_at IS NOT NULL) THEN 'REQUEST_SUBMITTED'
+                            WHEN $8::boolean AND (q.status = 'submitted' OR (q.metered_at IS NOT NULL
+                                AND NOT (q.status = 'in_progress' AND q.seller_edit_version > 0))) THEN 'REQUEST_SUBMITTED'
                             WHEN $8::boolean AND (q.owner_role = 'banned' OR q.owner_closure_status <> 'active') THEN 'OWNER_INELIGIBLE'
                             WHEN NULLIF(btrim(q.seller_email), '') IS DISTINCT FROM $6::text THEN 'RECIPIENT_CHANGED'
                             WHEN EXISTS (SELECT 1 FROM existing e WHERE e.payload_fingerprint <> $7::text) THEN 'PAYLOAD_CHANGED'

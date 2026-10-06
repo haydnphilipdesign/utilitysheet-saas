@@ -44,7 +44,7 @@ const workflowSteps = [
         icon: Smartphone,
         title: 'The seller confirms providers',
         description:
-            'The seller opens the link on their phone, enters the property address, and confirms or types each utility provider in about two minutes.',
+            'The seller opens the link on their phone, enters the property address, and confirms or types each utility provider.',
     },
     {
         icon: FileText,

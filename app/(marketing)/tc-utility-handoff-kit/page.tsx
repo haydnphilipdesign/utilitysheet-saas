@@ -37,7 +37,7 @@ const emailTemplates = [
         subject: 'Welcome, plus one quick form for [Property Address]',
         body: `Hi [Seller First Name],
 
-Welcome! While we get your listing started, please take a few minutes to share your utility providers for [Property Address]:
+Welcome! While we get your listing started, please share your utility providers for [Property Address]:
 
 [UTILITY FORM LINK]
 
@@ -58,7 +58,7 @@ As we prepare for closing, please complete our short utility information form fo
 
 [UTILITY FORM LINK]
 
-It works from your phone and should only take a few minutes. If you are unsure about a provider, choose "Not sure" and continue. You do not need to research anything before submitting.
+It works from your phone. If you are unsure about a provider, choose "Not sure" and continue. You do not need to research anything before submitting.
 
 Thank you!
 [Your Name]
@@ -75,7 +75,7 @@ To help our buyer set up utilities, could you please forward this short form to 
 
 [UTILITY FORM LINK]
 
-The seller can fill it out on their phone in a few minutes, and "Not sure" is fine for any provider they do not know. The form is meant for the seller to complete, so please pass it along rather than filling it in.
+The seller can fill it out on their phone, and "Not sure" is fine for any provider they do not know. The form is meant for the seller to complete, so please pass it along rather than filling it in.
 
 Thank you!
 [Your Name]

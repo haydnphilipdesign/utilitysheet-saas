@@ -26,6 +26,7 @@ type LastEventRow = {
     last_event_data: Record<string, unknown> | null;
     last_event_at: string | null;
     hours_since_last_event: number | null;
+    is_reopened: boolean | null;
 };
 
 type SellerProgressData = {
@@ -125,7 +126,8 @@ async function getSellerProgressData(): Promise<SellerProgressData | null> {
                 le.event_type AS last_event_type,
                 le.event_data AS last_event_data,
                 le.last_event_at,
-                EXTRACT(EPOCH FROM (NOW() - COALESCE(le.last_event_at, r.created_at))) / 3600.0 AS hours_since_last_event
+                EXTRACT(EPOCH FROM (NOW() - COALESCE(le.last_event_at, r.created_at))) / 3600.0 AS hours_since_last_event,
+                (r.metered_at IS NOT NULL AND r.seller_edit_version > 0) AS is_reopened
             FROM requests r
             LEFT JOIN accounts a ON r.account_id = a.id
             LEFT JOIN last_events le ON le.request_id = r.id
@@ -288,7 +290,7 @@ export default async function SellerProgressPage() {
                 <div className="border-b border-border/70 p-4">
                     <h2 className="text-lg font-medium">In-progress requests</h2>
                     <p className="text-sm text-muted-foreground">
-                        Most recent activity first, up to 200 requests. Open request inspection to review the event history or use existing audited recovery actions.
+                        Most recent activity first, up to 200 requests. Rows marked Reopened were submitted before and reopened by the coordinator; they are included in the counts above. Open request inspection to review the event history or use existing audited recovery actions.
                     </p>
                 </div>
                 <div className="overflow-x-auto">
@@ -311,7 +313,12 @@ export default async function SellerProgressPage() {
                                 const stage = describeSellerProgressEvent(row.last_event_type, row.last_event_data);
                                 return (
                                     <tr key={row.request_id} className="border-b last:border-0 hover:bg-muted/40">
-                                        <td className="p-3 font-medium text-foreground">{row.property_address}</td>
+                                        <td className="p-3 font-medium text-foreground">
+                                            {row.property_address}
+                                            {row.is_reopened ? (
+                                                <Badge variant="outline" className="ml-2 align-middle" title="Submitted before, then reopened by the coordinator so the seller can correct it.">Reopened</Badge>
+                                            ) : null}
+                                        </td>
                                         <td className="p-3">
                                             <div className="text-foreground">{row.user_name || 'Unknown account'}</div>
                                             <div className="text-xs text-muted-foreground">{row.user_email || ''}</div>

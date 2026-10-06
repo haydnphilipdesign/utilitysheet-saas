@@ -69,7 +69,7 @@ export function SuccessStep({ isDemo = false, isTestDrive = false, demoData, bra
                     </h2>
                     <div className="p-3 sm:p-4 bg-slate-500/10 border border-slate-500/20 rounded-xl">
                         <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base">
-                            Your sellers complete this in under 2 minutes. You get a
+                            Your sellers fill in this same short form. You get a
                             <span className="font-semibold text-foreground"> branded PDF</span> with all their utility info.
                         </p>
                     </div>

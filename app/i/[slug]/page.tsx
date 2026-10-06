@@ -371,8 +371,8 @@ export default function IntakeLinkPage({ params }: { params: Promise<{ slug: str
                                 </h1>
                                 <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
                                     {sellerIntro || (brandProfile?.name
-                                        ? `Your agent at ${brandProfile.name} sent you this link to gather utility info for the buyer. It takes about 2 to 3 minutes, and your progress saves automatically.`
-                                        : 'Your agent sent this link to gather utility info for the buyer. It takes about 2 to 3 minutes, and your progress saves automatically.')}
+                                        ? `Your agent at ${brandProfile.name} sent you this link to gather utility info for the buyer. Your progress saves automatically.`
+                                        : 'Your agent sent this link to gather utility info for the buyer. Your progress saves automatically.')}
                                 </p>
                             </div>
                         </div>

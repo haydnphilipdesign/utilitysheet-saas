@@ -429,7 +429,7 @@ export default function DashboardPage() {
         if (!intakeLink?.url) return;
         try {
             await navigator.clipboard.writeText(
-                `Hi, please use this link to fill in the utility providers for your property. It takes about 2 minutes and no account is needed: ${intakeLink.url}`
+                `Hi, please use this link to fill in the utility providers for your property. No account is needed: ${intakeLink.url}`
             );
             trackEvent('seller_link_sms_copied', {
                 source: showSetupPrompt ? 'dashboard_first_run_card' : 'dashboard_reusable_link_card',
@@ -444,7 +444,7 @@ export default function DashboardPage() {
         if (!intakeLink?.url) return;
         const subject = encodeURIComponent('Utility Information Request');
         const body = encodeURIComponent(
-            `Hi,\n\nPlease use the link below to fill in the utility providers for your property. It takes about 2 minutes and no account is needed.\n\n${intakeLink.url}\n\nThank you.`
+            `Hi,\n\nPlease use the link below to fill in the utility providers for your property. No account is needed.\n\n${intakeLink.url}\n\nThank you.`
         );
 
         trackEvent('seller_link_email_opened', {
@@ -619,7 +619,7 @@ export default function DashboardPage() {
                                 <AccordionContent className="px-3 pb-3">
                                     <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                                         <p>Seller opens your link and enters the property address.</p>
-                                        <p>They complete utility details in about 2 minutes.</p>
+                                        <p>They answer the utility questions on their phone, with no account.</p>
                                         <p>You receive the submission by email and can review it here.</p>
                                         <p>Pro and Teams can edit a submitted sheet without reopening the seller link.</p>
                                         <p>Add it to a seller welcome email, listing checklist, or closing-prep email.</p>

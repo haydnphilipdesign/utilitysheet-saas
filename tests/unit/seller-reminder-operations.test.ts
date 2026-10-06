@@ -18,8 +18,10 @@ import {
     buildReminderForRequest,
     classifyProviderResult,
     executeSellerReminder,
+    prepareSellerReminder,
     type PreparedSellerReminder,
 } from '@/lib/reminders/seller-reminder';
+import { getRequestById } from '@/lib/neon/queries';
 import type { Request } from '@/types';
 
 // Real schema.sql plus the reminder migration in disposable embedded PostgreSQL.
@@ -265,6 +267,39 @@ describe('eligibility at execution', () => {
         expect(send).not.toHaveBeenCalled();
         expect(await count('SELECT COUNT(*)::int AS n FROM reminder_operations')).toBe(0);
         expect(await count('SELECT COUNT(*)::int AS n FROM admin_audit_logs')).toBe(0);
+    });
+
+    it('lets Admin remind a request a coordinator reopened, but no other request with a recorded submission', async () => {
+        // Reopened: in progress again, first submission still recorded, editing session advanced.
+        await db.exec(`UPDATE requests SET status = 'in_progress', seller_edit_version = 1 WHERE id = '${SUBMITTED}'`);
+        const send = accepted();
+        expect(await run(op(1), adminActor, send, prepared(SUBMITTED))).toMatchObject({ status: 'accepted' });
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(await events()).toBe(1);
+        expect(await audits('request_reminder_sent')).toBe(1);
+
+        // In progress with a recorded submission but never reopened (a status correction): still refused.
+        await db.exec(`TRUNCATE reminder_operations, event_logs; UPDATE requests SET seller_edit_version = 0 WHERE id = '${SUBMITTED}'`);
+        expect(await run(op(2), adminActor, send, prepared(SUBMITTED))).toMatchObject({ code: 'REQUEST_SUBMITTED' });
+
+        // Closed without changes or resubmitted: submitted again, so refused whatever the session number.
+        await db.exec(`UPDATE requests SET status = 'submitted', seller_edit_version = 2 WHERE id = '${SUBMITTED}'`);
+        expect(await run(op(3), adminActor, send, prepared(SUBMITTED))).toMatchObject({ code: 'REQUEST_SUBMITTED' });
+        expect(send).toHaveBeenCalledTimes(1);
+    });
+
+    it('applies the same reopened rule when the Admin preview is prepared', async () => {
+        const owner = { role: 'user', closure_status: 'active', full_name: 'Olivia Owner' };
+        const base = { ...prepared(SUBMITTED).request, metered_at: '2026-10-01T00:00:00.000Z' };
+        const check = async (overrides: Partial<Request>) => {
+            vi.mocked(getRequestById).mockResolvedValueOnce({ ...base, ...overrides } as Request);
+            return prepareSellerReminder({ requestId: SUBMITTED, adminPolicy: true, owner });
+        };
+
+        expect(await check({ status: 'in_progress', seller_edit_version: 1 })).toMatchObject({ ok: true });
+        expect(await check({ status: 'in_progress', seller_edit_version: 0 })).toEqual({ ok: false, code: 'REQUEST_SUBMITTED' });
+        expect(await check({ status: 'submitted', seller_edit_version: 2 })).toEqual({ ok: false, code: 'REQUEST_SUBMITTED' });
+        expect(await check({ status: 'sent', seller_edit_version: 1 })).toEqual({ ok: false, code: 'REQUEST_SUBMITTED' });
     });
 
     it('rolls the claim back when the attempt audit cannot be written', async () => {

@@ -1,7 +1,7 @@
 import type { MessageTemplates } from '@/types';
 
 export const DEFAULT_SELLER_REQUEST_SMS_TEMPLATE =
-    'Hi{{seller_first_name_with_space}}! Please complete this quick utility info form for {{property_address}}. It takes under 2 minutes: {{link}}';
+    'Hi{{seller_first_name_with_space}}! Please complete this utility info form for {{property_address}}: {{link}}';
 
 export const DEFAULT_SELLER_REQUEST_MAILTO_SUBJECT_TEMPLATE =
     'Utility information for {{property_address}}';
@@ -11,7 +11,7 @@ export const DEFAULT_SELLER_REQUEST_MAILTO_BODY_TEMPLATE =
 
 As part of the home sale process, we need to collect utility provider information for {{property_address}}.
 
-Please complete this quick form (takes under 2 minutes):
+Please complete this short form:
 {{link}}
 
 Thank you!`;
@@ -24,7 +24,7 @@ export const DEFAULT_SELLER_REQUEST_EMAIL_BODY_TEMPLATE =
 
 {{agent_name}} is putting together the utility details for {{property_address}}.
 
-When you have a moment, please fill out this short form (usually 2–3 minutes). If you’re not sure about a provider, it’s okay to leave it blank.
+When you have a moment, please fill out this short form. If you’re not sure about a provider, it’s okay to leave it blank.
 
 Thank you!`;
 

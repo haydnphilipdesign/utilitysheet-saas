@@ -3,7 +3,7 @@ import { FEATURED_PRODUCT_UPDATES } from '@/lib/product-updates';
 
 describe('provider incident product update', () => {
     it('publishes a factual resolved update without provider or impact overclaims', () => {
-        const update = FEATURED_PRODUCT_UPDATES[0];
+        const update = FEATURED_PRODUCT_UPDATES.find((entry) => entry.id === 'provider-resolution-incident-resolved')!;
 
         expect(update).toMatchObject({
             id: 'provider-resolution-incident-resolved',

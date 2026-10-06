@@ -1,5 +1,7 @@
 "use client";
 
+import { requestTimelineEventLabel } from '@/lib/admin/seller-progress';
+
 interface EventLog {
     id: string;
     event_type: string;
@@ -29,9 +31,18 @@ export function EventLogTable({ logs }: EventLogTableProps) {
                     </tr>
                 </thead>
                 <tbody>
-                    {logs.map((log) => (
+                    {logs.map((log) => {
+                        const label = requestTimelineEventLabel(log.event_type);
+                        return (
                         <tr key={log.id} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="p-4 font-medium">{log.event_type}</td>
+                            <td className="p-4 font-medium">
+                                {label ? (
+                                    <>
+                                        <span className="block">{label}</span>
+                                        <code className="block text-xs font-normal text-muted-foreground">{log.event_type}</code>
+                                    </>
+                                ) : log.event_type}
+                            </td>
                             <td className="p-4">
                                 <pre className="text-xs font-mono text-muted-foreground max-w-xs overflow-hidden text-ellipsis">
                                     {JSON.stringify(log.event_data)}
@@ -40,7 +51,8 @@ export function EventLogTable({ logs }: EventLogTableProps) {
                             <td className="p-4 text-muted-foreground text-xs">{log.ip_address || '-'}</td>
                             <td className="p-4 text-muted-foreground text-xs">{new Date(log.created_at).toLocaleString()}</td>
                         </tr>
-                    ))}
+                        );
+                    })}
                 </tbody>
             </table>
         </div>

@@ -1,4 +1,36 @@
-# Current task: Seller form, required water and sewer, trash always asked, "Same as Internet" (committed and pushed; post-deploy check pending)
+# Current task: Reopen follow-ups (committed on main, not pushed; release pending)
+
+- Date: 2026-10-06. Last agent: Claude Opus. Branch: main, committed on the owner's instruction as "Label reopen events, let Admin remind reopened requests, drop time claims, and announce reopen" on top of 56e47ba. Not pushed. Concurrent work warning: uncommitted packet changes that are not part of this task appeared in the worktree during the session (`lib/packet/modules.ts`, `lib/packet/packet-data.ts`, `tests/unit/packet-data.test.ts`, untracked `.ai/plans/2026-10-06-packet-handoff-value-formatting.md`). They were left untouched and uncommitted; their owner should record their state here.
+- Status: all four items implemented on the owner's approval of the recommendations (2026-10-06). No required work remains. Not done and not authorized: push, deploy, migrations, database access, real email, publishing through Admin.
+- Plan (completed): `.ai/plans/2026-10-06-reopen-follow-ups.md`. Decisions amended: `2026-10-05-seller-reminder-operations.md` (Admin reminders on reopened requests), `2026-10-06-read-only-after-submission-and-reopen.md` (consequence line).
+
+## What changed
+
+1. Admin timeline labels: `request_reopened` reads "Reopened for seller" and `request_reopen_cancelled` reads "Reopen closed without changes" on Seller Progress and in the request page event history (raw type still shown). Seller Progress rows for reopened requests carry a "Reopened" badge; counts and report definitions are unchanged.
+2. Admin reminders: allowed for a request a coordinator reopened (`in_progress`, `metered_at` set, `seller_edit_version > 0`), in both `prepareSellerReminder` and the claim statement. Every other metered or submitted request is still refused. Reminder wording unchanged.
+3. Time claims removed from the reusable intake page, dashboard and new-request share text and help, test-drive card, landing trust strip (now "Sellers confirm suggested providers instead of typing", list icon), demo success step, default seller message templates (SMS, mailto, email), the built-in seller request email, `from-a-closing`, and the handoff kit page and doc. Default template changes apply to accounts without saved custom templates.
+4. Product update `reopen-submitted-request-for-seller` added first in `lib/product-updates.ts`, dated 2026-10-06T17:00:00Z (date chosen by the agent; owner may change it). It becomes visible, and re-shows the dashboard banner to every customer, when this code is deployed.
+
+## Files
+
+`lib/admin/seller-progress.ts`, `components/admin/EventLogTable.tsx`, `app/(admin)/admin/abandonment/page.tsx`, `lib/reminders/seller-reminder.ts`, `lib/neon/queries/reminder-operations.ts`, `lib/product-updates.ts`, `lib/message-templates/defaults.ts`, `lib/email/email-service.ts`, `app/i/[slug]/page.tsx`, `app/dashboard/page.tsx`, `app/dashboard/requests/new/page.tsx`, `components/test-drive/TestDriveCard.tsx`, `components/landing/TrustStrip.tsx`, `components/seller-form/steps/SuccessStep.tsx`, `app/(marketing)/from-a-closing/page.tsx`, `app/(marketing)/tc-utility-handoff-kit/page.tsx`, `docs/growth/tc-utility-handoff-kit.md`, `ADMIN.md`, the two decision records, the plan; tests `admin-seller-progress`, `admin-event-log-table` (new), `seller-reminder-operations`, `provider-incident-product-update`, `reopen-product-update` (new).
+
+## Validation (Node 22.22.2; CI uses 20)
+
+- Full Vitest: 199 files passed, 1 skipped; 1340 tests passed, 8 skipped. The reminder tests run against embedded PostgreSQL with the real schema.
+- `tsc --noEmit` clean. ESLint on changed files: 1 error and 1 warning, both existing before this work (`any` in `EventLogTable.tsx` line 8, `<img>` in `TrustStrip.tsx`). `git diff --check` clean. `security:scan` passed.
+- Not run or verified: Playwright, `next build`, any signed-in Admin or dashboard browser check, the Seller Progress query against a real database (the page has no automated test; it reads `requests.seller_edit_version`, present in production since the 2026-10-06 migration), email rendering in a mail client.
+
+## Known and left alone
+
+- Reports still count a reopened request as in progress, and counts keyed on `status = 'submitted'` drop it while reopened (plan, "Findings"). Owner chose the badge only.
+- Not changed: handoff kit subject "one quick form", `PRD.md` and `ANALYSIS.md` targets, "66 seconds" on the demo video, "in about a minute" for coordinator setup on `from-a-closing`.
+
+## Next action
+
+Owner confirms the product update date, then authorizes the push (which deploys and publishes the update). After deploy: check the dashboard banner shows the reopen update, and on a reopened test request confirm Admin can preview a reminder. Post-deploy checks from the two earlier tasks below are still open.
+
+# Previous task: Seller form, required water and sewer, trash always asked, "Same as Internet" (committed and pushed; post-deploy check pending)
 
 - Date: 2026-10-06. Last agent: Claude Opus. Branch: main, committed as 2dbb88f "Require water and sewer answers, always ask trash, and offer Same as Internet" and pushed to `origin/main` on the owner's instruction. No concurrent work known. No ownership warnings.
 - Status: implementation and validation complete. No required work remains. No migration was needed, no email was sent and no database was touched. Whether the push produced a healthy production deployment was not verified from here.

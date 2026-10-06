@@ -190,7 +190,7 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
                         <div className="min-w-0">
                             <h3 className="text-sm font-semibold text-foreground">Try the seller experience</h3>
                             <p className="mt-1 text-xs text-muted-foreground">
-                                Answer your own request as if you were the seller, using made-up details. It takes about 2 minutes and does not count toward your plan.
+                                Answer your own request as if you were the seller, using made-up details. It does not count toward your plan.
                             </p>
                         </div>
                     </div>

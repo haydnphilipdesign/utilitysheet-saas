@@ -42,4 +42,8 @@ Admin reminders had no cooldown, accepted deleted and submitted requests, sent w
 
 ## Amendment: customer reminders on submitted requests (2026-10-06)
 
-Item 9 said the customer endpoint keeps its previous eligibility, which included submitted requests. It now refuses a submitted request with a 409, because the seller has nothing left to do. A request a coordinator has reopened is in progress and can be reminded by the coordinator. Admin eligibility is unchanged, so Admin reminders still refuse any metered request, including a reopened one. See `2026-10-06-read-only-after-submission-and-reopen.md`.
+Item 9 said the customer endpoint keeps its previous eligibility, which included submitted requests. It now refuses a submitted request with a 409, because the seller has nothing left to do. A request a coordinator has reopened is in progress and can be reminded by the coordinator. Admin eligibility is unchanged, so Admin reminders still refuse any metered request, including a reopened one (superseded for reopened requests by the next amendment). See `2026-10-06-read-only-after-submission-and-reopen.md`.
+
+## Amendment: Admin reminders on reopened requests (2026-10-06)
+
+Owner decision. Admin may remind a request that a coordinator reopened for the seller: `status = 'in_progress'`, `metered_at` set and `seller_edit_version > 0`. Every other Admin rule is unchanged (reason, confirmation, reviewed preview, shared cooldown, owner standing). A request with a recorded submission that is in progress without a reopen (for example after a status correction) is still refused, and so is any submitted request. The rule is applied in both `prepareSellerReminder` and the claim statement. The reminder wording is not changed for reopened requests; the operator sees the exact text in the preview. Rejected: allowing any in-progress request regardless of `metered_at`, and a separate reopen reminder template.

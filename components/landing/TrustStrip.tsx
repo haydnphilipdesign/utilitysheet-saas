@@ -1,4 +1,4 @@
-import { Clock, Smartphone, FileCheck, Plug } from 'lucide-react';
+import { ListChecks, Smartphone, FileCheck, Plug } from 'lucide-react';
 
 export function TrustStrip() {
     return (
@@ -8,8 +8,8 @@ export function TrustStrip() {
                     {/* Value Props */}
                     <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Clock className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                            <span>Sellers finish in ~2 minutes</span>
+                            <ListChecks className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                            <span>Sellers confirm suggested providers instead of typing</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Smartphone className="w-4 h-4 text-slate-500 flex-shrink-0" />

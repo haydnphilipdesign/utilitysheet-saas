@@ -730,7 +730,7 @@ function generateSellerNotificationHtml({
                             </div>
                             
                             <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                Please click the button below to provide information about the utility providers for this property. This typically takes 2-3 minutes.
+                                Please click the button below to provide information about the utility providers for this property.
                             </p>
                             
                             <!-- CTA Button -->

@@ -39,6 +39,6 @@ The seller form told sellers the link was read-only after submission, and market
 - Requires `migrations-seller-edit-sessions.sql` before the code is deployed.
 - While a request is reopened its public info sheet and PDF are unavailable, because they require a submitted request.
 - A resubmission replaces the whole sheet, so a provider recorded under a utility the form does not ask about for that home is not carried through.
-- A reopened request is in progress and already metered. Admin reminders still refuse metered requests; coordinator reminders work.
+- A reopened request is in progress and already metered. Coordinator reminders work. Admin reminders refused it at first; since the 2026-10-06 amendment to `2026-10-05-seller-reminder-operations.md` they allow a reopened request and still refuse every other metered one.
 - Admin status correction can restore a metered in-progress request to submitted, which also closes a reopen.
 - The seller link returns the stored answers while a request is reopened, as it already did for HOA and handoff answers. Secrets must not be added to seller-visible answers.

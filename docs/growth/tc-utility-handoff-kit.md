@@ -14,7 +14,7 @@ Please complete our short utility information form for [Property Address]:
 
 [UTILITY FORM LINK]
 
-It works from your phone and should only take a few minutes. If you are unsure about a provider, choose “Not sure” and continue—you do not need to research anything before submitting.
+It works from your phone. If you are unsure about a provider, choose “Not sure” and continue—you do not need to research anything before submitting.
 
 Thank you!
 

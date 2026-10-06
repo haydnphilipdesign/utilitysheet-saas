@@ -3,6 +3,18 @@ export type SellerProgressStage = {
     description: string;
 };
 
+const REQUEST_TIMELINE_EVENT_LABELS = {
+    request_reopened: 'Reopened for seller',
+    request_reopen_cancelled: 'Reopen closed without changes',
+} as const;
+
+/** Readable name for a request timeline event, or null when the raw type is all there is. */
+export function requestTimelineEventLabel(eventType: string): string | null {
+    return Object.prototype.hasOwnProperty.call(REQUEST_TIMELINE_EVENT_LABELS, eventType)
+        ? REQUEST_TIMELINE_EVENT_LABELS[eventType as keyof typeof REQUEST_TIMELINE_EVENT_LABELS]
+        : null;
+}
+
 function formatCategory(value: string) {
     return value.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
 }
@@ -56,6 +68,20 @@ export function describeSellerProgressEvent(
         return {
             label: 'Reminder sent',
             description: 'A reminder was recorded; no later seller activity is available.',
+        };
+    }
+
+    if (eventType === 'request_reopened') {
+        return {
+            label: REQUEST_TIMELINE_EVENT_LABELS.request_reopened,
+            description: 'A coordinator reopened this submitted request so the seller can correct it. No seller activity is recorded since.',
+        };
+    }
+
+    if (eventType === 'request_reopen_cancelled') {
+        return {
+            label: REQUEST_TIMELINE_EVENT_LABELS.request_reopen_cancelled,
+            description: 'A coordinator closed the reopened request, restoring the submitted sheet as it was.',
         };
     }
 

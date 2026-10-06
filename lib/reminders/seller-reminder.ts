@@ -79,8 +79,8 @@ export function buildReminderForRequest(
 
 /**
  * Loads the request and renders the reminder exactly as it would be sent.
- * `adminPolicy` applies the Admin eligibility rules (unsubmitted, owner in good
- * standing); the customer path keeps its existing rules.
+ * `adminPolicy` applies the Admin eligibility rules (unsubmitted or reopened for
+ * the seller, owner in good standing); the customer path keeps its existing rules.
  */
 export async function prepareSellerReminder(input: {
     requestId: string;
@@ -95,7 +95,12 @@ export async function prepareSellerReminder(input: {
     if (request.deleted_at) return { ok: false, code: 'REQUEST_DELETED' };
 
     if (input.adminPolicy) {
-        if (request.status === 'submitted' || request.metered_at) return { ok: false, code: 'REQUEST_SUBMITTED' };
+        // A recorded submission ends Admin reminders, unless a coordinator reopened
+        // the request for the seller. The claim statement applies the same rule.
+        const reopenedForSeller = request.status === 'in_progress' && Number(request.seller_edit_version ?? 0) > 0;
+        if (request.status === 'submitted' || (request.metered_at && !reopenedForSeller)) {
+            return { ok: false, code: 'REQUEST_SUBMITTED' };
+        }
         if (!input.owner || input.owner.role === 'banned' || (input.owner.closure_status ?? 'active') !== 'active') {
             return { ok: false, code: 'OWNER_INELIGIBLE' };
         }

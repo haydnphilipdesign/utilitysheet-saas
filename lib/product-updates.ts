@@ -3,6 +3,7 @@ import type { ProductUpdate } from '@/types';
 const REFERRAL_UPDATE_TIMESTAMP = '2026-07-15T09:00:00.000Z';
 const SUBMITTED_EDITING_UPDATE_TIMESTAMP = '2026-03-31T09:00:00.000Z';
 const PROVIDER_RESOLUTION_UPDATE_TIMESTAMP = '2026-07-29T17:00:00.000Z';
+const REOPEN_UPDATE_TIMESTAMP = '2026-10-06T17:00:00.000Z';
 
 /**
  * Hardcoded featured updates, newest first. The dashboard banner treats the
@@ -10,6 +11,28 @@ const PROVIDER_RESOLUTION_UPDATE_TIMESTAMP = '2026-07-29T17:00:00.000Z';
  * entry at the top re-surfaces the banner for everyone.
  */
 export const FEATURED_PRODUCT_UPDATES: ProductUpdate[] = [
+    {
+        id: 'reopen-submitted-request-for-seller',
+        title: 'New: Reopen a submitted request so the seller can correct it',
+        body: [
+            'If a seller submits something wrong, you can now send the request back to them instead of starting a new one.',
+            '',
+            '- Open the submitted request and choose "Reopen for Seller". The seller link becomes editable again and starts from the current info sheet, including any edits you made.',
+            '- Available on every plan, including Free.',
+            '- The seller\'s resubmission does not use another monthly submission.',
+            '- The info sheet link and PDF are unavailable while the request is reopened. They return when the seller submits again.',
+            '- "Close Without Changes" restores the info sheet as it was.',
+            '- Reopening does not email the seller, so send them their link when you are ready.',
+            '',
+            'Pro and Team workspaces can still edit a submitted sheet directly.',
+        ].join('\n'),
+        category: 'feature',
+        is_published: true,
+        published_at: REOPEN_UPDATE_TIMESTAMP,
+        created_by: null,
+        created_at: REOPEN_UPDATE_TIMESTAMP,
+        updated_at: REOPEN_UPDATE_TIMESTAMP,
+    },
     {
         id: 'provider-resolution-incident-resolved',
         title: 'Resolved: Provider suggestions and contact lookup',

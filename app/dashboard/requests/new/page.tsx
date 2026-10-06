@@ -290,7 +290,7 @@ export default function NewRequestPage() {
         const brand = getDefaultBrand();
         const agentName = brand?.contact_name?.trim() || '';
         const link = intakeLink?.url || '';
-        return `Hi, please use this link to fill in the utility providers for your property. It takes about 2 minutes and no account is needed: ${link}${agentName ? `\n\nThank you,\n${agentName}` : ''}`;
+        return `Hi, please use this link to fill in the utility providers for your property. No account is needed: ${link}${agentName ? `\n\nThank you,\n${agentName}` : ''}`;
     };
 
     const handleCopyIntakeSms = async () => {
@@ -308,7 +308,7 @@ export default function NewRequestPage() {
         const link = intakeLink?.url || '';
         const subject = encodeURIComponent('Utility Information Request');
         const body = encodeURIComponent(
-            `Hi,\n\nPlease use the link below to fill in the utility providers for your property. It takes about 2 minutes and no account is needed.\n\n${link}\n\nThank you${agentName ? `,\n${agentName}` : '.'}`
+            `Hi,\n\nPlease use the link below to fill in the utility providers for your property. No account is needed.\n\n${link}\n\nThank you${agentName ? `,\n${agentName}` : '.'}`
         );
         window.open(`mailto:?subject=${subject}&body=${body}`);
     };
@@ -651,7 +651,7 @@ export default function NewRequestPage() {
                             <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 space-y-2">
                                 <p className="text-xs font-semibold text-foreground">What happens next</p>
                                 {[
-                                    'Seller taps the link, enters the property address, confirms utilities in ~2 min',
+                                    'Seller taps the link, enters the property address and confirms their utilities',
                                     'PDF automatically attaches to your notification email when they submit',
                                     'No login required for you — the result arrives in your inbox',
                                 ].map((item) => (
