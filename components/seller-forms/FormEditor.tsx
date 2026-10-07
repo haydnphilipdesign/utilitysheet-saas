@@ -1,13 +1,16 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, CheckCircle2, Eye, Pause, Play } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
-import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
     Dialog,
     DialogContent,
@@ -15,6 +18,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { PageHeader } from '@/components/ui/page-header';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
 import { SellerQuestionsDialog } from '@/components/seller-questions/SellerQuestionsDialog';
 import dynamic from 'next/dynamic';
@@ -29,6 +33,7 @@ const SellerWizard = dynamic(
     },
 );
 import { QuestionCollectionSwitches } from './QuestionCollectionSwitches';
+import { PauseFormDialog, resumeForm } from './FormAvailability';
 import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import {
     getAdvancedModuleIncludedFieldCount,
@@ -37,20 +42,21 @@ import {
     normalizeAdvancedModules,
     PACKET_MODE_LABELS,
 } from '@/lib/packet/modules';
+import { cn } from '@/lib/utils';
 import type {
     BrandProfile,
+    PacketMode,
     ProviderSuggestion,
     UtilityCategory,
 } from '@/types';
 import type { SavedSellerForm, SellerFormsResponse } from './types';
-import { toast } from 'sonner';
 import { linkSuffixError, suggestLinkSuffix } from '@/lib/seller-forms/links';
 
+// Pausing is saved on its own, right away, so it is not part of the draft.
 type Draft = Pick<
     SavedSellerForm,
     | 'name'
     | 'sellerIntro'
-    | 'isActive'
     | 'defaultBrandProfileId'
     | 'defaultUtilityCategories'
     | 'defaultPacketMode'
@@ -62,7 +68,6 @@ type Draft = Pick<
 const emptyDraft: Draft = {
     name: '',
     sellerIntro: null,
-    isActive: true,
     defaultBrandProfileId: null,
     defaultUtilityCategories: [...UTILITY_CATEGORY_KEYS],
     defaultPacketMode: 'simple',
@@ -75,7 +80,6 @@ function draftOf(f: SavedSellerForm, duplicate = false): Draft {
     return {
         name: duplicate ? `${f.name.slice(0, 75)} copy` : f.name,
         sellerIntro: f.sellerIntro,
-        isActive: duplicate || f.isActive,
         defaultBrandProfileId: f.defaultBrandProfileId,
         defaultUtilityCategories: f.defaultUtilityCategories,
         defaultPacketMode: f.defaultPacketMode,
@@ -86,6 +90,29 @@ function draftOf(f: SavedSellerForm, duplicate = false): Draft {
         ...(duplicate ? {} : f.linkSuffix ? { suffix: f.linkSuffix } : {}),
     };
 }
+const PACKET_MODE_SUMMARIES: Record<PacketMode, string> = {
+    simple: 'Utility providers and account details only.',
+    advanced: 'Also collects home systems, access details and service providers.',
+};
+const selectClass =
+    'h-11 w-full rounded-md border border-input bg-background px-3 text-base outline-none transition-colors focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring/30 sm:h-8 sm:px-2 sm:text-sm';
+
+function Section({ title, description, children }: {
+    title: string;
+    description: string;
+    children: ReactNode;
+}) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>{title}</CardTitle>
+                <CardDescription>{description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">{children}</CardContent>
+        </Card>
+    );
+}
+
 export function FormEditor({ id }: { id: string }) {
     const router = useRouter();
     const params = useSearchParams();
@@ -94,11 +121,17 @@ export function FormEditor({ id }: { id: string }) {
     const [form, setForm] = useState<SavedSellerForm | null>(null);
     const [draft, setDraft] = useState<Draft>(emptyDraft);
     const [baseline, setBaseline] = useState('');
+    const [loadError, setLoadError] = useState('');
     const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
     const [conflict, setConflict] = useState(false);
     const [preview, setPreview] = useState(params.get('preview') === '1');
     const [suffixEdited, setSuffixEdited] = useState(false);
+    const [confirming, setConfirming] = useState<'leave' | 'reload' | null>(null);
+    const [pausing, setPausing] = useState(false);
+    const [resuming, setResuming] = useState(false);
+    const [justSaved, setJustSaved] = useState(false);
+    const leaving = useRef(false);
     const dirty = baseline !== '' && JSON.stringify(draft) !== baseline;
     useEffect(() => {
         let canceled = false;
@@ -132,7 +165,7 @@ export function FormEditor({ id }: { id: string }) {
                 }
             } catch (e) {
                 if (!canceled)
-                    setError(
+                    setLoadError(
                         e instanceof Error ? e.message : 'Unable to load form',
                     );
             }
@@ -144,7 +177,7 @@ export function FormEditor({ id }: { id: string }) {
     }, [id, params]);
     useEffect(() => {
         function beforeUnload(e: BeforeUnloadEvent) {
-            if (dirty) e.preventDefault();
+            if (dirty && !leaving.current) e.preventDefault();
         }
         window.addEventListener('beforeunload', beforeUnload);
         return () => window.removeEventListener('beforeunload', beforeUnload);
@@ -173,7 +206,8 @@ export function FormEditor({ id }: { id: string }) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         ...patch,
-                        ...(form ? { revision: form.revision } : {}),
+                        // A new form starts out accepting sellers.
+                        ...(form ? { revision: form.revision } : { isActive: true }),
                     }),
                 },
             );
@@ -188,13 +222,22 @@ export function FormEditor({ id }: { id: string }) {
             setDraft(nextDraft);
             setBaseline(JSON.stringify(nextDraft));
             setConflict(false);
-            toast.success('Seller form saved');
+            // Shown in the save bar: a toast would cover the bar on a phone.
+            setJustSaved(true);
             if (id === 'new') router.replace(`/dashboard/forms/${next.id}`);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Unable to save form');
         } finally {
             setBusy(false);
         }
+    }
+    async function resume() {
+        if (!form) return;
+        setResuming(true);
+        const next = await resumeForm(form, true);
+        // Adopt the new revision so the open draft still saves cleanly.
+        if (next) setForm(next);
+        setResuming(false);
     }
     const invalidAdvanced =
         data?.isPaid &&
@@ -207,6 +250,15 @@ export function FormEditor({ id }: { id: string }) {
                         draft.advancedModuleExclusions,
                     ) === 0,
             ));
+    const noUtilities = !draft.defaultUtilityCategories.length;
+    // Why Save is unavailable, in the order the form presents the fields.
+    const blocker = !draft.name.trim()
+        ? 'Add a form name to save.'
+        : noUtilities
+          ? 'Choose at least one utility to save.'
+          : invalidAdvanced
+            ? 'Fix the handoff sections to save.'
+            : '';
     const selectedBrand =
         brands.find((b) => b.id === draft.defaultBrandProfileId) ||
         brands.find((b) => b.is_default);
@@ -220,10 +272,9 @@ export function FormEditor({ id }: { id: string }) {
               contact_website: selectedBrand.contact_website || undefined,
           }
         : null;
+    const packetMode: PacketMode = data?.isPaid ? draft.defaultPacketMode : 'simple';
     const configuration = {
-        packetMode: data?.isPaid
-            ? draft.defaultPacketMode
-            : ('simple' as const),
+        packetMode,
         utilityCategories: draft.defaultUtilityCategories,
         advancedModules: draft.advancedModules,
         advancedModuleExclusions: draft.advancedModuleExclusions,
@@ -235,353 +286,363 @@ export function FormEditor({ id }: { id: string }) {
             <Link
                 href="/dashboard/forms"
                 onClick={(e) => {
-                    if (
-                        dirty &&
-                        !window.confirm('Discard unsaved form changes?')
-                    )
+                    if (dirty) {
                         e.preventDefault();
+                        setConfirming('leave');
+                    }
                 }}
-                className="text-sm text-primary"
+                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
             >
-                ← Seller forms
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                Seller forms
             </Link>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <h1 className="text-2xl font-semibold">
-                    {id === 'new' ? 'New form' : 'Edit seller form'}
-                </h1>
-                <span className="text-sm text-muted-foreground">
-                    {dirty ? 'Unsaved changes' : 'Saved'}
-                </span>
-            </div>
-            {error && (
-                <div role="alert" className="space-y-2">
-                    <p>{error}</p>
-                    {conflict && (
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                if (
-                                    window.confirm(
-                                        'Reload and discard this draft?',
-                                    )
-                                )
-                                    window.location.reload();
-                            }}
-                        >
-                            Reload form
-                        </Button>
-                    )}
-                </div>
-            )}
+            <PageHeader
+                title={id === 'new' ? 'New seller form' : 'Edit seller form'}
+                description="Changes apply to new requests. Sellers who already started keep the questions and introduction they were given."
+            />
             {!data ? (
-                <p role="status">
-                    {error
-                        ? 'Return to Seller forms to retry.'
-                        : 'Loading form…'}
-                </p>
+                loadError ? (
+                    <div role="alert" className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
+                        <p className="text-destructive">{loadError}</p>
+                        <p className="text-muted-foreground">Return to Seller forms to retry.</p>
+                    </div>
+                ) : (
+                    <p role="status" className="text-sm text-muted-foreground">Loading form…</p>
+                )
             ) : (
                 <>
-                    <Card>
-                        <CardContent className="space-y-6 pt-6">
-                            <p className="text-sm text-muted-foreground">
-                                Submissions go to {data.workspaceName}. This
-                                destination stays fixed.
+                    <Section title="Basics" description="What this form is called and how it greets sellers.">
+                        <div className="space-y-2">
+                            <Label htmlFor="formName">Form name</Label>
+                            <Input
+                                id="formName"
+                                maxLength={80}
+                                value={draft.name}
+                                onChange={(e) =>
+                                    setDraft({
+                                        ...draft,
+                                        name: e.target.value,
+                                        ...(id === 'new' && data.linkBase && !suffixEdited
+                                            ? { suffix: suggestLinkSuffix(e.target.value, data.linkBase.reservedSuffixes.map(a => a.suffix)) }
+                                            : {}),
+                                    })
+                                }
+                                placeholder="For example: Listing information"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Only your workspace sees this name. Sellers never do.
                             </p>
-                            <div className="space-y-2">
-                                <Label htmlFor="formName">
-                                    Internal form name
-                                </Label>
-                                <Input
-                                    id="formName"
-                                    maxLength={80}
-                                    value={draft.name}
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            name: e.target.value,
-                                            ...(id === 'new' && data.linkBase && !suffixEdited
-                                                ? { suffix: suggestLinkSuffix(e.target.value, data.linkBase.reservedSuffixes.map(a => a.suffix)) }
-                                                : {}),
-                                        })
-                                    }
-                                    placeholder="For example: Listing information"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Only your workspace sees this name.
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="sellerIntro">
+                                Seller introduction (optional)
+                            </Label>
+                            <Textarea
+                                id="sellerIntro"
+                                maxLength={500}
+                                rows={4}
+                                value={draft.sellerIntro || ''}
+                                onChange={(e) =>
+                                    setDraft({
+                                        ...draft,
+                                        sellerIntro: e.target.value || null,
+                                    })
+                                }
+                                placeholder="For example: Thanks for helping us get your home ready for closing. This takes about five minutes."
+                            />
+                            <div className="flex justify-between gap-4 text-xs text-muted-foreground">
+                                <p>
+                                    A short note sellers read before they enter
+                                    their address and on their welcome screen.
                                 </p>
+                                <p className="shrink-0 tabular-nums">{draft.sellerIntro?.length || 0}/500</p>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="sellerIntro">
-                                    Seller introduction (optional)
-                                </Label>
-                                <textarea
-                                    id="sellerIntro"
-                                    maxLength={500}
-                                    rows={4}
-                                    className="w-full rounded-md border border-input bg-background p-3 text-sm"
-                                    value={draft.sellerIntro || ''}
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            sellerIntro: e.target.value || null,
-                                        })
-                                    }
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Plain text shown before address entry and on
-                                    the seller welcome screen.{' '}
-                                    {draft.sellerIntro?.length || 0}/500
-                                </p>
-                            </div>
-                            {data.linkBase && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="formSuffix">Link ending</Label>
-                                    <Input
-                                        id="formSuffix"
-                                        value={draft.suffix || ''}
-                                        disabled={!data.isPaid}
-                                        maxLength={60}
-                                        aria-describedby="formSuffixHelp"
-                                        onChange={(e) => {
-                                            setSuffixEdited(true);
-                                            setDraft({ ...draft, suffix: e.target.value });
-                                        }}
-                                        placeholder="For example: closing"
-                                    />
-                                    <p id="formSuffixHelp" className="break-all text-xs text-muted-foreground">
-                                        {form?.isDefault
-                                            ? `As your default form, this opens from ${data.linkBase.url}. Its own link is `
-                                            : 'Your link will be '}
-                                        {data.linkBase.url}
-                                        {draft.suffix ? `/${draft.suffix}` : '/…'}.
-                                        Previously shared endings keep working.
-                                    </p>
-                                    {!data.isPaid && <p className="text-xs text-muted-foreground">Customize links on Pro or Teams. Your existing links keep working.</p>}
-                                </div>
-                            )}
-                            <div className="flex items-center justify-between gap-4">
-                                <Label htmlFor="formActive">
-                                    Accept new starts
-                                </Label>
-                                <Switch
-                                    id="formActive"
-                                    checked={draft.isActive}
-                                    onCheckedChange={(isActive) =>
-                                        setDraft({ ...draft, isActive })
-                                    }
-                                />
-                            </div>
-                            {!draft.isActive && (
-                                <p className="text-sm text-muted-foreground">
-                                    Paused. Existing seller requests stay
-                                    available.
-                                    {form?.isDefault
-                                        ? ' This is your default form, so your main link cannot start new requests while it is paused.'
-                                        : ''}
-                                </p>
-                            )}
-                            <div className="space-y-2">
-                                <Label htmlFor="formBrand">
-                                    Branding Profile
-                                </Label>
-                                <select
-                                    id="formBrand"
-                                    className="w-full rounded-md border border-input bg-background p-2"
-                                    value={draft.defaultBrandProfileId || ''}
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            defaultBrandProfileId:
-                                                e.target.value || null,
-                                        })
-                                    }
-                                >
-                                    <option value="">Workspace default</option>
-                                    {data.brandProfiles.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <fieldset className="space-y-3">
-                                <legend className="text-sm font-medium">
-                                    Utilities to ask about
-                                </legend>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {UTILITY_CATEGORY_KEYS.map((category) => (
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            Submissions go to {data.workspaceName}. This
+                            destination stays fixed.
+                        </p>
+                    </Section>
+
+                    <Section title="What sellers are asked" description="Choose the topics this form covers. Sellers only see questions that apply to their home.">
+                        <fieldset className="space-y-3">
+                            <legend className="text-sm font-medium">
+                                Utilities to ask about
+                            </legend>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                {UTILITY_CATEGORY_KEYS.map((category) => {
+                                    const checked = draft.defaultUtilityCategories.includes(category);
+                                    return (
                                         <Label
                                             key={category}
-                                            className="flex items-center gap-2"
+                                            className={cn(
+                                                'flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5 transition-colors',
+                                                checked ? 'border-primary/40 bg-primary/5' : 'border-border hover:border-input',
+                                            )}
                                         >
                                             <Checkbox
-                                                checked={draft.defaultUtilityCategories.includes(
-                                                    category,
-                                                )}
-                                                onCheckedChange={(checked) =>
+                                                checked={checked}
+                                                onCheckedChange={(next) =>
                                                     setDraft({
                                                         ...draft,
-                                                        defaultUtilityCategories:
-                                                            checked
-                                                                ? [
-                                                                      ...draft.defaultUtilityCategories,
-                                                                      category,
-                                                                  ]
-                                                                : draft.defaultUtilityCategories.filter(
-                                                                      (c) =>
-                                                                          c !==
-                                                                          category,
-                                                                  ),
+                                                        defaultUtilityCategories: next
+                                                            ? [...draft.defaultUtilityCategories, category]
+                                                            : draft.defaultUtilityCategories.filter((c) => c !== category),
                                                     })
                                                 }
                                             />
-                                            {
-                                                UTILITY_CATEGORIES.find(
-                                                    (c) => c.key === category,
-                                                )?.label
-                                            }
+                                            {UTILITY_CATEGORIES.find((c) => c.key === category)?.label}
                                         </Label>
-                                    ))}
-                                </div>
-                            </fieldset>
-                            <QuestionCollectionSwitches
-                                hoa={draft.collectHoaQuestions}
-                                meter={draft.collectElectricMeterNumber}
-                                onHoa={(collectHoaQuestions) =>
-                                    setDraft({ ...draft, collectHoaQuestions })
-                                }
-                                onMeter={(collectElectricMeterNumber) =>
-                                    setDraft({
-                                        ...draft,
-                                        collectElectricMeterNumber,
-                                    })
-                                }
-                            />
-                            <div className="space-y-2">
-                                <Label htmlFor="formMode">Packet mode</Label>
-                                <select
-                                    id="formMode"
-                                    className="w-full rounded-md border border-input bg-background p-2"
-                                    value={
-                                        data.isPaid
-                                            ? draft.defaultPacketMode
-                                            : 'simple'
-                                    }
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            defaultPacketMode:
-                                                e.target.value === 'advanced'
-                                                    ? 'advanced'
-                                                    : 'simple',
-                                        })
-                                    }
-                                >
-                                    <option value="simple">
-                                        {PACKET_MODE_LABELS.simple}
-                                    </option>
-                                    <option
-                                        value="advanced"
-                                        disabled={!data.isPaid}
-                                    >
-                                        {PACKET_MODE_LABELS.advanced} (Pro /
-                                        Teams)
-                                    </option>
-                                </select>
+                                    );
+                                })}
                             </div>
-                            {data.isPaid &&
-                                draft.defaultPacketMode === 'advanced' && (
-                                    <AdvancedModuleConfigurator
-                                        enabledModules={draft.advancedModules}
-                                        exclusions={
-                                            draft.advancedModuleExclusions
-                                        }
-                                        onToggleModule={(key) => {
-                                            const modules =
-                                                draft.advancedModules.includes(
-                                                    key,
-                                                )
-                                                    ? draft.advancedModules.filter(
-                                                          (k) => k !== key,
-                                                      )
-                                                    : [
-                                                          ...draft.advancedModules,
-                                                          key,
-                                                      ];
-                                            setDraft({
-                                                ...draft,
-                                                advancedModules: modules,
-                                                advancedModuleExclusions:
-                                                    normalizeAdvancedModuleExclusions(
-                                                        draft.advancedModuleExclusions,
-                                                        modules,
-                                                    ),
-                                            });
-                                        }}
-                                        onToggleField={(key, field) => {
-                                            const exclusions =
-                                                draft.advancedModuleExclusions[
-                                                    key
-                                                ] || [];
-                                            setDraft({
-                                                ...draft,
-                                                advancedModuleExclusions: {
-                                                    ...draft.advancedModuleExclusions,
-                                                    [key]: exclusions.includes(
-                                                        field,
-                                                    )
-                                                        ? exclusions.filter(
-                                                              (f) =>
-                                                                  f !== field,
-                                                          )
-                                                        : [
-                                                              ...exclusions,
-                                                              field,
-                                                          ],
-                                                },
-                                            });
-                                        }}
-                                    />
-                                )}
-                            <p className="text-sm text-muted-foreground">
-                                Saving affects new requests. Started requests
-                                keep their captured questions and introduction.
-                            </p>
-                            {invalidAdvanced && (
-                                <p
-                                    role="alert"
-                                    className="text-sm text-destructive"
-                                >
-                                    Include at least one handoff section and a
-                                    question in each enabled section.
+                            {noUtilities && (
+                                <p role="alert" className="text-sm text-destructive">
+                                    Choose at least one utility.
                                 </p>
                             )}
-                            <div className="flex flex-wrap gap-3">
-                                <Button
-                                    disabled={
-                                        busy ||
-                                        conflict ||
-                                        !draft.name.trim() ||
-                                        !draft.defaultUtilityCategories
-                                            .length ||
-                                        invalidAdvanced
-                                    }
-                                    onClick={save}
-                                >
-                                    {busy ? 'Saving…' : 'Save form'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setPreview(true)}
-                                >
-                                    Preview seller form
-                                </Button>
-                                <SellerQuestionsDialog
-                                    configuration={configuration}
-                                />
+                        </fieldset>
+                        <QuestionCollectionSwitches
+                            hoa={draft.collectHoaQuestions}
+                            meter={draft.collectElectricMeterNumber}
+                            onHoa={(collectHoaQuestions) =>
+                                setDraft({ ...draft, collectHoaQuestions })
+                            }
+                            onMeter={(collectElectricMeterNumber) =>
+                                setDraft({
+                                    ...draft,
+                                    collectElectricMeterNumber,
+                                })
+                            }
+                        />
+                        <fieldset className="space-y-3">
+                            <legend className="text-sm font-medium">Sheet type</legend>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                {(['simple', 'advanced'] as const).map((mode) => {
+                                    const locked = mode === 'advanced' && !data.isPaid;
+                                    const selected = packetMode === mode;
+                                    return (
+                                        <label
+                                            key={mode}
+                                            className={cn(
+                                                'flex items-start gap-3 rounded-md border p-3 transition-colors has-[:focus-visible]:ring-[2px] has-[:focus-visible]:ring-ring/30',
+                                                selected ? 'border-primary/40 bg-primary/5' : 'border-border',
+                                                locked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:border-input',
+                                            )}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="formMode"
+                                                className="mt-1 accent-primary"
+                                                checked={selected}
+                                                disabled={locked}
+                                                onChange={() => setDraft({ ...draft, defaultPacketMode: mode })}
+                                            />
+                                            <span className="min-w-0 space-y-1">
+                                                <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground">
+                                                    {PACKET_MODE_LABELS[mode]}
+                                                    {locked && <Badge variant="secondary">Pro or Teams</Badge>}
+                                                </span>
+                                                <span className="block text-xs leading-relaxed text-muted-foreground">
+                                                    {PACKET_MODE_SUMMARIES[mode]}
+                                                </span>
+                                            </span>
+                                        </label>
+                                    );
+                                })}
                             </div>
-                        </CardContent>
-                    </Card>
+                            {!data.isPaid && (
+                                <p className="text-xs text-muted-foreground">
+                                    {PACKET_MODE_LABELS.advanced} is part of{' '}
+                                    <Link href="/dashboard/settings?tab=billing" className="text-primary underline">Pro and Teams</Link>.
+                                </p>
+                            )}
+                        </fieldset>
+                        {data.isPaid && draft.defaultPacketMode === 'advanced' && (
+                            <div className="space-y-3">
+                                <div>
+                                    <h3 className="text-sm font-medium">Handoff sections</h3>
+                                    <p className="text-xs text-muted-foreground">
+                                        Turn sections on or off. Open a section to choose its questions.
+                                    </p>
+                                </div>
+                                <AdvancedModuleConfigurator
+                                    enabledModules={draft.advancedModules}
+                                    exclusions={draft.advancedModuleExclusions}
+                                    onToggleModule={(key) => {
+                                        const modules = draft.advancedModules.includes(key)
+                                            ? draft.advancedModules.filter((k) => k !== key)
+                                            : [...draft.advancedModules, key];
+                                        setDraft({
+                                            ...draft,
+                                            advancedModules: modules,
+                                            advancedModuleExclusions:
+                                                normalizeAdvancedModuleExclusions(
+                                                    draft.advancedModuleExclusions,
+                                                    modules,
+                                                ),
+                                        });
+                                    }}
+                                    onToggleField={(key, field) => {
+                                        const exclusions = draft.advancedModuleExclusions[key] || [];
+                                        setDraft({
+                                            ...draft,
+                                            advancedModuleExclusions: {
+                                                ...draft.advancedModuleExclusions,
+                                                [key]: exclusions.includes(field)
+                                                    ? exclusions.filter((f) => f !== field)
+                                                    : [...exclusions, field],
+                                            },
+                                        });
+                                    }}
+                                />
+                                {invalidAdvanced && (
+                                    <p role="alert" className="text-sm text-destructive">
+                                        Include at least one handoff section and a
+                                        question in each enabled section.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                        <SellerQuestionsDialog
+                            configuration={configuration}
+                            triggerLabel="See every question on this form"
+                        />
+                    </Section>
+
+                    <Section title="Branding" description="The logo, color and contact details sellers see on this form.">
+                        <div className="space-y-2">
+                            <Label htmlFor="formBrand">Branding Profile</Label>
+                            <select
+                                id="formBrand"
+                                className={selectClass}
+                                value={draft.defaultBrandProfileId || ''}
+                                onChange={(e) =>
+                                    setDraft({
+                                        ...draft,
+                                        defaultBrandProfileId: e.target.value || null,
+                                    })
+                                }
+                            >
+                                <option value="">Workspace default</option>
+                                {data.brandProfiles.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-muted-foreground">
+                                Create or change profiles in{' '}
+                                <Link href="/dashboard/branding" className="text-primary underline">Branding</Link>.
+                            </p>
+                        </div>
+                    </Section>
+
+                    {(data.linkBase || form) && (
+                        <Section
+                            title={form ? 'Link and availability' : 'Link'}
+                            description={form
+                                ? 'Where sellers open this form, and whether new sellers can start it.'
+                                : 'Where sellers open this form.'}
+                        >
+                            {data.linkBase && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="formSuffix">Link ending</Label>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="break-all text-sm text-muted-foreground">{data.linkBase.url}/</span>
+                                        <Input
+                                            id="formSuffix"
+                                            className="min-w-32 flex-1"
+                                            value={draft.suffix || ''}
+                                            disabled={!data.isPaid}
+                                            maxLength={60}
+                                            aria-describedby="formSuffixHelp"
+                                            onChange={(e) => {
+                                                setSuffixEdited(true);
+                                                setDraft({ ...draft, suffix: e.target.value });
+                                            }}
+                                            placeholder="For example: closing"
+                                        />
+                                    </div>
+                                    <p id="formSuffixHelp" className="text-xs text-muted-foreground">
+                                        {form?.isDefault
+                                            ? 'This is your default form, so it also opens from your main link. '
+                                            : ''}
+                                        Use lowercase letters, numbers and dashes.
+                                        Links you have already shared keep working.
+                                    </p>
+                                    {!data.isPaid && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Customize links on{' '}
+                                            <Link href="/dashboard/settings?tab=billing" className="text-primary underline">Pro or Teams</Link>.
+                                            {' '}Your existing links keep working.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                            {form && (
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+                                    <div className="min-w-0 space-y-1">
+                                        <p className="flex items-center gap-2 text-sm font-medium">
+                                            {form.isActive ? 'Accepting new sellers' : (
+                                                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                                    Paused
+                                                </Badge>
+                                            )}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {form.isActive
+                                                ? 'Pause this form to stop new sellers from starting it. You can resume at any time.'
+                                                : `New sellers cannot start this form. Sellers who already started can still finish.${form.isDefault ? ' Your main link is unavailable to new sellers while this form is paused.' : ''}`}
+                                        </p>
+                                    </div>
+                                    {form.isActive ? (
+                                        <Button variant="outline" onClick={() => setPausing(true)}>
+                                            <Pause />
+                                            Pause form
+                                        </Button>
+                                    ) : (
+                                        <Button disabled={resuming} onClick={resume}>
+                                            <Play />
+                                            {resuming ? 'Resuming…' : 'Resume form'}
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+                        </Section>
+                    )}
+
+                    <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/95 p-3 shadow-md backdrop-blur">
+                        <div className="min-w-0 flex-1 basis-48 text-sm">
+                            {error ? (
+                                <p role="alert" className="text-destructive">{error}</p>
+                            ) : (
+                                <p role="status" className="flex items-center gap-1.5 text-muted-foreground">
+                                    {blocker || (dirty ? 'Unsaved changes' : justSaved ? (
+                                        <>
+                                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                                            Seller form saved
+                                        </>
+                                    ) : form ? 'All changes saved' : 'Not saved yet')}
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {conflict && (
+                                <Button variant="outline" onClick={() => setConfirming('reload')}>
+                                    Reload form
+                                </Button>
+                            )}
+                            <Button variant="outline" onClick={() => setPreview(true)}>
+                                <Eye />
+                                Preview seller form
+                            </Button>
+                            <Button disabled={busy || conflict || blocker !== ''} onClick={save}>
+                                {busy ? 'Saving…' : 'Save form'}
+                            </Button>
+                        </div>
+                    </div>
+
                     <Dialog open={preview} onOpenChange={setPreview}>
                         <DialogContent className="h-[90dvh] sm:max-w-4xl overflow-y-auto">
                             <DialogHeader>
@@ -623,8 +684,31 @@ export function FormEditor({ id }: { id: string }) {
                             )}
                         </DialogContent>
                     </Dialog>
+                    <PauseFormDialog
+                        form={pausing ? form : null}
+                        onClose={() => setPausing(false)}
+                        // Adopt the new revision so the open draft still saves cleanly.
+                        onPaused={setForm}
+                        quiet
+                    />
                 </>
             )}
+            <ConfirmDialog
+                open={confirming !== null}
+                onOpenChange={(open) => { if (!open) setConfirming(null); }}
+                title={confirming === 'reload' ? 'Reload this form?' : 'Leave without saving?'}
+                description={confirming === 'reload'
+                    ? 'This form was changed somewhere else. Reloading shows the latest version and discards the changes you have not saved.'
+                    : 'The changes you have not saved will be lost.'}
+                confirmLabel={confirming === 'reload' ? 'Reload and discard' : 'Leave without saving'}
+                cancelLabel="Keep editing"
+                destructive
+                onConfirm={() => {
+                    leaving.current = true;
+                    if (confirming === 'reload') window.location.reload();
+                    else router.push('/dashboard/forms');
+                }}
+            />
         </div>
     );
 }

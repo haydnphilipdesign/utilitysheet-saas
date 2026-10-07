@@ -153,6 +153,11 @@ async function mocks(page: Page) {
         },
     };
 }
+/** Opens a form card's "more" menu and chooses one action. */
+async function cardAction(page: Page, formName: string, action: string) {
+    await page.getByRole('button', { name: `More actions for ${formName}`, exact: true }).click();
+    await page.getByRole('menuitem', { name: action, exact: true }).click();
+}
 async function healthy(page: Page) {
     await expect(page.locator('body')).not.toBeEmpty();
     await expect(
@@ -182,32 +187,34 @@ test('base rename refreshes canonical copies and a confirmed default change move
     });
     const state = await mocks(page);
     await page.goto('/test-fixtures/seller-forms');
+    await page.getByRole('button', { name: 'Rename main link', exact: true }).click();
     await expect(page.getByLabel('Link name', { exact: true })).toHaveValue('listing');
     await page.getByLabel('Link name', { exact: true }).fill('jane-smith');
     await page.getByRole('button', { name: 'Save link name', exact: true }).click();
     const formCards = page.locator('[data-slot="card"]').filter({ has: page.getByRole('button', { name: 'Copy link', exact: true }) });
     const closing = formCards.filter({ has: page.getByText('Closing', { exact: true }) });
     const listing = formCards.filter({ has: page.getByText('Listing', { exact: true }) });
-    await expect(listing.getByText('Also opens from https://example.com/i/jane-smith/intake', { exact: true })).toBeVisible();
+    await expect(listing.getByText("This is your main link. This form's own link is https://example.com/i/jane-smith/intake", { exact: true })).toBeVisible();
     await expect(closing.getByText('https://example.com/i/jane-smith/closing', { exact: true })).toBeVisible();
     expect(state.writes[0]).toMatchObject({ url: '/api/seller-form-link-base', body: { base: 'jane-smith', revision: 2 } });
     await closing.getByRole('button', { name: 'Copy link', exact: true }).click();
     expect(await page.evaluate(() => (window as unknown as Window & { copiedLinks: string[] }).copiedLinks)).toEqual(['https://example.com/i/jane-smith/closing']);
     // Declining the confirmation changes nothing.
-    const prompts: string[] = [];
-    page.once('dialog', dialog => { prompts.push(dialog.message()); void dialog.dismiss(); });
-    await closing.getByRole('button', { name: 'Make default' }).click();
-    expect(prompts[0]).toContain('Your main link (https://example.com/i/jane-smith) will open it from now on');
+    await cardAction(page, 'Closing', 'Make default');
+    const confirmDefault = page.getByRole('dialog');
+    await expect(confirmDefault).toContainText('Your main link (https://example.com/i/jane-smith) will open it from now on');
+    await confirmDefault.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(confirmDefault).toHaveCount(0);
     expect(state.writes).toHaveLength(1);
     await expect(page.getByText(/Your main link currently opens/)).toContainText('Listing');
-    page.once('dialog', dialog => void dialog.accept());
-    await closing.getByRole('button', { name: 'Make default' }).click();
+    await cardAction(page, 'Closing', 'Make default');
+    await page.getByRole('dialog').getByRole('button', { name: 'Make default', exact: true }).click();
     await expect(closing.getByText('Default', { exact: true })).toBeVisible();
     await expect(page.getByText(/Your main link currently opens/)).toContainText('Closing');
     await expect(closing.getByText('https://example.com/i/jane-smith', { exact: true })).toBeVisible();
-    await expect(closing.getByText('Also opens from https://example.com/i/jane-smith/closing', { exact: true })).toBeVisible();
+    await expect(closing.getByText("This is your main link. This form's own link is https://example.com/i/jane-smith/closing", { exact: true })).toBeVisible();
     await expect(listing.getByText('https://example.com/i/jane-smith/intake', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('Link name', { exact: true })).toHaveValue('jane-smith');
+    await expect(page.getByText('https://example.com/i/jane-smith', { exact: true })).toHaveCount(2);
     await healthy(page);
     await page.screenshot({ path: testInfo.outputPath('shared-base-links.png'), fullPage: true });
     expect(errors).toEqual([]);
@@ -218,7 +225,7 @@ test('a form link is renamed in place on its card and a taken ending keeps the d
     await page.goto('/test-fixtures/seller-forms');
     const formCards = page.locator('[data-slot="card"]').filter({ has: page.getByRole('button', { name: 'Copy link', exact: true }) });
     const closing = formCards.filter({ has: page.getByText('Closing', { exact: true }) });
-    await closing.getByRole('button', { name: 'Rename link', exact: true }).click();
+    await cardAction(page, 'Closing', 'Rename link');
     const ending = page.getByLabel('Link ending for Closing');
     await expect(ending).toHaveValue('closing');
     await ending.fill('Not Valid');
@@ -236,7 +243,7 @@ test('a form link is renamed in place on its card and a taken ending keeps the d
     expect(state.writes.at(-1)).toMatchObject({ url: `/api/seller-forms/${second}`, method: 'PATCH', body: { suffix: 'closing-docs', revision: 2 } });
     // The default form's own link is renamable too; its main link is untouched.
     const listing = formCards.filter({ has: page.getByText('Listing', { exact: true }) });
-    await listing.getByRole('button', { name: 'Rename link', exact: true }).click();
+    await cardAction(page, 'Listing', 'Rename link');
     await expect(page.getByLabel('Link ending for Listing')).toHaveValue('intake');
     await listing.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(listing.getByText('https://example.com/i/listing', { exact: true })).toBeVisible();
@@ -245,7 +252,10 @@ test('a form link is renamed in place on its card and a taken ending keeps the d
     state.access.isPaid = false;
     await page.reload();
     await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toHaveCount(2);
-    await expect(page.getByRole('button', { name: 'Rename link', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'More actions for Closing', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: 'Rename link', exact: true })).toHaveCount(0);
+    // A locked action stays clickable and leads to billing.
+    await expect(page.getByRole('menuitem', { name: 'Rename link Upgrade', exact: true })).toBeEnabled();
 });
 
 test('suffix editing keeps configuration and duplicate collisions keep the unsaved draft', async ({ page }, testInfo) => {
@@ -261,13 +271,13 @@ test('suffix editing keeps configuration and duplicate collisions keep the unsav
     expect(state.forms[1].url).toBe('https://example.com/i/listing/detailed');
     await page.goto(`/test-fixtures/seller-forms?id=new&duplicate=${second}`);
     await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing-copy');
-    await page.getByLabel('Internal form name').fill('Listing');
+    await page.getByLabel('Form name', { exact: true }).fill('Listing');
     await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('listing');
     await page.getByLabel('Link ending', { exact: true }).fill('closing');
     await page.getByRole('button', { name: 'Save form', exact: true }).click();
     await expect(page.getByRole('alert').filter({ hasText: 'That ending was already shared' })).toBeVisible();
     await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing');
-    await expect(page.getByLabel('Internal form name')).toHaveValue('Listing');
+    await expect(page.getByLabel('Form name', { exact: true })).toHaveValue('Listing');
     await healthy(page);
     await page.screenshot({ path: testInfo.outputPath('suffix-collision.png'), fullPage: true });
 });
@@ -276,12 +286,12 @@ test('downgrade keeps canonical links and prevents link edits while ordinary for
     const state = await mocks(page);
     state.access.isPaid = false;
     await page.goto('/test-fixtures/seller-forms');
-    await expect(page.getByLabel('Link name', { exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Rename main link', exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Pro or Teams', exact: true })).toHaveAttribute('href', '/dashboard/settings?tab=billing');
     await page.goto(`/test-fixtures/seller-forms?id=${second}`);
     await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing');
     await expect(page.getByLabel('Link ending', { exact: true })).toBeDisabled();
-    await page.getByLabel('Internal form name').fill('Retained configuration');
+    await page.getByLabel('Form name', { exact: true }).fill('Retained configuration');
     await page.getByRole('button', { name: 'Save form', exact: true }).click();
     await expect(page.getByText('Seller form saved')).toBeVisible();
     expect(state.writes[0].body).not.toHaveProperty('suffix');
@@ -302,7 +312,7 @@ test('two forms have independent settings; draft preview sends no writes and sta
     await expect(page.getByText('Closing', { exact: true })).toBeVisible();
     await healthy(page);
     await page.goto(`/test-fixtures/seller-forms?id=${first}`);
-    await expect(page.getByLabel('Internal form name')).toHaveValue('Listing');
+    await expect(page.getByLabel('Form name', { exact: true })).toHaveValue('Listing');
     await expect(
         page.getByRole('switch', {
             name: 'Ask about HOA or condo association',
@@ -345,12 +355,12 @@ test('two forms have independent settings; draft preview sends no writes and sta
     });
     expect(state.forms[1].sellerIntro).toBe('Closing introduction');
     state.stale();
-    await page.getByLabel('Internal form name').fill('My unsaved revision');
+    await page.getByLabel('Form name', { exact: true }).fill('My unsaved revision');
     await page.getByRole('button', { name: 'Save form', exact: true }).click();
     await expect(
         page.getByRole('button', { name: 'Reload form' }),
     ).toBeVisible();
-    await expect(page.getByLabel('Internal form name')).toHaveValue(
+    await expect(page.getByLabel('Form name', { exact: true })).toHaveValue(
         'My unsaved revision',
     );
     expect(errors).toEqual([]);
@@ -362,7 +372,7 @@ test('duplication stays an unsaved draft and a paused default cannot be shared',
 }) => {
     const state = await mocks(page);
     await page.goto(`/test-fixtures/seller-forms?id=new&duplicate=${first}`);
-    await expect(page.getByLabel('Internal form name')).toHaveValue(
+    await expect(page.getByLabel('Form name', { exact: true })).toHaveValue(
         'Listing copy',
     );
     await expect(page.getByLabel('Seller introduction (optional)')).toHaveValue(
@@ -381,6 +391,38 @@ test('duplication stays an unsaved draft and a paused default cannot be shared',
     await expect(listing.getByText('Default', { exact: true })).toBeVisible();
     await expect(listing.getByText('Paused', { exact: true })).toBeVisible();
     await healthy(page);
+    // Resume and pause act right away from the card.
+    await listing.getByRole('button', { name: 'Resume form', exact: true }).click();
+    await expect(listing.getByRole('button', { name: 'Copy link', exact: true })).toBeEnabled();
+    expect(state.writes.at(-1)).toMatchObject({ url: `/api/seller-forms/${first}`, method: 'PATCH', body: { isActive: true, revision: 2 } });
+    await cardAction(page, 'Closing', 'Pause form');
+    await expect(page.getByRole('dialog')).toContainText('Sellers who already started can still finish');
+    await page.getByRole('dialog').getByRole('button', { name: 'Pause form', exact: true }).click();
+    const closing = page.locator('[data-slot="card"]').filter({ has: page.getByText('Closing', { exact: true }) });
+    await expect(closing.getByText('Paused', { exact: true })).toBeVisible();
+    expect(state.writes.at(-1)).toMatchObject({ url: `/api/seller-forms/${second}`, method: 'PATCH', body: { isActive: false, revision: 2 } });
+    await healthy(page);
+});
+
+test('a single form shows one link and renames the main link from its card', async ({ page }, testInfo) => {
+    const state = await mocks(page);
+    state.forms.splice(1, 1);
+    Object.assign(state.access.capabilities, { usage: 1, totalUsage: 1 });
+    await page.goto('/test-fixtures/seller-forms');
+    await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toHaveCount(1);
+    await expect(page.getByText('Main link', { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/own link is/)).toHaveCount(0);
+    await expect(page.getByText('Default', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('https://example.com/i/listing', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'More actions for Listing', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: 'Make default', exact: true })).toHaveCount(0);
+    await page.getByRole('menuitem', { name: 'Rename link', exact: true }).click();
+    await page.getByLabel('Link name', { exact: true }).fill('jane-smith');
+    await page.getByRole('button', { name: 'Save link name', exact: true }).click();
+    await expect(page.getByText('https://example.com/i/jane-smith', { exact: true })).toBeVisible();
+    expect(state.writes.at(-1)).toMatchObject({ url: '/api/seller-form-link-base', body: { base: 'jane-smith', revision: 2 } });
+    await healthy(page);
+    await page.screenshot({ path: testInfo.outputPath('single-form.png'), fullPage: true });
 });
 test('request form switching confirms request-only changes and keeps the fixed workspace visible', async ({
     page,
@@ -477,17 +519,20 @@ test('Free creation actions explain Pro while customization and retained downgra
     state.access.isPaid = false;
     Object.assign(state.access.capabilities, { canCreate: false, reason: 'commercial', pilotAvailable: false, usage: 1, allowance: 1, totalUsage: 1, upgradeRequired: true, message: 'Free includes one customizable form per workspace. Upgrade to Pro for up to ten.' });
     await page.goto('/test-fixtures/seller-forms');
-    await expect(page.getByText('1 of 1 forms in this workspace (including paused forms).')).toBeVisible();
+    await expect(page.getByText('Using 1 of 1 form in Workspace A. Paused forms count.')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Edit', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Preview', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toBeEnabled();
+    await expect(page.getByText('Main link', { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'More actions for Listing', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: 'Preview', exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'New form Pro' }).click();
     await expect(page.getByRole('dialog')).toHaveAccessibleName('Save more workflows with Pro');
     await expect(page.getByRole('dialog').getByText('Additional forms are temporarily unavailable.')).toBeVisible();
     await expect(page.getByRole('link', { name: 'View Pro upgrade' })).toHaveAttribute('href', '/dashboard/settings?tab=billing');
     if (process.env.QA_SHOT_DIR) await page.screenshot({ path: `${process.env.QA_SHOT_DIR}/${test.info().project.name.replace(/\s/g, '-')}-form-upgrade.png`, fullPage: false });
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: 'Duplicate Pro' }).click();
+    await cardAction(page, 'Listing', 'Duplicate Pro');
     await expect(page.getByRole('dialog')).toHaveAccessibleName('Save more workflows with Pro');
     expect(state.writes).toHaveLength(0);
     await page.keyboard.press('Escape');

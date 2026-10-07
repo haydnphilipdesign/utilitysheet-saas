@@ -21,6 +21,16 @@ creation without `formId` preserves its prior behavior. A selected form requires
 
 Pausing stops new starts while existing seller links continue working. A paused
 default stays the default and sharing is disabled with reactivation guidance.
+Pause and Resume save immediately, from a form card's menu or the editor's
+"Link and availability" section; they are not part of the editor's Save.
+
+The Seller forms list adapts to the number of forms. With a single form its
+card shows one link and "Rename link" renames the main link; the Main link card
+and the main/own link distinction appear only from the second form on. Each
+card has Copy link and Edit, with Preview, Duplicate, Rename link, Make default
+and Pause/Resume in its "more" menu. The editor groups settings into Basics,
+What sellers are asked, Branding, and Link and availability, with a sticky bar
+that holds Save, Preview, the save status and any save error.
 There is no hard delete or team-wide form editing. Lost workspace membership,
 banned/closing/closed owners and missing workspaces fail closed for public
 metadata and starts. Switching the dashboard workspace never reroutes a form.

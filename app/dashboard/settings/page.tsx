@@ -763,7 +763,7 @@ export default function SettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="link" className="mt-2 space-y-6 text-base">
-                    <FormsWorkspace />
+                    <FormsWorkspace embedded />
                 </TabsContent>
 
                 <TabsContent value="workspace" className="mt-2 space-y-6 text-base">

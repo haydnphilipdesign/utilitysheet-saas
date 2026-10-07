@@ -284,10 +284,13 @@ export default function BrandingPage() {
                                                 Duplicate
                                             </DropdownMenuItem>
                                         ) : (
-                                            <DropdownMenuItem disabled className="text-muted-foreground cursor-not-allowed">
-                                                <Lock className="mr-2 h-4 w-4" />
-                                                Duplicate (Pro Only)
-                                            </DropdownMenuItem>
+                                            <Link href="/dashboard/settings?tab=billing">
+                                                <DropdownMenuItem className="cursor-pointer text-muted-foreground">
+                                                    <Lock className="mr-2 h-4 w-4" />
+                                                    Duplicate
+                                                    <Badge variant="secondary" className="ml-auto">Upgrade</Badge>
+                                                </DropdownMenuItem>
+                                            </Link>
                                         )}
 
                                         {!brand.is_default && (
@@ -300,10 +303,13 @@ export default function BrandingPage() {
                                                     Set as Default
                                                 </DropdownMenuItem>
                                             ) : (
-                                                <DropdownMenuItem disabled className="text-muted-foreground cursor-not-allowed">
-                                                    <Lock className="mr-2 h-4 w-4" />
-                                                    Set Default (Pro Only)
-                                                </DropdownMenuItem>
+                                                <Link href="/dashboard/settings?tab=billing">
+                                                    <DropdownMenuItem className="cursor-pointer text-muted-foreground">
+                                                        <Lock className="mr-2 h-4 w-4" />
+                                                        Set Default
+                                                        <Badge variant="secondary" className="ml-auto">Upgrade</Badge>
+                                                    </DropdownMenuItem>
+                                                </Link>
                                             )
                                         )}
 
@@ -316,10 +322,13 @@ export default function BrandingPage() {
                                                 Delete
                                             </DropdownMenuItem>
                                         ) : (
-                                            <DropdownMenuItem disabled className="text-muted-foreground cursor-not-allowed">
-                                                <Lock className="mr-2 h-4 w-4" />
-                                                Delete (Pro Only)
-                                            </DropdownMenuItem>
+                                            <Link href="/dashboard/settings?tab=billing">
+                                                <DropdownMenuItem className="cursor-pointer text-muted-foreground">
+                                                    <Lock className="mr-2 h-4 w-4" />
+                                                    Delete
+                                                    <Badge variant="secondary" className="ml-auto">Upgrade</Badge>
+                                                </DropdownMenuItem>
+                                            </Link>
                                         )}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
