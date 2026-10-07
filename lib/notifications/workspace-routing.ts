@@ -53,6 +53,25 @@ export type SubmissionRecipientCandidate = {
     prefs?: Record<string, unknown> | null;
 };
 
+/**
+ * Who may be told about a seller submission, in order: the request owner while
+ * they still belong to the request's workspace, then the workspace's admins
+ * when admin routing is on. An owner who has left or been removed is never a
+ * candidate; the admins stand in for them so the submission is not missed.
+ * Personal preferences are applied later, in buildSubmissionRecipients.
+ */
+export function buildSubmissionCandidates(input: {
+    owner: SubmissionRecipientCandidate;
+    /** False once the owner is no longer a member of the request's workspace. */
+    ownerIsMember: boolean;
+    notifyAdmins: boolean;
+    admins: SubmissionRecipientCandidate[];
+}): SubmissionRecipientCandidate[] {
+    const candidates: SubmissionRecipientCandidate[] = input.ownerIsMember ? [input.owner] : [];
+    if (input.notifyAdmins || !input.ownerIsMember) candidates.push(...input.admins);
+    return candidates;
+}
+
 export type SubmissionRecipient = {
     email: string;
     name?: string;

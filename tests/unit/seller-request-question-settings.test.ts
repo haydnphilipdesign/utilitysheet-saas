@@ -13,6 +13,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getBrandProfile: vi.fn(async () => null),
     getOrganizationById: vi.fn(async () => null),
     getOrganizationAdminRecipients: vi.fn(async () => []),
+    getOrganizationMemberRole: vi.fn(async () => 'member'),
     getReferralIdentityForm: vi.fn(async () => null),
     getMonthlyUsage: vi.fn(async () => ({ used: 0, limit: 3 })),
     createEventLog: mocks.event,

@@ -4,6 +4,7 @@ import { getAccountClosureStatusByAuthUserId, getOrCreateAccount, updateAccount,
 import { stackServerApp } from '@/lib/stack/server';
 import { enforceMaxRequestBodyBytes, invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
+import { toClientOrganization } from '@/lib/auth/organization-access';
 
 const ACCOUNT_UPDATE_MAX_BODY_BYTES = 16 * 1024;
 
@@ -74,8 +75,10 @@ export async function GET() {
 
         return NextResponse.json({
             account,
-            organizations,
-            activeOrganization: activeOrg || null,
+            organizations: (organizations as unknown as Record<string, unknown>[]).map(toClientOrganization),
+            activeOrganization: activeOrg
+                ? toClientOrganization(activeOrg as unknown as Record<string, unknown>)
+                : null,
             usage,
             activation,
         });

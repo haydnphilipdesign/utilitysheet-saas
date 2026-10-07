@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { stackServerApp } from '@/lib/stack/server';
+import { toClientOrganization } from '@/lib/auth/organization-access';
 import {
     getOrCreateAccount,
     getOrganizationById,
@@ -41,7 +42,7 @@ export async function GET() {
         }
 
         return NextResponse.json({
-            organization,
+            organization: toClientOrganization(organization),
             role,
             members,
             seatUsage,

@@ -31,7 +31,7 @@ describe('test-drive seller submission safety guards', () => {
         expect(source).toContain('if (!isTestDriveSubmission) {\n            scheduleReferralCreditAward');
         expect(source).toContain('if (!isTestDriveSubmission && organization?.id)');
         expect(source).toContain('if (!accessLocked && !isUtilitySheetDemoSubmission && !isTestDriveSubmission)');
-        expect(source).toContain('if (!isTestDriveSubmission && account?.email && !accessLocked');
+        expect(source).toContain('if (!isTestDriveSubmission && ownerIsMember && account?.email && !accessLocked');
         expect(source).toContain('let showReferralFooter = !isTestDriveSubmission && !isPaid');
         expect(source).toContain('isTestDrive: isTestDriveSubmission');
     });

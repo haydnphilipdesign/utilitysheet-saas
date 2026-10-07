@@ -80,8 +80,8 @@ Counts and dates only; no addresses, names or identifiers were read out.
 
 | # | Slice | State |
 |---|---|---|
-| 1 | Invitation acceptance that cannot dead-end | Implemented and validated locally 2026-10-07; not committed, not deployed |
-| 2 | Removed members stop receiving the team's submissions; trim the members response | Not started |
+| 1 | Invitation acceptance that cannot dead-end | Done 2026-10-07; committed `7ce561b` and pushed; deployment not verified |
+| 2 | Removed members stop receiving the team's submissions; trim the members response | Implemented and validated locally 2026-10-07; not committed |
 | 3 | Admin sees what happened to invitations | Not started |
 | 4 | Seats in the app [B] | Not started; confirm first |
 | 5 | New-member welcome | Not started |
@@ -116,3 +116,15 @@ Validation: type-check, lint on changed files, full unit suite, `tests/settings.
 - Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 211 files / 1524 tests passed; `tests/invite.spec.ts` and `tests/settings.spec.ts` 42/42 on Desktop Chrome, Mobile Safari and Mobile Chrome with service keys blanked in the process; security scan and `git diff --check` passed; desktop and phone screenshots of every invitation state reviewed.
 - Not verified: a real sign-up from an invitation in a signed-in browser, a delivered email in a mail client, Google sign-in returning to the invitation, the dashboard banner in a browser (unit-tested only), the hosted site.
 - Not in this slice: showing expired invitations to the admin and telling them when one is accepted (slice 3). Until then, an admin still has to type the address again after an invitation expires.
+- Owner set `TEAM_INVITE_EXPIRY_DAYS=30` in hosting on 2026-10-07 (reported, not verified here).
+
+## Slice 2 outcome (2026-10-07)
+
+No schema, billing or role change. No UI change.
+
+- Submission emails: the request owner is a recipient only while they are still a member of the request's workspace. When they are not, the workspace's current admins are told instead, whatever the admin-routing setting, and each admin's own "Seller submissions" preference still applies. The owner-only missing-provider-contact alert stops for a former member too. If membership cannot be read, the owner is treated as not a member (the sheet is not emailed to someone who may have left). Personal (no workspace) requests and test drives are unchanged. `lib/notifications/workspace-routing.ts` (`buildSubmissionCandidates`), `app/api/seller/[token]/route.ts`.
+- Responses: `GET /api/organization/members` and `GET /api/account` no longer send a workspace's Stripe customer and subscription identifiers to the browser (`toClientOrganization` in `lib/auth/organization-access.ts`); no screen read them. The member list no longer includes each person's phone and company (`getOrganizationMembers`, used only by that route).
+- Tests: new `tests/unit/organization-members-route.test.ts`; added cases in `tests/unit/workspace-notification-routing.test.ts`; mocks updated in `tests/unit/seller-post-submission-routes.test.ts` and `tests/unit/seller-request-question-settings.test.ts`; one source-guard string updated in `tests/unit/test-drive-seller-safety.test.ts` (the test-drive guard itself is unchanged).
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 212 files / 1531 tests passed; security scan and `git diff --check` passed. The browser specs were not rerun because no screen changed.
+- Not verified: a real submission for a request whose owner was removed (the route's recipient step is covered through the pure helper, not an end-to-end route test).
+- Still open, for slice 10: a former member's requests stay in the workspace under their name, and their seller form links stop working.

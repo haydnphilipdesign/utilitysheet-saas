@@ -13,7 +13,6 @@ export type ActiveOrganization = {
     slug?: string;
     role?: 'admin' | 'member';
     subscription_status?: 'free' | 'team' | 'canceled' | null;
-    subscription_id?: string | null;
     subscription_ends_at?: string | null;
     /** When a plan that is set to cancel ends; null or absent when it renews. */
     subscription_cancel_at?: string | null;

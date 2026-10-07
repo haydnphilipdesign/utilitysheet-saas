@@ -23,6 +23,19 @@ export async function canAccessOwnedOrActiveOrganizationResource(
     return resource.account_id === accountId;
 }
 
+/**
+ * A workspace row as the browser may see it. The Stripe identifiers stay on
+ * the server: no screen uses them, and members have no business with them.
+ */
+export function toClientOrganization<T extends Record<string, unknown>>(
+    organization: T,
+): Omit<T, 'stripe_customer_id' | 'subscription_id'> {
+    const { stripe_customer_id: _customer, subscription_id: _subscription, ...rest } = organization;
+    void _customer;
+    void _subscription;
+    return rest;
+}
+
 export async function getAuthorizedActiveOrganization(
     account: AccountOrganizationContext,
 ): Promise<(Record<string, unknown> & { role: 'admin' | 'member' }) | null> {

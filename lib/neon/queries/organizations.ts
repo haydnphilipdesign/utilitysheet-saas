@@ -339,8 +339,6 @@ export async function getOrganizationMembers(organizationId: string) {
             a.id as account_id,
             a.email,
             a.full_name,
-            a.company_name,
-            a.phone,
             om.role as member_role,
             om.created_at as joined_at
         FROM organization_members om

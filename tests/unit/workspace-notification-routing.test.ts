@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     NOTIFY_ADMINS_ON_SUBMISSION,
+    buildSubmissionCandidates,
     buildSubmissionRecipients,
     normalizeWorkspaceNotificationSettings,
 } from '@/lib/notifications/workspace-routing';
@@ -31,6 +32,41 @@ describe('normalizeWorkspaceNotificationSettings', () => {
         expect(
             normalizeWorkspaceNotificationSettings({ notify_admins_on_submission: 'true' })
         ).toEqual({ [NOTIFY_ADMINS_ON_SUBMISSION]: false });
+    });
+});
+
+describe('buildSubmissionCandidates', () => {
+    const owner = { email: 'owner@example.com', name: 'Owner', prefs: {} };
+    const admins = [{ email: 'admin@example.com', name: 'Admin', prefs: {} }];
+
+    it('is the owner alone when admin routing is off', () => {
+        expect(buildSubmissionCandidates({ owner, ownerIsMember: true, notifyAdmins: false, admins }))
+            .toEqual([owner]);
+    });
+
+    it('adds the admins when admin routing is on', () => {
+        expect(buildSubmissionCandidates({ owner, ownerIsMember: true, notifyAdmins: true, admins }))
+            .toEqual([owner, ...admins]);
+    });
+
+    it('drops an owner who has left the workspace and tells the admins instead, whatever the routing setting', () => {
+        for (const notifyAdmins of [false, true]) {
+            const candidates = buildSubmissionCandidates({ owner, ownerIsMember: false, notifyAdmins, admins });
+            expect(candidates).toEqual(admins);
+            expect(buildSubmissionRecipients(candidates, { accessLocked: false }).map((r) => r.email))
+                .toEqual(['admin@example.com']);
+        }
+    });
+
+    it('still honors an admin who turned submission emails off', () => {
+        const candidates = buildSubmissionCandidates({
+            owner,
+            ownerIsMember: false,
+            notifyAdmins: false,
+            admins: [{ email: 'admin@example.com', prefs: { seller_submissions: false } }],
+        });
+
+        expect(buildSubmissionRecipients(candidates, { accessLocked: false })).toEqual([]);
     });
 });
 

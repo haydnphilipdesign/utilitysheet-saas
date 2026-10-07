@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getReferralIdentityForm, getUtilityEntriesByRequestId, createEventLog } from '@/lib/neon/queries';
+import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getOrganizationMemberRole, getReferralIdentityForm, getUtilityEntriesByRequestId, createEventLog } from '@/lib/neon/queries';
 import { submitSellerRequest, type SellerSubmissionEntryRow } from '@/lib/neon/queries/seller-submission';
 import { buildSellerPrefill } from '@/lib/seller-form/prefill';
-import { NOTIFY_ADMINS_ON_SUBMISSION, buildSubmissionRecipients, normalizeWorkspaceNotificationSettings } from '@/lib/notifications/workspace-routing';
+import { NOTIFY_ADMINS_ON_SUBMISSION, buildSubmissionCandidates, buildSubmissionRecipients, normalizeWorkspaceNotificationSettings } from '@/lib/notifications/workspace-routing';
 import type { SubmissionRecipientCandidate } from '@/lib/notifications/workspace-routing';
 import { sql } from '@/lib/neon/db';
 import { hasValidContact, resolveContact } from '@/lib/providers/contact-service';
@@ -798,27 +798,41 @@ export async function POST(
             scheduleReferralCreditAward(requestData.account_id);
         }
 
-        // Assemble submission-notification recipients. The request owner is always
-        // the first candidate; when the workspace enables admin routing, the
-        // organization's current admins are appended. Admins are derived live from
-        // membership, so removed members are never notified. Personal-preference
-        // and dedup handling lives in buildSubmissionRecipients.
-        const recipientCandidates: SubmissionRecipientCandidate[] = isTestDriveSubmission
-            ? []
-            : [{ email: account?.email, name: account?.full_name, prefs: notificationPrefs }];
-
+        // Assemble submission-notification recipients. The request owner comes
+        // first while they still belong to the request's workspace; when the
+        // workspace enables admin routing, or the owner has left it, the
+        // organization's current admins are added. Membership is read live, so
+        // nobody who was removed is notified. Personal-preference and dedup
+        // handling lives in buildSubmissionRecipients.
+        let ownerIsMember = true;
         if (!isTestDriveSubmission && organization?.id) {
-            const workspaceSettings = normalizeWorkspaceNotificationSettings(organization.notification_settings);
-            if (workspaceSettings[NOTIFY_ADMINS_ON_SUBMISSION]) {
-                const admins = await getOrganizationAdminRecipients(organization.id).catch(() => []);
-                for (const admin of admins) {
-                    recipientCandidates.push({
-                        email: admin.email,
-                        name: admin.full_name,
-                        prefs: admin.notification_preferences,
-                    });
-                }
+            try {
+                ownerIsMember = Boolean(await getOrganizationMemberRole(organization.id, requestData.account_id));
+            } catch (membershipError) {
+                // Unknown membership: the workspace's sheet is not sent to someone who may have left.
+                console.error('Failed to confirm request owner membership:', membershipError);
+                ownerIsMember = false;
             }
+        }
+
+        let recipientCandidates: SubmissionRecipientCandidate[] = [];
+        if (!isTestDriveSubmission) {
+            const notifyAdmins = organization?.id
+                ? normalizeWorkspaceNotificationSettings(organization.notification_settings)[NOTIFY_ADMINS_ON_SUBMISSION]
+                : false;
+            const admins = organization?.id && (notifyAdmins || !ownerIsMember)
+                ? await getOrganizationAdminRecipients(organization.id).catch(() => [])
+                : [];
+            recipientCandidates = buildSubmissionCandidates({
+                owner: { email: account?.email, name: account?.full_name, prefs: notificationPrefs },
+                ownerIsMember,
+                notifyAdmins,
+                admins: admins.map((admin) => ({
+                    email: admin.email,
+                    name: admin.full_name,
+                    prefs: admin.notification_preferences,
+                })),
+            });
         }
 
         const submissionRecipients = isTestDriveSubmission
@@ -936,8 +950,8 @@ export async function POST(
         }
 
         // Contact resolution alerts remain owner-only (they concern the owner's
-        // provider-memory workflow).
-        if (!isTestDriveSubmission && account?.email && !accessLocked && notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
+        // provider-memory workflow), and stop once the owner has left the workspace.
+        if (!isTestDriveSubmission && ownerIsMember && account?.email && !accessLocked && notificationPrefs.contact_resolution !== false && unresolvedEntries.length > 0) {
             try {
                 await sendContactResolutionAlertEmail({
                     tcEmail: account.email,

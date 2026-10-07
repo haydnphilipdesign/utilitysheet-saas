@@ -1,4 +1,4 @@
-# Current task: Teams plan review, slice 1 of 11 committed and pushed; slice 2 in progress
+# Current task: Teams plan review, slice 1 of 11 pushed; slice 2 implemented locally, uncommitted, waiting for the owner
 
 - Date: 2026-10-07. Last agent: Claude Opus 5.5. Branch: main. Slice 1 is committed on top of `5defe9c` and pushed to origin/main with owner authorization in chat on 2026-10-07. No issue/PR. No other active editor; no ownership warnings.
 - Owner reported in chat on 2026-10-07 (not verified here): `TEAM_INVITE_EXPIRY_DAYS=30` is now set in hosting, so new invitations last 30 days once a deployment picks it up.
@@ -9,8 +9,12 @@
 - Not verified: a real invitation end to end in a signed-in browser, a delivered email, Google sign-in returning to the invitation, the dashboard banner in a browser, the hosted site.
 - No deploy check, migration or live write was made. The two live reads were aggregates through scratch scripts outside the repository.
 - **No required work remains for slice 1.** Deployment of the pushed commit was not verified here.
-- Slice 2 (removed members stop receiving the team's submission emails; trim the members response) was approved by the owner in chat on 2026-10-07 and is in progress. It needs no schema, billing or role change. If this line is still here with uncommitted changes in `app/api/seller/[token]/route.ts`, `app/api/organization/members/route.ts` or `lib/neon/queries/organizations.ts`, slice 2 was interrupted; check the plan's Progress table.
-- Owner-side, optional: once deployed, tell the paying customer to invite their three teammates again.
+- Slice 2 done locally, uncommitted (owner approved it in chat on 2026-10-07): a request owner who is no longer in the request's workspace gets no submission email or provider-contact alert, and the workspace's admins are told instead; the members and account responses no longer carry a workspace's Stripe identifiers, and the member list no longer carries phone and company. No schema, billing, role or UI change. Files and details: plan, "Slice 2 outcome".
+- Slice 2 validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 212 files / 1531 passed; security scan and `git diff --check` passed. Browser specs not rerun (no screen changed). Not verified: a real submission for a removed owner's request.
+- Uncommitted files (slice 2 only): `app/api/account/route.ts`, `app/api/organization/members/route.ts`, `app/api/seller/[token]/route.ts`, `components/settings/types.ts`, `lib/auth/organization-access.ts`, `lib/neon/queries/organizations.ts`, `lib/notifications/workspace-routing.ts`, `tests/unit/{organization-members-route,workspace-notification-routing,seller-post-submission-routes,seller-request-question-settings,test-drive-seller-safety}.test.ts`, this file and the plan.
+- **No required work remains for slice 2.** Slices 3 to 11 are not started.
+- Next concrete action: owner says whether to commit and push slice 2. Then slice 3 (admins see expired invitations with "Send again" and get an email when someone joins), which needs no schema, billing or role change.
+- Owner-side, optional: once slice 1 is deployed, tell the paying customer to invite their three teammates again.
 
 # Previous task: Teams duplicate-subscription guard and referral trial end date (complete; migration applied, committed and pushed)
 
