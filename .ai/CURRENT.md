@@ -1,6 +1,6 @@
-# Current task: Teams plan review, slices 1 to 5 of 11 committed and pushed; slices 6 to 11 not started
+# Current task: Teams plan review, slices 1 to 7 of 11 committed and pushed; slice 9 next; slices 8, 10 and 11 not started
 
-- Date: 2026-10-07. Last agent: Claude Opus 5.5. Branch: main. Slices 1 (`7ce561b`), 2 (`c84e9a7`), 3 (`e7c4aec`) and 4 (`58a5632`) are committed and pushed to origin/main with owner authorization in chat on 2026-10-07. Deployment was not verified here. No issue/PR. No other active editor; no ownership warnings.
+- Date: 2026-10-07. Last agent: Claude Opus 5.5. Branch: main. Slices 1 (`7ce561b`), 2 (`c84e9a7`), 3 (`e7c4aec`), 4 (`58a5632`), 5 (`6e8cb40`), 6 and 7 are committed and pushed to origin/main with owner authorization in chat on 2026-10-07. Deployment was not verified here. No issue/PR. No other active editor; no ownership warnings.
 - Plan (findings, live evidence, Progress table, and an outcome section per finished slice with files, behavior, validation and what was not verified): `.ai/plans/2026-10-07-teams-plan-review.md`. The owner approved the recommended order in chat on 2026-10-07; slices that touch billing, schema or roles (8, 10, 11) are to be confirmed again before they start.
 - Decision made in this task: `.ai/decisions/2026-10-07-team-seats-changed-in-app.md`: seats are changed inside the app on the existing Stripe subscription; quantity changes are to be turned off in the Stripe "Teams Portal" configuration (owner action, not confirmed done).
 - Owner reported in chat on 2026-10-07 (not verified here): `TEAM_INVITE_EXPIRY_DAYS=30` is set in hosting, and `STRIPE_PORTAL_CONFIGURATION_ID_TEAMS` / `_PRO` exist there.
@@ -10,10 +10,15 @@
 - Slice 5 (pushed): a one-time welcome on the dashboard for a member of a Teams workspace, and the "Finish optional setup" prompt hidden for them. UI only. Details: plan, "Slice 5 outcome".
 - Slice 5 validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 214 files / 1571 passed; `git diff --check` passed. Not verified: the welcome in a browser (the dashboard has no fixture).
 - Owner confirmed in chat on 2026-10-07 (not verified here): `SAVED_SELLER_FORMS_ENABLED=true` and the everyone rollout are set in hosting, so a new member gets a seller form in the team workspace; and quantity changes are now off in the Stripe "Teams Portal" configuration.
-- Slice 5 is committed and pushed with owner authorization in chat on 2026-10-07. The worktree is clean after that commit.
+- Owner reported in chat on 2026-10-07 (not verified here): the Stripe "Default" portal configuration is the one `STRIPE_PORTAL_CONFIGURATION_ID_PRO` points at, so Pro customers use it and there is no separate Pro configuration; quantity changes are being turned off there too (Pro is always quantity 1).
+- Slice 5 is committed (`6e8cb40`) and pushed with owner authorization in chat on 2026-10-07.
 - No migration, live write or Stripe call has been made in this task. The only live reads were two aggregate queries through scratch scripts outside the repository.
-- **No required implementation work remains for slices 1 to 5.** Slices 6 to 11 are not started.
-- Next concrete action: start slice 6 (remove the pricing claim that does not exist; make "Start Teams" lead to Teams after sign-up) and slice 7 (Admin workspace page shows invitations, seats used and plan end), neither of which needs a billing, schema or role confirmation.
+- **No required implementation work remains for slices 1 to 5.**
+- Slice 6 (committed and pushed with owner authorization in chat on 2026-10-07): the "Org-wide packet defaults" / "shared defaults" claim is replaced with shared Branding Profiles on the pricing surfaces; `/auth/signup?plan=teams` ends on Settings > Billing with the Teams section in view, and `?plan=pro` ends on Settings > Billing (owner asked for Pro in chat). Copy and navigation only; no checkout starts by itself. Details and what was not verified: plan, "Slice 6 outcome".
+- Slice 7 (committed and pushed with the same authorization): the Admin workspace page shows seats in use with a members-over-seats warning, the plan end date, and every invitation with its status. Read-only, no admin write, the join token is never read. Not seen in a browser (Admin has no fixture). Details: plan, "Slice 7 outcome".
+- Validation for both (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 217 files / 1589 passed; settings and auth browser specs 48/48 on three device profiles; security scan and `git diff --check` passed. Deployment not verified here.
+- **No required implementation work remains for slices 1 to 7.** Slices 8 to 11 remain; 8 [B] [S], 10 [R] and 11 [S] [R] are confirmed with the owner before they start.
+- Next concrete action: slice 9 (who owns each request, with a "Mine" filter), which the owner asked for next in chat on 2026-10-07 and which needs no billing, schema or role confirmation.
 - Owner-side, still open: change seats once on the test Teams workspace after deploy and check the upcoming invoice in Stripe (no real Stripe call has been made); look at the member welcome signed in (not seen in a browser); once deployed, tell the paying customer their admin will see the three expired invitations with "Send again".
 
 # Previous task: Teams duplicate-subscription guard and referral trial end date (complete; migration applied, committed and pushed)

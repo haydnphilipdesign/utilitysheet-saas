@@ -5,12 +5,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { AdminAccountPreview } from '@/components/admin/AdminAccountPreview';
 import { BillingEvidence } from '@/components/admin/BillingEvidence';
+import { WorkspaceInvitations } from '@/components/admin/WorkspaceInvitations';
 import { buildStripeRecordLinks, describeWorkspaceBilling, getStripeModeFromKey } from '@/lib/admin/billing-context';
 import { formatAdminDate } from '@/lib/admin/date-format';
 import { getLatestRequestsForUsers } from '@/lib/admin';
 import { Building2, CreditCard, Users } from 'lucide-react';
 import { AdminPageHeader } from '@/components/admin/primitives';
 import { classifyAdminWorkspace, getAdminWorkspaceKindLabel } from '@/lib/admin/workspace-classification';
+import { countAdminInvitations, summarizeWorkspaceSeats, type AdminWorkspaceInvitation } from '@/lib/admin/workspace-team';
 
 type OrganizationRow = {
     id: string;
@@ -21,6 +23,7 @@ type OrganizationRow = {
     subscription_id: string | null;
     stripe_customer_id?: string | null;
     subscription_ends_at: string | null;
+    subscription_cancel_at: string | null;
     seat_quantity: number;
     created_at: string;
 };
@@ -40,7 +43,7 @@ type OrganizationMemberRow = {
 async function getOrgData(orgId: string) {
     if (!sql) return null;
 
-    const [orgRes, membersRes] = await Promise.all([
+    const [orgRes, membersRes, invitationsRes] = await Promise.all([
         sql`SELECT * FROM organizations WHERE id = ${orgId}`,
         sql`
             SELECT om.*, a.full_name, a.email, a.role as user_role, a.subscription_status
@@ -48,6 +51,16 @@ async function getOrgData(orgId: string) {
             JOIN accounts a ON om.account_id = a.id 
             WHERE organization_id = ${orgId} 
             ORDER BY om.created_at ASC
+        `,
+        // Never select the token: it is the capability to join the workspace.
+        sql`
+            SELECT i.id, i.email, i.role, i.created_at, i.expires_at, i.accepted_at,
+                inviter.full_name AS inviter_name, inviter.email AS inviter_email
+            FROM organization_invitations i
+            LEFT JOIN accounts inviter ON inviter.id = i.invited_by_account_id
+            WHERE i.organization_id = ${orgId}
+            ORDER BY i.created_at DESC
+            LIMIT 100
         `
     ]);
 
@@ -56,6 +69,7 @@ async function getOrgData(orgId: string) {
     return {
         org: orgRes[0] as unknown as OrganizationRow,
         members: membersRes as unknown as OrganizationMemberRow[],
+        invitations: invitationsRes as unknown as AdminWorkspaceInvitation[],
     };
 }
 
@@ -67,7 +81,15 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
         notFound();
     }
 
-    const { org, members } = data;
+    const { org, members, invitations } = data;
+    const now = new Date();
+    const seats = summarizeWorkspaceSeats({
+        entitlement: org.subscription_status,
+        seatQuantity: org.seat_quantity,
+        memberCount: members.length,
+        pendingInvitations: countAdminInvitations(invitations, now).pending,
+    });
+    const isTeam = org.subscription_status === 'team';
     const orgAdmins = members.filter((member) => member.role === 'admin');
     const workspaceKind = classifyAdminWorkspace({
         subscriptionStatus: org.subscription_status,
@@ -120,7 +142,25 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
                             <span className="font-medium text-sm text-muted-foreground block">Workspace entitlement</span>
                             <Badge variant={org.subscription_status === 'team' ? 'default' : 'outline'}>{org.subscription_status || 'free'}</Badge>
                         </div>
-                        <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Seats</span> {org.seat_quantity || 0}</div>
+                        <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Seats</span> {seats.seats}</div>
+                        {isTeam && (
+                            <div className="py-1">
+                                <span className="font-medium text-sm text-muted-foreground block">Seats in use</span>
+                                {seats.inUse} of {seats.seats}
+                                <span className="block text-xs text-muted-foreground">{seats.detail}</span>
+                                {seats.membersOverSeats && (
+                                    <span role="status" className="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-300">
+                                        More members than seats. Nobody loses access, but this workspace pays for fewer seats than it uses.
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                        <div className="py-1">
+                            <span className="font-medium text-sm text-muted-foreground block">Plan end</span>
+                            {org.subscription_cancel_at
+                                ? `Set to end on ${formatAdminDate(org.subscription_cancel_at)}`
+                                : isTeam ? 'Not set to cancel' : 'No paid plan'}
+                        </div>
                         <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Stored period end</span> {org.subscription_ends_at ? formatAdminDate(org.subscription_ends_at) : 'Not recorded'}</div>
                         <BillingEvidence
                             evidence={describeWorkspaceBilling({
@@ -223,6 +263,8 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
                     </table>
                 </div>
             </div>
+
+            <WorkspaceInvitations invitations={invitations} now={now} />
         </div>
     );
 }

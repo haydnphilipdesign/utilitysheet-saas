@@ -85,8 +85,8 @@ Counts and dates only; no addresses, names or identifiers were read out.
 | 3 | Admin sees what happened to invitations | Done 2026-10-07; committed `e7c4aec` and pushed; deployment not verified |
 | 4 | Seats in the app [B] | Done 2026-10-07; committed `58a5632` and pushed; deployment not verified; no real Stripe call made. Decision: `.ai/decisions/2026-10-07-team-seats-changed-in-app.md` |
 | 5 | New-member welcome | Done 2026-10-07; committed and pushed; deployment not verified; not seen in a browser |
-| 6 | Honest marketing and "Start Teams" path | Not started |
-| 7 | Admin workspace page | Not started |
+| 6 | Honest marketing and "Start Teams" path | Done 2026-10-07; committed and pushed; deployment not verified |
+| 7 | Admin workspace page | Done 2026-10-07; committed and pushed; deployment not verified; not seen in a browser |
 | 8 | Payment failure and plan end messages [B] [S] | Not started; confirm first |
 | 9 | Request owners and "Mine" filter | Not started |
 | 10 | Leave a workspace [R] | Not started; confirm first |
@@ -165,3 +165,27 @@ UI only. No API, schema, billing or role change.
 - Not verified: the welcome in a browser. The dashboard has no browser fixture, so its look on desktop and phone was not reviewed, only its content and behavior in unit tests.
 - Found while doing this, not fixed (needs the owner's answer): a person who already has a seller form (every new invitee gets one in their own workspace first) gets a form in the team workspace only if `SAVED_SELLER_FORMS_ENABLED=true` and the rollout includes them (`ensure_seller_form` in `schema.sql`, `sellerFormCreationCapability` in `lib/seller-forms/config.ts`). If production does not allow it, a new member's dashboard shows "Unable to load your reusable link right now." The owner confirmed in chat on 2026-10-07 that both are set in hosting (not verified here), so this should not occur.
 - Not in this slice: the personal workspace that is created for an invitee before they join (finding 7) is unchanged.
+
+## Slice 6 outcome (2026-10-07)
+
+Copy and navigation only. No API, schema, billing, pricing or role change. Checkout itself is untouched.
+
+- Claim removed: "Org-wide packet defaults" and "shared defaults" are gone from `lib/marketing-content.ts`, `components/landing/PricingSection.tsx` and `app/(marketing)/pricing/page.tsx`. They now say "Branding Profiles shared by the whole team" / "shared Branding Profiles", which is true (finding 16). `tests/unit/marketing-teams-claims.test.ts` fails if a workspace-wide defaults claim returns to those three places.
+- "Start Teams": the link is still `/auth/signup?plan=teams`. Sign-up now reads `plan` (`getSignupPlanDestination` in `lib/auth/post-auth-return.ts`): for `teams` the destination after sign-up is `/dashboard/settings?tab=billing&plan=teams`, through the existing return path, so it survives Google sign-up, the "Sign in" link for someone who already has an account, and an already signed-in visitor. An explicit `next` (an invitation) still wins. The sign-up page says "Create an account to start Teams" and that seats are chosen next; the button reads "Create account".
+- Billing: with `plan=teams` in the address, the Teams section is scrolled into view once the account has loaded (`showTeamsFirst` on `BillingSection`). Nothing is started or prefilled; the person still chooses seats and presses "Start Teams".
+- Files: `lib/marketing-content.ts`, `components/landing/PricingSection.tsx`, `app/(marketing)/pricing/page.tsx`, `lib/auth/post-auth-return.ts`, `app/auth/signup/page.tsx`, `components/settings/{billing-section,settings-view}.tsx` (the Teams section is wrapped in one element, so its lines are reindented); tests: new `tests/unit/{auth-signup-plan.test.tsx,marketing-teams-claims.test.ts}`, updated `tests/unit/{post-auth-return.test.ts,settings-states.test.tsx}`, `tests/settings.spec.ts`, `tests/account-auth-responsive.spec.ts`.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 217 files / 1589 tests passed after the "Start Pro" change; `tests/settings.spec.ts` and `tests/account-auth-responsive.spec.ts` 48/48 on three device profiles with service keys blanked (the auth spec rerun 9/9 after the "Start Pro" change); security scan and `git diff --check` passed; desktop and phone screenshots of the arrival in Billing and of the Teams sign-up page reviewed.
+- Not verified: a real sign-up from the pricing page ending in Billing (each hop is tested, the whole trip is not, because sign-up needs the auth provider); the email-verification path, which relies on the destination remembered in the same browser tab; the hosted site.
+- "Start Pro" (owner asked in chat on 2026-10-07, after the first pass): `/auth/signup?plan=pro` now ends on `/dashboard/settings?tab=billing`, where "Upgrade to Pro" is the first button; the sign-up page says "Create an account to start Pro". No checkout is started automatically. Unit-tested; not added to the browser spec.
+- Not checked: Teams claims outside the pricing surfaces (FAQ, feature pages, blog-style pages) beyond a search for "defaults"; `docs/audits/` still quotes the old claim as history.
+
+## Slice 7 outcome (2026-10-07)
+
+Read-only Admin page. No admin write, so no audit entry or reason applies. No API, schema, billing or role change.
+
+- `/admin/organizations/[id]` Billing card now shows, for a Team workspace, "Seats in use" (members plus pending invitations, the same count the customer's Billing page uses) with a warning when members exceed seats, and "Plan end" from `organizations.subscription_cancel_at` ("Set to end on <date>", "Not set to cancel", or "No paid plan"). "Stored period end" is unchanged.
+- New "Invitations" section under Members: every invitation the workspace sent (newest first, up to 100) with invited email, role, Accepted / Pending / Expired with the relevant date, first-sent date and who sent it; a one-line count; "This workspace has not invited anyone." when empty. The page's query names its columns and never reads the join token.
+- Files: `app/(admin)/admin/organizations/[id]/page.tsx`; new `lib/admin/workspace-team.ts` (status and seat summary, pure), `components/admin/WorkspaceInvitations.tsx`; `ADMIN.md` (page description); new `tests/unit/admin-workspace-team.test.tsx`.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 217 files / 1588 tests passed; security scan and `git diff --check` passed. The invitation query was run against sample rows in a throwaway local PostgreSQL 17 (a table copied from `schema.sql`, started and deleted in the scratch folder, nothing live): it returns only the asked workspace's invitations, newest first, with the inviter's name and a blank inviter when the account is gone.
+- Not verified: the page in a browser. Admin has no fixture and needs a database and an admin sign-in, so its layout on desktop and phone was not looked at. The page itself is covered by a source check (columns selected, the new fields present), not a render; the table component and both helpers are rendered and unit-tested.
+- Known limits: an accepted invitation stays "Accepted" after that person is later removed (the Members table is the truth for who is in now); "First sent" is the original date, and "Send again" does not change it.
