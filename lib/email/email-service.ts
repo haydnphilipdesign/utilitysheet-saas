@@ -697,6 +697,103 @@ export async function sendOrganizationInviteEmail(
     }
 }
 
+interface OrganizationInviteAcceptedEmailParams {
+    toEmail: string;
+    organizationName: string;
+    memberName?: string | null;
+    memberEmail: string;
+}
+
+/** Tells the person who sent an invitation that it was accepted. Names are escaped. */
+export function buildOrganizationInviteAcceptedEmail({
+    organizationName,
+    memberName,
+    memberEmail,
+}: OrganizationInviteAcceptedEmailParams): { subject: string; html: string } {
+    const displayName = memberName?.trim() || memberEmail;
+    const workspace = escapeHtml(organizationName);
+    const who = escapeHtml(displayName);
+    const address = memberName?.trim() ? ` (${escapeHtml(memberEmail)})` : '';
+    const settingsUrl = `${getAppBaseUrl()}/dashboard/settings?tab=workspace`;
+    const subject = `${displayName} joined ${organizationName} on UtilitySheet`.replace(/[\r\n]+/g, ' ');
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${who} joined ${workspace}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%); padding: 28px 40px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700;">UtilitySheet</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 36px 40px;">
+                            <p style="margin: 0 0 16px; color: #111827; font-size: 16px; line-height: 1.6;">
+                                <strong>${who}</strong>${address} accepted your invitation and is now a member of <strong>${workspace}</strong>.
+                            </p>
+                            <p style="margin: 0 0 24px; color: #374151; font-size: 15px; line-height: 1.6;">
+                                They can see and work on the workspace’s requests and Branding Profiles. You can change their role or remove them in Settings, under Workspace &amp; Team.
+                            </p>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        ${renderBulletproofButton({
+            href: settingsUrl,
+            label: 'Open Workspace &amp; Team',
+            backgroundColor: '#334155',
+            borderRadius: 10,
+            fontWeight: 700,
+            paddingX: 28,
+            paddingY: 14,
+            minWidth: 220,
+        })}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+`;
+
+    return { subject, html };
+}
+
+export async function sendOrganizationInviteAcceptedEmail(
+    params: OrganizationInviteAcceptedEmailParams
+): Promise<{ success: boolean; error?: string }> {
+    const { subject, html } = buildOrganizationInviteAcceptedEmail(params);
+
+    try {
+        const { error } = await getResend().emails.send({
+            from: 'UtilitySheet <noreply@utilitysheet.com>',
+            to: params.toEmail,
+            subject,
+            html,
+        });
+        if (error) {
+            console.error('Failed to send invitation accepted email:', error);
+            return { success: false, error: error.message };
+        }
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending invitation accepted email:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+}
+
 interface GenerateEmailHtmlParams {
     sellerName?: string;
     propertyAddress: string;

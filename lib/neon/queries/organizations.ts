@@ -708,6 +708,55 @@ export async function getPendingOrganizationInvites(organizationId: string) {
     return result;
 }
 
+/**
+ * Invitations an admin can still act on: pending ones, and expired ones that
+ * were never accepted. An expired invitation is left out once the same address
+ * has a newer pending invitation or has joined, so each person appears once.
+ */
+export async function getUnacceptedOrganizationInvites(organizationId: string) {
+    if (!sql) return [];
+
+    const result = await sql`
+        SELECT
+            i.id,
+            i.email,
+            i.role,
+            i.invited_by_account_id,
+            i.expires_at,
+            i.created_at,
+            i.updated_at,
+            CASE WHEN i.expires_at > NOW() THEN 'pending' ELSE 'expired' END AS status
+        FROM organization_invitations i
+        WHERE i.organization_id = ${organizationId}
+            AND i.accepted_at IS NULL
+            AND (
+                i.expires_at > NOW()
+                OR (
+                    NOT EXISTS (
+                        SELECT 1 FROM organization_invitations newer
+                        WHERE newer.organization_id = i.organization_id
+                            AND lower(newer.email) = lower(i.email)
+                            AND newer.id <> i.id
+                            AND newer.accepted_at IS NULL
+                            AND (newer.expires_at > NOW() OR newer.created_at > i.created_at)
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM organization_members om
+                        JOIN accounts a ON a.id = om.account_id
+                        WHERE om.organization_id = i.organization_id
+                            AND lower(a.email) = lower(i.email)
+                    )
+                )
+            )
+        ORDER BY (i.expires_at > NOW()) DESC, i.created_at DESC
+        LIMIT 50
+    `;
+
+    return result;
+}
+
+/** An invitation that has not been accepted, pending or expired, in one workspace. */
 export async function getOrganizationInviteForOrganization(inviteId: string, organizationId: string) {
     if (!sql) return null;
 
@@ -725,39 +774,110 @@ export async function getOrganizationInviteForOrganization(inviteId: string, org
         WHERE id = ${inviteId}
             AND organization_id = ${organizationId}
             AND accepted_at IS NULL
-            AND expires_at > NOW()
         LIMIT 1
     `;
 
     return result[0] || null;
 }
 
-export async function refreshPendingOrganizationInvite(data: {
+export type RenewOrganizationInviteResult =
+    | { status: 'renewed'; invite: Record<string, unknown>; wasExpired: boolean }
+    | { status: 'no_seat' }
+    | { status: 'not_found' };
+
+/**
+ * Gives an unaccepted invitation a new link and expiry. A pending invitation
+ * already holds its seat. An expired one holds none, so it is renewed only when
+ * a seat is free and the address is neither invited again nor already a member;
+ * the workspace row is locked so that decision cannot race another invitation.
+ */
+export async function renewOrganizationInviteWithSeatGuard(data: {
     inviteId: string;
     organizationId: string;
     token: string;
     invitedByAccountId: string;
     expiresAt: Date;
-}) {
-    if (!sql) return null;
+}): Promise<RenewOrganizationInviteResult> {
+    if (!sql) return { status: 'not_found' };
 
     const result = await sql`
-        UPDATE organization_invitations
-        SET
-            token = ${data.token},
-            invited_by_account_id = ${data.invitedByAccountId},
-            expires_at = ${data.expiresAt.toISOString()},
-            updated_at = NOW()
-        WHERE id = ${data.inviteId}
-            AND organization_id = ${data.organizationId}
-            AND accepted_at IS NULL
-            AND expires_at > NOW()
-        RETURNING *
+        WITH organization_row AS (
+            SELECT id, seat_quantity
+            FROM organizations
+            WHERE id = ${data.organizationId}
+            FOR UPDATE
+        ),
+        target AS (
+            SELECT id, email, (expires_at > NOW()) AS is_pending
+            FROM organization_invitations
+            WHERE id = ${data.inviteId}
+                AND organization_id = ${data.organizationId}
+                AND accepted_at IS NULL
+            LIMIT 1
+        ),
+        seat_usage AS (
+            SELECT
+                (
+                    SELECT COUNT(*)::int
+                    FROM organization_members
+                    WHERE organization_id = ${data.organizationId}
+                ) AS used,
+                (
+                    SELECT COUNT(*)::int
+                    FROM organization_invitations
+                    WHERE organization_id = ${data.organizationId}
+                        AND accepted_at IS NULL
+                        AND expires_at > NOW()
+                ) AS pending
+        ),
+        updated_invite AS (
+            UPDATE organization_invitations invite_row
+            SET
+                token = ${data.token},
+                invited_by_account_id = ${data.invitedByAccountId},
+                expires_at = ${data.expiresAt.toISOString()},
+                updated_at = NOW()
+            FROM organization_row, target, seat_usage
+            WHERE invite_row.id = target.id
+                AND invite_row.organization_id = ${data.organizationId}
+                AND invite_row.accepted_at IS NULL
+                AND (
+                    target.is_pending
+                    OR (
+                        organization_row.seat_quantity > 0
+                        AND (seat_usage.used + seat_usage.pending) < organization_row.seat_quantity
+                        AND NOT EXISTS (
+                            SELECT 1 FROM organization_invitations other
+                            WHERE other.organization_id = ${data.organizationId}
+                                AND lower(other.email) = lower(target.email)
+                                AND other.id <> target.id
+                                AND other.accepted_at IS NULL
+                                AND other.expires_at > NOW()
+                        )
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM organization_members om
+                            JOIN accounts a ON a.id = om.account_id
+                            WHERE om.organization_id = ${data.organizationId}
+                                AND lower(a.email) = lower(target.email)
+                        )
+                    )
+                )
+            RETURNING invite_row.*
+        )
+        SELECT
+            (SELECT row_to_json(updated_invite) FROM updated_invite LIMIT 1) AS invite,
+            EXISTS (SELECT 1 FROM target) AS found,
+            COALESCE((SELECT is_pending FROM target), FALSE) AS was_pending
     `;
 
-    return result[0] || null;
+    const row = result[0] as { invite?: unknown; found?: boolean; was_pending?: boolean } | undefined;
+    const invite = parseJsonColumn(row?.invite);
+    if (invite) return { status: 'renewed', invite, wasExpired: !row?.was_pending };
+    return row?.found ? { status: 'no_seat' } : { status: 'not_found' };
 }
 
+/** Removes an invitation that was never accepted, pending or expired. */
 export async function cancelPendingOrganizationInvite(inviteId: string, organizationId: string) {
     if (!sql) return false;
 
@@ -766,7 +886,6 @@ export async function cancelPendingOrganizationInvite(inviteId: string, organiza
         WHERE id = ${inviteId}
             AND organization_id = ${organizationId}
             AND accepted_at IS NULL
-            AND expires_at > NOW()
         RETURNING id
     `;
 

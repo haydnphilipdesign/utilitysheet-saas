@@ -10,7 +10,7 @@ import {
     getOrganizationById,
     getOrganizationInviteForOrganization,
     getOrganizationMemberRole,
-    refreshPendingOrganizationInvite,
+    renewOrganizationInviteWithSeatGuard,
 } from '@/lib/neon/queries';
 
 type InviteRouteContext = { params: Promise<{ inviteId: string }> };
@@ -104,16 +104,21 @@ export async function PATCH(request: Request, { params }: InviteRouteContext): P
 
         const token = generateToken();
         const expiresAt = new Date(Date.now() + getInviteExpiryDays() * 24 * 60 * 60 * 1000);
-        const invite = await refreshPendingOrganizationInvite({
+        // An expired invitation holds no seat, so sending it again has to find one.
+        const renewal = await renewOrganizationInviteWithSeatGuard({
             inviteId,
             organizationId,
             token,
             invitedByAccountId: account.id,
             expiresAt,
         });
-        if (!invite) {
+        if (renewal.status === 'no_seat') {
+            return NextResponse.json({ error: 'No seats available' }, { status: 409 });
+        }
+        if (renewal.status !== 'renewed') {
             return NextResponse.json({ error: 'Pending invitation not found' }, { status: 404 });
         }
+        const invite = renewal.invite;
 
         const inviteUrl = `${getAppBaseUrl()}/invite/${token}`;
         let emailSent = false;
@@ -131,9 +136,10 @@ export async function PATCH(request: Request, { params }: InviteRouteContext): P
         }
 
         return NextResponse.json({
-            invite: publicInvite(invite as Record<string, unknown>),
+            invite: publicInvite(invite),
             inviteUrl,
             emailSent,
+            wasExpired: renewal.wasExpired,
         }, { headers: getRateLimitHeaders(rateLimitResult) });
     } catch (error) {
         console.error('Error resending organization invite:', error);

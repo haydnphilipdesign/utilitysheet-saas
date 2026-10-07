@@ -47,7 +47,11 @@ async function mocks(page: Page, scenario: Scenario) {
     const state = { ...scenario, accountLoads: 0 };
     const writes: { url: string; method: string; body: Record<string, unknown> }[] = [];
     const team = () => state.plan === 'team';
-    const invites = [{ id: 'inv_1', email: 'casey.nguyen@riverbendtitle.example', role: 'member', expires_at: '2026-10-14T12:00:00.000Z' }];
+    const invites = [
+        { id: 'inv_1', email: 'casey.nguyen@riverbendtitle.example', role: 'member', expires_at: '2026-10-14T12:00:00.000Z', status: 'pending' },
+        { id: 'inv_0', email: 'robin.adeyemi@riverbendtitle.example', role: 'member', expires_at: '2026-09-20T12:00:00.000Z', status: 'expired' },
+    ];
+    const pendingInvites = () => invites.filter((invite) => invite.status === 'pending').length;
     await page.route('**/api/**', async (route) => {
         const req = route.request();
         const path = new URL(req.url()).pathname;
@@ -96,7 +100,7 @@ async function mocks(page: Page, scenario: Scenario) {
                 ] : [
                     { account_id: 'acc_1', email: 'jordan@example.com', full_name: 'Jordan Rivera', member_role: 'admin' },
                 ],
-                seatUsage: { used: team() ? 3 : 1, pendingInvites: team() ? invites.length : 0 },
+                seatUsage: { used: team() ? 3 : 1, pendingInvites: team() ? pendingInvites() : 0 },
             });
         }
         if (path === '/api/organization/invites' && method === 'GET') return json({ invites });
@@ -107,6 +111,10 @@ async function mocks(page: Page, scenario: Scenario) {
                 inviteUrl: 'https://example.com/invite/synthetic-invite-token',
                 emailSent: state.emailSent ?? true,
             });
+        }
+        if (path === '/api/organization/invites/inv_0' && method === 'PATCH') {
+            // Every seat is taken, so an expired invitation cannot be sent again yet.
+            return json({ error: 'No seats available' }, 409);
         }
         if (path === '/api/organization' && method === 'PATCH') {
             return json({ organization: { id: 'org_1', name: req.postDataJSON().name } });
@@ -237,6 +245,12 @@ test('a Teams admin manages people by name and sees honest invitation results', 
     await expect(page.getByRole('button', { name: 'Change Pat Lee to a member', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Remove sam.okafor-williams@riverbendtitle.example', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Jordan Rivera/ })).toHaveCount(0);
+    // An invitation that expired stays visible, off the seat count, with a way to send it again.
+    await expect(page.getByText('Pending invitations (1)', { exact: true })).toBeVisible();
+    await expect(page.getByText('Expired Sep 20, 2026 without being accepted. It no longer uses a seat.', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Remove expired invitation to robin.adeyemi@riverbendtitle.example', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Send a new invitation to robin.adeyemi@riverbendtitle.example', exact: true }).click();
+    await expect(page.getByText('All of your seats are in use. Add seats in Billing or cancel a pending invitation, then try again.', { exact: true })).toBeVisible();
     await healthy(page, testInfo, 'team-admin-workspace');
 
     // Workspace name: unchanged, unsaved, then saved beside the button.

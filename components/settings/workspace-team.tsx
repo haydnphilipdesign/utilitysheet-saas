@@ -40,6 +40,7 @@ const FRIENDLY_ERRORS: Record<string, string> = {
     'Cannot remove the last admin': 'A workspace needs at least one admin, so this person can’t be removed.',
     'Only organization admins can manage members': 'Only workspace admins can change roles or remove members.',
     'Only organization admins can manage invites': 'Only workspace admins can manage invitations.',
+    'Only organization admins can invite members': 'Only workspace admins can send invitations.',
     'Pending invitation not found': 'That invitation is no longer pending. The list below is up to date.',
 };
 
@@ -247,10 +248,11 @@ export function WorkspaceTeam({
             if (typeof data.inviteUrl === 'string' && data.inviteUrl) {
                 onInviteLink({ email: target.email, url: data.inviteUrl, expiresAt: data.invite?.expires_at ?? null });
             }
+            const expired = target.status === 'expired';
             setInviteListNotice({
                 tone: data.emailSent === true ? 'saved' : 'muted',
                 text: data.emailSent === true
-                    ? `Invitation emailed again to ${target.email}.`
+                    ? `${expired ? 'New invitation emailed' : 'Invitation emailed again'} to ${target.email}.${expired ? ' It uses one seat again.' : ''}`
                     : `The invitation for ${target.email} was renewed, but we couldn’t confirm the email was sent. Send them the invite link above yourself.`,
             });
             await onRefresh();
@@ -272,7 +274,12 @@ export function WorkspaceTeam({
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(friendlyError(data, 'We couldn’t cancel the invitation. Try again.'));
             if (inviteLink?.email === target.email) onInviteLink(null);
-            setInviteListNotice({ tone: 'saved', text: `Invitation for ${target.email} canceled. Its seat is available again.` });
+            setInviteListNotice({
+                tone: 'saved',
+                text: target.status === 'expired'
+                    ? `Expired invitation for ${target.email} removed.`
+                    : `Invitation for ${target.email} canceled. Its seat is available again.`,
+            });
             await onRefresh();
         } catch (error) {
             setInviteListNotice({
@@ -328,6 +335,8 @@ export function WorkspaceTeam({
     }
 
     const seatsInUse = seatUsage ? seatUsage.used + seatUsage.pendingInvites : null;
+    const pendingCount = invites.filter((invite) => invite.status !== 'expired').length;
+    const expiredCount = invites.length - pendingCount;
 
     return (
         <>
@@ -516,8 +525,11 @@ export function WorkspaceTeam({
                         <div className="space-y-3">
                             <div className="flex items-center justify-between gap-3">
                                 <p className="text-sm font-medium text-foreground">
-                                    Pending invitations{teamState === 'ready' ? ` (${invites.length})` : ''}
+                                    Pending invitations{teamState === 'ready' ? ` (${pendingCount})` : ''}
                                 </p>
+                                {teamState === 'ready' && expiredCount > 0 && (
+                                    <p className="text-xs text-muted-foreground">{expiredCount} expired</p>
+                                )}
                             </div>
                             <NoticeLine notice={inviteListNotice} />
                             {teamState === 'loading' ? (
@@ -533,32 +545,45 @@ export function WorkspaceTeam({
                                     {invites.map((pending) => {
                                         const resending = inviteAction === `resend:${pending.id}`;
                                         const canceling = inviteAction === `cancel:${pending.id}`;
+                                        const expired = pending.status === 'expired';
                                         return (
                                             <li key={pending.id} className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
                                                 <div className="min-w-0 space-y-1">
                                                     <div className="flex flex-wrap items-center gap-2">
                                                         <p className="break-all text-sm font-medium text-foreground">{pending.email}</p>
                                                         <Badge variant="outline">{pending.role === 'admin' ? 'Admin' : 'Member'}</Badge>
+                                                        {expired && <Badge variant="secondary">Expired</Badge>}
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground">Expires {formatDate(pending.expires_at)}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {expired
+                                                            ? `Expired ${formatDate(pending.expires_at)} without being accepted. It no longer uses a seat.`
+                                                            : `Expires ${formatDate(pending.expires_at)}`}
+                                                    </p>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 sm:justify-end">
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        aria-label={`Resend invitation to ${pending.email}`}
+                                                        aria-label={`${expired ? 'Send a new invitation' : 'Resend invitation'} to ${pending.email}`}
                                                         onClick={() => void resendInvite(pending)}
                                                         disabled={inviteAction !== null}
                                                     >
                                                         {resending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-                                                        Resend
+                                                        {expired ? 'Send again' : 'Resend'}
                                                     </Button>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
                                                         className="text-destructive hover:text-destructive"
-                                                        aria-label={`Cancel invitation to ${pending.email}`}
-                                                        onClick={() => setConfirmation({
+                                                        aria-label={`${expired ? 'Remove expired invitation' : 'Cancel invitation'} to ${pending.email}`}
+                                                        onClick={() => setConfirmation(expired ? {
+                                                            title: 'Remove this expired invitation?',
+                                                            description: `It comes off this list. You can invite ${pending.email} again at any time.`,
+                                                            confirmLabel: 'Remove',
+                                                            cancelLabel: 'Keep it',
+                                                            destructive: true,
+                                                            run: () => cancelInvite(pending),
+                                                        } : {
                                                             title: 'Cancel this invitation?',
                                                             description: `${pending.email} will no longer be able to join with it, and its seat becomes available right away.`,
                                                             confirmLabel: 'Cancel invitation',
@@ -569,7 +594,7 @@ export function WorkspaceTeam({
                                                         disabled={inviteAction !== null}
                                                     >
                                                         {canceling && <Loader2 className="animate-spin" />}
-                                                        Cancel invitation
+                                                        {expired ? 'Remove' : 'Cancel invitation'}
                                                     </Button>
                                                 </div>
                                             </li>

@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { stackServerApp } from '@/lib/stack/server';
+import { sendOrganizationInviteAcceptedEmail } from '@/lib/email/email-service';
 import {
     acceptOrganizationInviteWithSeatGuard,
+    getAccountById,
     getOrganizationById,
+    getOrganizationMemberRole,
     getOrganizationInviteByToken,
     getOrCreateAccount,
     setActiveOrganization,
@@ -81,6 +84,24 @@ export async function POST(request: Request) {
         }
 
         await setActiveOrganization(account.id, organizationId);
+
+        // Tell the person who sent the invitation. Joining never depends on this email.
+        try {
+            const inviterId = typeof invite.invited_by_account_id === 'string' ? invite.invited_by_account_id : null;
+            if (inviterId && inviterId !== account.id && await getOrganizationMemberRole(organizationId, inviterId)) {
+                const inviter = await getAccountById(inviterId);
+                if (inviter?.email) {
+                    await sendOrganizationInviteAcceptedEmail({
+                        toEmail: inviter.email,
+                        organizationName: (organization.name as string) || 'your workspace',
+                        memberName: account.full_name || user.displayName || null,
+                        memberEmail: accountEmail,
+                    });
+                }
+            }
+        } catch (notifyError) {
+            console.error('Failed to notify inviter of accepted invitation:', notifyError);
+        }
 
         return NextResponse.json({ success: true, organizationId });
     } catch (error) {

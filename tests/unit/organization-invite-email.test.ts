@@ -4,7 +4,40 @@ vi.mock('server-only', () => ({}));
 vi.mock('@/lib/resend', () => ({ getResend: vi.fn() }));
 vi.mock('@/lib/pdf/packet-attachment', () => ({ createPacketPdfAttachmentForRequest: vi.fn() }));
 
-import { buildOrganizationInviteEmail } from '@/lib/email/email-service';
+import { buildOrganizationInviteAcceptedEmail, buildOrganizationInviteEmail } from '@/lib/email/email-service';
+
+describe('invitation accepted email', () => {
+    it('tells the inviter who joined which workspace', () => {
+        const { subject, html } = buildOrganizationInviteAcceptedEmail({
+            toEmail: 'pat@example.com',
+            organizationName: 'Riverbend',
+            memberName: 'Casey Nguyen',
+            memberEmail: 'casey@example.com',
+        });
+
+        expect(subject).toBe('Casey Nguyen joined Riverbend on UtilitySheet');
+        expect(html).toContain('<strong>Casey Nguyen</strong> (casey@example.com) accepted your invitation');
+        expect(html).toContain('/dashboard/settings?tab=workspace');
+    });
+
+    it('falls back to the address and escapes names typed by customers', () => {
+        const { subject, html } = buildOrganizationInviteAcceptedEmail({
+            toEmail: 'pat@example.com',
+            organizationName: '<b>Riverbend</b>',
+            memberName: '<script>alert(1)</script>',
+            memberEmail: 'casey@example.com',
+        });
+        expect(html).not.toContain('<script>');
+        expect(html).not.toContain('<b>Riverbend</b>');
+
+        expect(buildOrganizationInviteAcceptedEmail({
+            toEmail: 'pat@example.com',
+            organizationName: 'Riverbend',
+            memberEmail: 'casey@example.com',
+        }).subject).toBe('casey@example.com joined Riverbend on UtilitySheet');
+        expect(subject).not.toMatch(/[\r\n]/);
+    });
+});
 
 const inviteUrl = 'https://app.example.com/invite/synthetic-token';
 

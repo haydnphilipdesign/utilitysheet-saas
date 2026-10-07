@@ -81,8 +81,8 @@ Counts and dates only; no addresses, names or identifiers were read out.
 | # | Slice | State |
 |---|---|---|
 | 1 | Invitation acceptance that cannot dead-end | Done 2026-10-07; committed `7ce561b` and pushed; deployment not verified |
-| 2 | Removed members stop receiving the team's submissions; trim the members response | Implemented and validated locally 2026-10-07; not committed |
-| 3 | Admin sees what happened to invitations | Not started |
+| 2 | Removed members stop receiving the team's submissions; trim the members response | Done 2026-10-07; committed `c84e9a7` and pushed; deployment not verified |
+| 3 | Admin sees what happened to invitations | Implemented and validated locally 2026-10-07; not committed |
 | 4 | Seats in the app [B] | Not started; confirm first |
 | 5 | New-member welcome | Not started |
 | 6 | Honest marketing and "Start Teams" path | Not started |
@@ -128,3 +128,16 @@ No schema, billing or role change. No UI change.
 - Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 212 files / 1531 tests passed; security scan and `git diff --check` passed. The browser specs were not rerun because no screen changed.
 - Not verified: a real submission for a request whose owner was removed (the route's recipient step is covered through the pure helper, not an end-to-end route test).
 - Still open, for slice 10: a former member's requests stay in the workspace under their name, and their seller form links stop working.
+
+## Slice 3 outcome (2026-10-07)
+
+No schema, billing or role change. Admin-only screens and routes; members still see no invitations.
+
+- List: `GET /api/organization/invites` now returns pending and expired invitations that were never accepted, each with `status` (`getUnacceptedOrganizationInvites`). An expired one is left out once the same address has a newer invitation or has joined. Workspace & Team shows it with an "Expired" badge, the date, "Send again" and "Remove"; the heading count and the seat count are pending only.
+- Send again: `PATCH /api/organization/invites/[inviteId]` uses the new `renewOrganizationInviteWithSeatGuard`. A pending invitation is renewed as before. An expired one holds no seat, so it is renewed only when a seat is free and the address has no other pending invitation and is not a member; the workspace row is locked for that decision. No free seat returns 409 "No seats available". `refreshPendingOrganizationInvite` is removed.
+- Remove: `DELETE` on the same route, `getOrganizationInviteForOrganization` and `cancelPendingOrganizationInvite` now accept an expired invitation too (never an accepted one).
+- Joined email: after a successful accept, the admin who sent the invitation gets "X joined Y" (`sendOrganizationInviteAcceptedEmail`), only if they are still in the workspace. A failed email never affects joining. There is no setting for it: one email per person who joins.
+- Files: `lib/neon/queries/{organizations,index}.ts`, `app/api/organization/invites/{route,[inviteId]/route,accept/route}.ts`, `lib/email/email-service.ts`, `components/settings/{workspace-team.tsx,types.ts}`; tests `tests/unit/organization-invite-{queries,actions-route,accept-route,email}.test.ts`, `tests/unit/organization-invites-route.test.ts`, `tests/settings.spec.ts`.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 212 files / 1543 tests passed; `tests/settings.spec.ts` and `tests/invite.spec.ts` 42/42 on three device profiles with service keys blanked; security scan and `git diff --check` passed; desktop and phone screenshots of the admin Workspace & Team tab reviewed. The list, renewal, summary and "open for an address" queries were also run against sample rows in a throwaway local PostgreSQL 17 (started and deleted in the scratch folder, nothing live): full seats refuse an expired renewal, a pending renewal succeeds, a member's old invitation is not renewed, another workspace's id is not found, and a freed seat allows renewal.
+- Not verified: a delivered "joined" email, the flow in a signed-in browser, the hosted site.
+- For the paying workspace: its expired invitations (3 addresses, the newest per address) will appear in the admin's list with "Send again" once this is deployed. They have 3 free seats, so all three can be sent again.

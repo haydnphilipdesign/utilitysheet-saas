@@ -33,6 +33,8 @@ export type PendingOrganizationInvite = {
     role: 'admin' | 'member';
     expires_at: string;
     created_at?: string;
+    /** Expired invitations hold no seat; they stay listed so they can be sent again. */
+    status?: 'pending' | 'expired';
 };
 
 export type Usage = { used: number; limit: number; plan: string };

@@ -7,7 +7,7 @@ import { getClientIpOrNull } from '@/lib/network/client-ip';
 import {
     createOrganizationInviteWithSeatGuard,
     getOrganizationById,
-    getPendingOrganizationInvites,
+    getUnacceptedOrganizationInvites,
     getOrganizationMemberRole,
     getOrganizationSeatUsage,
     getOrCreateAccount,
@@ -54,7 +54,7 @@ export async function GET() {
             return NextResponse.json({ error: 'Only organization admins can view invites' }, { status: 403 });
         }
 
-        const invites = await getPendingOrganizationInvites(organizationId);
+        const invites = await getUnacceptedOrganizationInvites(organizationId);
         return NextResponse.json({ invites });
     } catch (error) {
         console.error('Error fetching organization invites:', error);

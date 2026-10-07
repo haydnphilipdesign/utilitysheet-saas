@@ -47,7 +47,7 @@ vi.mock('@/lib/rate-limit', () => ({
 vi.mock('@/lib/neon/queries', () => ({
     createOrganizationInviteWithSeatGuard: mocks.createOrganizationInviteWithSeatGuardMock,
     getOrganizationById: mocks.getOrganizationByIdMock,
-    getPendingOrganizationInvites: mocks.getPendingOrganizationInvitesMock,
+    getUnacceptedOrganizationInvites: mocks.getPendingOrganizationInvitesMock,
     getOrganizationMemberRole: mocks.getOrganizationMemberRoleMock,
     getOrganizationSeatUsage: mocks.getOrganizationSeatUsageMock,
     getOrCreateAccount: mocks.getOrCreateAccountMock,
@@ -113,7 +113,7 @@ describe('/api/organization/invites', () => {
 
     it('GET lists pending invitations only for the authenticated active organization', async () => {
         mocks.getPendingOrganizationInvitesMock.mockResolvedValue([
-            { id: 'inv_1', email: 'pending@example.com', role: 'member' },
+            { id: 'inv_1', email: 'pending@example.com', role: 'member', status: 'pending' },
         ]);
 
         const response = await GET();
@@ -121,7 +121,7 @@ describe('/api/organization/invites', () => {
         expect(response.status).toBe(200);
         expect(mocks.getPendingOrganizationInvitesMock).toHaveBeenCalledWith('org_1');
         expect(await response.json()).toEqual({
-            invites: [{ id: 'inv_1', email: 'pending@example.com', role: 'member' }],
+            invites: [{ id: 'inv_1', email: 'pending@example.com', role: 'member', status: 'pending' }],
         });
     });
 

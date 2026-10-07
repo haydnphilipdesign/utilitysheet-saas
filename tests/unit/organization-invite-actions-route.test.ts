@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
     getOrganizationByIdMock: vi.fn(),
     getOrganizationMemberRoleMock: vi.fn(),
     getOrganizationInviteForOrganizationMock: vi.fn(),
-    refreshPendingOrganizationInviteMock: vi.fn(),
+    renewOrganizationInviteWithSeatGuardMock: vi.fn(),
     cancelPendingOrganizationInviteMock: vi.fn(),
 }));
 
@@ -46,7 +46,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getOrganizationById: mocks.getOrganizationByIdMock,
     getOrganizationMemberRole: mocks.getOrganizationMemberRoleMock,
     getOrganizationInviteForOrganization: mocks.getOrganizationInviteForOrganizationMock,
-    refreshPendingOrganizationInvite: mocks.refreshPendingOrganizationInviteMock,
+    renewOrganizationInviteWithSeatGuard: mocks.renewOrganizationInviteWithSeatGuardMock,
     cancelPendingOrganizationInvite: mocks.cancelPendingOrganizationInviteMock,
 }));
 
@@ -81,13 +81,17 @@ describe('/api/organization/invites/[inviteId]', () => {
             expires_at: new Date(Date.now() + 86_400_000).toISOString(),
         });
         mocks.generateTokenMock.mockReturnValue('tok_rotated');
-        mocks.refreshPendingOrganizationInviteMock.mockResolvedValue({
-            id: 'inv_1',
-            organization_id: 'org_1',
-            email: 'invitee@example.com',
-            role: 'member',
-            token: 'tok_rotated',
-            expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+        mocks.renewOrganizationInviteWithSeatGuardMock.mockResolvedValue({
+            status: 'renewed',
+            wasExpired: false,
+            invite: {
+                id: 'inv_1',
+                organization_id: 'org_1',
+                email: 'invitee@example.com',
+                role: 'member',
+                token: 'tok_rotated',
+                expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+            },
         });
         mocks.cancelPendingOrganizationInviteMock.mockResolvedValue(true);
         mocks.sendOrganizationInviteEmailMock.mockResolvedValue({ success: true });
@@ -111,7 +115,7 @@ describe('/api/organization/invites/[inviteId]', () => {
         }), routeContext);
 
         expect(response.status).toBe(403);
-        expect(mocks.refreshPendingOrganizationInviteMock).not.toHaveBeenCalled();
+        expect(mocks.renewOrganizationInviteWithSeatGuardMock).not.toHaveBeenCalled();
     });
 
     it('does not reveal or mutate an invite from another organization', async () => {
@@ -123,7 +127,7 @@ describe('/api/organization/invites/[inviteId]', () => {
 
         expect(response.status).toBe(404);
         expect(mocks.getOrganizationInviteForOrganizationMock).toHaveBeenCalledWith('inv_other', 'org_1');
-        expect(mocks.refreshPendingOrganizationInviteMock).not.toHaveBeenCalled();
+        expect(mocks.renewOrganizationInviteWithSeatGuardMock).not.toHaveBeenCalled();
         expect(mocks.sendOrganizationInviteEmailMock).not.toHaveBeenCalled();
     });
 
@@ -139,7 +143,7 @@ describe('/api/organization/invites/[inviteId]', () => {
         }), routeContext);
 
         expect(response.status).toBe(402);
-        expect(mocks.refreshPendingOrganizationInviteMock).not.toHaveBeenCalled();
+        expect(mocks.renewOrganizationInviteWithSeatGuardMock).not.toHaveBeenCalled();
     });
 
     it('rotates the pending invite token and resends the refreshed link', async () => {
@@ -148,7 +152,7 @@ describe('/api/organization/invites/[inviteId]', () => {
         }), routeContext);
 
         expect(response.status).toBe(200);
-        expect(mocks.refreshPendingOrganizationInviteMock).toHaveBeenCalledWith({
+        expect(mocks.renewOrganizationInviteWithSeatGuardMock).toHaveBeenCalledWith({
             inviteId: 'inv_1',
             organizationId: 'org_1',
             invitedByAccountId: 'acct_admin',
@@ -164,6 +168,45 @@ describe('/api/organization/invites/[inviteId]', () => {
         expect(body.emailSent).toBe(true);
         expect(body.invite).not.toHaveProperty('token');
         expect(body.inviteUrl).toBe('http://localhost:3000/invite/tok_rotated');
+    });
+
+    it('sends an expired invitation again when a seat is free, and says it had expired', async () => {
+        mocks.renewOrganizationInviteWithSeatGuardMock.mockResolvedValue({
+            status: 'renewed',
+            wasExpired: true,
+            invite: { id: 'inv_1', email: 'invitee@example.com', role: 'member', token: 'tok_rotated' },
+        });
+
+        const response = await PATCH(new Request('http://localhost/api/organization/invites/inv_1', {
+            method: 'PATCH',
+        }), routeContext);
+
+        expect(response.status).toBe(200);
+        expect((await response.json()).wasExpired).toBe(true);
+        expect(mocks.sendOrganizationInviteEmailMock).toHaveBeenCalled();
+    });
+
+    it('refuses to renew an expired invitation when every seat is taken, and sends nothing', async () => {
+        mocks.renewOrganizationInviteWithSeatGuardMock.mockResolvedValue({ status: 'no_seat' });
+
+        const response = await PATCH(new Request('http://localhost/api/organization/invites/inv_1', {
+            method: 'PATCH',
+        }), routeContext);
+
+        expect(response.status).toBe(409);
+        expect((await response.json()).error).toBe('No seats available');
+        expect(mocks.sendOrganizationInviteEmailMock).not.toHaveBeenCalled();
+    });
+
+    it('reports an invitation that was accepted or removed meanwhile as not found', async () => {
+        mocks.renewOrganizationInviteWithSeatGuardMock.mockResolvedValue({ status: 'not_found' });
+
+        const response = await PATCH(new Request('http://localhost/api/organization/invites/inv_1', {
+            method: 'PATCH',
+        }), routeContext);
+
+        expect(response.status).toBe(404);
+        expect(mocks.sendOrganizationInviteEmailMock).not.toHaveBeenCalled();
     });
 
     it('returns success when the refreshed invite email cannot be delivered', async () => {
