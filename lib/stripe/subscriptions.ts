@@ -30,6 +30,31 @@ export async function findLiveSubscription(stripeCustomerId: string): Promise<St
     return subscriptions.data.find((subscription) => LIVE_STATUSES.has(subscription.status)) || null;
 }
 
+export type SubscriptionLapseReason = 'payment_failed' | 'payment_failed_ended' | 'ended';
+
+/**
+ * Why a subscription is not giving paid access, in the customer's terms. Null
+ * when it is paid, or when its first payment never completed (nothing lapsed).
+ */
+export function getSubscriptionLapseReason(
+    subscription: Pick<Stripe.Subscription, 'status' | 'cancellation_details'>
+): SubscriptionLapseReason | null {
+    switch (subscription.status) {
+        case 'past_due':
+        case 'unpaid':
+            // Stripe keeps trying the card; a successful payment makes it active again.
+            return 'payment_failed';
+        case 'canceled':
+            return subscription.cancellation_details?.reason === 'payment_failed'
+                ? 'payment_failed_ended'
+                : 'ended';
+        case 'paused':
+            return 'ended';
+        default:
+            return null;
+    }
+}
+
 /** When a subscription that is set to cancel will end, or null when it renews. */
 export function getSubscriptionCancelAt(
     subscription: Pick<Stripe.Subscription, 'cancel_at' | 'cancel_at_period_end'>,

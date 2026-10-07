@@ -25,10 +25,10 @@ describe('post-auth return destinations', () => {
         expect(consumePostAuthReturnTo()).toBeNull();
     });
 
-    it('sends a paid-plan sign-up to Billing, Teams to its own section, and nothing else anywhere', () => {
+    it('sends a paid-plan sign-up to Billing with its plan, and nothing else anywhere', () => {
         expect(getSignupPlanDestination('teams')).toBe('/dashboard/settings?tab=billing&plan=teams');
         expect(normalizePostAuthReturnTo(getSignupPlanDestination('teams'))).toBe('/dashboard/settings?tab=billing&plan=teams');
-        expect(getSignupPlanDestination('pro')).toBe('/dashboard/settings?tab=billing');
+        expect(getSignupPlanDestination('pro')).toBe('/dashboard/settings?tab=billing&plan=pro');
         expect(getSignupPlanDestination('enterprise')).toBeNull();
         expect(getSignupPlanDestination('https://evil.example')).toBeNull();
         expect(getSignupPlanDestination(null)).toBeNull();

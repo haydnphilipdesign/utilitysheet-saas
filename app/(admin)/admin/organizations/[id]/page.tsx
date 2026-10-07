@@ -24,8 +24,16 @@ type OrganizationRow = {
     stripe_customer_id?: string | null;
     subscription_ends_at: string | null;
     subscription_cancel_at: string | null;
+    subscription_lapse_reason: string | null;
+    subscription_lapsed_at: string | null;
     seat_quantity: number;
     created_at: string;
+};
+
+const LAPSE_LABELS: Record<string, string> = {
+    payment_failed: 'Payment failed, Stripe is still retrying',
+    payment_failed_ended: 'Canceled after the payment kept failing',
+    ended: 'Canceled or ended',
 };
 
 type OrganizationMemberRow = {
@@ -161,6 +169,13 @@ export default async function OrgDetailPage({ params }: { params: Promise<{ id: 
                                 ? `Set to end on ${formatAdminDate(org.subscription_cancel_at)}`
                                 : isTeam ? 'Not set to cancel' : 'No paid plan'}
                         </div>
+                        {org.subscription_lapse_reason && !isTeam && (
+                            <div className="py-1">
+                                <span className="font-medium text-sm text-muted-foreground block">Teams stopped</span>
+                                {LAPSE_LABELS[org.subscription_lapse_reason] || org.subscription_lapse_reason}
+                                {org.subscription_lapsed_at ? ` on ${formatAdminDate(org.subscription_lapsed_at)}` : ''}
+                            </div>
+                        )}
                         <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Stored period end</span> {org.subscription_ends_at ? formatAdminDate(org.subscription_ends_at) : 'Not recorded'}</div>
                         <BillingEvidence
                             evidence={describeWorkspaceBilling({

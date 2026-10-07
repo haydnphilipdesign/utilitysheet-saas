@@ -223,6 +223,7 @@ describe('POST /api/billing/webhook subscription sync', () => {
                 subscriptionEndsAt: null,
                 subscriptionCancelAt: null,
                 seatQuantity: 0,
+                lapseReason: 'ended',
             });
         });
 
@@ -263,6 +264,52 @@ describe('POST /api/billing/webhook subscription sync', () => {
                 expect(mocks.updateOrganizationSubscription).toHaveBeenCalledWith(
                     'organization_1',
                     expect.objectContaining({ subscriptionStatus: 'free' })
+                );
+            }
+        );
+    });
+
+    describe('why a Teams plan stopped', () => {
+        beforeEach(() => {
+            mocks.getOrganizationById.mockResolvedValue({ id: 'organization_1', subscription_status: 'team', subscription_id: 'sub_team' });
+        });
+
+        it.each([
+            ['customer.subscription.updated', { status: 'past_due' }, 'payment_failed'],
+            ['customer.subscription.updated', { status: 'unpaid' }, 'payment_failed'],
+            ['customer.subscription.deleted', { status: 'canceled', cancellation_details: { reason: 'payment_failed' } }, 'payment_failed_ended'],
+            ['customer.subscription.deleted', { status: 'canceled', cancellation_details: { reason: 'cancellation_requested' } }, 'ended'],
+            ['customer.subscription.deleted', { status: 'canceled' }, 'ended'],
+            ['customer.subscription.updated', { status: 'paused' }, 'ended'],
+        ])('records %s %o as %s while taking the workspace off Teams', async (type, overrides, reason) => {
+            await deliver(type, teamSubscription(overrides));
+
+            expect(mocks.updateOrganizationSubscription).toHaveBeenCalledWith(
+                'organization_1',
+                expect.objectContaining({ subscriptionStatus: 'free', seatQuantity: 0, lapseReason: reason })
+            );
+        });
+
+        it('gives no reason for a first payment that never completed, or for a plan that is paid', async () => {
+            mocks.getOrganizationById.mockResolvedValue({ id: 'organization_1', subscription_status: 'free', subscription_id: null });
+            await deliver('customer.subscription.updated', teamSubscription({ status: 'incomplete_expired' }));
+            await deliver('customer.subscription.updated', teamSubscription());
+
+            const reasons = mocks.updateOrganizationSubscription.mock.calls.map(([, data]) => [data.subscriptionStatus, data.lapseReason]);
+            expect(reasons).toEqual([['free', null], ['team', null]]);
+        });
+
+        it.each(['customer.subscription.updated', 'customer.subscription.deleted'])(
+            'records the reason for %s when the workspace is found only by its customer',
+            async (type) => {
+                mocks.getAccountByStripeCustomerId.mockResolvedValue(null);
+                mocks.getOrganizationByStripeCustomerId.mockResolvedValue({ id: 'organization_1', subscription_status: 'team', subscription_id: 'sub_team' });
+
+                await deliver(type, teamSubscription({ status: 'canceled', metadata: {}, cancellation_details: { reason: 'payment_failed' } }));
+
+                expect(mocks.updateOrganizationSubscription).toHaveBeenCalledWith(
+                    'organization_1',
+                    expect.objectContaining({ subscriptionStatus: 'free', lapseReason: 'payment_failed_ended' })
                 );
             }
         );
@@ -378,6 +425,7 @@ describe('POST /api/billing/webhook subscription sync', () => {
                 subscriptionEndsAt: new Date(PERIOD_END * 1000),
                 subscriptionCancelAt: new Date(CANCEL_AT * 1000),
                 seatQuantity: 4,
+                lapseReason: null,
             });
 
             await deliver('customer.subscription.deleted', teamSubscription({ status: 'canceled', cancel_at: CANCEL_AT }));
@@ -387,6 +435,7 @@ describe('POST /api/billing/webhook subscription sync', () => {
                 subscriptionEndsAt: null,
                 subscriptionCancelAt: null,
                 seatQuantity: 0,
+                lapseReason: 'ended',
             });
         });
 

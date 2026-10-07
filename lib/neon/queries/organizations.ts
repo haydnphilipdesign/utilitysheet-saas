@@ -105,9 +105,17 @@ export async function updateOrganizationSubscription(
         /** When a plan that is set to cancel ends; null when it renews. */
         subscriptionCancelAt: Date | null;
         seatQuantity?: number | null;
+        /**
+         * Why a plan that was on Teams no longer is. Kept only for a workspace
+         * that is on Teams now or already has a reason, so an abandoned first
+         * checkout never reads as a plan that ended. Cleared when Teams is active.
+         */
+        lapseReason?: 'payment_failed' | 'payment_failed_ended' | 'ended' | null;
     }
 ) {
     if (!sql) return null;
+
+    const lapseReason = data.lapseReason ?? null;
 
     const result = await sql`
         UPDATE organizations
@@ -116,6 +124,18 @@ export async function updateOrganizationSubscription(
             subscription_id = ${data.subscriptionId},
             subscription_ends_at = ${data.subscriptionEndsAt?.toISOString() || null},
             subscription_cancel_at = ${data.subscriptionCancelAt?.toISOString() || null},
+            subscription_lapse_reason = CASE
+                WHEN ${data.subscriptionStatus} = 'team' THEN NULL
+                WHEN ${lapseReason}::text IS NOT NULL
+                    AND (subscription_status = 'team' OR subscription_lapse_reason IS NOT NULL)
+                    THEN ${lapseReason}::text
+                ELSE subscription_lapse_reason
+            END,
+            subscription_lapsed_at = CASE
+                WHEN ${data.subscriptionStatus} = 'team' THEN NULL
+                WHEN ${lapseReason}::text IS NOT NULL AND subscription_status = 'team' THEN NOW()
+                ELSE subscription_lapsed_at
+            END,
             seat_quantity = COALESCE(${data.seatQuantity ?? null}, seat_quantity),
             updated_at = NOW()
         WHERE id = ${organizationId}
@@ -189,6 +209,8 @@ export async function transferAccountSubscriptionToOrganization(data: {
                 subscription_id = ${data.subscriptionId},
                 subscription_ends_at = ${data.subscriptionEndsAt?.toISOString() || null},
                 subscription_cancel_at = ${data.subscriptionCancelAt?.toISOString() || null},
+                subscription_lapse_reason = NULL,
+                subscription_lapsed_at = NULL,
                 seat_quantity = ${data.seatQuantity},
                 updated_at = NOW()
             WHERE organization_row.id = ${data.organizationId}

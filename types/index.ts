@@ -242,6 +242,9 @@ export interface Organization {
     subscription_status?: OrganizationPlan;
     subscription_id?: string | null;
     subscription_ends_at?: string | null;
+    /** Why a Teams plan stopped, and when; null while Teams is active or was never bought. */
+    subscription_lapse_reason?: 'payment_failed' | 'payment_failed_ended' | 'ended' | null;
+    subscription_lapsed_at?: string | null;
     seat_quantity?: number;
     // Returned by membership-joined queries (not a column on organizations)
     role?: 'admin' | 'member';

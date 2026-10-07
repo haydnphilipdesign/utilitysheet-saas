@@ -676,6 +676,15 @@ describe('arriving from "Start Teams" on the pricing page', () => {
         expect(scrolled.some((element) => element.contains(start))).toBe(true);
     });
 
+    it('does not start any checkout for Teams, where seats are chosen first', async () => {
+        window.history.replaceState({}, '', '/dashboard/settings?tab=billing&plan=teams');
+        const fetchMock = stubFetch(routes);
+        render(<SettingsPage />);
+
+        await screen.findByRole('button', { name: 'Start Teams' });
+        expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0);
+    });
+
     it('leaves the page where it is on an ordinary visit to Billing', async () => {
         window.history.replaceState({}, '', '/dashboard/settings?tab=billing');
         stubFetch(routes);
@@ -683,5 +692,87 @@ describe('arriving from "Start Teams" on the pricing page', () => {
 
         const start = await screen.findByRole('button', { name: 'Start Teams' });
         expect(scrolled.some((element) => element.contains(start))).toBe(false);
+    });
+});
+
+describe('arriving from "Start Pro" on the pricing page', () => {
+    const proCheckout = 'POST /api/billing/checkout';
+    const refused: Handler = () => jsonResponse({ message: 'Checkout is not available in this test.' }, 400);
+
+    it('starts Pro checkout once for a Free account and drops the choice from the address', async () => {
+        window.history.replaceState({}, '', '/dashboard/settings?tab=billing&plan=pro');
+        const fetchMock = stubFetch({
+            'GET /api/account': () => jsonResponse(soloAccount()),
+            'GET /api/organization/members': soloMembers,
+            [proCheckout]: refused,
+        });
+        const { rerender } = render(<SettingsPage />);
+
+        // A refusal leaves the person on Billing with the reason and the ordinary button.
+        expect(await screen.findByRole('alert')).toHaveTextContent('Checkout is not available in this test.');
+        rerender(<SettingsPage />);
+        expect(fetchMock.mock.calls.filter(([input, init]) => input === '/api/billing/checkout' && init?.method === 'POST')).toHaveLength(1);
+        expect(window.location.search).toBe('?tab=billing');
+        expect(screen.getByRole('button', { name: /Upgrade to Pro,/ })).toBeEnabled();
+        expect(screen.queryByText(/Taking you to Stripe/)).not.toBeInTheDocument();
+    });
+
+    it('says where it is taking the person while checkout is being created', async () => {
+        window.history.replaceState({}, '', '/dashboard/settings?tab=billing&plan=pro');
+        let finish = (response: Response) => { void response; };
+        stubFetch({
+            'GET /api/account': () => jsonResponse(soloAccount()),
+            'GET /api/organization/members': soloMembers,
+            [proCheckout]: () => new Promise<Response>((resolve) => { finish = resolve; }),
+        });
+        render(<SettingsPage />);
+
+        expect(await screen.findByText('Taking you to Stripe to start Pro. You confirm the price there before you pay.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Upgrade to Pro,/ })).toBeDisabled();
+        finish(jsonResponse({ message: 'Checkout is not available in this test.' }, 400));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Checkout is not available in this test.');
+    });
+
+    it('starts nothing for an account that is already on Pro or in a Teams workspace', async () => {
+        for (const routes of [
+            { 'GET /api/account': () => jsonResponse(soloAccount('pro')), 'GET /api/organization/members': soloMembers },
+            teamRoutes('admin'),
+        ] as Record<string, Handler>[]) {
+            window.history.replaceState({}, '', '/dashboard/settings?tab=billing&plan=pro');
+            const fetchMock = stubFetch({ ...routes, [proCheckout]: refused });
+            const { unmount } = render(<SettingsPage />);
+
+            await screen.findByRole('button', { name: /Manage subscription|Manage Teams billing/ });
+            expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0);
+            unmount();
+        }
+    });
+
+    it('starts nothing when the page is a return from checkout', async () => {
+        window.history.replaceState({}, '', '/dashboard/settings?tab=billing&plan=pro&session_id=cs_test_1');
+        const fetchMock = stubFetch({
+            'GET /api/account': () => jsonResponse(soloAccount()),
+            'GET /api/organization/members': soloMembers,
+            [proCheckout]: refused,
+        });
+        render(<SettingsPage />);
+
+        await screen.findByText(/Confirming your Pro checkout with Stripe/);
+        expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0);
+    });
+
+    it('starts nothing after a checkout that was not completed is dismissed', async () => {
+        window.history.replaceState({}, '', '/dashboard/settings?tab=billing&plan=pro&team_checkout=cancel');
+        const fetchMock = stubFetch({
+            'GET /api/account': () => jsonResponse(soloAccount()),
+            'GET /api/organization/members': soloMembers,
+            [proCheckout]: refused,
+        });
+        render(<SettingsPage />);
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Dismiss' }));
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument());
+        expect(screen.getByRole('button', { name: /Upgrade to Pro,/ })).toBeEnabled();
+        expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0);
     });
 });

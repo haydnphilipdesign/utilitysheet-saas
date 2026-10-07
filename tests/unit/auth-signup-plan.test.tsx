@@ -98,14 +98,14 @@ describe('sign-up from a paid plan on the pricing page', () => {
         expect(screen.getByRole('heading', { name: 'Create an account to join your team' })).toBeInTheDocument();
     });
 
-    it('sends a Pro sign-up to Billing and says Pro comes next', async () => {
+    it('sends a Pro sign-up to Billing to start checkout and says so', async () => {
         window.history.replaceState({}, '', '/auth/signup?plan=pro');
         signedIn();
         render(<SignupPage />);
 
-        await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/dashboard/settings?tab=billing'));
+        await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/dashboard/settings?tab=billing&plan=pro'));
         expect(screen.getByRole('heading', { name: 'Create an account to start Pro' })).toBeInTheDocument();
-        expect(screen.getByText(/Next you’ll start Pro in Billing\./)).toBeInTheDocument();
+        expect(screen.getByText(/Next you’ll go to secure checkout to start Pro\./)).toBeInTheDocument();
         expect(screen.getByTestId('signup-submit')).toHaveTextContent('Create account');
     });
 

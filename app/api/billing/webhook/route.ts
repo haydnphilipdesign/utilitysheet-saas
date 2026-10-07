@@ -12,7 +12,7 @@ import {
 } from '@/lib/neon/queries';
 import { applyEarnedReferralCredits } from '@/lib/referrals/referral-credit-service';
 import { errorNameOf, recordOperationalEvent, recordOperationalSuccess } from '@/lib/ops/events';
-import { getSubscriptionCancelAt } from '@/lib/stripe/subscriptions';
+import { getSubscriptionCancelAt, getSubscriptionLapseReason } from '@/lib/stripe/subscriptions';
 import Stripe from 'stripe';
 
 function isPaidStripeStatus(status: Stripe.Subscription.Status) {
@@ -155,6 +155,7 @@ async function syncOrganizationSubscription(
             ? getSubscriptionCancelAt(subscription, subscriptionEndsAt)
             : null,
         seatQuantity: status === 'team' ? seatQuantity : 0,
+        lapseReason: getSubscriptionLapseReason(subscription),
     });
     if (status === 'team') await flagSeatsBelowMembers(organization.id, seatQuantity);
 }
@@ -294,6 +295,7 @@ export async function POST(request: Request) {
                             subscriptionEndsAt,
                             subscriptionCancelAt: getSubscriptionCancelAt(subscriptionResponse, subscriptionEndsAt),
                             seatQuantity,
+                            lapseReason: getSubscriptionLapseReason(subscriptionResponse),
                         });
                         console.log(`Activated Teams subscription for organization ${organization.id}`);
                     }
@@ -346,6 +348,7 @@ export async function POST(request: Request) {
                             ? getSubscriptionCancelAt(subscription, subscriptionEndsAt)
                             : null,
                         seatQuantity,
+                        lapseReason: getSubscriptionLapseReason(subscription),
                     });
                     if (status === 'team') await flagSeatsBelowMembers(organization.id, seatQuantity);
                     console.log(`Updated Teams subscription status to ${status} for organization ${organization.id}`);
@@ -392,6 +395,7 @@ export async function POST(request: Request) {
                         subscriptionEndsAt: null,
                         subscriptionCancelAt: null,
                         seatQuantity: 0,
+                        lapseReason: getSubscriptionLapseReason(subscription),
                     });
                     console.log(`Downgraded to free plan for organization ${organization.id}`);
                 }

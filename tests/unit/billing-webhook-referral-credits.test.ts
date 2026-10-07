@@ -156,6 +156,7 @@ describe('POST /api/billing/webhook referral credits', () => {
             subscriptionEndsAt: new Date(1_900_000_000 * 1000),
             subscriptionCancelAt: null,
             seatQuantity: 7,
+            lapseReason: null,
         });
         expect(mocks.applyEarnedReferralCredits).not.toHaveBeenCalled();
     });

@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS organizations (
     subscription_id TEXT,
     subscription_ends_at TIMESTAMPTZ,
     subscription_cancel_at TIMESTAMPTZ, -- When a plan set to cancel ends; NULL when it renews
+    -- Why and when a Teams plan stopped; both NULL while Teams is active or was never bought
+    subscription_lapse_reason TEXT CONSTRAINT organizations_subscription_lapse_reason_check CHECK (subscription_lapse_reason IN ('payment_failed', 'payment_failed_ended', 'ended')),
+    subscription_lapsed_at TIMESTAMPTZ,
     seat_quantity INT NOT NULL DEFAULT 0,
     notification_settings JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),

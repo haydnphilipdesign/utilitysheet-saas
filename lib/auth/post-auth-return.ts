@@ -17,7 +17,7 @@ export function normalizePostAuthReturnTo(value: unknown): string | null {
 /** Where the pricing page's `?plan=` sends a new account; null when the plan needs no next step. */
 export function getSignupPlanDestination(plan: unknown): string | null {
     if (plan === 'teams') return '/dashboard/settings?tab=billing&plan=teams';
-    if (plan === 'pro') return '/dashboard/settings?tab=billing';
+    if (plan === 'pro') return '/dashboard/settings?tab=billing&plan=pro';
     return null;
 }
 

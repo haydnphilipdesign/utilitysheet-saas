@@ -236,7 +236,7 @@ export default function SignupPage() {
                                 : forPlan === 'Teams'
                                     ? 'Your account is free to create. Next you’ll choose how many seats you need and start Teams.'
                                     : forPlan === 'Pro'
-                                        ? 'Your account is free to create. Next you’ll start Pro in Billing.'
+                                        ? 'Your account is free to create. Next you’ll go to secure checkout to start Pro.'
                                     : 'Get your reusable seller link and start collecting utility info'}
                         </CardDescription>
                     </CardHeader>

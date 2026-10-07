@@ -16,6 +16,9 @@ export type ActiveOrganization = {
     subscription_ends_at?: string | null;
     /** When a plan that is set to cancel ends; null or absent when it renews. */
     subscription_cancel_at?: string | null;
+    /** Why a Teams plan stopped, and when; null or absent while Teams is active or was never bought. */
+    subscription_lapse_reason?: 'payment_failed' | 'payment_failed_ended' | 'ended' | null;
+    subscription_lapsed_at?: string | null;
     seat_quantity?: number | null;
     notification_settings?: Record<string, unknown> | null;
 };

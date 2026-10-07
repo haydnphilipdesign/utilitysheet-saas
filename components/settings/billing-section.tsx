@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, CreditCard, ExternalLink, Loader2, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { PlanLapseNotice, readPlanLapse } from './plan-lapse';
 import { InlineStatus, LoadError, LoadingRows, Note, SettingsSection } from './settings-ui';
 import {
     TEAM_MIN_SEATS,
@@ -91,10 +92,13 @@ function PortalButton({ workspace, busy, onOpen }: {
 
 export function BillingSection({
     state, onRetry, usage, planEndsAt, trialEndsAt, organization, isTeam, isAdmin, seatUsage,
-    checkout, onCheckAgain, onDismissCheckout, onOpenWorkspace, onSeatsChanged, showTeamsFirst = false,
+    checkout, onCheckAgain, onDismissCheckout, onOpenWorkspace, onSeatsChanged, arrivalPlan = null,
 }: {
-    /** The visitor chose Teams before signing up, so bring the Teams section into view. */
-    showTeamsFirst?: boolean;
+    /**
+     * The paid plan the visitor chose before signing up. Teams is brought into
+     * view so they can choose seats; Pro has nothing to choose, so its checkout starts.
+     */
+    arrivalPlan?: 'teams' | 'pro' | null;
     /** Reloads the workspace after its seat count changed. */
     onSeatsChanged: () => Promise<void> | void;
     state: LoadState;
@@ -131,9 +135,27 @@ export function BillingSection({
     } | null>(null);
     const [confirming, setConfirming] = useState(false);
     // Runs when the Teams section first appears, which is after the account has loaded.
+    const showTeamsFirst = arrivalPlan === 'teams';
     const teamsSectionRef = useCallback((node: HTMLDivElement | null) => {
         if (node && showTeamsFirst) node.scrollIntoView?.({ block: 'start' });
     }, [showTeamsFirst]);
+
+    // Only a Free account that is not returning from a checkout is sent on to pay.
+    const startProNow = arrivalPlan === 'pro' && state === 'ready' && usage !== null
+        && usage.plan !== 'pro' && !isTeam && checkout === null;
+    const proStarted = useRef(false);
+    const [startingPro, setStartingPro] = useState(false);
+    useEffect(() => {
+        if (!startProNow || proStarted.current) return;
+        proStarted.current = true;
+        // Drop the choice from the address, so coming back from Stripe does not start checkout again.
+        const url = new URL(window.location.href);
+        url.searchParams.delete('plan');
+        window.history.replaceState(null, '', url.toString());
+        setStartingPro(true);
+        void openStripe('/api/billing/checkout', 'plan', 'We couldn’t start checkout. Try again.')
+            .finally(() => setStartingPro(false));
+    }, [startProNow]);
 
     const banner = checkout && (
         <CheckoutBanner checkout={checkout} onCheckAgain={onCheckAgain} onDismiss={onDismissCheckout} />
@@ -160,6 +182,9 @@ export function BillingSection({
 
     const isPro = usage.plan === 'pro';
     const isFree = !isTeam && !isPro;
+    const lapse = readPlanLapse(organization);
+    // The subscription still exists while Stripe retries the card, so there is nothing new to start.
+    const teamsPaused = lapse?.reason === 'payment_failed';
     const seatsInUse = seatUsage ? seatUsage.used + seatUsage.pendingInvites : null;
     const planEnd = isFree ? null : formatPlanEnd(planEndsAt);
     // A plan that is set to cancel already says when it ends.
@@ -268,6 +293,22 @@ export function BillingSection({
     return (
         <>
             {banner}
+            {lapse && (
+                <PlanLapseNotice
+                    lapse={lapse}
+                    isAdmin={isAdmin}
+                    action={teamsPaused ? (
+                        <Button
+                            variant="outline"
+                            onClick={() => void openStripe('/api/organization/billing/portal', 'plan', 'We couldn’t open Teams billing. Try again.')}
+                            disabled={busy !== null}
+                        >
+                            {busy === 'plan' ? <Loader2 className="animate-spin" /> : <ExternalLink />}
+                            Manage Teams billing
+                        </Button>
+                    ) : undefined}
+                />
+            )}
             <SettingsSection icon={CreditCard} title="Your plan" description="What you’re on now, and where to change it.">
                 <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
@@ -315,6 +356,11 @@ export function BillingSection({
                         </Button>
                     )}
                 </div>
+                {startingPro && (
+                    <InlineStatus tone="saving">
+                        Taking you to Stripe to start Pro. You confirm the price there before you pay.
+                    </InlineStatus>
+                )}
                 {planError && <InlineStatus tone="error">{planError}</InlineStatus>}
                 {portalOffer?.target === 'plan' && (
                     <PortalButton workspace={portalOffer.workspace} busy={busy} onOpen={openOfferedPortal} />
@@ -499,7 +545,14 @@ export function BillingSection({
                             </p>
                         </div>
 
-                        {isAdmin ? (
+                        {teamsPaused ? (
+                            <Note>
+                                Your Teams plan is paused, not gone, so there is nothing new to start.{' '}
+                                {isAdmin
+                                    ? 'Fix the payment in Manage Teams billing above and Teams comes back with the seats you had.'
+                                    : 'A workspace admin can fix the payment in Billing.'}
+                            </Note>
+                        ) : isAdmin ? (
                             <div className="space-y-2">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                                     <div className="space-y-2 sm:w-40">

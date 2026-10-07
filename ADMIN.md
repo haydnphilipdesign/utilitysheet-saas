@@ -9,7 +9,7 @@
 - `/admin/telemetry` saved-form inventory and usage, request-event counts, and AI run summaries (7/30/90 days)
 - `/admin/question-requests` read-only triage of seller-form questions customers requested but could not find
 - `/admin/feedback` customer feedback inbox: messages from the dashboard Feedback button with page context, and an audited review status (nav label `Feedback`, under Customers)
-- `/admin/organizations` workspace search and Team/personal workspace totals; Team organizations are distinguished from personal/default workspaces in Admin copy. A workspace's page (`/admin/organizations/[id]`) is read-only: members, seats in use (members plus pending invitations, with a warning when members exceed seats), the date a plan is set to end, and every invitation sent with its status (the join token is never read)
+- `/admin/organizations` workspace search and Team/personal workspace totals; Team organizations are distinguished from personal/default workspaces in Admin copy. A workspace's page (`/admin/organizations/[id]`) is read-only: members, seats in use (members plus pending invitations, with a warning when members exceed seats), the date a plan is set to end, why and when a Teams plan stopped, and every invitation sent with its status (the join token is never read)
 - `/admin/abandonment` seller-progress monitoring (route retained for compatibility). Requests a coordinator reopened are counted like any in-progress request and their rows are marked Reopened.
 - `/admin/testimonial-candidates` customer outreach and advocacy-candidate review (route retained for compatibility)
 - `/admin/updates` draft, review, publication, and deletion of customer-facing Product Updates

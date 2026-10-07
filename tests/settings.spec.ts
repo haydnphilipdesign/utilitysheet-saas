@@ -18,6 +18,8 @@ type Scenario = {
     trialEndsAt?: string;
     /** The server refuses a Pro checkout because Stripe already has a subscription. */
     existingSubscription?: boolean;
+    /** The workspace was on Teams and no longer is, for this reason. */
+    lapse?: 'payment_failed' | 'payment_failed_ended' | 'ended';
 };
 
 const preferences = { seller_submissions: true, seller_submission_pdf_attachment: true, contact_resolution: true };
@@ -79,6 +81,8 @@ async function mocks(page: Page, scenario: Scenario) {
                     subscription_status: team() ? 'team' : 'free',
                     seat_quantity: team() ? state.seats : null,
                     subscription_cancel_at: team() ? state.cancelAt ?? null : null,
+                    subscription_lapse_reason: state.lapse ?? null,
+                    subscription_lapsed_at: state.lapse ? '2026-09-28T16:00:00.000Z' : null,
                     notification_settings: { notify_admins_on_submission: false },
                 },
                 usage: state.plan === 'free'
@@ -91,7 +95,7 @@ async function mocks(page: Page, scenario: Scenario) {
         }
         if (path === '/api/organization/members' && method === 'GET') {
             return json({
-                organization: { id: 'org_1', name: 'Riverbend Transaction Services', subscription_status: team() ? 'team' : 'free', seat_quantity: team() ? state.seats : null, subscription_cancel_at: team() ? state.cancelAt ?? null : null },
+                organization: { id: 'org_1', name: 'Riverbend Transaction Services', subscription_status: team() ? 'team' : 'free', seat_quantity: team() ? state.seats : null, subscription_cancel_at: team() ? state.cancelAt ?? null : null, subscription_lapse_reason: state.lapse ?? null, subscription_lapsed_at: state.lapse ? '2026-09-28T16:00:00.000Z' : null },
                 role: state.role,
                 members: team() ? [
                     { account_id: 'acc_1', email: 'jordan@example.com', full_name: 'Jordan Rivera', member_role: state.role },
@@ -126,6 +130,7 @@ async function mocks(page: Page, scenario: Scenario) {
                 manageBilling: true,
             }, 409);
         }
+        if (path === '/api/billing/checkout') return json({ message: 'Checkout is not available in this test.' }, 400);
         if (path === '/api/billing/portal') return json({ error: 'Billing is not available in this test.' }, 400);
         if (path === '/api/organization/billing/seats' && method === 'POST') {
             state.seats = Number(req.postDataJSON().seats);
@@ -422,6 +427,28 @@ test('arriving from "Start Teams" opens Billing with the Teams section in view',
     expect(writes).toEqual([]);
 });
 
+test('arriving from "Start Pro" starts Pro checkout once and stays on Billing if it cannot', async ({ page }, testInfo) => {
+    const { writes } = await open(page, { plan: 'free', role: 'admin' }, '?tab=billing&plan=pro');
+
+    await expect(page.getByRole('alert').filter({ hasText: 'Checkout is not available in this test.' })).toBeVisible();
+    expect(writes).toEqual([{ url: '/api/billing/checkout', method: 'POST', body: {} }]);
+    await expect(page).not.toHaveURL(/plan=pro/);
+    await expect(page.getByRole('button', { name: 'Upgrade to Pro, $9/mo', exact: true })).toBeEnabled();
+    await healthy(page, testInfo, 'start-pro-arrival-refused');
+
+    // Reloading the page the person is left on does not try again.
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Upgrade to Pro, $9/mo', exact: true })).toBeVisible();
+    expect(writes).toHaveLength(1);
+});
+
+test('a Pro account arriving from "Start Pro" is not sent to checkout', async ({ page }) => {
+    const { writes } = await open(page, { plan: 'pro', role: 'admin' }, '?tab=billing&plan=pro');
+
+    await expect(page.getByRole('button', { name: 'Manage subscription', exact: true })).toBeVisible();
+    expect(writes).toEqual([]);
+});
+
 test('a Teams admin changes seats in Billing, within the minimum and the seats in use', async ({ page }, testInfo) => {
     const { writes } = await open(page, { plan: 'team', role: 'admin' }, '?tab=billing');
 
@@ -490,6 +517,33 @@ test('a plan that is set to end says when, for Pro and for a Teams member', asyn
     await expect(page.getByText('A workspace admin can keep the plan going.', { exact: false })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Manage Teams billing', exact: true })).toHaveCount(0);
     await healthy(page, testInfo, 'teams-member-plan-ending');
+});
+
+test('a failed Teams payment is explained, with the way to fix it for an admin', async ({ page }, testInfo) => {
+    const { writes } = await open(page, { plan: 'free', role: 'admin', lapse: 'payment_failed' }, '?tab=billing');
+
+    await expect(page.getByText('Teams is paused because the last payment didn’t go through.', { exact: true })).toBeVisible();
+    await expect(page.getByText('Since September 28, 2026 this workspace has been on the Free plan.', { exact: false })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start Teams', exact: true })).toHaveCount(0);
+    await healthy(page, testInfo, 'teams-payment-failed-admin');
+
+    await page.getByRole('button', { name: 'Manage Teams billing', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Billing is not available in this test.' })).toBeVisible();
+    expect(writes).toEqual([{ url: '/api/organization/billing/portal', method: 'POST', body: {} }]);
+});
+
+test('a member sees that Teams is paused and who can fix it; an ended plan can be started again', async ({ page }, testInfo) => {
+    await open(page, { plan: 'free', role: 'member', lapse: 'payment_failed' }, '?tab=billing');
+    await expect(page.getByText('Teams is paused because the last payment didn’t go through.', { exact: true })).toBeVisible();
+    await expect(page.getByText('A workspace admin can bring Teams back in Billing.', { exact: false })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Manage Teams billing|Start Teams/ })).toHaveCount(0);
+    await healthy(page, testInfo, 'teams-payment-failed-member');
+
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await open(page, { plan: 'free', role: 'admin', lapse: 'ended' }, '?tab=billing');
+    await expect(page.getByText('Your Teams plan ended on September 28, 2026.', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start Teams', exact: true })).toBeEnabled();
+    await healthy(page, testInfo, 'teams-ended-admin');
 });
 
 test('a refused Pro checkout explains why and offers Manage subscription', async ({ page }, testInfo) => {

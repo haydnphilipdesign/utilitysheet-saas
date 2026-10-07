@@ -67,10 +67,15 @@ type AccountResponse = {
 export function SettingsView({ user }: { user: SettingsUser | null }) {
     const [activeTab, setActiveTab] = useState<SettingsTab>(getInitialSettingsTab);
     const tabStripRef = useRef<HTMLDivElement>(null);
-    // Set by "Start Teams" on the pricing page, carried through sign-up.
-    const [arrivedForTeams] = useState(() => (
-        typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('plan') === 'teams'
-    ));
+    // The paid plan chosen on the pricing page, carried through sign-up.
+    const [arrivalPlan] = useState<'teams' | 'pro' | null>(() => {
+        if (typeof window === 'undefined') return null;
+        const params = new URLSearchParams(window.location.search);
+        // A return from checkout is never an arrival, even after its banner is dismissed.
+        if (params.has('session_id') || params.has('team_checkout')) return null;
+        const plan = params.get('plan');
+        return plan === 'teams' || plan === 'pro' ? plan : null;
+    });
 
     const [accountState, setAccountState] = useState<LoadState>('loading');
     const [accountId, setAccountId] = useState<string | null>(null);
@@ -403,7 +408,7 @@ export function SettingsView({ user }: { user: SettingsUser | null }) {
                         onDismissCheckout={() => setCheckoutPlan(null)}
                         onOpenWorkspace={() => handleTabChange('workspace')}
                         onSeatsChanged={refreshOrganization}
-                        showTeamsFirst={arrivedForTeams}
+                        arrivalPlan={arrivalPlan}
                     />
                 </TabsContent>
             </Tabs>
