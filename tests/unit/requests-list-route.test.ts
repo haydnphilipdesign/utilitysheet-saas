@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
     ensureAccountActivation: vi.fn(),
     getOrganizationById: vi.fn(),
     getRequests: vi.fn(),
+    workspaceHasOtherRequestOwners: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -21,6 +22,7 @@ vi.mock('@/lib/activation/ensure-account-activation', () => ({
 
 vi.mock('@/lib/neon/queries', () => ({
     getRequests: mocks.getRequests,
+    workspaceHasOtherRequestOwners: mocks.workspaceHasOtherRequestOwners,
     createRequest: vi.fn(),
     getDashboardStats: vi.fn(),
     getMonthlyUsage: vi.fn(),
@@ -65,6 +67,7 @@ describe('GET /api/requests list contract', () => {
             activeOrganization: null,
         });
         mocks.getOrganizationById.mockResolvedValue(null);
+        mocks.workspaceHasOtherRequestOwners.mockResolvedValue(false);
         mocks.getRequests.mockResolvedValue({
             data: [],
             total: 0,
@@ -88,6 +91,7 @@ describe('GET /api/requests list contract', () => {
             search: 'Oak',
             status: 'needs_attention',
             sort: 'closing_date_asc',
+            owner: 'all',
             canViewLockedDetails: false,
         });
         await expect(response.json()).resolves.toMatchObject({
@@ -112,6 +116,7 @@ describe('GET /api/requests list contract', () => {
             search: undefined,
             status: 'all',
             sort: 'last_activity_desc',
+            owner: 'all',
             canViewLockedDetails: false,
         });
     });
@@ -140,8 +145,58 @@ describe('GET /api/requests list contract', () => {
             search: 'Maple',
             status: 'all',
             sort: 'last_activity_desc',
+            owner: 'all',
             canViewLockedDetails: true,
         });
+    });
+
+    it('narrows a workspace list to the caller with owner=mine and says who owns each request', async () => {
+        mocks.ensureAccountActivation.mockResolvedValue({
+            account: { id: 'acct_1', active_organization_id: 'org_1', subscription_status: 'free' },
+            activeOrganization: { id: 'org_1', subscription_status: 'team' },
+        });
+        mocks.workspaceHasOtherRequestOwners.mockResolvedValue(true);
+        mocks.getRequests.mockResolvedValue({
+            data: [
+                { id: 'req_mine', account_id: 'acct_1', organization_id: 'org_1', status: 'sent', owner_name: 'Test User' },
+                { id: 'req_theirs', account_id: 'acct_2', organization_id: 'org_1', status: 'sent', owner_name: 'Pat Lee' },
+            ],
+            total: 2, page: 1, limit: 20, totalPages: 1, hasPreviousPage: false, hasNextPage: false,
+        });
+
+        // The account in the URL is ignored: "mine" is always the signed-in account.
+        const response = await GET(new Request('http://localhost/api/requests?owner=mine&accountId=acct_2'));
+        const body = await response.json();
+
+        expect(mocks.getRequests).toHaveBeenCalledWith('acct_1', 'org_1', expect.objectContaining({ owner: 'mine' }));
+        expect(mocks.workspaceHasOtherRequestOwners).toHaveBeenCalledWith('acct_1', 'org_1');
+        expect(body.sharedWorkspace).toBe(true);
+        expect(body.data.map((row: { id: string; is_mine: boolean; owner_name: string }) => [row.id, row.is_mine, row.owner_name]))
+            .toEqual([['req_mine', true, 'Test User'], ['req_theirs', false, 'Pat Lee']]);
+    });
+
+    it('treats any other owner value as everyone, and never asks about owners outside a workspace', async () => {
+        const response = await GET(new Request('http://localhost/api/requests?owner=acct_2'));
+        const body = await response.json();
+
+        expect(mocks.getRequests).toHaveBeenCalledWith('acct_1', undefined, expect.objectContaining({ owner: 'all' }));
+        expect(mocks.workspaceHasOtherRequestOwners).not.toHaveBeenCalled();
+        expect(body.sharedWorkspace).toBe(false);
+    });
+
+    it('still lists requests when the owner check fails', async () => {
+        mocks.ensureAccountActivation.mockResolvedValue({
+            account: { id: 'acct_1', active_organization_id: 'org_1', subscription_status: 'free' },
+            activeOrganization: { id: 'org_1', subscription_status: 'team' },
+        });
+        mocks.workspaceHasOtherRequestOwners.mockRejectedValue(new Error('down'));
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const response = await GET(new Request('http://localhost/api/requests'));
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({ sharedWorkspace: false, total: 0 });
+        consoleError.mockRestore();
     });
 
     it('does not trust a stale active-organization pointer without a live membership', async () => {

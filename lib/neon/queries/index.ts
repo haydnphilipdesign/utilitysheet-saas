@@ -30,6 +30,7 @@ export {
 export type { PaginatedResult, TestDriveRequestResult } from './requests';
 export {
     getRequests,
+    workspaceHasOtherRequestOwners,
     getRequestById,
     getRequestByToken,
     getRequestBySellerToken,

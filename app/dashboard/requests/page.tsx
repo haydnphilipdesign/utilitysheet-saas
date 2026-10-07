@@ -53,9 +53,11 @@ type RequestListResponse = {
     totalPages: number;
     hasPreviousPage: boolean;
     hasNextPage: boolean;
+    /** The list can hold requests that belong to someone else in the workspace. */
+    sharedWorkspace?: boolean;
 };
 
-const EMPTY_META: Omit<RequestListResponse, 'data'> = {
+const EMPTY_META: Omit<RequestListResponse, 'data' | 'sharedWorkspace'> = {
     total: 0,
     page: 1,
     limit: REQUESTS_DEFAULT_PAGE_SIZE,
@@ -70,6 +72,10 @@ function formatDate(value: string | null | undefined, pattern = 'MMM d, yyyy') {
     return Number.isNaN(parsed.getTime()) ? '—' : format(parsed, pattern);
 }
 
+function ownerLabel(request: Request) {
+    return request.is_mine ? 'You' : request.owner_name || 'A teammate';
+}
+
 export default function RequestsPage() {
     const router = useRouter();
     const pathname = usePathname();
@@ -82,6 +88,7 @@ export default function RequestsPage() {
 
     const [requests, setRequests] = useState<Request[]>([]);
     const [meta, setMeta] = useState(EMPTY_META);
+    const [sharedWorkspace, setSharedWorkspace] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [retryKey, setRetryKey] = useState(0);
@@ -143,6 +150,7 @@ export default function RequestsPage() {
             if (listParams.search) query.set('q', listParams.search);
             if (listParams.status !== 'all') query.set('status', listParams.status);
             if (listParams.sort !== DEFAULT_REQUEST_LIST_SORT) query.set('sort', listParams.sort);
+            if (listParams.owner === 'mine') query.set('owner', 'mine');
 
             try {
                 const response = await fetch(`/api/requests?${query.toString()}`, {
@@ -164,6 +172,7 @@ export default function RequestsPage() {
                     hasPreviousPage: Boolean(data.hasPreviousPage),
                     hasNextPage: Boolean(data.hasNextPage),
                 });
+                setSharedWorkspace(data.sharedWorkspace === true);
 
                 if (data.page && data.page !== listParams.page) {
                     navigateWithParams({
@@ -184,6 +193,7 @@ export default function RequestsPage() {
         fetchRequests();
         return () => controller.abort();
     }, [
+        listParams.owner,
         listParams.page,
         listParams.search,
         listParams.sort,
@@ -237,7 +247,9 @@ export default function RequestsPage() {
         }
     }, []);
 
-    const hasActiveFilters = Boolean(listParams.search) || listParams.status !== 'all';
+    const hasActiveFilters = Boolean(listParams.search) || listParams.status !== 'all' || listParams.owner === 'mine';
+    // Keep the control on screen while its filter is on, so it can always be turned off.
+    const showOwners = sharedWorkspace || listParams.owner === 'mine';
     const firstResult = meta.total === 0 ? 0 : ((meta.page - 1) * meta.limit) + 1;
     const lastResult = Math.min(meta.page * meta.limit, meta.total);
 
@@ -290,6 +302,27 @@ export default function RequestsPage() {
                         </div>
 
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:shrink-0">
+                            {showOwners ? (
+                                <>
+                                    <label className="sr-only" htmlFor="request-owner-filter">
+                                        Filter by owner
+                                    </label>
+                                    <select
+                                        id="request-owner-filter"
+                                        aria-label="Filter by owner"
+                                        value={listParams.owner}
+                                        onChange={(event) => navigateWithParams({
+                                            owner: event.target.value === 'mine' ? 'mine' : null,
+                                            page: null,
+                                        })}
+                                        className="h-11 rounded-md border border-input bg-background px-3 text-base text-foreground outline-none focus:ring-2 focus:ring-ring sm:h-8 sm:min-w-40 sm:text-sm"
+                                    >
+                                        <option value="all">Everyone’s requests</option>
+                                        <option value="mine">My requests</option>
+                                    </select>
+                                </>
+                            ) : null}
+
                             <label className="sr-only" htmlFor="request-status-filter">
                                 Filter by status
                             </label>
@@ -461,6 +494,14 @@ export default function RequestsPage() {
                                                 {formatDate(request.last_activity_at)}
                                             </dd>
                                         </div>
+                                        {showOwners ? (
+                                            <div className="col-span-2">
+                                                <dt className="text-muted-foreground">Owner</dt>
+                                                <dd className="mt-0.5 truncate font-medium text-foreground">
+                                                    {ownerLabel(request)}
+                                                </dd>
+                                            </div>
+                                        ) : null}
                                     </dl>
 
                                     <RequestListActions
@@ -483,6 +524,7 @@ export default function RequestsPage() {
                                     <TableRow className="hover:bg-transparent">
                                         <TableHead>Property</TableHead>
                                         <TableHead>Seller</TableHead>
+                                        {showOwners ? <TableHead>Owner</TableHead> : null}
                                         <TableHead>Closing date</TableHead>
                                         <TableHead>Activity</TableHead>
                                         <TableHead>Status</TableHead>
@@ -506,6 +548,11 @@ export default function RequestsPage() {
                                             <TableCell className="max-w-48 truncate text-muted-foreground">
                                                 {request.seller_name || '—'}
                                             </TableCell>
+                                            {showOwners ? (
+                                                <TableCell className="max-w-40 truncate text-muted-foreground">
+                                                    {ownerLabel(request)}
+                                                </TableCell>
+                                            ) : null}
                                             <TableCell className="whitespace-nowrap text-muted-foreground">
                                                 {formatDate(request.closing_date)}
                                             </TableCell>

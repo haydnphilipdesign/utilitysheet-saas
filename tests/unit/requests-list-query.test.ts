@@ -8,7 +8,7 @@ vi.mock('@/lib/neon/db', () => ({
     isDbConfigured: () => true,
 }));
 
-import { getRequests } from '@/lib/neon/queries/requests';
+import { getRequests, workspaceHasOtherRequestOwners } from '@/lib/neon/queries/requests';
 
 function callSqlText(call: unknown[]): string {
     const [strings] = call as [TemplateStringsArray];
@@ -90,6 +90,38 @@ describe('getRequests list query', () => {
         expect(allValues).toContain(true);
     });
 
+    it('narrows a workspace list to the caller for "mine" without widening the visibility scope', async () => {
+        sqlMock
+            .mockResolvedValueOnce([{ count: '1' }])
+            .mockResolvedValueOnce([{ id: 'org_req', owner_name: 'Test User' }]);
+
+        await getRequests('acct_1', 'org_1', { owner: 'mine' });
+
+        for (const call of sqlMock.mock.calls) {
+            const text = callSqlText(call);
+            // The workspace scope stays in both statements; "mine" is an extra AND.
+            expect(text).toContain('organization_id = ');
+            expect(text).toMatch(/AND \(::boolean = FALSE OR account_id = \)/);
+            expect(callSqlValues(call)).toContain(true);
+        }
+        const dataQueryText = callSqlText(sqlMock.mock.calls[1]);
+        expect(dataQueryText).toContain('AS owner_name');
+        expect(dataQueryText).toContain('owner.id = requests.account_id');
+    });
+
+    it('lists everyone in the workspace by default', async () => {
+        sqlMock
+            .mockResolvedValueOnce([{ count: '0' }])
+            .mockResolvedValueOnce([]);
+
+        await getRequests('acct_1', 'org_1', {});
+
+        // Nothing is switched on: neither "mine" nor locked-detail access.
+        for (const call of sqlMock.mock.calls) {
+            expect(callSqlValues(call)).not.toContain(true);
+        }
+    });
+
     it('reuses the existing three-day sent rule for Needs Attention before counting and paging', async () => {
         sqlMock
             .mockResolvedValueOnce([{ count: '7' }])
@@ -156,6 +188,20 @@ describe('getRequests list query', () => {
             hasPreviousPage: false,
             hasNextPage: false,
         });
+    });
+
+    it('calls a workspace shared when it has other members or requests from someone else', async () => {
+        sqlMock.mockResolvedValueOnce([{ shared: true }]);
+        await expect(workspaceHasOtherRequestOwners('acct_1', 'org_1')).resolves.toBe(true);
+
+        const text = callSqlText(sqlMock.mock.calls[0]);
+        expect(text).toContain('FROM organization_members');
+        expect(text).toContain('account_id <> ');
+        expect(text).toContain('deleted_at IS NULL');
+        expect(callSqlValues(sqlMock.mock.calls[0])).toEqual(['org_1', 'org_1', 'acct_1']);
+
+        sqlMock.mockResolvedValueOnce([{ shared: false }]);
+        await expect(workspaceHasOtherRequestOwners('acct_1', 'org_1')).resolves.toBe(false);
     });
 
     it('supports only deterministic schema-backed order expressions', async () => {

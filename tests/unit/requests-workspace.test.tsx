@@ -113,7 +113,7 @@ const requests = [
     },
 ];
 
-function responseWith(data = requests, overrides: Record<string, unknown> = {}) {
+function responseWith(data: Array<Record<string, unknown>> = requests, overrides: Record<string, unknown> = {}) {
     return Promise.resolve(new Response(JSON.stringify({
         data,
         total: data.length,
@@ -162,6 +162,52 @@ describe('Requests workspace', () => {
         expect(screen.getByText('21 requests')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled();
         expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
+    });
+
+    it('shows no owner controls when every request in the list is the viewer’s own', async () => {
+        render(<RequestsPage />);
+        await screen.findAllByText('101 Draft Lane');
+
+        expect(screen.queryByLabelText('Filter by owner')).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Owner' })).not.toBeInTheDocument();
+    });
+
+    it('names each request’s owner in a shared workspace and filters to the viewer’s own', async () => {
+        vi.mocked(fetch).mockImplementation(() => responseWith([
+            { ...requests[0], is_mine: true, owner_name: 'Test User' },
+            { ...requests[1], account_id: 'acct_2', is_mine: false, owner_name: 'Pat Lee' },
+            { ...requests[2], account_id: 'acct_3', is_mine: false, owner_name: null },
+        ], { sharedWorkspace: true }));
+
+        render(<RequestsPage />);
+        await screen.findAllByText('101 Draft Lane');
+
+        expect(screen.getByRole('columnheader', { name: 'Owner' })).toBeInTheDocument();
+        const rowFor = (address: string) => within(screen.getByRole('table')).getByRole('link', { name: address }).closest('tr') as HTMLElement;
+        expect(within(rowFor('101 Draft Lane')).getByText('You')).toBeInTheDocument();
+        expect(within(rowFor('202 Sent Street')).getByText('Pat Lee')).toBeInTheDocument();
+        expect(within(rowFor('303 Progress Place')).getByText('A teammate')).toBeInTheDocument();
+        expect(within(screen.getByTestId('request-mobile-req_sent')).getByText('Pat Lee')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('Filter by owner'), { target: { value: 'mine' } });
+        expect(navigation.router.push).toHaveBeenCalledWith('/dashboard/requests?owner=mine', { scroll: false });
+    });
+
+    it('sends the owner filter to the server and keeps the control on screen so it can be cleared', async () => {
+        navigation.searchParams = new URLSearchParams('owner=mine');
+        vi.mocked(fetch).mockImplementation(() => responseWith([], { sharedWorkspace: false }));
+
+        render(<RequestsPage />);
+
+        expect(await screen.findByText('No matching requests')).toBeInTheDocument();
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/requests?page=1&limit=20&owner=mine',
+            expect.objectContaining({ signal: expect.any(AbortSignal) })
+        );
+        expect(screen.getByLabelText('Filter by owner')).toHaveValue('mine');
+
+        fireEvent.change(screen.getByLabelText('Filter by owner'), { target: { value: 'all' } });
+        expect(navigation.router.push).toHaveBeenCalledWith('/dashboard/requests', { scroll: false });
     });
 
     it('writes filter, sort, and debounced search changes to predictable URLs', async () => {

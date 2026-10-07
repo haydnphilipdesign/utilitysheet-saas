@@ -88,7 +88,7 @@ Counts and dates only; no addresses, names or identifiers were read out.
 | 6 | Honest marketing and "Start Teams" path | Done 2026-10-07; committed and pushed; deployment not verified |
 | 7 | Admin workspace page | Done 2026-10-07; committed and pushed; deployment not verified; not seen in a browser |
 | 8 | Payment failure and plan end messages [B] [S] | Not started; confirm first |
-| 9 | Request owners and "Mine" filter | Not started |
+| 9 | Request owners and "Mine" filter | Done 2026-10-07; committed and pushed; deployment not verified |
 | 10 | Leave a workspace [R] | Not started; confirm first |
 | 11 | Shared seller forms [S] [R] | Not started; needs a decision |
 
@@ -189,3 +189,15 @@ Read-only Admin page. No admin write, so no audit entry or reason applies. No AP
 - Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 217 files / 1588 tests passed; security scan and `git diff --check` passed. The invitation query was run against sample rows in a throwaway local PostgreSQL 17 (a table copied from `schema.sql`, started and deleted in the scratch folder, nothing live): it returns only the asked workspace's invitations, newest first, with the inviter's name and a blank inviter when the account is gone.
 - Not verified: the page in a browser. Admin has no fixture and needs a database and an admin sign-in, so its layout on desktop and phone was not looked at. The page itself is covered by a source check (columns selected, the new fields present), not a render; the table component and both helpers are rendered and unit-tested.
 - Known limits: an accepted invitation stays "Accepted" after that person is later removed (the Members table is the truth for who is in now); "First sent" is the original date, and "Send again" does not change it.
+
+## Slice 9 outcome (2026-10-07)
+
+New feature. No schema, billing or role change: nobody sees a request they could not already see.
+
+- `GET /api/requests`: each row carries `is_mine` (the signed-in account created it) and, in a workspace, `owner_name` (the creator's name, or their email when no name is stored). The response carries `sharedWorkspace`: true when the active workspace has more than one member or still holds requests someone else created (`workspaceHasOtherRequestOwners`). `owner=mine` narrows the list to the caller's own requests as an extra condition inside the existing visibility scope; any other value means everyone. "Mine" is always the signed-in account, never an id from the address.
+- Requests page: when the workspace is shared, an "Owner" column (a line on each phone card) showing "You" or the teammate's name, and an "Everyone's requests / My requests" filter that is kept in the address like the other filters and is cleared by "Clear filters". A workspace with one person looks exactly as before.
+- A former member's requests show their name; nothing marks them as a former member yet (that belongs with slice 10, which reassigns them).
+- Files: `lib/requests/listing.ts`, `lib/neon/queries/{requests,index}.ts`, `app/api/requests/route.ts`, `app/dashboard/requests/page.tsx`, `types/index.ts`; new `app/test-fixtures/requests/page.tsx` (development-only fixture, same pattern as Settings) and `tests/requests-list.spec.ts`; updated `tests/unit/{requests-list-query,requests-list-route,requests-route-advanced-gating}.test.ts`, `tests/unit/requests-workspace.test.tsx`.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 217 files / 1598 tests passed; `tests/requests-list.spec.ts` 6/6 on three device profiles with service keys blanked; security scan and `git diff --check` passed; desktop and phone screenshots reviewed. The list, "mine" and shared-workspace SQL were run against sample rows in a throwaway local PostgreSQL 17 (started and deleted in the scratch folder, nothing live): "mine" returns only the caller's rows, another workspace's rows never appear, a blank name falls back to the email, and a workspace whose only foreign request is deleted is not shared.
+- Not verified: a signed-in browser against real data, the hosted site, dark mode. The throwaway database used cut-down tables, not the full `schema.sql`.
+- Not in this slice: the dashboard home's recent list and the request detail page do not show the owner. Seen and left alone: the count reads "1 requests".

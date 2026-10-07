@@ -17,6 +17,7 @@ import {
     DEFAULT_REQUEST_LIST_SORT,
     REQUEST_NEEDS_ATTENTION_DAYS,
     REQUESTS_DEFAULT_PAGE_SIZE,
+    type RequestListOwnerFilter,
     type RequestListSort,
     type RequestListStatusFilter,
 } from '@/lib/requests/listing';
@@ -52,6 +53,8 @@ export async function getRequests(
         search?: string;
         status?: RequestListStatusFilter;
         sort?: RequestListSort;
+        /** 'mine' narrows a workspace list to the caller's own requests. */
+        owner?: RequestListOwnerFilter;
         canViewLockedDetails?: boolean;
     } = {}
 ): Promise<PaginatedResult<Request>> {
@@ -65,6 +68,7 @@ export async function getRequests(
     const needsAttention = filterStatus === 'needs_attention';
     const sort = options.sort || DEFAULT_REQUEST_LIST_SORT;
     const canViewLockedDetails = options.canViewLockedDetails === true;
+    const mineOnly = options.owner === 'mine';
 
     if (!sql) {
         return {
@@ -91,6 +95,7 @@ export async function getRequests(
                     organization_id = ${organizationId}
                     OR (account_id = ${accountId} AND organization_id IS NULL)
                 )
+                AND (${mineOnly}::boolean = FALSE OR account_id = ${accountId})
                 AND (
                     ${search}::text IS NULL
                     OR (
@@ -148,7 +153,12 @@ export async function getRequests(
                 (
                     status = 'sent'
                     AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
-                ) AS needs_attention
+                ) AS needs_attention,
+                (
+                    SELECT COALESCE(NULLIF(TRIM(owner.full_name), ''), owner.email)
+                    FROM accounts owner
+                    WHERE owner.id = requests.account_id
+                ) AS owner_name
             FROM requests
             WHERE deleted_at IS NULL
                 AND COALESCE(is_demo, FALSE) = FALSE
@@ -156,6 +166,7 @@ export async function getRequests(
                     organization_id = ${organizationId}
                     OR (account_id = ${accountId} AND organization_id IS NULL)
                 )
+                AND (${mineOnly}::boolean = FALSE OR account_id = ${accountId})
                 AND (
                     ${search}::text IS NULL
                     OR (
@@ -252,6 +263,30 @@ export async function getRequests(
         hasPreviousPage: page > 1,
         hasNextPage: page < totalPages,
     };
+}
+
+/**
+ * Whether a workspace's request list can hold someone else's requests: it has
+ * more than one member, or it still holds requests a former member created.
+ */
+export async function workspaceHasOtherRequestOwners(accountId: string, organizationId: string): Promise<boolean> {
+    if (!sql) return false;
+
+    const result = await sql`
+        SELECT (
+            (SELECT COUNT(*) FROM organization_members WHERE organization_id = ${organizationId}) > 1
+            OR EXISTS (
+                SELECT 1
+                FROM requests
+                WHERE organization_id = ${organizationId}
+                    AND account_id <> ${accountId}
+                    AND deleted_at IS NULL
+                    AND COALESCE(is_demo, FALSE) = FALSE
+            )
+        ) AS shared
+    `;
+
+    return result[0]?.shared === true;
 }
 
 /**

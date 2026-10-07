@@ -32,12 +32,16 @@ export type RequestListSort = (typeof REQUEST_LIST_SORTS)[number];
 
 export const DEFAULT_REQUEST_LIST_SORT: RequestListSort = 'last_activity_desc';
 
+/** Whose requests to list in a shared workspace. Never widens what the viewer may see. */
+export type RequestListOwnerFilter = 'all' | 'mine';
+
 export interface RequestListParams {
     page: number;
     limit: number;
     search?: string;
     status: RequestListStatusFilter;
     sort: RequestListSort;
+    owner: RequestListOwnerFilter;
 }
 
 function parseBoundedInteger(
@@ -79,5 +83,6 @@ export function normalizeRequestListParams(searchParams: URLSearchParams): Reque
         search: normalizedSearch || undefined,
         status: isRequestListStatusFilter(rawStatus) ? rawStatus : 'all',
         sort: isRequestListSort(rawSort) ? rawSort : DEFAULT_REQUEST_LIST_SORT,
+        owner: searchParams.get('owner') === 'mine' ? 'mine' : 'all',
     };
 }

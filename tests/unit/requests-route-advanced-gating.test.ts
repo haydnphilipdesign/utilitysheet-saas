@@ -48,6 +48,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getSellerForm: mocks.getSellerFormMock,
     getIntakeBrandProfile: mocks.getIntakeBrandProfileMock,
     getRequests: vi.fn(),
+    workspaceHasOtherRequestOwners: vi.fn(),
     createRequest: mocks.createRequestMock,
     getDashboardStats: vi.fn(),
     getOrCreateAccount: mocks.getOrCreateAccountMock,

@@ -359,6 +359,9 @@ export interface Request {
     last_activity_at: string;
     // Derived by list queries from the current canonical attention rule.
     needs_attention?: boolean;
+    // Added by the workspace request list: who created the request, and whether that is the viewer.
+    owner_name?: string | null;
+    is_mine?: boolean;
     // Joined data
     brand_profile?: BrandProfile | null;
     utility_entries?: UtilityEntry[];

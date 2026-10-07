@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getIntakeBrandProfile, getSellerForm, getRequests, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
+import { getIntakeBrandProfile, getSellerForm, getRequests, workspaceHasOtherRequestOwners, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -60,18 +60,31 @@ export async function GET(request: Request) {
         }
 
         const listParams = normalizeRequestListParams(url.searchParams);
-        const result = await getRequests(accountId, organizationId, {
-            page: listParams.page,
-            limit: listParams.limit,
-            search: listParams.search,
-            status: listParams.status,
-            sort: listParams.sort,
-            canViewLockedDetails: isPaid,
-        });
+        const [result, sharedWorkspace] = await Promise.all([
+            getRequests(accountId, organizationId, {
+                page: listParams.page,
+                limit: listParams.limit,
+                search: listParams.search,
+                status: listParams.status,
+                sort: listParams.sort,
+                owner: listParams.owner,
+                canViewLockedDetails: isPaid,
+            }),
+            // Owners are only worth showing when the list can hold someone else's requests.
+            organizationId
+                ? workspaceHasOtherRequestOwners(accountId, organizationId).catch((error) => {
+                    console.error('Error checking request owners:', error);
+                    return false;
+                })
+                : false,
+        ]);
         const data = result.data.map((requestRow) => {
-            const r = requestRow as unknown as Record<string, unknown> & {
-                is_locked?: unknown;
-                status?: unknown;
+            const r = {
+                ...(requestRow as unknown as Record<string, unknown> & {
+                    is_locked?: unknown;
+                    status?: unknown;
+                }),
+                is_mine: requestRow.account_id === accountId,
             };
             const accessLocked = Boolean(r.is_locked) && !isPaid;
             if (!accessLocked) {
@@ -87,6 +100,7 @@ export async function GET(request: Request) {
         return NextResponse.json({
             ...result,
             data,
+            sharedWorkspace,
         });
     } catch (error) {
         console.error('Error fetching requests:', error);
