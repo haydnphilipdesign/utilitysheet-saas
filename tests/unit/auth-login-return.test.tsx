@@ -51,6 +51,15 @@ describe('login invite return behavior', () => {
         expect(mocks.push).not.toHaveBeenCalled();
     });
 
+    it('says the sign-in is part of an invitation and which address to use', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 401 })));
+
+        render(<LoginPage />);
+
+        expect(await screen.findByRole('heading', { name: 'Sign in to join your team' })).toBeInTheDocument();
+        expect(screen.getByText(/Use the email address your invitation was sent to\./)).toBeInTheDocument();
+    });
+
     it('returns an existing authenticated session to the invite', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', {
             status: 200,

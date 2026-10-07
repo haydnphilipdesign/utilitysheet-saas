@@ -87,6 +87,8 @@ export {
     createOrganizationInvite,
     createOrganizationInviteWithSeatGuard,
     getOrganizationInviteByToken,
+    getOrganizationInviteSummaryByToken,
+    getOpenOrganizationInvitesForEmail,
     getOrganizationInvites,
     getPendingOrganizationInvites,
     getOrganizationInviteForOrganization,

@@ -179,6 +179,7 @@ export async function POST(request: Request) {
                 organizationName: orgName || 'your organization',
                 invitedByName,
                 inviteUrl,
+                expiresAt,
             });
             emailSent = result.success;
         } catch {

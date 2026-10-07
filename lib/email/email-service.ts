@@ -572,22 +572,40 @@ interface SendOrganizationInviteEmailParams {
     organizationName: string;
     invitedByName?: string;
     inviteUrl: string;
+    /** When the link stops working; the email says so when it is given. */
+    expiresAt?: Date | string | null;
 }
 
-export async function sendOrganizationInviteEmail({
+/** The invitation email's subject and HTML. Names are escaped; they are typed by customers. */
+export function buildOrganizationInviteEmail({
     toEmail,
     organizationName,
     invitedByName,
     inviteUrl,
-}: SendOrganizationInviteEmailParams): Promise<{ success: boolean; error?: string }> {
-    const inviter = invitedByName ? ` by ${invitedByName}` : '';
-    const emailHtml = `
+    expiresAt,
+}: SendOrganizationInviteEmailParams): { subject: string; html: string } {
+    const workspace = escapeHtml(organizationName);
+    const address = escapeHtml(toEmail);
+    const link = escapeHtml(inviteUrl);
+    const invitedLine = invitedByName
+        ? `${escapeHtml(invitedByName)} invited you to join <strong>${workspace}</strong> on UtilitySheet.`
+        : `You’ve been invited to join <strong>${workspace}</strong> on UtilitySheet.`;
+    // Days, not a date: the reader's time zone is not known here.
+    const expiryTime = expiresAt ? new Date(expiresAt).getTime() : Number.NaN;
+    const daysLeft = Math.round((expiryTime - Date.now()) / (24 * 60 * 60 * 1000));
+    const expiry = Number.isFinite(daysLeft) && daysLeft >= 1
+        ? ` The link works for ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}.`
+        : '';
+    // Header values are not HTML, but must stay on one line.
+    const subject = `${invitedByName ? `${invitedByName} invited you` : 'You’re invited'} to join ${organizationName} on UtilitySheet`
+        .replace(/[\r\n]+/g, ' ');
+    const html = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>You're invited to UtilitySheet</title>
+    <title>Join ${workspace} on UtilitySheet</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
@@ -602,17 +620,20 @@ export async function sendOrganizationInviteEmail({
                     <tr>
                         <td style="padding: 36px 40px;">
                             <p style="margin: 0 0 16px; color: #111827; font-size: 16px; line-height: 1.6;">
-                                You’ve been invited${inviter} to join <strong>${organizationName}</strong>.
+                                ${invitedLine}
+                            </p>
+                            <p style="margin: 0 0 16px; color: #374151; font-size: 15px; line-height: 1.6;">
+                                UtilitySheet collects utility and home details from sellers and turns them into a clean sheet to hand off. In this workspace you’ll share your team’s requests and branding.
                             </p>
                             <p style="margin: 0 0 24px; color: #374151; font-size: 15px; line-height: 1.6;">
-                                Accept the invite to access your team's requests and branding in one shared workspace.
+                                Sign in or create an account with <strong>${address}</strong>. The invitation only works with this address.${expiry}
                             </p>
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                                 <tr>
                                     <td style="text-align: center;">
                                         ${renderBulletproofButton({
             href: inviteUrl,
-            label: 'Accept Invite',
+            label: 'Accept invitation',
             backgroundColor: '#334155',
             borderRadius: 10,
             fontWeight: 700,
@@ -625,14 +646,14 @@ export async function sendOrganizationInviteEmail({
                             </table>
                             <p style="margin: 24px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
                                 If the button doesn’t work, copy and paste this link into your browser:<br>
-                                <a href="${inviteUrl}" style="color: #0f172a; word-break: break-all;">${inviteUrl}</a>
+                                <a href="${link}" style="color: #0f172a; word-break: break-all;">${link}</a>
                             </p>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 18px 40px; background-color: #f9fafb; text-align: center;">
                             <p style="margin: 0; color: #6b7280; font-size: 12px; line-height: 1.6;">
-                                If you weren’t expecting this invite, you can ignore this email.
+                                If you weren’t expecting this invitation, you can ignore this email.
                             </p>
                         </td>
                     </tr>
@@ -644,12 +665,20 @@ export async function sendOrganizationInviteEmail({
 </html>
 `;
 
+    return { subject, html };
+}
+
+export async function sendOrganizationInviteEmail(
+    params: SendOrganizationInviteEmailParams
+): Promise<{ success: boolean; error?: string }> {
+    const { subject, html } = buildOrganizationInviteEmail(params);
+
     try {
         const { data, error } = await getResend().emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
-            to: toEmail,
-            subject: `You’re invited to join ${organizationName} on UtilitySheet`,
-            html: emailHtml,
+            to: params.toEmail,
+            subject,
+            html,
         });
 
         if (error) {

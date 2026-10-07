@@ -1,4 +1,18 @@
-# Current task: Teams duplicate-subscription guard and referral trial end date (complete; migration applied, committed and pushed)
+# Current task: Teams plan review, slice 1 of 11 committed and pushed; slice 2 in progress
+
+- Date: 2026-10-07. Last agent: Claude Opus 5.5. Branch: main. Slice 1 is committed on top of `5defe9c` and pushed to origin/main with owner authorization in chat on 2026-10-07. No issue/PR. No other active editor; no ownership warnings.
+- Owner reported in chat on 2026-10-07 (not verified here): `TEAM_INVITE_EXPIRY_DAYS=30` is now set in hosting, so new invitations last 30 days once a deployment picks it up.
+- Plan (findings, live evidence, slice list with a Progress table, slice 1 outcome): `.ai/plans/2026-10-07-teams-plan-review.md`. No decision record made. The owner approved the recommended order in chat on 2026-10-07 and asked for the plan to track progress; slices that touch billing, schema or roles (4, 8, 10, 11) are to be confirmed again before they start.
+- Live evidence (owner-authorized read-only aggregates, counts and dates only): no invitation has ever been accepted in production (4 sent, 4 expired). The paying workspace invited 3 addresses in February and March 2026; one invitee signed up six days after expiry, was invited again minutes later and still never joined. Details in the plan.
+- Slice 1 done (invitation acceptance that cannot dead-end): the invitation page shows the invitation and joins on a click, with a way forward for every state; new read routes `invites/lookup` (by link, rate limited) and `invites/mine` (verified address only); sign-in and sign-up say they belong to an invitation; the dashboard shows an open invitation; the email is rewritten and escapes names. The accept route, seat guard, schema, billing and roles are unchanged. File list in the plan.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 211 files / 1524 passed; `tests/invite.spec.ts` and `tests/settings.spec.ts` 42/42 on three device profiles with service keys blanked in the process; security scan and `git diff --check` passed; screenshots reviewed.
+- Not verified: a real invitation end to end in a signed-in browser, a delivered email, Google sign-in returning to the invitation, the dashboard banner in a browser, the hosted site.
+- No deploy check, migration or live write was made. The two live reads were aggregates through scratch scripts outside the repository.
+- **No required work remains for slice 1.** Deployment of the pushed commit was not verified here.
+- Slice 2 (removed members stop receiving the team's submission emails; trim the members response) was approved by the owner in chat on 2026-10-07 and is in progress. It needs no schema, billing or role change. If this line is still here with uncommitted changes in `app/api/seller/[token]/route.ts`, `app/api/organization/members/route.ts` or `lib/neon/queries/organizations.ts`, slice 2 was interrupted; check the plan's Progress table.
+- Owner-side, optional: once deployed, tell the paying customer to invite their three teammates again.
+
+# Previous task: Teams duplicate-subscription guard and referral trial end date (complete; migration applied, committed and pushed)
 
 - Date: 2026-10-07. Last agent: Claude Opus 5.5. Branch: main, committed on top of `c1bb6da` and pushed to origin/main. No issue/PR. No other active editor; no ownership warnings.
 - Plan (completed, with outcome): `.ai/plans/2026-10-07-teams-subscription-guard-and-trial-end.md`. Decision amended: `.ai/decisions/2026-10-07-one-live-subscription-and-plan-end-date.md` (Amendment section). Owner asked for both in chat on 2026-10-07.

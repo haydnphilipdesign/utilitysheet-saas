@@ -28,6 +28,7 @@ export default function LoginPage() {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [safeNextPath, setSafeNextPath] = useState<string | null>(null);
+    const forInvitation = safeNextPath?.startsWith('/invite/') ?? false;
 
     const getSafeNext = useCallback((): string | null => {
         if (typeof window === 'undefined') return null;
@@ -136,9 +137,13 @@ export default function LoginPage() {
 
                 <Card className="border-border bg-card/80 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="space-y-1 px-4 sm:px-6 pt-4 sm:pt-6">
-                        <h1 className="text-xl sm:text-2xl font-medium text-center text-foreground">Welcome back</h1>
+                        <h1 className="text-xl sm:text-2xl font-medium text-center text-foreground">
+                            {forInvitation ? 'Sign in to join your team' : 'Welcome back'}
+                        </h1>
                         <CardDescription className="text-center text-muted-foreground text-sm">
-                            Sign in to your account to continue
+                            {forInvitation
+                                ? 'Use the email address your invitation was sent to. If you’re new to UtilitySheet, choose Sign up below.'
+                                : 'Sign in to your account to continue'}
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleLogin} data-testid="login-form">

@@ -32,6 +32,7 @@ export default function SignupPage() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [safeNextPath, setSafeNextPath] = useState<string | null>(null);
+    const forInvitation = safeNextPath?.startsWith('/invite/') ?? false;
 
     const getSafeNext = useCallback((): string | null => {
         if (typeof window === 'undefined') return null;
@@ -174,6 +175,11 @@ export default function SignupPage() {
                         <p className="text-xs sm:text-sm text-muted-foreground text-center">
                             Click the link in your email to verify your account and get started with UtilitySheet.
                         </p>
+                        {forInvitation && (
+                            <p className="mt-3 text-xs sm:text-sm text-muted-foreground text-center">
+                                Then open your invitation email again and choose Accept invitation to join your team.
+                            </p>
+                        )}
                     </CardContent>
                     <CardFooter className="px-4 sm:px-6 pb-4 sm:pb-6">
                         <Button
@@ -208,9 +214,13 @@ export default function SignupPage() {
 
                 <Card className="border-border bg-card/80 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="space-y-1 px-4 sm:px-6 pt-4 sm:pt-6">
-                        <h1 className="text-xl sm:text-2xl font-medium text-center text-foreground">Create an account</h1>
+                        <h1 className="text-xl sm:text-2xl font-medium text-center text-foreground">
+                            {forInvitation ? 'Create an account to join your team' : 'Create an account'}
+                        </h1>
                         <CardDescription className="text-center text-muted-foreground text-sm">
-                            Get your reusable seller link and start collecting utility info
+                            {forInvitation
+                                ? 'Use the email address your invitation was sent to. You’ll join the workspace as soon as your account is ready.'
+                                : 'Get your reusable seller link and start collecting utility info'}
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleSignup} data-testid="signup-form">

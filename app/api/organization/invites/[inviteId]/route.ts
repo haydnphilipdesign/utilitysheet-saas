@@ -123,6 +123,7 @@ export async function PATCH(request: Request, { params }: InviteRouteContext): P
                 organizationName: String(organization.name || 'your organization'),
                 invitedByName: account.full_name || user.displayName || undefined,
                 inviteUrl,
+                expiresAt,
             });
             emailSent = result.success;
         } catch {

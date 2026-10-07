@@ -253,6 +253,24 @@ export const accountExportRatelimit: RateLimitPolicy = {
     prefix: "account-export",
 };
 
+/**
+ * Rate limiter for looking up an invitation by its link
+ * Limit: 30 lookups per minute per IP
+ */
+export const organizationInviteLookupRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(30, "60 s"),
+            analytics: true,
+            prefix: "ratelimit:org-invite-lookup",
+        })
+        : null,
+    limit: 30,
+    windowMs: 60 * 1000,
+    prefix: 'ratelimit:org-invite-lookup',
+};
+
 const memoryRateLimit = new Map<string, { count: number; resetAt: number }>();
 
 /**

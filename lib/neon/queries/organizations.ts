@@ -595,6 +595,86 @@ export async function getOrganizationInviteByToken(token: string) {
     return result[0] || null;
 }
 
+export type OrganizationInviteSummary = {
+    id: string;
+    organization_id: string;
+    email: string;
+    role: 'admin' | 'member';
+    token: string;
+    expires_at: string;
+    accepted_at: string | null;
+    organization_name: string;
+    organization_subscription_status: string | null;
+    invited_by_name: string | null;
+};
+
+/** An invitation with the workspace and inviter names its page shows. */
+export async function getOrganizationInviteSummaryByToken(token: string) {
+    if (!sql) return null;
+
+    const result = await sql`
+        SELECT
+            i.id,
+            i.organization_id,
+            i.email,
+            i.role,
+            i.token,
+            i.expires_at,
+            i.accepted_at,
+            o.name AS organization_name,
+            o.subscription_status AS organization_subscription_status,
+            inviter.full_name AS invited_by_name
+        FROM organization_invitations i
+        JOIN organizations o ON o.id = i.organization_id
+        LEFT JOIN accounts inviter ON inviter.id = i.invited_by_account_id
+        WHERE i.token = ${token}
+        LIMIT 1
+    `;
+
+    return (result[0] as OrganizationInviteSummary | undefined) || null;
+}
+
+/**
+ * Open invitations addressed to one email, for workspaces that account has not
+ * joined. The caller must have verified that the account owns the address.
+ */
+export async function getOpenOrganizationInvitesForEmail(email: string, accountId: string) {
+    if (!sql) return [];
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return [];
+
+    const result = await sql`
+        SELECT
+            i.id,
+            i.organization_id,
+            i.email,
+            i.role,
+            i.token,
+            i.expires_at,
+            i.accepted_at,
+            o.name AS organization_name,
+            o.subscription_status AS organization_subscription_status,
+            inviter.full_name AS invited_by_name
+        FROM organization_invitations i
+        JOIN organizations o ON o.id = i.organization_id
+        LEFT JOIN accounts inviter ON inviter.id = i.invited_by_account_id
+        WHERE lower(i.email) = ${normalizedEmail}
+            AND i.accepted_at IS NULL
+            AND i.expires_at > NOW()
+            AND o.subscription_status = 'team'
+            AND NOT EXISTS (
+                SELECT 1 FROM organization_members om
+                WHERE om.organization_id = i.organization_id
+                    AND om.account_id = ${accountId}
+            )
+        ORDER BY i.created_at DESC
+        LIMIT 5
+    `;
+
+    return result as OrganizationInviteSummary[];
+}
+
 export async function getOrganizationInvites(organizationId: string) {
     if (!sql) return [];
 

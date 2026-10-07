@@ -18,6 +18,7 @@ import {
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { EmailVerificationBanner } from '@/components/email-verification-banner';
+import { PendingInvitationBanner } from '@/components/pending-invitation-banner';
 import { Building2, Check, FileText, LayoutDashboard, Loader2, LogOut, Megaphone, Menu, Palette, Plus, Settings, X } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import { trackActivationResponse, trackDashboardFirstViewOnce } from '@/lib/analytics/activation';
@@ -349,6 +350,7 @@ export function DashboardLayoutContent({
             {/* Main Content */}
             <main className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
                 <EmailVerificationBanner />
+                <PendingInvitationBanner />
                 {children}
             </main>
         </div>
