@@ -39,7 +39,11 @@ describe('account closure data transaction', () => {
         expect(sql).toContain('UPDATE requests r SET account_id = t.value::uuid');
         expect(sql).toContain('UPDATE brand_profiles b SET account_id = t.value::uuid');
         expect(sql).toContain('DELETE FROM requests WHERE account_id = ? AND organization_id IS NULL');
-        expect(sql).toContain('DELETE FROM intake_links WHERE account_id = ?');
+        // Shared forms move to the chosen admin; the rest of the person's forms are deleted.
+        expect(sql).toContain('UPDATE intake_links f SET shared_owner_account_id = t.value::uuid');
+        expect(sql).toContain('DELETE FROM intake_links il WHERE il.organization_id = ANY(?::uuid[]) OR (il.account_id = ? AND NOT (');
+        expect(sql).not.toContain('DELETE FROM intake_links WHERE account_id = ?');
+        expect(sql).toContain("name = 'My seller form'");
         expect(sql).toContain('DELETE FROM feedback_submissions WHERE account_id = ?');
         expect(sql).toContain("SET status = 'forfeited'");
         expect(sql).toContain("subscription_status = CASE WHEN subscription_id IS NULL THEN 'free' ELSE 'canceled' END");
@@ -59,6 +63,7 @@ describe('account closure data transaction', () => {
         const guard = queries[1].text.replace(/\s+/g, ' ');
         expect(guard).toContain('FROM requests r');
         expect(guard).toContain('FROM brand_profiles b');
+        expect(guard).toContain('FROM intake_links f WHERE f.shared_owner_account_id = a.id');
         expect(guard).toContain('owned.organization_id');
         expect(guard).toContain("recipient.role = 'admin'");
     });

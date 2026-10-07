@@ -11,6 +11,10 @@ const m = vi.hoisted(() => ({
     save: vi.fn(),
     setDefault: vi.fn(),
     links: vi.fn(),
+    role: vi.fn(),
+    sharedUsage: vi.fn(),
+    share: vi.fn(),
+    remove: vi.fn(),
 }));
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/stack/server', () => ({ stackServerApp: { getUser: m.user } }));
@@ -21,14 +25,21 @@ vi.mock('@/lib/neon/queries', () => ({
     getBrandProfiles: m.profiles,
     getOrCreateIntakeLink: m.ensure,
     listSellerForms: m.list,
+    listWorkspaceSellerForms: m.list,
     getSellerFormCount: m.count,
     getSellerForm: m.get,
+    getUsableSellerForm: m.get,
+    getOrganizationMemberRole: m.role,
+    getSharedSellerFormUsage: m.sharedUsage,
+    setSellerFormShared: m.share,
+    deleteSellerForm: m.remove,
     saveSellerForm: m.save,
     setDefaultSellerForm: m.setDefault,
     getSellerFormLinkScope: m.links,
 }));
 import { GET, POST } from '@/app/api/seller-forms/route';
-import { PATCH } from '@/app/api/seller-forms/[id]/route';
+import { DELETE, PATCH } from '@/app/api/seller-forms/[id]/route';
+import { PUT as setShared } from '@/app/api/seller-forms/[id]/share/route';
 import { POST as makeDefault } from '@/app/api/seller-forms/[id]/default/route';
 import { PATCH as renameBase } from '@/app/api/seller-form-link-base/route';
 const params = { params: Promise.resolve({ id: savedForm.id }) };
@@ -53,6 +64,10 @@ beforeEach(() => {
     m.save.mockResolvedValue(savedForm);
     m.setDefault.mockResolvedValue(savedForm);
     m.links.mockResolvedValue(null);
+    m.role.mockResolvedValue('member');
+    m.sharedUsage.mockResolvedValue({ usage: 0, allowance: 0 });
+    m.share.mockResolvedValue(savedForm);
+    m.remove.mockResolvedValue(savedForm);
 });
 function enablePilot() {
     vi.stubEnv('SAVED_SELLER_FORMS_ENABLED', 'true');
@@ -285,4 +300,110 @@ describe('creator scoped saved form APIs', () => {
         expect(res!.status).toBe(403); expect(await res!.json()).toMatchObject({ code: 'FORM_ALLOWANCE_REACHED', allowance: 10, usage: 10 });
     });
 
+});
+
+describe('shared forms and form delete APIs', () => {
+    const teammate = 'account-teammate';
+    const sharedForm = { ...savedForm, account_id: teammate, organization_id: 'org-A', is_default: false, shared_owner_account_id: teammate, owner_name: 'Jane Smith' };
+    const inTeams = (role: 'admin' | 'member') => {
+        m.role.mockResolvedValue(role);
+        m.activation.mockResolvedValue({
+            account: { id: savedForm.account_id, subscription_status: 'free' },
+            activeOrganization: { id: 'org-A', name: 'Workspace A', subscription_status: 'team' },
+        });
+    };
+
+    it('lists a teammate\'s shared form with its creator\'s link, read-only for a member, and leaves it out of the personal count', async () => {
+        inTeams('member');
+        m.list.mockResolvedValue([{ ...savedForm, organization_id: 'org-A' }, sharedForm]);
+        m.sharedUsage.mockResolvedValue({ usage: 1, allowance: 20 });
+        m.links.mockImplementation(async (account: string) => account === teammate
+            ? { ...linkScope(), baseSlug: 'jane-smith', defaultFormId: 'other', suffixes: { [savedForm.id]: 'closing' } }
+            : { ...linkScope(), baseSlug: 'my-base' });
+        const body = await (await GET())!.json();
+        expect(m.links).toHaveBeenCalledWith(teammate, 'org-A');
+        expect(body.forms[0]).toMatchObject({ isMine: true, canEdit: true, shared: false, canShare: true });
+        expect(body.forms[1]).toMatchObject({ isMine: false, canEdit: false, canDelete: false, canShare: false, shared: true, ownerName: 'Jane Smith' });
+        expect(body.forms[1].url).toMatch(/\/form\/jane-smith\/closing$/);
+        expect(body.defaultId).toBe(savedForm.id);
+        expect(body.capabilities).toMatchObject({ usage: 1, sharing: { available: true, canShare: true, usage: 1, allowance: 20 } });
+    });
+
+    it('lets a member read but not change a teammate\'s shared form', async () => {
+        inTeams('member');
+        m.get.mockResolvedValue(sharedForm);
+        expect((await PATCH(request({ revision: 2, name: 'Mine now' }), params))!.status).toBe(404);
+        expect((await DELETE(request({ revision: 2 }), params))!.status).toBe(404);
+        expect(m.save).not.toHaveBeenCalled();
+        expect(m.remove).not.toHaveBeenCalled();
+    });
+
+    it('lets an admin change a shared form as themselves but never its link name', async () => {
+        inTeams('admin');
+        m.get.mockResolvedValue(sharedForm);
+        m.save.mockResolvedValue(sharedForm);
+        expect((await PATCH(request({ revision: 2, name: 'Team closing' }), params))!.status).toBe(200);
+        expect(m.save).toHaveBeenCalledExactlyOnceWith(savedForm.account_id, 'org-A', savedForm.id, 2, { name: 'Team closing' });
+        m.save.mockClear();
+        const renamed = await PATCH(request({ revision: 2, slug: 'admin-took-it' }), params);
+        expect(renamed!.status).toBe(403);
+        expect((await renamed!.json()).code).toBe('FORM_NOT_ALLOWED');
+        expect(m.save).not.toHaveBeenCalled();
+    });
+
+    it('does not treat an admin as able to change a personal form', async () => {
+        inTeams('admin');
+        m.get.mockResolvedValue({ ...sharedForm, shared_owner_account_id: null });
+        expect((await PATCH(request({ revision: 2, name: 'Not mine' }), params))!.status).toBe(404);
+        expect(m.save).not.toHaveBeenCalled();
+    });
+
+    it('shares and stops sharing through the atomic writer with session identity only', async () => {
+        inTeams('member');
+        m.get.mockResolvedValue({ ...savedForm, organization_id: 'org-A' });
+        m.share.mockResolvedValue({ ...savedForm, organization_id: 'org-A', shared_owner_account_id: savedForm.account_id });
+        const res = await setShared(request({ shared: true, revision: 2 }), params);
+        expect(res!.status).toBe(200);
+        expect((await res!.json()).form).toMatchObject({ shared: true, isMine: true });
+        expect(m.share).toHaveBeenCalledExactlyOnceWith(savedForm.account_id, 'org-A', savedForm.id, 2, true);
+        for (const body of [{ shared: true }, { shared: 'yes', revision: 2 }, { shared: true, revision: 2, ownerAccountId: 'forged' }]) {
+            expect((await setShared(request(body), params))!.status).toBe(400);
+        }
+        expect(m.share).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+        ['SF411', 403, 'FORM_NOT_ALLOWED'],
+        ['SF412', 403, 'FORM_SHARING_NEEDS_TEAMS'],
+        ['SF413', 403, 'FORM_SHARED_ALLOWANCE_REACHED'],
+        ['SF414', 409, 'FORM_CREATOR_LEFT'],
+        ['SF415', 409, 'FORM_CREATOR_ALLOWANCE_REACHED'],
+    ])('explains a refused share or unshare (%s)', async (sqlCode, status, code) => {
+        inTeams('member');
+        m.share.mockRejectedValue({ code: sqlCode });
+        const res = await setShared(request({ shared: true, revision: 2 }), params);
+        expect(res!.status).toBe(status);
+        expect((await res!.json()).code).toBe(code);
+    });
+
+    it('cannot share outside a workspace', async () => {
+        m.activation.mockResolvedValue({ account: { id: savedForm.account_id, subscription_status: 'pro' }, activeOrganization: null });
+        expect((await setShared(request({ shared: true, revision: 2 }), params))!.status).toBe(404);
+        expect(m.share).not.toHaveBeenCalled();
+    });
+
+    it('deletes a form on any plan with its revision and explains the default', async () => {
+        m.activation.mockResolvedValue({ account: { id: savedForm.account_id, subscription_status: 'free' }, activeOrganization: null });
+        expect((await DELETE(request({}), params))!.status).toBe(400);
+        const res = await DELETE(request({ revision: 2 }), params);
+        expect(res!.status).toBe(200);
+        expect(await res!.json()).toEqual({ deleted: true, id: savedForm.id });
+        expect(m.remove).toHaveBeenCalledExactlyOnceWith(savedForm.account_id, undefined, savedForm.id, 2);
+        m.remove.mockRejectedValueOnce({ code: 'SF416' });
+        const refused = await DELETE(request({ revision: 2 }), params);
+        expect(refused!.status).toBe(409);
+        expect((await refused!.json()).code).toBe('FORM_IS_DEFAULT');
+        m.remove.mockResolvedValueOnce(null);
+        expect((await DELETE(request({ revision: 2 }), params))!.status).toBe(404);
+    });
 });

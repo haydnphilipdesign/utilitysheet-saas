@@ -123,6 +123,11 @@ export {
 // Intake link queries
 export {
     listSellerForms,
+    listWorkspaceSellerForms,
+    getSharedSellerFormUsage,
+    getUsableSellerForm,
+    setSellerFormShared,
+    deleteSellerForm,
     getSellerFormCount,
     getSellerForm,
     saveSellerForm,

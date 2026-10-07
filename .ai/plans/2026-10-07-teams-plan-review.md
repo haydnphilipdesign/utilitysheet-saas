@@ -90,7 +90,7 @@ Counts and dates only; no addresses, names or identifiers were read out.
 | 8 | Payment failure and plan end messages [B] [S] | Done 2026-10-07; migration applied to the live database, then committed and pushed; deployment not verified |
 | 9 | Request owners and "Mine" filter | Done 2026-10-07; committed and pushed; deployment not verified |
 | 10 | Leave a workspace [R] | Done 2026-10-07; committed and pushed; deployment not verified |
-| 11 | Shared seller forms [S] [R] | Not started. Product rules decided: `.ai/decisions/2026-10-07-shared-seller-forms.md`. Needs its own implementation plan before any code |
+| 11 | Shared seller forms [S] [R] | Not started. Product rules decided: `.ai/decisions/2026-10-07-shared-seller-forms.md`. Done 2026-10-07 together with form delete (owner's added scope); migration applied to the live database, then committed and pushed; deployment not verified. Plan with per-step outcomes: `.ai/plans/2026-10-07-shared-seller-forms.md` |
 
 ## Slice 1: invitation acceptance that cannot dead-end
 

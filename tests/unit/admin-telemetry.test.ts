@@ -13,7 +13,9 @@ beforeAll(async () => {
     db = new PGlite();
     await db.exec(`
         CREATE TABLE accounts (id text PRIMARY KEY, role text);
-        CREATE TABLE intake_links (id text, account_id text, organization_id text, is_active boolean);
+        CREATE TABLE intake_links (id text, account_id text, organization_id text, is_active boolean, deleted_at timestamptz);
+        -- A deleted form is not counted as a form.
+        INSERT INTO intake_links VALUES ('f-deleted','multi',NULL,false,NOW());
         CREATE TABLE requests (id text, account_id text, organization_id text, source_form_id text,
             packet_mode text DEFAULT 'simple', advanced_modules text[] DEFAULT '{}',
             is_demo boolean DEFAULT false, deleted_at timestamptz, metered_at timestamptz, created_at timestamptz DEFAULT NOW());

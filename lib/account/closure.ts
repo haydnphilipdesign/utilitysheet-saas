@@ -57,6 +57,7 @@ export type AccountClosureReview = {
         name: string;
         ownedRequestCount: number;
         ownedProfileCount: number;
+        ownedSharedFormCount: number;
         needsTransfer: boolean;
         adminOptions: Array<{ accountId: string; name: string }>;
         defaultTransferAccountId: string | null;
@@ -172,7 +173,8 @@ export async function buildAccountClosureReview(input: {
         const adminOptions = Array.isArray(workspace.other_admins) ? workspace.other_admins : [];
         const ownedRequestCount = Number(workspace.owned_request_count) || 0;
         const ownedProfileCount = Number(workspace.owned_profile_count) || 0;
-        const needsTransfer = ownedRequestCount > 0 || ownedProfileCount > 0;
+        const ownedSharedFormCount = Number(workspace.owned_shared_form_count) || 0;
+        const needsTransfer = ownedRequestCount > 0 || ownedProfileCount > 0 || ownedSharedFormCount > 0;
 
         if (workspace.role === 'admin' && adminOptions.length === 0) {
             blockers.push({
@@ -183,7 +185,7 @@ export async function buildAccountClosureReview(input: {
         } else if (needsTransfer && adminOptions.length === 0) {
             blockers.push({
                 code: 'no_transfer_admin',
-                message: `${name} has no admin who can take over your requests and Branding Profiles. Ask a member to become an admin, or email support.`,
+                message: `${name} has no admin who can take over your requests, Branding Profiles and shared seller forms. Ask a member to become an admin, or email support.`,
                 action: supportAction,
             });
         }
@@ -193,6 +195,7 @@ export async function buildAccountClosureReview(input: {
             name,
             ownedRequestCount,
             ownedProfileCount,
+            ownedSharedFormCount,
             needsTransfer,
             adminOptions,
             defaultTransferAccountId: adminOptions[0]?.accountId ?? null,

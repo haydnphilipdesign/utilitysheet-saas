@@ -36,6 +36,7 @@ export type AccountClosureReview = {
         name: string;
         ownedRequestCount: number;
         ownedProfileCount: number;
+        ownedSharedFormCount?: number;
         needsTransfer: boolean;
         adminOptions: Array<{ accountId: string; name: string }>;
         defaultTransferAccountId: string | null;
@@ -95,11 +96,11 @@ function consequenceList(review: AccountClosureReview) {
         items.push(`${plural(review.personal.profileCount, 'personal Branding Profile')} ${review.personal.profileCount === 1 ? 'is' : 'are'} deleted.`);
     }
     if (review.personal.hasSellerForm) {
-        items.push('Your reusable seller link stops working.');
+        items.push('Your own seller forms are deleted and their links stop working.');
     }
     for (const workspace of review.sharedWorkspaces) {
         items.push(workspace.needsTransfer
-            ? `You leave ${workspace.name}. Your ${plural(workspace.ownedRequestCount, 'request')} and ${plural(workspace.ownedProfileCount, 'Branding Profile')} there move to the admin you choose below, and their links keep working.`
+            ? `You leave ${workspace.name}. Your ${plural(workspace.ownedRequestCount, 'request')} and ${plural(workspace.ownedProfileCount, 'Branding Profile')} there move to the admin you choose below, and their links keep working.${workspace.ownedSharedFormCount ? ` So ${workspace.ownedSharedFormCount === 1 ? 'does' : 'do'} the ${plural(workspace.ownedSharedFormCount, 'seller form')} you shared with it.` : ''}`
             : `You leave ${workspace.name}. Its requests and settings aren’t affected.`);
     }
     if (review.forfeitedReferralCredits > 0) {

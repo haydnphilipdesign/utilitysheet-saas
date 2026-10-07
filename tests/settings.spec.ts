@@ -173,12 +173,12 @@ async function mocks(page: Page, scenario: Scenario) {
         }
         if (path === '/api/seller-forms') {
             return json({
-                forms: [form],
+                forms: [{ ...form, shared: false, isMine: true, canEdit: true, canShare: true, canDelete: false, ownerName: null }],
                 linkBase: { slug: 'jordan-rivera', url: 'https://example.com/form/jordan-rivera', revision: 1, formId: form.id, formName: form.name, isActive: true, reservedSuffixes: [{ suffix: 'form-1', formId: form.id }] },
                 defaultId: form.id,
                 isPaid: state.plan !== 'free',
                 workspaceName: 'Riverbend Transaction Services',
-                capabilities: { canCreate: state.plan !== 'free', reason: null, usage: 1, allowance: state.plan === 'free' ? 1 : 10, totalUsage: 1, upgradeRequired: state.plan === 'free', pilotAvailable: false, message: '' },
+                capabilities: { canCreate: state.plan !== 'free', reason: null, usage: 1, allowance: state.plan === 'free' ? 1 : 10, totalUsage: 1, upgradeRequired: state.plan === 'free', pilotAvailable: false, message: '', sharing: { available: state.plan === 'team', canShare: state.plan === 'team', usage: 0, allowance: state.plan === 'team' ? 30 : 0, message: '' } },
                 brandProfiles: [],
             });
         }
@@ -347,7 +347,7 @@ test('an admin removing a member is told where that person’s work goes', async
     await expect(page.getByRole('button', { name: 'Leave workspace', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Remove sam.okafor-williams@riverbendtitle.example', exact: true }).click();
     const dialog = page.getByRole('dialog');
-    await expect(dialog.getByText('The requests and Branding Profiles they created stay here and become yours.', { exact: false })).toBeVisible();
+    await expect(dialog.getByText('The requests and Branding Profiles they created stay here and become yours, and so do the seller forms they shared with the workspace', { exact: false })).toBeVisible();
     await healthy(page, testInfo, 'team-admin-remove-confirm');
     await dialog.getByRole('button', { name: 'Remove member', exact: true }).click();
 

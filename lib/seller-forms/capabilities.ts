@@ -6,6 +6,8 @@ export function sellerFormCapabilities(
     isPaid: boolean,
     usage: number,
     totalUsage: number,
+    /** Shared forms in the active workspace; absent outside a workspace. */
+    shared?: { isTeams: boolean; usage: number; allowance: number },
 ) {
     const operational = sellerFormCreationCapability(accountId);
     const allowance = isPaid ? 10 : 1;
@@ -37,6 +39,17 @@ export function sellerFormCapabilities(
         totalUsage,
         upgradeRequired,
         pilotAvailable: operational.canCreate,
+        sharing: {
+            available: Boolean(shared?.isTeams),
+            canShare: Boolean(shared?.isTeams) && shared!.usage < shared!.allowance,
+            usage: shared?.usage ?? 0,
+            allowance: shared?.allowance ?? 0,
+            message: !shared?.isTeams
+                ? 'Sharing a form with your team is part of the Teams plan.'
+                : shared.usage >= shared.allowance
+                  ? 'This workspace has shared as many forms as its plan allows. Stop sharing one first.'
+                  : '',
+        },
     };
 }
 export type SellerFormCapabilities = ReturnType<typeof sellerFormCapabilities>;

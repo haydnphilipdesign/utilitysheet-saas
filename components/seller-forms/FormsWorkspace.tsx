@@ -13,6 +13,7 @@ import type { SavedSellerForm, SellerFormsResponse } from './types';
 import { BaseLinkEditor } from './BaseLinkEditor';
 import { FormCard } from './FormCard';
 import { PauseFormDialog, resumeForm } from './FormAvailability';
+import { DeleteFormDialog, ShareFormDialog } from './FormSharing';
 
 const intro = 'Each form is a set of questions with its own link. Send the link to a seller and their answers come back to you.';
 
@@ -26,6 +27,8 @@ export function FormsWorkspace({ embedded = false }: {
     const [busy, setBusy] = useState<string | null>(null);
     const [defaultTarget, setDefaultTarget] = useState<SavedSellerForm | null>(null);
     const [pauseTarget, setPauseTarget] = useState<SavedSellerForm | null>(null);
+    const [shareTarget, setShareTarget] = useState<{ form: SavedSellerForm; shared: boolean } | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<SavedSellerForm | null>(null);
     const [limitOpen, setLimitOpen] = useState(false);
     async function load() {
         try {
@@ -68,7 +71,33 @@ export function FormsWorkspace({ embedded = false }: {
     }
     const actions = data && <FormCreationAction capabilities={data.capabilities} />;
     // With a single form its link is the main link; the main/own link distinction only matters from two forms on.
-    const onlyForm = data?.forms.length === 1 && data.forms[0].isDefault;
+    const mine = data?.forms.filter((form) => form.isMine) ?? [];
+    // Forms teammates shared with this workspace.
+    const fromTeam = data?.forms.filter((form) => !form.isMine) ?? [];
+    const onlyForm = mine.length === 1 && mine[0].isDefault;
+    const card = (form: SavedSellerForm) => data && (
+        <FormCard
+            key={`${form.id}:${form.revision}`}
+            form={form}
+            data={data}
+            onlyForm={form.isMine && onlyForm}
+            busy={busy !== null}
+            onChanged={load}
+            onDuplicate={(source) =>
+                data.capabilities.canCreate
+                    ? router.push(newFormHref(source.id))
+                    : setLimitOpen(true)
+            }
+            onMakeDefault={(target) =>
+                // The main link follows the default, so this changes links already shared.
+                data.linkBase ? setDefaultTarget(target) : void makeDefault(target)
+            }
+            onPause={setPauseTarget}
+            onResume={resume}
+            onShare={(target, shared) => setShareTarget({ form: target, shared })}
+            onDelete={setDeleteTarget}
+        />
+    );
     return (
         <div className="space-y-6">
             {embedded ? (
@@ -97,7 +126,7 @@ export function FormsWorkspace({ embedded = false }: {
                     <Skeleton className="hidden h-44 md:block" />
                 </div>
             )}
-            {data?.linkBase && !onlyForm && data.forms.length > 0 && <BaseLinkEditor
+            {data?.linkBase && !onlyForm && mine.length > 0 && <BaseLinkEditor
                 key={`${data.linkBase.slug}:${data.linkBase.revision}`}
                 base={data.linkBase} isPaid={data.isPaid} onSaved={load}
             />}
@@ -109,40 +138,47 @@ export function FormsWorkspace({ embedded = false }: {
                     action={actions}
                 />
             )}
-            {data && data.forms.length > 0 && (
+            {mine.length > 0 && (
                 <div className="grid gap-4 md:grid-cols-2">
-                    {data.forms.map((form) => (
-                        <FormCard
-                            key={`${form.id}:${form.revision}`}
-                            form={form}
-                            data={data}
-                            onlyForm={onlyForm === true}
-                            busy={busy !== null}
-                            onChanged={load}
-                            onDuplicate={(source) =>
-                                data.capabilities.canCreate
-                                    ? router.push(newFormHref(source.id))
-                                    : setLimitOpen(true)
-                            }
-                            onMakeDefault={(target) =>
-                                // The main link follows the default, so this changes links already shared.
-                                data.linkBase ? setDefaultTarget(target) : void makeDefault(target)
-                            }
-                            onPause={setPauseTarget}
-                            onResume={resume}
-                        />
-                    ))}
+                    {mine.map(card)}
                 </div>
+            )}
+            {fromTeam.length > 0 && (
+                <section aria-labelledby="teamFormsHeading" className="space-y-3">
+                    <div>
+                        <h2 id="teamFormsHeading" className="text-lg font-semibold text-foreground">Shared by your team</h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Forms your teammates shared with {data?.workspaceName}. Copy a link or create a request from one.
+                            Answers from a shared link go to the person the form belongs to.
+                        </p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {fromTeam.map(card)}
+                    </div>
+                </section>
             )}
             {data && <div className="space-y-1 text-sm text-muted-foreground">
                 <p>
                     Using {data.capabilities.usage} of {data.capabilities.allowance}{' '}
                     {data.capabilities.allowance === 1 ? 'form' : 'forms'} in {data.workspaceName}. Paused forms count.
+                    {data.capabilities.sharing.available ? ' Shared forms do not.' : ''}
                 </p>
+                {data.capabilities.sharing.available && (
+                    <p>
+                        {data.workspaceName} is sharing {data.capabilities.sharing.usage} of {data.capabilities.sharing.allowance} forms.
+                    </p>
+                )}
                 {data.capabilities.usage > data.capabilities.allowance && <p>Your existing forms, links and configurations are kept. You can edit or reactivate them; incoming submissions use your current plan. Upgrade to restore paid features and create up to ten forms.</p>}
             </div>}
             {data && <FormLimitDialog capabilities={data.capabilities} open={limitOpen} onOpenChange={setLimitOpen} />}
             <PauseFormDialog form={pauseTarget} onClose={() => setPauseTarget(null)} onPaused={load} />
+            <ShareFormDialog
+                target={shareTarget}
+                workspaceName={data?.workspaceName || 'your workspace'}
+                onClose={() => setShareTarget(null)}
+                onSaved={load}
+            />
+            <DeleteFormDialog form={deleteTarget} onClose={() => setDeleteTarget(null)} onDeleted={load} />
             <ConfirmDialog
                 open={defaultTarget !== null}
                 onOpenChange={(open) => { if (!open) setDefaultTarget(null); }}

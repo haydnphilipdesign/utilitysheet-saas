@@ -147,7 +147,7 @@ export async function getBrandProfileFormCounts(profileIds: string[]): Promise<R
     const rows = await sql`SELECT il.default_brand_profile_id AS id, COUNT(*)::int AS count
         FROM intake_links il JOIN brand_profiles bp ON bp.id = il.default_brand_profile_id
         WHERE bp.id = ANY(${profileIds}::uuid[])
-          AND il.organization_id IS NOT DISTINCT FROM bp.organization_id
+          AND il.organization_id IS NOT DISTINCT FROM bp.organization_id AND il.deleted_at IS NULL
           AND (bp.organization_id IS NOT NULL OR il.account_id = bp.account_id)
         GROUP BY il.default_brand_profile_id`;
     return Object.fromEntries(rows.map(row => [row.id as string, Number(row.count)]));

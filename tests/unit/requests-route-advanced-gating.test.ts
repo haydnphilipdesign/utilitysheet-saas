@@ -45,7 +45,7 @@ vi.mock('@/lib/email/email-service', () => ({
 }));
 
 vi.mock('@/lib/neon/queries', () => ({
-    getSellerForm: mocks.getSellerFormMock,
+    getUsableSellerForm: mocks.getSellerFormMock,
     getIntakeBrandProfile: mocks.getIntakeBrandProfileMock,
     getRequests: vi.fn(),
     workspaceHasOtherRequestOwners: vi.fn(),

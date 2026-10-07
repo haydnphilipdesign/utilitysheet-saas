@@ -35,6 +35,7 @@ const SellerWizard = dynamic(
 );
 import { QuestionCollectionSwitches } from './QuestionCollectionSwitches';
 import { PauseFormDialog, resumeForm } from './FormAvailability';
+import { DeleteFormDialog, ShareFormDialog, formLinkPrefix } from './FormSharing';
 import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import {
     getAdvancedModuleIncludedFieldCount,
@@ -143,6 +144,8 @@ export function FormEditor({ id }: { id: string }) {
     const [confirming, setConfirming] = useState<'leave' | 'reload' | null>(null);
     const [pausing, setPausing] = useState(false);
     const [resuming, setResuming] = useState(false);
+    const [shareTarget, setShareTarget] = useState<{ form: SavedSellerForm; shared: boolean } | null>(null);
+    const [deleting, setDeleting] = useState(false);
     const [justSaved, setJustSaved] = useState(false);
     const leaving = useRef(false);
     const dirty = baseline !== '' && JSON.stringify(draft) !== baseline;
@@ -269,7 +272,10 @@ export function FormEditor({ id }: { id: string }) {
             ));
     const noUtilities = !draft.defaultUtilityCategories.length;
     // Why Save is unavailable, in the order the form presents the fields.
-    const blocker = !draft.name.trim()
+    const readOnly = form !== null && !form.canEdit;
+    const blocker = readOnly
+        ? 'Only the person this form belongs to and workspace admins can change it.'
+        : !draft.name.trim()
         ? 'Add a form name to save.'
         : noUtilities
           ? 'Choose at least one utility to save.'
@@ -332,6 +338,13 @@ export function FormEditor({ id }: { id: string }) {
                 )
             ) : (
                 <>
+                    {readOnly && (
+                        <p role="note" className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+                            {form?.ownerName || 'A teammate'} shared this form with {data.workspaceName}. You can preview it,
+                            copy its link and create requests from it. Only {form?.ownerName || 'its creator'} and
+                            workspace admins can change it.
+                        </p>
+                    )}
                     <Section title="Basics" description="What this form is called and how it greets sellers.">
                         <div className="space-y-2">
                             <Label htmlFor="formName">Form name</Label>
@@ -646,12 +659,12 @@ export function FormEditor({ id }: { id: string }) {
                                 <div className="space-y-2">
                                     <Label htmlFor="formSuffix">Link ending</Label>
                                     <div className="flex flex-wrap items-center gap-2">
-                                        <span className="break-all text-sm text-muted-foreground">{data.linkBase.url}/</span>
+                                        <span className="break-all text-sm text-muted-foreground">{form ? formLinkPrefix(form, data.linkBase.url) : data.linkBase.url}/</span>
                                         <Input
                                             id="formSuffix"
                                             className="min-w-32 flex-1"
                                             value={draft.suffix || ''}
-                                            disabled={!data.isPaid}
+                                            disabled={!data.isPaid || readOnly}
                                             maxLength={60}
                                             aria-describedby="formSuffixHelp"
                                             onChange={(e) => {
@@ -693,7 +706,7 @@ export function FormEditor({ id }: { id: string }) {
                                                 : `New sellers cannot start this form. Sellers who already started can still finish.${form.isDefault ? ' Your main link is unavailable to new sellers while this form is paused.' : ''}`}
                                         </p>
                                     </div>
-                                    {form.isActive ? (
+                                    {readOnly ? null : form.isActive ? (
                                         <Button variant="outline" onClick={() => setPausing(true)}>
                                             <Pause />
                                             Pause form
@@ -704,6 +717,59 @@ export function FormEditor({ id }: { id: string }) {
                                             {resuming ? 'Resuming…' : 'Resume form'}
                                         </Button>
                                     )}
+                                </div>
+                            )}
+                            {form && form.organizationId && (form.shared || form.canShare) && (
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+                                    <div className="min-w-0 space-y-1">
+                                        <p className="text-sm font-medium">
+                                            {form.shared ? `Shared with ${data.workspaceName}` : 'Only you can use this form'}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {form.shared
+                                                ? 'Everyone in the workspace can copy its link and create requests from it. Only the person it belongs to and workspace admins can change it.'
+                                                : data.capabilities.sharing.available
+                                                  ? 'Share it so everyone in the workspace can copy its link and create requests from it. Its link stays the same.'
+                                                  : 'Sharing a form with your team is part of the Teams plan.'}
+                                        </p>
+                                    </div>
+                                    {form.shared ? (
+                                        form.canEdit && (
+                                            <Button variant="outline" disabled={dirty} onClick={() => setShareTarget({ form, shared: false })}>
+                                                Stop sharing
+                                            </Button>
+                                        )
+                                    ) : data.capabilities.sharing.available ? (
+                                        <Button variant="outline" disabled={dirty} onClick={() => setShareTarget({ form, shared: true })}>
+                                            Share with workspace
+                                        </Button>
+                                    ) : (
+                                        <Link href="/dashboard/settings?tab=billing" className="text-sm text-primary underline">
+                                            See Teams
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
+                            {form && form.canEdit && (
+                                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+                                    <div className="min-w-0 space-y-1">
+                                        <p className="text-sm font-medium">Delete this form</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {form.canDelete
+                                                ? 'Its link stops working for new sellers and the form is removed. Requests already created from it are kept. This cannot be undone. Afterwards you can give its link ending to another form.'
+                                                : form.isMine
+                                                  ? 'This is your default form. Make another form the default first, then you can delete this one.'
+                                                  : 'This is its creator’s default form, so it cannot be deleted.'}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        className="text-destructive hover:text-destructive"
+                                        disabled={!form.canDelete}
+                                        onClick={() => setDeleting(true)}
+                                    >
+                                        Delete form
+                                    </Button>
                                 </div>
                             )}
                         </Section>
@@ -781,6 +847,21 @@ export function FormEditor({ id }: { id: string }) {
                             )}
                         </DialogContent>
                     </Dialog>
+                    <ShareFormDialog
+                        target={shareTarget}
+                        workspaceName={data.workspaceName}
+                        onClose={() => setShareTarget(null)}
+                        // Adopt the new revision so the open draft still saves cleanly.
+                        onSaved={setForm}
+                    />
+                    <DeleteFormDialog
+                        form={deleting ? form : null}
+                        onClose={() => setDeleting(false)}
+                        onDeleted={() => {
+                            leaving.current = true;
+                            router.push('/dashboard/forms');
+                        }}
+                    />
                     <PauseFormDialog
                         form={pausing ? form : null}
                         onClose={() => setPausing(false)}

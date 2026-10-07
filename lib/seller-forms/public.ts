@@ -1,8 +1,14 @@
 import { getAccountById, getAccountOrganizations } from '@/lib/neon/queries';
 import type { IntakeLink } from '@/lib/neon/queries/intake-links';
 
+/**
+ * Who a public link's requests go to and which plan applies. A shared form
+ * depends on its current owner, a personal form on its creator.
+ */
 export async function publicFormScope(form: IntakeLink) {
-    const account = await getAccountById(form.account_id);
+    const account = await getAccountById(
+        form.shared_owner_account_id || form.account_id,
+    );
     if (
         !account ||
         account.role === 'banned' ||

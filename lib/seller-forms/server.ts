@@ -4,8 +4,10 @@ import { ensureAccountActivation } from '@/lib/activation/ensure-account-activat
 import {
     getBrandProfiles,
     getOrCreateIntakeLink,
+    getOrganizationMemberRole,
     getSellerForm,
     getSellerFormLinkScope,
+    getUsableSellerForm,
     saveSellerForm,
 } from '@/lib/neon/queries';
 import type { IntakeLink } from '@/lib/neon/queries/intake-links';
@@ -46,14 +48,19 @@ export async function sellerFormContext() {
         };
     }
     const organizationId = state.activeOrganization?.id;
-    const brandProfiles = await getBrandProfiles(
-        state.account.id,
-        organizationId,
-    );
+    const [brandProfiles, role] = await Promise.all([
+        getBrandProfiles(state.account.id, organizationId),
+        organizationId
+            ? getOrganizationMemberRole(organizationId, state.account.id)
+            : null,
+    ]);
     return {
         state,
         organizationId,
         brandProfiles,
+        // Read from the membership row, never from the client.
+        isAdmin: role === 'admin',
+        isTeams: state.activeOrganization?.subscription_status === 'team',
         isPaid:
             state.account.subscription_status === 'pro' ||
             state.activeOrganization?.subscription_status === 'team',
@@ -69,6 +76,21 @@ export function sellerFormLinks(context: FormContext) {
     return getSellerFormLinkScope(
         context.state.account.id,
         context.organizationId,
+    );
+}
+
+/** Link identity of the form's creator, who owns its link names even when it is shared. */
+export function creatorFormLinks(form: IntakeLink) {
+    return getSellerFormLinkScope(form.account_id, form.organization_id);
+}
+
+/** The creator may always change their form; a shared form also by its owner and admins. */
+export function canChangeForm(context: FormContext, form: IntakeLink) {
+    const me = context.state.account.id;
+    return (
+        form.account_id === me ||
+        (Boolean(form.shared_owner_account_id) &&
+            (form.shared_owner_account_id === me || context.isAdmin))
     );
 }
 
@@ -95,8 +117,12 @@ export function serializeSellerForm(
     form: IntakeLink,
     links: SellerFormLinkScope | null,
     allowedBrandIds?: Set<string>,
+    /** Without a viewer the form is serialized for its creator. */
+    viewer?: FormContext,
 ) {
     const config = formConfiguration(form);
+    const isMine = viewer ? form.account_id === viewer.state.account.id : true;
+    const canEdit = viewer ? canChangeForm(viewer, form) : true;
     const endingPath = sellerFormEndingPath(form, links);
     if (
         config.defaultBrandProfileId &&
@@ -113,8 +139,16 @@ export function serializeSellerForm(
         linkSuffix: links?.suffixes[form.id] ?? null,
         revision: form.revision,
         organizationId: form.organization_id,
-        isDefault: form.is_default,
+        // "Default" means the viewer's own default; a teammate's is theirs.
+        isDefault: isMine && form.is_default,
         is_active: form.is_active,
+        shared: Boolean(form.shared_owner_account_id),
+        isMine,
+        canEdit,
+        // Only the creator shares; the default form cannot be deleted.
+        canShare: isMine && Boolean(form.organization_id),
+        canDelete: canEdit && !form.is_default,
+        ownerName: form.owner_name ?? null,
     };
 }
 
@@ -255,5 +289,22 @@ export async function ownedForm(context: FormContext, id: string) {
     )
         return null;
     return getSellerForm(id, context.state.account.id, context.organizationId);
+}
+const FORM_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The caller's own form, or one shared with the active workspace. */
+export async function usableForm(context: FormContext, id: string) {
+    if (!FORM_ID.test(id)) return null;
+    return getUsableSellerForm(
+        id,
+        context.state.account.id,
+        context.organizationId,
+    );
+}
+
+/** A usable form the caller may also change. Anything else reads as missing. */
+export async function editableForm(context: FormContext, id: string) {
+    const form = await usableForm(context, id);
+    return form && canChangeForm(context, form) ? form : null;
 }
 export { formErrorResponse } from './errors';

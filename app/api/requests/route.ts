@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getIntakeBrandProfile, getSellerForm, getRequests, workspaceHasOtherRequestOwners, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
+import { getIntakeBrandProfile, getUsableSellerForm, getRequests, workspaceHasOtherRequestOwners, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
         const organization = activeOrganization;
         const isPaid = account.subscription_status === 'pro' || organization?.subscription_status === 'team';
 
-        const form = parsedBody.data.formId ? await getSellerForm(parsedBody.data.formId, accountId, organizationId) : null;
+        const form = parsedBody.data.formId ? await getUsableSellerForm(parsedBody.data.formId, accountId, organizationId) : null;
         if (parsedBody.data.formId && (!form || !form.is_active)) return NextResponse.json({ error: 'Seller form unavailable' }, { status: 404 });
         if (form && parsedBody.data.formRevision !== form.revision) return NextResponse.json({ error: 'Form changed. Reload before creating the request.', code: 'FORM_REVISION_CONFLICT' }, { status: 409 });
         const fields = form ? formRequestFields(form, isPaid) : null;

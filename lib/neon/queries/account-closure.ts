@@ -29,6 +29,8 @@ export type ClosureWorkspaceSnapshot = {
     is_sole_member: boolean;
     owned_request_count: number;
     owned_profile_count: number;
+    /** Seller forms shared with the workspace that this person currently owns. */
+    owned_shared_form_count: number;
     workspace_request_count: number;
     workspace_open_request_count: number;
     other_admins: Array<{ accountId: string; name: string }>;
@@ -120,6 +122,7 @@ export async function getAccountClosureSnapshot(accountId: string, email: string
                 ) AS is_sole_member,
                 (SELECT COUNT(*)::int FROM requests r WHERE r.organization_id = o.id AND r.account_id = ${accountId}) AS owned_request_count,
                 (SELECT COUNT(*)::int FROM brand_profiles b WHERE b.organization_id = o.id AND b.account_id = ${accountId}) AS owned_profile_count,
+                (SELECT COUNT(*)::int FROM intake_links f WHERE f.organization_id = o.id AND f.shared_owner_account_id = ${accountId}) AS owned_shared_form_count,
                 (SELECT COUNT(*)::int FROM requests r
                     WHERE r.organization_id = o.id AND r.deleted_at IS NULL) AS workspace_request_count,
                 (SELECT COUNT(*)::int FROM requests r
@@ -161,7 +164,7 @@ export async function getAccountClosureSnapshot(accountId: string, email: string
                         AND status IN ('sent', 'in_progress')) AS open_request_count,
                 (SELECT COUNT(*)::int FROM brand_profiles
                     WHERE account_id = ${accountId} AND organization_id IS NULL) AS profile_count,
-                EXISTS (SELECT 1 FROM intake_links WHERE account_id = ${accountId}) AS has_seller_form,
+                EXISTS (SELECT 1 FROM intake_links WHERE account_id = ${accountId} AND deleted_at IS NULL) AS has_seller_form,
                 (SELECT COUNT(*)::int FROM referral_credits
                     WHERE referrer_account_id = ${accountId} AND status = 'earned') AS unapplied_referral_credits,
                 (SELECT COUNT(*)::int FROM organization_invitations
@@ -362,6 +365,10 @@ export async function removeAccountClosureData(data: {
                             SELECT b.organization_id
                             FROM brand_profiles b
                             WHERE b.account_id = a.id AND b.organization_id IS NOT NULL
+                            UNION
+                            SELECT f.organization_id
+                            FROM intake_links f
+                            WHERE f.shared_owner_account_id = a.id
                         ) owned
                         WHERE (${transfers}::jsonb ->> owned.organization_id::text) IS NULL
                             OR NOT EXISTS (
@@ -388,6 +395,7 @@ export async function removeAccountClosureData(data: {
                                     AND (
                                         EXISTS (SELECT 1 FROM requests r WHERE r.account_id = a.id AND r.organization_id = me.organization_id)
                                         OR EXISTS (SELECT 1 FROM brand_profiles b WHERE b.account_id = a.id AND b.organization_id = me.organization_id)
+                                        OR EXISTS (SELECT 1 FROM intake_links f WHERE f.shared_owner_account_id = a.id AND f.organization_id = me.organization_id)
                                     )
                                 )
                             )
@@ -423,14 +431,57 @@ export async function removeAccountClosureData(data: {
                 FROM jsonb_each_text(${transfers}::jsonb) t
                 WHERE b.account_id = ${id} AND b.organization_id = t.key::uuid
             `,
+            // A shared form keeps its creator and its link; only its owner moves.
+            sql`
+                UPDATE intake_links f
+                SET shared_owner_account_id = t.value::uuid
+                FROM jsonb_each_text(${transfers}::jsonb) t
+                WHERE f.shared_owner_account_id = ${id} AND f.organization_id = t.key::uuid
+            `,
             sql`DELETE FROM requests WHERE organization_id = ANY(${sole}::uuid[])`,
             sql`DELETE FROM brand_profiles WHERE organization_id = ANY(${sole}::uuid[])`,
-            sql`DELETE FROM intake_links WHERE organization_id = ANY(${sole}::uuid[]) OR account_id = ${id}`,
+            // The person's forms go, except forms shared with a workspace that
+            // survives and the form that owns the link name they hang under:
+            // deleting that one would delete the name and every link beneath it.
+            sql`
+                DELETE FROM intake_links il
+                WHERE il.organization_id = ANY(${sole}::uuid[])
+                    OR (il.account_id = ${id} AND NOT (
+                    il.organization_id IS NOT NULL
+                    AND NOT (il.organization_id = ANY(${sole}::uuid[]))
+                    AND (
+                        (il.shared_owner_account_id IS NOT NULL AND il.shared_owner_account_id <> ${id})
+                        OR EXISTS (
+                            SELECT 1
+                            FROM seller_form_link_namespaces n
+                            JOIN intake_links kept
+                                ON kept.account_id = n.account_id
+                                AND kept.organization_id = n.organization_id
+                            WHERE n.root_form_id = il.id
+                                AND kept.shared_owner_account_id IS NOT NULL
+                                AND kept.shared_owner_account_id <> ${id}
+                        )
+                    )
+                ))
+            `,
+            // What is left unshared is such a link-name form: keep it as an
+            // empty, deleted placeholder with none of the person's text.
+            sql`
+                UPDATE intake_links
+                SET deleted_at = COALESCE(deleted_at, NOW()),
+                    is_active = FALSE,
+                    is_default = FALSE,
+                    name = 'My seller form',
+                    seller_heading = NULL,
+                    seller_intro = NULL,
+                    default_brand_profile_id = NULL,
+                    updated_at = NOW()
+                WHERE account_id = ${id} AND shared_owner_account_id IS NULL
+            `,
             sql`DELETE FROM organizations WHERE id = ANY(${sole}::uuid[])`,
             sql`DELETE FROM organization_members WHERE account_id = ${id}`,
             sql`DELETE FROM requests WHERE account_id = ${id} AND organization_id IS NULL`,
             sql`DELETE FROM brand_profiles WHERE account_id = ${id} AND organization_id IS NULL`,
-            sql`DELETE FROM intake_links WHERE account_id = ${id}`,
             sql`DELETE FROM question_requests WHERE account_id = ${id}`,
             sql`DELETE FROM feedback_submissions WHERE account_id = ${id}`,
             sql`DELETE FROM growth_attributions WHERE account_id = ${id}`,

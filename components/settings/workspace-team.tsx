@@ -62,14 +62,17 @@ function formatDate(value: string) {
     return new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-/** "3 requests and 1 Branding Profile", or an empty string when nothing moved. */
-function handedOver(data: { requestsMoved?: unknown; profilesMoved?: unknown }) {
+/** "3 requests, 1 Branding Profile and 2 shared seller forms", or an empty string when nothing moved. */
+function handedOver(data: { requestsMoved?: unknown; profilesMoved?: unknown; formsMoved?: unknown }) {
     const requests = Number(data.requestsMoved) || 0;
     const profiles = Number(data.profilesMoved) || 0;
-    return [
+    const forms = Number(data.formsMoved) || 0;
+    const parts = [
         requests > 0 ? plural(requests, 'request') : '',
         profiles > 0 ? plural(profiles, 'Branding Profile') : '',
-    ].filter(Boolean).join(' and ');
+        forms > 0 ? plural(forms, 'shared seller form') : '',
+    ].filter(Boolean);
+    return parts.length > 2 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts.join(' and ');
 }
 
 function NoticeLine({ notice }: { notice: Notice }) {
@@ -707,7 +710,7 @@ export function WorkspaceTeam({
                                                 aria-label={`Remove ${name}`}
                                                 onClick={() => setConfirmation({
                                                     title: `Remove ${name}?`,
-                                                    description: 'They lose access to this workspace right away. The requests and Branding Profiles they created stay here and become yours. Their seller form links for this workspace stop working.',
+                                                    description: 'They lose access to this workspace right away. The requests and Branding Profiles they created stay here and become yours, and so do the seller forms they shared with the workspace, whose links keep working. The links of their own seller forms for this workspace stop working.',
                                                     confirmLabel: 'Remove member',
                                                     destructive: true,
                                                     run: () => removeMember(member),
@@ -741,15 +744,16 @@ export function WorkspaceTeam({
                         <>
                             <p className="text-sm text-muted-foreground">
                                 The requests and Branding Profiles you created here stay with the workspace and are handed
-                                to an admin. Your seller form links for this workspace stop working. To come back, an admin
-                                has to invite you again.
+                                to an admin, and so are the seller forms you shared with it, whose links keep working. The
+                                links of your own seller forms for this workspace stop working. To come back, an admin has
+                                to invite you again.
                             </p>
                             <Button
                                 variant="outline"
                                 className="text-destructive hover:text-destructive"
                                 onClick={() => setConfirmation({
                                     title: `Leave ${organization.name || 'this workspace'}?`,
-                                    description: 'You lose access right away. The requests and Branding Profiles you created here are handed to an admin, and your seller form links for this workspace stop working. An admin has to invite you again if you want to come back.',
+                                    description: 'You lose access right away. The requests and Branding Profiles you created here, and the seller forms you shared with the workspace, are handed to an admin. The links of your own seller forms for this workspace stop working. An admin has to invite you again if you want to come back.',
                                     confirmLabel: 'Leave workspace',
                                     destructive: true,
                                     run: leaveWorkspace,

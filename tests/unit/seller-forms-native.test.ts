@@ -207,6 +207,7 @@ describe
                 await a.query(readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-readable-endings.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-heading.sql', 'utf8'));
+                await a.query(readFileSync('migrations-seller-form-sharing-and-delete.sql', 'utf8'));
                 expect(
                     await a.query(
                         "SELECT COUNT(*) FROM pg_constraint WHERE conrelid='requests'::regclass AND contype='f' AND confrelid='accounts'::regclass;",
@@ -391,6 +392,7 @@ describe
                 await a.query(readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-readable-endings.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-heading.sql', 'utf8'));
+                await a.query(readFileSync('migrations-seller-form-sharing-and-delete.sql', 'utf8'));
                 await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,'${child}',1,'{"name":"Changed only"}','unused',50);`);
                 expect(await a.query(`SELECT root_form_id FROM seller_form_link_namespaces WHERE account_id='${owner}';`)).toBe(form);
                 // The base owner keeps one current ending and may rename it.
@@ -543,5 +545,45 @@ describe
                     if (pending) await pending;
                 }
             }, 15000);
+
+            it('serializes two creators sharing at the workspace limit: only the last place is taken', async () => {
+                const first = await seed();
+                const second = randomUUID();
+                await a.query(
+                    `INSERT INTO accounts(id,email) VALUES ('${second}','synthetic-second@example.test'); INSERT INTO organization_members(account_id,organization_id) VALUES ('${second}','${first.org}'); UPDATE organizations SET subscription_status='team' WHERE id='${first.org}';`,
+                );
+                const create = (account: string) =>
+                    a.query(`SELECT id FROM save_seller_form('${account}','${first.org}',NULL,NULL,'{}','${randomUUID()}',100,TRUE);`);
+                const share = (account: string, id: string) =>
+                    `SELECT id FROM set_seller_form_shared('${account}','${first.org}','${id}',1,TRUE);`;
+                // Two members allow twenty shared forms; nineteen are taken first.
+                for (let n = 0; n < 19; n++) {
+                    const account = n < 10 ? first.owner : second;
+                    await a.query(share(account, await create(account)));
+                }
+                const last = [await create(first.owner), await create(second)];
+                await a.query('BEGIN;');
+                let pending: Promise<unknown> | undefined;
+                try {
+                    await a.query(share(first.owner, last[0]));
+                    pending = b.query(share(second, last[1])).then(
+                        (value) => ({ value }),
+                        (error) => ({ error }),
+                    );
+                    await waitForBlock(a, b);
+                    await a.query('COMMIT;');
+                    expect(
+                        ((await pending) as { error?: Error }).error?.message,
+                    ).toContain('SF413');
+                    expect(
+                        await a.query(
+                            `SELECT COUNT(*) FROM intake_links WHERE organization_id='${first.org}' AND shared_owner_account_id IS NOT NULL;`,
+                        ),
+                    ).toBe('20');
+                } finally {
+                    await a.query('ROLLBACK;');
+                    if (pending) await pending;
+                }
+            }, 30000);
         },
     );

@@ -55,12 +55,13 @@ describe('leaving a workspace', () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ success: true, left: true, requestsMoved: 2, profilesMoved: 0 })));
         renderTeam({ role: 'member', members: [{ ...me }, pat, sam] });
 
-        expect(screen.getByText(/The requests and Branding Profiles you created here stay with the workspace and are handed\s+to an admin\./)).toBeInTheDocument();
+        expect(screen.getByText(/The requests and Branding Profiles you created here stay with the workspace and are handed\s+to an admin, and so are the seller forms you shared with it, whose links keep working\./)).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Leave workspace' }));
 
         const dialog = await screen.findByRole('dialog', { name: 'Leave Riverbend Transaction Services?' });
         expect(dialog).toHaveTextContent('You lose access right away.');
-        expect(dialog).toHaveTextContent('your seller form links for this workspace stop working');
+        expect(dialog).toHaveTextContent('the seller forms you shared with the workspace, are handed to an admin');
+        expect(dialog).toHaveTextContent('The links of your own seller forms for this workspace stop working');
         expect(fetch).not.toHaveBeenCalled();
 
         fireEvent.click(within(dialog).getByRole('button', { name: 'Leave workspace' }));
@@ -114,8 +115,8 @@ describe('removing a member', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Remove Sam Okafor' }));
         const dialog = await screen.findByRole('dialog', { name: 'Remove Sam Okafor?' });
-        expect(dialog).toHaveTextContent('The requests and Branding Profiles they created stay here and become yours.');
-        expect(dialog).toHaveTextContent('Their seller form links for this workspace stop working.');
+        expect(dialog).toHaveTextContent('The requests and Branding Profiles they created stay here and become yours, and so do the seller forms they shared with the workspace, whose links keep working.');
+        expect(dialog).toHaveTextContent('The links of their own seller forms for this workspace stop working.');
 
         fireEvent.click(within(dialog).getByRole('button', { name: 'Remove member' }));
 

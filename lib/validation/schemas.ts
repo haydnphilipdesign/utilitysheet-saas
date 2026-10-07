@@ -71,6 +71,15 @@ export const sellerFormUpdateBodySchema = sellerFormFieldsSchema.extend({
     revision: z.number().int().positive(),
 }).refine(value => Object.keys(value).some(key => key !== 'revision'), { message: 'At least one seller form setting is required' });
 
+export const sellerFormShareBodySchema = z.object({
+    shared: z.boolean(),
+    revision: z.number().int().positive(),
+}).strict();
+
+export const sellerFormDeleteBodySchema = z.object({
+    revision: z.number().int().positive(),
+}).strict();
+
 export const sellerFormLinkBaseBodySchema = z.object({
     base: z.string().trim().min(1).max(60),
     revision: z.number().int().positive(),

@@ -1098,18 +1098,20 @@ export async function addOrganizationMember(data: {
 }
 
 export type MemberRemovalResult =
-    | { removed: true; requestsMoved: number; profilesMoved: number; recipientAccountId: string | null }
+    | { removed: true; requestsMoved: number; profilesMoved: number; formsMoved: number; recipientAccountId: string | null }
     | { removed: false; reason: 'not_member' | 'last_admin' | 'no_recipient' };
 
 /**
  * Takes a person out of a workspace and, in the same statement, hands the
- * requests and Branding Profiles they created there to an admin who stays, so
- * nothing in the workspace is left owned by someone outside it. The workspace
+ * requests and Branding Profiles they created there, and the shared seller
+ * forms they own there, to an admin who stays, so nothing in the workspace is
+ * left owned by someone outside it. The workspace
  * row is locked so two removals cannot both pass the last-admin check.
  *
  * `recipientAccountId` must be an admin of the workspace when given. Without
  * it the hand-over goes to `preferredAccountId` if they are an admin, otherwise
- * to the longest-standing other admin. Their seller forms are left as they are.
+ * to the longest-standing other admin. A shared form keeps its creator and its
+ * link; only its owner changes. Their personal seller forms are left as they are.
  */
 export async function removeOrganizationMemberWithHandover(data: {
     organizationId: string;
@@ -1150,6 +1152,7 @@ export async function removeOrganizationMemberWithHandover(data: {
             SELECT (
                 EXISTS (SELECT 1 FROM requests WHERE account_id = ${data.accountId} AND organization_id = ${data.organizationId})
                 OR EXISTS (SELECT 1 FROM brand_profiles WHERE account_id = ${data.accountId} AND organization_id = ${data.organizationId})
+                OR EXISTS (SELECT 1 FROM intake_links WHERE shared_owner_account_id = ${data.accountId} AND organization_id = ${data.organizationId})
             ) AS anything
         ),
         verdict AS (
@@ -1179,6 +1182,15 @@ export async function removeOrganizationMemberWithHandover(data: {
                 AND EXISTS (SELECT 1 FROM recipient)
             RETURNING id
         ),
+        moved_forms AS (
+            UPDATE intake_links
+            SET shared_owner_account_id = (SELECT account_id FROM recipient)
+            WHERE shared_owner_account_id = ${data.accountId}
+                AND organization_id = ${data.organizationId}
+                AND (SELECT outcome FROM verdict) = 'ok'
+                AND EXISTS (SELECT 1 FROM recipient)
+            RETURNING id
+        ),
         removed AS (
             DELETE FROM organization_members
             WHERE organization_id = ${data.organizationId}
@@ -1199,6 +1211,7 @@ export async function removeOrganizationMemberWithHandover(data: {
             (SELECT COUNT(*) FROM removed)::int AS removed_count,
             (SELECT COUNT(*) FROM moved_requests)::int AS requests_moved,
             (SELECT COUNT(*) FROM moved_profiles)::int AS profiles_moved,
+            (SELECT COUNT(*) FROM moved_forms)::int AS forms_moved,
             (SELECT COUNT(*) FROM cleared)::int AS cleared_count,
             (SELECT account_id FROM recipient) AS recipient_account_id
     `;
@@ -1211,11 +1224,13 @@ export async function removeOrganizationMemberWithHandover(data: {
 
     const requestsMoved = Number(row.requests_moved) || 0;
     const profilesMoved = Number(row.profiles_moved) || 0;
+    const formsMoved = Number(row.forms_moved) || 0;
     return {
         removed: true,
         requestsMoved,
         profilesMoved,
-        recipientAccountId: requestsMoved + profilesMoved > 0 ? (row.recipient_account_id as string | null) : null,
+        formsMoved,
+        recipientAccountId: requestsMoved + profilesMoved + formsMoved > 0 ? (row.recipient_account_id as string | null) : null,
     };
 }
 

@@ -45,7 +45,7 @@ describe('DELETE /api/organization/members/[accountId]', () => {
         mocks.getOrCreateAccount.mockResolvedValue({ id: ME, active_organization_id: 'org_1' });
         mocks.getOrganizationMemberRole.mockResolvedValue('admin');
         mocks.removeOrganizationMemberWithHandover.mockResolvedValue({
-            removed: true, requestsMoved: 3, profilesMoved: 1, recipientAccountId: ME,
+            removed: true, requestsMoved: 3, profilesMoved: 1, formsMoved: 2, recipientAccountId: ME,
         });
     });
 
@@ -60,14 +60,14 @@ describe('DELETE /api/organization/members/[accountId]', () => {
             preferredAccountId: ME,
         });
         await expect(response.json()).resolves.toEqual({
-            success: true, left: false, requestsMoved: 3, profilesMoved: 1, recipientAccountId: ME,
+            success: true, left: false, requestsMoved: 3, profilesMoved: 1, formsMoved: 2, recipientAccountId: ME,
         });
     });
 
     it('lets a member leave, with no say over anyone else', async () => {
         mocks.getOrganizationMemberRole.mockResolvedValue('member');
         mocks.removeOrganizationMemberWithHandover.mockResolvedValue({
-            removed: true, requestsMoved: 2, profilesMoved: 0, recipientAccountId: ADMIN,
+            removed: true, requestsMoved: 2, profilesMoved: 0, formsMoved: 0, recipientAccountId: ADMIN,
         });
 
         const left = await remove(ME);
@@ -144,12 +144,12 @@ describe('removeOrganizationMemberWithHandover', () => {
 
     it('checks, hands over and removes in one statement with the workspace locked', async () => {
         mocks.sql.mockResolvedValue([{
-            outcome: 'ok', removed_count: 1, requests_moved: 3, profiles_moved: 1, cleared_count: 1, recipient_account_id: ADMIN,
+            outcome: 'ok', removed_count: 1, requests_moved: 3, profiles_moved: 1, forms_moved: 2, cleared_count: 1, recipient_account_id: ADMIN,
         }]);
 
         const result = await removeOrganizationMemberWithHandover({ organizationId: 'org_1', accountId: OTHER, preferredAccountId: ADMIN });
 
-        expect(result).toEqual({ removed: true, requestsMoved: 3, profilesMoved: 1, recipientAccountId: ADMIN });
+        expect(result).toEqual({ removed: true, requestsMoved: 3, profilesMoved: 1, formsMoved: 2, recipientAccountId: ADMIN });
         expect(mocks.sql).toHaveBeenCalledTimes(1);
         const text = queryText();
         expect(text).toContain('FOR UPDATE');
@@ -161,8 +161,11 @@ describe('removeOrganizationMemberWithHandover', () => {
         expect(text).toContain('SET active_organization_id = NULL');
         // Only an admin who stays can receive, and never the person being removed.
         expect(text).toMatch(/member\.role = 'admin'\s+AND member\.account_id <> /);
-        // Their seller forms are not touched.
-        expect(text).not.toContain('intake_links');
+        // Only the owner of a shared form changes; no form is moved to another creator or deleted.
+        expect(text).toContain('UPDATE intake_links');
+        expect(text).toContain('SET shared_owner_account_id = (SELECT account_id FROM recipient)');
+        expect(text).not.toMatch(/UPDATE intake_links\s+SET account_id/);
+        expect(text).not.toContain('DELETE FROM intake_links');
     });
 
     it('names no recipient when nothing needed handing over', async () => {
@@ -171,7 +174,7 @@ describe('removeOrganizationMemberWithHandover', () => {
         }]);
 
         await expect(removeOrganizationMemberWithHandover({ organizationId: 'org_1', accountId: OTHER }))
-            .resolves.toEqual({ removed: true, requestsMoved: 0, profilesMoved: 0, recipientAccountId: null });
+            .resolves.toEqual({ removed: true, requestsMoved: 0, profilesMoved: 0, formsMoved: 0, recipientAccountId: null });
     });
 
     it.each(['last_admin', 'no_recipient', 'not_member'] as const)('returns %s when the statement refuses', async (outcome) => {

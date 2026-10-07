@@ -28,6 +28,17 @@ export interface SavedSellerForm {
     advancedModuleExclusions: AdvancedModuleExclusions;
     collectHoaQuestions: boolean;
     collectElectricMeterNumber: boolean;
+    /** Shared with the workspace: every member can use it. */
+    shared: boolean;
+    /** Created by the person looking at it. */
+    isMine: boolean;
+    /** The creator, and for a shared form its owner and workspace admins. */
+    canEdit: boolean;
+    canShare: boolean;
+    /** False for a default form, which cannot be deleted. */
+    canDelete: boolean;
+    /** Who a shared form belongs to now; only set in the workspace list. */
+    ownerName: string | null;
 }
 export interface SellerFormLinkBase {
     slug: string;

@@ -1,4 +1,8 @@
-/** Creator-owned seller forms, fixed to their workspace. */
+/**
+ * Seller forms, fixed to their workspace. `account_id` is the creator and the
+ * owner of the form's link names. A form shared with its workspace also names
+ * its current owner; a deleted form keeps its row so its names stay reserved.
+ */
 import { sql, generateToken } from '@/lib/neon/db';
 import type { AdvancedModuleExclusions, AdvancedModuleKey, PacketMode, UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
@@ -20,6 +24,11 @@ export interface IntakeLink {
     collect_hoa_questions: boolean;
     collect_electric_meter_number: boolean;
     revision: number;
+    /** Set when the form is shared with its workspace: who receives requests from its link. */
+    shared_owner_account_id?: string | null;
+    deleted_at?: string | null;
+    /** Display name of the current owner; only from listWorkspaceSellerForms. */
+    owner_name?: string | null;
     slug: string;
     is_active: boolean;
     default_brand_profile_id: string | null;
@@ -95,8 +104,9 @@ export async function getIntakeLinkByBaseSlug(slug: string): Promise<IntakeLink 
     const rows = await sql`SELECT il.* FROM intake_link_aliases a
         LEFT JOIN seller_form_link_namespaces n ON n.root_form_id = a.intake_link_id
         JOIN LATERAL (SELECT t.* FROM intake_links t
-            WHERE (n.id IS NULL AND t.id = a.intake_link_id)
-               OR (n.id IS NOT NULL AND t.account_id = n.account_id AND t.organization_id IS NOT DISTINCT FROM n.organization_id)
+            WHERE ((n.id IS NULL AND t.id = a.intake_link_id)
+               OR (n.id IS NOT NULL AND t.account_id = n.account_id AND t.organization_id IS NOT DISTINCT FROM n.organization_id))
+              AND t.deleted_at IS NULL
             ORDER BY t.is_default DESC, t.created_at, t.id LIMIT 1) il ON TRUE
         WHERE a.slug = ${slug}`;
     return rows[0] as IntakeLink || null;
@@ -113,7 +123,7 @@ export async function getIntakeLinkBySuffix(slug: string, suffix: string): Promi
     const rows = await sql`SELECT il.* FROM intake_link_aliases a
         JOIN seller_form_link_namespaces n ON n.root_form_id = a.intake_link_id
         JOIN seller_form_suffix_aliases s ON s.namespace_id = n.id AND s.suffix = ${suffix}
-        JOIN intake_links il ON il.id = s.form_id
+        JOIN intake_links il ON il.id = s.form_id AND il.deleted_at IS NULL
         WHERE a.slug = ${slug}`;
     return rows[0] as IntakeLink || null;
 }
@@ -136,7 +146,7 @@ export async function getSellerFormLinkScope(accountId: string, organizationId?:
                 FROM seller_form_suffix_aliases s WHERE s.namespace_id = n.id), '[]'::json) AS aliases
         FROM seller_form_link_namespaces n JOIN intake_links r ON r.id = n.root_form_id
         JOIN LATERAL (SELECT t.id, t.name, t.is_active FROM intake_links t
-            WHERE t.account_id = n.account_id AND t.organization_id IS NOT DISTINCT FROM n.organization_id
+            WHERE t.account_id = n.account_id AND t.organization_id IS NOT DISTINCT FROM n.organization_id AND t.deleted_at IS NULL
             ORDER BY t.is_default DESC, t.created_at, t.id LIMIT 1) d ON TRUE
         WHERE n.account_id = ${accountId}::uuid AND n.organization_id IS NOT DISTINCT FROM ${organizationId || null}::uuid`;
     const row = rows[0];
@@ -164,7 +174,27 @@ export const getReferralIdentityForm = getIntakeLinkByAccountId;
 
 export async function listSellerForms(accountId: string, organizationId?: string): Promise<IntakeLink[]> {
     if (!sql) return [];
-    return await sql`SELECT * FROM intake_links WHERE account_id = ${accountId} AND organization_id IS NOT DISTINCT FROM ${organizationId || null}::uuid ORDER BY is_default DESC, created_at, id` as IntakeLink[];
+    return await sql`SELECT * FROM intake_links WHERE account_id = ${accountId} AND organization_id IS NOT DISTINCT FROM ${organizationId || null}::uuid AND deleted_at IS NULL ORDER BY is_default DESC, created_at, id` as IntakeLink[];
+}
+
+/** The caller's own forms first, then forms other people shared with the workspace. */
+export async function listWorkspaceSellerForms(accountId: string, organizationId?: string): Promise<IntakeLink[]> {
+    if (!sql) return [];
+    if (!organizationId) return listSellerForms(accountId);
+    return await sql`SELECT il.*, COALESCE(NULLIF(TRIM(o.full_name), ''), o.email) AS owner_name
+        FROM intake_links il LEFT JOIN accounts o ON o.id = COALESCE(il.shared_owner_account_id, il.account_id)
+        WHERE il.organization_id = ${organizationId}::uuid AND il.deleted_at IS NULL
+          AND (il.account_id = ${accountId}::uuid OR il.shared_owner_account_id IS NOT NULL)
+        ORDER BY (il.account_id = ${accountId}::uuid) DESC, il.is_default DESC, il.created_at, il.id` as IntakeLink[];
+}
+
+/** Shared forms in a workspace and how many its plan allows. */
+export async function getSharedSellerFormUsage(organizationId: string): Promise<{ usage: number; allowance: number }> {
+    if (!sql) return { usage: 0, allowance: 0 };
+    const rows = await sql`SELECT seller_form_shared_allowance(${organizationId}::uuid) AS allowance,
+        (SELECT COUNT(*)::integer FROM intake_links WHERE organization_id = ${organizationId}::uuid
+            AND shared_owner_account_id IS NOT NULL AND deleted_at IS NULL) AS usage`;
+    return { usage: Number(rows[0]?.usage || 0), allowance: Number(rows[0]?.allowance || 0) };
 }
 
 export async function getSellerFormCount(accountId: string): Promise<number> {
@@ -175,7 +205,15 @@ export async function getSellerFormCount(accountId: string): Promise<number> {
 
 export async function getSellerForm(id: string, accountId: string, organizationId?: string): Promise<IntakeLink | null> {
     if (!sql) return null;
-    const rows = await sql`SELECT * FROM intake_links WHERE id = ${id} AND account_id = ${accountId} AND organization_id IS NOT DISTINCT FROM ${organizationId || null}::uuid`;
+    const rows = await sql`SELECT * FROM intake_links WHERE id = ${id} AND account_id = ${accountId} AND organization_id IS NOT DISTINCT FROM ${organizationId || null}::uuid AND deleted_at IS NULL`;
+    return rows[0] as IntakeLink || null;
+}
+
+/** A form the caller may use in this workspace: their own, or one shared with it. */
+export async function getUsableSellerForm(id: string, accountId: string, organizationId?: string): Promise<IntakeLink | null> {
+    if (!sql) return null;
+    const rows = await sql`SELECT * FROM intake_links WHERE id = ${id} AND organization_id IS NOT DISTINCT FROM ${organizationId || null}::uuid AND deleted_at IS NULL
+        AND (account_id = ${accountId} OR shared_owner_account_id IS NOT NULL)`;
     return rows[0] as IntakeLink || null;
 }
 
@@ -199,6 +237,18 @@ export async function saveSellerForm(accountId: string, organizationId: string |
         if (invalid) throw new Error(invalid);
     }
     const rows = await sql`SELECT * FROM save_seller_form(${accountId}::uuid, ${organizationId || null}::uuid, ${id}::uuid, ${revision}::integer, ${JSON.stringify(config)}::jsonb, ${generateToken().slice(0, 10)}, ${sellerFormCreationCapability(accountId).technicalCap}::integer, ${sellerFormCreationCapability(accountId).canCreate}::boolean)`;
+    return rows[0] as IntakeLink || null;
+}
+/** Shares a form with its workspace or takes it back. Rules live in set_seller_form_shared. */
+export async function setSellerFormShared(actorId: string, organizationId: string, id: string, revision: number, shared: boolean): Promise<IntakeLink | null> {
+    if (!sql) return null;
+    const rows = await sql`SELECT * FROM set_seller_form_shared(${actorId}::uuid, ${organizationId}::uuid, ${id}::uuid, ${revision}::integer, ${shared}::boolean)`;
+    return rows[0] as IntakeLink || null;
+}
+/** Hides a form for good; its row keeps its link names reserved. */
+export async function deleteSellerForm(actorId: string, organizationId: string | undefined, id: string, revision: number): Promise<IntakeLink | null> {
+    if (!sql) return null;
+    const rows = await sql`SELECT * FROM delete_seller_form(${actorId}::uuid, ${organizationId || null}::uuid, ${id}::uuid, ${revision}::integer)`;
     return rows[0] as IntakeLink || null;
 }
 export async function setDefaultSellerForm(accountId: string, organizationId: string | undefined, id: string): Promise<IntakeLink | null> {

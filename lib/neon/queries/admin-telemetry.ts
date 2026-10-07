@@ -135,6 +135,7 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
                 SELECT f.account_id, f.organization_id, COUNT(*) AS forms,
                     COUNT(*) FILTER (WHERE f.is_active) AS active_forms
                 FROM intake_links f JOIN customers a ON a.id = f.account_id
+                WHERE f.deleted_at IS NULL
                 GROUP BY f.account_id, f.organization_id
             ), cohort AS (
                 SELECT r.account_id, r.organization_id, r.source_form_id, r.metered_at

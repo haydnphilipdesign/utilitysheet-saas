@@ -63,9 +63,11 @@ card has Copy link and Edit, with Preview, Duplicate, Rename link, Make default
 and Pause/Resume in its "more" menu. The editor groups settings into Basics,
 What sellers are asked, Branding, and Link and availability, with a sticky bar
 that holds Save, Preview, the save status and any save error.
-There is no hard delete or team-wide form editing. Lost workspace membership,
-banned/closing/closed owners and missing workspaces fail closed for public
-metadata and starts. Switching the dashboard workspace never reroutes a form.
+A form can be deleted and, in a Teams workspace, shared with the team; see
+"Sharing a form with a workspace" and "Deleting a form". Lost workspace
+membership, banned/closing/closed owners and missing workspaces fail closed for
+public metadata and starts; for a shared form the owner that matters is its
+current owner, not its creator. Switching the dashboard workspace never reroutes a form.
 
 Custom slugs retain their existing paid entitlement. Changing a slug reserves
 the new alias and preserves the old link/referral code. Referral display uses
@@ -75,6 +77,63 @@ Branding usage includes every referencing form in the profile's scope; deleted
 profiles fall back only inside that workspace. Account export includes form
 configuration and request provenance/intro and continues excluding capability
 tokens/URLs. Account closure deletes forms/aliases before deleting organizations.
+
+## Sharing a form with a workspace
+
+Decision: `.ai/decisions/2026-10-07-shared-seller-forms.md` (with its Amendment).
+
+In a workspace on Teams, the person who created a form can share it. Every
+member then sees it under "Shared by your team", can copy its link, preview it,
+copy it into their own forms and create requests from it; a request a member
+creates belongs to that member. Only the creator, the form's current owner and
+workspace admins can edit, pause, resume, rename the ending of, stop sharing or
+delete a shared form. Only the creator renames their main link name or chooses
+their default form.
+
+Storage: `intake_links.account_id` stays the creator and the owner of the
+form's link names. `shared_owner_account_id` is set while the form is shared and
+names the member who receives requests that sellers start from its link. Sharing
+never changes a form's address, and referral credit through a link name stays
+with the creator.
+
+- Stopping sharing returns the form to its creator as a personal form. It is
+  refused once the creator has left the workspace, or when the creator already
+  has as many personal forms as their plan allows.
+- When the owner leaves, is removed or closes their account, the form passes to
+  the same admin as their requests and Branding Profiles and its link keeps
+  accepting sellers. Their personal forms stop working, as before. On account
+  closure the form that owns the link name is kept as an empty, deleted
+  placeholder when a shared form still hangs under it.
+- Shared forms count against the workspace, ten per current member, and not
+  against their creator's ten. The count is checked when a form is shared.
+- Sharing needs Teams at that moment. If Teams stops, forms already shared stay
+  shared and keep working; nothing new can be shared.
+- Submission emails are unchanged: they go to the request's owner, plus admins
+  when the workspace setting is on.
+
+APIs: `GET /api/seller-forms` returns the caller's forms and the workspace's
+shared forms with `shared`, `isMine`, `canEdit`, `canShare`, `canDelete` and
+`ownerName`, plus `capabilities.sharing`; `PUT /api/seller-forms/[id]/share`
+takes `{ shared, revision }`. The rules are enforced in `set_seller_form_shared`,
+`save_seller_form` and `validate_request_source_form`; every form change locks
+the creator's account row.
+
+## Deleting a form
+
+Every plan can delete a form that is not the default (make another form the
+default first, so a workspace always keeps one). Deleting is permanent in the
+product: the form leaves every list and picker, stops counting toward an
+allowance, and its links answer like an unknown link. Requests created from it
+are kept, and sellers who already started can finish.
+
+Deleting releases the form's link endings, current and earlier (owner decision,
+2026-10-07): another form under the same link name can then be given one of
+them, and a link shared earlier with that ending opens that form from then on.
+Endings stay permanent in every other case (rename, pause). The row itself is
+kept with `deleted_at` set, so the form's flat link name and any referral code
+stay bound to it; the workspace's main link name is not affected. The
+operational cap on forms per creator keeps counting deleted rows. `DELETE
+/api/seller-forms/[id]` takes `{ revision }`.
 
 ## Shared base links and form endings
 
@@ -148,6 +207,13 @@ records cascade from forms explicitly removed during account closure; export
 continues excluding URL identities/capability tokens.
 
 ### Base-link migration and release
+
+A fifth file, `migrations-seller-form-sharing-and-delete.sql`, follows the four
+below. It adds `shared_owner_account_id` and `deleted_at` and replaces
+`ensure_seller_form`, `save_seller_form`, `set_default_seller_form` and
+`validate_request_source_form`, so rerun it after rerunning any of them. It is
+additive and safe under the previously deployed application, and must be applied
+before the application that reads the new columns is deployed.
 
 Four files, always in this order: `migrations-seller-form-base-links.sql`,
 `migrations-seller-form-default-base-link.sql`,

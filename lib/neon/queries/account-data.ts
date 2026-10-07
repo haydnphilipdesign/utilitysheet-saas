@@ -108,6 +108,7 @@ export async function getAccountDataExport(accountId: string) {
                 collect_hoa_questions, collect_electric_meter_number,
                 is_active, default_brand_profile_id, default_utility_categories,
                 default_packet_mode, advanced_modules, advanced_module_exclusions,
+                (shared_owner_account_id IS NOT NULL) AS shared_with_workspace, deleted_at,
                 created_at, updated_at
             FROM intake_links
             WHERE account_id = ${accountId}

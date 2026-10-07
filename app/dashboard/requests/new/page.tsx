@@ -514,7 +514,7 @@ export default function NewRequestPage() {
             <div className="space-y-2 rounded-xl border border-border p-4">
                 <Label htmlFor="requestSavedForm">Seller form</Label>
                 <select id="requestSavedForm" className="w-full rounded-md border border-input bg-background p-2" value={selectedForm?.id || ''} onChange={e => selectForm(e.target.value)} disabled={intakeLinkLoading || refreshingForm || loading}>
-                    <option value="">Manual request settings</option>{savedForms.map(f => <option key={f.id} value={f.id} disabled={!f.isActive}>{f.name}{f.isDefault ? ' (default)' : ''}{!f.isActive ? ' — paused' : ''}</option>)}
+                    <option value="">Manual request settings</option>{savedForms.map(f => <option key={f.id} value={f.id} disabled={!f.isActive}>{f.name}{f.isDefault ? ' (default)' : ''}{f.isMine === false ? ' (shared by your team)' : ''}{!f.isActive ? ' — paused' : ''}</option>)}
                 </select>
                 {selectedForm?.isActive === false && <p role="status" className="text-sm text-muted-foreground">This default form is paused. Choose an active form or manual settings, or reactivate it in Seller forms.</p>}
                 {formLoadError && <p role="alert" className="text-sm text-destructive">{formLoadError}</p>}

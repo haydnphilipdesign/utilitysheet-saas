@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({ getUser: vi.fn(), activation: vi.fn(), profile
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/stack/server', () => ({ stackServerApp: { getUser: mocks.getUser } }));
 vi.mock('@/lib/activation/ensure-account-activation', () => ({ ensureAccountActivation: mocks.activation }));
-vi.mock('@/lib/neon/queries', () => ({ getBrandProfiles: mocks.profiles, getOrCreateIntakeLink: mocks.ensure, saveSellerForm: mocks.save, getSellerFormLinkScope: mocks.links }));
+vi.mock('@/lib/neon/queries', () => ({ getBrandProfiles: mocks.profiles, getOrCreateIntakeLink: mocks.ensure, saveSellerForm: mocks.save, getSellerFormLinkScope: mocks.links, getOrganizationMemberRole: vi.fn() }));
 import { GET, POST } from '@/app/api/intake-link/route';
 function post(body: unknown) { return POST(new Request('http://localhost/api/intake-link', { method: 'POST', body: JSON.stringify(body) })); }
 beforeEach(() => {

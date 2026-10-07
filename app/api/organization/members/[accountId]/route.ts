@@ -66,8 +66,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 
 /**
  * Removes a member (admins) or leaves the workspace (anyone, for themselves).
- * The requests and Branding Profiles the person created in the workspace are
- * handed to an admin who stays: the one named in `transferTo`, otherwise the
+ * The requests and Branding Profiles the person created in the workspace, and
+ * the seller forms they shared with it, are handed to an admin who stays: the one named in `transferTo`, otherwise the
  * admin doing the removing, otherwise the longest-standing other admin.
  */
 export async function DELETE(request: Request, { params }: { params: Promise<{ accountId: string }> }) {
@@ -119,7 +119,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ a
             if (result.reason === 'no_recipient') {
                 return NextResponse.json({
                     error: 'No admin can take over',
-                    message: 'The requests and Branding Profiles this person created need an admin of this workspace to take them over, and that admin isn’t available. Nothing was changed.',
+                    message: 'The requests, Branding Profiles and shared seller forms this person has here need an admin of this workspace to take them over, and that admin isn’t available. Nothing was changed.',
                 }, { status: 400 });
             }
             return NextResponse.json({ error: 'Member not found' }, { status: 404 });
@@ -130,6 +130,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ a
             left: leaving,
             requestsMoved: result.requestsMoved,
             profilesMoved: result.profilesMoved,
+            formsMoved: result.formsMoved,
             recipientAccountId: result.recipientAccountId,
         });
     } catch (error) {

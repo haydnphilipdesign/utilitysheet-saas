@@ -41,7 +41,8 @@ const migration = forPglite(
     readFileSync('migrations-seller-form-base-links.sql', 'utf8') +
         readFileSync('migrations-seller-form-default-base-link.sql', 'utf8') +
         readFileSync('migrations-seller-form-readable-endings.sql', 'utf8') +
-        readFileSync('migrations-seller-form-heading.sql', 'utf8'),
+        readFileSync('migrations-seller-form-heading.sql', 'utf8') +
+        readFileSync('migrations-seller-form-sharing-and-delete.sql', 'utf8'),
 );
 const rows = async (sql: string, params: unknown[] = []) =>
     (await db.query<Record<string, unknown>>(sql, params)).rows;

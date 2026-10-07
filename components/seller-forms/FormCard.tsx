@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Copy, CopyPlus, Eye, Link2, Lock, MoreHorizontal, Pause, Pencil, Play, Star } from 'lucide-react';
+import { Copy, CopyPlus, Eye, Link2, Lock, MoreHorizontal, Pause, Pencil, Play, Star, Trash2, UserMinus, Users } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import {
 import { toast } from 'sonner';
 import { MainLinkRename } from './BaseLinkEditor';
 import { FormLinkEnding } from './FormLinkEnding';
+import { formLinkPrefix } from './FormSharing';
 import type { SavedSellerForm, SellerFormsResponse } from './types';
 
 function summary(form: SavedSellerForm, isPaid: boolean) {
@@ -29,7 +30,7 @@ function summary(form: SavedSellerForm, isPaid: boolean) {
 }
 
 /** One saved form: its link, the main actions, and everything else in a menu. */
-export function FormCard({ form, data, onlyForm, busy, onChanged, onDuplicate, onMakeDefault, onPause, onResume }: {
+export function FormCard({ form, data, onlyForm, busy, onChanged, onDuplicate, onMakeDefault, onPause, onResume, onShare, onDelete }: {
     form: SavedSellerForm;
     data: SellerFormsResponse;
     /** The workspace's single form: its link is the main link, so there is nothing else to explain. */
@@ -40,11 +41,18 @@ export function FormCard({ form, data, onlyForm, busy, onChanged, onDuplicate, o
     onMakeDefault: (form: SavedSellerForm) => void;
     onPause: (form: SavedSellerForm) => void;
     onResume: (form: SavedSellerForm) => void;
+    /** Share with the workspace (`true`) or take it back (`false`). */
+    onShare: (form: SavedSellerForm, shared: boolean) => void;
+    onDelete: (form: SavedSellerForm) => void;
 }) {
     const router = useRouter();
     const [renaming, setRenaming] = useState(false);
     const base = data.linkBase;
-    const canRename = data.isPaid && base !== null && (onlyForm || form.linkSuffix !== null);
+    // A teammate's shared form only ever renames its own ending, never a link name.
+    const canRename = form.canEdit && data.isPaid && (form.isMine
+        ? base !== null && (onlyForm || form.linkSuffix !== null)
+        : form.linkSuffix !== null);
+    const sharing = data.capabilities.sharing;
     async function copy() {
         try {
             await navigator.clipboard.writeText(form.url);
@@ -62,6 +70,12 @@ export function FormCard({ form, data, onlyForm, busy, onChanged, onDuplicate, o
                     {form.isDefault && !onlyForm && (
                         <Badge variant="outline">Default</Badge>
                     )}
+                    {form.shared && (
+                        <Badge variant="outline">
+                            <Users aria-hidden="true" />
+                            {form.isMine ? 'Shared with workspace' : `Shared by ${form.ownerName || 'a teammate'}`}
+                        </Badge>
+                    )}
                     {!form.isActive && (
                         <Badge variant="outline" className="border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400">
                             Paused
@@ -77,14 +91,14 @@ export function FormCard({ form, data, onlyForm, busy, onChanged, onDuplicate, o
                         >
                             <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-52">
+                        <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuItem className={item} onClick={() => router.push(`/dashboard/forms/${form.id}?preview=1`)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 Preview
                             </DropdownMenuItem>
                             <DropdownMenuItem className={item} onClick={() => onDuplicate(form)}>
                                 <CopyPlus className="mr-2 h-4 w-4" />
-                                Duplicate
+                                {form.isMine ? 'Duplicate' : 'Copy to my forms'}
                                 {data.capabilities.upgradeRequired && <Badge variant="secondary" className="ml-auto">Pro</Badge>}
                             </DropdownMenuItem>
                             {canRename ? (
@@ -92,30 +106,69 @@ export function FormCard({ form, data, onlyForm, busy, onChanged, onDuplicate, o
                                     <Link2 className="mr-2 h-4 w-4" />
                                     Rename link
                                 </DropdownMenuItem>
-                            ) : base && !data.isPaid ? (
+                            ) : form.isMine && base && !data.isPaid ? (
                                 <DropdownMenuItem className="cursor-pointer text-muted-foreground" onClick={() => router.push('/dashboard/settings?tab=billing')}>
                                     <Lock className="mr-2 h-4 w-4" />
                                     Rename link
                                     <Badge variant="secondary" className="ml-auto">Upgrade</Badge>
                                 </DropdownMenuItem>
                             ) : null}
-                            {!form.isDefault && (
+                            {form.isMine && !form.isDefault && (
                                 <DropdownMenuItem className={item} disabled={busy} onClick={() => onMakeDefault(form)}>
                                     <Star className="mr-2 h-4 w-4" />
                                     Make default
                                 </DropdownMenuItem>
                             )}
-                            <DropdownMenuSeparator />
-                            {form.isActive ? (
-                                <DropdownMenuItem className={item} disabled={busy} onClick={() => onPause(form)}>
-                                    <Pause className="mr-2 h-4 w-4" />
-                                    Pause form
+                            {form.shared && form.canEdit ? (
+                                <DropdownMenuItem className={item} disabled={busy} onClick={() => onShare(form, false)}>
+                                    <UserMinus className="mr-2 h-4 w-4" />
+                                    Stop sharing
                                 </DropdownMenuItem>
-                            ) : (
-                                <DropdownMenuItem className={item} disabled={busy} onClick={() => onResume(form)}>
-                                    <Play className="mr-2 h-4 w-4" />
-                                    Resume form
-                                </DropdownMenuItem>
+                            ) : !form.shared && form.canShare ? (
+                                sharing.available ? (
+                                    <DropdownMenuItem className={item} disabled={busy} onClick={() => onShare(form, true)}>
+                                        <Users className="mr-2 h-4 w-4" />
+                                        Share with workspace
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <DropdownMenuItem className="cursor-pointer text-muted-foreground" onClick={() => router.push('/dashboard/settings?tab=billing')}>
+                                        <Lock className="mr-2 h-4 w-4" />
+                                        Share with workspace
+                                        <Badge variant="secondary" className="ml-auto">Teams</Badge>
+                                    </DropdownMenuItem>
+                                )
+                            ) : null}
+                            {form.canEdit && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    {form.isActive ? (
+                                        <DropdownMenuItem className={item} disabled={busy} onClick={() => onPause(form)}>
+                                            <Pause className="mr-2 h-4 w-4" />
+                                            Pause form
+                                        </DropdownMenuItem>
+                                    ) : (
+                                        <DropdownMenuItem className={item} disabled={busy} onClick={() => onResume(form)}>
+                                            <Play className="mr-2 h-4 w-4" />
+                                            Resume form
+                                        </DropdownMenuItem>
+                                    )}
+                                    {form.canDelete ? (
+                                        <DropdownMenuItem className={`${item} text-destructive focus:text-destructive`} disabled={busy} onClick={() => onDelete(form)}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete form
+                                        </DropdownMenuItem>
+                                    ) : !onlyForm && (
+                                        <DropdownMenuItem disabled className="flex-col items-start gap-0.5">
+                                            <span className="flex items-center">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete form
+                                            </span>
+                                            <span className="text-xs">
+                                                {form.isMine ? 'Make another form the default first.' : 'This is its creator’s default form.'}
+                                            </span>
+                                        </DropdownMenuItem>
+                                    )}
+                                </>
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -124,21 +177,26 @@ export function FormCard({ form, data, onlyForm, busy, onChanged, onDuplicate, o
             <CardContent className="space-y-3">
                 <div className="space-y-1">
                     <p className="break-all rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">{form.url}</p>
-                    {!onlyForm && form.endingUrl && form.endingUrl !== form.url && (
+                    {form.isMine && !onlyForm && form.endingUrl && form.endingUrl !== form.url && (
                         <p className="break-all text-xs text-muted-foreground">
                             This is your main link. This form&apos;s own link is {form.endingUrl}
                         </p>
                     )}
                 </div>
-                {renaming && base && (onlyForm ? (
+                {renaming && (form.isMine && onlyForm && base ? (
                     <MainLinkRename base={base} onSaved={onChanged} onClose={() => setRenaming(false)} />
                 ) : (
-                    <FormLinkEnding form={form} mainUrl={base.url} onSaved={onChanged} onClose={() => setRenaming(false)} />
+                    <FormLinkEnding form={form} mainUrl={formLinkPrefix(form, base?.url || '')} onSaved={onChanged} onClose={() => setRenaming(false)} />
                 ))}
                 {!form.isActive && (
                     <p className="text-sm text-muted-foreground">
                         Paused, so new sellers cannot start this form.
                         Sellers who already started can still finish.
+                    </p>
+                )}
+                {!form.canEdit && (
+                    <p className="text-sm text-muted-foreground">
+                        You can use this form as it is. Only {form.ownerName || 'its creator'} and workspace admins can change it.
                     </p>
                 )}
                 <div className="flex flex-wrap gap-2">
@@ -149,10 +207,12 @@ export function FormCard({ form, data, onlyForm, busy, onChanged, onDuplicate, o
                         </Button>
                     ) : (
                         <>
-                            <Button disabled={busy} onClick={() => onResume(form)}>
-                                <Play />
-                                Resume form
-                            </Button>
+                            {form.canEdit && (
+                                <Button disabled={busy} onClick={() => onResume(form)}>
+                                    <Play />
+                                    Resume form
+                                </Button>
+                            )}
                             <Button variant="outline" disabled>
                                 <Copy />
                                 Copy link
@@ -163,8 +223,8 @@ export function FormCard({ form, data, onlyForm, busy, onChanged, onDuplicate, o
                         className={buttonVariants({ variant: 'outline' })}
                         href={`/dashboard/forms/${form.id}`}
                     >
-                        <Pencil />
-                        Edit
+                        {form.canEdit ? <Pencil /> : <Eye />}
+                        {form.canEdit ? 'Edit' : 'View'}
                     </Link>
                 </div>
             </CardContent>

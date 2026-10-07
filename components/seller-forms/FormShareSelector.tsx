@@ -51,6 +51,7 @@ export function FormShareSelector({
                             <option key={f.id} value={f.id}>
                                 {f.name}
                                 {f.isDefault ? ' (default)' : ''}
+                                {!f.isMine ? ' (shared by your team)' : ''}
                                 {!f.isActive ? ' — paused' : ''}
                             </option>
                         ))}

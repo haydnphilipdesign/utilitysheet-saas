@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 const first = '00000000-0000-4000-8000-000000000011';
 const second = '00000000-0000-4000-8000-000000000012';
+const teammates = '00000000-0000-4000-8000-000000000013';
 function form(id: string, name: string, hoa: boolean) {
     return {
         id,
@@ -22,6 +23,28 @@ function form(id: string, name: string, hoa: boolean) {
         advancedModuleExclusions: {},
         collectHoaQuestions: hoa,
         collectElectricMeterNumber: hoa,
+        shared: false,
+        isMine: true,
+        canEdit: true,
+        canShare: true,
+        canDelete: id !== first,
+        ownerName: null as string | null,
+    };
+}
+/** A form a teammate shared with the workspace, as a member who is not an admin sees it. */
+function teammateForm() {
+    return {
+        ...form(teammates, 'Offer', false),
+        url: 'https://example.com/i/jane-smith/offer',
+        endingUrl: 'https://example.com/i/jane-smith/offer',
+        linkSuffix: 'offer',
+        isDefault: false,
+        shared: true,
+        isMine: false,
+        canEdit: false,
+        canShare: false,
+        canDelete: false,
+        ownerName: 'Jane Smith',
     };
 }
 async function mocks(page: Page) {
@@ -41,11 +64,12 @@ async function mocks(page: Page) {
         reservedSuffixes: [{ suffix: 'intake', formId: first }, { suffix: 'closing', formId: second }],
     };
     // The default shares the bare base; every form keeps its own ending link.
-    const relink = () => forms.forEach(f => {
+    const relink = () => forms.filter(f => f.isMine).forEach(f => {
         f.endingUrl = `${linkBase.url}/${f.linkSuffix}`;
         f.url = f.isDefault ? linkBase.url : f.endingUrl;
+        f.canDelete = !f.isDefault;
     });
-    const access = { isPaid: true, capabilities: { canCreate: true, reason: null as string | null, usage: 2, allowance: 10, totalUsage: 2, upgradeRequired: false, pilotAvailable: true, message: '' } };
+    const access = { isPaid: true, capabilities: { canCreate: true, reason: null as string | null, usage: 2, allowance: 10, totalUsage: 2, upgradeRequired: false, pilotAvailable: true, message: '', sharing: { available: true, canShare: true, usage: 0, allowance: 20, message: '' } } };
     await page.route('**/api/**', async (route) => {
         const req = route.request();
         const path = new URL(req.url()).pathname;
@@ -78,6 +102,19 @@ async function mocks(page: Page) {
                 capabilities: access.capabilities,
                 brandProfiles: [],
             });
+        }
+        const shareMatch = path.match(/^\/api\/seller-forms\/([^/]+)\/share$/);
+        if (shareMatch) {
+            const target = forms.find(f => f.id === shareMatch[1])!;
+            Object.assign(target, { shared: req.postDataJSON().shared, revision: target.revision + 1 });
+            access.capabilities.sharing.usage = forms.filter(f => f.shared).length;
+            return json({ form: target });
+        }
+        if (req.method() === 'DELETE' && path.startsWith('/api/seller-forms/')) {
+            const index = forms.findIndex(f => path.endsWith(f.id));
+            if (forms[index].isDefault) return json({ error: 'Make another form the default before deleting this one.', code: 'FORM_IS_DEFAULT' }, 409);
+            const [gone] = forms.splice(index, 1);
+            return json({ deleted: true, id: gone.id });
         }
         if (path === '/api/seller-form-link-base') {
             if (conflict) return json({ error: 'Form changed. Reload before saving.', code: 'FORM_REVISION_CONFLICT' }, 409);
@@ -609,5 +646,98 @@ test('HOA-first preview filters billing choices and explains conflicting answers
     await expect.poll(() => dialog.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
     await dialog.getByTestId('has-hoa-not_sure').click();
     await expect(choices).toHaveCount(2);
+    expect(state.writes).toHaveLength(0);
+});
+
+test('a form is shared with the workspace, taken back and deleted from its card', async ({ page }, testInfo) => {
+    const state = await mocks(page);
+    await page.goto('/test-fixtures/seller-forms');
+    await expect(page.getByText('Workspace A is sharing 0 of 20 forms.')).toBeVisible();
+
+    await cardAction(page, 'Closing', 'Share with workspace');
+    const shareDialog = page.getByRole('dialog', { name: 'Share "Closing" with Workspace A?' });
+    await expect(shareDialog).toContainText('Only you and workspace admins can change it. Its link stays the same.');
+    await page.screenshot({ path: testInfo.outputPath('share-dialog.png') });
+    await shareDialog.getByRole('button', { name: 'Share form', exact: true }).click();
+    await expect(page.getByText('Shared with workspace', { exact: true })).toBeVisible();
+    await expect(page.getByText('Workspace A is sharing 1 of 20 forms.')).toBeVisible();
+    expect(state.writes.at(-1)).toMatchObject({ url: `/api/seller-forms/${second}/share`, method: 'PUT', body: { shared: true, revision: 2 } });
+    await page.screenshot({ path: testInfo.outputPath('shared-form.png'), fullPage: true });
+
+    await cardAction(page, 'Closing', 'Stop sharing');
+    await page.getByRole('dialog', { name: 'Stop sharing "Closing"?' }).getByRole('button', { name: 'Stop sharing', exact: true }).click();
+    await expect(page.getByText('Shared with workspace', { exact: true })).toHaveCount(0);
+    expect(state.writes.at(-1)).toMatchObject({ method: 'PUT', body: { shared: false, revision: 3 } });
+
+    // The default form explains why it cannot be deleted.
+    await page.getByRole('button', { name: 'More actions for Listing', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: /Delete form/ })).toBeDisabled();
+    await expect(page.getByText('Make another form the default first.')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await cardAction(page, 'Closing', 'Delete form');
+    const deleteDialog = page.getByRole('dialog', { name: 'Delete "Closing"?' });
+    await expect(deleteDialog).toContainText('This cannot be undone. Requests already created from it are kept');
+    await page.screenshot({ path: testInfo.outputPath('delete-dialog.png') });
+    await deleteDialog.getByRole('button', { name: 'Delete form', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'More actions for Closing', exact: true })).toHaveCount(0);
+    expect(state.writes.at(-1)).toMatchObject({ url: `/api/seller-forms/${second}`, method: 'DELETE', body: { revision: 4 } });
+    await healthy(page);
+});
+
+test('a teammate\'s shared form can be used but not changed, and sharing leads to Teams when the plan lacks it', async ({ page }, testInfo) => {
+    const state = await mocks(page);
+    state.forms.push(teammateForm());
+    await page.goto('/test-fixtures/seller-forms');
+    await expect(page.getByRole('heading', { name: 'Shared by your team' })).toBeVisible();
+    await expect(page.getByText('Shared by Jane Smith', { exact: true })).toBeVisible();
+    await expect(page.getByText('https://example.com/i/jane-smith/offer', { exact: true })).toBeVisible();
+    await expect(page.getByText('Only Jane Smith and workspace admins can change it.')).toBeVisible();
+    // The main link card and the default badge still describe only my own forms.
+    await expect(page.getByText('Default', { exact: true })).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'More actions for Offer', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: 'Preview', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Copy to my forms', exact: true })).toBeVisible();
+    for (const hidden of ['Pause form', 'Stop sharing', 'Make default', 'Rename link', 'Share with workspace'])
+        await expect(page.getByRole('menuitem', { name: hidden, exact: true })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: /Delete form/ })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await healthy(page);
+    await page.screenshot({ path: testInfo.outputPath('team-forms.png'), fullPage: true });
+
+    // Opened directly, it explains itself and cannot be saved.
+    await page.goto(`/test-fixtures/seller-forms?id=${teammates}`);
+    await expect(page.getByRole('note')).toContainText('Jane Smith shared this form with Workspace A.');
+    await expect(page.getByRole('button', { name: 'Save form', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Pause form', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Delete form', exact: true })).toHaveCount(0);
+    expect(state.writes).toHaveLength(0);
+
+    // Without Teams, sharing is offered as an upgrade and writes nothing.
+    Object.assign(state.access.capabilities.sharing, { available: false, canShare: false, allowance: 0 });
+    await page.goto('/test-fixtures/seller-forms');
+    await page.getByRole('button', { name: 'More actions for Closing', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: /Share with workspace/ })).toContainText('Teams');
+    await expect(page.getByText(/is sharing/)).toHaveCount(0);
+    expect(state.writes).toHaveLength(0);
+});
+
+test('the editor shares, and deletes after confirming', async ({ page }) => {
+    const state = await mocks(page);
+    await page.goto(`/test-fixtures/seller-forms?id=${second}`);
+    await page.getByRole('button', { name: 'Share with workspace', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Share form', exact: true }).click();
+    await expect(page.getByText('Shared with Workspace A', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Delete form', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Delete "Closing"?' }).getByRole('button', { name: 'Delete form', exact: true }).click();
+    await expect.poll(() => state.writes.at(-1)).toMatchObject({ method: 'DELETE', body: { revision: 3 } });
+});
+
+test('the editor says what to do before a default form can be deleted', async ({ page }) => {
+    const state = await mocks(page);
+    await page.goto(`/test-fixtures/seller-forms?id=${first}`);
+    await expect(page.getByText('This is your default form. Make another form the default first, then you can delete this one.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Delete form', exact: true })).toBeDisabled();
     expect(state.writes).toHaveLength(0);
 });
