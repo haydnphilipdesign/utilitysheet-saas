@@ -83,8 +83,8 @@ Counts and dates only; no addresses, names or identifiers were read out.
 | 1 | Invitation acceptance that cannot dead-end | Done 2026-10-07; committed `7ce561b` and pushed; deployment not verified |
 | 2 | Removed members stop receiving the team's submissions; trim the members response | Done 2026-10-07; committed `c84e9a7` and pushed; deployment not verified |
 | 3 | Admin sees what happened to invitations | Done 2026-10-07; committed `e7c4aec` and pushed; deployment not verified |
-| 4 | Seats in the app [B] | Implemented and validated locally 2026-10-07; not committed. Decision: `.ai/decisions/2026-10-07-team-seats-changed-in-app.md` |
-| 5 | New-member welcome | Not started |
+| 4 | Seats in the app [B] | Done 2026-10-07; committed `58a5632` and pushed; deployment not verified; no real Stripe call made. Decision: `.ai/decisions/2026-10-07-team-seats-changed-in-app.md` |
+| 5 | New-member welcome | Done 2026-10-07; committed and pushed; deployment not verified; not seen in a browser |
 | 6 | Honest marketing and "Start Teams" path | Not started |
 | 7 | Admin workspace page | Not started |
 | 8 | Payment failure and plan end messages [B] [S] | Not started; confirm first |
@@ -153,3 +153,15 @@ Touches billing. Owner confirmed in chat on 2026-10-07 that the app changes the 
 - Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 213 files / 1565 tests passed; `tests/settings.spec.ts` and `tests/invite.spec.ts` 45/45 on three device profiles with service keys blanked; security scan and `git diff --check` passed; desktop and phone screenshots of the Seats section, both confirmations and the result reviewed. The seat-count query was run against sample rows in a throwaway local PostgreSQL 17 (deleted afterwards, nothing live): it lowers to the seats in use, refuses to go below them, raises, and does nothing for another subscription or workspace.
 - Not verified, and it matters here: no real Stripe call was made. The quantity update, the proration lines on the invoice, and the `customer.subscription.updated` webhook that follows are tested against mocks only. Assumed from Stripe documentation knowledge: updating one item's quantity with `create_prorations` leaves the billing date unchanged and puts prorations on the next invoice.
 - Owner actions: in the Stripe dashboard, "Teams Portal" configuration, turn off quantity changes (keep cancellation, invoices and payment methods). After deploy, change seats once on the test Teams workspace in test mode or with a real card and check the invoice preview in Stripe.
+
+## Slice 5 outcome (2026-10-07)
+
+UI only. No API, schema, billing or role change.
+
+- New `components/dashboard/team-welcome.tsx`, shown at the top of the dashboard to a member (not an admin) of a Teams workspace until they choose "Got it" (remembered per workspace in the browser). It says requests and Branding Profiles are shared, seller forms are each person's own, who the admins are (names from the existing members route, with a fallback), and, when they have another workspace, that it is still there in the account menu.
+- `app/dashboard/page.tsx`: the "Finish optional setup" prompt is no longer shown to a member of a Teams workspace, because setup creates a default Branding Profile for the workspace.
+- Tests: new `tests/unit/team-welcome.test.tsx`.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 214 files / 1571 tests passed; `git diff --check` passed. Settings screens did not change, so the browser specs were not rerun.
+- Not verified: the welcome in a browser. The dashboard has no browser fixture, so its look on desktop and phone was not reviewed, only its content and behavior in unit tests.
+- Found while doing this, not fixed (needs the owner's answer): a person who already has a seller form (every new invitee gets one in their own workspace first) gets a form in the team workspace only if `SAVED_SELLER_FORMS_ENABLED=true` and the rollout includes them (`ensure_seller_form` in `schema.sql`, `sellerFormCreationCapability` in `lib/seller-forms/config.ts`). If production does not allow it, a new member's dashboard shows "Unable to load your reusable link right now." The owner confirmed in chat on 2026-10-07 that both are set in hosting (not verified here), so this should not occur.
+- Not in this slice: the personal workspace that is created for an invitee before they join (finding 7) is unchanged.

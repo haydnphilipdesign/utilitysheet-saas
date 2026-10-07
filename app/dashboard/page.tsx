@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 
 import { ReusableLinkActions } from '@/components/dashboard/reusable-link-actions';
+import { TeamWelcome, type TeamWelcomeWorkspace } from '@/components/dashboard/team-welcome';
 import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
 import { DeleteRequestDialog, type DeletableRequest } from '@/components/requests/DeleteRequestDialog';
 import { RequestListActions } from '@/components/requests/RequestListActions';
@@ -283,6 +284,8 @@ export default function DashboardPage() {
     const [statsLoaded, setStatsLoaded] = useState(false);
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
     const [showSetupPrompt, setShowSetupPrompt] = useState(false);
+    const [workspace, setWorkspace] = useState<TeamWelcomeWorkspace | null>(null);
+    const [hasOtherWorkspaces, setHasOtherWorkspaces] = useState(false);
     const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string; isActive?: boolean } | null>(null);
     const selectShareForm = useCallback((form: { url: string; slug: string; isActive: boolean }) => setIntakeLink(form), []);
     const [intakeError, setIntakeError] = useState(false);
@@ -312,6 +315,8 @@ export default function DashboardPage() {
             fetchJson<{
                 usage?: { used: number; limit: number; plan: string };
                 account?: { onboarding_completed_at?: string | null };
+                activeOrganization?: TeamWelcomeWorkspace | null;
+                organizations?: unknown[];
             }>('/api/account'),
             fetchJson<{ intakeLink?: { url: string; slug: string; is_active?: boolean } }>('/api/intake-link'),
         ]);
@@ -355,8 +360,14 @@ export default function DashboardPage() {
         }
 
         if (accountResult.status === 'fulfilled') {
+            const activeWorkspace = accountResult.value.activeOrganization || null;
             setUsageInfo(accountResult.value.usage || null);
-            setShowSetupPrompt(!accountResult.value.account?.onboarding_completed_at);
+            setWorkspace(activeWorkspace);
+            setHasOtherWorkspaces((accountResult.value.organizations?.length || 0) > 1);
+            // Setup creates a default Branding Profile for the workspace, which is
+            // not a member's to do in a team they were invited to.
+            const invitedMember = activeWorkspace?.role === 'member' && activeWorkspace?.subscription_status === 'team';
+            setShowSetupPrompt(!accountResult.value.account?.onboarding_completed_at && !invitedMember);
         } else {
             console.error('Error fetching dashboard account context:', accountResult.reason);
             setUsageInfo(null);
@@ -541,6 +552,8 @@ export default function DashboardPage() {
                 title="Dashboard"
                 description="Share your seller link, follow up on active work, and review completed sheets."
             />
+
+            <TeamWelcome workspace={workspace} hasOtherWorkspaces={hasOtherWorkspaces} />
 
             <Card className="gap-0 border-primary/25 bg-card/70 py-0 backdrop-blur-sm">
                 <CardHeader className="border-b border-border/60 py-4 sm:py-4">
