@@ -398,6 +398,7 @@ export function SettingsView({ user }: { user: SettingsUser | null }) {
                         }}
                         onDismissCheckout={() => setCheckoutPlan(null)}
                         onOpenWorkspace={() => handleTabChange('workspace')}
+                        onSeatsChanged={refreshOrganization}
                     />
                 </TabsContent>
             </Tabs>

@@ -405,6 +405,69 @@ export async function getOrganizationSeatUsage(organizationId: string) {
     };
 }
 
+export type SetOrganizationSeatQuantityResult =
+    | { status: 'updated'; seatQuantity: number }
+    | { status: 'in_use'; reserved: number }
+    | { status: 'not_found' };
+
+/**
+ * Sets the seat count of a Teams workspace, but never below the seats in use
+ * (members plus pending invitations). The workspace row is locked, so an
+ * invitation cannot be created or accepted between the check and the write.
+ * Only applies while the workspace is still on the given subscription.
+ */
+export async function setOrganizationSeatQuantityWithUsageGuard(data: {
+    organizationId: string;
+    subscriptionId: string;
+    seats: number;
+}): Promise<SetOrganizationSeatQuantityResult> {
+    if (!sql) return { status: 'not_found' };
+
+    const result = await sql`
+        WITH organization_row AS (
+            SELECT id
+            FROM organizations
+            WHERE id = ${data.organizationId}
+                AND subscription_status = 'team'
+                AND subscription_id = ${data.subscriptionId}
+            FOR UPDATE
+        ),
+        seat_usage AS (
+            SELECT
+                (
+                    SELECT COUNT(*)::int
+                    FROM organization_members
+                    WHERE organization_id = ${data.organizationId}
+                ) + (
+                    SELECT COUNT(*)::int
+                    FROM organization_invitations
+                    WHERE organization_id = ${data.organizationId}
+                        AND accepted_at IS NULL
+                        AND expires_at > NOW()
+                ) AS reserved
+        ),
+        updated_organization AS (
+            UPDATE organizations organization_update
+            SET seat_quantity = ${data.seats}, updated_at = NOW()
+            FROM organization_row, seat_usage
+            WHERE organization_update.id = organization_row.id
+                AND seat_usage.reserved <= ${data.seats}
+            RETURNING organization_update.seat_quantity
+        )
+        SELECT
+            EXISTS (SELECT 1 FROM organization_row) AS found,
+            (SELECT seat_quantity FROM updated_organization LIMIT 1) AS seat_quantity,
+            (SELECT reserved FROM seat_usage) AS reserved
+    `;
+
+    const row = result[0] as { found?: boolean; seat_quantity?: number | null; reserved?: number | null } | undefined;
+    if (!row?.found) return { status: 'not_found' };
+    if (row.seat_quantity === null || row.seat_quantity === undefined) {
+        return { status: 'in_use', reserved: Number(row.reserved) || 0 };
+    }
+    return { status: 'updated', seatQuantity: Number(row.seat_quantity) };
+}
+
 export async function clearActiveOrganizationIfMatches(accountId: string, organizationId: string) {
     if (!sql) return null;
 

@@ -44,7 +44,7 @@ const form = {
 };
 
 async function mocks(page: Page, scenario: Scenario) {
-    const state = { ...scenario, accountLoads: 0 };
+    const state = { ...scenario, accountLoads: 0, seats: 4 };
     const writes: { url: string; method: string; body: Record<string, unknown> }[] = [];
     const team = () => state.plan === 'team';
     const invites = [
@@ -77,7 +77,7 @@ async function mocks(page: Page, scenario: Scenario) {
                     name: 'Riverbend Transaction Services',
                     role: state.role,
                     subscription_status: team() ? 'team' : 'free',
-                    seat_quantity: team() ? 4 : null,
+                    seat_quantity: team() ? state.seats : null,
                     subscription_cancel_at: team() ? state.cancelAt ?? null : null,
                     notification_settings: { notify_admins_on_submission: false },
                 },
@@ -91,7 +91,7 @@ async function mocks(page: Page, scenario: Scenario) {
         }
         if (path === '/api/organization/members' && method === 'GET') {
             return json({
-                organization: { id: 'org_1', name: 'Riverbend Transaction Services', subscription_status: team() ? 'team' : 'free', seat_quantity: team() ? 4 : null, subscription_cancel_at: team() ? state.cancelAt ?? null : null },
+                organization: { id: 'org_1', name: 'Riverbend Transaction Services', subscription_status: team() ? 'team' : 'free', seat_quantity: team() ? state.seats : null, subscription_cancel_at: team() ? state.cancelAt ?? null : null },
                 role: state.role,
                 members: team() ? [
                     { account_id: 'acc_1', email: 'jordan@example.com', full_name: 'Jordan Rivera', member_role: state.role },
@@ -127,6 +127,10 @@ async function mocks(page: Page, scenario: Scenario) {
             }, 409);
         }
         if (path === '/api/billing/portal') return json({ error: 'Billing is not available in this test.' }, 400);
+        if (path === '/api/organization/billing/seats' && method === 'POST') {
+            state.seats = Number(req.postDataJSON().seats);
+            return json({ seatQuantity: state.seats, previousSeatQuantity: 4 });
+        }
         if (path === '/api/organization/billing/portal') return json({ error: 'Billing is not available in this test.' }, 400);
         if (path === '/api/organization/billing/checkout' && state.existingSubscription) {
             return json({
@@ -391,10 +395,59 @@ test('a Teams seat count can be typed and is checked before checkout', async ({ 
     await expect(upgrade).toBeDisabled();
     expect(writes).toEqual([]);
 
+    // Changing a live Pro subscription is confirmed first, and can be declined.
     await seats.fill('6');
     await upgrade.click();
+    const dialog = page.getByRole('dialog', { name: 'Change your Pro plan to Teams?' });
+    await expect(dialog.getByText('Your Pro subscription becomes a Teams plan with 6 seats at $42 a month.', { exact: false })).toBeVisible();
+    await healthy(page, testInfo, 'pro-teams-confirm');
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(writes).toEqual([]);
+
+    await upgrade.click();
+    await dialog.getByRole('button', { name: 'Change to Teams', exact: true }).click();
     await expect(page.getByRole('alert').filter({ hasText: 'Checkout is not available in this test.' })).toBeVisible();
     expect(writes).toEqual([{ url: '/api/organization/billing/checkout', method: 'POST', body: { seats: 6 } }]);
+});
+
+test('a Teams admin changes seats in Billing, within the minimum and the seats in use', async ({ page }, testInfo) => {
+    const { writes } = await open(page, { plan: 'team', role: 'admin' }, '?tab=billing');
+
+    await expect(page.getByText('4 seats, $28 a month', { exact: true })).toBeVisible();
+    await expect(page.getByText('4 in use: 3 members and 1 pending invitation.', { exact: false })).toBeVisible();
+    const seats = page.getByLabel('Number of seats', { exact: true });
+    const update = page.getByRole('button', { name: 'Update seats', exact: true });
+    await expect(seats).toHaveValue('4');
+    await expect(update).toBeDisabled();
+
+    await seats.fill('2');
+    await expect(page.getByText('Teams starts at 3 seats.', { exact: true })).toBeVisible();
+    await seats.fill('3');
+    await expect(page.getByText('This workspace already uses 4 seats (members and pending invitations), so choose at least 4.', { exact: true })).toBeVisible();
+    await expect(update).toBeDisabled();
+
+    await seats.fill('6');
+    await expect(page.getByText('$42/mo', { exact: true })).toBeVisible();
+    await healthy(page, testInfo, 'team-admin-seats');
+    await update.click();
+    const dialog = page.getByRole('dialog', { name: 'Change from 4 to 6 seats?' });
+    await expect(dialog.getByText('Your plan becomes $42 a month. Stripe adds the cost of the extra seats for the rest of this billing period to your next invoice.', { exact: true })).toBeVisible();
+    await healthy(page, testInfo, 'team-admin-seats-confirm');
+    expect(writes).toEqual([]);
+
+    await dialog.getByRole('button', { name: 'Change to 6 seats', exact: true }).click();
+    await expect(page.getByText('You now have 6 seats, $42 a month.', { exact: true })).toBeVisible();
+    await expect(page.getByText('6 seats, $42 a month', { exact: true })).toBeVisible();
+    await expect(seats).toHaveValue('6');
+    await healthy(page, testInfo, 'team-admin-seats-changed');
+    expect(writes).toEqual([{ url: '/api/organization/billing/seats', method: 'POST', body: { seats: 6 } }]);
+
+    // A member never sees seat controls.
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await open(page, { plan: 'team', role: 'member' }, '?tab=billing');
+    await expect(page.getByText('Your workspace admins manage this plan, its seats and its invoices.', { exact: false })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update seats', exact: true })).toHaveCount(0);
 });
 
 test('returning from checkout waits for the account before calling a plan active', async ({ page }, testInfo) => {

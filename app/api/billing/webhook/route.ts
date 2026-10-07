@@ -6,6 +6,7 @@ import {
     getAccountByStripeCustomerId,
     getOrganizationById,
     getOrganizationByStripeCustomerId,
+    getOrganizationSeatUsage,
     transferAccountSubscriptionToOrganization,
     updateOrganizationSubscription,
 } from '@/lib/neon/queries';
@@ -54,6 +55,28 @@ function getSeatQuantityFromSubscription(subscription: Stripe.Subscription) {
 function getMetadataId(metadata: Stripe.Metadata | null | undefined, key: string): string | null {
     const value = metadata?.[key]?.trim();
     return value || null;
+}
+
+/**
+ * Seats are normally changed in the app, which never lets them fall below the
+ * number of members. A change made directly in Stripe can; nobody loses access,
+ * so the owner is told instead. Never fails the webhook.
+ */
+async function flagSeatsBelowMembers(organizationId: string, seatQuantity: number | null) {
+    if (seatQuantity === null) return;
+    try {
+        const { used } = await getOrganizationSeatUsage(organizationId);
+        if (used > seatQuantity) {
+            await recordOperationalEvent({
+                category: 'billing_webhook',
+                code: 'seats_below_members',
+                outcome: 'failure',
+                severity: 'warning',
+            });
+        }
+    } catch (error) {
+        console.error('Failed to compare Teams seats with members:', error);
+    }
 }
 
 async function syncOrganizationSubscription(
@@ -133,6 +156,7 @@ async function syncOrganizationSubscription(
             : null,
         seatQuantity: status === 'team' ? seatQuantity : 0,
     });
+    if (status === 'team') await flagSeatsBelowMembers(organization.id, seatQuantity);
 }
 
 async function syncAccountSubscription(accountId: string, subscription: Stripe.Subscription) {
@@ -323,6 +347,7 @@ export async function POST(request: Request) {
                             : null,
                         seatQuantity,
                     });
+                    if (status === 'team') await flagSeatsBelowMembers(organization.id, seatQuantity);
                     console.log(`Updated Teams subscription status to ${status} for organization ${organization.id}`);
                 }
                 break;

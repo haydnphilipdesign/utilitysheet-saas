@@ -365,6 +365,16 @@ export function WorkspaceTeam({
                         Open Billing
                     </Button>
                 </div>
+                {isTeam && seatUsage && typeof organization.seat_quantity === 'number' && seatUsage.used > organization.seat_quantity && (
+                    <Note>
+                        <span className="font-medium text-foreground">
+                            This workspace has {plural(seatUsage.used, 'member')} and pays for {plural(organization.seat_quantity, 'seat')}.
+                        </span>{' '}
+                        {isAdmin
+                            ? 'Nobody has lost access. Add seats in Billing, or remove a member, so the two match.'
+                            : 'Nobody has lost access. A workspace admin can add seats in Billing.'}
+                    </Note>
+                )}
 
                 <div className="space-y-2">
                     <Label htmlFor="workspaceName">Workspace name</Label>

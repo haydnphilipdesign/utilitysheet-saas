@@ -78,6 +78,7 @@ export {
     getOrganizationMemberRole,
     getOrganizationMembers,
     getOrganizationSeatUsage,
+    setOrganizationSeatQuantityWithUsageGuard,
     isOrganizationMemberByEmail,
     getOrganizationAdminCount,
     updateOrganizationMemberRole,

@@ -361,6 +361,11 @@ export const organizationUpdateBodySchema = z.object({
     name: z.string().trim().min(2).max(100),
 }).strict();
 
+/** A new seat count for a Teams workspace. The minimum and seats in use are checked by the route. */
+export const organizationSeatsBodySchema = z.object({
+    seats: z.number().int().min(1).max(500),
+}).strict();
+
 export const organizationNotificationSettingsBodySchema = z.object({
     notify_admins_on_submission: z.boolean(),
 }).strict();

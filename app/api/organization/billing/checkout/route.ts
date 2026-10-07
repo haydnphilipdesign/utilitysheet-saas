@@ -106,7 +106,7 @@ export async function POST(request: Request) {
 
         if (organization.subscription_status === 'team' && organization.subscription_id) {
             return NextResponse.json(
-                { error: 'Organization already subscribed', message: 'Open the billing portal to manage seats.' },
+                { error: 'Organization already subscribed', message: 'This workspace is already on Teams. Change its seats in Settings, under Billing.' },
                 { status: 409 }
             );
         }

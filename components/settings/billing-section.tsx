@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { CheckCircle2, CreditCard, ExternalLink, Loader2, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,7 @@ import {
     type ActiveOrganization,
     type CheckoutReturn,
     type LoadState,
+    type SaveState,
     type SeatUsage,
     type Usage,
 } from './types';
@@ -89,8 +91,10 @@ function PortalButton({ workspace, busy, onOpen }: {
 
 export function BillingSection({
     state, onRetry, usage, planEndsAt, trialEndsAt, organization, isTeam, isAdmin, seatUsage,
-    checkout, onCheckAgain, onDismissCheckout, onOpenWorkspace,
+    checkout, onCheckAgain, onDismissCheckout, onOpenWorkspace, onSeatsChanged,
 }: {
+    /** Reloads the workspace after its seat count changed. */
+    onSeatsChanged: () => Promise<void> | void;
     state: LoadState;
     onRetry: () => void;
     usage: Usage | null;
@@ -113,6 +117,17 @@ export function BillingSection({
     const [portalOffer, setPortalOffer] = useState<{ target: 'plan' | 'teams'; workspace: boolean } | null>(null);
     const [teamsError, setTeamsError] = useState('');
     const [seatInput, setSeatInput] = useState(String(TEAM_MIN_SEATS));
+    // Null until the admin types; the field then shows the seats the plan has now.
+    const [seatDraft, setSeatDraft] = useState<string | null>(null);
+    const [seatsState, setSeatsState] = useState<SaveState | null>(null);
+    const [seatsMessage, setSeatsMessage] = useState('');
+    const [confirmation, setConfirmation] = useState<{
+        title: string;
+        description: string;
+        confirmLabel: string;
+        run: () => void | Promise<void>;
+    } | null>(null);
+    const [confirming, setConfirming] = useState(false);
 
     const banner = checkout && (
         <CheckoutBanner checkout={checkout} onCheckAgain={onCheckAgain} onDismiss={onDismissCheckout} />
@@ -144,7 +159,7 @@ export function BillingSection({
     // A plan that is set to cancel already says when it ends.
     const trialEnd = isPro && !planEnd ? formatPlanEnd(trialEndsAt) : null;
     // A second checkout while the first is still being confirmed could charge twice.
-    const confirming = checkout?.status === 'confirming';
+    const checkoutConfirming = checkout?.status === 'confirming';
 
     /** Sends the browser to Stripe; anything else is shown beside the button. */
     async function openStripe(url: string, target: 'plan' | 'teams', fallback: string, body?: unknown) {
@@ -181,18 +196,68 @@ export function BillingSection({
         );
     };
 
-    // Same rules the server applies before it creates a Teams checkout.
-    const seatText = seatInput.trim();
-    const seats = /^\d+$/.test(seatText) ? Number(seatText) : null;
-    const seatProblem = seatText === ''
-        ? 'Enter how many seats you need.'
-        : seats === null
-            ? 'Enter a whole number of seats.'
-            : seats < TEAM_MIN_SEATS
-                ? `Teams starts at ${TEAM_MIN_SEATS} seats.`
-                : seatsInUse !== null && seats < seatsInUse
-                    ? `This workspace already uses ${seatsInUse} seats (members and pending invitations), so choose at least ${seatsInUse}.`
-                    : '';
+    // Same rules the server applies before it creates a Teams checkout or changes seats.
+    const readSeats = (value: string) => {
+        const text = value.trim();
+        const count = /^\d+$/.test(text) ? Number(text) : null;
+        const problem = text === ''
+            ? 'Enter how many seats you need.'
+            : count === null
+                ? 'Enter a whole number of seats.'
+                : count < TEAM_MIN_SEATS
+                    ? `Teams starts at ${TEAM_MIN_SEATS} seats.`
+                    : seatsInUse !== null && count < seatsInUse
+                        ? `This workspace already uses ${seatsInUse} seats (members and pending invitations), so choose at least ${seatsInUse}.`
+                        : '';
+        return { count, problem };
+    };
+    const { count: seats, problem: seatProblem } = readSeats(seatInput);
+
+    const currentSeats = typeof organization?.seat_quantity === 'number' ? organization.seat_quantity : null;
+    const seatField = seatDraft ?? (currentSeats !== null ? String(currentSeats) : '');
+    const { count: newSeats, problem: newSeatsProblem } = readSeats(seatField);
+    const seatsChanged = newSeats !== null && currentSeats !== null && newSeats !== currentSeats;
+
+    const startTeams = () => void openStripe(
+        '/api/organization/billing/checkout',
+        'teams',
+        'We couldn’t start Teams checkout. Try again.',
+        { seats },
+    );
+
+    async function changeSeats(next: number) {
+        setSeatsState('saving');
+        setSeatsMessage('');
+        try {
+            const response = await fetch('/api/organization/billing/seats', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seats: next }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(typeof data.message === 'string' && data.message ? data.message : 'We couldn’t change your seats. Nothing was changed. Try again.');
+            }
+            await onSeatsChanged();
+            setSeatDraft(null);
+            setSeatsMessage(`You now have ${next} seats, ${usd.format(next * TEAM_PRICE_PER_SEAT_USD)} a month.`);
+            setSeatsState('saved');
+        } catch (error) {
+            setSeatsMessage(error instanceof Error ? error.message : 'We couldn’t change your seats. Nothing was changed. Try again.');
+            setSeatsState('error');
+        }
+    }
+
+    async function runConfirmation() {
+        if (!confirmation) return;
+        setConfirming(true);
+        try {
+            await confirmation.run();
+        } finally {
+            setConfirming(false);
+            setConfirmation(null);
+        }
+    }
 
     return (
         <>
@@ -237,7 +302,7 @@ export function BillingSection({
                         <Button
                             className="shrink-0"
                             onClick={() => void openStripe('/api/billing/checkout', 'plan', 'We couldn’t start checkout. Try again.')}
-                            disabled={busy !== null || confirming}
+                            disabled={busy !== null || checkoutConfirming}
                         >
                             {busy === 'plan' ? <Loader2 className="animate-spin" /> : <Sparkles />}
                             Upgrade to Pro, $9/mo
@@ -280,8 +345,9 @@ export function BillingSection({
                     </div>
                 ) : !isFree ? (
                     <p className="text-xs text-muted-foreground">
-                        {isTeam ? 'Manage Teams billing' : 'Manage subscription'} opens Stripe, our payment provider. Invoices,
-                        payment methods{isTeam ? ', the number of seats' : ''} and plan changes are all handled there.
+                        {isTeam
+                            ? 'Manage Teams billing opens Stripe, our payment provider. Invoices, payment methods and canceling are handled there. You change the number of seats below.'
+                            : 'Manage subscription opens Stripe, our payment provider. Invoices, payment methods and plan changes are all handled there.'}
                     </p>
                 ) : null}
 
@@ -327,6 +393,86 @@ export function BillingSection({
                 </p>
             </SettingsSection>
 
+            {isTeam && isAdmin && organization && (
+                <SettingsSection
+                    icon={Users}
+                    title="Seats"
+                    description="Each seat is one person. Add seats before you invite more people, or remove seats you don’t use."
+                >
+                    {currentSeats === null ? (
+                        <LoadingRows label="Loading seats…" rows={1} />
+                    ) : (
+                        <>
+                            <div className="space-y-1 rounded-lg border border-border bg-muted/30 p-4">
+                                <p className="text-sm font-medium text-foreground">
+                                    {currentSeats} seats, {usd.format(currentSeats * TEAM_PRICE_PER_SEAT_USD)} a month
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    {seatUsage && seatsInUse !== null
+                                        ? `${seatsInUse} in use: ${seatUsage.used} ${seatUsage.used === 1 ? 'member' : 'members'} and ${seatUsage.pendingInvites} pending ${seatUsage.pendingInvites === 1 ? 'invitation' : 'invitations'}. `
+                                        : ''}
+                                    {usd.format(TEAM_PRICE_PER_SEAT_USD)} per seat each month, {TEAM_MIN_SEATS} seat minimum.
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                    <div className="space-y-2 sm:w-40">
+                                        <Label htmlFor="teamSeatCount">Number of seats</Label>
+                                        <Input
+                                            id="teamSeatCount"
+                                            inputMode="numeric"
+                                            autoComplete="off"
+                                            value={seatField}
+                                            onChange={(event) => {
+                                                setSeatsState(null);
+                                                setSeatsMessage('');
+                                                setSeatDraft(event.target.value);
+                                            }}
+                                            disabled={seatsState === 'saving'}
+                                            aria-invalid={newSeatsProblem !== ''}
+                                            aria-describedby="teamSeatCountHelp"
+                                        />
+                                    </div>
+                                    <Button
+                                        onClick={() => {
+                                            if (newSeats === null) return;
+                                            const adding = newSeats > currentSeats;
+                                            setConfirmation({
+                                                title: `Change from ${currentSeats} to ${newSeats} seats?`,
+                                                description: `Your plan becomes ${usd.format(newSeats * TEAM_PRICE_PER_SEAT_USD)} a month. ${adding
+                                                    ? 'Stripe adds the cost of the extra seats for the rest of this billing period to your next invoice.'
+                                                    : 'Stripe credits the unused part of the removed seats on your next invoice.'}`,
+                                                confirmLabel: `Change to ${newSeats} seats`,
+                                                run: () => changeSeats(newSeats),
+                                            });
+                                        }}
+                                        disabled={seatsState === 'saving' || !seatsChanged || newSeatsProblem !== ''}
+                                    >
+                                        {seatsState === 'saving' && <Loader2 className="animate-spin" />}
+                                        {seatsState === 'saving' ? 'Updating…' : 'Update seats'}
+                                    </Button>
+                                </div>
+                                <div id="teamSeatCountHelp">
+                                    {newSeatsProblem ? (
+                                        <InlineStatus>{newSeatsProblem}</InlineStatus>
+                                    ) : seatsState === 'error' ? (
+                                        <InlineStatus tone="error">{seatsMessage}</InlineStatus>
+                                    ) : seatsState === 'saved' ? (
+                                        <InlineStatus tone="saved">{seatsMessage}</InlineStatus>
+                                    ) : seatsChanged && newSeats !== null ? (
+                                        <p className="text-sm text-foreground">
+                                            <span className="font-semibold">{usd.format(newSeats * TEAM_PRICE_PER_SEAT_USD)}/mo</span>
+                                            {' '}for {newSeats} seats.{' '}
+                                            <span className="text-muted-foreground">You confirm before anything changes.</span>
+                                        </p>
+                                    ) : null}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </SettingsSection>
+            )}
+
             {!isTeam && organization && (
                 <SettingsSection
                     icon={Users}
@@ -366,13 +512,15 @@ export function BillingSection({
                                     />
                                 </div>
                                 <Button
-                                    onClick={() => void openStripe(
-                                        '/api/organization/billing/checkout',
-                                        'teams',
-                                        'We couldn’t start Teams checkout. Try again.',
-                                        { seats },
-                                    )}
-                                    disabled={busy !== null || confirming || seatProblem !== ''}
+                                    // Free goes to Stripe's checkout page, which is its own confirmation.
+                                    // Pro is changed straight away, so it is confirmed here first.
+                                    onClick={() => (isPro ? setConfirmation({
+                                        title: 'Change your Pro plan to Teams?',
+                                        description: `Your Pro subscription becomes a Teams plan with ${seats} seats at ${usd.format((seats ?? 0) * TEAM_PRICE_PER_SEAT_USD)} a month. This happens right away, with no separate checkout page. Stripe adds the prorated difference from Pro to your next invoice.`,
+                                        confirmLabel: 'Change to Teams',
+                                        run: startTeams,
+                                    }) : startTeams())}
+                                    disabled={busy !== null || checkoutConfirming || seatProblem !== ''}
                                 >
                                     {busy === 'teams' ? <Loader2 className="animate-spin" /> : <Sparkles />}
                                     {isPro ? 'Upgrade Pro to Teams' : 'Start Teams'}
@@ -404,6 +552,16 @@ export function BillingSection({
                     )}
                 </SettingsSection>
             )}
+
+            <ConfirmDialog
+                open={confirmation !== null}
+                onOpenChange={(open) => { if (!open) setConfirmation(null); }}
+                title={confirmation?.title || ''}
+                description={confirmation?.description || ''}
+                confirmLabel={confirming ? 'Working…' : confirmation?.confirmLabel || ''}
+                busy={confirming}
+                onConfirm={() => void runConfirmation()}
+            />
         </>
     );
 }

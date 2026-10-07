@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
     getAccountByStripeCustomerId: vi.fn(),
     getOrganizationById: vi.fn(),
     getOrganizationByStripeCustomerId: vi.fn(),
+    getOrganizationSeatUsage: vi.fn(),
     recordOperationalEvent: vi.fn(),
     recordOperationalSuccess: vi.fn(),
     retrieveSubscription: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock('@/lib/neon/queries', () => ({
     getAccountByStripeCustomerId: mocks.getAccountByStripeCustomerId,
     getOrganizationById: mocks.getOrganizationById,
     getOrganizationByStripeCustomerId: mocks.getOrganizationByStripeCustomerId,
+    getOrganizationSeatUsage: mocks.getOrganizationSeatUsage,
     transferAccountSubscriptionToOrganization: mocks.transferAccountSubscriptionToOrganization,
     updateAccountSubscription: mocks.updateAccountSubscription,
     updateOrganizationSubscription: mocks.updateOrganizationSubscription,
@@ -100,6 +102,7 @@ describe('POST /api/billing/webhook subscription sync', () => {
             subscription_id: 'sub_current',
         });
         mocks.getOrganizationById.mockResolvedValue({ id: 'organization_1' });
+        mocks.getOrganizationSeatUsage.mockResolvedValue({ used: 1, pendingInvites: 0 });
         mocks.recordOperationalEvent.mockResolvedValue(true);
         mocks.recordOperationalSuccess.mockResolvedValue(true);
     });
@@ -263,6 +266,49 @@ describe('POST /api/billing/webhook subscription sync', () => {
                 );
             }
         );
+    });
+
+    describe('seats lowered in Stripe below the number of members', () => {
+        const onTeams = { id: 'organization_1', subscription_status: 'team', subscription_id: 'sub_team' };
+
+        beforeEach(() => {
+            mocks.getOrganizationById.mockResolvedValue(onTeams);
+        });
+
+        it('keeps the plan and everyone’s access, and tells the owner', async () => {
+            mocks.getOrganizationSeatUsage.mockResolvedValue({ used: 5, pendingInvites: 0 });
+
+            const response = await deliver('customer.subscription.updated', teamSubscription());
+
+            expect(response.status).toBe(200);
+            expect(mocks.updateOrganizationSubscription).toHaveBeenCalledWith(
+                'organization_1',
+                expect.objectContaining({ subscriptionStatus: 'team', seatQuantity: 4 })
+            );
+            expect(mocks.recordOperationalEvent).toHaveBeenCalledWith({
+                category: 'billing_webhook',
+                code: 'seats_below_members',
+                outcome: 'failure',
+                severity: 'warning',
+            });
+        });
+
+        it('says nothing when members fit, even with invitations pending', async () => {
+            mocks.getOrganizationSeatUsage.mockResolvedValue({ used: 4, pendingInvites: 2 });
+
+            await deliver('customer.subscription.updated', teamSubscription());
+
+            expect(mocks.recordOperationalEvent).not.toHaveBeenCalled();
+        });
+
+        it('never fails the webhook when the member count cannot be read', async () => {
+            mocks.getOrganizationSeatUsage.mockRejectedValue(new Error('db down'));
+
+            const response = await deliver('customer.subscription.updated', teamSubscription());
+
+            expect(response.status).toBe(200);
+            expect(mocks.updateOrganizationSubscription).toHaveBeenCalled();
+        });
     });
 
     describe('the referral free month', () => {

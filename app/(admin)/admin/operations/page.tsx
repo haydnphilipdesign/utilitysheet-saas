@@ -39,6 +39,10 @@ const INCIDENT_LABELS: Record<string, { title: string; investigate: string }> = 
         title: 'A customer has two paid subscriptions',
         investigate: 'In the Stripe dashboard, find the customer with two active subscriptions (for Pro, the stored event carries the account ID). Cancel and refund the extra one, then confirm the customer still has their plan.',
     },
+    'billing_webhook:seats_below_members': {
+        title: 'A Teams workspace has more members than seats',
+        investigate: 'Seats were lowered directly in Stripe. In Workspaces, filter to Team and find the one whose members exceed its seats, then ask its admin to add seats in Settings, Billing or remove a member. Nobody has lost access.',
+    },
     'email:completion_send_failed': {
         title: 'Completion email to the customer was not sent',
         investigate: 'The seller submission itself succeeded. Open the request; the customer can still view it in their dashboard.',
