@@ -21,6 +21,7 @@ export function formConfiguration(form: IntakeLink): SellerFormPatch {
     const advancedModules = normalizeAdvancedModules(form.advanced_modules);
     return {
         name: form.name || 'My seller form',
+        sellerHeading: form.seller_heading || null,
         sellerIntro: form.seller_intro || null,
         isActive: form.is_active,
         defaultBrandProfileId: form.default_brand_profile_id || null,

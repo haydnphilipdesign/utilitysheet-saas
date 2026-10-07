@@ -13,6 +13,38 @@ Introductions are escaped plain text, limited to 500 characters and shown only
 to sellers. Names are internal, limited to 80 characters. Preview uses the demo
 wizard: no persisted request, usage, seller mail or provider API calls.
 
+### First screen of the link
+
+The first screen of a reusable link shows a heading, an introduction and a
+fixed "Your progress saves automatically." line, above the property address.
+Each form may replace the heading (`seller_heading`, 80 characters) and the
+introduction (`seller_intro`). Both are plain text and available on every plan.
+The standard wording lives in `lib/seller-forms/intro-copy.ts` and names the
+form's Branding Profile. The editor prefills both fields with that wording and
+stores nothing while a field is empty or unchanged, so the standard text keeps
+following the profile name. The editor's "What sellers see first" preview and
+the public screen render the same `components/intake/IntakeIntro.tsx`.
+
+The heading belongs to the link's first screen only; it is not captured on
+requests. The introduction is still captured on each request and greets sellers
+on the welcome step of requests created from the dashboard. A seller who came
+through the link's first screen is not shown it a second time (a browser session
+marker; if it is missing the introduction simply shows again).
+
+Seller-facing wording does not assume the sender is an agent, because some
+customers are transaction coordinators: screens name the Branding Profile, or
+say "your real estate team" when there is none.
+
+The form editor links straight to the selected Branding Profile, and each
+profile on the Branding page links to the seller forms that use it. A profile's
+"Welcome message for the buyer" is printed on the buyer's sheet and is separate
+from the seller heading and introduction.
+
+`migrations-seller-form-heading.sql` adds the column and the `sellerHeading`
+key in `save_seller_form`. It is additive and may be applied before or after
+the application: until it is applied the heading reads as empty and saving one
+has no effect.
+
 Form edits affect new requests. Started requests retain captured questions and
 introduction. Individual creation may override question settings for that
 request; form switches ask before replacing unsaved overrides. Manual API
@@ -117,10 +149,12 @@ continues excluding URL identities/capability tokens.
 
 ### Base-link migration and release
 
-Three files, always in this order: `migrations-seller-form-base-links.sql`,
-`migrations-seller-form-default-base-link.sql`, then
+Four files, always in this order: `migrations-seller-form-base-links.sql`,
+`migrations-seller-form-default-base-link.sql`,
 `migrations-seller-form-readable-endings.sql` (readable `form-N` automatic
-endings; changes no form, flat alias or request row). Each later file replaces
+endings; changes no form, flat alias or request row), then
+`migrations-seller-form-heading.sql` (seller heading; it replaces
+`save_seller_form`, so rerun it after rerunning either of the first two). Each later file replaces
 functions an earlier one installs, so after rerunning one, rerun those after it. The second gives every form that
 owns a base name its own ending and lets it be renamed; it is additive,
 rerunnable and safe under the previously deployed application, and must be

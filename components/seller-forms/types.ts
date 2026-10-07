@@ -19,6 +19,7 @@ export interface SavedSellerForm {
     isDefault: boolean;
     isActive: boolean;
     is_active: boolean;
+    sellerHeading: string | null;
     sellerIntro: string | null;
     defaultBrandProfileId: string | null;
     defaultUtilityCategories: UtilityCategory[];

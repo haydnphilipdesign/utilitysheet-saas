@@ -318,9 +318,20 @@ test('two forms have independent settings; draft preview sends no writes and sta
             name: 'Ask about HOA or condo association',
         }),
     ).toHaveAttribute('aria-checked', 'false');
+    // The stored introduction is custom; the heading shows the standard wording.
+    await expect(page.getByLabel('Seller heading')).toHaveValue('Share your home’s utility details');
+    const firstScreen = page.getByTestId('seller-intro-preview');
+    await expect(firstScreen.getByText('Listing introduction', { exact: true })).toBeVisible();
+    await expect(firstScreen.getByText('Your progress saves automatically.')).toBeVisible();
+    await page.getByLabel('Seller heading').fill('Welcome, sellers');
+    await expect(firstScreen.getByText('Welcome, sellers', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Use the standard introduction' }).click();
+    await expect(page.getByLabel('Seller introduction')).toHaveValue('The team helping with the sale of your home sent you this link to collect utility information for the buyer.');
     await page
-        .getByLabel('Seller introduction (optional)')
+        .getByLabel('Seller introduction')
         .fill('<b>Draft introduction</b>');
+    await expect(firstScreen.getByText('<b>Draft introduction</b>', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Use the standard heading' }).click();
     await page
         .getByRole('button', { name: 'Preview seller form', exact: true })
         .click();
@@ -352,6 +363,9 @@ test('two forms have independent settings; draft preview sends no writes and sta
     expect(state.writes[0].body).toMatchObject({
         revision: 2,
         collectHoaQuestions: true,
+        // An untouched standard heading is stored as empty.
+        sellerHeading: null,
+        sellerIntro: '<b>Draft introduction</b>',
     });
     expect(state.forms[1].sellerIntro).toBe('Closing introduction');
     state.stale();
@@ -375,7 +389,7 @@ test('duplication stays an unsaved draft and a paused default cannot be shared',
     await expect(page.getByLabel('Form name', { exact: true })).toHaveValue(
         'Listing copy',
     );
-    await expect(page.getByLabel('Seller introduction (optional)')).toHaveValue(
+    await expect(page.getByLabel('Seller introduction')).toHaveValue(
         'Listing introduction',
     );
     await expect(page.getByLabel('Reusable link')).toHaveCount(0);

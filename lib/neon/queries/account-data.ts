@@ -104,7 +104,7 @@ export async function getAccountDataExport(accountId: string) {
             ORDER BY created_at ASC
         `,
         sql`
-            SELECT id, name, seller_intro, organization_id, is_default, is_referral_identity, revision,
+            SELECT id, name, to_jsonb(intake_links)->>'seller_heading' AS seller_heading, seller_intro, organization_id, is_default, is_referral_identity, revision,
                 collect_hoa_questions, collect_electric_meter_number,
                 is_active, default_brand_profile_id, default_utility_categories,
                 default_packet_mode, advanced_modules, advanced_module_exclusions,

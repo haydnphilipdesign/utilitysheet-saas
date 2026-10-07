@@ -114,6 +114,7 @@ export async function intakeMetadataResponse(target: IntakeTarget) {
 
         return NextResponse.json({
             accepting: true,
+            sellerHeading: intakeLink.seller_heading || null,
             sellerIntro: intakeLink.seller_intro || null,
             configuration: formRequestFields(intakeLink, scope.isPaid),
             brandProfile: publicBrandProfile,

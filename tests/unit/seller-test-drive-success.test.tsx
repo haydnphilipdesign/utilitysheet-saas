@@ -92,7 +92,7 @@ describe('seller test-drive completion', () => {
         expect(screen.getByText(/Maple Realty has been notified/)).toBeInTheDocument();
         // It cannot show a copy, and the link it emailed led back to the form.
         expect(screen.queryByText(/want a copy/i)).not.toBeInTheDocument();
-        expect(screen.getByText(/ask your agent to reopen the form/i)).toBeInTheDocument();
+        expect(screen.getByText(/ask Maple Realty to reopen the form/i)).toBeInTheDocument();
         expect(fetchMock).not.toHaveBeenCalled();
     });
 

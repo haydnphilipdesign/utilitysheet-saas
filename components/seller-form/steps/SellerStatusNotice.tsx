@@ -20,7 +20,7 @@ interface SellerStatusNoticeProps {
 }
 
 export function SellerStatusNotice({ kind, address, brandProfile }: SellerStatusNoticeProps) {
-    const agent = brandProfile?.name || 'your agent';
+    const agent = brandProfile?.name || 'your real estate team';
 
     return (
         <div

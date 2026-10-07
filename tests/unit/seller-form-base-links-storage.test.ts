@@ -40,7 +40,8 @@ const forPglite = (sql: string) =>
 const migration = forPglite(
     readFileSync('migrations-seller-form-base-links.sql', 'utf8') +
         readFileSync('migrations-seller-form-default-base-link.sql', 'utf8') +
-        readFileSync('migrations-seller-form-readable-endings.sql', 'utf8'),
+        readFileSync('migrations-seller-form-readable-endings.sql', 'utf8') +
+        readFileSync('migrations-seller-form-heading.sql', 'utf8'),
 );
 const rows = async (sql: string, params: unknown[] = []) =>
     (await db.query<Record<string, unknown>>(sql, params)).rows;
@@ -334,6 +335,19 @@ describe.sequential('shared base links: migration and atomic writers', () => {
         ).rejects.toThrow('creator and workspace');
     });
 
+    it('stores a trimmed seller heading, clears an empty one and rejects one that is too long', async () => {
+        const form = (await rows('SELECT id, revision, seller_intro FROM intake_links WHERE account_id=$1 ORDER BY created_at, id LIMIT 1', [bob]))[0];
+        const saved = await saveSellerForm(bob, undefined, String(form.id), Number(form.revision), { sellerHeading: '  Welcome home sellers  ' });
+        expect(saved).toMatchObject({ seller_heading: 'Welcome home sellers', seller_intro: form.seller_intro });
+        // A patch without the key leaves the heading alone.
+        const renamed = await saveSellerForm(bob, undefined, String(form.id), saved!.revision, { name: 'Renamed' });
+        expect(renamed!.seller_heading).toBe('Welcome home sellers');
+        await expect(
+            saveSellerForm(bob, undefined, String(form.id), renamed!.revision, { sellerHeading: 'x'.repeat(81) }),
+        ).rejects.toThrow();
+        const cleared = await saveSellerForm(bob, undefined, String(form.id), renamed!.revision, { sellerHeading: '   ' });
+        expect(cleared!.seller_heading).toBeNull();
+    });
     it('leaves no namespace or ending behind when account closure deletes the forms', async () => {
         const bobEndings = () => rows('SELECT x.form_id FROM seller_form_suffix_aliases x JOIN seller_form_link_namespaces n ON n.id=x.namespace_id WHERE n.account_id=$1 AND x.is_current', [bob]);
         // Mirrors lib/neon/queries/account-closure.ts: forms are deleted explicitly.

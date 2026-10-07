@@ -306,7 +306,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                     <div className="max-w-2xl mx-auto border-t border-border pt-4 text-xs text-muted-foreground flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
                         <span>
                             Need help?{' '}
-                            {brandProfile?.name ? `Contact ${brandProfile.name}` : 'Contact your agent'}:
+                            {brandProfile?.name ? `Contact ${brandProfile.name}` : 'Contact your real estate team'}:
                         </span>
                         {brandProfile?.contact_email && (
                             <a

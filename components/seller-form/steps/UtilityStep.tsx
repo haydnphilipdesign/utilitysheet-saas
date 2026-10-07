@@ -483,7 +483,7 @@ export function UtilityStep({
                                 </button>
                             </div>
                             <p className="text-xs text-muted-foreground text-center">
-                                Picking &quot;I&apos;m not sure&quot; is fine. We&apos;ll flag it for your agent to fill in.
+                                Picking &quot;I&apos;m not sure&quot; is fine. We&apos;ll flag it so it can be filled in later.
                             </p>
                         </div>
                     ) : (

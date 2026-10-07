@@ -174,6 +174,8 @@ CREATE TABLE IF NOT EXISTS intake_links (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     name TEXT NOT NULL DEFAULT 'My seller form' CHECK (length(btrim(name)) BETWEEN 1 AND 80),
     seller_intro TEXT CHECK (length(seller_intro) <= 500),
+    -- Heading on the first screen of the reusable link. See migrations-seller-form-heading.sql.
+    seller_heading TEXT CHECK (length(seller_heading) <= 80),
     organization_id UUID REFERENCES organizations(id) ON DELETE RESTRICT,
     scope_initialized BOOLEAN NOT NULL DEFAULT FALSE,
     is_default BOOLEAN NOT NULL DEFAULT TRUE,
@@ -747,7 +749,7 @@ RETURNS SETOF intake_links LANGUAGE sql AS $$
     SELECT * FROM ensure_seller_form(p_account, p_org, p_slug, FALSE, NULL);
 $$;
 
--- Accepts an optional "suffix" key for the form's link ending.
+-- Accepts an optional "suffix" key for the form's link ending and "sellerHeading".
 CREATE OR REPLACE FUNCTION save_seller_form(p_account UUID, p_org UUID, p_id UUID, p_revision INTEGER, p_config JSONB, p_slug TEXT, p_max_forms INTEGER, p_can_create BOOLEAN)
 RETURNS SETOF intake_links LANGUAGE plpgsql AS $$
 DECLARE a accounts; f intake_links; ns seller_form_link_namespaces;
@@ -804,6 +806,7 @@ BEGIN
     END IF;
     UPDATE intake_links SET
         name = COALESCE(p_config->>'name', f.name),
+        seller_heading = CASE WHEN p_config ? 'sellerHeading' THEN NULLIF(btrim(p_config->>'sellerHeading'), '') ELSE f.seller_heading END,
         seller_intro = CASE WHEN p_config ? 'sellerIntro' THEN NULLIF(btrim(p_config->>'sellerIntro'), '') ELSE f.seller_intro END,
         slug = COALESCE(p_config->>'slug', f.slug),
         is_active = COALESCE((p_config->>'isActive')::boolean, f.is_active),

@@ -630,7 +630,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                     <div className="space-y-2">
                                         <div className="flex items-baseline justify-between gap-2">
                                             <span className="flex items-center gap-2">
-                                                <Label htmlFor="welcomeMessage" className="text-foreground">Welcome message</Label>
+                                                <Label htmlFor="welcomeMessage" className="text-foreground">Welcome message for the buyer</Label>
                                                 {!isPro && <ProChip />}
                                             </span>
                                             <span className="text-[11px] tabular-nums text-muted-foreground">
@@ -647,7 +647,9 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                             disabled={!isPro}
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            Appears above Home Basics, highlighted with your primary color.
+                                            Appears above Home Basics on the buyer&apos;s sheet, highlighted with your primary color.
+                                            Sellers do not see it. To change what sellers read first, edit a{' '}
+                                            <Link href="/dashboard/forms" className="text-primary underline">seller form</Link>.
                                         </p>
                                         {!isPro && <UpgradeHint />}
                                     </div>

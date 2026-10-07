@@ -39,6 +39,7 @@ export const createRequestBodySchema = z.object({
 
 const sellerFormFieldsSchema = z.object({
     name: z.string().trim().min(1).max(80).optional(),
+    sellerHeading: z.string().trim().max(80).nullable().optional(),
     sellerIntro: z.string().trim().max(500).nullable().optional(),
     collectHoaQuestions: z.boolean().optional(),
     collectElectricMeterNumber: z.boolean().optional(),

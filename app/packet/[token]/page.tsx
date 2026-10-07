@@ -274,7 +274,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                 icon={<AlertCircle className="h-6 w-6 text-muted-foreground" />}
                 iconClassName="bg-muted"
                 title="Info sheet not found"
-                body="We couldn't find an info sheet for this link. Double-check the link, or ask your agent to resend it."
+                body="We couldn't find an info sheet for this link. Double-check the link, or ask whoever shared it to resend it."
             />
         );
     }

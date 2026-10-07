@@ -206,6 +206,7 @@ describe
                 await a.query(readFileSync('migrations-seller-form-base-links.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-readable-endings.sql', 'utf8'));
+                await a.query(readFileSync('migrations-seller-form-heading.sql', 'utf8'));
                 expect(
                     await a.query(
                         "SELECT COUNT(*) FROM pg_constraint WHERE conrelid='requests'::regclass AND contype='f' AND confrelid='accounts'::regclass;",
@@ -389,6 +390,7 @@ describe
                 await a.query(readFileSync('migrations-seller-form-base-links.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-default-base-link.sql', 'utf8'));
                 await a.query(readFileSync('migrations-seller-form-readable-endings.sql', 'utf8'));
+                await a.query(readFileSync('migrations-seller-form-heading.sql', 'utf8'));
                 await a.query(`SELECT id FROM save_seller_form('${owner}',NULL,'${child}',1,'{"name":"Changed only"}','unused',50);`);
                 expect(await a.query(`SELECT root_form_id FROM seller_form_link_namespaces WHERE account_id='${owner}';`)).toBe(form);
                 // The base owner keeps one current ending and may rename it.

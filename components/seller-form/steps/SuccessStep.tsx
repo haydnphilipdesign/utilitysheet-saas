@@ -150,23 +150,23 @@ export function SuccessStep({ isDemo = false, isTestDrive = false, demoData, bra
                 <div className="p-3 sm:p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-left">
                     <p className="text-emerald-700 dark:text-emerald-300 text-sm sm:text-base">
                         Thank you{propertyAddress ? ` for sharing utility details for ${propertyAddress}` : ''}.{' '}
-                        {brandProfile?.name ? `${brandProfile.name} has been notified` : 'Your agent has been notified'} and will take it from here.
+                        {brandProfile?.name ? `${brandProfile.name} has been notified` : 'Your real estate team has been notified'} and will take it from here.
                     </p>
                 </div>
 
                 <div className="text-left space-y-2 text-sm">
                     <p className="font-medium text-foreground">What happens next:</p>
                     <ul className="text-xs sm:text-sm text-muted-foreground space-y-1.5 pl-4 list-disc marker:text-muted-foreground/50">
-                        <li>Your agent reviews the info and prepares a packet for the buyer.</li>
-                        <li>If anything is unclear, your agent may reach out to confirm.</li>
+                        <li>{brandProfile?.name || 'Your real estate team'} reviews the info and prepares a packet for the buyer.</li>
+                        <li>If anything is unclear, they may reach out to confirm.</li>
                         <li>You can safely close this page. The link is now read-only.</li>
-                        <li>If something needs correcting later, ask your agent to reopen the form.</li>
+                        <li>If something needs correcting later, ask {brandProfile?.name || 'your real estate team'} to reopen the form.</li>
                     </ul>
                 </div>
 
                 {(brandProfile?.contact_email || brandProfile?.contact_phone) && (
                     <div className="text-left rounded-xl border border-border bg-card/40 p-4 space-y-2">
-                        <p className="text-xs font-medium text-foreground">Questions? Contact {brandProfile?.name || 'your agent'}:</p>
+                        <p className="text-xs font-medium text-foreground">Questions? Contact {brandProfile?.name || 'your real estate team'}:</p>
                         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
                             {brandProfile?.contact_email && (
                                 <a href={`mailto:${brandProfile.contact_email}`} className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)]">

@@ -25,6 +25,7 @@ import { SuccessStep } from './steps/SuccessStep';
 import { SellerStatusNotice } from './steps/SellerStatusNotice';
 import { sellerPrefillToWizardState, type SellerPrefill } from '@/lib/seller-form/prefill';
 import { trackEvent } from '@/lib/analytics/events';
+import { INTRO_SEEN_STORAGE_KEY } from '@/lib/seller-forms/intro-copy';
 import {
     ADVANCED_MODULE_KEYS,
     ADVANCED_MODULE_LABELS,
@@ -260,6 +261,15 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<{ kind: 'network' | 'server' | 'rate_limit' | 'unknown'; message: string } | null>(null);
     const [autosaveFlash, setAutosaveFlash] = useState(false);
+    // Arriving from a reusable link: the introduction was on its first screen.
+    const [introSeen, setIntroSeen] = useState(false);
+    useEffect(() => {
+        try {
+            if (sessionStorage.getItem(INTRO_SEEN_STORAGE_KEY) === token) setIntroSeen(true);
+        } catch {
+            // Storage can be unavailable; the introduction then shows again.
+        }
+    }, [token]);
     const autosaveFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
@@ -990,7 +1000,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 {currentStep === Step.WELCOME && (
                     <WelcomeStep
                         key="welcome"
-                        sellerIntro={initialRequestData.seller_intro}
+                        sellerIntro={introSeen ? null : initialRequestData.seller_intro}
                         address={initialRequestData.property_address}
                         onNext={handleNext}
                         isTestDrive={isTestDrive}
@@ -1085,7 +1095,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         </div>
                         <div className="space-y-2 max-w-sm">
                             <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-                                {isTestDrive ? 'Creating your test sheet…' : 'Sending your info to your agent…'}
+                                {isTestDrive ? 'Creating your test sheet…' : brandProfile?.name ? `Sending your info to ${brandProfile.name}…` : 'Sending your info…'}
                             </h2>
                             <p className="text-sm text-muted-foreground">This usually takes a few seconds. Please don’t close the tab.</p>
                         </div>

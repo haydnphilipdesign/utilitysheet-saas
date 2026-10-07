@@ -365,6 +365,19 @@ export default function BrandingPage() {
                                         brand.is_intake_default ? 'used by saved seller forms' : null,
                                     ].filter(Boolean).join(' · ')}
                                 </p>
+                                {!!brand.seller_forms?.length && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {brand.seller_forms.length === 1 ? 'Seller form: ' : 'Seller forms: '}
+                                        {brand.seller_forms.map((form, index) => (
+                                            <span key={form.id}>
+                                                {index > 0 && ', '}
+                                                <Link href={`/dashboard/forms/${form.id}`} className="text-primary underline">
+                                                    {form.name}
+                                                </Link>
+                                            </span>
+                                        ))}
+                                    </p>
+                                )}
                                 <Link href={`/dashboard/branding/${brand.id}`}>
                                     <Button
                                         variant="outline"

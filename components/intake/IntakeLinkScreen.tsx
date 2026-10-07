@@ -1,13 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Loader2, MapPin, ArrowRight, ShieldCheck, Mail, Phone } from 'lucide-react';
+import { AlertTriangle, Loader2, MapPin, ArrowRight, Mail, Phone } from 'lucide-react';
 import { SellerLayout } from '@/components/seller-form/SellerLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { GooglePlacesAddressInput } from '@/components/address/GooglePlacesAddressInput';
 import { trackEvent } from '@/lib/analytics/events';
+import { INTRO_SEEN_STORAGE_KEY } from '@/lib/seller-forms/intro-copy';
+import { IntakeIntro } from './IntakeIntro';
 import {
     type IntakeAddressParts,
     type IntakeMissingField,
@@ -72,6 +74,7 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
     const [submitting, setSubmitting] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
+    const [sellerHeading, setSellerHeading] = useState<string | null>(null);
     const [sellerIntro, setSellerIntro] = useState<string | null>(null);
     const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
     const [accepting, setAccepting] = useState(true);
@@ -94,6 +97,7 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
 
                 if (cancelled) return;
                 setBrandProfile(data.brandProfile || null);
+                setSellerHeading(data.sellerHeading || null);
                 setSellerIntro(data.sellerIntro || null);
                 setAccepting(Boolean(data.accepting));
                 if (data.accepting === false) {
@@ -242,6 +246,12 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
                 throw new Error('Failed to start');
             }
 
+            try {
+                // The welcome step skips the introduction this seller just read.
+                sessionStorage.setItem(INTRO_SEEN_STORAGE_KEY, token);
+            } catch {
+                // Storage can be unavailable; the introduction then shows again.
+            }
             window.location.href = `/s/${encodeURIComponent(token)}`;
         } catch (e: unknown) {
             setFormError(getErrorMessage(e, 'Failed to start. Please try again.'));
@@ -352,30 +362,18 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
                             Try Again
                         </Button>
                         <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-                            If this link was sent to you by your real estate agent, please ask them to resend it.
+                            Please ask whoever sent you this link to resend it.
                         </p>
                     </div>
                 </div>
             ) : (
                 <div className="w-full max-w-xl mx-auto space-y-6">
                     <div className="rounded-2xl border border-border bg-card/50 p-6 sm:p-8 space-y-5">
-                        <div className="flex items-start gap-3">
-                            <div className="mt-0.5 rounded-xl bg-[var(--brand-accent-soft)] p-2">
-                                <ShieldCheck className="h-5 w-5 text-[color:var(--brand-accent)]" />
-                            </div>
-                            <div className="space-y-1">
-                                <h1 className="text-xl font-semibold text-foreground">
-                                    {brandProfile?.name
-                                        ? `${brandProfile.name} needs a few utility details`
-                                        : 'Share your home’s utility details'}
-                                </h1>
-                                <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
-                                    {sellerIntro || (brandProfile?.name
-                                        ? `Your agent at ${brandProfile.name} sent you this link to gather utility info for the buyer. Your progress saves automatically.`
-                                        : 'Your agent sent this link to gather utility info for the buyer. Your progress saves automatically.')}
-                                </p>
-                            </div>
-                        </div>
+                        <IntakeIntro
+                            brandName={brandProfile?.name}
+                            heading={sellerHeading}
+                            intro={sellerIntro}
+                        />
 
                         {(brandProfile?.contact_email || brandProfile?.contact_phone) && (
                             <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1.5">

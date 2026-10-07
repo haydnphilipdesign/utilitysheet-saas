@@ -58,6 +58,7 @@ describe('GET /api/intake/[slug]', () => {
         expect(getIntakeBrandProfile).toHaveBeenCalledWith('acct-1', undefined, 'brand-2');
         expect(await response.json()).toMatchObject({
             accepting: true,
+            sellerHeading: savedForm.seller_heading,
             sellerIntro: savedForm.seller_intro,
             configuration: { collectHoaQuestions: false, collectElectricMeterNumber: false, sourceFormId: savedForm.id, sourceFormRevision: 2 },
             brandProfile: {

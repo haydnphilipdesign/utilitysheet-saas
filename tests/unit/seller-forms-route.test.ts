@@ -182,6 +182,7 @@ describe('creator scoped saved form APIs', () => {
         const config = m.save.mock.calls[0][4];
         expect(config).toMatchObject({
             name: 'Closing',
+            sellerHeading: savedForm.seller_heading,
             sellerIntro: savedForm.seller_intro,
             collectHoaQuestions: false,
         });
@@ -207,6 +208,7 @@ describe('creator scoped saved form APIs', () => {
         { name: 'No revision' },
         { revision: 2, organizationId: 'forged', name: 'X' },
         { revision: 2, sellerIntro: 'x'.repeat(501) },
+        { revision: 2, sellerHeading: 'x'.repeat(81) },
     ])('rejects unsafe edit %j', async (body) => {
         expect((await PATCH(request(body), params))!.status).toBe(400);
         expect(m.save).not.toHaveBeenCalled();

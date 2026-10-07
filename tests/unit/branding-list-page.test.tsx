@@ -98,7 +98,7 @@ describe('BrandingPage list', () => {
 
     it('shows usage and default context for each profile', async () => {
         mockFetch([
-            createProfile({ request_count: 3, is_intake_default: true }),
+            createProfile({ request_count: 3, is_intake_default: true, seller_forms: [{ id: 'form_1', name: 'Listing' }] }),
             createProfile({ id: 'profile_2', name: 'Second Brand', is_default: false, request_count: 1 }),
         ]);
         render(<BrandingPage />);
@@ -106,6 +106,7 @@ describe('BrandingPage list', () => {
         expect(await screen.findByText('Used by 3 requests · preselected for new requests · used by saved seller forms')).toBeTruthy();
         expect(screen.getByText('Used by 1 request')).toBeTruthy();
         expect(screen.getByText('Seller form')).toBeTruthy();
+        expect(screen.getByRole('link', { name: 'Listing' }).getAttribute('href')).toBe('/dashboard/forms/form_1');
     });
 
     it('duplicates a profile from the overflow menu', async () => {

@@ -11,6 +11,8 @@ export interface IntakeLink {
     account_id: string;
     organization_id: string | null;
     name: string;
+    /** Absent until migrations-seller-form-heading.sql is applied. */
+    seller_heading?: string | null;
     seller_intro: string | null;
     scope_initialized: boolean;
     is_default: boolean;

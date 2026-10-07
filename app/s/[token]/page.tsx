@@ -144,7 +144,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                         Try Again
                     </button>
                     <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-                        If this link was sent to you by your real estate agent, please ask them to resend it.
+                        Please ask whoever sent you this link to resend it.
                     </p>
                 </div>
             </div>

@@ -69,7 +69,7 @@ test('nested form link uses its exact metadata/start route and retains address c
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-    if (path === '/api/intake/jane/forms/start') return json({ accepting: true, sellerIntro: 'Closing introduction', brandProfile: null });
+    if (path === '/api/intake/jane/forms/start') return json({ accepting: true, sellerHeading: 'Closing questions', sellerIntro: 'Closing introduction', brandProfile: null });
     if (path === '/api/intake/jane/forms/start/start') {
       starts += 1;
       expect(route.request().postDataJSON().propertyAddress).toContain('78701');
@@ -80,7 +80,9 @@ test('nested form link uses its exact metadata/start route and retains address c
   });
   // The suffix "start" must not collide with the original flat start endpoint.
   await page.goto('/i/jane/start');
+  await expect(page.getByRole('heading', { name: 'Closing questions', exact: true })).toBeVisible();
   await expect(page.getByText('Closing introduction', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your progress saves automatically.', { exact: true })).toBeVisible();
   await page.getByTestId('intake-address-input').fill('123 Main St');
   await page.getByTestId('intake-continue').click();
   expect(starts).toBe(0);
@@ -92,6 +94,8 @@ test('nested form link uses its exact metadata/start route and retains address c
   await page.getByTestId('intake-continue').click();
   await expect(page).toHaveURL(/\/s\/nested-fixture-token$/, { timeout: 15000 });
   await expect(page.getByRole('button', { name: 'Get Started' })).toBeVisible();
+  // Already read on the link's first screen, so the welcome step leaves it out.
+  await expect(page.getByText('Closing introduction', { exact: true })).toHaveCount(0);
   expect(starts).toBe(1);
   expect(failures).toEqual([]);
 });

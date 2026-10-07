@@ -135,7 +135,7 @@ export function ReviewStep({
                     data-testid="review-reopened-notice"
                     className="rounded-xl border border-[color:var(--brand-accent-border)] bg-[var(--brand-accent-softer)] p-3 sm:p-4 text-sm text-foreground"
                 >
-                    Your agent reopened this form so you can make corrections. These are the answers on file now. Change what you need with Edit, then submit again.
+                    This form was reopened so you can make corrections. These are the answers on file now. Change what you need with Edit, then submit again.
                 </p>
             )}
 

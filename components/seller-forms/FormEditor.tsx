@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, Eye, Pause, Play } from 'lucide-react';
@@ -21,6 +21,7 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { AdvancedModuleConfigurator } from '@/components/advanced-modules/AdvancedModuleConfigurator';
 import { SellerQuestionsDialog } from '@/components/seller-questions/SellerQuestionsDialog';
+import { IntakeIntro } from '@/components/intake/IntakeIntro';
 import dynamic from 'next/dynamic';
 const SellerWizard = dynamic(
     () =>
@@ -51,11 +52,21 @@ import type {
 } from '@/types';
 import type { SavedSellerForm, SellerFormsResponse } from './types';
 import { linkSuffixError, suggestLinkSuffix } from '@/lib/seller-forms/links';
+import { buildBrandAccentStyle } from '@/lib/branding/deliverable';
+import {
+    SELLER_HEADING_MAX,
+    SELLER_INTRO_MAX,
+    customSellerText,
+    defaultSellerHeading,
+    defaultSellerIntro,
+} from '@/lib/seller-forms/intro-copy';
 
 // Pausing is saved on its own, right away, so it is not part of the draft.
+// A null heading or introduction means the standard wording, which the fields show.
 type Draft = Pick<
     SavedSellerForm,
     | 'name'
+    | 'sellerHeading'
     | 'sellerIntro'
     | 'defaultBrandProfileId'
     | 'defaultUtilityCategories'
@@ -67,6 +78,7 @@ type Draft = Pick<
 > & { suffix?: string };
 const emptyDraft: Draft = {
     name: '',
+    sellerHeading: null,
     sellerIntro: null,
     defaultBrandProfileId: null,
     defaultUtilityCategories: [...UTILITY_CATEGORY_KEYS],
@@ -79,7 +91,8 @@ const emptyDraft: Draft = {
 function draftOf(f: SavedSellerForm, duplicate = false): Draft {
     return {
         name: duplicate ? `${f.name.slice(0, 75)} copy` : f.name,
-        sellerIntro: f.sellerIntro,
+        sellerHeading: f.sellerHeading ?? null,
+        sellerIntro: f.sellerIntro ?? null,
         defaultBrandProfileId: f.defaultBrandProfileId,
         defaultUtilityCategories: f.defaultUtilityCategories,
         defaultPacketMode: f.defaultPacketMode,
@@ -186,7 +199,11 @@ export function FormEditor({ id }: { id: string }) {
         setBusy(true);
         setError('');
         try {
-            const patch = { ...draft };
+            const patch = {
+                ...draft,
+                sellerHeading: customSellerText(draft.sellerHeading, defaultHeading),
+                sellerIntro: customSellerText(draft.sellerIntro, defaultIntro),
+            };
             if (form?.linkSuffix === patch.suffix) delete patch.suffix;
             if (patch.suffix !== undefined) {
                 const invalid = linkSuffixError(patch.suffix);
@@ -262,6 +279,10 @@ export function FormEditor({ id }: { id: string }) {
     const selectedBrand =
         brands.find((b) => b.id === draft.defaultBrandProfileId) ||
         brands.find((b) => b.is_default);
+    const defaultHeading = defaultSellerHeading(selectedBrand?.name);
+    const defaultIntro = defaultSellerIntro(selectedBrand?.name);
+    const headingValue = draft.sellerHeading ?? defaultHeading;
+    const introValue = draft.sellerIntro ?? defaultIntro;
     const previewBrand = selectedBrand
         ? {
               name: selectedBrand.name,
@@ -334,29 +355,91 @@ export function FormEditor({ id }: { id: string }) {
                             </p>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="sellerIntro">
-                                Seller introduction (optional)
-                            </Label>
-                            <Textarea
-                                id="sellerIntro"
-                                maxLength={500}
-                                rows={4}
-                                value={draft.sellerIntro || ''}
+                            <Label htmlFor="sellerHeading">Seller heading</Label>
+                            <Input
+                                id="sellerHeading"
+                                maxLength={SELLER_HEADING_MAX}
+                                value={headingValue}
                                 onChange={(e) =>
                                     setDraft({
                                         ...draft,
-                                        sellerIntro: e.target.value || null,
+                                        sellerHeading: e.target.value === defaultHeading ? null : e.target.value,
                                     })
                                 }
-                                placeholder="For example: Thanks for helping us get your home ready for closing. This takes about five minutes."
+                                placeholder={defaultHeading}
                             />
                             <div className="flex justify-between gap-4 text-xs text-muted-foreground">
                                 <p>
-                                    A short note sellers read before they enter
-                                    their address and on their welcome screen.
+                                    The first line sellers read when they open your link.
+                                    {draft.sellerHeading !== null && (
+                                        <>
+                                            {' '}
+                                            <button
+                                                type="button"
+                                                className="text-primary underline"
+                                                onClick={() => setDraft({ ...draft, sellerHeading: null })}
+                                            >
+                                                Use the standard heading
+                                            </button>
+                                        </>
+                                    )}
                                 </p>
-                                <p className="shrink-0 tabular-nums">{draft.sellerIntro?.length || 0}/500</p>
+                                <p className="shrink-0 tabular-nums">{headingValue.length}/{SELLER_HEADING_MAX}</p>
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="sellerIntro">Seller introduction</Label>
+                            <Textarea
+                                id="sellerIntro"
+                                maxLength={SELLER_INTRO_MAX}
+                                rows={4}
+                                value={introValue}
+                                onChange={(e) =>
+                                    setDraft({
+                                        ...draft,
+                                        sellerIntro: e.target.value === defaultIntro ? null : e.target.value,
+                                    })
+                                }
+                                placeholder={defaultIntro}
+                            />
+                            <div className="flex justify-between gap-4 text-xs text-muted-foreground">
+                                <p>
+                                    A short note under the heading. It also greets
+                                    sellers on requests you create yourself.
+                                    {draft.sellerIntro !== null && (
+                                        <>
+                                            {' '}
+                                            <button
+                                                type="button"
+                                                className="text-primary underline"
+                                                onClick={() => setDraft({ ...draft, sellerIntro: null })}
+                                            >
+                                                Use the standard introduction
+                                            </button>
+                                        </>
+                                    )}
+                                </p>
+                                <p className="shrink-0 tabular-nums">{introValue.length}/{SELLER_INTRO_MAX}</p>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium">What sellers see first</p>
+                            <div
+                                data-testid="seller-intro-preview"
+                                className="rounded-2xl border border-border bg-card/50 p-4 sm:p-6"
+                                style={buildBrandAccentStyle(selectedBrand?.primary_color) as CSSProperties}
+                            >
+                                <IntakeIntro
+                                    headingAs="p"
+                                    brandName={selectedBrand?.name}
+                                    heading={draft.sellerHeading}
+                                    intro={draft.sellerIntro}
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                This sits above the property address field. The
+                                name comes from the form&apos;s Branding Profile.
+                            </p>
                         </div>
                         <p className="text-sm text-muted-foreground">
                             Submissions go to {data.workspaceName}. This
@@ -532,7 +615,21 @@ export function FormEditor({ id }: { id: string }) {
                                 ))}
                             </select>
                             <p className="text-xs text-muted-foreground">
-                                Create or change profiles in{' '}
+                                {selectedBrand && (
+                                    <>
+                                        {/* New tab: this page may hold unsaved changes. */}
+                                        <Link
+                                            href={`/dashboard/branding/${selectedBrand.id}`}
+                                            target="_blank"
+                                            rel="noopener"
+                                            className="text-primary underline"
+                                        >
+                                            Edit {selectedBrand.name}
+                                        </Link>
+                                        {' (opens in a new tab), or create '}
+                                    </>
+                                )}
+                                {selectedBrand ? 'and manage' : 'Create or change'} profiles in{' '}
                                 <Link href="/dashboard/branding" className="text-primary underline">Branding</Link>.
                             </p>
                         </div>
@@ -668,7 +765,7 @@ export function FormEditor({ id }: { id: string }) {
                                     initialRequestData={{
                                         property_address:
                                             '123 Example Street, Austin, TX 78701',
-                                        seller_intro: draft.sellerIntro,
+                                        seller_intro: customSellerText(draft.sellerIntro, defaultIntro),
                                         utility_categories:
                                             draft.defaultUtilityCategories,
                                         packet_mode: configuration.packetMode,
