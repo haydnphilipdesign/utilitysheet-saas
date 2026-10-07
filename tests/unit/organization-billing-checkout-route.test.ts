@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     getOrganizationSeatUsage: vi.fn(),
     getOrCreateAccount: vi.fn(),
     getUser: vi.fn(),
+    subscriptionList: vi.fn(),
     subscriptionRetrieve: vi.fn(),
     subscriptionUpdate: vi.fn(),
     transferAccountSubscriptionToOrganization: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('@/lib/stripe/client', () => ({
             update: mocks.customerUpdate,
         },
         subscriptions: {
+            list: mocks.subscriptionList,
             retrieve: mocks.subscriptionRetrieve,
             update: mocks.subscriptionUpdate,
         },
@@ -82,6 +84,7 @@ describe('POST /api/organization/billing/checkout', () => {
             subscription_id: null,
         });
         mocks.getOrganizationSeatUsage.mockResolvedValue({ used: 1, pendingInvites: 0 });
+        mocks.subscriptionList.mockResolvedValue({ data: [] });
         mocks.customerCreate.mockResolvedValue({ id: 'cus_team' });
         mocks.customerUpdate.mockResolvedValue({ id: 'cus_pro' });
         mocks.checkoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.test/team' });
@@ -123,6 +126,91 @@ describe('POST /api/organization/billing/checkout', () => {
         }));
         expect(await response.json()).toEqual({ url: 'https://checkout.stripe.test/team' });
         expect(mocks.subscriptionUpdate).not.toHaveBeenCalled();
+        // Neither the account nor the workspace has a Stripe customer yet, so there is nothing to ask.
+        expect(mocks.subscriptionList).not.toHaveBeenCalled();
+    });
+
+    describe('when Stripe already has a subscription our record does not show', () => {
+        function withCustomers(personal: string | null, workspace: string | null) {
+            mocks.getOrCreateAccount.mockResolvedValue({
+                id: 'acct_1',
+                active_organization_id: 'org_1',
+                stripe_customer_id: personal,
+                subscription_status: 'free',
+                subscription_id: null,
+            });
+            mocks.getOrganizationById.mockResolvedValue({
+                id: 'org_1',
+                name: 'Owner Workspace',
+                stripe_customer_id: workspace,
+                subscription_status: 'free',
+                subscription_id: null,
+            });
+        }
+
+        it('starts checkout when both customers have only ended subscriptions', async () => {
+            withCustomers('cus_personal', 'cus_team_old');
+            mocks.subscriptionList.mockResolvedValue({ data: [{ id: 'sub_old', status: 'canceled' }] });
+
+            const response = await POST(request(3));
+
+            expect(response.status).toBe(200);
+            expect(mocks.subscriptionList.mock.calls.map(([params]) => params.customer)).toEqual(['cus_personal', 'cus_team_old']);
+            expect(mocks.checkoutCreate).toHaveBeenCalledWith(expect.objectContaining({ customer: 'cus_team_old' }));
+        });
+
+        it('refuses to start a second Teams subscription beside a past-due one', async () => {
+            withCustomers(null, 'cus_team_old');
+            mocks.subscriptionList.mockResolvedValue({ data: [{ id: 'sub_team_late', status: 'past_due' }] });
+
+            const response = await POST(request(3));
+
+            expect(response.status).toBe(409);
+            expect(await response.json()).toEqual({
+                error: 'Existing subscription',
+                message: 'The Teams subscription for this workspace has a payment that did not go through. Update the card in Manage Teams billing instead of starting a new one.',
+                manageBilling: 'workspace',
+            });
+            expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+        });
+
+        it('refuses when the workspace subscription is live but not synced yet', async () => {
+            withCustomers(null, 'cus_team_old');
+            mocks.subscriptionList.mockResolvedValue({ data: [{ id: 'sub_team', status: 'active' }] });
+
+            const response = await POST(request(3));
+
+            expect(response.status).toBe(409);
+            expect(await response.json()).toMatchObject({ error: 'Existing subscription', manageBilling: 'workspace' });
+            expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+        });
+
+        it('refuses to start Teams beside a personal Pro subscription that is past due', async () => {
+            withCustomers('cus_personal', null);
+            mocks.subscriptionList.mockResolvedValue({ data: [{ id: 'sub_pro_late', status: 'past_due' }] });
+
+            const response = await POST(request(3));
+
+            expect(response.status).toBe(409);
+            expect(await response.json()).toEqual({
+                error: 'Existing subscription',
+                message: 'Your Pro subscription has a payment that did not go through. Update your card in Manage subscription, then start Teams.',
+                manageBilling: 'personal',
+            });
+            expect(mocks.customerCreate).not.toHaveBeenCalled();
+            expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+        });
+
+        it('refuses checkout when Stripe cannot be asked', async () => {
+            withCustomers(null, 'cus_team_old');
+            mocks.subscriptionList.mockRejectedValue(new Error('Stripe unavailable'));
+
+            const response = await POST(request(3));
+
+            expect(response.status).toBe(503);
+            expect(await response.json()).toMatchObject({ error: 'Billing check unavailable' });
+            expect(mocks.checkoutCreate).not.toHaveBeenCalled();
+        });
     });
 
     it('converts an active Pro subscription in place and transfers billing ownership', async () => {

@@ -209,6 +209,8 @@ export async function updateAccountSubscription(
         subscriptionEndsAt: Date | null;
         /** When a plan that is set to cancel ends; null when it renews. */
         subscriptionCancelAt: Date | null;
+        /** When a free trial ends; null when the plan is not in a trial. */
+        subscriptionTrialEndsAt: Date | null;
     }
 ) {
     if (!sql) return null;
@@ -219,7 +221,8 @@ export async function updateAccountSubscription(
             subscription_status = ${data.subscriptionStatus},
             subscription_id = ${data.subscriptionId},
             subscription_ends_at = ${data.subscriptionEndsAt?.toISOString() || null},
-            subscription_cancel_at = ${data.subscriptionCancelAt?.toISOString() || null}
+            subscription_cancel_at = ${data.subscriptionCancelAt?.toISOString() || null},
+            subscription_trial_ends_at = ${data.subscriptionTrialEndsAt?.toISOString() || null}
         WHERE id = ${accountId}
         RETURNING *
     `;

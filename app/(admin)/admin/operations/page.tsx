@@ -37,7 +37,7 @@ const INCIDENT_LABELS: Record<string, { title: string; investigate: string }> = 
     },
     'billing_webhook:duplicate_subscription': {
         title: 'A customer has two paid subscriptions',
-        investigate: 'In the Stripe dashboard, find the customer with two active subscriptions (the stored event carries the account ID). Cancel and refund the extra one, then confirm the account still shows Pro.',
+        investigate: 'In the Stripe dashboard, find the customer with two active subscriptions (for Pro, the stored event carries the account ID). Cancel and refund the extra one, then confirm the customer still has their plan.',
     },
     'email:completion_send_failed': {
         title: 'Completion email to the customer was not sent',

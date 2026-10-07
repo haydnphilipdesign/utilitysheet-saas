@@ -73,8 +73,22 @@ function CheckoutBanner({ checkout, onCheckAgain, onDismiss }: {
     );
 }
 
+/** The way to a subscription the server found, shown under the refusal it explains. */
+function PortalButton({ workspace, busy, onOpen }: {
+    workspace: boolean;
+    busy: 'plan' | 'teams' | null;
+    onOpen: () => void;
+}) {
+    return (
+        <Button variant="outline" onClick={onOpen} disabled={busy !== null}>
+            {busy !== null ? <Loader2 className="animate-spin" /> : <ExternalLink />}
+            {workspace ? 'Manage Teams billing' : 'Manage subscription'}
+        </Button>
+    );
+}
+
 export function BillingSection({
-    state, onRetry, usage, planEndsAt, organization, isTeam, isAdmin, seatUsage,
+    state, onRetry, usage, planEndsAt, trialEndsAt, organization, isTeam, isAdmin, seatUsage,
     checkout, onCheckAgain, onDismissCheckout, onOpenWorkspace,
 }: {
     state: LoadState;
@@ -82,6 +96,8 @@ export function BillingSection({
     usage: Usage | null;
     /** When the current paid plan is set to end; null when it renews. */
     planEndsAt: string | null;
+    /** When the Pro free month ends; null when the account is not in a trial. */
+    trialEndsAt: string | null;
     organization: ActiveOrganization | null;
     isTeam: boolean;
     isAdmin: boolean;
@@ -94,7 +110,7 @@ export function BillingSection({
 }) {
     const [busy, setBusy] = useState<'plan' | 'teams' | null>(null);
     const [planError, setPlanError] = useState('');
-    const [offerPortal, setOfferPortal] = useState(false);
+    const [portalOffer, setPortalOffer] = useState<{ target: 'plan' | 'teams'; workspace: boolean } | null>(null);
     const [teamsError, setTeamsError] = useState('');
     const [seatInput, setSeatInput] = useState(String(TEAM_MIN_SEATS));
 
@@ -125,6 +141,8 @@ export function BillingSection({
     const isFree = !isTeam && !isPro;
     const seatsInUse = seatUsage ? seatUsage.used + seatUsage.pendingInvites : null;
     const planEnd = isFree ? null : formatPlanEnd(planEndsAt);
+    // A plan that is set to cancel already says when it ends.
+    const trialEnd = isPro && !planEnd ? formatPlanEnd(trialEndsAt) : null;
     // A second checkout while the first is still being confirmed could charge twice.
     const confirming = checkout?.status === 'confirming';
 
@@ -133,7 +151,7 @@ export function BillingSection({
         const setError = target === 'plan' ? setPlanError : setTeamsError;
         setBusy(target);
         setError('');
-        if (target === 'plan') setOfferPortal(false);
+        setPortalOffer((offer) => (offer?.target === target ? null : offer));
         try {
             const response = await fetch(url, {
                 method: 'POST',
@@ -146,12 +164,22 @@ export function BillingSection({
             }
             setError(data.message || data.error || fallback);
             // The server found a subscription this page does not show yet.
-            if (target === 'plan' && data.manageBilling === true) setOfferPortal(true);
+            if (data.manageBilling) setPortalOffer({ target, workspace: data.manageBilling === 'workspace' });
         } catch {
             setError(fallback);
         }
         setBusy(null);
     }
+
+    /** Opens the portal for the subscription the server found in the way of a checkout. */
+    const openOfferedPortal = () => {
+        if (!portalOffer) return;
+        void openStripe(
+            portalOffer.workspace ? '/api/organization/billing/portal' : '/api/billing/portal',
+            portalOffer.target,
+            'We couldn’t open billing. Try again.',
+        );
+    };
 
     // Same rules the server applies before it creates a Teams checkout.
     const seatText = seatInput.trim();
@@ -217,15 +245,15 @@ export function BillingSection({
                     )}
                 </div>
                 {planError && <InlineStatus tone="error">{planError}</InlineStatus>}
-                {offerPortal && (
-                    <Button
-                        variant="outline"
-                        onClick={() => void openStripe('/api/billing/portal', 'plan', 'We couldn’t open billing. Try again.')}
-                        disabled={busy !== null}
-                    >
-                        {busy === 'plan' ? <Loader2 className="animate-spin" /> : <ExternalLink />}
-                        Manage subscription
-                    </Button>
+                {portalOffer?.target === 'plan' && (
+                    <PortalButton workspace={portalOffer.workspace} busy={busy} onOpen={openOfferedPortal} />
+                )}
+                {trialEnd && (
+                    <Note>
+                        <span className="font-medium text-foreground">Your free month of Pro ends on {trialEnd}.</span>{' '}
+                        To keep Pro after that, add a payment method in Manage subscription. If you’ve already
+                        added one, there’s nothing more to do.
+                    </Note>
                 )}
                 {planEnd && (
                     <Note>
@@ -367,6 +395,9 @@ export function BillingSection({
                                 )}
                             </div>
                             {teamsError && <InlineStatus tone="error">{teamsError}</InlineStatus>}
+                            {portalOffer?.target === 'teams' && (
+                                <PortalButton workspace={portalOffer.workspace} busy={busy} onOpen={openOfferedPortal} />
+                            )}
                         </div>
                     ) : (
                         <Note>Only a workspace admin can start a Teams plan and choose how many seats it has.</Note>

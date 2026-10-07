@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     subscription_id TEXT,
     subscription_ends_at TIMESTAMPTZ,
     subscription_cancel_at TIMESTAMPTZ, -- When a plan set to cancel ends; NULL when it renews
+    subscription_trial_ends_at TIMESTAMPTZ, -- When a free trial ends; NULL when not in a trial
     onboarding_completed_at TIMESTAMPTZ,
     notification_preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
     closure_status TEXT NOT NULL DEFAULT 'active' CONSTRAINT accounts_closure_status_check CHECK (closure_status IN ('active', 'closing', 'closed')),

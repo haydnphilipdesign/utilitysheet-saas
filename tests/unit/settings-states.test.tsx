@@ -595,3 +595,61 @@ describe('a Pro checkout the server refuses', () => {
         expect(screen.queryByRole('button', { name: 'Manage subscription' })).not.toBeInTheDocument();
     });
 });
+
+describe('the referral free month', () => {
+    const endsAt = '2026-11-03T12:00:00.000Z';
+    const trialing = (extra: Record<string, unknown> = {}) => {
+        const account = soloAccount('pro');
+        return { ...account, account: { ...account.account, subscription_trial_ends_at: endsAt, ...extra } };
+    };
+
+    it('says when the free month ends and how to keep Pro', async () => {
+        stubFetch({
+            'GET /api/account': () => jsonResponse(trialing()),
+            'GET /api/organization/members': soloMembers,
+        });
+        render(<SettingsPage />);
+        await openTab('Billing');
+
+        expect(await screen.findByText('Your free month of Pro ends on November 3, 2026.')).toBeInTheDocument();
+        expect(screen.getByText(/To keep Pro after that, add a payment method in Manage subscription\./)).toBeInTheDocument();
+    });
+
+    it('shows only the cancellation date when the trial is also set to cancel', async () => {
+        stubFetch({
+            'GET /api/account': () => jsonResponse(trialing({ subscription_cancel_at: endsAt })),
+            'GET /api/organization/members': soloMembers,
+        });
+        render(<SettingsPage />);
+        await openTab('Billing');
+
+        expect(await screen.findByText('Your Pro plan is set to end on November 3, 2026.')).toBeInTheDocument();
+        expect(screen.queryByText(/free month/)).not.toBeInTheDocument();
+    });
+});
+
+describe('a Teams checkout the server refuses', () => {
+    it.each([
+        ['workspace', 'Manage Teams billing', '/api/organization/billing/portal'],
+        ['personal', 'Manage subscription', '/api/billing/portal'],
+    ])('offers the %s billing portal for the subscription that is in the way', async (scope, label, portal) => {
+        const fetchMock = stubFetch({
+            'GET /api/account': () => jsonResponse(soloAccount()),
+            'GET /api/organization/members': soloMembers,
+            'POST /api/organization/billing/checkout': () => jsonResponse({
+                error: 'Existing subscription',
+                message: 'A subscription is already there.',
+                manageBilling: scope,
+            }, 409),
+            [`POST ${portal}`]: () => jsonResponse({ error: 'Portal is not available in this test.' }, 500),
+        });
+        render(<SettingsPage />);
+        await openTab('Billing');
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Start Teams' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('A subscription is already there.');
+        fireEvent.click(screen.getByRole('button', { name: label }));
+        await waitFor(() => expect(bodiesOf(fetchMock, 'POST', portal)).toHaveLength(1));
+    });
+});

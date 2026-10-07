@@ -46,6 +46,7 @@ describe('transferAccountSubscriptionToOrganization', () => {
         expect(queryText).toContain('subscription_id = NULL');
         // The cancellation date moves with the plan: set on the workspace, cleared on the account.
         expect(queryText).toContain('subscription_cancel_at = NULL');
+        expect(queryText).toContain('subscription_trial_ends_at = NULL');
         expect(sqlMock.mock.calls[0].filter((value) => value === '2030-03-17T17:46:40.000Z')).toHaveLength(2);
         expect(queryText).toContain('row_to_json');
     });

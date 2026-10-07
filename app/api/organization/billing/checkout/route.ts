@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stripe, STRIPE_PRO_PRICE_ID, STRIPE_TEAMS_PRICE_ID } from '@/lib/stripe/client';
 import { stackServerApp } from '@/lib/stack/server';
-import { getSubscriptionCancelAt } from '@/lib/stripe/subscriptions';
+import { findLiveSubscription, getSubscriptionCancelAt } from '@/lib/stripe/subscriptions';
 import {
     getOrCreateAccount,
     getOrganizationById,
@@ -20,6 +20,48 @@ function getSubscriptionEndsAt(subscription: Awaited<ReturnType<NonNullable<type
     return teamItem?.current_period_end
         ? new Date(teamItem.current_period_end * 1000)
         : null;
+}
+
+const LIVE_SUBSCRIPTION_MESSAGES = {
+    personal: {
+        paymentProblem: 'Your Pro subscription has a payment that did not go through. Update your card in Manage subscription, then start Teams.',
+        other: 'Your account has a subscription that has not finished updating here. Try again in a minute, or open Manage subscription.',
+    },
+    workspace: {
+        paymentProblem: 'The Teams subscription for this workspace has a payment that did not go through. Update the card in Manage Teams billing instead of starting a new one.',
+        other: 'This workspace already has a subscription. It can take a minute to show here. Use Manage Teams billing to change it.',
+    },
+};
+
+/**
+ * A refusal when starting Teams would put a second subscription beside one
+ * Stripe already has, or when Stripe cannot be asked. Null means go ahead.
+ */
+async function refuseSecondSubscription(stripeCustomerId: string, scope: 'personal' | 'workspace') {
+    let liveSubscription;
+    try {
+        liveSubscription = await findLiveSubscription(stripeCustomerId);
+    } catch (error) {
+        console.error('Error checking existing subscriptions before Teams checkout:', error);
+        return NextResponse.json(
+            {
+                error: 'Billing check unavailable',
+                message: 'We could not check your billing with Stripe, so checkout was not started. Try again in a minute.',
+            },
+            { status: 503 }
+        );
+    }
+    if (!liveSubscription) return null;
+
+    const paymentProblem = liveSubscription.status === 'past_due' || liveSubscription.status === 'unpaid';
+    return NextResponse.json(
+        {
+            error: 'Existing subscription',
+            message: LIVE_SUBSCRIPTION_MESSAGES[scope][paymentProblem ? 'paymentProblem' : 'other'],
+            manageBilling: scope,
+        },
+        { status: 409 }
+    );
 }
 
 function getMinSeats(): number {
@@ -217,6 +259,19 @@ export async function POST(request: Request) {
             }
 
             return NextResponse.json({ converted: true, url: successUrl });
+        }
+
+        // Our records store a past-due plan as Free and trail Stripe after a payment, so
+        // Stripe is asked directly before a new subscription is started beside an old one.
+        const personalCustomerId = account.stripe_customer_id as string | null;
+        const existingCustomers = [
+            ['personal', personalCustomerId],
+            ['workspace', organization.stripe_customer_id as string | null],
+        ] as const;
+        for (const [scope, customerId] of existingCustomers) {
+            if (!customerId || (scope === 'workspace' && customerId === personalCustomerId)) continue;
+            const refusal = await refuseSecondSubscription(customerId, scope);
+            if (refusal) return refusal;
         }
 
         // Get or create Stripe customer for the organization

@@ -202,6 +202,7 @@ export async function transferAccountSubscriptionToOrganization(data: {
                 subscription_id = NULL,
                 subscription_ends_at = NULL,
                 subscription_cancel_at = NULL,
+                subscription_trial_ends_at = NULL,
                 updated_at = NOW()
             WHERE account_row.id = ${data.accountId}
                 AND EXISTS (SELECT 1 FROM updated_organization)

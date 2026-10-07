@@ -135,6 +135,7 @@ describe('POST /api/billing/webhook subscription sync', () => {
                 subscriptionId: null,
                 subscriptionEndsAt: null,
                 subscriptionCancelAt: null,
+                subscriptionTrialEndsAt: null,
             });
         });
 
@@ -165,6 +166,7 @@ describe('POST /api/billing/webhook subscription sync', () => {
                 subscriptionId: 'sub_second',
                 subscriptionEndsAt: new Date(PERIOD_END * 1000),
                 subscriptionCancelAt: null,
+                subscriptionTrialEndsAt: null,
             });
         });
 
@@ -190,6 +192,104 @@ describe('POST /api/billing/webhook subscription sync', () => {
         });
     });
 
+    describe('a Teams subscription that is not the one the workspace is on', () => {
+        const onTeams = { id: 'organization_1', subscription_status: 'team', subscription_id: 'sub_team' };
+
+        beforeEach(() => {
+            mocks.getOrganizationById.mockResolvedValue(onTeams);
+        });
+
+        it.each([
+            ['customer.subscription.deleted', 'canceled'],
+            ['customer.subscription.updated', 'incomplete_expired'],
+            ['customer.subscription.updated', 'past_due'],
+        ])('acknowledges %s (%s) without taking Teams away from the workspace', async (type, status) => {
+            const response = await deliver(type, teamSubscription({ id: 'sub_other', status }));
+
+            expect(response.status).toBe(200);
+            expect(mocks.updateOrganizationSubscription).not.toHaveBeenCalled();
+            expect(mocks.recordOperationalEvent).not.toHaveBeenCalled();
+        });
+
+        it('still ends Teams when the workspace’s own subscription ends', async () => {
+            await deliver('customer.subscription.deleted', teamSubscription({ status: 'canceled' }));
+
+            expect(mocks.updateOrganizationSubscription).toHaveBeenCalledWith('organization_1', {
+                subscriptionStatus: 'free',
+                subscriptionId: null,
+                subscriptionEndsAt: null,
+                subscriptionCancelAt: null,
+                seatQuantity: 0,
+            });
+        });
+
+        it('records a billing incident when a second paid Teams subscription appears', async () => {
+            await deliver('customer.subscription.updated', teamSubscription({ id: 'sub_second' }));
+
+            expect(mocks.recordOperationalEvent).toHaveBeenCalledWith({
+                category: 'billing_webhook',
+                code: 'duplicate_subscription',
+                outcome: 'failure',
+                severity: 'critical',
+            });
+            expect(mocks.updateOrganizationSubscription).toHaveBeenCalledWith(
+                'organization_1',
+                expect.objectContaining({ subscriptionStatus: 'team', subscriptionId: 'sub_second' })
+            );
+        });
+
+        it('does not flag a renewal, or a new plan after the old one lapsed', async () => {
+            await deliver('customer.subscription.updated', teamSubscription());
+            mocks.getOrganizationById.mockResolvedValue({ id: 'organization_1', subscription_status: 'free', subscription_id: null });
+            await deliver('customer.subscription.updated', teamSubscription({ id: 'sub_new' }));
+
+            expect(mocks.recordOperationalEvent).not.toHaveBeenCalled();
+            expect(mocks.updateOrganizationSubscription).toHaveBeenCalledTimes(2);
+        });
+
+        it.each(['customer.subscription.updated', 'customer.subscription.deleted'])(
+            'applies the same rule to %s for a subscription found only by its customer',
+            async (type) => {
+                mocks.getAccountByStripeCustomerId.mockResolvedValue(null);
+                mocks.getOrganizationByStripeCustomerId.mockResolvedValue(onTeams);
+
+                await deliver(type, teamSubscription({ id: 'sub_other', status: 'canceled', metadata: {} }));
+                expect(mocks.updateOrganizationSubscription).not.toHaveBeenCalled();
+
+                await deliver(type, teamSubscription({ status: 'canceled', metadata: {} }));
+                expect(mocks.updateOrganizationSubscription).toHaveBeenCalledWith(
+                    'organization_1',
+                    expect.objectContaining({ subscriptionStatus: 'free' })
+                );
+            }
+        );
+    });
+
+    describe('the referral free month', () => {
+        const TRIAL_END = 1_799_000_000;
+
+        it('stores when the trial ends while the subscription is trialing', async () => {
+            await deliver('customer.subscription.updated', proSubscription({ status: 'trialing', trial_end: TRIAL_END }));
+
+            expect(mocks.updateAccountSubscription).toHaveBeenCalledWith('account_1', {
+                subscriptionStatus: 'pro',
+                subscriptionId: 'sub_current',
+                subscriptionEndsAt: new Date(PERIOD_END * 1000),
+                subscriptionCancelAt: null,
+                subscriptionTrialEndsAt: new Date(TRIAL_END * 1000),
+            });
+        });
+
+        it.each(['active', 'canceled'])('clears it once the subscription is %s', async (status) => {
+            await deliver('customer.subscription.updated', proSubscription({ status, trial_end: TRIAL_END }));
+
+            expect(mocks.updateAccountSubscription).toHaveBeenCalledWith(
+                'account_1',
+                expect.objectContaining({ subscriptionTrialEndsAt: null })
+            );
+        });
+    });
+
     describe('when a plan is set to cancel', () => {
         it('stores Stripe’s cancellation date for Pro', async () => {
             await deliver(
@@ -202,6 +302,7 @@ describe('POST /api/billing/webhook subscription sync', () => {
                 subscriptionId: 'sub_current',
                 subscriptionEndsAt: new Date(PERIOD_END * 1000),
                 subscriptionCancelAt: new Date(CANCEL_AT * 1000),
+                subscriptionTrialEndsAt: null,
             });
         });
 

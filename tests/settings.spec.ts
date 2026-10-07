@@ -14,6 +14,8 @@ type Scenario = {
     emailSent?: boolean;
     /** The current paid plan is set to end on this date. */
     cancelAt?: string;
+    /** The Pro plan is in its free month, which ends on this date. */
+    trialEndsAt?: string;
     /** The server refuses a Pro checkout because Stripe already has a subscription. */
     existingSubscription?: boolean;
 };
@@ -64,6 +66,7 @@ async function mocks(page: Page, scenario: Scenario) {
                     email: 'jordan@example.com',
                     notification_preferences: preferences,
                     subscription_cancel_at: state.plan === 'pro' ? state.cancelAt ?? null : null,
+                    subscription_trial_ends_at: state.plan === 'pro' ? state.trialEndsAt ?? null : null,
                 },
                 activeOrganization: {
                     id: 'org_1',
@@ -116,6 +119,14 @@ async function mocks(page: Page, scenario: Scenario) {
             }, 409);
         }
         if (path === '/api/billing/portal') return json({ error: 'Billing is not available in this test.' }, 400);
+        if (path === '/api/organization/billing/portal') return json({ error: 'Billing is not available in this test.' }, 400);
+        if (path === '/api/organization/billing/checkout' && state.existingSubscription) {
+            return json({
+                error: 'Existing subscription',
+                message: 'The Teams subscription for this workspace has a payment that did not go through. Update the card in Manage Teams billing instead of starting a new one.',
+                manageBilling: 'workspace',
+            }, 409);
+        }
         if (path === '/api/organization/billing/checkout') {
             return json({ error: 'Checkout is not available in this test.' }, 400);
         }
@@ -416,4 +427,27 @@ test('a refused Pro checkout explains why and offers Manage subscription', async
     await manage.click();
     await expect(page.getByRole('alert').filter({ hasText: 'Billing is not available in this test.' })).toBeVisible();
     expect(writes.map((write) => write.url)).toEqual(['/api/billing/checkout', '/api/billing/portal']);
+});
+
+test('the free month of Pro says when it ends and how to keep the plan', async ({ page }, testInfo) => {
+    await open(page, { plan: 'pro', role: 'admin', trialEndsAt: '2026-11-03T12:00:00.000Z' }, '?tab=billing');
+
+    await expect(page.getByText('Your free month of Pro ends on November 3, 2026.', { exact: true })).toBeVisible();
+    await expect(page.getByText('To keep Pro after that, add a payment method in Manage subscription.', { exact: false })).toBeVisible();
+    await expect(page.getByText('is set to end on', { exact: false })).toHaveCount(0);
+    await healthy(page, testInfo, 'pro-free-month');
+});
+
+test('a refused Teams checkout explains why and offers Manage Teams billing', async ({ page }, testInfo) => {
+    const { writes } = await open(page, { plan: 'free', role: 'admin', existingSubscription: true }, '?tab=billing');
+
+    await page.getByRole('button', { name: 'Start Teams', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'The Teams subscription for this workspace has a payment that did not go through.' })).toBeVisible();
+    const manage = page.getByRole('button', { name: 'Manage Teams billing', exact: true });
+    await expect(manage).toBeVisible();
+    await healthy(page, testInfo, 'teams-checkout-refused');
+
+    await manage.click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Billing is not available in this test.' })).toBeVisible();
+    expect(writes.map((write) => write.url)).toEqual(['/api/organization/billing/checkout', '/api/organization/billing/portal']);
 });

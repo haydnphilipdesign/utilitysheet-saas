@@ -18,6 +18,13 @@ function isPaidStripeStatus(status: Stripe.Subscription.Status) {
     return status === 'active' || status === 'trialing';
 }
 
+/** True when an event that would end a plan is about a subscription other than the stored one. */
+function endsAnotherSubscription(storedSubscriptionId: unknown, subscription: Stripe.Subscription) {
+    return !isPaidStripeStatus(subscription.status)
+        && Boolean(storedSubscriptionId)
+        && storedSubscriptionId !== subscription.id;
+}
+
 function getExpandableId(value: string | { id: string } | null): string | null {
     if (typeof value === 'string') {
         return value || null;
@@ -97,6 +104,26 @@ async function syncOrganizationSubscription(
         throw new Error('Teams subscription organization not found');
     }
 
+    // Same rule as for Pro accounts: only the stored subscription can end the plan.
+    if (endsAnotherSubscription(organization.subscription_id, subscription)) {
+        console.log(`Ignored ${subscription.status} subscription that is not current for organization ${organizationId}`);
+        return;
+    }
+
+    if (
+        status === 'team'
+        && organization.subscription_status === 'team'
+        && organization.subscription_id
+        && organization.subscription_id !== subscription.id
+    ) {
+        await recordOperationalEvent({
+            category: 'billing_webhook',
+            code: 'duplicate_subscription',
+            outcome: 'failure',
+            severity: 'critical',
+        });
+    }
+
     await updateOrganizationSubscription(organization.id, {
         subscriptionStatus: status,
         subscriptionId: status === 'team' ? subscription.id : null,
@@ -125,7 +152,7 @@ async function syncAccountSubscription(accountId: string, subscription: Stripe.S
 
     // An ended or expired subscription that is not the one this account is on
     // (a replaced plan, an abandoned checkout, a late event) must not downgrade it.
-    if (status === 'free' && isAnotherSubscription) {
+    if (endsAnotherSubscription(currentSubscriptionId, subscription)) {
         console.log(`Ignored ${subscription.status} subscription that is not current for account ${accountId}`);
         return false;
     }
@@ -149,6 +176,10 @@ async function syncAccountSubscription(accountId: string, subscription: Stripe.S
         subscriptionEndsAt: status === 'pro' ? subscriptionEndsAt : null,
         subscriptionCancelAt: status === 'pro'
             ? getSubscriptionCancelAt(subscription, subscriptionEndsAt)
+            : null,
+        // The referral free month: it ends on this date unless a card is on file.
+        subscriptionTrialEndsAt: subscription.status === 'trialing' && subscription.trial_end
+            ? new Date(subscription.trial_end * 1000)
             : null,
     });
     return true;
@@ -274,6 +305,10 @@ export async function POST(request: Request) {
                 }
 
                 const organization = await getOrganizationByStripeCustomerId(customerId);
+                if (organization && endsAnotherSubscription(organization.subscription_id, subscription)) {
+                    console.log(`Ignored ${subscription.status} subscription that is not current for organization ${organization.id}`);
+                    break;
+                }
                 if (organization) {
                     const status = isPaidStripeStatus(subscription.status) ? 'team' : 'free';
                     const seatQuantity = getSeatQuantityFromSubscription(subscription);
@@ -321,6 +356,10 @@ export async function POST(request: Request) {
                 }
 
                 const organization = await getOrganizationByStripeCustomerId(customerId);
+                if (organization && endsAnotherSubscription(organization.subscription_id, subscription)) {
+                    console.log(`Ignored ended subscription that is not current for organization ${organization.id}`);
+                    break;
+                }
                 if (organization) {
                     await updateOrganizationSubscription(organization.id, {
                         subscriptionStatus: 'free',

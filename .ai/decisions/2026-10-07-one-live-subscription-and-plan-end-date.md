@@ -24,5 +24,12 @@ Pro checkout created a new subscription without checking for an existing one, an
 
 - The Stripe dashboard setting "Limit customers to 1 subscription" should stay on, pointing at `/dashboard/settings?tab=billing`.
 - The migration that adds the columns must be applied before the code that writes them is deployed.
-- The Teams webhook path does not have the "not the stored subscription" guard. Add it there before relying on it for workspaces.
 - Account closure still cancels only the stored subscription ID; the duplicate incident is what tells the owner about any other.
+
+## Amendment (2026-10-07, same day)
+
+Plan: `.ai/plans/2026-10-07-teams-subscription-guard-and-trial-end.md`. Implemented; see that plan for release state.
+
+1. **Workspaces follow the same rule as accounts.** In the webhook, only `organizations.subscription_id` ending can end a Teams plan, and a second paid Teams subscription records the same `duplicate_subscription` incident. This supersedes the consequence above that said the Teams path had no guard.
+2. **Free-to-Teams checkout asks Stripe about both customers**, the account's own and the workspace's, and refuses when either has a live subscription or Stripe cannot be read. The Pro-to-Teams conversion is unchanged.
+3. **A trial's end is stored on the account** as `subscription_trial_ends_at` while the Stripe subscription is `trialing`. The app does not know whether a card is on file, so the Billing wording is true either way. A workspace that converts to Teams during the free month does not show a trial date.
