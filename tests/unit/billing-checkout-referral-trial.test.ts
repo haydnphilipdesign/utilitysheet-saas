@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
     createSession: vi.fn(),
     getOrCreateAccount: vi.fn(),
     getUser: vi.fn(),
+    listSubscriptions: vi.fn(),
     qualifiesForReferralTrial: vi.fn(),
     updateAccountStripeCustomer: vi.fn(),
 }));
@@ -13,6 +14,7 @@ vi.mock('@/lib/stripe/client', () => ({
     stripe: {
         customers: { create: mocks.createCustomer },
         checkout: { sessions: { create: mocks.createSession } },
+        subscriptions: { list: mocks.listSubscriptions },
     },
     STRIPE_PRO_PRICE_ID: 'price_pro',
 }));
@@ -23,6 +25,8 @@ vi.mock('@/lib/stack/server', () => ({
 
 vi.mock('@/lib/neon/queries', () => ({
     getOrCreateAccount: mocks.getOrCreateAccount,
+    getOrganizationById: vi.fn(),
+    getOrganizationMemberRole: vi.fn(),
     updateAccountStripeCustomer: mocks.updateAccountStripeCustomer,
 }));
 
@@ -46,6 +50,7 @@ describe('POST /api/billing/checkout referral trial', () => {
             stripe_customer_id: 'cus_existing',
         });
         mocks.qualifiesForReferralTrial.mockResolvedValue(false);
+        mocks.listSubscriptions.mockResolvedValue({ data: [] });
         mocks.createSession.mockResolvedValue({ url: 'https://checkout.stripe.test/session' });
     });
 

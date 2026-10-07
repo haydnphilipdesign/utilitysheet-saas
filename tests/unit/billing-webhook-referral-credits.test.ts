@@ -131,6 +131,7 @@ describe('POST /api/billing/webhook referral credits', () => {
             subscriptionStatus: 'pro',
             subscriptionId: 'sub_checkout',
             subscriptionEndsAt: new Date(1_800_000_000 * 1000),
+            subscriptionCancelAt: null,
         });
         expect(mocks.applyEarnedReferralCredits).toHaveBeenCalledWith(
             'account_1',
@@ -152,6 +153,7 @@ describe('POST /api/billing/webhook referral credits', () => {
             subscriptionStatus: 'team',
             subscriptionId: 'sub_checkout',
             subscriptionEndsAt: new Date(1_900_000_000 * 1000),
+            subscriptionCancelAt: null,
             seatQuantity: 7,
         });
         expect(mocks.applyEarnedReferralCredits).not.toHaveBeenCalled();
@@ -182,6 +184,7 @@ describe('POST /api/billing/webhook referral credits', () => {
             stripeCustomerId: 'cus_pro',
             subscriptionId: 'sub_checkout',
             subscriptionEndsAt: new Date(1_900_000_000 * 1000),
+            subscriptionCancelAt: null,
             seatQuantity: 7,
         });
         expect(mocks.getAccountByStripeCustomerId).not.toHaveBeenCalled();
@@ -229,6 +232,7 @@ describe('POST /api/billing/webhook referral credits', () => {
             subscriptionStatus: 'pro',
             subscriptionId: 'sub_expanded',
             subscriptionEndsAt: new Date(1_800_000_000 * 1000),
+            subscriptionCancelAt: null,
         });
     });
 

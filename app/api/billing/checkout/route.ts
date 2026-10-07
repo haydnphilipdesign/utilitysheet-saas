@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { stripe, STRIPE_PRO_PRICE_ID } from '@/lib/stripe/client';
 import { stackServerApp } from '@/lib/stack/server';
-import { getOrCreateAccount, updateAccountStripeCustomer } from '@/lib/neon/queries';
+import {
+    getOrCreateAccount,
+    getOrganizationById,
+    getOrganizationMemberRole,
+    updateAccountStripeCustomer,
+} from '@/lib/neon/queries';
 import { qualifiesForReferralTrial } from '@/lib/referrals/referral-trial';
+import { findLiveSubscription } from '@/lib/stripe/subscriptions';
 
 export async function POST() {
     try {
@@ -20,6 +26,34 @@ export async function POST() {
             return NextResponse.json({ error: 'Account not found' }, { status: 404 });
         }
 
+        if (account.subscription_status === 'pro') {
+            return NextResponse.json(
+                {
+                    error: 'Already subscribed',
+                    message: 'This account is already on Pro. Use Manage subscription to change the plan.',
+                },
+                { status: 409 }
+            );
+        }
+
+        // Teams already includes Pro for everyone in the workspace.
+        const organizationId = account.active_organization_id as string | null;
+        if (organizationId) {
+            const [role, organization] = await Promise.all([
+                getOrganizationMemberRole(organizationId, account.id),
+                getOrganizationById(organizationId),
+            ]);
+            if (role && organization?.subscription_status === 'team') {
+                return NextResponse.json(
+                    {
+                        error: 'Workspace already subscribed',
+                        message: 'This workspace is on Teams, which already includes everything in Pro.',
+                    },
+                    { status: 409 }
+                );
+            }
+        }
+
         // Get or create Stripe customer
         let stripeCustomerId = account.stripe_customer_id;
 
@@ -35,6 +69,35 @@ export async function POST() {
             });
             stripeCustomerId = customer.id;
             await updateAccountStripeCustomer(account.id, stripeCustomerId);
+        }
+
+        // Our own record trails Stripe (webhook delay) and stores a past-due Pro as Free,
+        // so Stripe is asked directly before a second subscription can be started.
+        let liveSubscription;
+        try {
+            liveSubscription = await findLiveSubscription(stripeCustomerId);
+        } catch (error) {
+            console.error('Error checking existing subscriptions before checkout:', error);
+            return NextResponse.json(
+                {
+                    error: 'Billing check unavailable',
+                    message: 'We could not check your billing with Stripe, so checkout was not started. Try again in a minute.',
+                },
+                { status: 503 }
+            );
+        }
+        if (liveSubscription) {
+            const paymentProblem = liveSubscription.status === 'past_due' || liveSubscription.status === 'unpaid';
+            return NextResponse.json(
+                {
+                    error: 'Existing subscription',
+                    message: paymentProblem
+                        ? 'Your subscription has a payment that did not go through. Update your card in Manage subscription instead of starting a new one.'
+                        : 'This account already has a subscription. It can take a minute to show here. Use Manage subscription to change it.',
+                    manageBilling: true,
+                },
+                { status: 409 }
+            );
         }
 
         const qualifiesForTrial = await qualifiesForReferralTrial(account.id, stripeCustomerId);

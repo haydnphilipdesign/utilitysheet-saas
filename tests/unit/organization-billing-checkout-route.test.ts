@@ -185,6 +185,7 @@ describe('POST /api/organization/billing/checkout', () => {
             stripeCustomerId: 'cus_pro',
             subscriptionId: 'sub_pro',
             subscriptionEndsAt: new Date(1_900_000_000 * 1000),
+            subscriptionCancelAt: null,
             seatQuantity: 5,
         });
         expect(await response.json()).toEqual({

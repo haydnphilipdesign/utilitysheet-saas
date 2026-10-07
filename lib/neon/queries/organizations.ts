@@ -102,6 +102,8 @@ export async function updateOrganizationSubscription(
         subscriptionStatus: string;
         subscriptionId: string | null;
         subscriptionEndsAt: Date | null;
+        /** When a plan that is set to cancel ends; null when it renews. */
+        subscriptionCancelAt: Date | null;
         seatQuantity?: number | null;
     }
 ) {
@@ -113,6 +115,7 @@ export async function updateOrganizationSubscription(
             subscription_status = ${data.subscriptionStatus},
             subscription_id = ${data.subscriptionId},
             subscription_ends_at = ${data.subscriptionEndsAt?.toISOString() || null},
+            subscription_cancel_at = ${data.subscriptionCancelAt?.toISOString() || null},
             seat_quantity = COALESCE(${data.seatQuantity ?? null}, seat_quantity),
             updated_at = NOW()
         WHERE id = ${organizationId}
@@ -135,6 +138,7 @@ export async function transferAccountSubscriptionToOrganization(data: {
     stripeCustomerId: string;
     subscriptionId: string;
     subscriptionEndsAt: Date | null;
+    subscriptionCancelAt: Date | null;
     seatQuantity: number;
 }) {
     if (!sql) return null;
@@ -184,6 +188,7 @@ export async function transferAccountSubscriptionToOrganization(data: {
                 subscription_status = 'team',
                 subscription_id = ${data.subscriptionId},
                 subscription_ends_at = ${data.subscriptionEndsAt?.toISOString() || null},
+                subscription_cancel_at = ${data.subscriptionCancelAt?.toISOString() || null},
                 seat_quantity = ${data.seatQuantity},
                 updated_at = NOW()
             WHERE organization_row.id = ${data.organizationId}
@@ -196,6 +201,7 @@ export async function transferAccountSubscriptionToOrganization(data: {
                 subscription_status = 'free',
                 subscription_id = NULL,
                 subscription_ends_at = NULL,
+                subscription_cancel_at = NULL,
                 updated_at = NOW()
             WHERE account_row.id = ${data.accountId}
                 AND EXISTS (SELECT 1 FROM updated_organization)

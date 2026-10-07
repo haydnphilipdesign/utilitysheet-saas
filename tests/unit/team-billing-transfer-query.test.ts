@@ -28,6 +28,7 @@ describe('transferAccountSubscriptionToOrganization', () => {
             stripeCustomerId: 'cus_1',
             subscriptionId: 'sub_1',
             subscriptionEndsAt: new Date('2030-03-17T17:46:40.000Z'),
+            subscriptionCancelAt: new Date('2030-03-17T17:46:40.000Z'),
             seatQuantity: 5,
         });
 
@@ -43,6 +44,9 @@ describe('transferAccountSubscriptionToOrganization', () => {
         expect(queryText).toContain("subscription_status = 'free'");
         expect(queryText).toContain('stripe_customer_id = NULL');
         expect(queryText).toContain('subscription_id = NULL');
+        // The cancellation date moves with the plan: set on the workspace, cleared on the account.
+        expect(queryText).toContain('subscription_cancel_at = NULL');
+        expect(sqlMock.mock.calls[0].filter((value) => value === '2030-03-17T17:46:40.000Z')).toHaveLength(2);
         expect(queryText).toContain('row_to_json');
     });
 
@@ -55,6 +59,7 @@ describe('transferAccountSubscriptionToOrganization', () => {
             stripeCustomerId: 'cus_1',
             subscriptionId: 'sub_1',
             subscriptionEndsAt: null,
+            subscriptionCancelAt: null,
             seatQuantity: 3,
         })).resolves.toBeNull();
     });

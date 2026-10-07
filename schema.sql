@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     subscription_status TEXT DEFAULT 'free' CHECK (subscription_status IN ('free', 'pro', 'canceled')),
     subscription_id TEXT,
     subscription_ends_at TIMESTAMPTZ,
+    subscription_cancel_at TIMESTAMPTZ, -- When a plan set to cancel ends; NULL when it renews
     onboarding_completed_at TIMESTAMPTZ,
     notification_preferences JSONB NOT NULL DEFAULT '{}'::jsonb,
     closure_status TEXT NOT NULL DEFAULT 'active' CONSTRAINT accounts_closure_status_check CHECK (closure_status IN ('active', 'closing', 'closed')),
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     subscription_status TEXT DEFAULT 'free' CHECK (subscription_status IN ('free', 'team', 'canceled')),
     subscription_id TEXT,
     subscription_ends_at TIMESTAMPTZ,
+    subscription_cancel_at TIMESTAMPTZ, -- When a plan set to cancel ends; NULL when it renews
     seat_quantity INT NOT NULL DEFAULT 0,
     notification_settings JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW(),

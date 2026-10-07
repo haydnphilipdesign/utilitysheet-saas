@@ -12,6 +12,10 @@ type Scenario = {
     failAccount?: boolean;
     failAccountSave?: boolean;
     emailSent?: boolean;
+    /** The current paid plan is set to end on this date. */
+    cancelAt?: string;
+    /** The server refuses a Pro checkout because Stripe already has a subscription. */
+    existingSubscription?: boolean;
 };
 
 const preferences = { seller_submissions: true, seller_submission_pdf_attachment: true, contact_resolution: true };
@@ -54,13 +58,20 @@ async function mocks(page: Page, scenario: Scenario) {
             state.accountLoads += 1;
             if (state.failAccount) return json({ error: 'Internal server error' }, 500);
             return json({
-                account: { id: 'acc_1', full_name: 'Jordan Rivera', email: 'jordan@example.com', notification_preferences: preferences },
+                account: {
+                    id: 'acc_1',
+                    full_name: 'Jordan Rivera',
+                    email: 'jordan@example.com',
+                    notification_preferences: preferences,
+                    subscription_cancel_at: state.plan === 'pro' ? state.cancelAt ?? null : null,
+                },
                 activeOrganization: {
                     id: 'org_1',
                     name: 'Riverbend Transaction Services',
                     role: state.role,
                     subscription_status: team() ? 'team' : 'free',
                     seat_quantity: team() ? 4 : null,
+                    subscription_cancel_at: team() ? state.cancelAt ?? null : null,
                     notification_settings: { notify_admins_on_submission: false },
                 },
                 usage: state.plan === 'free'
@@ -73,7 +84,7 @@ async function mocks(page: Page, scenario: Scenario) {
         }
         if (path === '/api/organization/members' && method === 'GET') {
             return json({
-                organization: { id: 'org_1', name: 'Riverbend Transaction Services', subscription_status: team() ? 'team' : 'free', seat_quantity: team() ? 4 : null },
+                organization: { id: 'org_1', name: 'Riverbend Transaction Services', subscription_status: team() ? 'team' : 'free', seat_quantity: team() ? 4 : null, subscription_cancel_at: team() ? state.cancelAt ?? null : null },
                 role: state.role,
                 members: team() ? [
                     { account_id: 'acc_1', email: 'jordan@example.com', full_name: 'Jordan Rivera', member_role: state.role },
@@ -97,6 +108,14 @@ async function mocks(page: Page, scenario: Scenario) {
         if (path === '/api/organization' && method === 'PATCH') {
             return json({ organization: { id: 'org_1', name: req.postDataJSON().name } });
         }
+        if (path === '/api/billing/checkout' && state.existingSubscription) {
+            return json({
+                error: 'Existing subscription',
+                message: 'Your subscription has a payment that did not go through. Update your card in Manage subscription instead of starting a new one.',
+                manageBilling: true,
+            }, 409);
+        }
+        if (path === '/api/billing/portal') return json({ error: 'Billing is not available in this test.' }, 400);
         if (path === '/api/organization/billing/checkout') {
             return json({ error: 'Checkout is not available in this test.' }, 400);
         }
@@ -359,6 +378,7 @@ test('returning from checkout waits for the account before calling a plan active
     await expect(page.getByText('Confirming your Pro checkout with Stripe.', { exact: false })).toBeVisible();
     await expect(page.getByText('Free plan', { exact: true })).toBeVisible();
     await expect(page.getByText('You’re on Pro', { exact: false })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Upgrade to Pro, $9/mo', exact: true })).toBeDisabled();
     expect(new URL(page.url()).search).toBe('?tab=billing');
     await healthy(page, testInfo, 'checkout-confirming');
 
@@ -366,4 +386,34 @@ test('returning from checkout waits for the account before calling a plan active
     await expect(page.getByText('You’re on Pro. Thanks for upgrading.', { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('Pro plan', { exact: true })).toBeVisible();
     await healthy(page, testInfo, 'checkout-confirmed');
+});
+
+test('a plan that is set to end says when, for Pro and for a Teams member', async ({ page }, testInfo) => {
+    await open(page, { plan: 'pro', role: 'admin', cancelAt: '2026-11-03T12:00:00.000Z' }, '?tab=billing');
+
+    await expect(page.getByText('Your Pro plan is set to end on November 3, 2026.', { exact: true })).toBeVisible();
+    await expect(page.getByText('To keep the plan, choose Manage subscription and renew it.', { exact: false })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Manage subscription', exact: true })).toBeVisible();
+    await healthy(page, testInfo, 'pro-plan-ending');
+
+    await open(page, { plan: 'team', role: 'member', cancelAt: '2026-11-03T12:00:00.000Z' }, '?tab=billing');
+    await expect(page.getByText('Your Teams plan is set to end on November 3, 2026.', { exact: true })).toBeVisible();
+    await expect(page.getByText('A workspace admin can keep the plan going.', { exact: false })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Manage Teams billing', exact: true })).toHaveCount(0);
+    await healthy(page, testInfo, 'teams-member-plan-ending');
+});
+
+test('a refused Pro checkout explains why and offers Manage subscription', async ({ page }, testInfo) => {
+    const { writes } = await open(page, { plan: 'free', role: 'admin', existingSubscription: true }, '?tab=billing');
+
+    await expect(page.getByRole('button', { name: 'Manage subscription', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Upgrade to Pro, $9/mo', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Your subscription has a payment that did not go through.' })).toBeVisible();
+    const manage = page.getByRole('button', { name: 'Manage subscription', exact: true });
+    await expect(manage).toBeVisible();
+    await healthy(page, testInfo, 'pro-checkout-refused');
+
+    await manage.click();
+    await expect(page.getByRole('alert').filter({ hasText: 'Billing is not available in this test.' })).toBeVisible();
+    expect(writes.map((write) => write.url)).toEqual(['/api/billing/checkout', '/api/billing/portal']);
 });

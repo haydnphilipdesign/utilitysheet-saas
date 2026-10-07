@@ -471,6 +471,9 @@ describe('return from checkout', () => {
         expect(await screen.findByText('Free plan')).toBeInTheDocument();
         expect(screen.queryByText(/You’re on Pro/)).not.toBeInTheDocument();
         expect(window.location.search).toBe('?tab=billing');
+        // Paying again while the first payment is still being confirmed would charge twice.
+        expect(screen.getByRole('button', { name: /Upgrade to Pro,/ })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Start Teams' })).toBeDisabled();
 
         plan = 'pro';
         expect(await screen.findByText('You’re on Pro. Thanks for upgrading.', {}, { timeout: 8000 })).toBeInTheDocument();
@@ -489,5 +492,106 @@ describe('return from checkout', () => {
         expect(await screen.findByText('Checkout wasn’t completed. The plan below is your current plan.')).toBeInTheDocument();
         expect(await screen.findByText('Free plan')).toBeInTheDocument();
         expect(screen.queryByText(/You’re on/)).not.toBeInTheDocument();
+    });
+});
+
+describe('a plan that is set to end', () => {
+    const endsAt = '2026-11-03T12:00:00.000Z';
+
+    it('says when a canceled Pro plan ends and how to keep it', async () => {
+        const account = soloAccount('pro');
+        stubFetch({
+            'GET /api/account': () => jsonResponse({ ...account, account: { ...account.account, subscription_cancel_at: endsAt } }),
+            'GET /api/organization/members': soloMembers,
+        });
+        render(<SettingsPage />);
+        await openTab('Billing');
+
+        expect(await screen.findByText('Your Pro plan is set to end on November 3, 2026.')).toBeInTheDocument();
+        expect(screen.getByText(/You keep everything in Pro until then\. To keep the plan, choose Manage subscription and renew it\./)).toBeInTheDocument();
+    });
+
+    it('says nothing about an end date for a plan that renews', async () => {
+        stubFetch({
+            'GET /api/account': () => jsonResponse(soloAccount('pro')),
+            'GET /api/organization/members': soloMembers,
+        });
+        render(<SettingsPage />);
+        await openTab('Billing');
+
+        expect(await screen.findByText('Pro plan')).toBeInTheDocument();
+        expect(screen.queryByText(/is set to end on/)).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ['admin', /To keep the plan, choose Manage Teams billing and renew it\./],
+        ['member', /A workspace admin can keep the plan going\./],
+    ] as const)('tells a Teams %s when the workspace plan ends', async (role, nextStep) => {
+        const account = teamAccount(role);
+        stubFetch({
+            ...teamRoutes(role),
+            'GET /api/account': () => jsonResponse({
+                ...account,
+                activeOrganization: { ...account.activeOrganization, subscription_cancel_at: endsAt },
+            }),
+        });
+        render(<SettingsPage />);
+        await openTab('Billing');
+
+        expect(await screen.findByText('Your Teams plan is set to end on November 3, 2026.')).toBeInTheDocument();
+        expect(screen.getByText(nextStep)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Manage Teams billing' }) !== null).toBe(role === 'admin');
+    });
+
+    it('ignores a leftover date once the account is back on Free', async () => {
+        const account = soloAccount();
+        stubFetch({
+            'GET /api/account': () => jsonResponse({ ...account, account: { ...account.account, subscription_cancel_at: endsAt } }),
+            'GET /api/organization/members': soloMembers,
+        });
+        render(<SettingsPage />);
+        await openTab('Billing');
+
+        expect(await screen.findByText('Free plan')).toBeInTheDocument();
+        expect(screen.queryByText(/is set to end on/)).not.toBeInTheDocument();
+    });
+});
+
+describe('a Pro checkout the server refuses', () => {
+    it('shows the reason and offers Manage subscription when a subscription already exists', async () => {
+        const fetchMock = stubFetch({
+            'GET /api/account': () => jsonResponse(soloAccount()),
+            'GET /api/organization/members': soloMembers,
+            'POST /api/billing/checkout': () => jsonResponse({
+                error: 'Existing subscription',
+                message: 'Your subscription has a payment that did not go through.',
+                manageBilling: true,
+            }, 409),
+            'POST /api/billing/portal': () => jsonResponse({ error: 'Portal is not available in this test.' }, 500),
+        });
+        render(<SettingsPage />);
+        await openTab('Billing');
+
+        expect(screen.queryByRole('button', { name: 'Manage subscription' })).not.toBeInTheDocument();
+        fireEvent.click(await screen.findByRole('button', { name: /Upgrade to Pro,/ }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Your subscription has a payment that did not go through.');
+        fireEvent.click(screen.getByRole('button', { name: 'Manage subscription' }));
+        await waitFor(() => expect(bodiesOf(fetchMock, 'POST', '/api/billing/portal')).toHaveLength(1));
+    });
+
+    it('does not offer Manage subscription for an ordinary failure', async () => {
+        stubFetch({
+            'GET /api/account': () => jsonResponse(soloAccount()),
+            'GET /api/organization/members': soloMembers,
+            'POST /api/billing/checkout': () => jsonResponse({ error: 'Failed to create checkout session' }, 500),
+        });
+        render(<SettingsPage />);
+        await openTab('Billing');
+
+        fireEvent.click(await screen.findByRole('button', { name: /Upgrade to Pro,/ }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Failed to create checkout session');
+        expect(screen.queryByRole('button', { name: 'Manage subscription' })).not.toBeInTheDocument();
     });
 });

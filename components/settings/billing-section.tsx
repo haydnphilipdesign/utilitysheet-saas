@@ -19,6 +19,13 @@ import {
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 const PLAN_NAMES = { pro: 'Pro', team: 'Teams' } as const;
+const longDate = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' });
+
+/** A stored end date as "November 3, 2026" in the reader's time zone, or null. */
+function formatPlanEnd(value: string | null): string | null {
+    const date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime()) ? longDate.format(date) : null;
+}
 
 /** What came back from checkout. The plan card below always shows the loaded account. */
 function CheckoutBanner({ checkout, onCheckAgain, onDismiss }: {
@@ -67,12 +74,14 @@ function CheckoutBanner({ checkout, onCheckAgain, onDismiss }: {
 }
 
 export function BillingSection({
-    state, onRetry, usage, organization, isTeam, isAdmin, seatUsage,
+    state, onRetry, usage, planEndsAt, organization, isTeam, isAdmin, seatUsage,
     checkout, onCheckAgain, onDismissCheckout, onOpenWorkspace,
 }: {
     state: LoadState;
     onRetry: () => void;
     usage: Usage | null;
+    /** When the current paid plan is set to end; null when it renews. */
+    planEndsAt: string | null;
     organization: ActiveOrganization | null;
     isTeam: boolean;
     isAdmin: boolean;
@@ -85,6 +94,7 @@ export function BillingSection({
 }) {
     const [busy, setBusy] = useState<'plan' | 'teams' | null>(null);
     const [planError, setPlanError] = useState('');
+    const [offerPortal, setOfferPortal] = useState(false);
     const [teamsError, setTeamsError] = useState('');
     const [seatInput, setSeatInput] = useState(String(TEAM_MIN_SEATS));
 
@@ -114,12 +124,16 @@ export function BillingSection({
     const isPro = usage.plan === 'pro';
     const isFree = !isTeam && !isPro;
     const seatsInUse = seatUsage ? seatUsage.used + seatUsage.pendingInvites : null;
+    const planEnd = isFree ? null : formatPlanEnd(planEndsAt);
+    // A second checkout while the first is still being confirmed could charge twice.
+    const confirming = checkout?.status === 'confirming';
 
     /** Sends the browser to Stripe; anything else is shown beside the button. */
     async function openStripe(url: string, target: 'plan' | 'teams', fallback: string, body?: unknown) {
         const setError = target === 'plan' ? setPlanError : setTeamsError;
         setBusy(target);
         setError('');
+        if (target === 'plan') setOfferPortal(false);
         try {
             const response = await fetch(url, {
                 method: 'POST',
@@ -131,6 +145,8 @@ export function BillingSection({
                 return;
             }
             setError(data.message || data.error || fallback);
+            // The server found a subscription this page does not show yet.
+            if (target === 'plan' && data.manageBilling === true) setOfferPortal(true);
         } catch {
             setError(fallback);
         }
@@ -193,7 +209,7 @@ export function BillingSection({
                         <Button
                             className="shrink-0"
                             onClick={() => void openStripe('/api/billing/checkout', 'plan', 'We couldn’t start checkout. Try again.')}
-                            disabled={busy !== null}
+                            disabled={busy !== null || confirming}
                         >
                             {busy === 'plan' ? <Loader2 className="animate-spin" /> : <Sparkles />}
                             Upgrade to Pro, $9/mo
@@ -201,6 +217,29 @@ export function BillingSection({
                     )}
                 </div>
                 {planError && <InlineStatus tone="error">{planError}</InlineStatus>}
+                {offerPortal && (
+                    <Button
+                        variant="outline"
+                        onClick={() => void openStripe('/api/billing/portal', 'plan', 'We couldn’t open billing. Try again.')}
+                        disabled={busy !== null}
+                    >
+                        {busy === 'plan' ? <Loader2 className="animate-spin" /> : <ExternalLink />}
+                        Manage subscription
+                    </Button>
+                )}
+                {planEnd && (
+                    <Note>
+                        <span className="font-medium text-foreground">
+                            Your {isTeam ? 'Teams' : 'Pro'} plan is set to end on {planEnd}.
+                        </span>{' '}
+                        {isTeam
+                            ? 'Everyone in this workspace keeps Teams until then.'
+                            : 'You keep everything in Pro until then.'}{' '}
+                        {isTeam && !isAdmin
+                            ? 'A workspace admin can keep the plan going.'
+                            : `To keep the plan, choose ${isTeam ? 'Manage Teams billing' : 'Manage subscription'} and renew it.`}
+                    </Note>
+                )}
 
                 {isTeam && !isAdmin ? (
                     <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -305,7 +344,7 @@ export function BillingSection({
                                         'We couldn’t start Teams checkout. Try again.',
                                         { seats },
                                     )}
-                                    disabled={busy !== null || seatProblem !== ''}
+                                    disabled={busy !== null || confirming || seatProblem !== ''}
                                 >
                                     {busy === 'teams' ? <Loader2 className="animate-spin" /> : <Sparkles />}
                                     {isPro ? 'Upgrade Pro to Teams' : 'Start Teams'}

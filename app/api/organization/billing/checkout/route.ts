@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stripe, STRIPE_PRO_PRICE_ID, STRIPE_TEAMS_PRICE_ID } from '@/lib/stripe/client';
 import { stackServerApp } from '@/lib/stack/server';
+import { getSubscriptionCancelAt } from '@/lib/stripe/subscriptions';
 import {
     getOrCreateAccount,
     getOrganizationById,
@@ -182,12 +183,14 @@ export async function POST(request: Request) {
                 throw new Error('Stripe returned an unexpected Teams subscription state');
             }
 
+            const subscriptionEndsAt = getSubscriptionEndsAt(convertedSubscription);
             const transfer = await transferAccountSubscriptionToOrganization({
                 accountId: account.id,
                 organizationId,
                 stripeCustomerId: convertedCustomerId,
                 subscriptionId: convertedSubscription.id,
-                subscriptionEndsAt: getSubscriptionEndsAt(convertedSubscription),
+                subscriptionEndsAt,
+                subscriptionCancelAt: getSubscriptionCancelAt(convertedSubscription, subscriptionEndsAt),
                 seatQuantity: seats,
             });
 

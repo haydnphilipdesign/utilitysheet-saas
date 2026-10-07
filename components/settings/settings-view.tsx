@@ -57,6 +57,7 @@ type AccountResponse = {
         full_name?: string | null;
         email?: string | null;
         notification_preferences?: Partial<NotificationPreferences> | null;
+        subscription_cancel_at?: string | null;
     };
     usage?: Usage;
     activeOrganization?: ActiveOrganization | null;
@@ -72,6 +73,7 @@ export function SettingsView({ user }: { user: SettingsUser | null }) {
     const [profileName, setProfileName] = useState('');
     const [email, setEmail] = useState('');
     const [usage, setUsage] = useState<Usage | null>(null);
+    const [proCancelAt, setProCancelAt] = useState<string | null>(null);
     const [activeOrganization, setActiveOrganization] = useState<ActiveOrganization | null>(null);
     const [workspaceName, setWorkspaceName] = useState('');
     const [notifyAdmins, setNotifyAdmins] = useState(false);
@@ -109,6 +111,7 @@ export function SettingsView({ user }: { user: SettingsUser | null }) {
             setAccountId(data.account.id || null);
             setEmail(data.account.email || primaryEmail);
             setUsage(data.usage || null);
+            setProCancelAt(data.account.subscription_cancel_at || null);
             setActiveOrganization(data.activeOrganization || null);
             if (!refresh) {
                 const name = data.account.full_name || displayName;
@@ -379,6 +382,7 @@ export function SettingsView({ user }: { user: SettingsUser | null }) {
                         state={accountState}
                         onRetry={retryAccount}
                         usage={usage}
+                        planEndsAt={orgIsTeam ? activeOrganization?.subscription_cancel_at || null : proCancelAt}
                         organization={activeOrganization}
                         isTeam={orgIsTeam}
                         isAdmin={orgIsAdmin}

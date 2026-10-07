@@ -207,6 +207,8 @@ export async function updateAccountSubscription(
         subscriptionStatus: string;
         subscriptionId: string | null;
         subscriptionEndsAt: Date | null;
+        /** When a plan that is set to cancel ends; null when it renews. */
+        subscriptionCancelAt: Date | null;
     }
 ) {
     if (!sql) return null;
@@ -216,7 +218,8 @@ export async function updateAccountSubscription(
         SET 
             subscription_status = ${data.subscriptionStatus},
             subscription_id = ${data.subscriptionId},
-            subscription_ends_at = ${data.subscriptionEndsAt?.toISOString() || null}
+            subscription_ends_at = ${data.subscriptionEndsAt?.toISOString() || null},
+            subscription_cancel_at = ${data.subscriptionCancelAt?.toISOString() || null}
         WHERE id = ${accountId}
         RETURNING *
     `;

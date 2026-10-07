@@ -35,6 +35,10 @@ const INCIDENT_LABELS: Record<string, { title: string; investigate: string }> = 
         title: 'A verified Stripe event could not be processed',
         investigate: 'Stripe retries failed events. Check the event in the Stripe dashboard (Developers, Events) and compare the customer’s access with their subscription.',
     },
+    'billing_webhook:duplicate_subscription': {
+        title: 'A customer has two paid subscriptions',
+        investigate: 'In the Stripe dashboard, find the customer with two active subscriptions (the stored event carries the account ID). Cancel and refund the extra one, then confirm the account still shows Pro.',
+    },
     'email:completion_send_failed': {
         title: 'Completion email to the customer was not sent',
         investigate: 'The seller submission itself succeeded. Open the request; the customer can still view it in their dashboard.',

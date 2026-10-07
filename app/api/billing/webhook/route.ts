@@ -11,6 +11,7 @@ import {
 } from '@/lib/neon/queries';
 import { applyEarnedReferralCredits } from '@/lib/referrals/referral-credit-service';
 import { errorNameOf, recordOperationalEvent, recordOperationalSuccess } from '@/lib/ops/events';
+import { getSubscriptionCancelAt } from '@/lib/stripe/subscriptions';
 import Stripe from 'stripe';
 
 function isPaidStripeStatus(status: Stripe.Subscription.Status) {
@@ -76,6 +77,7 @@ async function syncOrganizationSubscription(
             stripeCustomerId: customerId,
             subscriptionId: subscription.id,
             subscriptionEndsAt,
+            subscriptionCancelAt: getSubscriptionCancelAt(subscription, subscriptionEndsAt),
             seatQuantity,
         });
         if (!transferred) {
@@ -99,6 +101,9 @@ async function syncOrganizationSubscription(
         subscriptionStatus: status,
         subscriptionId: status === 'team' ? subscription.id : null,
         subscriptionEndsAt: status === 'team' ? subscriptionEndsAt : null,
+        subscriptionCancelAt: status === 'team'
+            ? getSubscriptionCancelAt(subscription, subscriptionEndsAt)
+            : null,
         seatQuantity: status === 'team' ? seatQuantity : 0,
     });
 }
@@ -115,10 +120,36 @@ async function syncAccountSubscription(accountId: string, subscription: Stripe.S
     }
 
     const status = isPaidStripeStatus(subscription.status) ? 'pro' : 'free';
+    const currentSubscriptionId = (account.subscription_id as string | null) || null;
+    const isAnotherSubscription = Boolean(currentSubscriptionId) && currentSubscriptionId !== subscription.id;
+
+    // An ended or expired subscription that is not the one this account is on
+    // (a replaced plan, an abandoned checkout, a late event) must not downgrade it.
+    if (status === 'free' && isAnotherSubscription) {
+        console.log(`Ignored ${subscription.status} subscription that is not current for account ${accountId}`);
+        return false;
+    }
+
+    // Two paid subscriptions bill the customer twice. No provider event ID: this
+    // handler's own success row would otherwise mark the incident recovered.
+    if (status === 'pro' && isAnotherSubscription && account.subscription_status === 'pro') {
+        await recordOperationalEvent({
+            category: 'billing_webhook',
+            code: 'duplicate_subscription',
+            outcome: 'failure',
+            severity: 'critical',
+            accountId: account.id,
+        });
+    }
+
+    const subscriptionEndsAt = getSubscriptionEndsAt(subscription);
     await updateAccountSubscription(account.id, {
         subscriptionStatus: status,
         subscriptionId: status === 'pro' ? subscription.id : null,
-        subscriptionEndsAt: status === 'pro' ? getSubscriptionEndsAt(subscription) : null,
+        subscriptionEndsAt: status === 'pro' ? subscriptionEndsAt : null,
+        subscriptionCancelAt: status === 'pro'
+            ? getSubscriptionCancelAt(subscription, subscriptionEndsAt)
+            : null,
     });
     return true;
 }
@@ -197,14 +228,16 @@ export async function POST(request: Request) {
                     const organization = await getOrganizationByStripeCustomerId(customerId);
                     if (organization) {
                         const seatQuantity = getSeatQuantityFromSubscription(subscriptionResponse);
+                        const subscriptionEndsAt = getSubscriptionEndsAt(
+                            subscriptionResponse,
+                            STRIPE_TEAMS_PRICE_ID
+                        );
 
                         await updateOrganizationSubscription(organization.id, {
                             subscriptionStatus: isPaidStripeStatus(subscriptionResponse.status) ? 'team' : 'free',
                             subscriptionId: subscriptionResponse.id,
-                            subscriptionEndsAt: getSubscriptionEndsAt(
-                                subscriptionResponse,
-                                STRIPE_TEAMS_PRICE_ID
-                            ),
+                            subscriptionEndsAt,
+                            subscriptionCancelAt: getSubscriptionCancelAt(subscriptionResponse, subscriptionEndsAt),
                             seatQuantity,
                         });
                         console.log(`Activated Teams subscription for organization ${organization.id}`);
@@ -244,14 +277,15 @@ export async function POST(request: Request) {
                 if (organization) {
                     const status = isPaidStripeStatus(subscription.status) ? 'team' : 'free';
                     const seatQuantity = getSeatQuantityFromSubscription(subscription);
+                    const subscriptionEndsAt = getSubscriptionEndsAt(subscription, STRIPE_TEAMS_PRICE_ID);
 
                     await updateOrganizationSubscription(organization.id, {
                         subscriptionStatus: status,
                         subscriptionId: subscription.id,
-                        subscriptionEndsAt: getSubscriptionEndsAt(
-                            subscription,
-                            STRIPE_TEAMS_PRICE_ID
-                        ),
+                        subscriptionEndsAt,
+                        subscriptionCancelAt: status === 'team'
+                            ? getSubscriptionCancelAt(subscription, subscriptionEndsAt)
+                            : null,
                         seatQuantity,
                     });
                     console.log(`Updated Teams subscription status to ${status} for organization ${organization.id}`);
@@ -292,6 +326,7 @@ export async function POST(request: Request) {
                         subscriptionStatus: 'free',
                         subscriptionId: null,
                         subscriptionEndsAt: null,
+                        subscriptionCancelAt: null,
                         seatQuantity: 0,
                     });
                     console.log(`Downgraded to free plan for organization ${organization.id}`);
