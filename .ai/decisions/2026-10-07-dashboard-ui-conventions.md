@@ -29,6 +29,11 @@ one thing the user can do about it.
 
 - Seller forms list and editor (confirmations, locked "Rename link").
 - Branding list menu (locked Duplicate, Set Default, Delete).
+- Settings (`components/settings/`): team and sign-in confirmations use
+  `ConfirmDialog`. Settings has no sticky save bar, so decision 3 is applied in
+  its general form: save, autosave and failure feedback sits beside the control
+  it belongs to (`InlineStatus` in `settings-ui.tsx`), not in a toast.
+  Sign-in, export and account-closure results still use toasts.
 
 ## Known places still to convert
 

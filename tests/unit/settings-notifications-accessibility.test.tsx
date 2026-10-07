@@ -81,7 +81,7 @@ describe('notifications tab accessibility and PDF dependency', () => {
 
         expect(await screen.findByRole('switch', { name: 'Seller submissions' })).toBeInTheDocument();
         expect(screen.getByRole('switch', { name: 'Attach PDF to submission emails' })).toBeInTheDocument();
-        expect(screen.getByRole('switch', { name: 'Contact resolution alerts' })).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: 'Missing provider contact alerts' })).toBeInTheDocument();
     });
 
     it('disables the PDF attachment switch when seller submissions is off', async () => {

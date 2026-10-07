@@ -6,7 +6,7 @@ import { Download, FileSearch, KeyRound, Loader2, LogIn, Mail, Monitor, ShieldCh
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
     Dialog,
     DialogContent,
@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { AccountClosureSection } from '@/components/settings/account-closure';
+import { LoadError, LoadingRows, SettingsSection } from '@/components/settings/settings-ui';
 
 type SecuritySummary = {
     primaryEmail: string;
@@ -50,6 +51,10 @@ type SecuritySummary = {
 const ACCOUNT_SETTINGS_PATH = '/dashboard/settings?tab=account';
 const RECENT_AUTH_PROMPT = 'Confirm it’s you, then try again.';
 
+function formatWhen(value: string) {
+    return new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 async function readJson(response: Response) {
     return response.json().catch(() => ({})) as Promise<Record<string, unknown>>;
 }
@@ -58,6 +63,8 @@ export function AccountSecuritySettings() {
     const user = useUser();
     const [security, setSecurity] = useState<SecuritySummary | null>(null);
     const [loading, setLoading] = useState(true);
+    // A failed load is not the same as needing to confirm it's you.
+    const [loadFailed, setLoadFailed] = useState(false);
     const [busyAction, setBusyAction] = useState<string | null>(null);
     const [reauthOpen, setReauthOpen] = useState(false);
     const [reauthPassword, setReauthPassword] = useState('');
@@ -83,14 +90,17 @@ export function AccountSecuritySettings() {
             const data = await readJson(response);
             if (response.status === 403 && data.code === 'RECENT_AUTH_REQUIRED') {
                 setSecurity(null);
+                setLoadFailed(false);
                 if (promptForReauth) setReauthOpen(true);
                 return false;
             }
             if (!response.ok) throw new Error(String(data.error || 'Failed to load security settings.'));
             setSecurity(data as unknown as SecuritySummary);
+            setLoadFailed(false);
             return true;
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to load security settings.');
+        } catch {
+            // Shown in the card when nothing is loaded; what was loaded stays on screen.
+            setLoadFailed(true);
             return false;
         } finally {
             setLoading(false);
@@ -176,7 +186,7 @@ export function AccountSecuritySettings() {
         if (!email) return;
         const success = await runSecurityAction(
             { action: 'begin_email_change', email },
-            'Verification email sent. Return here after verifying it.',
+            'Verification email sent. Open it, then come back here and choose Make primary.',
         );
         if (success) setNewEmail('');
     };
@@ -208,14 +218,14 @@ export function AccountSecuritySettings() {
                 body: JSON.stringify({ action: 'password_changed', revokeOtherSessions: true }),
             });
             if (!auditResponse.ok) {
-                throw new Error('Password changed, but other sessions could not be revoked. Review sessions now.');
+                throw new Error('Password changed, but we couldn’t sign out your other devices. Check Signed-in devices now.');
             }
 
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
             setPasswordOpen(false);
-            toast.success('Password changed and other sessions revoked.');
+            toast.success('Password changed. Your other devices were signed out.');
             await loadSecurity(false);
         } catch (error) {
             setPasswordError(error instanceof Error ? error.message : 'Password change failed.');
@@ -246,7 +256,7 @@ export function AccountSecuritySettings() {
             link.click();
             link.remove();
             URL.revokeObjectURL(url);
-            toast.success('Account export downloaded.');
+            toast.success('Your data was downloaded.');
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Export failed.');
         } finally {
@@ -256,18 +266,19 @@ export function AccountSecuritySettings() {
 
     return (
         <>
-            <Card className="border-border bg-card/50">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-foreground">
-                        <ShieldCheck className="h-5 w-5 text-primary" />
-                        Sign-in &amp; security
-                    </CardTitle>
-                    <CardDescription>
-                        Manage your sign-in email, password, and signed-in devices.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                    {!security ? (
+            <SettingsSection
+                icon={ShieldCheck}
+                title="Sign-in & security"
+                description="Your sign-in email, password and the devices you’re signed in on."
+            >
+                    {!security && loading ? (
+                        <LoadingRows label="Loading your sign-in settings…" rows={3} />
+                    ) : !security && loadFailed ? (
+                        <LoadError
+                            message="We couldn’t load your sign-in settings. Nothing was changed."
+                            onRetry={() => void loadSecurity(false)}
+                        />
+                    ) : !security ? (
                         <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <p className="text-sm font-medium text-foreground">
@@ -296,11 +307,11 @@ export function AccountSecuritySettings() {
                             <section aria-labelledby="sign-in-methods-heading" className="space-y-3">
                                 <div>
                                     <h3 id="sign-in-methods-heading" className="text-sm font-semibold text-foreground">Sign-in methods</h3>
-                                    <p className="text-sm text-muted-foreground">Only methods enabled for this UtilitySheet project are shown.</p>
+                                    <p className="text-sm text-muted-foreground">The ways you can sign in to UtilitySheet.</p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {security.methods.credential && <Badge variant="secondary">Email &amp; password</Badge>}
-                                    {security.methods.magicLink && <Badge variant="secondary">Magic link</Badge>}
+                                    {security.methods.magicLink && <Badge variant="secondary">Emailed sign-in link</Badge>}
                                     {security.methods.passkey && <Badge variant="secondary">Passkey</Badge>}
                                     {security.methods.oauthProviders.map((provider) => (
                                         <Badge key={provider} variant="secondary">{provider}</Badge>
@@ -319,7 +330,7 @@ export function AccountSecuritySettings() {
                             <section aria-labelledby="email-addresses-heading" className="space-y-3">
                                 <div>
                                     <h3 id="email-addresses-heading" className="text-sm font-semibold text-foreground">Email addresses</h3>
-                                    <p className="text-sm text-muted-foreground">A new address must be verified before it can become your sign-in email.</p>
+                                    <p className="text-sm text-muted-foreground">Your primary email is the one you sign in with.</p>
                                 </div>
                                 <ul className="space-y-2">
                                     {security.contactChannels.map((channel) => (
@@ -328,15 +339,15 @@ export function AccountSecuritySettings() {
                                                 <p className="break-all text-sm font-medium text-foreground">{channel.value}</p>
                                                 <div className="mt-1 flex flex-wrap gap-1.5">
                                                     {channel.isPrimary && <Badge>Primary</Badge>}
-                                                    <Badge variant={channel.isVerified ? 'secondary' : 'outline'}>{channel.isVerified ? 'Verified' : 'Verification pending'}</Badge>
-                                                    {channel.usedForAuth && <Badge variant="outline">Sign-in enabled</Badge>}
+                                                    <Badge variant={channel.isVerified ? 'secondary' : 'outline'}>{channel.isVerified ? 'Verified' : 'Waiting for verification'}</Badge>
+                                                    {channel.usedForAuth && <Badge variant="outline">Can sign in</Badge>}
                                                 </div>
                                             </div>
                                             {!channel.isPrimary && channel.isVerified && (
                                                 <Button
                                                     variant="outline"
                                                     onClick={() => setConfirmation({
-                                                        title: 'Change primary email',
+                                                        title: 'Make this your primary email?',
                                                         description: `Use ${channel.value} as your UtilitySheet sign-in and personal billing email? Your current email remains available as a verified sign-in method.`,
                                                         confirmLabel: 'Make primary',
                                                         onConfirm: async () => {
@@ -358,6 +369,7 @@ export function AccountSecuritySettings() {
                                             id="new-account-email"
                                             type="email"
                                             autoComplete="email"
+                                            aria-describedby="new-account-email-help"
                                             value={newEmail}
                                             onChange={(event) => setNewEmail(event.target.value)}
                                             required
@@ -365,9 +377,13 @@ export function AccountSecuritySettings() {
                                     </div>
                                     <Button type="submit" variant="outline" disabled={busyAction === 'begin_email_change'}>
                                         <Mail className="mr-2 h-4 w-4" />
-                                        Send verification
+                                        Send verification email
                                     </Button>
                                 </form>
+                                <p id="new-account-email-help" className="text-xs text-muted-foreground">
+                                    To change your sign-in email: add the new address, open the verification email
+                                    we send to it, then come back here and choose Make primary next to it.
+                                </p>
                             </section>
 
                             <Separator />
@@ -375,23 +391,23 @@ export function AccountSecuritySettings() {
                             <section aria-labelledby="active-sessions-heading" className="space-y-3">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
-                                        <h3 id="active-sessions-heading" className="text-sm font-semibold text-foreground">Active sessions</h3>
-                                        <p className="text-sm text-muted-foreground">End sessions you no longer recognize. Use Sign Out above for this device.</p>
+                                        <h3 id="active-sessions-heading" className="text-sm font-semibold text-foreground">Signed-in devices</h3>
+                                        <p className="text-sm text-muted-foreground">Sign out any device you don’t recognize. To sign out of this one, use Sign out in Profile above.</p>
                                     </div>
                                     {security.sessions.some((session) => !session.isCurrentSession) && (
                                         <Button
                                             variant="outline"
                                             onClick={() => setConfirmation({
-                                                title: 'Revoke other sessions',
-                                                description: 'End every other UtilitySheet session? This device will remain signed in.',
-                                                confirmLabel: 'Revoke sessions',
+                                                title: 'Sign out everywhere else?',
+                                                description: 'Every other device signed in to your UtilitySheet account is signed out. This device stays signed in.',
+                                                confirmLabel: 'Sign out other devices',
                                                 onConfirm: async () => {
-                                                    await runSecurityAction({ action: 'revoke_other_sessions' }, 'Other sessions revoked.');
+                                                    await runSecurityAction({ action: 'revoke_other_sessions' }, 'Signed out everywhere else.');
                                                 },
                                             })}
                                             disabled={busyAction === 'revoke_other_sessions'}
                                         >
-                                            Revoke all others
+                                            Sign out everywhere else
                                         </Button>
                                     )}
                                 </div>
@@ -402,11 +418,11 @@ export function AccountSecuritySettings() {
                                                 <Monitor className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                                                 <div>
                                                     <p className="text-sm font-medium text-foreground">
-                                                        {session.isCurrentSession ? 'Current session' : 'Signed-in session'}
-                                                        {session.isImpersonation ? ' · Support impersonation' : ''}
+                                                        {session.isCurrentSession ? 'This device' : 'Another device'}
+                                                        {session.isImpersonation ? ' · UtilitySheet support session' : ''}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground">
-                                                        {session.location || 'Location unavailable'} · Last used {new Date(session.lastUsedAt || session.createdAt).toLocaleString()}
+                                                        {session.location || 'Location unknown'} · Last used {formatWhen(session.lastUsedAt || session.createdAt)}
                                                     </p>
                                                 </div>
                                             </div>
@@ -415,17 +431,17 @@ export function AccountSecuritySettings() {
                                                     size="sm"
                                                     variant="outline"
                                                     onClick={() => setConfirmation({
-                                                        title: 'Revoke session',
-                                                        description: `End the session last used ${new Date(session.lastUsedAt || session.createdAt).toLocaleString()}?`,
-                                                        confirmLabel: 'Revoke session',
+                                                        title: 'Sign out this device?',
+                                                        description: `The device last used ${formatWhen(session.lastUsedAt || session.createdAt)} is signed out of your UtilitySheet account.`,
+                                                        confirmLabel: 'Sign out device',
                                                         onConfirm: async () => {
-                                                            await runSecurityAction({ action: 'revoke_session', sessionId: session.id }, 'Session revoked.');
+                                                            await runSecurityAction({ action: 'revoke_session', sessionId: session.id }, 'That device was signed out.');
                                                         },
                                                     })}
                                                     disabled={busyAction === 'revoke_session'}
-                                                    aria-label={`Revoke session last used ${new Date(session.lastUsedAt || session.createdAt).toLocaleString()}`}
+                                                    aria-label={`Sign out the device last used ${formatWhen(session.lastUsedAt || session.createdAt)}`}
                                                 >
-                                                    Revoke
+                                                    Sign out
                                                 </Button>
                                             )}
                                         </li>
@@ -434,28 +450,21 @@ export function AccountSecuritySettings() {
                             </section>
                         </>
                     )}
-                </CardContent>
-            </Card>
+            </SettingsSection>
 
-            <Card className="border-border bg-card/50">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-foreground">
-                        <FileSearch className="h-5 w-5 text-primary" />
-                        Data controls
-                    </CardTitle>
-                    <CardDescription>
-                        Download a copy of your UtilitySheet data, or close your account.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <SettingsSection
+                icon={FileSearch}
+                title="Your data"
+                description="Download a copy of your UtilitySheet data, or close your account."
+            >
                     <div className="flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <p className="text-sm font-medium text-foreground">Download account data</p>
-                            <p className="text-sm text-muted-foreground">JSON export of your profile, settings, memberships, owned requests, responses, and summaries. Secrets and raw access data are excluded.</p>
+                            <p className="text-sm font-medium text-foreground">Download your data</p>
+                            <p className="text-sm text-muted-foreground">One file with your profile, settings, workspaces, requests, seller responses and summaries. It leaves out passwords and other security details. The file is in JSON format, which other software can read.</p>
                         </div>
-                        <Button variant="outline" onClick={() => void downloadExport()} disabled={busyAction === 'export'}>
+                        <Button variant="outline" className="shrink-0" onClick={() => void downloadExport()} disabled={busyAction === 'export'}>
                             {busyAction === 'export' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                            Download JSON
+                            Download my data
                         </Button>
                     </div>
 
@@ -464,8 +473,7 @@ export function AccountSecuritySettings() {
                         onDownloadExport={downloadExport}
                         exporting={busyAction === 'export'}
                     />
-                </CardContent>
-            </Card>
+            </SettingsSection>
 
             <Dialog open={reauthOpen} onOpenChange={setReauthOpen}>
                 <DialogContent>
@@ -549,27 +557,18 @@ export function AccountSecuritySettings() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={Boolean(confirmation)} onOpenChange={(open) => !open && setConfirmation(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{confirmation?.title}</DialogTitle>
-                        <DialogDescription>{confirmation?.description}</DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setConfirmation(null)}>Cancel</Button>
-                        <Button
-                            type="button"
-                            onClick={() => {
-                                const action = confirmation?.onConfirm;
-                                setConfirmation(null);
-                                if (action) void action();
-                            }}
-                        >
-                            {confirmation?.confirmLabel}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <ConfirmDialog
+                open={Boolean(confirmation)}
+                onOpenChange={(open) => { if (!open) setConfirmation(null); }}
+                title={confirmation?.title || ''}
+                description={confirmation?.description || ''}
+                confirmLabel={confirmation?.confirmLabel || ''}
+                onConfirm={() => {
+                    const action = confirmation?.onConfirm;
+                    setConfirmation(null);
+                    if (action) void action();
+                }}
+            />
         </>
     );
 }

@@ -77,19 +77,43 @@ describe('AccountSecuritySettings', () => {
         vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(securitySummary)));
     });
 
-    it('labels security controls and confirms before revoking another session', async () => {
+    it('labels security controls and confirms before signing out another device', async () => {
         render(<AccountSecuritySettings />);
 
         expect(await screen.findByRole('heading', { name: 'Sign-in methods' })).toBeInTheDocument();
         expect(screen.getByLabelText('Add another email')).toHaveAttribute('type', 'email');
 
-        fireEvent.click(screen.getByRole('button', { name: /Revoke session last used/i }));
-        expect(await screen.findByRole('dialog')).toHaveAccessibleName('Revoke session');
+        fireEvent.click(screen.getByRole('button', { name: /Sign out the device last used/i }));
+        expect(await screen.findByRole('dialog')).toHaveAccessibleName('Sign out this device?');
         expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
         expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows a retry, not the password gate, when the settings fail to load', async () => {
+        vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: 'Internal server error' }, 500));
+        render(<AccountSecuritySettings />);
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('We couldn’t load your sign-in settings.');
+        expect(screen.queryByText('Confirm your password to continue')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Confirm password' })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+        expect(await screen.findByRole('heading', { name: 'Sign-in methods' })).toBeInTheDocument();
+    });
+
+    it('shows a loading state, not the password gate, while the settings load', async () => {
+        let resolve!: (response: Response) => void;
+        vi.mocked(fetch).mockReturnValueOnce(new Promise<Response>((done) => { resolve = done; }));
+        render(<AccountSecuritySettings />);
+
+        expect(screen.getByRole('status')).toHaveTextContent('Loading your sign-in settings…');
+        expect(screen.queryByText('Confirm your password to continue')).not.toBeInTheDocument();
+
+        resolve(jsonResponse(securitySummary));
+        expect(await screen.findByRole('heading', { name: 'Signed-in devices' })).toBeInTheDocument();
     });
 
     it('asks password users to confirm their password and explains the five-minute window', async () => {
@@ -160,9 +184,9 @@ describe('AccountSecuritySettings', () => {
         mocks.user.hasPassword = false;
         render(<AccountSecuritySettings />);
 
-        fireEvent.click(await screen.findByRole('button', { name: 'Revoke all others' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Sign out everywhere else' }));
         vi.mocked(fetch).mockResolvedValueOnce(recentAuthRequired());
-        fireEvent.click(await screen.findByRole('button', { name: 'Revoke sessions' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Sign out other devices' }));
 
         const dialog = await screen.findByRole('dialog', { name: 'Sign in again' });
         expect(dialog).toBeInTheDocument();

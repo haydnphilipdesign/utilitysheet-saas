@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { trackEvent } from '@/lib/analytics/events';
 
 type ReferralAttribution = {
@@ -91,6 +92,8 @@ export function ReferralCreditCard({
     const [loadedSummary, setLoadedSummary] = useState<LoadedReferralSummary | null>(null);
     const [referralCode, setReferralCode] = useState('');
     const [isClaimingReferral, setIsClaimingReferral] = useState(false);
+    const [failedUserId, setFailedUserId] = useState<string | null>(null);
+    const [reloadCount, setReloadCount] = useState(0);
     const requestSequenceRef = useRef(0);
     const viewedUserIdRef = useRef<string | null>(null);
     const referralSummary = loadedSummary && loadedSummary.userId === userId
@@ -106,14 +109,19 @@ export function ReferralCreditCard({
 
         let active = true;
         void getReferralSummary(userId).then((summary) => {
-            if (!active || requestSequenceRef.current !== requestSequence || !summary) return;
+            if (!active || requestSequenceRef.current !== requestSequence) return;
+            if (!summary) {
+                setFailedUserId(userId);
+                return;
+            }
+            setFailedUserId(null);
             setLoadedSummary({ userId, summary });
         });
 
         return () => {
             active = false;
         };
-    }, [userId]);
+    }, [userId, reloadCount]);
 
     useEffect(() => {
         if (!userId || !referralSummary || viewedUserIdRef.current === userId) return;
@@ -186,7 +194,47 @@ export function ReferralCreditCard({
         }
     };
 
-    if (!referralSummary) return null;
+    if (!referralSummary) {
+        // The dashboard's compact card simply stays out of the way until it has something to show.
+        if (compact) return null;
+        if (userId && failedUserId === userId) {
+            return (
+                <Card className="border-primary/20 bg-card/50">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-foreground">
+                            <Gift className="h-5 w-5 text-primary" />
+                            Referrals
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div role="alert" className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm">
+                            <p className="text-destructive">We couldn’t load your referral link. Your credits are not affected.</p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setFailedUserId(null);
+                                    setReloadCount((count) => count + 1);
+                                }}
+                            >
+                                Try again
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            );
+        }
+        return (
+            <Card className="border-primary/20 bg-card/50">
+                <CardContent role="status" className="space-y-3">
+                    <span className="sr-only">Loading your referral link…</span>
+                    <Skeleton className="h-6 w-2/3" />
+                    <Skeleton className="h-11" />
+                    <Skeleton className="h-16" />
+                </CardContent>
+            </Card>
+        );
+    }
 
     const { earned, applied } = referralSummary.counts;
     const hasCredits = earned > 0 || applied > 0;
@@ -200,7 +248,7 @@ export function ReferralCreditCard({
                     Give a month of Pro, get a month of Pro
                 </CardTitle>
                 <CardDescription className="text-muted-foreground">
-                    Share your referral link with another TC or agent. When they receive their first real seller submission, you earn a free month of Pro.
+                    Share your referral link with another transaction coordinator or agent. You earn a free month of Pro when a seller completes their first request (demo requests don’t count).
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -253,7 +301,7 @@ export function ReferralCreditCard({
                                     </div>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    Add a code within 30 days of signup. It still counts if you have already completed a seller request.
+                                    If someone referred you, enter their code within 30 days of signing up. It still counts if a seller has already completed one of your requests.
                                 </p>
                             </form>
                         ) : referralSummary.referralAttribution.status === 'claimed' ? (
@@ -263,7 +311,7 @@ export function ReferralCreditCard({
                             </p>
                         ) : (
                             <p className="mt-2 text-sm text-muted-foreground">
-                                Referral codes can be added within 30 days of signup.
+                                Referral codes can only be added within 30 days of signing up.
                             </p>
                         )}
                     </div>
@@ -274,18 +322,20 @@ export function ReferralCreditCard({
                             <p className="text-sm font-semibold text-foreground">
                                 {earned} {pluralMonths(earned)} of Pro earned
                             </p>
-                            <p className="text-xs text-muted-foreground">Waiting to apply</p>
+                            <p className="text-xs text-muted-foreground">
+                                {referralSummary.isSubscribed === false ? 'Comes off your bill once you’re on Pro' : 'Not yet taken off a bill'}
+                            </p>
                         </div>
                         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3">
                             <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                                 {applied} {pluralMonths(applied)} applied
                             </p>
-                            <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Credited to your bill</p>
+                            <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Already taken off your bill</p>
                         </div>
                     </div>
                 ) : !compact ? (
                     <p className="text-sm text-muted-foreground">
-                        Credits show up here after someone you refer gets their first real seller submission.
+                        No credits yet. They show up here after a seller completes the first request for someone you referred.
                     </p>
                 ) : null}
                 {showUpgradeNudge && (

@@ -133,8 +133,8 @@ describe('Workspace & Team Settings', () => {
 
         fireEvent.click(await screen.findByRole('tab', { name: 'Workspace & Team' }));
 
-        expect(await screen.findByText('Workspace details')).toBeInTheDocument();
-        expect(screen.getAllByText(/pending invitations each reserve one Team seat/i).length).toBeGreaterThan(0);
+        expect(await screen.findByLabelText('Workspace name')).toBeInTheDocument();
+        expect(await screen.findByText(/2 of 4 seats in use: 1 member and 1 pending invitation\. Each member and each pending invitation uses one seat\./)).toBeInTheDocument();
         expect(screen.getByText('invitee@example.com')).toBeInTheDocument();
 
         const nameInput = screen.getByLabelText('Workspace name');
@@ -153,11 +153,13 @@ describe('Workspace & Team Settings', () => {
         await waitFor(() => {
             expect(fetchMock).toHaveBeenCalledWith('/api/organization/invites/inv_1', expect.objectContaining({ method: 'PATCH' }));
         });
+        expect(await screen.findByText('Invitation emailed again to invitee@example.com.')).toBeInTheDocument();
+        expect(screen.getByLabelText('Invite link for invitee@example.com')).toHaveValue('http://localhost:3000/invite/tok_rotated');
 
         fireEvent.click(screen.getByRole('tab', { name: 'Billing' }));
-        expect(await screen.findByText('Subscription')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Manage Teams Billing' })).toBeInTheDocument();
-        expect(screen.queryByText('Workspace details')).not.toBeInTheDocument();
+        expect(await screen.findByText('Teams plan')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Manage Teams billing' })).toBeInTheDocument();
+        expect(screen.queryByLabelText('Workspace name')).not.toBeInTheDocument();
         expect(screen.queryByText('invitee@example.com')).not.toBeInTheDocument();
     });
 
@@ -215,7 +217,7 @@ describe('Workspace & Team Settings', () => {
         fireEvent.click(await screen.findByRole('tab', { name: 'Billing' }));
 
         expect(await screen.findByRole('button', { name: 'Upgrade Pro to Teams' })).toBeInTheDocument();
-        expect(screen.getByText(/without creating a second subscription/i)).toBeInTheDocument();
-        expect(screen.getByText(/prorated upgrade difference to your next invoice/i)).toBeInTheDocument();
+        expect(screen.getByText(/Your Pro plan becomes a Teams plan, so you won’t have two subscriptions/)).toBeInTheDocument();
+        expect(screen.getByText(/Stripe adds the prorated difference from Pro to your next invoice/)).toBeInTheDocument();
     });
 });

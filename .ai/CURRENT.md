@@ -1,4 +1,16 @@
-# Current task: Seller heading, prefilled introduction, neutral seller wording and Branding links (complete; migration applied, committed and pushed)
+# Current task: Settings UX polish (complete, committed and pushed)
+
+- Date: 2026-10-07. Last agent: Claude Opus 5.5. Branch: main, committed on top of `1e684ee` and pushed to origin/main. No issue/PR. No other active editor; no ownership warnings.
+- Plan (completed, with outcome, deviations and deferred items): `.ai/plans/2026-10-07-settings-ux-polish.md`. Decision record updated (applied-in list): `.ai/decisions/2026-10-07-dashboard-ui-conventions.md`.
+- Owner approved the review findings in chat. UI only: no API, schema, permission, billing-rule or plan-gating change. Owner authorized commit and push to main in chat on 2026-10-07. No database action. Deployment not verified here.
+- What changed: Account, Notifications, Workspace & Team, Billing and Referrals show loading and retry states instead of defaults; no checkout or portal button renders before the account loads; profile save sends `{ full_name }` only; notification switches show saving/saved/failed beside them and fall back to the saved value on failure; Teams seat count can be typed and is validated; invite messages only claim an email when the response confirms it; a checkout return shows "confirming" until the reloaded account shows the plan; members are a named list; plain wording throughout. Seller forms tab contents unchanged.
+- Files: `app/dashboard/settings/page.tsx` (thin wrapper); new `components/settings/{settings-view,settings-ui,profile-section,notifications-section,workspace-team,billing-section}.tsx` and `types.ts`; `components/settings/account-security.tsx`; `components/referrals/referral-credit-card.tsx`; new `app/test-fixtures/settings/` (development-only fixture); new `tests/settings.spec.ts` and `tests/unit/settings-states.test.tsx`; updated `tests/unit/{settings-workspace-team,settings-notifications-accessibility,account-security-settings}.test.tsx`.
+- Validation (Node 20.19.0): `tsc`; ESLint on changed files; full Vitest with the local native PostgreSQL binary 204 files / 1446 passed; Settings and saved-forms Playwright specs 60/60 on three device profiles with service keys blanked in the process only; security scan; desktop and phone screenshots of every tab reviewed.
+- Not verified: signed-in browser, dark mode, hosted site, a real Stripe return.
+- **No required work remains.** Deferred by owner decision, each needs its own task: a server guard against a second Pro checkout (unverified risk, see plan), and showing a canceled plan's end date (the current API does not say a plan is set to cancel).
+- Next concrete action: owner confirms the deployment and looks at `/dashboard/settings` signed in. The two deferred items are to be started as a separate task in a new session.
+
+## Previous task: Seller heading, prefilled introduction, neutral seller wording and Branding links (complete; migration applied, committed and pushed)
 
 - Date: 2026-10-07. Last agent: Claude Opus 5.5. Branch: main, committed on top of `66ba08d` and pushed to origin/main. No issue/PR. No other active editor; no ownership warnings.
 - Plan (completed, with outcome and follow-ups): `.ai/plans/2026-10-07-seller-form-custom-heading.md`. No decision record. Maintained doc: `docs/saved-seller-forms.md`, "First screen of the link".
