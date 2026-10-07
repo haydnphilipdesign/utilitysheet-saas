@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
     consumePostAuthReturnTo,
+    getSignupPlanDestination,
     normalizePostAuthReturnTo,
     rememberPostAuthReturnTo,
 } from '@/lib/auth/post-auth-return';
@@ -22,6 +23,15 @@ describe('post-auth return destinations', () => {
         expect(rememberPostAuthReturnTo('/invite/tok_1')).toBe('/invite/tok_1');
         expect(consumePostAuthReturnTo()).toBe('/invite/tok_1');
         expect(consumePostAuthReturnTo()).toBeNull();
+    });
+
+    it('sends a paid-plan sign-up to Billing, Teams to its own section, and nothing else anywhere', () => {
+        expect(getSignupPlanDestination('teams')).toBe('/dashboard/settings?tab=billing&plan=teams');
+        expect(normalizePostAuthReturnTo(getSignupPlanDestination('teams'))).toBe('/dashboard/settings?tab=billing&plan=teams');
+        expect(getSignupPlanDestination('pro')).toBe('/dashboard/settings?tab=billing');
+        expect(getSignupPlanDestination('enterprise')).toBeNull();
+        expect(getSignupPlanDestination('https://evil.example')).toBeNull();
+        expect(getSignupPlanDestination(null)).toBeNull();
     });
 
     it('clears stale storage when asked to remember an unsafe destination', () => {

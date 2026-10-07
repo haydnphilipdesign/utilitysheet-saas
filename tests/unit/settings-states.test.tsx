@@ -653,3 +653,35 @@ describe('a Teams checkout the server refuses', () => {
         await waitFor(() => expect(bodiesOf(fetchMock, 'POST', portal)).toHaveLength(1));
     });
 });
+
+describe('arriving from "Start Teams" on the pricing page', () => {
+    const routes = { 'GET /api/account': () => jsonResponse(soloAccount()), 'GET /api/organization/members': soloMembers };
+    let scrolled: Element[];
+
+    beforeEach(() => {
+        scrolled = [];
+        Element.prototype.scrollIntoView = function scrollIntoView(this: Element) { scrolled.push(this); };
+    });
+
+    afterEach(() => {
+        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    });
+
+    it('opens Billing and brings the Teams section into view', async () => {
+        window.history.replaceState({}, '', '/dashboard/settings?tab=billing&plan=teams');
+        stubFetch(routes);
+        render(<SettingsPage />);
+
+        const start = await screen.findByRole('button', { name: 'Start Teams' });
+        expect(scrolled.some((element) => element.contains(start))).toBe(true);
+    });
+
+    it('leaves the page where it is on an ordinary visit to Billing', async () => {
+        window.history.replaceState({}, '', '/dashboard/settings?tab=billing');
+        stubFetch(routes);
+        render(<SettingsPage />);
+
+        const start = await screen.findByRole('button', { name: 'Start Teams' });
+        expect(scrolled.some((element) => element.contains(start))).toBe(false);
+    });
+});

@@ -130,7 +130,7 @@ export const pricingTiers = [
     name: 'Teams',
     price: '$7/seat/month',
     description:
-      'For TC companies, admins, and real estate teams that need shared access, shared defaults, and consistent branded output across multiple people.',
+      'For TC companies, admins, and real estate teams that need shared access, shared Branding Profiles, and consistent branded output across multiple people.',
     href: '/auth/signup?plan=teams',
     features: [
       'Everything in Pro',
@@ -138,7 +138,7 @@ export const pricingTiers = [
       'Shared organization workspace',
       'Any teammate with request access can edit submitted sheets',
       'Invites and user roles',
-      'Org-wide packet defaults',
+      'Branding Profiles shared by the whole team',
       'Branded output across the team',
       'Priority support',
     ],

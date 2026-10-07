@@ -47,4 +47,26 @@ test.describe('configured authentication surfaces', () => {
     }));
     expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.clientWidth);
   });
+
+  test('"Start Teams" on pricing leads to a sign-up that says Teams comes next', async ({ page }, testInfo) => {
+    await page.goto('/pricing');
+
+    await expect(page.getByText('Org-wide packet defaults')).toHaveCount(0);
+    await expect(page.getByText('Branding Profiles shared by the whole team')).toBeVisible();
+    const cta = page.getByTestId('pricing-teams-cta');
+    await expect(cta).toHaveAttribute('href', '/auth/signup?plan=teams');
+    await cta.click();
+
+    await expect(page.getByRole('heading', { name: 'Create an account to start Teams' })).toBeVisible();
+    await expect(page.getByText('Next you’ll choose how many seats you need and start Teams.', { exact: false })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toHaveAttribute(
+      'href',
+      '/auth/login?next=%2Fdashboard%2Fsettings%3Ftab%3Dbilling%26plan%3Dteams',
+    );
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    await page.screenshot({ path: testInfo.outputPath('signup-for-teams.png'), fullPage: true });
+  });
 });

@@ -14,6 +14,13 @@ export function normalizePostAuthReturnTo(value: unknown): string | null {
     }
 }
 
+/** Where the pricing page's `?plan=` sends a new account; null when the plan needs no next step. */
+export function getSignupPlanDestination(plan: unknown): string | null {
+    if (plan === 'teams') return '/dashboard/settings?tab=billing&plan=teams';
+    if (plan === 'pro') return '/dashboard/settings?tab=billing';
+    return null;
+}
+
 export function rememberPostAuthReturnTo(value: unknown, storage?: Storage): string | null {
     const destination = normalizePostAuthReturnTo(value);
     const targetStorage = storage ?? (typeof window !== 'undefined' ? window.sessionStorage : null);

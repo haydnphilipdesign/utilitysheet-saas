@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { CheckCircle2, CreditCard, ExternalLink, Loader2, Sparkles, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -91,8 +91,10 @@ function PortalButton({ workspace, busy, onOpen }: {
 
 export function BillingSection({
     state, onRetry, usage, planEndsAt, trialEndsAt, organization, isTeam, isAdmin, seatUsage,
-    checkout, onCheckAgain, onDismissCheckout, onOpenWorkspace, onSeatsChanged,
+    checkout, onCheckAgain, onDismissCheckout, onOpenWorkspace, onSeatsChanged, showTeamsFirst = false,
 }: {
+    /** The visitor chose Teams before signing up, so bring the Teams section into view. */
+    showTeamsFirst?: boolean;
     /** Reloads the workspace after its seat count changed. */
     onSeatsChanged: () => Promise<void> | void;
     state: LoadState;
@@ -128,6 +130,10 @@ export function BillingSection({
         run: () => void | Promise<void>;
     } | null>(null);
     const [confirming, setConfirming] = useState(false);
+    // Runs when the Teams section first appears, which is after the account has loaded.
+    const teamsSectionRef = useCallback((node: HTMLDivElement | null) => {
+        if (node && showTeamsFirst) node.scrollIntoView?.({ block: 'start' });
+    }, [showTeamsFirst]);
 
     const banner = checkout && (
         <CheckoutBanner checkout={checkout} onCheckAgain={onCheckAgain} onDismiss={onDismissCheckout} />
@@ -474,83 +480,85 @@ export function BillingSection({
             )}
 
             {!isTeam && organization && (
-                <SettingsSection
-                    icon={Users}
-                    title="Teams"
-                    description={isPro
-                        ? 'For working with other people. Your Pro plan becomes a Teams plan, so you won’t have two subscriptions.'
-                        : 'For working with other people. Everyone shares one workspace and one bill.'}
-                >
-                    <div className="space-y-1 rounded-lg border border-border bg-muted/30 p-4">
-                        <p className="text-sm font-medium text-foreground">
-                            {usd.format(TEAM_PRICE_PER_SEAT_USD)} per seat each month, {TEAM_MIN_SEATS} seat minimum
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                            Each seat is one person. Everyone gets everything in Pro, works in the same workspace as an
-                            admin or a member, and is covered by a single bill. You invite people in Workspace &amp; Team
-                            after the plan starts.
-                        </p>
-                    </div>
+                <div ref={teamsSectionRef} className="scroll-mt-20">
+                    <SettingsSection
+                        icon={Users}
+                        title="Teams"
+                        description={isPro
+                            ? 'For working with other people. Your Pro plan becomes a Teams plan, so you won’t have two subscriptions.'
+                            : 'For working with other people. Everyone shares one workspace and one bill.'}
+                    >
+                        <div className="space-y-1 rounded-lg border border-border bg-muted/30 p-4">
+                            <p className="text-sm font-medium text-foreground">
+                                {usd.format(TEAM_PRICE_PER_SEAT_USD)} per seat each month, {TEAM_MIN_SEATS} seat minimum
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Each seat is one person. Everyone gets everything in Pro, works in the same workspace as an
+                                admin or a member, and is covered by a single bill. You invite people in Workspace &amp; Team
+                                after the plan starts.
+                            </p>
+                        </div>
 
-                    {isAdmin ? (
-                        <div className="space-y-2">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                                <div className="space-y-2 sm:w-40">
-                                    <Label htmlFor="teamSeats">Number of seats</Label>
-                                    <Input
-                                        id="teamSeats"
-                                        inputMode="numeric"
-                                        autoComplete="off"
-                                        value={seatInput}
-                                        onChange={(event) => {
-                                            setTeamsError('');
-                                            setSeatInput(event.target.value);
-                                        }}
-                                        disabled={busy !== null}
-                                        aria-invalid={seatProblem !== ''}
-                                        aria-describedby="teamSeatsHelp"
-                                    />
+                        {isAdmin ? (
+                            <div className="space-y-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                    <div className="space-y-2 sm:w-40">
+                                        <Label htmlFor="teamSeats">Number of seats</Label>
+                                        <Input
+                                            id="teamSeats"
+                                            inputMode="numeric"
+                                            autoComplete="off"
+                                            value={seatInput}
+                                            onChange={(event) => {
+                                                setTeamsError('');
+                                                setSeatInput(event.target.value);
+                                            }}
+                                            disabled={busy !== null}
+                                            aria-invalid={seatProblem !== ''}
+                                            aria-describedby="teamSeatsHelp"
+                                        />
+                                    </div>
+                                    <Button
+                                        // Free goes to Stripe's checkout page, which is its own confirmation.
+                                        // Pro is changed straight away, so it is confirmed here first.
+                                        onClick={() => (isPro ? setConfirmation({
+                                            title: 'Change your Pro plan to Teams?',
+                                            description: `Your Pro subscription becomes a Teams plan with ${seats} seats at ${usd.format((seats ?? 0) * TEAM_PRICE_PER_SEAT_USD)} a month. This happens right away, with no separate checkout page. Stripe adds the prorated difference from Pro to your next invoice.`,
+                                            confirmLabel: 'Change to Teams',
+                                            run: startTeams,
+                                        }) : startTeams())}
+                                        disabled={busy !== null || checkoutConfirming || seatProblem !== ''}
+                                    >
+                                        {busy === 'teams' ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                                        {isPro ? 'Upgrade Pro to Teams' : 'Start Teams'}
+                                    </Button>
                                 </div>
-                                <Button
-                                    // Free goes to Stripe's checkout page, which is its own confirmation.
-                                    // Pro is changed straight away, so it is confirmed here first.
-                                    onClick={() => (isPro ? setConfirmation({
-                                        title: 'Change your Pro plan to Teams?',
-                                        description: `Your Pro subscription becomes a Teams plan with ${seats} seats at ${usd.format((seats ?? 0) * TEAM_PRICE_PER_SEAT_USD)} a month. This happens right away, with no separate checkout page. Stripe adds the prorated difference from Pro to your next invoice.`,
-                                        confirmLabel: 'Change to Teams',
-                                        run: startTeams,
-                                    }) : startTeams())}
-                                    disabled={busy !== null || checkoutConfirming || seatProblem !== ''}
-                                >
-                                    {busy === 'teams' ? <Loader2 className="animate-spin" /> : <Sparkles />}
-                                    {isPro ? 'Upgrade Pro to Teams' : 'Start Teams'}
-                                </Button>
-                            </div>
-                            <div id="teamSeatsHelp">
-                                {seatProblem ? (
-                                    <InlineStatus>{seatProblem}</InlineStatus>
-                                ) : (
-                                    <p className="text-sm text-foreground">
-                                        Estimated{' '}
-                                        <span className="font-semibold">{usd.format((seats ?? 0) * TEAM_PRICE_PER_SEAT_USD)}/mo</span>
-                                        {' '}for {seats} seats.{' '}
-                                        <span className="text-muted-foreground">
-                                            {isPro
-                                                ? 'Stripe adds the prorated difference from Pro to your next invoice.'
-                                                : 'You confirm the price in Stripe before you pay.'}
-                                        </span>
-                                    </p>
+                                <div id="teamSeatsHelp">
+                                    {seatProblem ? (
+                                        <InlineStatus>{seatProblem}</InlineStatus>
+                                    ) : (
+                                        <p className="text-sm text-foreground">
+                                            Estimated{' '}
+                                            <span className="font-semibold">{usd.format((seats ?? 0) * TEAM_PRICE_PER_SEAT_USD)}/mo</span>
+                                            {' '}for {seats} seats.{' '}
+                                            <span className="text-muted-foreground">
+                                                {isPro
+                                                    ? 'Stripe adds the prorated difference from Pro to your next invoice.'
+                                                    : 'You confirm the price in Stripe before you pay.'}
+                                            </span>
+                                        </p>
+                                    )}
+                                </div>
+                                {teamsError && <InlineStatus tone="error">{teamsError}</InlineStatus>}
+                                {portalOffer?.target === 'teams' && (
+                                    <PortalButton workspace={portalOffer.workspace} busy={busy} onOpen={openOfferedPortal} />
                                 )}
                             </div>
-                            {teamsError && <InlineStatus tone="error">{teamsError}</InlineStatus>}
-                            {portalOffer?.target === 'teams' && (
-                                <PortalButton workspace={portalOffer.workspace} busy={busy} onOpen={openOfferedPortal} />
-                            )}
-                        </div>
-                    ) : (
-                        <Note>Only a workspace admin can start a Teams plan and choose how many seats it has.</Note>
-                    )}
-                </SettingsSection>
+                        ) : (
+                            <Note>Only a workspace admin can start a Teams plan and choose how many seats it has.</Note>
+                        )}
+                    </SettingsSection>
+                </div>
             )}
 
             <ConfirmDialog

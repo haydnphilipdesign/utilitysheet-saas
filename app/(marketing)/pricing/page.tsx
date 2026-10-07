@@ -65,7 +65,7 @@ export default function PricingPage() {
             'You want up to ten saved seller forms for different workflows in each workspace.',
             'You need every seller submission unlocked, with no monthly limit, because the workflow is now part of every transaction.',
             'You need to correct submitted sheets inside the dashboard instead of sending the seller back through the public form.',
-            'You need teammates inside the same workspace with shared defaults, shared visibility, and shared editing access.',
+            'You need teammates inside the same workspace with shared Branding Profiles, shared visibility, and shared editing access.',
           ].map((item) => (
             <div key={item} className="rounded-2xl border border-border bg-card/20 p-5 text-muted-foreground">
               {item}

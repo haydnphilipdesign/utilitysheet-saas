@@ -59,7 +59,7 @@ const tiers = [
       "Any teammate with request access can edit submitted sheets",
       "Invite members and assign roles",
       "Seat-based billing with 3-seat minimum",
-      "Org-wide packet defaults",
+      "Branding Profiles shared by the whole team",
       "Priority support",
     ],
   },

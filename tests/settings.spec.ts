@@ -411,6 +411,17 @@ test('a Teams seat count can be typed and is checked before checkout', async ({ 
     expect(writes).toEqual([{ url: '/api/organization/billing/checkout', method: 'POST', body: { seats: 6 } }]);
 });
 
+test('arriving from "Start Teams" opens Billing with the Teams section in view', async ({ page }, testInfo) => {
+    const { writes } = await open(page, { plan: 'free', role: 'admin' }, '?tab=billing&plan=teams');
+
+    const start = page.getByRole('button', { name: 'Start Teams', exact: true });
+    await expect(start).toBeInViewport();
+    await expect(page.getByLabel('Number of seats', { exact: true })).toHaveValue('3');
+    await page.screenshot({ path: testInfo.outputPath('start-teams-arrival-viewport.png') });
+    await healthy(page, testInfo, 'start-teams-arrival');
+    expect(writes).toEqual([]);
+});
+
 test('a Teams admin changes seats in Billing, within the minimum and the seats in use', async ({ page }, testInfo) => {
     const { writes } = await open(page, { plan: 'team', role: 'admin' }, '?tab=billing');
 

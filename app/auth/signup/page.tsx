@@ -18,7 +18,7 @@ import {
 } from '@/lib/analytics/activation';
 import { persistPendingGrowthAttribution } from '@/lib/growth/attribution';
 import { useAuthConfig } from '@/lib/stack/use-auth-config';
-import { normalizePostAuthReturnTo, rememberPostAuthReturnTo } from '@/lib/auth/post-auth-return';
+import { getSignupPlanDestination, normalizePostAuthReturnTo, rememberPostAuthReturnTo } from '@/lib/auth/post-auth-return';
 
 export default function SignupPage() {
     const router = useRouter();
@@ -33,11 +33,20 @@ export default function SignupPage() {
     const [success, setSuccess] = useState(false);
     const [safeNextPath, setSafeNextPath] = useState<string | null>(null);
     const forInvitation = safeNextPath?.startsWith('/invite/') ?? false;
+    // The paid plan chosen on the pricing page, started in Billing once the account exists.
+    const forPlan = forInvitation
+        ? null
+        : safeNextPath === getSignupPlanDestination('teams')
+            ? 'Teams'
+            : safeNextPath === getSignupPlanDestination('pro')
+                ? 'Pro'
+                : null;
 
     const getSafeNext = useCallback((): string | null => {
         if (typeof window === 'undefined') return null;
-        const nextParam = new URLSearchParams(window.location.search).get('next');
-        return normalizePostAuthReturnTo(nextParam);
+        const params = new URLSearchParams(window.location.search);
+        // An explicit destination (an invitation) wins over the plan chosen on the pricing page.
+        return normalizePostAuthReturnTo(params.get('next')) ?? getSignupPlanDestination(params.get('plan'));
     }, []);
 
     const getPostAuthRoute = useCallback(async (source: string): Promise<string | null> => {
@@ -215,12 +224,20 @@ export default function SignupPage() {
                 <Card className="border-border bg-card/80 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="space-y-1 px-4 sm:px-6 pt-4 sm:pt-6">
                         <h1 className="text-xl sm:text-2xl font-medium text-center text-foreground">
-                            {forInvitation ? 'Create an account to join your team' : 'Create an account'}
+                            {forInvitation
+                                ? 'Create an account to join your team'
+                                : forPlan
+                                    ? `Create an account to start ${forPlan}`
+                                    : 'Create an account'}
                         </h1>
                         <CardDescription className="text-center text-muted-foreground text-sm">
                             {forInvitation
                                 ? 'Use the email address your invitation was sent to. You’ll join the workspace as soon as your account is ready.'
-                                : 'Get your reusable seller link and start collecting utility info'}
+                                : forPlan === 'Teams'
+                                    ? 'Your account is free to create. Next you’ll choose how many seats you need and start Teams.'
+                                    : forPlan === 'Pro'
+                                        ? 'Your account is free to create. Next you’ll start Pro in Billing.'
+                                    : 'Get your reusable seller link and start collecting utility info'}
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleSignup} data-testid="signup-form">
@@ -291,6 +308,8 @@ export default function SignupPage() {
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                         Creating account…
                                     </>
+                                ) : forPlan ? (
+                                    'Create account'
                                 ) : (
                                     'Start Free'
                                 )}

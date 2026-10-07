@@ -67,6 +67,10 @@ type AccountResponse = {
 export function SettingsView({ user }: { user: SettingsUser | null }) {
     const [activeTab, setActiveTab] = useState<SettingsTab>(getInitialSettingsTab);
     const tabStripRef = useRef<HTMLDivElement>(null);
+    // Set by "Start Teams" on the pricing page, carried through sign-up.
+    const [arrivedForTeams] = useState(() => (
+        typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('plan') === 'teams'
+    ));
 
     const [accountState, setAccountState] = useState<LoadState>('loading');
     const [accountId, setAccountId] = useState<string | null>(null);
@@ -399,6 +403,7 @@ export function SettingsView({ user }: { user: SettingsUser | null }) {
                         onDismissCheckout={() => setCheckoutPlan(null)}
                         onOpenWorkspace={() => handleTabChange('workspace')}
                         onSeatsChanged={refreshOrganization}
+                        showTeamsFirst={arrivedForTeams}
                     />
                 </TabsContent>
             </Tabs>
