@@ -490,20 +490,6 @@ export async function setOrganizationSeatQuantityWithUsageGuard(data: {
     return { status: 'updated', seatQuantity: Number(row.seat_quantity) };
 }
 
-export async function clearActiveOrganizationIfMatches(accountId: string, organizationId: string) {
-    if (!sql) return null;
-
-    const result = await sql`
-        UPDATE accounts
-        SET active_organization_id = NULL
-        WHERE id = ${accountId}
-            AND active_organization_id = ${organizationId}
-        RETURNING *
-    `;
-
-    return result[0] || null;
-}
-
 export async function getPendingOrganizationInvite(organizationId: string, email: string) {
     if (!sql) return null;
 
@@ -1111,17 +1097,126 @@ export async function addOrganizationMember(data: {
     return result[0] || null;
 }
 
-export async function removeOrganizationMember(data: { organizationId: string; accountId: string }) {
-    if (!sql) return false;
+export type MemberRemovalResult =
+    | { removed: true; requestsMoved: number; profilesMoved: number; recipientAccountId: string | null }
+    | { removed: false; reason: 'not_member' | 'last_admin' | 'no_recipient' };
+
+/**
+ * Takes a person out of a workspace and, in the same statement, hands the
+ * requests and Branding Profiles they created there to an admin who stays, so
+ * nothing in the workspace is left owned by someone outside it. The workspace
+ * row is locked so two removals cannot both pass the last-admin check.
+ *
+ * `recipientAccountId` must be an admin of the workspace when given. Without
+ * it the hand-over goes to `preferredAccountId` if they are an admin, otherwise
+ * to the longest-standing other admin. Their seller forms are left as they are.
+ */
+export async function removeOrganizationMemberWithHandover(data: {
+    organizationId: string;
+    accountId: string;
+    recipientAccountId?: string | null;
+    preferredAccountId?: string | null;
+}): Promise<MemberRemovalResult> {
+    if (!sql) return { removed: false, reason: 'not_member' };
+
+    const recipientAccountId = data.recipientAccountId ?? null;
+    const preferredAccountId = data.preferredAccountId ?? null;
 
     const result = await sql`
-        DELETE FROM organization_members
-        WHERE organization_id = ${data.organizationId}
-            AND account_id = ${data.accountId}
-        RETURNING id
+        WITH organization_row AS (
+            SELECT id FROM organizations WHERE id = ${data.organizationId} FOR UPDATE
+        ),
+        target AS (
+            SELECT member.role
+            FROM organization_members member, organization_row
+            WHERE member.organization_id = organization_row.id
+                AND member.account_id = ${data.accountId}
+        ),
+        other_admins AS (
+            SELECT member.account_id, member.created_at
+            FROM organization_members member, organization_row
+            WHERE member.organization_id = organization_row.id
+                AND member.role = 'admin'
+                AND member.account_id <> ${data.accountId}
+        ),
+        recipient AS (
+            SELECT account_id
+            FROM other_admins
+            WHERE ${recipientAccountId}::uuid IS NULL OR account_id = ${recipientAccountId}::uuid
+            ORDER BY (account_id = ${preferredAccountId}::uuid) DESC NULLS LAST, created_at ASC, account_id ASC
+            LIMIT 1
+        ),
+        owned AS (
+            SELECT (
+                EXISTS (SELECT 1 FROM requests WHERE account_id = ${data.accountId} AND organization_id = ${data.organizationId})
+                OR EXISTS (SELECT 1 FROM brand_profiles WHERE account_id = ${data.accountId} AND organization_id = ${data.organizationId})
+            ) AS anything
+        ),
+        verdict AS (
+            SELECT CASE
+                WHEN NOT EXISTS (SELECT 1 FROM target) THEN 'not_member'
+                WHEN (SELECT role FROM target) = 'admin' AND NOT EXISTS (SELECT 1 FROM other_admins) THEN 'last_admin'
+                WHEN (${recipientAccountId}::uuid IS NOT NULL OR (SELECT anything FROM owned))
+                    AND NOT EXISTS (SELECT 1 FROM recipient) THEN 'no_recipient'
+                ELSE 'ok'
+            END AS outcome
+        ),
+        moved_requests AS (
+            UPDATE requests
+            SET account_id = (SELECT account_id FROM recipient)
+            WHERE account_id = ${data.accountId}
+                AND organization_id = ${data.organizationId}
+                AND (SELECT outcome FROM verdict) = 'ok'
+                AND EXISTS (SELECT 1 FROM recipient)
+            RETURNING id
+        ),
+        moved_profiles AS (
+            UPDATE brand_profiles
+            SET account_id = (SELECT account_id FROM recipient)
+            WHERE account_id = ${data.accountId}
+                AND organization_id = ${data.organizationId}
+                AND (SELECT outcome FROM verdict) = 'ok'
+                AND EXISTS (SELECT 1 FROM recipient)
+            RETURNING id
+        ),
+        removed AS (
+            DELETE FROM organization_members
+            WHERE organization_id = ${data.organizationId}
+                AND account_id = ${data.accountId}
+                AND (SELECT outcome FROM verdict) = 'ok'
+            RETURNING id
+        ),
+        cleared AS (
+            UPDATE accounts
+            SET active_organization_id = NULL
+            WHERE id = ${data.accountId}
+                AND active_organization_id = ${data.organizationId}
+                AND EXISTS (SELECT 1 FROM removed)
+            RETURNING id
+        )
+        SELECT
+            (SELECT outcome FROM verdict) AS outcome,
+            (SELECT COUNT(*) FROM removed)::int AS removed_count,
+            (SELECT COUNT(*) FROM moved_requests)::int AS requests_moved,
+            (SELECT COUNT(*) FROM moved_profiles)::int AS profiles_moved,
+            (SELECT COUNT(*) FROM cleared)::int AS cleared_count,
+            (SELECT account_id FROM recipient) AS recipient_account_id
     `;
 
-    return result.length > 0;
+    const row = result[0];
+    if (!row || row.outcome !== 'ok' || Number(row.removed_count) !== 1) {
+        const reason = row?.outcome === 'last_admin' || row?.outcome === 'no_recipient' ? row.outcome : 'not_member';
+        return { removed: false, reason };
+    }
+
+    const requestsMoved = Number(row.requests_moved) || 0;
+    const profilesMoved = Number(row.profiles_moved) || 0;
+    return {
+        removed: true,
+        requestsMoved,
+        profilesMoved,
+        recipientAccountId: requestsMoved + profilesMoved > 0 ? (row.recipient_account_id as string | null) : null,
+    };
 }
 
 export async function updateOrganizationMemberRole(data: {

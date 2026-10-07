@@ -107,6 +107,9 @@ async function mocks(page: Page, scenario: Scenario) {
                 seatUsage: { used: team() ? 3 : 1, pendingInvites: team() ? pendingInvites() : 0 },
             });
         }
+        if (path.startsWith('/api/organization/members/') && method === 'DELETE') {
+            return json({ success: true, left: path.endsWith('/acc_1'), requestsMoved: 2, profilesMoved: 1, recipientAccountId: 'acc_1' });
+        }
         if (path === '/api/organization/invites' && method === 'GET') return json({ invites });
         if (path === '/api/organization/invites' && method === 'POST') {
             const email = String(req.postDataJSON().email);
@@ -285,7 +288,7 @@ test('a Teams admin manages people by name and sees honest invitation results', 
     // Confirmations use the app dialog and can be declined.
     await page.getByRole('button', { name: 'Remove Pat Lee', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Remove Pat Lee?' });
-    await expect(dialog.getByText('They lose access to this workspace right away.', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('They lose access to this workspace right away.', { exact: false })).toBeVisible();
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(dialog).toHaveCount(0);
     expect(writes.some((write) => write.method === 'DELETE')).toBe(false);
@@ -319,6 +322,38 @@ test('a Teams member sees why controls are unavailable and no billing actions', 
     await expect(page.getByRole('button', { name: /Manage|Upgrade|Start Teams/ })).toHaveCount(0);
     await healthy(page, testInfo, 'team-member-billing');
     expect(writes).toEqual([]);
+});
+
+test('a Teams member can leave the workspace after being told what happens to their work', async ({ page }, testInfo) => {
+    const { writes } = await open(page, { plan: 'team', role: 'member' }, '?tab=workspace');
+    await page.route('**/dashboard', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<h1>Left the workspace</h1>' }));
+
+    await expect(page.getByText('Leave this workspace', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Leave workspace', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Leave Riverbend Transaction Services?' });
+    await expect(dialog.getByText('You lose access right away.', { exact: false })).toBeVisible();
+    await healthy(page, testInfo, 'team-member-leave-confirm');
+    expect(writes).toEqual([]);
+
+    await dialog.getByRole('button', { name: 'Leave workspace', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Left the workspace' })).toBeVisible();
+    expect(writes).toEqual([{ url: '/api/organization/members/acc_1', method: 'DELETE', body: {} }]);
+});
+
+test('an admin removing a member is told where that person’s work goes', async ({ page }, testInfo) => {
+    const { writes } = await open(page, { plan: 'team', role: 'admin' }, '?tab=workspace');
+
+    // Another admin stays, so this admin may leave too.
+    await expect(page.getByRole('button', { name: 'Leave workspace', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Remove sam.okafor-williams@riverbendtitle.example', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('The requests and Branding Profiles they created stay here and become yours.', { exact: false })).toBeVisible();
+    await healthy(page, testInfo, 'team-admin-remove-confirm');
+    await dialog.getByRole('button', { name: 'Remove member', exact: true }).click();
+
+    await expect(page.getByText('Their 2 requests and 1 Branding Profile now belong to you.', { exact: false })).toBeVisible();
+    expect(writes).toEqual([{ url: '/api/organization/members/acc_3', method: 'DELETE', body: {} }]);
+    await healthy(page, testInfo, 'team-admin-removed');
 });
 
 test('a failed account load never shows a plan or a checkout button, and retry recovers', async ({ page }, testInfo) => {

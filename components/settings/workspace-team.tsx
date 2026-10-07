@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, Check, Copy, CreditCard, Loader2, RefreshCw, Shield, UserPlus, Users } from 'lucide-react';
+import { Bell, Check, Copy, CreditCard, Loader2, LogOut, RefreshCw, Shield, UserPlus, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -62,6 +62,16 @@ function formatDate(value: string) {
     return new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+/** "3 requests and 1 Branding Profile", or an empty string when nothing moved. */
+function handedOver(data: { requestsMoved?: unknown; profilesMoved?: unknown }) {
+    const requests = Number(data.requestsMoved) || 0;
+    const profiles = Number(data.profilesMoved) || 0;
+    return [
+        requests > 0 ? plural(requests, 'request') : '',
+        profiles > 0 ? plural(profiles, 'Branding Profile') : '',
+    ].filter(Boolean).join(' and ');
+}
+
 function NoticeLine({ notice }: { notice: Notice }) {
     return notice ? <InlineStatus tone={notice.tone}>{notice.text}</InlineStatus> : null;
 }
@@ -104,6 +114,7 @@ export function WorkspaceTeam({
     const [inviteAction, setInviteAction] = useState<string | null>(null);
     const [inviteListNotice, setInviteListNotice] = useState<Notice>(null);
     const [memberNotice, setMemberNotice] = useState<Notice>(null);
+    const [leaveError, setLeaveError] = useState('');
     const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
     const [confirming, setConfirming] = useState(false);
 
@@ -316,10 +327,30 @@ export function WorkspaceTeam({
             const response = await fetch(`/api/organization/members/${member.account_id}`, { method: 'DELETE' });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(friendlyError(data, 'We couldn’t remove that member. Try again.'));
-            setMemberNotice({ tone: 'saved', text: `${name} was removed from this workspace.` });
+            const moved = handedOver(data);
+            const recipient = members.find((candidate) => candidate.account_id === data.recipientAccountId);
+            const recipientName = !recipient || recipient.account_id === accountId ? 'you' : recipient.full_name || recipient.email;
+            setMemberNotice({
+                tone: 'saved',
+                text: `${name} was removed from this workspace.${moved ? ` Their ${moved} now belong to ${recipientName}.` : ''}`,
+            });
             await onRefresh();
         } catch (error) {
             setMemberNotice({ tone: 'error', text: error instanceof Error ? error.message : 'We couldn’t remove that member. Try again.' });
+        }
+    }
+
+    async function leaveWorkspace() {
+        if (!accountId) return;
+        setLeaveError('');
+        try {
+            const response = await fetch(`/api/organization/members/${accountId}`, { method: 'DELETE' });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(friendlyError(data, 'We couldn’t take you out of this workspace. Nothing was changed. Try again.'));
+            // Everything on screen belongs to the workspace that was just left.
+            window.location.assign('/dashboard');
+        } catch (error) {
+            setLeaveError(error instanceof Error ? error.message : 'We couldn’t take you out of this workspace. Nothing was changed. Try again.');
         }
     }
 
@@ -676,7 +707,7 @@ export function WorkspaceTeam({
                                                 aria-label={`Remove ${name}`}
                                                 onClick={() => setConfirmation({
                                                     title: `Remove ${name}?`,
-                                                    description: 'They lose access to this workspace right away.',
+                                                    description: 'They lose access to this workspace right away. The requests and Branding Profiles they created stay here and become yours. Their seller form links for this workspace stop working.',
                                                     confirmLabel: 'Remove member',
                                                     destructive: true,
                                                     run: () => removeMember(member),
@@ -691,11 +722,47 @@ export function WorkspaceTeam({
                         })}
                     </ul>
                 )}
-                <p className="text-xs text-muted-foreground">
-                    {isAdmin ? '' : 'Only workspace admins can change roles or remove members. '}
-                    Transferring ownership and leaving a workspace aren’t available yet.
-                </p>
+                {!isAdmin && (
+                    <p className="text-xs text-muted-foreground">Only workspace admins can change roles or remove members.</p>
+                )}
             </SettingsSection>
+
+            {teamState === 'ready' && members.length > 1 && members.some((member) => member.account_id === accountId) && (
+                <SettingsSection
+                    icon={LogOut}
+                    title="Leave this workspace"
+                    description="Stop being a member. Your own account and any other workspaces you’re in are not affected."
+                >
+                    {isAdmin && members.filter((member) => member.member_role === 'admin').length <= 1 ? (
+                        <Note>
+                            You’re the only admin of this workspace. Make someone else an admin above, then you can leave.
+                        </Note>
+                    ) : (
+                        <>
+                            <p className="text-sm text-muted-foreground">
+                                The requests and Branding Profiles you created here stay with the workspace and are handed
+                                to an admin. Your seller form links for this workspace stop working. To come back, an admin
+                                has to invite you again.
+                            </p>
+                            <Button
+                                variant="outline"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setConfirmation({
+                                    title: `Leave ${organization.name || 'this workspace'}?`,
+                                    description: 'You lose access right away. The requests and Branding Profiles you created here are handed to an admin, and your seller form links for this workspace stop working. An admin has to invite you again if you want to come back.',
+                                    confirmLabel: 'Leave workspace',
+                                    destructive: true,
+                                    run: leaveWorkspace,
+                                })}
+                            >
+                                <LogOut />
+                                Leave workspace
+                            </Button>
+                            {leaveError && <InlineStatus tone="error">{leaveError}</InlineStatus>}
+                        </>
+                    )}
+                </SettingsSection>
+            )}
 
             <ConfirmDialog
                 open={confirmation !== null}

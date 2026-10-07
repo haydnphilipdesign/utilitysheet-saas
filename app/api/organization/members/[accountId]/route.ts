@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { stackServerApp } from '@/lib/stack/server';
 import {
-    clearActiveOrganizationIfMatches,
     getOrganizationAdminCount,
     getOrganizationMemberRole,
     getOrCreateAccount,
-    removeOrganizationMember,
+    removeOrganizationMemberWithHandover,
     updateOrganizationMemberRole,
 } from '@/lib/neon/queries';
 
@@ -63,7 +62,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ac
     }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ accountId: string }> }) {
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Removes a member (admins) or leaves the workspace (anyone, for themselves).
+ * The requests and Branding Profiles the person created in the workspace are
+ * handed to an admin who stays: the one named in `transferTo`, otherwise the
+ * admin doing the removing, otherwise the longest-standing other admin.
+ */
+export async function DELETE(request: Request, { params }: { params: Promise<{ accountId: string }> }) {
     try {
         const user = await stackServerApp.getUser();
         if (!user) {
@@ -80,32 +87,51 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
             return NextResponse.json({ error: 'No active organization' }, { status: 404 });
         }
 
+        const { accountId: targetAccountId } = await params;
+        const leaving = targetAccountId === account.id;
         const actorRole = await getOrganizationMemberRole(organizationId, account.id);
-        if (actorRole !== 'admin') {
+        if (actorRole !== 'admin' && !(leaving && actorRole)) {
             return NextResponse.json({ error: 'Only organization admins can manage members' }, { status: 403 });
         }
 
-        const { accountId: targetAccountId } = await params;
-        const targetRole = await getOrganizationMemberRole(organizationId, targetAccountId);
-        if (!targetRole) {
+        const body = await request.json().catch(() => ({}));
+        const transferTo = body?.transferTo;
+        if (transferTo !== undefined && transferTo !== null && (typeof transferTo !== 'string' || !UUID_PATTERN.test(transferTo))) {
+            return NextResponse.json({ error: 'Invalid transfer recipient' }, { status: 400 });
+        }
+
+        const result = await removeOrganizationMemberWithHandover({
+            organizationId,
+            accountId: targetAccountId,
+            recipientAccountId: transferTo || null,
+            preferredAccountId: leaving ? null : account.id,
+        });
+
+        if (!result.removed) {
+            if (result.reason === 'last_admin') {
+                return NextResponse.json({
+                    error: 'Cannot remove the last admin',
+                    message: leaving
+                        ? 'You’re the only admin of this workspace. Make someone else an admin first, then you can leave.'
+                        : undefined,
+                }, { status: 400 });
+            }
+            if (result.reason === 'no_recipient') {
+                return NextResponse.json({
+                    error: 'No admin can take over',
+                    message: 'The requests and Branding Profiles this person created need an admin of this workspace to take them over, and that admin isn’t available. Nothing was changed.',
+                }, { status: 400 });
+            }
             return NextResponse.json({ error: 'Member not found' }, { status: 404 });
         }
 
-        if (targetRole === 'admin') {
-            const adminCount = await getOrganizationAdminCount(organizationId);
-            if (adminCount <= 1) {
-                return NextResponse.json({ error: 'Cannot remove the last admin' }, { status: 400 });
-            }
-        }
-
-        const removed = await removeOrganizationMember({ organizationId, accountId: targetAccountId });
-        if (!removed) {
-            return NextResponse.json({ error: 'Failed to remove member' }, { status: 500 });
-        }
-
-        await clearActiveOrganizationIfMatches(targetAccountId, organizationId);
-
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            left: leaving,
+            requestsMoved: result.requestsMoved,
+            profilesMoved: result.profilesMoved,
+            recipientAccountId: result.recipientAccountId,
+        });
     } catch (error) {
         console.error('Error removing organization member:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -89,8 +89,8 @@ Counts and dates only; no addresses, names or identifiers were read out.
 | 7 | Admin workspace page | Done 2026-10-07; committed and pushed; deployment not verified; not seen in a browser |
 | 8 | Payment failure and plan end messages [B] [S] | Done 2026-10-07; migration applied to the live database, then committed and pushed; deployment not verified |
 | 9 | Request owners and "Mine" filter | Done 2026-10-07; committed and pushed; deployment not verified |
-| 10 | Leave a workspace [R] | Not started; confirm first |
-| 11 | Shared seller forms [S] [R] | Not started; needs a decision |
+| 10 | Leave a workspace [R] | Done 2026-10-07; committed and pushed; deployment not verified |
+| 11 | Shared seller forms [S] [R] | Not started. Product rules decided: `.ai/decisions/2026-10-07-shared-seller-forms.md`. Needs its own implementation plan before any code |
 
 ## Slice 1: invitation acceptance that cannot dead-end
 
@@ -229,3 +229,16 @@ Touches billing and schema. Owner approved starting it in chat on 2026-10-07. No
 - Known limits: once a plan has lapsed the stored subscription id is cleared (existing behavior), so a late event about some other old subscription of the same workspace could change the recorded reason. The existing workspaces get no reason retroactively: the two live Teams workspaces are on Teams, so nothing needs a backfill.
 - Not in this slice: the same explanation for a Pro account whose payment fails (same gap, account table, its own small task); any grace period before a failed payment removes Teams (a billing rule, not changed).
 - "Start Pro" checkout and slice 8 were committed together, because `components/settings/billing-section.tsx` and `tests/settings.spec.ts` carry both.
+
+## Slice 10 outcome (2026-10-07)
+
+Changes what a role can do: a member can now take themselves out of a workspace. Owner approved the rule in chat on 2026-10-07 (reuse the account-closure hand-over; the removing admin receives by default). No schema or billing change.
+
+- `DELETE /api/organization/members/[accountId]`: an admin can remove anyone as before, and now any member can use it on their own account id to leave. Nobody else can remove another person. An optional `transferTo` names the admin who takes over; it must be a well-formed account id.
+- Hand-over: new `removeOrganizationMemberWithHandover` does everything in one statement with the workspace row locked: it refuses a non-member, refuses the last admin, moves the requests and Branding Profiles the person created in that workspace to an admin who stays (the named one; otherwise the admin doing the removing; otherwise the longest-standing other admin), removes the membership and clears the person's active-workspace pointer. It refuses, changing nothing, when there is something to hand over and no admin to take it. Only that workspace's rows move; the person's other workspaces and personal requests are untouched. Before this slice a removed member's requests stayed in the workspace under an account that was no longer in it.
+- Workspace & Team: a "Leave this workspace" section for anyone in a workspace with more than one member, with a confirmation that says what happens; the only admin is told to make someone else an admin first. Removing a member now says their work becomes yours and reports what moved ("Their 3 requests and 1 Branding Profile now belong to you"). The line saying leaving is not available is gone.
+- `removeOrganizationMember` and `clearActiveOrganizationIfMatches` had no other caller and were removed.
+- Files: `app/api/organization/members/[accountId]/route.ts`, `lib/neon/queries/{organizations,index}.ts`, `components/settings/workspace-team.tsx`; new `tests/unit/organization-member-removal.test.ts`, `tests/unit/workspace-leave.test.tsx`; updated `tests/settings.spec.ts`.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 220 files / 1646 tests passed; `tests/settings.spec.ts` 57/57 on three device profiles with service keys blanked; security scan and `git diff --check` passed; phone screenshot of the leave confirmation reviewed. The statement itself was run against sample rows in a throwaway local PostgreSQL 17 (cut-down tables, started and deleted in the scratch folder, nothing live): every refusal changes nothing; a removal moves only that workspace's requests and profiles to the right admin; a member with nothing leaves cleanly; the last admin cannot leave.
+- Not verified: a signed-in browser, the hosted site, what the dashboard shows right after leaving (the person's active workspace is cleared and the existing activation path picks their next one; that path was not exercised here).
+- Unchanged on purpose: the person's seller forms in the workspace stay theirs and their links stop working, as before (the screens now say so). Nobody is emailed when someone leaves or is removed. A person who leaves frees a seat but the workspace's paid seat count does not change. The screen has no picker for which admin receives the work; the route accepts `transferTo` for when one is wanted.
