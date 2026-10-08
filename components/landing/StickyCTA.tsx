@@ -59,7 +59,7 @@ export function StickyCTA() {
                                 <Sparkles className="w-5 h-5 text-yellow-300 flex-shrink-0 hidden sm:block" />
                                 <p className="truncate text-sm font-medium sm:text-base">
                                     <span className="hidden sm:inline">Ready to create your seller link? </span>
-                                    <span className="text-slate-200">3 files/month, free.</span>
+                                    <span className="text-slate-200">3 submitted sheets a month, free.</span>
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">

@@ -209,9 +209,9 @@ export default function NewRequestPage() {
                     setSavedForms(formsData.forms || []);
                     const defaultForm = (formsData.forms || []).find(f => f.id === formsData.defaultId);
                     if (defaultForm) applyForm(defaultForm, paidAccount);
-                } else setFormLoadError('Unable to load saved forms. Retry before creating a request from a form.');
+                } else setFormLoadError('Unable to load your seller forms. Reload before creating a request from a form.');
             } catch (error) {
-                setFormLoadError('Unable to load saved forms. Reload to retry.');
+                setFormLoadError('Unable to load your seller forms. Reload to try again.');
                 console.error('Error fetching data:', error);
             } finally {
                 setIntakeLinkLoading(false);
@@ -239,7 +239,7 @@ export default function NewRequestPage() {
             if (!response.ok) throw new Error('Unable to refresh the form. Your request has been kept. Try again.');
             const data: SellerFormsResponse = await response.json();
             const current = data.forms.find(f => f.id === selectedForm.id);
-            if (!current) throw new Error('This form is no longer available in this workspace. Your request has been kept. Choose another form or manual settings.');
+            if (!current) throw new Error('This form is no longer available in this workspace. Your request has been kept. Choose another form, or set the questions yourself.');
             setSavedForms(data.forms);
             setIsPro(data.isPaid);
             if (keepSettings) {
@@ -262,7 +262,7 @@ export default function NewRequestPage() {
 
     function selectForm(id: string) {
         if (loadedQuestionState && loadedQuestionState !== questionState(formData, collectHoaQuestions, collectElectricMeterNumber)
-            && !window.confirm('Replace your request-only question changes with this form?')) return;
+            && !window.confirm('Replace the question changes you made for this request with this form’s settings?')) return;
         setFormConflict(false); setRequestError('');
         if (!id) { setSelectedForm(null); setLoadedQuestionState(questionState(formData, collectHoaQuestions, collectElectricMeterNumber)); return; }
         const next = savedForms.find(f => f.id === id); if (next) applyForm(next, isPro);
@@ -280,7 +280,7 @@ export default function NewRequestPage() {
                 source: 'new_request_reusable_link',
             });
         } catch {
-            toast.error('Failed to copy link');
+            toast.error('We couldn’t copy the link.');
         }
     };
 
@@ -296,9 +296,9 @@ export default function NewRequestPage() {
     const handleCopyIntakeSms = async () => {
         try {
             await navigator.clipboard.writeText(getIntakeSmsText());
-            toast.success('SMS text copied');
+            toast.success('Text message copied');
         } catch {
-            toast.error('Failed to copy SMS text');
+            toast.error('We couldn’t copy the text message.');
         }
     };
 
@@ -306,7 +306,7 @@ export default function NewRequestPage() {
         const brand = getDefaultBrand();
         const agentName = brand?.contact_name?.trim() || '';
         const link = intakeLink?.url || '';
-        const subject = encodeURIComponent('Utility Information Request');
+        const subject = encodeURIComponent('Utility information request');
         const body = encodeURIComponent(
             `Hi,\n\nPlease use the link below to fill in the utility providers for your property. No account is needed.\n\n${link}\n\nThank you${agentName ? `,\n${agentName}` : '.'}`
         );
@@ -514,17 +514,17 @@ export default function NewRequestPage() {
             <div className="space-y-2 rounded-xl border border-border p-4">
                 <Label htmlFor="requestSavedForm">Seller form</Label>
                 <select id="requestSavedForm" className="w-full rounded-md border border-input bg-background p-2" value={selectedForm?.id || ''} onChange={e => selectForm(e.target.value)} disabled={intakeLinkLoading || refreshingForm || loading}>
-                    <option value="">Manual request settings</option>{savedForms.map(f => <option key={f.id} value={f.id} disabled={!f.isActive}>{f.name}{f.isDefault ? ' (default)' : ''}{f.isMine === false ? ' (shared by your team)' : ''}{!f.isActive ? ' — paused' : ''}</option>)}
+                    <option value="">No form (choose the questions yourself)</option>{savedForms.map(f => <option key={f.id} value={f.id} disabled={!f.isActive}>{f.name}{f.isDefault ? ' (default)' : ''}{f.isMine === false ? ' (shared by your team)' : ''}{!f.isActive ? ' (paused)' : ''}</option>)}
                 </select>
-                {selectedForm?.isActive === false && <p role="status" className="text-sm text-muted-foreground">This default form is paused. Choose an active form or manual settings, or reactivate it in Seller forms.</p>}
+                {selectedForm?.isActive === false && <p role="status" className="text-sm text-muted-foreground">Your default form is paused. Choose another form, set the questions yourself, or resume it in Seller forms.</p>}
                 {formLoadError && <p role="alert" className="text-sm text-destructive">{formLoadError}</p>}
                 {requestError && <p role="alert" className="text-sm text-destructive">{requestError}</p>}
                 {formConflict && selectedForm && (
                     <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">Your address and contact details are kept. Refresh the form to retry with your current request settings, or choose to replace only the question and branding settings with its latest defaults.</p>
+                        <p className="text-sm text-muted-foreground">Your address and contact details are kept. This form changed while you were working. Keep the question and branding choices you made here, or replace them with the form’s latest settings.</p>
                         <div className="flex flex-wrap gap-2">
-                            <Button type="button" variant="outline" disabled={refreshingForm} onClick={() => recoverForm(true)}>Refresh form and keep my settings</Button>
-                            <Button type="button" variant="outline" disabled={refreshingForm} onClick={() => recoverForm(false)}>Reload form defaults</Button>
+                            <Button type="button" variant="outline" disabled={refreshingForm} onClick={() => recoverForm(true)}>Keep my choices</Button>
+                            <Button type="button" variant="outline" disabled={refreshingForm} onClick={() => recoverForm(false)}>Use the form’s latest settings</Button>
                         </div>
                     </div>
                 )}
@@ -542,7 +542,7 @@ export default function NewRequestPage() {
                         <div className="space-y-1">
                             <p className="font-medium text-foreground">Guided first request</p>
                             <p className="text-sm text-muted-foreground">
-                                Complete the &quot;New Request&quot; flow once. This request won&apos;t count against your monthly limit.
+                                Create one request to see how it works. Creating requests never counts toward your monthly limit.
                             </p>
                         </div>
                     </div>
@@ -560,12 +560,12 @@ export default function NewRequestPage() {
                     Back
                 </Button>
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
-                    {showOneOffForm && !isOnboarding ? 'New Request' : 'Send a Seller Link'}
+                    {showOneOffForm && !isOnboarding ? 'New Request' : 'Send a seller link'}
                 </h1>
                 <p className="text-muted-foreground mt-1">
                     {showOneOffForm && !isOnboarding
-                        ? 'Create a one-off request for a specific property'
-                        : 'Choose how to send utility collection to your seller'}
+                        ? 'Create a request for one property'
+                        : 'Choose how to ask your seller for utility details'}
                 </p>
             </div>
 
@@ -583,11 +583,11 @@ export default function NewRequestPage() {
                         <CardHeader className="pb-4 pr-24">
                             <CardTitle className="text-foreground flex items-center gap-2">
                                 <LinkIcon className="h-5 w-5 text-primary shrink-0" />
-                                Your Reusable Seller Link
+                                Your reusable seller link
                             </CardTitle>
                             <CardDescription className="text-muted-foreground">
-                                One permanent link for every property — sellers enter the address themselves.
-                                No new request to create each time.
+                                One link for every property. Sellers enter the address themselves,
+                                so there is no request to create each time.
                             </CardDescription>
                         </CardHeader>
 
@@ -612,14 +612,14 @@ export default function NewRequestPage() {
                                         className={`shrink-0 border-input transition-colors ${copiedIntake ? 'border-primary/50 text-primary' : 'text-foreground hover:bg-muted'}`}
                                     >
                                         {copiedIntake ? (
-                                            <><Check className="mr-2 h-4 w-4" />Copied!</>
+                                            <><Check className="mr-2 h-4 w-4" />Copied</>
                                         ) : (
                                             <><Copy className="mr-2 h-4 w-4" />Copy</>
                                         )}
                                     </Button>
                                 </div>
                             ) : (
-                                <p className="text-sm text-muted-foreground">Unable to load your link. Try refreshing.</p>
+                                <p className="text-sm text-muted-foreground">Unable to load your link. Reload the page to try again.</p>
                             )}
 
                             {/* Quick share buttons */}
@@ -633,7 +633,7 @@ export default function NewRequestPage() {
                                             onClick={handleCopyIntakeSms}
                                         >
                                             <MessageSquare className="mr-2 h-4 w-4" />
-                                            Copy SMS text
+                                            Copy text message
                                         </Button>
                                         <Button
                                             variant="outline"
@@ -651,9 +651,9 @@ export default function NewRequestPage() {
                             <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 space-y-2">
                                 <p className="text-xs font-semibold text-foreground">What happens next</p>
                                 {[
-                                    'Seller taps the link, enters the property address and confirms their utilities',
-                                    'PDF automatically attaches to your notification email when they submit',
-                                    'No login required for you — the result arrives in your inbox',
+                                    'The seller opens the link, enters the property address and confirms their utilities',
+                                    'You get an email when they submit, with the PDF attached if that setting is on',
+                                    'You don’t need to sign in to see the result. It arrives by email',
                                 ].map((item) => (
                                     <div key={item} className="flex items-start gap-2">
                                         <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
@@ -666,11 +666,11 @@ export default function NewRequestPage() {
                             <div className="flex items-center justify-between pt-0.5">
                                 <p className="text-xs text-muted-foreground">
                                     {intakeCanCustomize
-                                        ? 'Customize your link in Settings.'
-                                        : 'Upgrade to Pro/Teams for a custom branded link.'}
+                                        ? 'You can change this link in Seller forms.'
+                                        : 'Choose your own link name on Pro or Teams.'}
                                 </p>
                                 <Link href={intakeCanCustomize ? '/dashboard/settings?tab=link' : '/dashboard/settings?tab=billing'} className="text-xs text-primary hover:text-primary/80 transition-colors">
-                                    {intakeCanCustomize ? 'Open Settings' : 'Upgrade'}
+                                    {intakeCanCustomize ? 'Open Seller forms' : 'Upgrade'}
                                 </Link>
                             </div>
                         </CardContent>
@@ -697,9 +697,9 @@ export default function NewRequestPage() {
                                 <MapPin className="h-4 w-4 text-muted-foreground" />
                             </div>
                             <div>
-                                <p className="font-medium text-foreground text-sm">Create a request for a specific address</p>
+                                <p className="font-medium text-foreground text-sm">Create a request for one property</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    Enter the property address and optionally customize utilities and add seller info
+                                    Enter the address yourself. You can also choose the questions and add the seller’s details.
                                 </p>
                             </div>
                         </div>
@@ -719,7 +719,7 @@ export default function NewRequestPage() {
                             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
                         >
                             <ArrowLeft className="h-3.5 w-3.5" />
-                            Use reusable link instead
+                            Use the reusable link instead
                         </button>
                     )}
 
@@ -754,7 +754,7 @@ export default function NewRequestPage() {
                                     Property Address
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground">
-                                    Enter the property address for this utility sheet
+                                    The property this utility sheet is for
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -799,7 +799,7 @@ export default function NewRequestPage() {
                                     Branding Profile
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground">
-                                    Choose which branding to display on the utility sheet
+                                    Choose the branding shown on the seller form and the utility sheet
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
@@ -807,14 +807,14 @@ export default function NewRequestPage() {
                                     <div className="rounded-xl border border-border bg-muted/30 p-4 sm:p-5">
                                         {isPro ? (
                                             <div className="text-center space-y-3">
-                                                <p className="text-sm text-muted-foreground">You don&apos;t have any brand profiles yet.</p>
+                                                <p className="text-sm text-muted-foreground">You don&apos;t have any Branding Profiles yet.</p>
                                                 <Link href="/dashboard/branding/new?returnTo=/dashboard/requests/new">
                                                     <Button variant="outline" className="border-dashed border-2 border-primary/40 hover:border-primary/70 hover:bg-primary/5 text-primary">
                                                         <Plus className="mr-2 h-4 w-4" />
-                                                        Create a brand profile
+                                                        Create a Branding Profile
                                                     </Button>
                                                 </Link>
-                                                <p className="text-xs text-muted-foreground">or continue without one — you can add branding later.</p>
+                                                <p className="text-xs text-muted-foreground">Or continue without one. You can add branding later.</p>
                                             </div>
                                         ) : (
                                             <div className="flex items-start gap-3">
@@ -822,9 +822,9 @@ export default function NewRequestPage() {
                                                     <Sparkles className="h-4 w-4 text-muted-foreground" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-medium text-foreground">No brand profiles yet</p>
+                                                    <p className="text-sm font-medium text-foreground">No Branding Profiles yet</p>
                                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                                        This request will use default UtilitySheet branding. Upgrade to Pro to add your own logo and contact info.
+                                                        This request will use standard UtilitySheet branding. Upgrade to Pro to add your own logo and contact details.
                                                     </p>
                                                 </div>
                                             </div>
@@ -909,9 +909,9 @@ export default function NewRequestPage() {
                     {step === 3 && (
                         <Card className="border-border bg-card/50">
                             <CardHeader>
-                                <CardTitle className="text-foreground">Seller Information</CardTitle>
+                                <CardTitle className="text-foreground">Seller details</CardTitle>
                                 <CardDescription className="text-muted-foreground">
-                                    Optional — helps personalize the request and enable reminders
+                                    Optional. A name personalizes the request, and an email lets you send reminders.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -970,10 +970,10 @@ export default function NewRequestPage() {
                                         />
                                         <div className="space-y-1">
                                             <Label htmlFor="sendSellerEmail" className="text-foreground font-medium cursor-pointer">
-                                                Send email notification to seller
+                                                Email the seller their link
                                             </Label>
                                             <p className="text-sm text-muted-foreground">
-                                                An email with the form link will be sent to the seller when you create this request
+                                                We email the seller a link to the form as soon as you create this request.
                                             </p>
                                         </div>
                                     </div>
@@ -1002,14 +1002,14 @@ export default function NewRequestPage() {
                     {step === 4 && (
                         <Card className="border-border bg-card/50">
                             <CardHeader>
-                                <CardTitle className="text-foreground">Utility Categories</CardTitle>
+                                <CardTitle className="text-foreground">What to ask</CardTitle>
                                 <CardDescription className="text-muted-foreground">
-                                    Select which utilities to include in the request
+                                    Choose the sheet type, the questions and the utilities for this request
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
-                                    <Label className="text-foreground">Packet Mode</Label>
+                                    <Label className="text-foreground">Sheet type</Label>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         <button
                                             type="button"
@@ -1067,8 +1067,8 @@ export default function NewRequestPage() {
 
                                 <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
                                     <div className="space-y-1">
-                                        <Label className="text-foreground">Seller Questions</Label>
-                                        <p className="text-xs text-muted-foreground">Starts with the selected form. Changes apply only to this request.</p>
+                                        <Label className="text-foreground">Seller questions</Label>
+                                        <p className="text-xs text-muted-foreground">These start from the form you chose. Changes here apply only to this request.</p>
                                     </div>
                                     <QuestionCollectionSwitches hoa={collectHoaQuestions} meter={collectElectricMeterNumber} onHoa={setCollectHoaQuestions} onMeter={setCollectElectricMeterNumber} disabled={intakeLinkLoading} />
 
@@ -1099,11 +1099,11 @@ export default function NewRequestPage() {
                                     <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between">
-                                                <Label className="text-foreground">Handoff Sections &amp; Questions</Label>
-                                                <span className="text-xs text-muted-foreground">{formData.advanced_modules.length} enabled</span>
+                                                <Label className="text-foreground">Handoff sections and questions</Label>
+                                                <span className="text-xs text-muted-foreground">{formData.advanced_modules.length} on</span>
                                             </div>
                                             <p className="text-xs text-muted-foreground">
-                                                {PROPERTY_HANDOFF_PACKET_SUPPORTING_COPY} Open any enabled section to include or remove individual seller questions for this request.
+                                                {PROPERTY_HANDOFF_PACKET_SUPPORTING_COPY} Open a section that is on to choose its questions for this request.
                                             </p>
                                         </div>
                                         <AdvancedModuleConfigurator
@@ -1121,10 +1121,10 @@ export default function NewRequestPage() {
                                             onToggleField={toggleAdvancedModuleField}
                                         />
                                         {formData.advanced_modules.length === 0 && (
-                                            <p className="text-xs text-amber-500">Enable at least one section for {PACKET_MODE_LABELS.advanced} mode.</p>
+                                            <p className="text-xs text-amber-500">Turn on at least one section for a {PACKET_MODE_LABELS.advanced}.</p>
                                         )}
                                         {hasAdvancedModuleWithNoFields && formData.advanced_modules.length > 0 && (
-                                            <p className="text-xs text-amber-500">Each enabled module must include at least one question.</p>
+                                            <p className="text-xs text-amber-500">Each section that is on needs at least one question.</p>
                                         )}
                                     </div>
                                 )}
@@ -1137,7 +1137,7 @@ export default function NewRequestPage() {
                                         onClick={toggleAllCategories}
                                         className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
                                     >
-                                        {formData.utility_categories.length === UTILITY_CATEGORIES.length ? 'Deselect All' : 'Select All'}
+                                        {formData.utility_categories.length === UTILITY_CATEGORIES.length ? 'Clear all' : 'Select all'}
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
@@ -1176,7 +1176,7 @@ export default function NewRequestPage() {
                                         {loading ? (
                                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
                                         ) : (
-                                            <>Create Request<Check className="ml-2 h-4 w-4" /></>
+                                            <>Create request<Check className="ml-2 h-4 w-4" /></>
                                         )}
                                     </Button>
                                 </div>
@@ -1193,14 +1193,14 @@ export default function NewRequestPage() {
             }}>
                 <DialogContent className="bg-popover border-border !max-w-[calc(100vw-2rem)] sm:!max-w-lg" showCloseButton={false}>
                     <DialogHeader>
-                        <DialogTitle className="text-foreground text-lg sm:text-xl">Request Created! 🎉</DialogTitle>
+                        <DialogTitle className="text-foreground text-lg sm:text-xl">Request created</DialogTitle>
                         <DialogDescription className="text-muted-foreground text-sm">
-                            Share this link with your seller to collect utility information
+                            Send this link to your seller so they can fill in their utility details.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 sm:space-y-6 pt-4">
                         <div className="space-y-2">
-                            <Label className="text-muted-foreground text-sm">Seller Link</Label>
+                            <Label className="text-muted-foreground text-sm">Seller link</Label>
                             <div className="flex gap-2">
                                 <Input
                                     value={getShareLink()}
@@ -1219,7 +1219,7 @@ export default function NewRequestPage() {
                         </div>
 
                         <div className="space-y-2 sm:space-y-3">
-                            <Label className="text-muted-foreground text-sm">Quick Share</Label>
+                            <Label className="text-muted-foreground text-sm">Quick share</Label>
                             <div className="grid grid-cols-2 gap-2 sm:gap-3">
                                 <Button
                                     variant="outline"
@@ -1231,7 +1231,7 @@ export default function NewRequestPage() {
                                     }}
                                 >
                                     <MessageSquare className="mr-1.5 sm:mr-2 h-4 w-4" />
-                                    Copy SMS
+                                    Copy text message
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -1243,13 +1243,13 @@ export default function NewRequestPage() {
                                     }}
                                 >
                                     <Mail className="mr-1.5 sm:mr-2 h-4 w-4" />
-                                    Open Email
+                                    Open email
                                 </Button>
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-muted-foreground text-xs sm:text-sm">SMS Template</Label>
+                            <Label className="text-muted-foreground text-xs sm:text-sm">Text message</Label>
                             <div className="p-2.5 sm:p-3 bg-muted/50 rounded-lg border border-border">
                                 <p className="text-xs sm:text-sm text-foreground whitespace-pre-wrap break-words">{getSmsTemplate()}</p>
                             </div>
@@ -1261,7 +1261,7 @@ export default function NewRequestPage() {
                                 className="border-input text-foreground hover:bg-muted w-full sm:w-auto active:scale-[0.98]"
                                 onClick={() => { setShowShareDialog(false); router.push('/dashboard'); }}
                             >
-                                Go to Dashboard
+                                Go to dashboard
                             </Button>
                         </div>
                     </div>
@@ -1275,18 +1275,18 @@ export default function NewRequestPage() {
                         <div className="mx-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-2">
                             <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500" />
                         </div>
-                        <DialogTitle className="text-foreground text-lg sm:text-xl text-center">{PACKET_MODE_LABELS.advanced} is a Pro feature</DialogTitle>
+                        <DialogTitle className="text-foreground text-lg sm:text-xl text-center">{PACKET_MODE_LABELS.advanced} is part of Pro and Teams</DialogTitle>
                         <DialogDescription className="text-muted-foreground text-center text-sm">
-                            Upgrade to build full property handoff packets for your sellers.
+                            Upgrade to also collect home systems, access details and service contacts from your sellers.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-5 pt-4">
                         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2.5">
-                            <p className="text-sm font-semibold text-foreground">Pro plan — $9/month</p>
+                            <p className="text-sm font-semibold text-foreground">Pro, $9/month</p>
                             {[
-                                'Unlimited requests, no monthly cap',
-                                'Custom logo, colors & contact info on every sheet',
-                                'Custom branded link for your business',
+                                'Unlimited submitted sheets, with no monthly limit',
+                                'Your logo, colors and contact details on every sheet',
+                                'Your own link name for your seller links',
                             ].map((benefit) => (
                                 <div key={benefit} className="flex items-start gap-2">
                                     <div className="mt-0.5 h-4 w-4 rounded-full bg-primary/15 flex items-center justify-center shrink-0">

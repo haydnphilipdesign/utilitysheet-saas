@@ -68,7 +68,7 @@ export async function GET() {
         return NextResponse.json(profilesWithUsage);
     } catch (error) {
         console.error('Error fetching brand profiles:', error);
-        return NextResponse.json({ error: 'Failed to fetch brand profiles' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t load your Branding Profiles. Try again.' }, { status: 500 });
     }
 }
 
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
         if (!hasPaidAccess) {
             return NextResponse.json({
-                error: 'Custom branding is available on the Pro plan',
+                error: 'Branding Profiles are part of Pro and Teams.',
                 code: 'UPGRADE_REQUIRED',
             }, { status: 403 });
         }
@@ -132,12 +132,12 @@ export async function POST(request: Request) {
         });
 
         if (!profile) {
-            return NextResponse.json({ error: 'Failed to create brand profile' }, { status: 500 });
+            return NextResponse.json({ error: 'We couldn’t create the profile. Try again.' }, { status: 500 });
         }
 
         return NextResponse.json(profile, { status: 201 });
     } catch (error) {
         console.error('Error creating brand profile:', error);
-        return NextResponse.json({ error: 'Failed to create brand profile' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t create the profile. Try again.' }, { status: 500 });
     }
 }

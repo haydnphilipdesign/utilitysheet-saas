@@ -92,7 +92,7 @@ export default function RealEstateClosingUtilityChecklistPage() {
             },
             {
               title: 'Finished output at the end',
-              copy: 'The end result is not just a completed form. It is a utility sheet your team can actually share, and Pro/Teams can revise after submission when the handoff needs cleanup.',
+              copy: 'The end result is not just a completed form. It is a utility sheet your team can actually share, and on Pro and Teams you can revise it after the seller submits.',
             },
           ].map((item) => (
             <article key={item.title} className="rounded-3xl border border-border bg-card/20 p-6">

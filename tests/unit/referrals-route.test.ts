@@ -154,8 +154,8 @@ describe('/api/referrals', () => {
 
     it.each([
         ['invalid_code', 400, 'Referral code not found. Check the code and try again.'],
-        ['already_claimed', 409, 'A referral code is already attached to this account.'],
-        ['expired', 409, 'Referral codes can be added within 30 days of signup.'],
+        ['already_claimed', 409, 'This account already has a referral code.'],
+        ['expired', 409, 'Referral codes can only be added within 30 days of signing up.'],
         ['unavailable', 503, 'Referral codes are temporarily unavailable.'],
     ])('maps a %s claim result to a safe API error', async (status, expectedStatus, error) => {
         claimReferralCodeForAccount.mockResolvedValue({ code: null, status });

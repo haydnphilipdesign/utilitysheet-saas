@@ -35,7 +35,7 @@ test('PDF attachment value prop appears in multiple landing sections', async ({ 
   await expect(page.getByText(/PDF can attach to completion emails/i)).toBeVisible();
 
   await page.getByRole('button', { name: /How does PDF delivery work/i }).click();
-  await expect(page.getByText(/previously emailed attachments stay as sent snapshots/i)).toBeVisible();
+  await expect(page.getByText(/PDFs that were already emailed stay as they were sent/i)).toBeVisible();
 });
 
 test('iPad-like layout keeps nav and CTA readable', async ({ page }) => {

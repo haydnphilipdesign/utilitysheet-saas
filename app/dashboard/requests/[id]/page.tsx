@@ -87,13 +87,13 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
             const res = await fetch(`/api/requests/${request.id}/remind`, { method: 'POST' });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                toast.error(data.error || 'Failed to send reminder');
+                toast.error(data.error || 'We couldn’t send the reminder. Try again.');
                 return;
             }
             toast.success('Reminder sent');
         } catch (error) {
             console.error('Error sending reminder:', error);
-            toast.error('Failed to send reminder');
+            toast.error('We couldn’t send the reminder. Try again.');
         } finally {
             setSendingReminder(false);
         }
@@ -106,16 +106,16 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
             const res = await fetch(`/api/requests/${request.id}/reopen`, { method: 'DELETE' });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                toast.error(data.error || 'Failed to close request');
+                toast.error(data.error || 'We couldn’t close the request. Try again.');
                 return;
             }
             // Editing access comes from the plan check on a fresh load.
             const refreshed = await fetch(`/api/requests/${request.id}`);
             setRequest(refreshed.ok ? await refreshed.json() : data);
-            toast.success('Closed. The info sheet is available again, unchanged.');
+            toast.success('Closed. The sheet is available again, unchanged.');
         } catch (error) {
             console.error('Error closing reopened request:', error);
-            toast.error('Failed to close request');
+            toast.error('We couldn’t close the request. Try again.');
         } finally {
             setClosingReopen(false);
         }
@@ -126,10 +126,10 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
         setDownloadingPdf(true);
         try {
             await generatePacketPdf(request.public_token);
-            toast.success('PDF downloaded successfully');
+            toast.success('PDF downloaded');
         } catch (error) {
             console.error('Error generating PDF:', error);
-            toast.error('Failed to generate PDF. Please try again.');
+            toast.error('We couldn’t create the PDF. Try again.');
         } finally {
             setDownloadingPdf(false);
         }
@@ -167,7 +167,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     to_mode: nextMode,
                     reason: data?.error || 'request_failed',
                 });
-                toast.error(data?.message || data?.error || 'Failed to switch mode');
+                toast.error(data?.message || data?.error || 'We couldn’t change the sheet type. Try again.');
                 return;
             }
             setRequest(data);
@@ -176,7 +176,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                 : `Switched to ${PACKET_MODE_LABELS.simple}`);
         } catch (error) {
             console.error('Error switching request mode:', error);
-            toast.error('Failed to switch mode');
+            toast.error('We couldn’t change the sheet type. Try again.');
         } finally {
             setUpdatingMode(false);
         }
@@ -246,10 +246,10 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         Back to Requests
                     </Button>
                     <div className="flex items-center gap-2">
-                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Seller submitted — upgrade to view</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Your seller submitted. Upgrade to see it.</h1>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Your seller filled out this form, but it arrived after your free plan limit for the month. Upgrade to Pro to view their answers, generate the utility info sheet, and unlock dashboard editing on submitted sheets.
+                        Your seller filled out this form, but it arrived after you had used this month’s free submitted sheets. Upgrade to Pro to see their answers, download the utility sheet, and edit submitted sheets from the dashboard.
                     </p>
                 </div>
 
@@ -262,17 +262,17 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             <div className="space-y-1">
                                 <p className="font-semibold text-foreground">This submission is locked</p>
                                 <p className="text-sm text-muted-foreground">
-                                    Created {format(new Date(request.created_at), 'MMMM d, yyyy')}. Your seller&apos;s utility information is saved — upgrade any time to unlock it.
+                                    Created {format(new Date(request.created_at), 'MMMM d, yyyy')}. Your seller&apos;s answers are saved. Upgrade any time to unlock them.
                                 </p>
                             </div>
                         </div>
                         <Separator className="bg-border" />
                         <div className="space-y-2.5">
                             {[
-                                'View your seller\'s submitted utility providers',
-                                'Generate and download the branded PDF',
-                                'Correct submitted sheet details from the dashboard',
-                                'Unlimited requests going forward — no monthly cap',
+                                'See the utility providers your seller submitted',
+                                'Download the PDF with your branding',
+                                'Correct details on submitted sheets from the dashboard',
+                                'Unlimited submitted sheets from now on, with no monthly limit',
                             ].map((item) => (
                                 <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <div className="h-4 w-4 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
@@ -286,7 +286,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             className="w-full sm:w-auto font-semibold px-8"
                             onClick={() => router.push('/dashboard/settings?tab=billing')}
                         >
-                            Upgrade to Pro — $9/month
+                            Upgrade to Pro, $9/month
                         </Button>
                         <Button
                             variant="ghost"
@@ -305,7 +305,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     const sellerLinkRow = (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
             <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Seller form</p>
+                <p className="text-xs text-muted-foreground">Seller link</p>
                 <p className="text-sm text-foreground truncate">{sellerLink}</p>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -313,7 +313,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     size="sm"
                     variant="outline"
                     className="border-input"
-                    aria-label="Copy seller form link"
+                    aria-label="Copy seller link"
                     onClick={() => copyToClipboard(sellerLink, 'Seller link copied')}
                 >
                     <Copy className="h-4 w-4" />
@@ -322,7 +322,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     size="sm"
                     variant="outline"
                     className="border-input"
-                    aria-label="Open seller form in new tab"
+                    aria-label="Open seller link in a new tab"
                     onClick={() => window.open(sellerLink, '_blank')}
                 >
                     <ExternalLink className="h-4 w-4" />
@@ -333,9 +333,9 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
     const infoSheetLinkRow = (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
             <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Utility info sheet</p>
+                <p className="text-xs text-muted-foreground">Utility sheet</p>
                 <p className="text-sm text-foreground truncate">
-                    {canViewPacket ? packetLink : 'Available after seller submission'}
+                    {canViewPacket ? packetLink : 'Available once the seller submits'}
                 </p>
             </div>
             <div className="flex gap-2 shrink-0">
@@ -343,8 +343,8 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     size="sm"
                     variant="outline"
                     className="border-input"
-                    aria-label="Copy info sheet link"
-                    onClick={() => copyToClipboard(packetLink, 'Info sheet link copied')}
+                    aria-label="Copy sheet link"
+                    onClick={() => copyToClipboard(packetLink, 'Sheet link copied')}
                     disabled={!canViewPacket}
                 >
                     <Copy className="h-4 w-4" />
@@ -353,7 +353,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     size="sm"
                     variant="outline"
                     className="border-input"
-                    aria-label="Open info sheet in new tab"
+                    aria-label="Open sheet in a new tab"
                     onClick={() => window.open(packetLink, '_blank')}
                     disabled={!canViewPacket}
                 >
@@ -401,11 +401,11 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                         <Button
                             variant="outline"
                             className="border-input text-foreground hover:bg-muted"
-                            onClick={() => copyToClipboard(packetLink, 'Info sheet link copied')}
+                            onClick={() => copyToClipboard(packetLink, 'Sheet link copied')}
                             disabled={!packetLink}
                         >
                             <Copy className="mr-2 h-4 w-4" />
-                            Copy Info Sheet Link
+                            Copy sheet link
                         </Button>
                     ) : (
                         <Button
@@ -415,7 +415,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             disabled={!sellerLink}
                         >
                             <Copy className="mr-2 h-4 w-4" />
-                            Copy Seller Link
+                            Copy seller link
                         </Button>
                     )}
                     {canRemind && (
@@ -430,7 +430,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             ) : (
                                 <Mail className="mr-2 h-4 w-4" />
                             )}
-                            {sendingReminder ? 'Sending…' : 'Send Reminder'}
+                            {sendingReminder ? 'Sending…' : 'Send reminder'}
                         </Button>
                     )}
                     <Button
@@ -453,7 +453,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     <div className="space-y-1">
                         <p className="text-sm font-medium text-foreground">Reopened for the seller</p>
                         <p className="text-sm text-muted-foreground">
-                            The seller link is editable and starts from the current info sheet. The info sheet link and PDF are unavailable until the seller submits again. Their submission will replace the sheet.
+                            The seller can change their answers again, starting from the current sheet. The sheet link and PDF are unavailable until the seller submits again. Their new answers will replace the sheet.
                         </p>
                     </div>
                     <Button
@@ -471,9 +471,9 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="border-border bg-card/50 lg:col-span-2">
                     <CardHeader>
-                        <CardTitle className="text-foreground">Seller Details</CardTitle>
+                        <CardTitle className="text-foreground">Seller details</CardTitle>
                         <CardDescription className="text-muted-foreground">
-                            Contact info and intake status
+                            Contact details, links and sheet type
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -517,7 +517,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
 
                         <Separator className="bg-border" />
                         <div className="space-y-2">
-                            <p className="text-sm font-medium text-foreground">Packet mode</p>
+                            <p className="text-sm font-medium text-foreground">Sheet type</p>
                             {modeSwitchAllowed ? (
                                 <div className="flex flex-wrap gap-2">
                                     <Button
@@ -541,7 +541,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
                             ) : (
                                 <p className="text-xs text-muted-foreground">
-                                    Mode is locked after seller opens the request.
+                                    The sheet type can’t be changed once the seller has opened the request.
                                 </p>
                             )}
                         </div>
@@ -552,7 +552,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                     <CardHeader>
                         <CardTitle className="text-foreground">Actions</CardTitle>
                         <CardDescription className="text-muted-foreground">
-                            Review, edit, and export
+                            Review, edit and download
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -573,13 +573,13 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             <Link href={`/packet/${request.public_token}`} target="_blank" rel="noopener noreferrer">
                                 <Button variant="outline" className="w-full border-input text-foreground hover:bg-muted">
                                     <ExternalLink className="mr-2 h-4 w-4" />
-                                    Open Info Sheet
+                                    Open sheet
                                 </Button>
                             </Link>
                         ) : (
                             <Button variant="outline" className="w-full border-input text-muted-foreground" disabled>
                                 <ExternalLink className="mr-2 h-4 w-4" />
-                                Open Info Sheet
+                                Open sheet
                             </Button>
                         )}
 
@@ -587,12 +587,12 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                             <Link href={`/dashboard/requests/${request.id}/edit`}>
                                 <Button variant="outline" className="w-full border-input text-foreground hover:bg-muted">
                                     <Pencil className="mr-2 h-4 w-4" />
-                                    Edit Info Sheet
+                                    Edit sheet
                                 </Button>
                             </Link>
                         ) : request.status === 'submitted' ? (
                             <p className="text-xs text-muted-foreground">
-                                Submitted-sheet editing is a Pro and Team feature inside the dashboard.
+                                Editing a submitted sheet is part of Pro and Teams.
                             </p>
                         ) : null}
 
@@ -607,7 +607,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
                                     Reopen for Seller
                                 </Button>
                                 <p className="text-xs text-muted-foreground">
-                                    Lets the seller correct their answers. Does not use another submission.
+                                    Lets the seller correct their answers. It doesn’t count as another submitted sheet.
                                 </p>
                             </div>
                         ) : null}

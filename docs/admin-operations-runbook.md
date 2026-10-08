@@ -62,7 +62,7 @@ Do not work around it by asking the customer to send a reminder. Their button is
 
 ### 2.3 A packet PDF fails
 
-1. **Issues & Triage** shows "Packet PDF generation failed unexpectedly" with a count. One isolated failure can be a transient browser start. Three within 15 minutes is the alert threshold.
+1. **Issues & Triage** shows "Sheet PDF generation failed unexpectedly" with a count. One isolated failure can be a transient browser start. Three within 15 minutes is the alert threshold.
 2. The failure is not linked to a request, because the download route only knows the packet's private link and does not store it. Use the customer's report, or the time of the failure against Vercel logs (search `[pdf][packet_attachment] failed`).
 3. Open the affected request in the customer's view and download the PDF yourself.
 4. If every PDF fails: check the Vercel function logs for the PDF route and recent deployments. Roll back the deployment if it started with a release.

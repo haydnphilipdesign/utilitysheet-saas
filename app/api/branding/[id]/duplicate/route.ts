@@ -46,7 +46,7 @@ export async function POST(
 
         if (!hasPaidAccess) {
             return NextResponse.json({
-                error: 'Custom branding is available on the Pro plan',
+                error: 'Branding Profiles are part of Pro and Teams.',
                 code: 'UPGRADE_REQUIRED',
             }, { status: 403 });
         }
@@ -78,12 +78,12 @@ export async function POST(
         });
 
         if (!copy) {
-            return NextResponse.json({ error: 'Failed to duplicate brand profile' }, { status: 500 });
+            return NextResponse.json({ error: 'We couldn’t duplicate the profile. Try again.' }, { status: 500 });
         }
 
         return NextResponse.json(copy, { status: 201 });
     } catch (error) {
         console.error('Error duplicating brand profile:', error);
-        return NextResponse.json({ error: 'Failed to duplicate brand profile' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t duplicate the profile. Try again.' }, { status: 500 });
     }
 }

@@ -11,6 +11,8 @@ import { pricingTiers } from "@/lib/marketing-content";
 const tiers = [
   {
     ...pricingTiers[0],
+    // The card heading already says Free, so the price line shows the amount.
+    price: "$0",
     period: undefined,
     description: "For trying UtilitySheet on your next few files.",
     cta: "Start free",
@@ -38,7 +40,7 @@ const tiers = [
       "Up to 10 saved seller forms per workspace",
       "Custom branded link",
       "Property Handoff Packet mode",
-      "Edit submitted sheets after seller submission",
+      "Edit sheets after the seller submits",
       "Custom PDF branding",
       "Branded PDF attachments on completion emails",
       "Remove UtilitySheet footer",
@@ -55,10 +57,10 @@ const tiers = [
     features: [
       "Everything in Pro",
       "Up to 10 saved seller forms per member",
-      "Shared organization workspace",
+      "One shared workspace for the team",
       "Any teammate with request access can edit submitted sheets",
       "Invite members and assign roles",
-      "Seat-based billing with 3-seat minimum",
+      "Billed per seat, with a 3-seat minimum",
       "Branding Profiles shared by the whole team",
       "Priority support",
     ],
@@ -180,7 +182,7 @@ export function PricingSection() {
           Teams starts at $21/month for 3 seats. All plans include a reusable
           seller link, a web sheet, and PDF downloads. The free plan counts a
           sheet only when a seller submits it. Paused forms count toward your
-          saved-form allowance, and existing links and settings are kept if
+          saved-form limit, and existing links and settings are kept if
           you downgrade.
         </p>
       </div>

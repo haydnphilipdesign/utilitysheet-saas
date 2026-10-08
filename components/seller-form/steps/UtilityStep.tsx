@@ -511,7 +511,7 @@ export function UtilityStep({
                                     data-testid={`seller-utility-skip-${category}`}
                                     className={`w-full py-3 text-sm sm:text-base ${wizardSecondaryButton}`}
                                 >
-                                    I&apos;m not sure, my agent can fill this in
+                                    I&apos;m not sure
                                 </button>
                             </div>
                         </div>
@@ -663,7 +663,7 @@ export function UtilityStep({
                             data-testid="seller-electric-meter-number"
                         />
                         <p className="text-[11px] sm:text-xs text-muted-foreground mt-1.5">
-                            If available, this will be added to the final PDF. Leave it blank if you don&apos;t have it.
+                            If you have it, we&apos;ll include it on the sheet for the buyer. Leave it blank if you don&apos;t.
                         </p>
                     </div>
 

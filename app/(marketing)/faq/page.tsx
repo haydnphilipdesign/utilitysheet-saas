@@ -61,7 +61,7 @@ export default function FaqPage() {
             {
               href: '/pricing',
               title: 'Pricing',
-              copy: 'Compare Starter, Pro, and Teams.',
+              copy: 'Compare Free, Pro, and Teams.',
             },
             {
               href: '/how-it-works',

@@ -32,8 +32,8 @@ export function FinalCtaSection() {
           <em>One better way to hand it off.</em>
         </h2>
         <p>
-          Create your free seller link and try it on your next file. Three live
-          files per month. No credit card required.
+          Create your free seller link and try it on your next file. Three
+          submitted sheets per month, free. No credit card required.
         </p>
         <div className="marketing-actions">
           <Link

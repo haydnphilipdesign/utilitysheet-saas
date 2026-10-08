@@ -159,7 +159,7 @@ export async function intakeStartResponse(request: Request, target: IntakeTarget
         const body = await request.json().catch(() => ({}));
         const parsed = intakeStartBodySchema.safeParse(body);
         if (!parsed.success) {
-            return invalidRequestBodyResponse('INVALID_INTAKE_START_REQUEST', 'Invalid intake request body');
+            return invalidRequestBodyResponse('INVALID_INTAKE_START_REQUEST', 'Please check the address and try again.');
         }
         const intakeValidation = validateIntakeAddress(parsed.data.propertyAddress);
         if (!intakeValidation.isComplete) {
@@ -270,7 +270,7 @@ export async function intakeStartResponse(request: Request, target: IntakeTarget
         });
 
         if (!newRequest) {
-            return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
+            return NextResponse.json({ error: 'We couldn’t start the form. Please try again.' }, { status: 500 });
         }
 
         const userAgent = request.headers.get('user-agent') || null;
@@ -302,6 +302,6 @@ export async function intakeStartResponse(request: Request, target: IntakeTarget
     } catch (error) {
         if ((error as { code?: string })?.code === 'SF409') return formErrorResponse(error);
         console.error('Error starting intake link:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t start the form. Please try again.' }, { status: 500 });
     }
 }

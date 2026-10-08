@@ -161,7 +161,7 @@ export async function validateFormPatch(
     if (patch.suffix !== undefined && !isValidLinkSuffix(patch.suffix))
         return NextResponse.json(
             {
-                error: 'Link ending must be 3 to 60 lowercase letters, numbers, and dashes.',
+                error: 'The end of the link must be 3 to 60 lowercase letters, numbers or dashes.',
                 code: 'INVALID_SUFFIX',
             },
             { status: 400 },

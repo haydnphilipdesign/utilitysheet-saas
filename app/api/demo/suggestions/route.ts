@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
     if (!rateLimitResult.success) {
         return NextResponse.json(
-            { error: 'Rate limit exceeded. Please slow down.' },
+            { error: 'Too many attempts. Wait a moment and try again.' },
             { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
         );
     }
@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
         if (!rateLimitResult.success) {
             return NextResponse.json(
-                { error: 'Rate limit exceeded. Please slow down.' },
+                { error: 'Too many attempts. Wait a moment and try again.' },
                 {
                     status: 429,
                     headers: getRateLimitHeaders(rateLimitResult),

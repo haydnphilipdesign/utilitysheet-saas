@@ -112,7 +112,7 @@ export default function SignupPage() {
             });
 
             if (result.status === 'error') {
-                throw new Error(result.error.message || 'Failed to create account');
+                throw new Error(result.error.message || 'We couldn’t create your account. Try again.');
             }
 
             trackEvent('signup_completed', { method: 'email', source: 'signup_form' });
@@ -144,7 +144,7 @@ export default function SignupPage() {
             router.push(destination);
             router.refresh();
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to create account');
+            setError(err instanceof Error ? err.message : 'We couldn’t create your account. Try again.');
             setLoading(false);
         }
     };
@@ -157,7 +157,7 @@ export default function SignupPage() {
             rememberPostAuthReturnTo(safeNextPath || getSafeNext());
             await stackClientApp.signInWithOAuth('google');
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to sign up with Google');
+            setError(err instanceof Error ? err.message : 'We couldn’t sign you up with Google. Try again.');
             setGoogleLoading(false);
         }
     };
@@ -273,7 +273,7 @@ export default function SignupPage() {
                                     inputMode="email"
                                     autoComplete="email"
                                     spellCheck={false}
-                                    placeholder="agent@realty.com"
+                                    placeholder="you@example.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
@@ -287,7 +287,7 @@ export default function SignupPage() {
                                     name="new-password"
                                     type="password"
                                     autoComplete="new-password"
-                                    placeholder="Min. 8 characters"
+                                    placeholder="At least 8 characters"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required

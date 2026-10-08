@@ -15,9 +15,9 @@ describe('ReopenRequestDialog', () => {
     it('states what reopening does before the coordinator confirms', () => {
         render(<ReopenRequestDialog request={request} onClose={vi.fn()} onReopened={vi.fn()} />);
 
-        expect(screen.getByText(/info sheet link and PDF are unavailable until the seller submits again/i)).toBeInTheDocument();
-        expect(screen.getByText(/next submission replaces the info sheet/i)).toBeInTheDocument();
-        expect(screen.getByText(/does not use another submission/i)).toBeInTheDocument();
+        expect(screen.getByText(/sheet link and PDF are unavailable until the seller submits again/i)).toBeInTheDocument();
+        expect(screen.getByText(/new answers replace the sheet/i)).toBeInTheDocument();
+        expect(screen.getByText(/does not count as another submitted sheet/i)).toBeInTheDocument();
         expect(screen.getByText(/No email is sent/i)).toBeInTheDocument();
     });
 

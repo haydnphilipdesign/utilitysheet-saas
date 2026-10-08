@@ -4,22 +4,22 @@ export function formErrorResponse(error: unknown) {
     if (code === 'SF409')
         return NextResponse.json(
             {
-                error: 'Form changed. Reload before saving or starting.',
+                error: 'This form was just updated. Reload the page, then try again.',
                 code: 'FORM_REVISION_CONFLICT',
             },
             { status: 409 },
         );
-    if (code === 'SF403') return NextResponse.json({ error: 'Additional forms are temporarily unavailable for this account.', code: 'FORM_PILOT_UNAVAILABLE' }, { status: 403 });
+    if (code === 'SF403') return NextResponse.json({ error: 'New forms can’t be added to this account right now. Your existing forms still work.', code: 'FORM_PILOT_UNAVAILABLE' }, { status: 403 });
     if (code === 'SF402') {
         let counts: { allowance?: number; usage?: number } = {};
         try { counts = JSON.parse((error as { detail?: string }).detail || '{}'); } catch { /* Counts are optional; never expose raw database detail. */ }
         const allowance = counts.allowance === 10 ? 10 : 1;
-        return NextResponse.json({ error: allowance === 1 ? 'Free includes one customizable form per workspace. Upgrade to Pro for up to ten.' : 'This workspace has reached its allowance of ten forms. Edit or reuse an existing form.', code: 'FORM_ALLOWANCE_REACHED', allowance, usage: Number.isInteger(counts.usage) ? counts.usage : undefined }, { status: 403 });
+        return NextResponse.json({ error: allowance === 1 ? 'Free includes one customizable form per workspace. Upgrade to Pro for up to ten.' : 'This workspace has reached its limit of ten forms. Edit or reuse one you already have.', code: 'FORM_ALLOWANCE_REACHED', allowance, usage: Number.isInteger(counts.usage) ? counts.usage : undefined }, { status: 403 });
     }
     if (code === 'SF429')
         return NextResponse.json(
             {
-                error: 'The account form limit has been reached. Existing forms remain available.',
+                error: 'You’ve reached the most forms one account can have. Your existing forms still work.',
                 code: 'FORM_TECHNICAL_CAP_REACHED',
             },
             { status: 429 },
@@ -27,7 +27,7 @@ export function formErrorResponse(error: unknown) {
     if (code === 'SF423')
         return NextResponse.json(
             {
-                error: 'That link ending is already used by another of your forms, or was shared before. Choose another.',
+                error: 'Another of your forms uses that link, or used it before. Choose a different one.',
                 code: 'SUFFIX_IN_USE',
             },
             { status: 409 },
@@ -49,7 +49,7 @@ export function formErrorResponse(error: unknown) {
     if (code === 'SF422')
         return NextResponse.json(
             {
-                error: 'This form cannot have its own link ending yet. Try again later.',
+                error: 'This form can’t have its own link yet. Try again later.',
                 code: 'BASE_FORM_HAS_NO_ENDING',
             },
             { status: 400 },
@@ -57,7 +57,7 @@ export function formErrorResponse(error: unknown) {
     if (code === '23505')
         return NextResponse.json(
             {
-                error: 'That link is already published. Choose another.',
+                error: 'That link name is already taken. Choose a different one.',
                 code: 'SLUG_IN_USE',
             },
             { status: 409 },

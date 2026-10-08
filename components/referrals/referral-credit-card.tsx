@@ -143,7 +143,7 @@ export function ReferralCreditCard({
             });
             toast.success('Referral link copied');
         } catch {
-            toast.error('Failed to copy referral link');
+            toast.error('We couldn’t copy the referral link.');
         }
     };
 
@@ -167,7 +167,7 @@ export function ReferralCreditCard({
             if (!response.ok || !isReferralAttribution(responseBody?.referralAttribution)) {
                 const message = typeof responseBody?.error === 'string'
                     ? responseBody.error
-                    : 'Failed to add referral code.';
+                    : 'We couldn’t add that referral code. Try again.';
                 toast.error(message);
                 return;
             }
@@ -186,7 +186,7 @@ export function ReferralCreditCard({
             toast.success('Referral code added');
         } catch (error) {
             console.error('Error claiming referral code:', error);
-            toast.error('Failed to add referral code.');
+            toast.error('We couldn’t add that referral code. Try again.');
         } finally {
             if (userId === submittedUserId) {
                 setIsClaimingReferral(false);

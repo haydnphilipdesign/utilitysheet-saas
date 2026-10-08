@@ -160,8 +160,12 @@ name in storage (`root_form_id`). That ownership is permanent and only matters
 for renaming the base and for referral codes; it no longer decides what the
 bare link opens.
 
-Edit the shared base above the form list. Every form has a Link ending field
-and full preview.
+Edit the shared base above the form list. Every form has a "Form link" field
+(its ending, shown after the fixed part of the link) and full preview. Customer
+wording never says "ending", "suffix" or "base": the dashboard says "main link",
+"link name" and "the end of the link" (see
+`.ai/decisions/2026-10-08-customer-facing-terminology.md`). This document keeps
+"ending" and "base" as the storage terms.
 New/duplicate drafts suggest a unique ending from the name, visibly before save.
 Editing the suggestion makes it independent of later name changes. Internal
 names remain private: a form that is not given an ending (the first form of a

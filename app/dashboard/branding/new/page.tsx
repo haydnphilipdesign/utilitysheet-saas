@@ -29,7 +29,7 @@ function NewBrandingPageContent() {
                             : 'Personal profile'
                     );
                     if (!hasPaidAccess) {
-                        toast.error('Upgrade to Pro to create custom branding');
+                        toast.error('Upgrade to Pro to create Branding Profiles');
                         router.push('/dashboard/branding');
                     }
                 }
@@ -54,16 +54,16 @@ function NewBrandingPageContent() {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Failed to create profile');
+                throw new Error(error.error || 'We couldn’t create the profile. Try again.');
             }
 
-            toast.success('Brand profile created successfully');
+            toast.success('Branding Profile created');
             // Redirect back to where they came from, or default to branding page
             router.push(returnTo || '/dashboard/branding');
             router.refresh();
         } catch (error) {
             console.error('Error creating profile:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to create brand profile');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t create the profile. Try again.');
             throw error;
         }
     };

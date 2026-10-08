@@ -65,7 +65,7 @@ export default function SellerUtilityInformationFormPage() {
             },
             {
               title: 'Better final output',
-              copy: 'The submitted information becomes a utility sheet you can actually hand off to buyers or support staff, and Pro/Teams can refine it later inside the dashboard.',
+              copy: 'The submitted information becomes a utility sheet you can actually hand off to buyers or support staff, and on Pro and Teams you can refine it later in your dashboard.',
             },
           ].map((item) => (
             <article key={item.title} className="rounded-3xl border border-border bg-card/30 p-6">

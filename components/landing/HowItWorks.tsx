@@ -113,7 +113,7 @@ export function HowItWorks() {
                                 Get a clean sheet and PDF back
                             </h4>
                             <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg mx-auto lg:mx-0">
-                                After submission, your team gets a clean web sheet and downloadable PDF. Your completion email can include the finished PDF automatically, and Pro/Teams can make dashboard edits that carry through to future PDF downloads.
+                                After submission, your team gets a clean web sheet and downloadable PDF. Your completion email can include the finished PDF automatically, and on Pro and Teams you can edit the sheet in your dashboard, so new PDF downloads include your changes.
                             </p>
                         </div>
                         <motion.div

@@ -21,6 +21,6 @@ export const FREE_MONTHLY_SUBMISSION_LIMIT = 3;
 export const DEFAULT_BUYER_STEPS = [
     'Contact each utility provider above to set up new service in your name.',
     'Schedule service to begin on your closing date or the following business day.',
-    'Have your closing documents handy — providers may ask for verification of ownership.',
+    'Have your closing documents handy. Providers may ask for proof of ownership.',
     'If transferring internet service, contact your provider at least 1-2 weeks in advance.',
 ];

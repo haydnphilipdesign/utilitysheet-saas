@@ -122,13 +122,13 @@ export function AdvancedModuleConfigurator({
                             </button>
                             <div className="flex shrink-0 items-center gap-2">
                                 <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
-                                    {moduleEnabled ? 'Enabled' : 'Disabled'}
+                                    {moduleEnabled ? 'On' : 'Off'}
                                 </span>
                                 <Switch
                                     checked={moduleEnabled}
                                     onCheckedChange={handleModuleToggle}
                                     disabled={disabled}
-                                    aria-label={`${moduleEnabled ? 'Disable' : 'Enable'} ${moduleMeta.label}`}
+                                    aria-label={`${moduleEnabled ? 'Turn off' : 'Turn on'} ${moduleMeta.label}`}
                                     data-testid={`module-toggle-${moduleKey}`}
                                 />
                             </div>
@@ -192,7 +192,7 @@ export function AdvancedModuleConfigurator({
 
                         {moduleEnabled && includedCount === 0 && (
                             <p className="border-t border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-600 dark:text-amber-300">
-                                Include at least one question or disable this module before saving.
+                                Include at least one question, or turn this section off before saving.
                             </p>
                         )}
                     </div>

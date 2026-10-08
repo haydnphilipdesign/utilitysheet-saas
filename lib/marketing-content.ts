@@ -26,7 +26,7 @@ export const faqItems = [
   {
     question: 'Can I save more than one seller form?',
     answer:
-      'Yes. Each saved seller form has its own name, reusable link, question settings, Branding Profile, and an optional short introduction for the seller. The free plan includes one customizable form per workspace. Pro includes up to ten per workspace, and Teams includes up to ten per member. Pick a form when you create an individual request, or share its link directly. You can duplicate, pause, and reactivate forms, and editing a form never changes requests that sellers have already started.',
+      'Yes. Each saved seller form has its own name, reusable link, question settings, Branding Profile, and an optional short introduction for the seller. The free plan includes one customizable form per workspace. Pro includes up to ten per workspace, and Teams includes up to ten per member. Pick a form when you create an individual request, or share its link directly. You can duplicate, pause, and resume forms, and editing a form never changes requests that sellers have already started.',
   },
   {
     question: 'Can I choose what sellers are asked?',
@@ -61,12 +61,12 @@ export const faqItems = [
   {
     question: 'How does PDF delivery work?',
     answer:
-      'When the seller submits, UtilitySheet can attach the finished utility sheet PDF to the completion email, so the file is ready to review and share right away. If you later update the live info sheet in the dashboard, future PDF downloads reflect those changes, but previously emailed attachments stay as sent snapshots.',
+      'When the seller submits, UtilitySheet can attach the finished utility sheet PDF to the completion email, so the file is ready to review and share right away. If you later update the sheet in the dashboard, new PDF downloads include your changes, but PDFs that were already emailed stay as they were sent.',
   },
   {
-    question: 'Can I edit a submitted info sheet?',
+    question: 'Can I edit a submitted sheet?',
     answer:
-      'Yes. Submitted info sheets can be edited after seller submission on Pro and Team plans. Editing happens inside the authenticated dashboard, and future PDF downloads reflect the latest saved version. You can correct the address, provider names, phone numbers, websites, home basics, and HOA details, replace a seller’s “Not sure” with the right provider, or leave a utility off the sheet. In Team workspaces, any teammate who already has access to the request can make updates.',
+      'Yes. On Pro and Teams you can edit a sheet after the seller submits it. You edit it in your dashboard, and new PDF downloads use the latest saved version. You can correct the address, provider names, phone numbers, websites, home basics, and HOA details, replace a seller’s “Not sure” with the right provider, or leave a utility off the sheet. In a Teams workspace, any teammate who can see the request can update it.',
   },
   {
     question: 'How do provider suggestions work?',
@@ -76,12 +76,12 @@ export const faqItems = [
   {
     question: 'What happens if I hit the free plan limit?',
     answer:
-      'The free plan includes three submitted sheets per month. A file only counts when the seller submits it, so creating and sending requests is never blocked, and a request the seller never answers does not use one. Submissions past the limit are still saved. They are locked until you upgrade, then unlock automatically. Editing submitted sheets is reserved for Pro and Team workspaces.',
+      'The free plan includes three submitted sheets per month. A request only counts when the seller submits it, so you can always create and send requests, and one the seller never answers does not count. Submissions past the limit are still saved. They are locked until you upgrade, then unlock automatically. Editing submitted sheets is part of Pro and Teams.',
   },
   {
     question: 'How long does it take to get started?',
     answer:
-      'After signup, your reusable seller link is the first thing you see in the dashboard. You can copy it right away, add it to a template, share it with a seller, and come back later to adjust branding, packet mode, or other settings.',
+      'After signup, your reusable seller link is the first thing you see in the dashboard. You can copy it right away, add it to a template, share it with a seller, and come back later to adjust branding, sheet type, or other settings.',
   },
   {
     question: 'What happens after I sign up?',
@@ -92,7 +92,7 @@ export const faqItems = [
 
 export const pricingTiers = [
   {
-    name: 'Starter',
+    name: 'Free',
     price: 'Free',
     description:
       'For proving the seller utility handoff workflow on a few submitted sheets each month.',
@@ -122,7 +122,7 @@ export const pricingTiers = [
       'Live updates to future PDF downloads',
       'Custom branding and branded links',
       'Branded PDF attachments',
-      'Locked submission unlocks',
+      'Locked submissions unlocked',
       'Priority support',
     ],
   },
@@ -135,9 +135,9 @@ export const pricingTiers = [
     features: [
       'Everything in Pro',
       'Up to 10 saved seller forms per member',
-      'Shared organization workspace',
+      'One shared workspace for the team',
       'Any teammate with request access can edit submitted sheets',
-      'Invites and user roles',
+      'Invite teammates and set roles',
       'Branding Profiles shared by the whole team',
       'Branded output across the team',
       'Priority support',
@@ -162,7 +162,7 @@ export const workflowSteps = [
     number: '03',
     title: 'Review, edit if needed, and share the buyer-ready sheet',
     description:
-      'The finished utility sheet is ready as a web view and downloadable PDF. Add it to the file, share it with buyers or support teams, and make dashboard-side corrections on Pro and Teams.',
+      'The finished utility sheet is ready as a web view and downloadable PDF. Add it to the file, share it with buyers or support teams, and correct details from the dashboard on Pro and Teams.',
   },
 ] as const;
 
@@ -170,7 +170,7 @@ export const featureHighlights = [
   {
     title: 'Reusable seller link',
     description:
-      'Use the same seller intake link across listings instead of rebuilding a utility request for every property.',
+      'Use the same seller link for every listing instead of writing a new utility request for each property.',
   },
   {
     title: 'Saved seller forms for different transactions',
@@ -213,7 +213,7 @@ export const featureHighlights = [
       'See which requests are complete, which sellers need a nudge, and which utility sheets are ready to review.',
   },
   {
-    title: 'White-label branding on paid plans',
+    title: 'Your own branding on paid plans',
     description:
       'Paid plans can add your logo, colors, branded link, and branded PDF output so the sheet looks like it came from your team.',
   },
@@ -236,7 +236,7 @@ export const audiencePages = [
     href: '/seller-utility-information-form',
     title: 'Seller utility information form',
     description:
-      'See how the guided seller experience turns one intake link into a ready-to-review utility sheet.',
+      'See how the guided seller experience turns one seller link into a ready-to-review utility sheet.',
   },
   {
     href: '/real-estate-closing-utility-checklist',

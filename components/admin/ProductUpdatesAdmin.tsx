@@ -32,7 +32,7 @@ type ConfirmAction = {
 } | null;
 
 function categoryLabel(category: string) {
-    if (category === 'bugfix') return 'Bugfix';
+    if (category === 'bugfix') return 'Fix';
     if (category === 'feature') return 'Feature';
     if (category === 'announcement') return 'Announcement';
     return category;
@@ -169,7 +169,7 @@ export function ProductUpdatesAdmin({ updates }: { updates: ProductUpdate[] }) {
                             >
                                 <option value="announcement">Announcement</option>
                                 <option value="feature">Feature</option>
-                                <option value="bugfix">Bugfix</option>
+                                <option value="bugfix">Fix</option>
                             </select>
                         </div>
                     </div>

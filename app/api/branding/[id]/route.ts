@@ -50,7 +50,7 @@ export async function GET(
         return NextResponse.json(profile);
     } catch (error) {
         console.error('Error fetching brand profile:', error);
-        return NextResponse.json({ error: 'Failed to fetch brand profile' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t load your Branding Profiles. Try again.' }, { status: 500 });
     }
 }
 
@@ -126,13 +126,13 @@ export async function PUT(
         });
 
         if (!updatedProfile) {
-            return NextResponse.json({ error: 'Failed to update brand profile' }, { status: 500 });
+            return NextResponse.json({ error: 'We couldn’t save the profile. Try again.' }, { status: 500 });
         }
 
         return NextResponse.json(updatedProfile);
     } catch (error) {
         console.error('Error updating brand profile:', error);
-        return NextResponse.json({ error: 'Failed to update brand profile' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t save the profile. Try again.' }, { status: 500 });
     }
 }
 
@@ -170,7 +170,7 @@ export async function DELETE(
 
         if (!hasPaidAccess) {
             return NextResponse.json({
-                error: 'Custom branding is available on the Pro plan',
+                error: 'Branding Profiles are part of Pro and Teams.',
                 code: 'UPGRADE_REQUIRED'
             }, { status: 403 });
         }
@@ -178,12 +178,12 @@ export async function DELETE(
         const success = await deleteBrandProfile(id);
 
         if (!success) {
-            return NextResponse.json({ error: 'Failed to delete brand profile' }, { status: 500 });
+            return NextResponse.json({ error: 'We couldn’t delete the profile. Try again.' }, { status: 500 });
         }
 
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error deleting brand profile:', error);
-        return NextResponse.json({ error: 'Failed to delete brand profile' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t delete the profile. Try again.' }, { status: 500 });
     }
 }

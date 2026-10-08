@@ -34,7 +34,7 @@ export function FormShareSelector({
         <div className="flex flex-wrap items-center gap-3 text-sm">
             {forms.length > 1 && (
                 <>
-                    <Label htmlFor="shareForm">Share form</Label>
+                    <Label htmlFor="shareForm">Form to share</Label>
                     <select
                         id="shareForm"
                         className="max-w-full rounded-md border border-input bg-background p-2"
@@ -52,7 +52,7 @@ export function FormShareSelector({
                                 {f.name}
                                 {f.isDefault ? ' (default)' : ''}
                                 {!f.isMine ? ' (shared by your team)' : ''}
-                                {!f.isActive ? ' — paused' : ''}
+                                {!f.isActive ? ' (paused)' : ''}
                             </option>
                         ))}
                     </select>
@@ -66,7 +66,7 @@ export function FormShareSelector({
             </Link>
             {form && !form.isActive && (
                 <p role="status" className="w-full text-muted-foreground">
-                    This form is paused. Reactivate it in Manage forms to share.
+                    This form is paused. Resume it in Manage forms to share it.
                 </p>
             )}
         </div>

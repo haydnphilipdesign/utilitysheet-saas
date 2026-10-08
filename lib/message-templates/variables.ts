@@ -23,7 +23,7 @@ export interface MessageTemplateVariable {
 export const MESSAGE_TEMPLATE_VARIABLES: MessageTemplateVariable[] = [
     { key: 'seller_first_name_with_space', label: 'Seller first name', example: ' Jordan' },
     { key: 'seller_name', label: 'Seller full name', example: 'Jordan Rivera' },
-    { key: 'agent_name', label: 'Agent name', example: 'Alex Morgan' },
+    { key: 'agent_name', label: 'Contact name', example: 'Alex Morgan' },
     { key: 'property_address', label: 'Property address', example: '123 Maple Ave, Austin, TX' },
     { key: 'closing_date', label: 'Closing date', example: 'Friday, August 1, 2026' },
     { key: 'link', label: 'Form link', example: 'https://utilitysheet.com/s/example' },

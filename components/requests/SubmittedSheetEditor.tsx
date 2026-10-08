@@ -338,7 +338,7 @@ function StatusChoice({
 }) {
     return (
         <fieldset className="min-w-0">
-            <legend className="sr-only">How {label} appears on the info sheet</legend>
+            <legend className="sr-only">How {label} appears on the sheet</legend>
             <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1 sm:inline-grid sm:w-auto">
                 {STATUS_OPTIONS.map((option) => (
                     <label
@@ -389,7 +389,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             if (!response.ok) {
                 setData(null);
                 setSaved(null);
-                setLoadError(result.message || result.error || 'We couldn’t load this info sheet.');
+                setLoadError(result.message || result.error || 'We couldn’t load this sheet.');
                 return;
             }
 
@@ -401,7 +401,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             console.error('Failed to load submitted sheet editor:', error);
             setData(null);
             setSaved(null);
-            setLoadError('We couldn’t load this info sheet. Check your connection and try again.');
+            setLoadError('We couldn’t load this sheet. Check your connection and try again.');
         } finally {
             setLoading(false);
         }
@@ -610,7 +610,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             toast.success(successMessage);
         } catch (error) {
             console.error('Failed to download packet PDF:', error);
-            toast.error('We couldn’t generate the PDF. Please try again.');
+            toast.error('We couldn’t create the PDF. Try again.');
         } finally {
             setDownloadingPdf(false);
         }
@@ -634,7 +634,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
         return (
             <div className="flex h-96 flex-col items-center justify-center gap-3 text-muted-foreground" role="status">
                 <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
-                <p className="text-sm">Loading info sheet…</p>
+                <p className="text-sm">Loading sheet…</p>
             </div>
         );
     }
@@ -644,9 +644,9 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             <div className="mx-auto max-w-xl space-y-4 py-8">
                 <div className="rounded-xl border border-border bg-card p-6 text-center">
                     <AlertCircle className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
-                    <h1 className="mt-3 text-lg font-semibold text-foreground">Editor unavailable</h1>
+                    <h1 className="mt-3 text-lg font-semibold text-foreground">We couldn’t open the editor</h1>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        {loadError || 'We couldn’t load this info sheet.'}
+                        {loadError || 'We couldn’t load this sheet.'}
                     </p>
                     <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
                         <Button variant="outline" onClick={() => router.push(requestHref)}>
@@ -681,7 +681,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                 ? { icon: <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />, text: 'Fix the highlighted fields to save.', tone: 'text-destructive' }
             : saveState === 'error'
                 ? { icon: <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />, text: saveErrorMessage || 'Changes not saved yet. Try saving again.', tone: 'text-destructive' }
-                : { icon: <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />, text: 'Unsaved changes. Not on the info sheet yet.', tone: 'text-foreground' }
+                : { icon: <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />, text: 'Unsaved changes. Not on the sheet yet.', tone: 'text-foreground' }
             : saveState === 'saved'
                 ? { icon: <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />, text: 'All changes saved', tone: 'text-muted-foreground' }
                 : { icon: null, text: 'No unsaved changes', tone: 'text-muted-foreground' };
@@ -713,7 +713,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div className="min-w-0 space-y-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Edit Info Sheet</h1>
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Edit sheet</h1>
                             <StatusBadge status={data.request.status} />
                         </div>
                         <p className="text-base font-medium text-foreground break-words">{saved?.request.propertyAddress}</p>
@@ -734,7 +734,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                             className={cn(buttonVariants({ variant: 'outline' }))}
                         >
                             <ExternalLink className="h-4 w-4" aria-hidden="true" />
-                            View info sheet
+                            View sheet
                         </a>
                         <Button
                             variant="outline"
@@ -752,7 +752,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                 </div>
 
                 <p className="text-sm text-muted-foreground">
-                    Correct or refine the seller’s answers. Saving updates the web info sheet and every PDF downloaded afterward.
+                    Correct or refine the seller’s answers. Saving updates the web sheet and every PDF downloaded afterward.
                 </p>
             </div>
 
@@ -852,7 +852,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                             {HOA_TEXT_FIELDS.map((field) => {
                                 const id = fieldId('hoa', field.key);
                                 const hint = field.key === 'hoa_portal_or_payment'
-                                    ? 'Prints on the info sheet. Do not enter passwords or account numbers.'
+                                    ? 'Prints on the sheet. Do not enter passwords or account numbers.'
                                     : undefined;
                                 return (
                                     <Fragment key={field.key}>
@@ -948,7 +948,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
 
                             {utility.status === 'not_included' ? (
                                 <p className="border-t border-border px-4 py-3 text-sm text-muted-foreground sm:px-5">
-                                    {label} won’t appear on the web info sheet or PDF.
+                                    {label} won’t appear on the web sheet or PDF.
                                 </p>
                             ) : (
                                 <div className="space-y-4 border-t border-border p-4 sm:p-5">
@@ -1207,7 +1207,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
                     <DialogHeader>
                         <DialogTitle>Discard unsaved changes?</DialogTitle>
                         <DialogDescription>
-                            Your edits to this info sheet haven’t been saved. The web info sheet and PDF will keep the last saved version.
+                            Your edits to this sheet haven’t been saved. The web sheet and PDF will keep the last saved version.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -1230,7 +1230,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             <Dialog open={conflictOpen} onOpenChange={setConflictOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>This info sheet changed</DialogTitle>
+                        <DialogTitle>This sheet changed</DialogTitle>
                         <DialogDescription>
                             Someone else saved changes while you were editing, so your changes weren’t saved. Reload to see the latest version, then reapply your edits.
                         </DialogDescription>

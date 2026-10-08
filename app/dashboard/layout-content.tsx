@@ -111,12 +111,12 @@ export function DashboardLayoutContent({
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data?.error || 'Failed to switch workspace');
+                throw new Error(data?.error || 'We couldn’t switch workspaces. Try again.');
             }
 
             window.location.assign('/dashboard');
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to switch workspace');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t switch workspaces. Try again.');
             setSwitchingOrganizationId(null);
         }
     };

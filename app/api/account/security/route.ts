@@ -23,12 +23,12 @@ async function applyRateLimit(userId: string) {
         requirePersistent: process.env.NODE_ENV === 'production',
     });
     if (isRateLimitUnavailable(result)) {
-        return { response: NextResponse.json({ error: 'Security controls are temporarily unavailable.' }, { status: 503 }) };
+        return { response: NextResponse.json({ error: 'Sign-in settings are temporarily unavailable. Try again shortly.' }, { status: 503 }) };
     }
     if (!result.success) {
         return {
             response: NextResponse.json(
-                { error: 'Too many account security requests. Please try again later.' },
+                { error: 'Too many attempts. Try again in a few minutes.' },
                 { status: 429, headers: getRateLimitHeaders(result) },
             ),
         };
@@ -75,7 +75,7 @@ export async function GET() {
         const response = accountSecurityErrorResponse(error);
         if (response) return response;
         console.error('Failed to load account security settings', error);
-        return NextResponse.json({ error: 'Failed to load account security settings.' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t load your sign-in settings.' }, { status: 500 });
     }
 }
 
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: 'Session not found.' }, { status: 404 });
             }
             if (target.isCurrentSession) {
-                return NextResponse.json({ error: 'Use Sign Out to end the current session.' }, { status: 409 });
+                return NextResponse.json({ error: 'To sign out of this device, use Sign out.' }, { status: 409 });
             }
             await context.user.revokeSession(target.id);
             await recordAccountSecurityEvent({
@@ -183,7 +183,7 @@ export async function POST(request: Request) {
                 callbackUrl: '/dashboard/settings?tab=account',
             });
             if (result.status === 'error') {
-                throw new Error('Stack Auth could not send the password setup email.');
+                throw new Error('We couldn’t send the password setup email. Try again.');
             }
             await recordAccountSecurityEvent({
                 accountId: context.account.id as string,
@@ -198,6 +198,6 @@ export async function POST(request: Request) {
         const response = accountSecurityErrorResponse(error);
         if (response) return response;
         console.error('Account security action failed', error);
-        return NextResponse.json({ error: 'Account security action failed.' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t make that change. Try again.' }, { status: 500 });
     }
 }

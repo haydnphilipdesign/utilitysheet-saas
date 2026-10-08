@@ -437,7 +437,7 @@ export function WorkspaceTeam({
                     </div>
                     <p id="workspaceNameHelp" className="text-xs text-muted-foreground">
                         {isAdmin
-                            ? 'Renaming does not change any seller or packet links you have already shared.'
+                            ? 'Renaming does not change any seller or sheet links you have already shared.'
                             : 'Only workspace admins can rename the workspace.'}
                     </p>
                     {isAdmin && (nameError ? (

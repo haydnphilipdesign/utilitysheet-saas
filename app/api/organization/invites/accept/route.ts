@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
         if (organization.subscription_status !== 'team') {
             return NextResponse.json(
-                { error: 'Team plan required', message: 'This organization is not currently on a Teams plan.' },
+                { error: 'Team plan required', message: 'This workspace isn’t on a Teams plan right now.' },
                 { status: 402 }
             );
         }
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
         if (acceptanceResult.status === 'no_seat') {
             return NextResponse.json(
-                { error: 'No seats available', message: 'This organization has no available seats.' },
+                { error: 'No seats available', message: 'This workspace has no free seats right now.' },
                 { status: 409 }
             );
         }

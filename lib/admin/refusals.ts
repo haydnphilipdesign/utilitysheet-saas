@@ -95,7 +95,7 @@ export const REQUEST_STATUS_REFUSALS: Record<Exclude<RequestStatusOutcome, 'OK'>
     UNMETERED_SUBMITTED_REVIEW:
         'This request shows Submitted without a recorded first submission (a test drive or an older record). It needs manual review and cannot be changed with this control.',
     SUBMISSION_REQUIRES_SELLER:
-        'Submitted cannot be set by hand. A submission is recorded only when the seller completes the form, which is what meters usage and produces the packet.',
+        'Submitted cannot be set by hand. A submission is recorded only when the seller completes the form, which is what meters usage and produces the sheet.',
     SUBMITTED_LOCKED:
         'This request has a recorded submission and cannot be reopened here. Correct its details with submitted-sheet editing instead.',
     METERED_RESTORE_ONLY:

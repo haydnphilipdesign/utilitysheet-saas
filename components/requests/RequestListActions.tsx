@@ -158,7 +158,7 @@ export function RequestListActions({
                             variant="ghost"
                         >
                             <ExternalLink />
-                            Open packet
+                            Open sheet
                         </ActionLink>
                         <Button
                             type="button"
@@ -176,7 +176,7 @@ export function RequestListActions({
                 {!isLocked && request.can_edit_submitted_sheet ? (
                     <ActionLink href={`/dashboard/requests/${request.id}/edit`} variant="ghost">
                         <FilePenLine />
-                        Edit info sheet
+                        Edit sheet
                     </ActionLink>
                 ) : null}
 
@@ -244,7 +244,7 @@ export function RequestListActions({
                                 onClick={() => window.open(`/packet/${request.public_token}`, '_blank', 'noopener,noreferrer')}
                             >
                                 <ExternalLink className="mr-2 h-4 w-4" />
-                                Open packet
+                                Open sheet
                             </DropdownMenuItem>
                             <DropdownMenuItem
                                 className="cursor-pointer text-foreground focus:bg-muted focus:text-foreground"
@@ -265,7 +265,7 @@ export function RequestListActions({
                             onClick={() => window.location.assign(`/dashboard/requests/${request.id}/edit`)}
                         >
                             <FilePenLine className="mr-2 h-4 w-4" />
-                            Edit info sheet
+                            Edit sheet
                         </DropdownMenuItem>
                     ) : null}
 

@@ -13,7 +13,7 @@ export default async function AdminUpdatesPage() {
         <div className="space-y-6">
             <AdminPageHeader
                 title="Product Updates"
-                description="Draft, review, and publish changelog entries that appear in the customer dashboard."
+                description="Draft, review, and publish the updates customers see in their dashboard."
                 action={(
                     <Link href="/dashboard">
                         <Button variant="secondary">Back to App</Button>

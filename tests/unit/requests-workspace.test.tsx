@@ -265,12 +265,12 @@ describe('Requests workspace', () => {
             'href',
             '/dashboard/requests/req_submitted'
         );
-        expect(within(submittedCard).getByRole('link', { name: 'Open packet' })).toHaveAttribute(
+        expect(within(submittedCard).getByRole('link', { name: 'Open sheet' })).toHaveAttribute(
             'href',
             '/packet/public-submitted'
         );
         expect(within(submittedCard).getByRole('button', { name: 'Download PDF' })).toBeEnabled();
-        expect(within(submittedCard).getByRole('link', { name: 'Edit info sheet' })).toHaveAttribute(
+        expect(within(submittedCard).getByRole('link', { name: 'Edit sheet' })).toHaveAttribute(
             'href',
             '/dashboard/requests/req_submitted/edit'
         );

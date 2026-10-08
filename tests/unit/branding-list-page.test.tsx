@@ -103,7 +103,7 @@ describe('BrandingPage list', () => {
         ]);
         render(<BrandingPage />);
 
-        expect(await screen.findByText('Used by 3 requests · preselected for new requests · used by saved seller forms')).toBeTruthy();
+        expect(await screen.findByText('Used by 3 requests · preselected for new requests · used by seller forms')).toBeTruthy();
         expect(screen.getByText('Used by 1 request')).toBeTruthy();
         expect(screen.getByText('Seller form')).toBeTruthy();
         expect(screen.getByRole('link', { name: 'Listing' }).getAttribute('href')).toBe('/dashboard/forms/form_1');
@@ -136,8 +136,8 @@ describe('BrandingPage list', () => {
 
         expect(await screen.findByText('Delete "Acme Realty"?')).toBeTruthy();
         expect(screen.getByText(/2 requests use this profile/)).toBeTruthy();
-        expect(screen.getByText(/Saved seller forms using this profile/)).toBeTruthy();
-        expect(screen.getByText(/oldest remaining profile will take over/)).toBeTruthy();
+        expect(screen.getByText(/Seller forms that use this profile/)).toBeTruthy();
+        expect(screen.getByText(/oldest remaining profile will be used instead/)).toBeTruthy();
 
         fireEvent.click(screen.getByRole('button', { name: /Delete profile/ }));
 

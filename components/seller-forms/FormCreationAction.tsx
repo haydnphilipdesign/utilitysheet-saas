@@ -30,22 +30,21 @@ export function FormLimitDialog({
                 <DialogHeader>
                     <DialogTitle>
                         {capabilities.upgradeRequired
-                            ? 'Save more workflows with Pro'
-                            : 'Additional forms unavailable'}
+                            ? 'Add more forms with Pro'
+                            : 'You can’t add another form right now'}
                     </DialogTitle>
                     <DialogDescription>
                         {capabilities.message}
                     </DialogDescription>
                 </DialogHeader>
                 <p className="text-sm text-muted-foreground">
-                    You can keep customizing, previewing and sharing
-                    existing forms. Paused forms count toward your
-                    allowance.
+                    You can keep editing, previewing and sharing the forms
+                    you have. Paused forms count toward your limit.
                 </p>
                 {capabilities.upgradeRequired &&
                     !capabilities.pilotAvailable && (
                         <p className="text-sm text-muted-foreground">
-                            Additional forms are temporarily unavailable.
+                            New forms can’t be added right now.
                         </p>
                     )}
                 {capabilities.upgradeRequired && (
@@ -53,7 +52,7 @@ export function FormLimitDialog({
                         className="text-primary underline"
                         href="/dashboard/settings?tab=billing"
                     >
-                        View Pro upgrade
+                        See Pro
                     </Link>
                 )}
             </DialogContent>

@@ -251,7 +251,7 @@ describe('GET /api/requests list contract', () => {
             hasNextPage: false,
         });
         expect(body.data[0]).toMatchObject({
-            property_address: 'Locked — upgrade to view',
+            property_address: 'Locked. Upgrade to view.',
             seller_name: null,
             seller_email: null,
             seller_phone: null,

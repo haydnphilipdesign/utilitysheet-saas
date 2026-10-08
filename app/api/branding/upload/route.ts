@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
         if (!rateLimitResult.success) {
             return NextResponse.json(
-                { error: 'Rate limit exceeded. Please slow down.' },
+                { error: 'Too many attempts. Wait a moment and try again.' },
                 { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
             );
         }
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         // Validate file type
         if (!ALLOWED_TYPES.includes(file.type)) {
             return NextResponse.json(
-                { error: 'Invalid file type. Allowed: JPEG, PNG, WebP, SVG' },
+                { error: 'That file type isn’t supported. Use a JPEG, PNG, WebP or SVG.' },
                 { status: 400 }
             );
         }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         // Validate file size
         if (file.size > MAX_FILE_SIZE) {
             return NextResponse.json(
-                { error: 'File too large. Maximum size is 2MB' },
+                { error: 'That file is too large. The limit is 2 MB.' },
                 { status: 400 }
             );
         }
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         const sniffedType = detectMimeType(fileData);
         if (!sniffedType || !ALLOWED_TYPES.includes(sniffedType) || sniffedType !== file.type) {
             return NextResponse.json(
-                { error: 'File signature does not match the declared type.' },
+                { error: 'That file isn’t the image type its name says it is. Save it again as a PNG or JPEG and retry.' },
                 { status: 400 }
             );
         }
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
             const svgText = new TextDecoder().decode(fileData);
             if (!isSvgSafe(svgText)) {
                 return NextResponse.json(
-                    { error: 'SVG contains disallowed content.' },
+                    { error: 'This SVG contains scripts or other content we can’t accept. Export a plain SVG, or use a PNG.' },
                     { status: 400 }
                 );
             }
@@ -152,7 +152,7 @@ export async function DELETE(request: NextRequest) {
 
         if (!rateLimitResult.success) {
             return NextResponse.json(
-                { error: 'Rate limit exceeded. Please slow down.' },
+                { error: 'Too many attempts. Wait a moment and try again.' },
                 { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
             );
         }

@@ -182,12 +182,12 @@ describe('dashboard customer home', () => {
         await screen.findByRole('heading', { name: 'Your seller link is ready' });
 
         const copyLinkButton = screen.getByRole('button', { name: /copy reusable seller link$/i });
-        const smsButton = screen.getByRole('button', { name: /copy reusable seller link sms message/i });
+        const smsButton = screen.getByRole('button', { name: /copy a text message with your reusable seller link/i });
         const emailButton = screen.getByRole('button', { name: /open email with reusable seller link/i });
         const openButton = screen.getByRole('button', { name: /open reusable seller link$/i });
 
         expect(copyLinkButton).toHaveTextContent('Copy');
-        expect(smsButton).toHaveTextContent('SMS');
+        expect(smsButton).toHaveTextContent('Text');
         expect(emailButton).toHaveTextContent('Email');
         expect(openButton).toHaveTextContent('Open');
         for (const action of [copyLinkButton, smsButton, emailButton, openButton]) {
@@ -201,7 +201,7 @@ describe('dashboard customer home', () => {
 
         expect(screen.getByText('Seller enters the property address')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /finish optional setup/i })).toHaveAttribute('href', '/onboarding');
-        expect(screen.getByRole('link', { name: /manage seller link settings/i })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: /manage seller forms/i })).toHaveAttribute(
             'href',
             '/dashboard/settings?tab=link'
         );
@@ -266,7 +266,7 @@ describe('dashboard customer home', () => {
             'href',
             '/dashboard/requests?status=needs_attention'
         );
-        expect(screen.getByText('2 of 3 free submissions left this month')).toBeInTheDocument();
+        expect(screen.getByText('2 of 3 free submitted sheets left this month')).toBeInTheDocument();
         expect(screen.queryByTestId('dashboard-new-request')).not.toBeInTheDocument();
 
         expect(fetchMock).toHaveBeenCalledWith(
@@ -294,7 +294,7 @@ describe('dashboard customer home', () => {
         const helpTrigger = screen.getByRole('button', { name: /how the reusable link works/i });
         fireEvent.click(helpTrigger);
         expect(await screen.findByText('Seller opens your link and enters the property address.')).toBeVisible();
-        expect(screen.getByRole('link', { name: /manage seller link settings/i })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: /manage seller forms/i })).toHaveAttribute(
             'href',
             '/dashboard/settings?tab=link'
         );
@@ -313,6 +313,6 @@ describe('dashboard customer home', () => {
 
         await screen.findByRole('heading', { name: 'Reusable seller link' });
         expect(screen.getByRole('alert')).toHaveTextContent('We could not load requests needing attention.');
-        expect(screen.getByRole('button', { name: /retry dashboard work/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /try loading again/i })).toBeInTheDocument();
     });
 });

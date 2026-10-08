@@ -94,7 +94,7 @@ export function AccountSecuritySettings() {
                 if (promptForReauth) setReauthOpen(true);
                 return false;
             }
-            if (!response.ok) throw new Error(String(data.error || 'Failed to load security settings.'));
+            if (!response.ok) throw new Error(String(data.error || 'We couldn’t load your sign-in settings.'));
             setSecurity(data as unknown as SecuritySummary);
             setLoadFailed(false);
             return true;
@@ -168,12 +168,12 @@ export function AccountSecuritySettings() {
                 setReauthOpen(true);
                 throw new Error(RECENT_AUTH_PROMPT);
             }
-            if (!response.ok) throw new Error(String(data.error || 'Account security action failed.'));
+            if (!response.ok) throw new Error(String(data.error || 'We couldn’t make that change. Try again.'));
             toast.success(successMessage);
             await loadSecurity(false);
             return true;
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Account security action failed.');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t make that change. Try again.');
             return false;
         } finally {
             setBusyAction(null);
@@ -228,7 +228,7 @@ export function AccountSecuritySettings() {
             toast.success('Password changed. Your other devices were signed out.');
             await loadSecurity(false);
         } catch (error) {
-            setPasswordError(error instanceof Error ? error.message : 'Password change failed.');
+            setPasswordError(error instanceof Error ? error.message : 'We couldn’t change your password. Try again.');
         } finally {
             setBusyAction(null);
         }
@@ -245,7 +245,7 @@ export function AccountSecuritySettings() {
             }
             if (!response.ok) {
                 const data = await readJson(response);
-                throw new Error(String(data.error || 'Export failed.'));
+                throw new Error(String(data.error || 'We couldn’t download your data. Try again.'));
             }
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
@@ -258,7 +258,7 @@ export function AccountSecuritySettings() {
             URL.revokeObjectURL(url);
             toast.success('Your data was downloaded.');
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Export failed.');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t download your data. Try again.');
         } finally {
             setBusyAction(null);
         }

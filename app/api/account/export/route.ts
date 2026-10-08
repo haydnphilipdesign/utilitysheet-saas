@@ -10,11 +10,11 @@ export async function GET() {
             requirePersistent: process.env.NODE_ENV === 'production',
         });
         if (isRateLimitUnavailable(rateLimit)) {
-            return NextResponse.json({ error: 'Account export is temporarily unavailable.' }, { status: 503 });
+            return NextResponse.json({ error: 'Downloading your data is temporarily unavailable. Try again shortly.' }, { status: 503 });
         }
         if (!rateLimit.success) {
             return NextResponse.json(
-                { error: 'Too many export requests. Please try again later.' },
+                { error: 'You’ve downloaded your data several times recently. Try again later.' },
                 { status: 429, headers: getRateLimitHeaders(rateLimit) },
             );
         }
@@ -56,6 +56,6 @@ export async function GET() {
         const response = accountSecurityErrorResponse(error);
         if (response) return response;
         console.error('Account export failed', error);
-        return NextResponse.json({ error: 'Account export failed.' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t prepare your data. Try again.' }, { status: 500 });
     }
 }

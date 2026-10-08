@@ -83,7 +83,7 @@ export async function PATCH(request: Request, { params }: InviteRouteContext): P
         }
         if (!rateLimitResult.success) {
             return NextResponse.json(
-                { error: 'Rate limit exceeded. Please slow down before sending more invites.' },
+                { error: 'You’ve sent a lot of invitations in a short time. Wait a few minutes, then try again.' },
                 { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
             );
         }

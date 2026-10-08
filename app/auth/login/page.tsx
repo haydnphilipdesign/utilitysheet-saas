@@ -94,14 +94,14 @@ export default function LoginPage() {
             });
 
             if (result.status === 'error') {
-                throw new Error(result.error.message || 'Invalid email or password');
+                throw new Error(result.error.message || 'That email or password isn’t right. Try again.');
             }
 
             const destination = (await getPostAuthRoute('login_form_post_auth')) || '/dashboard';
             router.push(destination);
             router.refresh();
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to sign in');
+            setError(err instanceof Error ? err.message : 'We couldn’t sign you in. Try again.');
             setLoading(false);
         }
     };
@@ -113,7 +113,7 @@ export default function LoginPage() {
             rememberPostAuthReturnTo(safeNextPath || getSafeNext());
             await stackClientApp.signInWithOAuth('google');
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to sign in with Google');
+            setError(err instanceof Error ? err.message : 'We couldn’t sign you in with Google. Try again.');
             setGoogleLoading(false);
         }
     };
@@ -167,7 +167,7 @@ export default function LoginPage() {
                                             inputMode="email"
                                             autoComplete="email"
                                             spellCheck={false}
-                                            placeholder="agent@realty.com"
+                                            placeholder="you@example.com"
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
                                             required

@@ -45,7 +45,7 @@ export default function BrandingPage() {
                 const data = await brandsResponse.json();
                 setBrands(data);
             } else {
-                toast.error('Failed to fetch brand profiles');
+                toast.error('We couldn’t load your Branding Profiles. Reload the page to try again.');
             }
 
             if (accountResponse.ok) {
@@ -55,7 +55,7 @@ export default function BrandingPage() {
             }
         } catch (error) {
             console.error('Error fetching data:', error);
-            toast.error('Error loading branding page');
+            toast.error('We couldn’t load your Branding Profiles. Reload the page to try again.');
         } finally {
             setLoading(false);
         }
@@ -75,16 +75,16 @@ export default function BrandingPage() {
             });
 
             if (response.ok) {
-                toast.success('Profile deleted successfully');
+                toast.success('Profile deleted');
                 setDeleteTarget(null);
                 fetchData();
             } else {
                 const error = await response.json();
-                toast.error(error.error || 'Failed to delete profile');
+                toast.error(error.error || 'We couldn’t delete the profile. Try again.');
             }
         } catch (error) {
             console.error('Error deleting profile:', error);
-            toast.error('Error deleting profile');
+            toast.error('We couldn’t delete the profile. Try again.');
         } finally {
             setDeleting(false);
         }
@@ -92,7 +92,7 @@ export default function BrandingPage() {
 
     const handleDuplicate = async (profile: BrandProfileWithUsage) => {
         if (!isPro) {
-            toast.error('Upgrade to Pro to manage branding profiles');
+            toast.error('Upgrade to Pro to manage Branding Profiles');
             return;
         }
 
@@ -107,11 +107,11 @@ export default function BrandingPage() {
                 fetchData();
             } else {
                 const error = await response.json();
-                toast.error(error.error || 'Failed to duplicate profile');
+                toast.error(error.error || 'We couldn’t duplicate the profile. Try again.');
             }
         } catch (error) {
             console.error('Error duplicating profile:', error);
-            toast.error('Error duplicating profile');
+            toast.error('We couldn’t duplicate the profile. Try again.');
         } finally {
             setDuplicatingId(null);
         }
@@ -119,7 +119,7 @@ export default function BrandingPage() {
 
     const handleSetDefault = async (profile: BrandProfileWithUsage) => {
         if (!isPro) {
-            toast.error('Upgrade to Pro to manage branding profiles');
+            toast.error('Upgrade to Pro to manage Branding Profiles');
             return;
         }
 
@@ -139,11 +139,11 @@ export default function BrandingPage() {
                 fetchData();
             } else {
                 const error = await response.json();
-                toast.error(error.error || 'Failed to update default profile');
+                toast.error(error.error || 'We couldn’t change the default profile. Try again.');
             }
         } catch (error) {
             console.error('Error setting default:', error);
-            toast.error('Error setting default profile');
+            toast.error('We couldn’t change the default profile. Try again.');
         }
     };
 
@@ -170,13 +170,13 @@ export default function BrandingPage() {
                         <Link href="/dashboard/branding/new">
                             <Button>
                                 <Plus className="mr-2 h-4 w-4" />
-                                New Profile
+                                New profile
                             </Button>
                         </Link>
                     ) : (
                         <Button disabled variant="secondary">
                             <Lock className="mr-2 h-4 w-4" />
-                            Upgrade to Create Profile
+                            Upgrade to create a profile
                         </Button>
                     )
                 }
@@ -195,12 +195,12 @@ export default function BrandingPage() {
 
                     {isPro ? (
                         <div className="text-center max-w-sm">
-                            <h3 className="text-xl font-bold text-foreground mb-2">No branding profiles yet</h3>
+                            <h3 className="text-xl font-bold text-foreground mb-2">No Branding Profiles yet</h3>
                             <p className="text-muted-foreground mb-6">Create your first profile to customize your utility sheets with your own logo and colors.</p>
                             <Link href="/dashboard/branding/new">
                                 <Button>
                                     <Plus className="mr-2 h-4 w-4" />
-                                    Create First Profile
+                                    Create your first profile
                                 </Button>
                             </Link>
                         </div>
@@ -208,11 +208,11 @@ export default function BrandingPage() {
                         <div className="text-center max-w-md">
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-medium mb-4">
                                 <Star className="h-3 w-3 fill-primary" />
-                                Pro Feature
+                                Pro and Teams
                             </div>
-                            <h3 className="text-2xl font-bold text-foreground mb-2">Unlock Custom Branding</h3>
+                            <h3 className="text-2xl font-bold text-foreground mb-2">Add your own branding</h3>
                             <p className="text-muted-foreground mb-8">
-                                Stand out from the competition. Pro users can create unlimited branding profiles with custom logos, colors, and contact information.
+                                Put your logo, colors and contact details on the seller form, the utility sheet and your emails. Branding Profiles are part of Pro and Teams.
                             </p>
                             <Link href="/dashboard/settings?tab=billing">
                                 <Button className="font-semibold px-8">
@@ -300,13 +300,13 @@ export default function BrandingPage() {
                                                     onClick={() => handleSetDefault(brand)}
                                                 >
                                                     <Star className="mr-2 h-4 w-4" />
-                                                    Set as Default
+                                                    Make default
                                                 </DropdownMenuItem>
                                             ) : (
                                                 <Link href="/dashboard/settings?tab=billing">
                                                     <DropdownMenuItem className="cursor-pointer text-muted-foreground">
                                                         <Lock className="mr-2 h-4 w-4" />
-                                                        Set Default
+                                                        Make default
                                                         <Badge variant="secondary" className="ml-auto">Upgrade</Badge>
                                                     </DropdownMenuItem>
                                                 </Link>
@@ -362,7 +362,7 @@ export default function BrandingPage() {
                                     {[
                                         brand.request_count === 1 ? 'Used by 1 request' : `Used by ${brand.request_count} requests`,
                                         brand.is_default ? 'preselected for new requests' : null,
-                                        brand.is_intake_default ? 'used by saved seller forms' : null,
+                                        brand.is_intake_default ? 'used by seller forms' : null,
                                     ].filter(Boolean).join(' · ')}
                                 </p>
                                 {!!brand.seller_forms?.length && (
@@ -384,7 +384,7 @@ export default function BrandingPage() {
                                         className="w-full"
                                     >
                                         <Pencil className="mr-2 h-4 w-4" />
-                                        Edit Profile
+                                        Edit profile
                                     </Button>
                                 </Link>
                             </div>
@@ -400,7 +400,7 @@ export default function BrandingPage() {
                                 <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-secondary/50 flex items-center justify-center">
                                     <Plus className="h-6 w-6 text-muted-foreground" />
                                 </div>
-                                <p className="text-muted-foreground font-medium">Create New Profile</p>
+                                <p className="text-muted-foreground font-medium">Create a new profile</p>
                                 <p className="text-sm text-muted-foreground/70 mt-1">Add another branding style</p>
                             </CardContent>
                         </Card>
@@ -424,17 +424,17 @@ export default function BrandingPage() {
                                     {deleteTarget.request_count === 1
                                         ? '1 request uses this profile. Its'
                                         : `${deleteTarget.request_count} requests use this profile. Their`}{' '}
-                                    future PDFs and packet pages will use your default profile instead.
+                                    future PDFs and sheet pages will use your default profile instead.
                                 </li>
                             )}
                             {deleteTarget.is_intake_default && (
-                                <li>Saved seller forms using this profile will fall back to the default profile in their workspace.{deleteTarget.seller_forms?.length ? ` Your forms: ${deleteTarget.seller_forms.map(form => form.name).join(", ")}.` : ""}</li>
+                                <li>Seller forms that use this profile will switch to the default profile in their workspace.{deleteTarget.seller_forms?.length ? ` Your forms: ${deleteTarget.seller_forms.map(form => form.name).join(", ")}.` : ""}</li>
                             )}
                             {deleteTarget.is_default && brands.length > 1 && (
-                                <li>This is your default profile. Your oldest remaining profile will take over as the fallback until you pick a new default.</li>
+                                <li>This is your default profile. Your oldest remaining profile will be used instead until you choose a new default.</li>
                             )}
                             {brands.length === 1 && (
-                                <li>This is your only profile. A basic profile will be recreated automatically from your account details.</li>
+                                <li>This is your only profile. A basic one will be created for you from your account details.</li>
                             )}
                             {deleteTarget.request_count === 0 && !deleteTarget.is_intake_default && !deleteTarget.is_default && (
                                 <li>Nothing currently uses this profile.</li>

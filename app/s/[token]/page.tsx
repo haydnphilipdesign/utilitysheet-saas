@@ -65,9 +65,9 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
 
             if (!response.ok) {
                 if (response.status === 404) {
-                    setError('Request not found. Please check your link and try again.');
+                    setError('We couldn’t find this form. Check your link and try again.');
                 } else {
-                    setError('Failed to load request. Please try again later.');
+                    setError('We couldn’t load this form. Please try again in a moment.');
                 }
                 setLoading(false);
                 return;
@@ -108,7 +108,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
 
         } catch (err) {
             console.error('Failed to load request data:', err);
-            setError('Failed to load request. Please try again later.');
+            setError('We couldn’t load this form. Please try again in a moment.');
         } finally {
             setLoading(false);
         }
@@ -131,7 +131,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                         <AlertTriangle className="h-8 w-8 text-destructive" />
                     </div>
                     <div className="space-y-2">
-                        <h1 className="text-xl font-bold text-foreground">Unavailable</h1>
+                        <h1 className="text-xl font-bold text-foreground">This link isn’t working</h1>
                         <p className="text-muted-foreground text-sm">
                             {error || 'Something went wrong. Please check your link and try again.'}
                         </p>

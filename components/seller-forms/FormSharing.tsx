@@ -97,8 +97,8 @@ export function DeleteFormDialog({ form, onClose, onDeleted }: {
                     Its link will stop working for new sellers and the form is removed
                     {form?.shared ? ' for everyone in the workspace' : ' from your list'}.
                     This cannot be undone. Requests already created from it are kept, and
-                    sellers who already started can still finish. Afterwards you can give
-                    its link ending to another form.
+                    sellers who already started can still finish. Afterwards you can use
+                    the same link for another form.
                 </>
             }
             confirmLabel={busy ? 'Deleting…' : 'Delete form'}

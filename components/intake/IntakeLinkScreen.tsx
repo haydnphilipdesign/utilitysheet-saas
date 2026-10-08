@@ -239,11 +239,11 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
                     return;
                 }
 
-                throw new Error(data?.message || data?.error || 'Failed to start');
+                throw new Error(data?.message || data?.error || 'We couldn’t start the form. Please try again.');
             }
             const token = String(data?.sellerToken || '');
             if (!token) {
-                throw new Error('Failed to start');
+                throw new Error('We couldn’t start the form. Please try again.');
             }
 
             try {
@@ -254,7 +254,7 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
             }
             window.location.href = `/s/${encodeURIComponent(token)}`;
         } catch (e: unknown) {
-            setFormError(getErrorMessage(e, 'Failed to start. Please try again.'));
+            setFormError(getErrorMessage(e, 'We couldn’t start the form. Please try again.'));
         } finally {
             setSubmitting(false);
         }

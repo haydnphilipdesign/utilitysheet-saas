@@ -214,7 +214,7 @@ export function SellerQuestionsDialog({
                             emptyMessage={
                                 previewQuery.trim()
                                     ? 'No questions on this form match that search.'
-                                    : 'This form has no questions configured yet.'
+                                    : 'This form has no questions yet.'
                             }
                         />
                     </TabsContent>
@@ -227,7 +227,7 @@ export function SellerQuestionsDialog({
                             </p>
                             <p className="text-xs leading-relaxed text-muted-foreground">
                                 Every question UtilitySheet can ask today. Questions cannot be added or reworded.
-                                Badges show what your current configuration includes.
+                                Badges show which ones are included right now.
                             </p>
                         </div>
 

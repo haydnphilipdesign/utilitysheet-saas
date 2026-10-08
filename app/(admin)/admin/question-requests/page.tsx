@@ -124,10 +124,10 @@ export default async function QuestionRequestsPage() {
 
                 <div className="rounded-xl border border-border/70 bg-card p-4 shadow-sm sm:p-6">
                     <div className="mb-4">
-                        <h2 className="text-base font-medium sm:text-lg">Packet mode at the time</h2>
+                        <h2 className="text-base font-medium sm:text-lg">Sheet type at the time</h2>
                         <p className="text-sm text-muted-foreground">
                             Requests from Utility Sheet mode come from customers who cannot reach the
-                            handoff modules at all.
+                            handoff sections at all.
                         </p>
                     </div>
                     <BreakdownList

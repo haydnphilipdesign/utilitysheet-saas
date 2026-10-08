@@ -64,7 +64,7 @@ export async function POST(
 
         if (!rateLimitResult.success) {
             return NextResponse.json(
-                { error: 'Rate limit exceeded. Please wait before sending another reminder.' },
+                { error: 'You’ve sent several reminders in a short time. Wait a few minutes before sending another.' },
                 { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
             );
         }

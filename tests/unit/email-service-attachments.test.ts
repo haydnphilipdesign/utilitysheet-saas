@@ -155,8 +155,8 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
         expect(result).toEqual({ success: true, attachmentStatus: 'attached' });
         const payload = sendEmailMock.mock.calls[0][0];
         expect(payload.to).toBe('verified@example.com');
-        expect(payload.subject).toMatch(/Your test UtilitySheet is ready/i);
-        expect(payload.html).toContain('This is your test UtilitySheet');
+        expect(payload.subject).toMatch(/Your test sheet is ready/i);
+        expect(payload.html).toContain('This is your test sheet');
         expect(payload.html).not.toContain('/from-a-closing');
         expect(payload.html).not.toContain('/dashboard/settings?tab=referrals');
     });

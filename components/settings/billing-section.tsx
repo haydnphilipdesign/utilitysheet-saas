@@ -576,7 +576,7 @@ export function BillingSection({
                                         // Pro is changed straight away, so it is confirmed here first.
                                         onClick={() => (isPro ? setConfirmation({
                                             title: 'Change your Pro plan to Teams?',
-                                            description: `Your Pro subscription becomes a Teams plan with ${seats} seats at ${usd.format((seats ?? 0) * TEAM_PRICE_PER_SEAT_USD)} a month. This happens right away, with no separate checkout page. Stripe adds the prorated difference from Pro to your next invoice.`,
+                                            description: `Your Pro subscription becomes a Teams plan with ${seats} seats at ${usd.format((seats ?? 0) * TEAM_PRICE_PER_SEAT_USD)} a month. This happens right away, with no separate checkout page. Stripe adds the difference from Pro for the rest of this billing period to your next invoice.`,
                                             confirmLabel: 'Change to Teams',
                                             run: startTeams,
                                         }) : startTeams())}
@@ -596,7 +596,7 @@ export function BillingSection({
                                             {' '}for {seats} seats.{' '}
                                             <span className="text-muted-foreground">
                                                 {isPro
-                                                    ? 'Stripe adds the prorated difference from Pro to your next invoice.'
+                                                    ? 'Stripe adds the difference from Pro for the rest of this billing period to your next invoice.'
                                                     : 'You confirm the price in Stripe before you pay.'}
                                             </span>
                                         </p>

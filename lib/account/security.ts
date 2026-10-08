@@ -42,7 +42,7 @@ export async function getAccountSecurityContext(options: {
     if (!user.primaryEmail || !user.primaryEmailVerified) {
         throw new AccountSecurityError(
             'VERIFIED_EMAIL_REQUIRED',
-            'A verified primary email is required for account security changes.',
+            'Verify your sign-in email before changing these settings.',
             403,
         );
     }

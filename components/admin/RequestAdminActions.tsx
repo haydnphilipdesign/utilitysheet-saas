@@ -275,7 +275,7 @@ export function RequestAdminActions({ request }: RequestAdminActionsProps) {
                             <DialogTitle>Correct request status</DialogTitle>
                             <DialogDescription>
                                 A support correction of the displayed status. It does not record a submission, change
-                                usage metering, send email or generate a packet. The change is audited.
+                                usage metering, send email or generate a sheet. The change is audited.
                             </DialogDescription>
                         </DialogHeader>
 

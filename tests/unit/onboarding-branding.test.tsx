@@ -147,7 +147,7 @@ describe('progressive onboarding', () => {
 
         render(<OnboardingPage />);
 
-        const brandInput = await screen.findByLabelText('Brand Display Name');
+        const brandInput = await screen.findByLabelText('Brand name');
         fireEvent.change(brandInput, { target: { value: 'Updated Org' } });
         fireEvent.click(screen.getByRole('button', { name: /save branding/i }));
 

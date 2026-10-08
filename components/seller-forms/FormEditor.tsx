@@ -455,8 +455,7 @@ export function FormEditor({ id }: { id: string }) {
                             </p>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Submissions go to {data.workspaceName}. This
-                            destination stays fixed.
+                            Answers from this form always go to {data.workspaceName}.
                         </p>
                     </Section>
 
@@ -657,7 +656,7 @@ export function FormEditor({ id }: { id: string }) {
                         >
                             {data.linkBase && (
                                 <div className="space-y-2">
-                                    <Label htmlFor="formSuffix">Link ending</Label>
+                                    <Label htmlFor="formSuffix">Form link</Label>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <span className="break-all text-sm text-muted-foreground">{form ? formLinkPrefix(form, data.linkBase.url) : data.linkBase.url}/</span>
                                         <Input
@@ -756,7 +755,7 @@ export function FormEditor({ id }: { id: string }) {
                                         <p className="text-sm font-medium">Delete this form</p>
                                         <p className="text-xs text-muted-foreground">
                                             {form.canDelete
-                                                ? 'Its link stops working for new sellers and the form is removed. Requests already created from it are kept. This cannot be undone. Afterwards you can give its link ending to another form.'
+                                                ? 'Its link stops working for new sellers and the form is removed. Requests already created from it are kept. This cannot be undone. Afterwards you can use the same link for another form.'
                                                 : form.isMine
                                                   ? 'This is your default form. Make another form the default first, then you can delete this one.'
                                                   : 'This is its creator’s default form, so it cannot be deleted.'}

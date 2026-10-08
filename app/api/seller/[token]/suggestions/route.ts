@@ -128,7 +128,7 @@ export async function GET(
         }
         if (!rateLimitResult.success) {
             return NextResponse.json(
-                { error: 'Rate limit exceeded. Please slow down.' },
+                { error: 'Too many attempts. Wait a moment and try again.' },
                 {
                     status: 429,
                     headers: getRateLimitHeaders(rateLimitResult),

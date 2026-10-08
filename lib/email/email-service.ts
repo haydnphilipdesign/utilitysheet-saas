@@ -202,7 +202,7 @@ function generateSellerRequestEmailHtml(params: {
 
     const agentContactLine =
         safeAgentName && agentContactParts.length > 0
-            ? `<p style="margin: 12px 0 0; color: #6b7280; font-size: 12px; line-height: 1.6;">Questions? Contact ${safeAgentName}${agentContactParts.length > 0 ? ` — ${agentContactParts.join(' · ')}` : ''}.</p>`
+            ? `<p style="margin: 12px 0 0; color: #6b7280; font-size: 12px; line-height: 1.6;">Questions? Contact ${safeAgentName}${agentContactParts.length > 0 ? `: ${agentContactParts.join(' · ')}` : ''}.</p>`
             : '';
 
     const safeAgentCompany = params.agentCompany ? escapeHtml(params.agentCompany) : null;
@@ -320,7 +320,7 @@ export async function sendSellerNotificationEmail({
     const secondaryColor = safeHexColor(brandProfile?.secondary_color, '#059669');
     const brandLogoUrl = safeExternalUrl(brandProfile?.logo_url);
 
-    const effectiveAgentName = agentName || brandProfile?.contact_name || 'Your agent';
+    const effectiveAgentName = agentName || brandProfile?.contact_name || 'Your real estate team';
     const variables = {
         seller_name: sellerName || '',
         seller_first_name_with_space: (() => {
@@ -363,7 +363,7 @@ export async function sendSellerNotificationEmail({
         primaryColor,
         secondaryColor,
         title: 'Utility Information Needed',
-        badgeText: 'Action required',
+        badgeText: 'A quick request',
         greeting,
         bodyText,
         propertyAddress,
@@ -457,7 +457,7 @@ export function buildSellerReminderEmail({
     const secondaryColor = safeHexColor(brandProfile?.secondary_color, '#059669');
     const brandLogoUrl = safeExternalUrl(brandProfile?.logo_url);
 
-    const effectiveAgentName = agentName || brandProfile?.contact_name || 'Your agent';
+    const effectiveAgentName = agentName || brandProfile?.contact_name || 'Your real estate team';
     const variables = {
         seller_name: sellerName || '',
         seller_first_name_with_space: (() => {
@@ -1175,7 +1175,7 @@ export async function sendTCCompletionNotificationEmail({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: getDemoEmailRecipient(tcEmail),
             subject: isTestDrive
-                ? `Your test UtilitySheet is ready: ${propertyAddress}`
+                ? `Your test sheet is ready: ${propertyAddress}`
                 : `Utility Info Submitted for ${propertyAddress}`,
             html: emailHtml,
             attachments,
@@ -1254,7 +1254,7 @@ function generateTCCompletionNotificationHtml({
     const testDriveIntro = isTestDrive
         ? `
                             <div style="margin: 0 0 20px; padding: 12px 16px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e3a8a; font-size: 14px; line-height: 1.6;">
-                                <strong>This is your test UtilitySheet.</strong> It uses fictional property and seller information so you can review the real branded result safely.
+                                <strong>This is your test sheet.</strong> The property and seller details are made up, so you can see exactly what a real one looks like.
                             </div>`
         : '';
 
@@ -1308,8 +1308,8 @@ function generateTCCompletionNotificationHtml({
                             
                             <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
                                 ${isTestDrive
-            ? 'You can now review the completed test sheet and download its PDF. When you are ready for a real transaction, place your reusable seller link in your listing email, checklist, or transaction template.'
-            : 'You can now review the live utility sheet, download the current PDF, and share it forward. If your workspace is on Pro or Team, you can also correct submitted details from the dashboard without reopening the seller link.'}
+            ? 'You can now review the finished test sheet and download its PDF. When you are ready for a real transaction, add your reusable seller link to your listing email, checklist, or transaction template.'
+            : 'You can now review the utility sheet, download the PDF, and share it. On Pro and Teams, you can also correct details from the dashboard without sending the form back to the seller.'}
                             </p>
                             
                             <!-- CTA Button -->
@@ -1318,7 +1318,7 @@ function generateTCCompletionNotificationHtml({
                                     <td style="text-align: center;">
                                         ${renderBulletproofButton({
         href: dashboardUrl,
-        label: isTestDrive ? 'Review Test UtilitySheet' : 'Review Submitted Sheet',
+        label: isTestDrive ? 'Review test sheet' : 'Review Submitted Sheet',
         backgroundColor: '#059669',
         borderRadius: 8,
         fontWeight: 600,
@@ -1454,7 +1454,7 @@ function generateReferralCreditEarnedHtml({
                     <tr>
                         <td style="padding: 32px 40px 0; text-align: center;">
                             <div style="display: inline-block; background-color: #d1fae5; color: #065f46; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600;">
-                                Referral activated
+                                Free month earned
                             </div>
                         </td>
                     </tr>
@@ -1480,7 +1480,7 @@ function generateReferralCreditEarnedHtml({
                                     <td style="text-align: center;">
                                         ${renderBulletproofButton({
         href: referralSettingsUrl,
-        label: 'View Your Referral Credits',
+        label: 'See your referral credits',
         backgroundColor: '#059669',
         borderRadius: 8,
         fontWeight: 600,
@@ -1493,7 +1493,7 @@ function generateReferralCreditEarnedHtml({
                             </table>
 
                             <p style="margin: 32px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                                Keep sharing your referral link to stack more free months. You can earn up to 12 per year.
+                                Keep sharing your referral link to earn more free months, up to 12 a year.
                             </p>
                         </td>
                     </tr>
@@ -1553,7 +1553,7 @@ export async function sendContactResolutionAlertEmail({
         const { data, error } = await resend.emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: tcEmail,
-            subject: `⚠️ Unresolved Contacts for ${propertyAddress}`,
+            subject: `Provider contact details missing for ${propertyAddress}`,
             html: emailHtml,
         });
 
@@ -1589,7 +1589,7 @@ function generateContactResolutionAlertHtml({
     const greeting = tcName ? `Hi ${tcName},` : 'Hello,';
 
     const entriesList = unresolvedEntries
-        .map(e => `<li style="margin: 8px 0; color: #374151;"><strong>${e.category}:</strong> ${e.displayName || 'No name provided'}</li>`)
+        .map(e => `<li style="margin: 8px 0; color: #374151;"><strong>${e.category}:</strong> ${e.displayName || 'No name given'}</li>`)
         .join('');
 
     return `
@@ -1598,7 +1598,7 @@ function generateContactResolutionAlertHtml({
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unresolved Utility Contacts</title>
+    <title>Provider contact details missing</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
@@ -1629,13 +1629,13 @@ function generateContactResolutionAlertHtml({
                             </p>
                             
                             <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                A seller has submitted utility information for <strong>${propertyAddress}</strong>, but some entries couldn't be matched to known utility providers:
+                                A seller submitted utility details for <strong>${propertyAddress}</strong>, but we couldn’t find a phone number or website for these providers:
                             </p>
                             
                             <!-- Unresolved Entries List -->
                             <div style="background-color: #fef3c7; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid #f59e0b;">
                                 <p style="margin: 0 0 12px; color: #92400e; font-size: 14px; font-weight: 600;">
-                                    Unresolved Utility Providers:
+                                    Providers without contact details:
                                 </p>
                                 <ul style="margin: 0; padding-left: 20px;">
                                     ${entriesList}
@@ -1643,7 +1643,7 @@ function generateContactResolutionAlertHtml({
                             </div>
                             
                             <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                You may need to manually look up contact information for these providers.
+                                You may need to look these up yourself before you share the sheet.
                             </p>
                             
                             <!-- CTA Button -->
@@ -1652,7 +1652,7 @@ function generateContactResolutionAlertHtml({
                                     <td style="text-align: center;">
                                         ${renderBulletproofButton({
         href: dashboardUrl,
-        label: 'Review Utility Details',
+        label: 'Review the sheet',
         backgroundColor: '#d97706',
         borderRadius: 8,
         fontWeight: 600,
@@ -1670,7 +1670,7 @@ function generateContactResolutionAlertHtml({
                     <tr>
                         <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                                This email was sent by UtilitySheet. You can disable these alerts in Settings.
+                                This email was sent by UtilitySheet. You can turn these alerts off in Settings, under Notifications.
                             </p>
                         </td>
                     </tr>
@@ -1880,8 +1880,8 @@ function generateActivationReminderHtml(params: {
     const title = params.stage === 'after_1d' ? 'Your reusable seller link is still waiting' : 'Your reusable seller link is ready';
     const intro =
         params.stage === 'after_1d'
-            ? 'UtilitySheet already created your reusable seller link. You can share the same link across listings, email signatures, and text templates without creating a request first.'
-            : 'Your UtilitySheet workspace is live and your reusable seller link is already created. You can start using it right away without finishing a long setup flow.';
+            ? 'Your reusable seller link is ready and waiting. Use the same link for every listing, in your email signature or your text templates. There is nothing to create first.'
+            : 'Your UtilitySheet account is ready and so is your reusable seller link. You can start using it right away. There is no setup you have to finish first.';
 
     return `
 <!DOCTYPE html>
@@ -1919,7 +1919,7 @@ function generateActivationReminderHtml(params: {
                             </div>
 
                             <p style="margin: 0 0 20px; color: #374151; font-size: 15px; line-height: 1.6;">
-                                Open your setup page to copy the link, add your contact details, or head straight into the dashboard.
+                                Open your setup page to copy the link and add your contact details, or go straight to the dashboard.
                             </p>
 
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 8px;">
@@ -1940,7 +1940,7 @@ function generateActivationReminderHtml(params: {
                             </table>
 
                             <p style="margin: 20px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
-                                Prefer to skip setup? Go straight to your dashboard:<br>
+                                Want to skip setup? Go straight to your dashboard:<br>
                                 <a href="${escapeHtml(params.dashboardUrl)}" style="color: #0f766e; word-break: break-all;">${escapeHtml(params.dashboardUrl)}</a>
                             </p>
                         </td>

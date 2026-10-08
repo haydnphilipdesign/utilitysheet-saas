@@ -140,12 +140,12 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
 
         const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
         if (!allowedTypes.includes(file.type)) {
-            toast.error('Invalid file type. Please use JPEG, PNG, WebP, or SVG.');
+            toast.error('That file type isn’t supported. Use a JPEG, PNG, WebP or SVG.');
             return;
         }
 
         if (file.size > 2 * 1024 * 1024) {
-            toast.error('File too large. Maximum size is 2MB.');
+            toast.error('That file is too large. The limit is 2 MB.');
             return;
         }
 
@@ -161,7 +161,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Upload failed');
+                throw new Error(error.error || 'We couldn’t upload the logo. Try again.');
             }
 
             const { url } = await response.json();
@@ -169,7 +169,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
             toast.success('Logo uploaded. Save to keep it.');
         } catch (error) {
             console.error('Upload error:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to upload logo');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t upload the logo. Try again.');
         } finally {
             setUploading(false);
             if (fileInputRef.current) {
@@ -216,11 +216,11 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
             if (response.ok) {
                 toast.success(`Test email sent to ${data.sentTo || 'your inbox'}`);
             } else {
-                toast.error(data.error || 'Failed to send test email');
+                toast.error(data.error || 'We couldn’t send the test email. Try again.');
             }
         } catch (error) {
             console.error('Error sending test email:', error);
-            toast.error('Failed to send test email');
+            toast.error('We couldn’t send the test email. Try again.');
         } finally {
             setSendingTestEmail(false);
         }
@@ -230,10 +230,10 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
         setGeneratingPdf(true);
         try {
             await generateTestPdf(formData, isPro ? previewMode : 'simple');
-            toast.success('Test PDF downloaded!');
+            toast.success('Test PDF downloaded');
         } catch (error) {
             console.error('Error generating test PDF:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to generate test PDF');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t create the test PDF. Try again.');
         } finally {
             setGeneratingPdf(false);
         }
@@ -266,7 +266,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                 )}
             </Button>
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-                The test PDF is rendered by the same engine as real downloads, using the branding shown here
+                The test PDF looks exactly like a real download, using the branding shown here
                 {isDirty ? ', including your unsaved changes' : ''}.
             </p>
         </div>
@@ -288,7 +288,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                     <div>
                         <h1 className="text-3xl font-bold text-foreground">{isEditing ? 'Edit Branding Profile' : 'New Branding Profile'}</h1>
                         <p className="text-muted-foreground mt-1 max-w-xl">
-                            One profile brands everything a seller and buyer see from you: the seller form, the web packet, PDFs, and emails.
+                            One profile brands everything a seller and buyer see from you: the seller form, the utility sheet (web page and PDF), and emails.
                         </p>
                     </div>
                     <div className="flex flex-col items-start sm:items-end gap-2">
@@ -350,7 +350,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         Brand identity
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground">
-                                        Your name, logo, and accent color. Shown on PDFs, the seller form, the web packet, and emails.
+                                        Your name, logo, and accent color. Shown on the seller form, the utility sheet, and emails.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -370,7 +370,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                             <p className="text-xs text-destructive" role="alert">Brand name is required.</p>
                                         ) : (
                                             <p className="text-xs text-muted-foreground">
-                                                Appears in the document header. With no logo, its initials become your brand mark.
+                                                Appears at the top of the sheet. If you don’t add a logo, its initials are shown instead.
                                             </p>
                                         )}
                                     </div>
@@ -433,7 +433,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground">
-                                                    JPEG, PNG, WebP, or SVG up to 2MB. Square or horizontal logos look best; the PDF renders logos 36px tall.
+                                                    JPEG, PNG, WebP, or SVG, up to 2 MB. Square or wide logos look best. Logos print small, so simple ones read best.
                                                 </p>
                                             </div>
                                         </div>
@@ -462,7 +462,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                             <p className="text-xs text-destructive" role="alert">Enter a hex color like #10B981.</p>
                                         ) : (
                                             <p className="text-xs text-muted-foreground">
-                                                The accent used across PDFs, the seller form, and the web packet.
+                                                The accent color on the seller form and the utility sheet.
                                             </p>
                                         )}
                                     </div>
@@ -473,7 +473,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                 <CardHeader>
                                     <CardTitle className="text-foreground">Contact information</CardTitle>
                                     <CardDescription className="text-muted-foreground">
-                                        Shown in the document header and on seller emails so buyers and sellers can reach you.
+                                        Shown at the top of the sheet and on seller emails, so buyers and sellers can reach you.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -525,7 +525,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                                 maxLength={BRAND_PROFILE_LIMITS.contactWebsiteMax}
                                                 className="bg-background border-input text-foreground placeholder:text-muted-foreground"
                                             />
-                                            <p className="text-xs text-muted-foreground">PDFs show the plain domain, e.g. yourrealty.com.</p>
+                                            <p className="text-xs text-muted-foreground">PDFs show just the address, like yourrealty.com.</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -535,11 +535,11 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                 <CardHeader>
                                     <CardTitle className="text-foreground flex items-center gap-2">
                                         <Building2 className="h-5 w-5 text-primary" aria-hidden="true" />
-                                        Professional identity
+                                        Company and license details
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground">
-                                        Optional. Company, role, and license details for the document header, web packet,
-                                        and emails. Anything you leave blank is simply omitted.
+                                        Optional. Company, role, and license details for the sheet and emails.
+                                        Anything you leave blank is left out.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -620,10 +620,10 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                 <CardHeader>
                                     <CardTitle className="text-foreground flex items-center gap-2">
                                         <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
-                                        Document text
+                                        Messages on the sheet
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground">
-                                        Optional messages printed on the Utility Info Sheet and Seller Transition Packet.
+                                        Optional messages printed on the utility sheet, for both sheet types.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-5">
@@ -669,7 +669,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                             className="bg-background border-input text-foreground placeholder:text-muted-foreground min-h-[80px]"
                                         />
                                         <p className="text-xs text-muted-foreground">
-                                            Printed at the end of the document, after Buyer Next Steps. Available on every plan.
+                                            Printed at the end of the sheet, after Buyer Next Steps. Available on every plan.
                                         </p>
                                     </div>
                                 </CardContent>
@@ -683,7 +683,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         {!isPro && <ProChip />}
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground">
-                                        The numbered checklist printed for buyers at the end of every document.
+                                        The numbered checklist printed for buyers at the end of every sheet.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -819,7 +819,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         {!isPro && <ProChip />}
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground">
-                                        Small print shown on the document. Free plans always show both.
+                                        Small print shown on the sheet. On Free, both are always shown.
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
@@ -912,7 +912,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                         className="text-muted-foreground shrink-0"
                                         onClick={() => {
                                             updateField('message_templates', {});
-                                            toast.success('Templates reset to defaults. Save to apply.');
+                                            toast.success('Messages reset to the standard wording. Save to apply.');
                                         }}
                                     >
                                         <RotateCcw className="h-4 w-4 mr-1" />

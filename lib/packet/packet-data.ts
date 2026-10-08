@@ -26,7 +26,7 @@ import {
     normalizeAdvancedModules,
 } from '@/lib/packet/modules';
 
-export const PACKET_LOCKED_MESSAGE = 'This seller packet is locked. Ask the agent to upgrade to view it.';
+export const PACKET_LOCKED_MESSAGE = 'This utility sheet isn’t available right now. Please ask the person who sent it to you for an updated copy.';
 
 export interface PacketRequestData extends HoaAnswers {
     id: string;

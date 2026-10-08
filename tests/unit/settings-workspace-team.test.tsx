@@ -218,6 +218,6 @@ describe('Workspace & Team Settings', () => {
 
         expect(await screen.findByRole('button', { name: 'Upgrade Pro to Teams' })).toBeInTheDocument();
         expect(screen.getByText(/Your Pro plan becomes a Teams plan, so you won’t have two subscriptions/)).toBeInTheDocument();
-        expect(screen.getByText(/Stripe adds the prorated difference from Pro to your next invoice/)).toBeInTheDocument();
+        expect(screen.getByText(/Stripe adds the difference from Pro for the rest of this billing period to your next invoice/)).toBeInTheDocument();
     });
 });

@@ -181,7 +181,7 @@ function SampleSheetBody({ source, onClose }: { source: TestDriveSource; onClose
                             mode={mode}
                             onModeChange={setMode}
                             label="Sample sheet"
-                            frameLabel="Sample utility info sheet with fictional details"
+                            frameLabel="Sample utility sheet with fictional details"
                             scrollContained={false}
                         />
                     </div>

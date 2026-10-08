@@ -84,7 +84,7 @@ describe('stale saved-form request recovery', () => {
                 submissions.push(body);
                 if (body.formRevision !== latest.revision) {
                     status = 409;
-                    data = { error: 'Form changed. Reload before saving or starting.', code: 'FORM_REVISION_CONFLICT' };
+                    data = { error: 'This form was just updated. Reload the page, then try again.', code: 'FORM_REVISION_CONFLICT' };
                 } else data = { id: 'request-after-recovery', seller_token: 'synthetic-token' };
             }
             return new Response(JSON.stringify(data), { status });
@@ -103,10 +103,10 @@ describe('stale saved-form request recovery', () => {
         fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
         fireEvent.click(screen.getByRole('switch', { name: 'Ask about HOA or condo association' }));
         fireEvent.click(screen.getByTestId('new-request-create'));
-        await screen.findByText('Form changed. Reload before saving or starting.');
+        await screen.findByText('This form was just updated. Reload the page, then try again.');
         expect(submissions[0]).toMatchObject({ formRevision: 2, collectHoaQuestions: true });
         expect(screen.getByTestId('new-request-create')).toBeDisabled();
-        const recover = screen.getByRole('button', { name: keepOverrides ? 'Refresh form and keep my settings' : 'Reload form defaults' });
+        const recover = screen.getByRole('button', { name: keepOverrides ? 'Keep my choices' : 'Use the form’s latest settings' });
         fireEvent.click(recover);
         await screen.findByText('Unable to refresh the form. Your request has been kept. Try again.');
         expect(screen.getByRole('switch', { name: 'Ask about HOA or condo association' })).toHaveAttribute('aria-checked', 'true');

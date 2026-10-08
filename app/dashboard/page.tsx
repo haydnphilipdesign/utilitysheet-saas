@@ -183,14 +183,14 @@ function WorkSection({
                         </div>
                         <p className="font-medium text-foreground">{error}</p>
                         <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                            Try again, or open the full Requests workspace.
+                            Try again, or open Requests.
                         </p>
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
                             className="mt-4"
-                            aria-label="Retry dashboard work"
+                            aria-label="Try loading again"
                             onClick={onRetry}
                         >
                             <RotateCcw />
@@ -432,7 +432,7 @@ export default function DashboardPage() {
                 source: showSetupPrompt ? 'dashboard_first_run_card' : 'dashboard_reusable_link_card',
             });
         } catch {
-            toast.error('Failed to copy link');
+            toast.error('We couldn’t copy the link.');
         }
     }, [intakeLink?.url, showSetupPrompt]);
 
@@ -445,15 +445,15 @@ export default function DashboardPage() {
             trackEvent('seller_link_sms_copied', {
                 source: showSetupPrompt ? 'dashboard_first_run_card' : 'dashboard_reusable_link_card',
             });
-            toast.success('SMS text copied');
+            toast.success('Text message copied');
         } catch {
-            toast.error('Failed to copy SMS text');
+            toast.error('We couldn’t copy the text message.');
         }
     }, [intakeLink?.url, showSetupPrompt]);
 
     const handleOpenReusableLinkEmail = useCallback(() => {
         if (!intakeLink?.url) return;
-        const subject = encodeURIComponent('Utility Information Request');
+        const subject = encodeURIComponent('Utility information request');
         const body = encodeURIComponent(
             `Hi,\n\nPlease use the link below to fill in the utility providers for your property. No account is needed.\n\n${intakeLink.url}\n\nThank you.`
         );
@@ -471,7 +471,7 @@ export default function DashboardPage() {
             await navigator.clipboard.writeText(`${window.location.origin}/s/${token}`);
             toast.success('Seller link copied');
         } catch {
-            toast.error('Failed to copy seller link');
+            toast.error('We couldn’t copy the seller link.');
         }
     }, []);
 
@@ -481,11 +481,11 @@ export default function DashboardPage() {
             const response = await fetch(`/api/requests/${request.id}/remind`, { method: 'POST' });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to send reminder');
+                throw new Error(data.error || 'We couldn’t send the reminder. Try again.');
             }
             toast.success(`Reminder sent to ${request.seller_name || 'seller'}`);
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to send reminder');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t send the reminder. Try again.');
         } finally {
             setSendingReminderId(null);
         }
@@ -495,10 +495,10 @@ export default function DashboardPage() {
         setDownloadingPdfToken(request.public_token);
         try {
             await generatePacketPdf(request.public_token);
-            toast.success('PDF downloaded successfully');
+            toast.success('PDF downloaded');
         } catch (error) {
             console.error('Error generating PDF:', error);
-            toast.error('Failed to generate PDF. Please try again.');
+            toast.error('We couldn’t create the PDF. Try again.');
         } finally {
             setDownloadingPdfToken(null);
         }
@@ -566,11 +566,11 @@ export default function DashboardPage() {
                                 </h2>
                             </CardTitle>
                             <CardDescription className="mt-1 max-w-3xl">
-                                Share one fixed link. Sellers enter the property address and complete the utility details themselves.
+                                Share one link that never changes. Sellers enter the property address and fill in the utility details themselves.
                             </CardDescription>
                         </div>
                         <Badge variant="outline" className="w-fit border-primary/30 text-primary">
-                            Primary workflow
+                            Start here
                         </Badge>
                     </div>
                 </CardHeader>
@@ -649,7 +649,7 @@ export default function DashboardPage() {
                             className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             <Settings2 className="h-3.5 w-3.5" />
-                            Manage seller link settings
+                            Manage seller forms
                         </Link>
                     </div>
                 </CardContent>
@@ -686,7 +686,7 @@ export default function DashboardPage() {
                     total={recentWork.total}
                     error={recentWork.error}
                     emptyTitle="No submitted sheets yet"
-                    emptyDescription="Completed seller responses will appear here as soon as they are submitted."
+                    emptyDescription="Sheets appear here as soon as a seller submits."
                     onRetry={loadDashboardData}
                     onCopySellerLink={handleCopySellerLink}
                     onSendReminder={handleSendReminder}
@@ -702,16 +702,16 @@ export default function DashboardPage() {
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                             <h2 id="dashboard-work-summary" className="text-sm font-semibold text-foreground">
-                                Work summary
+                                At a glance
                             </h2>
-                            <p className="text-xs text-muted-foreground">Open the matching Requests view to take action.</p>
+                            <p className="text-xs text-muted-foreground">Choose a number to see those requests.</p>
                         </div>
                         {usageRemaining !== null && usageInfo ? (
                             <Link
                                 href="/dashboard/settings?tab=billing"
                                 className="text-xs text-muted-foreground hover:text-foreground hover:underline"
                             >
-                                {usageRemaining} of {usageInfo.limit} free submissions left this month
+                                {usageRemaining} of {usageInfo.limit} free submitted sheets left this month
                             </Link>
                         ) : null}
                     </div>
@@ -758,7 +758,7 @@ export default function DashboardPage() {
                                     </h2>
                                 </CardTitle>
                                 <CardDescription className="mt-1">
-                                    Recent product updates and workflow improvements.
+                                    Recent improvements to UtilitySheet.
                                 </CardDescription>
                             </div>
                             <div className="flex items-center gap-1">

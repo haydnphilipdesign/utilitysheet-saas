@@ -41,8 +41,8 @@ export function isValidLinkSuffix(suffix: string) {
 export function linkSuffixError(suffix: string) {
     if (isValidLinkSuffix(suffix)) return null;
     if (suffix.length < LINK_SUFFIX_MIN || suffix.length > LINK_SUFFIX_MAX)
-        return `Link ending must be between ${LINK_SUFFIX_MIN} and ${LINK_SUFFIX_MAX} characters.`;
-    return 'Link ending must be lowercase and contain only letters, numbers, and dashes.';
+        return `The end of the link must be ${LINK_SUFFIX_MIN} to ${LINK_SUFFIX_MAX} characters long.`;
+    return 'Use only lowercase letters, numbers and dashes at the end of the link.';
 }
 
 /**

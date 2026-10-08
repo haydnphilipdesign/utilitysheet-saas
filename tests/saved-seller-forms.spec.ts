@@ -88,7 +88,7 @@ async function mocks(page: Page) {
         if (path === '/api/seller-forms' && req.method() === 'POST') {
             const body = req.postDataJSON();
             if (linkBase.reservedSuffixes.some(a => a.suffix === body.suffix))
-                return json({ error: 'That ending was already shared. Choose another.', code: 'SUFFIX_IN_USE' }, 409);
+                return json({ error: 'Another of your forms uses that link, or used it before. Choose a different one.', code: 'SUFFIX_IN_USE' }, 409);
             return json({}, 400);
         }
         if (path === '/api/seller-forms') {
@@ -117,7 +117,7 @@ async function mocks(page: Page) {
             return json({ deleted: true, id: gone.id });
         }
         if (path === '/api/seller-form-link-base') {
-            if (conflict) return json({ error: 'Form changed. Reload before saving.', code: 'FORM_REVISION_CONFLICT' }, 409);
+            if (conflict) return json({ error: 'This form was just updated. Reload the page, then try again.', code: 'FORM_REVISION_CONFLICT' }, 409);
             Object.assign(linkBase, { slug: req.postDataJSON().base, revision: linkBase.revision + 1 });
             linkBase.url = `https://example.com/i/${linkBase.slug}`;
             relink();
@@ -131,7 +131,7 @@ async function mocks(page: Page) {
         if (path === `/api/seller-forms/${second}`) {
             const body = req.postDataJSON();
             const taken = linkBase.reservedSuffixes.find(a => a.suffix === body.suffix && a.formId !== second);
-            if (taken) return json({ error: 'That ending was already shared. Choose another.', code: 'SUFFIX_IN_USE' }, 409);
+            if (taken) return json({ error: 'Another of your forms uses that link, or used it before. Choose a different one.', code: 'SUFFIX_IN_USE' }, 409);
             Object.assign(forms[1], body, { revision: forms[1].revision + 1 });
             if (body.suffix) {
                 forms[1].linkSuffix = body.suffix;
@@ -144,7 +144,7 @@ async function mocks(page: Page) {
             if (conflict)
                 return json(
                     {
-                        error: 'Form changed. Reload before saving.',
+                        error: 'This form was just updated. Reload the page, then try again.',
                         code: 'FORM_REVISION_CONFLICT',
                     },
                     409,
@@ -155,7 +155,7 @@ async function mocks(page: Page) {
         if (path === '/api/requests') {
             const body = req.postDataJSON();
             const selected = forms.find(f => f.id === body.formId);
-            if (selected && selected.revision !== body.formRevision) return json({ error: 'Form changed. Reload before saving or starting.', code: 'FORM_REVISION_CONFLICT' }, 409);
+            if (selected && selected.revision !== body.formRevision) return json({ error: 'This form was just updated. Reload the page, then try again.', code: 'FORM_REVISION_CONFLICT' }, 409);
             return json({ id: 'synthetic-created-request', seller_token: 'synthetic-seller-token' });
         }
         if (path === '/api/branding') return json([]);
@@ -263,7 +263,7 @@ test('a form link is renamed in place on its card and a taken ending keeps the d
     const formCards = page.locator('[data-slot="card"]').filter({ has: page.getByRole('button', { name: 'Copy link', exact: true }) });
     const closing = formCards.filter({ has: page.getByText('Closing', { exact: true }) });
     await cardAction(page, 'Closing', 'Rename link');
-    const ending = page.getByLabel('Link ending for Closing');
+    const ending = page.getByLabel('Link for Closing');
     await expect(ending).toHaveValue('closing');
     await ending.fill('Not Valid');
     await closing.getByRole('button', { name: 'Save link', exact: true }).click();
@@ -271,7 +271,7 @@ test('a form link is renamed in place on its card and a taken ending keeps the d
     expect(state.writes).toHaveLength(0);
     await ending.fill('intake');
     await closing.getByRole('button', { name: 'Save link', exact: true }).click();
-    await expect(closing.getByRole('alert')).toContainText('That ending was already shared');
+    await expect(closing.getByRole('alert')).toContainText('Another of your forms uses that link');
     await expect(ending).toHaveValue('intake');
     await ending.fill('closing-docs');
     await closing.getByRole('button', { name: 'Save link', exact: true }).click();
@@ -281,7 +281,7 @@ test('a form link is renamed in place on its card and a taken ending keeps the d
     // The default form's own link is renamable too; its main link is untouched.
     const listing = formCards.filter({ has: page.getByText('Listing', { exact: true }) });
     await cardAction(page, 'Listing', 'Rename link');
-    await expect(page.getByLabel('Link ending for Listing')).toHaveValue('intake');
+    await expect(page.getByLabel('Link for Listing')).toHaveValue('intake');
     await listing.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(listing.getByText('https://example.com/i/listing', { exact: true })).toBeVisible();
     await healthy(page);
@@ -298,22 +298,22 @@ test('a form link is renamed in place on its card and a taken ending keeps the d
 test('suffix editing keeps configuration and duplicate collisions keep the unsaved draft', async ({ page }, testInfo) => {
     const state = await mocks(page);
     await page.goto(`/test-fixtures/seller-forms?id=${second}`);
-    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing');
+    await expect(page.getByLabel('Form link', { exact: true })).toHaveValue('closing');
     await expect(page.getByLabel('Legacy reusable link')).toHaveCount(0);
-    await page.getByLabel('Link ending', { exact: true }).fill('detailed');
+    await page.getByLabel('Form link', { exact: true }).fill('detailed');
     await page.getByRole('button', { name: 'Save form', exact: true }).click();
     await expect(page.getByText('Seller form saved')).toBeVisible();
     expect(state.writes[0].body).toMatchObject({ suffix: 'detailed', revision: 2 });
     expect(state.writes[0].body).not.toHaveProperty('slug');
     expect(state.forms[1].url).toBe('https://example.com/i/listing/detailed');
     await page.goto(`/test-fixtures/seller-forms?id=new&duplicate=${second}`);
-    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing-copy');
+    await expect(page.getByLabel('Form link', { exact: true })).toHaveValue('closing-copy');
     await page.getByLabel('Form name', { exact: true }).fill('Listing');
-    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('listing');
-    await page.getByLabel('Link ending', { exact: true }).fill('closing');
+    await expect(page.getByLabel('Form link', { exact: true })).toHaveValue('listing');
+    await page.getByLabel('Form link', { exact: true }).fill('closing');
     await page.getByRole('button', { name: 'Save form', exact: true }).click();
-    await expect(page.getByRole('alert').filter({ hasText: 'That ending was already shared' })).toBeVisible();
-    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing');
+    await expect(page.getByRole('alert').filter({ hasText: 'Another of your forms uses that link' })).toBeVisible();
+    await expect(page.getByLabel('Form link', { exact: true })).toHaveValue('closing');
     await expect(page.getByLabel('Form name', { exact: true })).toHaveValue('Listing');
     await healthy(page);
     await page.screenshot({ path: testInfo.outputPath('suffix-collision.png'), fullPage: true });
@@ -326,8 +326,8 @@ test('downgrade keeps canonical links and prevents link edits while ordinary for
     await expect(page.getByRole('button', { name: 'Rename main link', exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Pro or Teams', exact: true })).toHaveAttribute('href', '/dashboard/settings?tab=billing');
     await page.goto(`/test-fixtures/seller-forms?id=${second}`);
-    await expect(page.getByLabel('Link ending', { exact: true })).toHaveValue('closing');
-    await expect(page.getByLabel('Link ending', { exact: true })).toBeDisabled();
+    await expect(page.getByLabel('Form link', { exact: true })).toHaveValue('closing');
+    await expect(page.getByLabel('Form link', { exact: true })).toBeDisabled();
     await page.getByLabel('Form name', { exact: true }).fill('Retained configuration');
     await page.getByRole('button', { name: 'Save form', exact: true }).click();
     await expect(page.getByText('Seller form saved')).toBeVisible();
@@ -507,7 +507,7 @@ test('request form switching confirms request-only changes and keeps the fixed w
     await page.goto(`/test-fixtures/seller-forms?id=${second}`);
     await expect(
         page.getByText(
-            'Submissions go to Workspace A. This destination stays fixed.',
+            'Answers from this form always go to Workspace A.',
         ),
     ).toBeVisible();
     await expect(
@@ -538,14 +538,14 @@ for (const keepSettings of [true, false]) {
         await page.getByLabel('Email', { exact: true }).fill('seller@example.test');
         await page.getByLabel('Phone', { exact: true }).fill('5550101234');
         await page.getByLabel('Closing Date').fill('2026-12-01');
-        await page.getByText('Send email notification to seller', { exact: true }).click();
+        await page.getByText('Email the seller their link', { exact: true }).click();
         await page.getByRole('button', { name: /^continue$/i }).click();
         await page.getByRole('switch', { name: 'Ask about HOA or condo association' }).click();
         Object.assign(state.forms[0], { revision: 3, defaultUtilityCategories: ['water'], collectElectricMeterNumber: true, sellerIntro: 'Current introduction' });
         await page.getByTestId('new-request-create').click();
-        await expect(page.getByText('Form changed. Reload before saving or starting.', { exact: true })).toBeVisible();
+        await expect(page.getByText('This form was just updated. Reload the page, then try again.', { exact: true })).toBeVisible();
         await expect(page.getByTestId('new-request-create')).toBeDisabled();
-        const recovery = page.getByRole('button', { name: keepSettings ? 'Refresh form and keep my settings' : 'Reload form defaults' });
+        const recovery = page.getByRole('button', { name: keepSettings ? 'Keep my choices' : 'Use the form’s latest settings' });
         await recovery.scrollIntoViewIfNeeded();
         await healthy(page);
         if (process.env.QA_SHOT_DIR && keepSettings) await page.screenshot({ path: `${process.env.QA_SHOT_DIR}/${test.info().project.name.replace(/\s/g, '-')}-request-recovery.png`, fullPage: false });
@@ -578,19 +578,19 @@ test('Free creation actions explain Pro while customization and retained downgra
     await expect(page.getByRole('menuitem', { name: 'Preview', exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'New form Pro' }).click();
-    await expect(page.getByRole('dialog')).toHaveAccessibleName('Save more workflows with Pro');
-    await expect(page.getByRole('dialog').getByText('Additional forms are temporarily unavailable.')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'View Pro upgrade' })).toHaveAttribute('href', '/dashboard/settings?tab=billing');
+    await expect(page.getByRole('dialog')).toHaveAccessibleName('Add more forms with Pro');
+    await expect(page.getByRole('dialog').getByText('New forms can’t be added right now.')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'See Pro' })).toHaveAttribute('href', '/dashboard/settings?tab=billing');
     if (process.env.QA_SHOT_DIR) await page.screenshot({ path: `${process.env.QA_SHOT_DIR}/${test.info().project.name.replace(/\s/g, '-')}-form-upgrade.png`, fullPage: false });
     await page.keyboard.press('Escape');
     await cardAction(page, 'Listing', 'Duplicate Pro');
-    await expect(page.getByRole('dialog')).toHaveAccessibleName('Save more workflows with Pro');
+    await expect(page.getByRole('dialog')).toHaveAccessibleName('Add more forms with Pro');
     expect(state.writes).toHaveLength(0);
     await page.keyboard.press('Escape');
     state.forms.push(form(second, 'Retained', true)); state.forms[1].isActive = false;
     Object.assign(state.access.capabilities, { usage: 2, totalUsage: 2 });
     await page.reload();
-    await expect(page.getByText(/Your existing forms, links and configurations are kept/)).toBeVisible();
+    await expect(page.getByText(/Your existing forms, links and settings are kept/)).toBeVisible();
     await expect(page.getByRole('link', { name: 'Edit', exact: true })).toHaveCount(2);
     await healthy(page);
 });
@@ -598,16 +598,16 @@ test('Free creation actions explain Pro while customization and retained downgra
 test('commercial paid limit and pilot/technical denials have distinct explanations; prices are unchanged', async ({ page }) => {
     const state = await mocks(page);
     const cases = [
-        { reason: 'commercial', message: 'This workspace has reached its allowance of ten forms. Edit or reuse an existing form.' },
-        { reason: 'pilot', message: 'Additional forms are temporarily unavailable for this account.' },
-        { reason: 'technical', message: 'The account form limit has been reached. Existing forms remain available.' },
+        { reason: 'commercial', message: 'This workspace has reached its limit of ten forms. Edit or reuse one you already have.' },
+        { reason: 'pilot', message: 'New forms can’t be added to this account right now. Your existing forms still work.' },
+        { reason: 'technical', message: 'You’ve reached the most forms one account can have. Your existing forms still work.' },
     ];
     for (const policy of cases) {
         Object.assign(state.access.capabilities, { canCreate: false, upgradeRequired: false, ...policy });
         await page.goto('/test-fixtures/seller-forms');
         await page.getByRole('button', { name: 'New form', exact: true }).click();
         await expect(page.getByRole('dialog').getByText(policy.message)).toBeVisible();
-        await expect(page.getByRole('link', { name: 'View Pro upgrade' })).toHaveCount(0);
+        await expect(page.getByRole('link', { name: 'See Pro' })).toHaveCount(0);
         await page.keyboard.press('Escape');
     }
     await page.goto('/pricing');

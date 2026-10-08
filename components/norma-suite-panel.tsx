@@ -100,7 +100,7 @@ export function NormaSuitePanel({ variant }: NormaSuitePanelProps) {
                             Part of Norma
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            UtilitySheet fits after intake. If you want the upstream handoff too, Norma Intake is live now.
+                            UtilitySheet picks up after intake. If you want help with intake too, Norma Intake is live now.
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">

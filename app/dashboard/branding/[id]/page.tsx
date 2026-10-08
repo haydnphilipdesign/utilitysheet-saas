@@ -31,7 +31,7 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
                 }
 
                 if (!profileResponse.ok) {
-                    toast.error('Failed to fetch brand profile');
+                    toast.error('We couldn’t load this profile. Try again.');
                     router.push('/dashboard/branding');
                     return;
                 }
@@ -45,7 +45,7 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
                 setInitialData(data);
             } catch (error) {
                 console.error('Error fetching profile:', error);
-                toast.error('Error fetching brand profile');
+                toast.error('We couldn’t load this profile. Try again.');
                 router.push('/dashboard/branding');
             } finally {
                 setLoading(false);
@@ -67,15 +67,15 @@ export default function EditBrandingPage({ params }: { params: Promise<{ id: str
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Failed to update profile');
+                throw new Error(error.error || 'We couldn’t save the profile. Try again.');
             }
 
-            toast.success('Brand profile updated successfully');
+            toast.success('Branding Profile saved');
             router.push('/dashboard/branding');
             router.refresh();
         } catch (error) {
             console.error('Error updating profile:', error);
-            toast.error(error instanceof Error ? error.message : 'Failed to update brand profile');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t save the profile. Try again.');
             throw error;
         }
     };

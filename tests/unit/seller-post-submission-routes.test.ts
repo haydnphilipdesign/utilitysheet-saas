@@ -197,7 +197,7 @@ describe('seller submission route', () => {
         mocks.submit.mockResolvedValueOnce({ outcome: 'ACCEPTED', request: { id: 'request-1', is_locked: true }, currentEditVersion: 0 });
         await submit(answers);
 
-        expect(mocks.completionEmail.mock.calls[0][0]).toMatchObject({ propertyAddress: 'Locked — upgrade to view', sellerName: undefined });
+        expect(mocks.completionEmail.mock.calls[0][0]).toMatchObject({ propertyAddress: 'Locked. Upgrade to view.', sellerName: undefined });
         expect(mocks.alertEmail).not.toHaveBeenCalled();
         expect(mocks.sql).not.toHaveBeenCalled();
     });

@@ -31,12 +31,12 @@ export function ReopenRequestDialog({ request, onClose, onReopened }: ReopenRequ
             const response = await fetch(`/api/requests/${request.id}/reopen`, { method: 'POST' });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to reopen request');
+                throw new Error(data.error || 'We couldn’t reopen the request. Try again.');
             }
             toast.success('Reopened. Send the seller their link when you are ready.');
             onReopened(data as Request);
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to reopen request');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t reopen the request. Try again.');
         } finally {
             setWorking(false);
         }
@@ -53,13 +53,13 @@ export function ReopenRequestDialog({ request, onClose, onReopened }: ReopenRequ
                     </DialogDescription>
                 </DialogHeader>
                 <ul className="list-disc space-y-1.5 pl-4 text-xs text-muted-foreground">
-                    <li>The seller link becomes editable again and starts from the current info sheet, including any edits you made.</li>
-                    <li>The info sheet link and PDF are unavailable until the seller submits again, or until you close the request without changes.</li>
-                    <li>The seller&apos;s next submission replaces the info sheet.</li>
-                    <li>This does not use another submission from your monthly limit.</li>
+                    <li>The seller can change their answers again, starting from the current sheet, including any edits you made.</li>
+                    <li>The sheet link and PDF are unavailable until the seller submits again, or until you close the request without changes.</li>
+                    <li>The seller&apos;s new answers replace the sheet.</li>
+                    <li>This does not count as another submitted sheet.</li>
                     <li>
                         No email is sent. Share the seller link yourself
-                        {request?.seller_email ? ', or use Send Reminder afterwards.' : '.'}
+                        {request?.seller_email ? ', or use Send reminder afterwards.' : '.'}
                     </li>
                 </ul>
                 <DialogFooter>

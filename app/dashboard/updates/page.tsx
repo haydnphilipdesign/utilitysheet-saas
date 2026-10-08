@@ -7,7 +7,7 @@ import { mergeFeaturedProductUpdate } from '@/lib/product-updates';
 export const dynamic = 'force-dynamic';
 
 function categoryLabel(category: string) {
-    if (category === 'bugfix') return 'Bugfix';
+    if (category === 'bugfix') return 'Fix';
     if (category === 'feature') return 'Feature';
     if (category === 'announcement') return 'Announcement';
     return category;
@@ -29,12 +29,12 @@ export default async function DashboardUpdatesPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Updates</h1>
-                <p className="text-sm sm:text-base text-muted-foreground mt-1">Bug fixes, feature releases, announcements, and workflow improvements.</p>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">Fixes, new features and announcements.</p>
             </div>
 
             <Card className="border-border bg-card/50">
                 <CardHeader>
-                    <CardTitle>Changelog</CardTitle>
+                    <CardTitle>Latest updates</CardTitle>
                     <CardDescription>{updates.length ? `${updates.length} posts` : 'No posts yet'}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

@@ -229,10 +229,10 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
                     location: 'packet_header',
                 });
             }
-            toast.success('PDF downloaded successfully');
+            toast.success('PDF downloaded');
         } catch (error) {
             console.error('Error generating PDF:', error);
-            toast.error('Failed to generate PDF. Please try again.');
+            toast.error('We couldn’t create the PDF. Try again.');
         } finally {
             setDownloading(false);
         }
@@ -251,8 +251,8 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
             <PacketStateScreen
                 icon={<Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />}
                 iconClassName="bg-blue-500/10"
-                title="This info sheet is not ready yet"
-                body="The homeowner has not submitted their utility details. Check back soon."
+                title="This utility sheet isn’t ready yet"
+                body="The seller hasn’t sent their utility details yet. Check back soon."
             />
         );
     }
@@ -262,8 +262,8 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
             <PacketStateScreen
                 icon={<Lock className="h-6 w-6 text-amber-500" />}
                 iconClassName="bg-amber-500/10"
-                title="This info sheet is locked"
-                body={lockedMessage || 'Ask the agent to upgrade their plan to view this info sheet.'}
+                title="Sheet not available"
+                body={lockedMessage || 'This utility sheet isn’t available right now. Please ask the person who sent it to you for an updated copy.'}
             />
         );
     }
@@ -273,8 +273,8 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
             <PacketStateScreen
                 icon={<AlertCircle className="h-6 w-6 text-muted-foreground" />}
                 iconClassName="bg-muted"
-                title="Info sheet not found"
-                body="We couldn't find an info sheet for this link. Double-check the link, or ask whoever shared it to resend it."
+                title="We couldn’t find this utility sheet"
+                body="This link doesn’t match a utility sheet. Double-check it, or ask whoever shared it to send it again."
             />
         );
     }

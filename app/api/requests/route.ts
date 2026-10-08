@@ -21,7 +21,7 @@ function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
         ...r,
         is_locked: true,
         can_edit_submitted_sheet: false,
-        property_address: 'Locked — upgrade to view',
+        property_address: 'Locked. Upgrade to view.',
         property_address_structured: null,
         seller_name: null,
         seller_email: null,

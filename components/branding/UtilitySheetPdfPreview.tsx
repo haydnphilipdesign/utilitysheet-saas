@@ -67,7 +67,7 @@ export default function UtilitySheetPdfPreview({
     mode: controlledMode,
     onModeChange,
     label = 'Live preview',
-    frameLabel = 'Preview of your branded utility info sheet',
+    frameLabel = 'Preview of your branded utility sheet',
     scrollContained = true,
 }: UtilitySheetPdfPreviewProps) {
     const [internalMode, setInternalMode] = useState<PacketMode>(defaultMode);
@@ -142,7 +142,7 @@ export default function UtilitySheetPdfPreview({
                     <div
                         className="inline-flex rounded-lg border border-border bg-muted p-0.5 text-xs font-medium"
                         role="group"
-                        aria-label="Preview packet mode"
+                        aria-label="Preview sheet type"
                     >
                         {(['simple', 'advanced'] as PacketMode[]).map((option) => (
                             <button
@@ -190,8 +190,8 @@ export default function UtilitySheetPdfPreview({
             </div>
 
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Exact layout of your downloadable {effectiveMode === 'advanced' ? 'Seller Transition Packet' : 'Utility Info Sheet'} with
-                sample property data. Page breaks, running headers, and page numbers appear in the PDF itself.
+                Exact layout of your downloadable {effectiveMode === 'advanced' ? 'Property Handoff Packet' : 'utility sheet'} PDF, with
+                sample property details. Page breaks, running headers, and page numbers appear in the PDF itself.
             </p>
         </div>
     );

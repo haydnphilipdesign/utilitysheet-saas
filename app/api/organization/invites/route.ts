@@ -99,7 +99,7 @@ export async function POST(request: Request) {
 
         if (!rateLimitResult.success) {
             return NextResponse.json(
-                { error: 'Rate limit exceeded. Please slow down before sending more invites.' },
+                { error: 'You’ve sent a lot of invitations in a short time. Wait a few minutes, then try again.' },
                 { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
             );
         }
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 
         if (organization.subscription_status !== 'team') {
             return NextResponse.json(
-                { error: 'Team plan required', message: 'Upgrade your organization to Teams to invite members.' },
+                { error: 'Team plan required', message: 'Invitations need a Teams plan.' },
                 { status: 402 }
             );
         }
@@ -158,7 +158,7 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     error: 'No seats available',
-                    message: 'Your organization has no available seats. Increase seats to invite more members.',
+                    message: 'All of your seats are in use. Add seats in Billing or cancel a pending invitation, then try again.',
                     seatQuantity,
                     seatUsage,
                 },

@@ -24,11 +24,11 @@ export function sellerFormCapabilities(
         reason === 'commercial'
             ? upgradeRequired
                 ? 'Free includes one customizable form per workspace. Upgrade to Pro for up to ten.'
-                : 'This workspace has reached its allowance of ten forms. Edit or reuse an existing form.'
+                : 'This workspace has reached its limit of ten forms. Edit or reuse one you already have.'
             : reason === 'technical'
-              ? 'The account form limit has been reached. Existing forms remain available.'
+              ? 'You’ve reached the most forms one account can have. Your existing forms still work.'
               : reason === 'pilot'
-                ? 'Additional forms are temporarily unavailable for this account.'
+                ? 'New forms can’t be added to this account right now. Your existing forms still work.'
                 : '';
     return {
         canCreate: reason === null,

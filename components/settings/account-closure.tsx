@@ -78,13 +78,13 @@ function consequenceList(review: AccountClosureReview) {
         items.push('Your Pro plan is canceled right away. There’s no refund for time left on it.');
     }
     for (const name of review.billing.cancelsWorkspacePlans) {
-        items.push(`The Team plan for ${name} is canceled right away, with no refund.`);
+        items.push(`The Teams plan for ${name} is canceled right away, with no refund.`);
     }
     for (const workspace of review.deletedWorkspaces) {
         const open = workspace.openRequestCount > 0
             ? ` ${workspace.openRequestCount} of them ${workspace.openRequestCount === 1 ? 'is' : 'are'} still waiting on a seller.`
             : '';
-        items.push(`The ${workspace.name} workspace is deleted with its ${plural(workspace.requestCount, 'request')} and Branding Profiles. Their seller and packet links stop working.${open}`);
+        items.push(`The ${workspace.name} workspace is deleted with its ${plural(workspace.requestCount, 'request')} and Branding Profiles. Their seller and sheet links stop working.${open}`);
     }
     if (review.personal.requestCount > 0) {
         const open = review.personal.openRequestCount > 0
@@ -104,7 +104,7 @@ function consequenceList(review: AccountClosureReview) {
             : `You leave ${workspace.name}. Its requests and settings aren’t affected.`);
     }
     if (review.forfeitedReferralCredits > 0) {
-        items.push(`${plural(review.forfeitedReferralCredits, 'unused referral credit')} ${review.forfeitedReferralCredits === 1 ? 'is' : 'are'} forfeited.`);
+        items.push(`${plural(review.forfeitedReferralCredits, 'unused referral credit')} ${review.forfeitedReferralCredits === 1 ? 'is' : 'are'} lost.`);
     }
     if (review.pendingInvitations > 0) {
         items.push(`${plural(review.pendingInvitations, 'pending workspace invitation')} to your email ${review.pendingInvitations === 1 ? 'is' : 'are'} canceled.`);

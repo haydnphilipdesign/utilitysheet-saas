@@ -101,7 +101,7 @@ export default function FeaturesPage() {
             {
               href: '/pricing',
               title: 'Pricing',
-              copy: 'Compare Starter, Pro, and Teams plans.',
+              copy: 'Compare Free, Pro, and Teams plans.',
             },
             {
               href: '/utility-sheet-for-transaction-coordinators',

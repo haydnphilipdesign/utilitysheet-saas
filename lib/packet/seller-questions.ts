@@ -378,7 +378,7 @@ function buildUtilitySection(
             key: 'utility.electric.meter_number',
             label: 'Meter Number',
             sellerPrompt: 'Meter Number (optional)',
-            helper: 'If available, this will be added to the final PDF.',
+            helper: 'If you have it, we’ll include it on the sheet for the buyer.',
             condition: 'Shown while "Collect electric meter number" is on for this request. Defaults come from the selected seller form.',
         });
     }

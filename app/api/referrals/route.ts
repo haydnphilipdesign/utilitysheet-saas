@@ -101,13 +101,13 @@ export async function POST(request: Request) {
         }
         if (result.status === 'already_claimed') {
             return NextResponse.json(
-                { error: 'A referral code is already attached to this account.' },
+                { error: 'This account already has a referral code.' },
                 { status: 409 }
             );
         }
         if (result.status === 'expired') {
             return NextResponse.json(
-                { error: 'Referral codes can be added within 30 days of signup.' },
+                { error: 'Referral codes can only be added within 30 days of signing up.' },
                 { status: 409 }
             );
         }

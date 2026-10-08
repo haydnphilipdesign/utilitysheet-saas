@@ -310,7 +310,7 @@ describe('Operations page', () => {
 
         await page();
         const service = screen.getByRole('region', { name: /service issues/i });
-        expect(within(service).getByText(/packet pdf generation failed unexpectedly/i)).toBeInTheDocument();
+        expect(within(service).getByText(/sheet pdf generation failed unexpectedly/i)).toBeInTheDocument();
         expect(within(service).getByText(/2 with no later success observed/i)).toBeInTheDocument();
         expect(within(service).getByText(/account closure retry: no success in over 26 hours/i)).toBeInTheDocument();
         expect(within(service).getByRole('link', { name: /most recent affected request/i })).toHaveAttribute('href', `/admin/requests/${REQUEST_ID}`);

@@ -65,7 +65,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
             },
             {
               title: 'Better buyer handoff quality',
-              copy: 'The finished utility sheet looks polished enough to share with buyers, agents, and support teams, and Pro/Teams can clean up submitted details before it goes out.',
+              copy: 'The finished utility sheet looks polished enough to share with buyers, agents, and support teams, and on Pro and Teams you can clean up submitted details before it goes out.',
             },
           ].map((item) => (
             <article key={item.title} className="rounded-3xl border border-border bg-card/30 p-6">

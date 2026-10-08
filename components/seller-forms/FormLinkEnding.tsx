@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { linkSuffixError } from '@/lib/seller-forms/links';
 import type { SavedSellerForm } from './types';
 
-/** Inline editor for the ending of one form's own link (paid plans). */
+/** Inline editor for the last part of one form's own link (paid plans). */
 export function FormLinkEnding({ form, mainUrl, onSaved, onClose }: {
     form: SavedSellerForm;
     /** The workspace's main link; a form's own link adds its ending to it. */
@@ -48,7 +48,7 @@ export function FormLinkEnding({ form, mainUrl, onSaved, onClose }: {
     }
     return (
         <div className="space-y-2 rounded-md border border-border p-3">
-            <Label htmlFor={inputId}>Link ending for {form.name}</Label>
+            <Label htmlFor={inputId}>Link for {form.name}</Label>
             <div className="flex flex-wrap items-center gap-2">
                 <span className="break-all text-sm text-muted-foreground">{mainUrl}/</span>
                 <Input

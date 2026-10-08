@@ -29,7 +29,7 @@ function consequences(request: DeletableRequest): string[] {
     }
     if (request.status === 'submitted') {
         return [
-            'The seller link and packet link will stop working.',
+            'The seller link and the sheet link will stop working.',
             'On the Free plan, this submission still counts toward this month’s limit.',
         ];
     }
@@ -49,12 +49,12 @@ export function DeleteRequestDialog({ request, onClose, onDeleted }: DeleteReque
             const response = await fetch(`/api/requests/${request.id}`, { method: 'DELETE' });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to delete request');
+                throw new Error(data.error || 'We couldn’t delete the request. Try again.');
             }
             toast.success('Request deleted');
             onDeleted(request);
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to delete request');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t delete the request. Try again.');
         } finally {
             setDeleting(false);
         }

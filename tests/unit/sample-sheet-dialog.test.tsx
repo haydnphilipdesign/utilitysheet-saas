@@ -117,7 +117,7 @@ describe('SampleSheetDialog', () => {
         vi.stubGlobal('fetch', vi.fn((url: string) => (url === '/api/branding'
             ? jsonResponse([savedProfile])
             : jsonResponse({ account: { subscription_status: 'free' } }))));
-        mocks.generateTestPdf.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('Rate limit exceeded. Please slow down.'));
+        mocks.generateTestPdf.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('Too many attempts. Wait a moment and try again.'));
 
         render(<SampleSheetDialog open onOpenChange={() => {}} source="dashboard" />);
         const download = await screen.findByRole('button', { name: 'Download sample PDF' });
@@ -131,7 +131,7 @@ describe('SampleSheetDialog', () => {
         await waitFor(() => expect(mocks.trackEvent).toHaveBeenCalledWith('sample_sheet_pdf_downloaded', { source: 'dashboard', success: true }));
 
         fireEvent.click(screen.getByRole('button', { name: 'Download sample PDF' }));
-        await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Rate limit exceeded. Please slow down.'));
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Too many attempts. Wait a moment and try again.'));
         expect(mocks.trackEvent).toHaveBeenCalledWith('sample_sheet_pdf_downloaded', { source: 'dashboard', success: false });
         expect(JSON.stringify(mocks.trackEvent.mock.calls)).not.toContain('Maple');
     });

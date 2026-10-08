@@ -64,7 +64,7 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
                 trackEvent('seller_save_link_sent', { step: stepName, success: false, location: 'seller_flow' });
             }
         } catch {
-            setError('Network error. Please check your connection.');
+            setError('We couldn’t reach the server. Check your connection and try again.');
             trackEvent('seller_save_link_sent', { step: stepName, success: false, location: 'seller_flow' });
         } finally {
             setSubmitting(false);
@@ -218,7 +218,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                     {brandProfile?.name || 'UtilitySheet'}
                                 </h1>
                                 <p className="text-xs text-muted-foreground truncate">
-                                    {brandProfile?.name ? 'Utility Information Request' : 'Simplify Utility Handoffs'}
+                                    {brandProfile?.name ? 'Utility information request' : 'Utility information'}
                                 </p>
                             </div>
                         </div>

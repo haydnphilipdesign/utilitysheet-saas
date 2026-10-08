@@ -427,7 +427,7 @@ test('a Teams seat count can be typed and is checked before checkout', async ({ 
     await seats.pressSequentially('10');
     await expect(seats).toHaveValue('10');
     await expect(page.getByText('$70/mo', { exact: true })).toBeVisible();
-    await expect(page.getByText('Stripe adds the prorated difference from Pro to your next invoice.', { exact: true })).toBeVisible();
+    await expect(page.getByText('Stripe adds the difference from Pro for the rest of this billing period to your next invoice.', { exact: true })).toBeVisible();
     await healthy(page, testInfo, 'pro-teams-seats');
 
     await seats.fill('2');

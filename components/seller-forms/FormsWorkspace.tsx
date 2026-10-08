@@ -168,7 +168,7 @@ export function FormsWorkspace({ embedded = false }: {
                         {data.workspaceName} is sharing {data.capabilities.sharing.usage} of {data.capabilities.sharing.allowance} forms.
                     </p>
                 )}
-                {data.capabilities.usage > data.capabilities.allowance && <p>Your existing forms, links and configurations are kept. You can edit or reactivate them; incoming submissions use your current plan. Upgrade to restore paid features and create up to ten forms.</p>}
+                {data.capabilities.usage > data.capabilities.allowance && <p>Your existing forms, links and settings are kept, and you can still edit, pause or resume them. New submissions follow your current plan. Upgrade to get paid features back and have up to ten forms.</p>}
             </div>}
             {data && <FormLimitDialog capabilities={data.capabilities} open={limitOpen} onOpenChange={setLimitOpen} />}
             <PauseFormDialog form={pauseTarget} onClose={() => setPauseTarget(null)} onPaused={load} />

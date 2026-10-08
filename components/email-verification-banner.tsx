@@ -28,7 +28,7 @@ export function EmailVerificationBanner() {
                 // Email was verified in the meantime
                 setSent(true);
             } else {
-                setError('Failed to send. Try again later.');
+                setError('We couldn’t send the email. Try again in a few minutes.');
             }
         } finally {
             setSending(false);
@@ -46,7 +46,7 @@ export function EmailVerificationBanner() {
                         Verify your email
                     </p>
                     <p className="text-sm text-amber-500/80 mt-0.5">
-                        Verify <span className="font-medium">{user.primaryEmail}</span> to ensure you never lose access to your account.
+                        Verify <span className="font-medium">{user.primaryEmail}</span> so you can always get back into your account.
                     </p>
                     {error && (
                         <p className="text-xs text-red-400 mt-1">{error}</p>

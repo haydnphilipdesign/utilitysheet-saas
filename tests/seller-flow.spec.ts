@@ -14,8 +14,8 @@ test.describe('Seller Wizard Flow', () => {
         await page.goto(`/s/${FAKE_TOKEN}`);
 
         // Expect the error UI
-        await expect(page.getByText('Unavailable')).toBeVisible();
-        await expect(page.getByText('Request not found')).toBeVisible();
+        await expect(page.getByText('This link isn’t working')).toBeVisible();
+        await expect(page.getByText('We couldn’t find this form. Check your link and try again.')).toBeVisible();
 
         // Check for retry button
         await expect(page.getByRole('button', { name: 'Try Again' })).toBeVisible();

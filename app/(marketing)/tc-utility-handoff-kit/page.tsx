@@ -161,9 +161,9 @@ export default function TcUtilityHandoffKitPage() {
                         <p className="font-semibold text-foreground">Copy-and-paste text</p>
                     </CardHeader>
                     <CardContent className="leading-7 text-muted-foreground">
-                        Hi [Seller First Name]—when you have a moment, please complete this short utility
+                        Hi [Seller First Name], when you have a moment, please complete this short utility
                         form for [Property Address]: [UTILITY FORM LINK]. It works from your phone, and “Not
-                        sure” is completely fine if you do not know an answer. Thank you! —[TC Name]
+                        sure” is completely fine if you do not know an answer. Thank you! [TC Name]
                     </CardContent>
                 </Card>
             </MarketingSection>

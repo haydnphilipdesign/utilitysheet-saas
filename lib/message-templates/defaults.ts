@@ -17,14 +17,14 @@ Please complete this short form:
 Thank you!`;
 
 export const DEFAULT_SELLER_REQUEST_EMAIL_SUBJECT_TEMPLATE =
-    'Action required: utility information for {{property_address}}';
+    'Utility information needed for {{property_address}}';
 
 export const DEFAULT_SELLER_REQUEST_EMAIL_BODY_TEMPLATE =
     `Hi{{seller_first_name_with_space}},
 
 {{agent_name}} is putting together the utility details for {{property_address}}.
 
-When you have a moment, please fill out this short form. If you’re not sure about a provider, it’s okay to leave it blank.
+When you have a moment, please fill out this short form. If you’re not sure about a provider, you can choose “Not sure” and keep going.
 
 Thank you!`;
 

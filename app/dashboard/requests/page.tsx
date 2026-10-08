@@ -210,7 +210,7 @@ export default function RequestsPage() {
             await navigator.clipboard.writeText(`${window.location.origin}/s/${token}`);
             toast.success('Seller link copied');
         } catch {
-            toast.error('Failed to copy seller link');
+            toast.error('We couldn’t copy the seller link.');
         }
     }, []);
 
@@ -219,10 +219,10 @@ export default function RequestsPage() {
         setDownloadingPdfToken(request.public_token);
         try {
             await generatePacketPdf(request.public_token);
-            toast.success('PDF downloaded successfully');
+            toast.success('PDF downloaded');
         } catch (downloadError) {
             console.error('Error generating PDF:', downloadError);
-            toast.error('Failed to generate PDF. Please try again.');
+            toast.error('We couldn’t create the PDF. Try again.');
         } finally {
             setDownloadingPdfToken(null);
         }
@@ -235,13 +235,13 @@ export default function RequestsPage() {
             const response = await fetch(`/api/requests/${request.id}/remind`, { method: 'POST' });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                toast.error(data.error || 'Failed to send reminder');
+                toast.error(data.error || 'We couldn’t send the reminder. Try again.');
                 return;
             }
             toast.success('Reminder sent');
         } catch (reminderError) {
             console.error('Error sending reminder:', reminderError);
-            toast.error('Failed to send reminder. Please try again.');
+            toast.error('We couldn’t send the reminder. Try again.');
         } finally {
             setSendingReminderRequestId(null);
         }
@@ -266,7 +266,7 @@ export default function RequestsPage() {
 
             <PageHeader
                 title="Requests"
-                description="Track every seller request from first send through completed packet."
+                description="Follow every request from the first send to the finished sheet."
                 actions={
                     <Link
                         href="/dashboard/requests/new"
@@ -420,7 +420,7 @@ export default function RequestsPage() {
                         <EmptyState
                             icon={Search}
                             title="No matching requests"
-                            description="No requests match this search or filter. Clear the filters to return to the full workspace."
+                            description="No requests match this search or filter. Clear the filters to see every request."
                             action={
                                 <Button type="button" variant="outline" onClick={clearFilters}>
                                     <RotateCcw className="mr-2 h-4 w-4" />
@@ -432,7 +432,7 @@ export default function RequestsPage() {
                         <EmptyState
                             icon={FileText}
                             title="No requests yet"
-                            description="Create a manual request or share your reusable seller link to start collecting utility details."
+                            description="Create a request for one property, or share your reusable seller link, to start collecting utility details."
                             action={
                                 <>
                                     <Link href="/dashboard" className={buttonVariants({ variant: 'outline' })}>

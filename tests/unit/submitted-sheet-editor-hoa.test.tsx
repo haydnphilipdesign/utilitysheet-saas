@@ -66,7 +66,7 @@ beforeEach(() => {
 
 async function renderEditor() {
     render(<SubmittedSheetEditor requestId="req_1" />);
-    await screen.findByRole('heading', { name: 'Edit Info Sheet' });
+    await screen.findByRole('heading', { name: 'Edit sheet' });
     return within(screen.getByTestId('hoa-card'));
 }
 

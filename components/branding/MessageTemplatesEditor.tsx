@@ -119,10 +119,10 @@ function TemplateField({ id, label, value, placeholder, onChange, maxLength, mul
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" aria-hidden="true" />
                     <span>
                         {analysis.unknownVariables.length > 0 && (
-                            <>Unknown variable{analysis.unknownVariables.length > 1 ? 's' : ''}: {analysis.unknownVariables.map((v) => `{{${v}}}`).join(', ')}. </>
+                            <>Unknown placeholder{analysis.unknownVariables.length > 1 ? 's' : ''}: {analysis.unknownVariables.map((v) => `{{${v}}}`).join(', ')}. </>
                         )}
                         {analysis.malformedTokens.length > 0 && (
-                            <>Check these tokens: {analysis.malformedTokens.join(', ')}. </>
+                            <>Check these placeholders: {analysis.malformedTokens.join(', ')}. </>
                         )}
                         They will be removed when the message is sent.
                     </span>
@@ -131,7 +131,7 @@ function TemplateField({ id, label, value, placeholder, onChange, maxLength, mul
 
             {showPreview && (
                 <div className="rounded-lg border border-border bg-muted/30 p-2.5">
-                    <p className="text-[11px] font-medium text-muted-foreground mb-1">Preview with sample data{value.trim() ? '' : ' (default template)'}:</p>
+                    <p className="text-[11px] font-medium text-muted-foreground mb-1">Preview with sample details{value.trim() ? '' : ' (standard wording)'}:</p>
                     <p className="text-xs text-foreground whitespace-pre-wrap break-words">{previewText}</p>
                 </div>
             )}
@@ -163,9 +163,9 @@ export default function MessageTemplatesEditor({ templates, onChange }: MessageT
         <div className="space-y-5">
             <div className="rounded-lg border border-border bg-muted/40 p-3">
                 <p className="text-xs text-muted-foreground">
-                    Use the insert buttons to add variables like{' '}
-                    <span className="font-mono">{'{{property_address}}'}</span>. Leave a field blank to use the default
-                    template (shown in gray). Preview shows how a message looks with sample data.
+                    Use the insert buttons to add placeholders like{' '}
+                    <span className="font-mono">{'{{property_address}}'}</span>, which are filled in for each request.
+                    Leave a field blank to use the standard wording (shown in gray). Preview shows a message with sample details.
                 </p>
             </div>
 

@@ -126,7 +126,7 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 {
                     error: 'Seat quantity too low',
-                    message: `Your workspace already reserves ${reservedSeats} seats across members and pending invitations.`,
+                    message: `This workspace already uses ${reservedSeats} seats (members and pending invitations), so choose at least ${reservedSeats}.`,
                 },
                 { status: 400 }
             );
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
                 return NextResponse.json(
                     {
                         error: 'Subscription requires support',
-                        message: 'Your current Stripe subscription could not be safely converted automatically.',
+                        message: 'We couldn’t change your Pro plan to Teams automatically. Contact support and we’ll sort it out.',
                     },
                     { status: 409 }
                 );

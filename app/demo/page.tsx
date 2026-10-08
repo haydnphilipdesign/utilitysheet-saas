@@ -55,7 +55,7 @@ export default function DemoPage() {
 
     const handleStartDemo = async () => {
         if (!address.trim() || address.length < 10) {
-            setError('Please enter a complete address (street, city, state)');
+            setError('Please enter the full address: street, city and state.');
             return;
         }
 
@@ -97,7 +97,7 @@ export default function DemoPage() {
             setWizardReady(true);
         } catch (err) {
             console.error('Demo error:', err);
-            setError('Something went wrong. Please try again.');
+            setError('Something went wrong on our side. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -148,7 +148,7 @@ export default function DemoPage() {
 
                     <div className="bg-card/50 border border-border rounded-2xl p-6 space-y-4">
                         <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-900">
-                            This demo shows the core guided flow. Pro and Teams can also run Property Handoff Packet mode and edit submitted sheets later from the dashboard.
+                            This demo shows the core guided flow. On Pro and Teams you can also collect a Property Handoff Packet and edit submitted sheets later from the dashboard.
                         </div>
 
                         <div>

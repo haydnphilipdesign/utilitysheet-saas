@@ -113,7 +113,7 @@ export default function OnboardingPage() {
                 }
             } catch (error) {
                 console.error(error);
-                toast.error('Failed to load setup. Please try again.');
+                toast.error('We couldn’t load your setup. Reload the page to try again.');
             } finally {
                 if (!cancelled) {
                     setLoading(false);
@@ -132,7 +132,7 @@ export default function OnboardingPage() {
         const response = await fetch('/api/onboarding/complete', { method: 'POST' });
         if (!response.ok) {
             const data = await response.json().catch(() => ({}));
-            throw new Error(data?.error || 'Failed to save setup progress');
+            throw new Error(data?.error || 'We couldn’t save that. Try again.');
         }
 
         completedRef.current = true;
@@ -141,7 +141,7 @@ export default function OnboardingPage() {
 
     const persistBrandProfile = async (body: Record<string, unknown>) => {
         if (!brandProfileId) {
-            throw new Error('Brand profile not available');
+            throw new Error('Your Branding Profile isn’t ready yet. Reload the page and try again.');
         }
 
         const response = await fetch(`/api/branding/${brandProfileId}`, {
@@ -173,7 +173,7 @@ export default function OnboardingPage() {
             toast.success('Seller link copied');
         } catch (error) {
             console.error(error);
-            toast.error('Failed to copy seller link');
+            toast.error('We couldn’t copy the seller link.');
         }
     };
 
@@ -190,10 +190,10 @@ export default function OnboardingPage() {
                 task: 'branding',
                 method: 'saved',
             });
-            toast.success('Branding updated');
+            toast.success('Branding saved');
         } catch (error) {
             console.error(error);
-            toast.error(error instanceof Error ? error.message : 'Failed to update branding');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t save your branding. Try again.');
         } finally {
             setSavingBranding(false);
         }
@@ -222,10 +222,10 @@ export default function OnboardingPage() {
                 task: 'contact_details',
                 method: 'saved',
             });
-            toast.success('Contact details updated');
+            toast.success('Contact details saved');
         } catch (error) {
             console.error(error);
-            toast.error(error instanceof Error ? error.message : 'Failed to update contact details');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t save your contact details. Try again.');
         } finally {
             setSavingContact(false);
         }
@@ -243,7 +243,7 @@ export default function OnboardingPage() {
             router.refresh();
         } catch (error) {
             console.error(error);
-            toast.error(error instanceof Error ? error.message : 'Failed to save setup progress');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t save that. Try again.');
         } finally {
             setFinishing(false);
         }
@@ -271,7 +271,7 @@ export default function OnboardingPage() {
                         <div className="relative">
                             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                                 <Sparkles className="h-3.5 w-3.5" />
-                                Primary workflow
+                                Start here
                             </div>
                             <CardTitle>
                                 <h1 className="text-3xl font-semibold text-foreground">Your seller link is ready, {displayFirstName}.</h1>
@@ -289,7 +289,7 @@ export default function OnboardingPage() {
                             </div>
                             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                                 <Input
-                                    value={intakeLink?.is_active === false ? 'Seller form paused — reactivate in Seller forms' : intakeLink?.url || ''}
+                                    value={intakeLink?.is_active === false ? 'Seller form paused. Resume it in Seller forms.' : intakeLink?.url || ''}
                                     readOnly
                                     className="font-mono text-sm"
                                 />
@@ -307,7 +307,7 @@ export default function OnboardingPage() {
                                     ) : (
                                         <>
                                             <Copy className="mr-2 h-4 w-4" />
-                                            Copy Link
+                                            Copy link
                                         </>
                                     )}
                                 </Button>
@@ -335,12 +335,12 @@ export default function OnboardingPage() {
                             ) : (
                                 <>
                                     <ExternalLink className="mr-2 h-4 w-4" />
-                                Go to Dashboard
+                                Go to dashboard
                             </>
                         )}
                         </Button>
                         <p className="text-xs text-muted-foreground">
-                            Optional setup continues in the dashboard anytime you want to refine your branding or contact details.
+                            You can finish this setup from the dashboard whenever you like.
                         </p>
                     </CardFooter>
                 </Card>
@@ -360,7 +360,7 @@ export default function OnboardingPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="space-y-3">
-                                <Label htmlFor="brandName">Brand Display Name</Label>
+                                <Label htmlFor="brandName">Brand name</Label>
                                 <Input
                                     id="brandName"
                                     value={brandName}
@@ -394,7 +394,7 @@ export default function OnboardingPage() {
                                             Saving…
                                         </>
                                     ) : (
-                                        'Save Branding'
+                                        'Save branding'
                                     )}
                                 </Button>
                             </div>
@@ -403,7 +403,7 @@ export default function OnboardingPage() {
                                 <div className="space-y-2">
                                     <Label htmlFor="contactName" className="flex items-center gap-2">
                                         <CheckCircle2 className="h-4 w-4 text-primary" />
-                                        Your Name
+                                        Your name
                                     </Label>
                                     <Input id="contactName" value={contactName} onChange={(event) => setContactName(event.target.value)} />
                                 </div>
@@ -442,7 +442,7 @@ export default function OnboardingPage() {
                                         Saving…
                                     </>
                                 ) : (
-                                    'Save Contact Details'
+                                    'Save contact details'
                                 )}
                             </Button>
                         </CardContent>

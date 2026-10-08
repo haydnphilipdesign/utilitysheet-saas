@@ -12,7 +12,7 @@ describe('reopen product update', () => {
         });
         expect(update.body).toContain('Reopen for Seller');
         expect(update.body).toContain('every plan');
-        expect(update.body).toContain('does not use another monthly submission');
+        expect(update.body).toContain('does not count as another submitted sheet');
         expect(update.body).toContain('unavailable while the request is reopened');
         expect(update.body).toContain('Close Without Changes');
     });

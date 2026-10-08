@@ -78,7 +78,7 @@ export async function POST(
         } as Parameters<typeof sendSellerReminderEmail>[0]);
 
         if (!result.success) {
-            return NextResponse.json({ error: result.error || 'Failed to send email' }, { status: 500 });
+            return NextResponse.json({ error: result.error || 'We couldn’t send the email. Please try again.' }, { status: 500 });
         }
 
         const ipAddress = getClientIpOrNull(request);
@@ -94,6 +94,6 @@ export async function POST(
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error sending seller self-link email:', error);
-        return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+        return NextResponse.json({ error: 'We couldn’t send the email. Please try again.' }, { status: 500 });
     }
 }

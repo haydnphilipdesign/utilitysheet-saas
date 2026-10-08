@@ -157,9 +157,9 @@ export function SuccessStep({ isDemo = false, isTestDrive = false, demoData, bra
                 <div className="text-left space-y-2 text-sm">
                     <p className="font-medium text-foreground">What happens next:</p>
                     <ul className="text-xs sm:text-sm text-muted-foreground space-y-1.5 pl-4 list-disc marker:text-muted-foreground/50">
-                        <li>{brandProfile?.name || 'Your real estate team'} reviews the info and prepares a packet for the buyer.</li>
+                        <li>{brandProfile?.name || 'Your real estate team'} reviews the info and prepares a utility sheet for the buyer.</li>
                         <li>If anything is unclear, they may reach out to confirm.</li>
-                        <li>You can safely close this page. The link is now read-only.</li>
+                        <li>You can close this page. Your answers have been sent and can no longer be changed from this link.</li>
                         <li>If something needs correcting later, ask {brandProfile?.name || 'your real estate team'} to reopen the form.</li>
                     </ul>
                 </div>

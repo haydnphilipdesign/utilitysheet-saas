@@ -159,7 +159,7 @@ describe('account closure eligibility and transfers', () => {
         const valid = resolveClosureTransfers(review!, { [workspace.id]: workspace.other_admins[1].accountId });
         expect(valid).toEqual({ ok: true, transfers: { [workspace.id]: workspace.other_admins[1].accountId } });
         expect(resolveClosureTransfers(review!, { [workspace.id]: '55555555-5555-4555-8555-555555555555' }))
-            .toEqual({ ok: false, error: 'Choose who should receive your records in Shared workspace.' });
+            .toEqual({ ok: false, error: 'Choose who should take over your work in Shared workspace.' });
     });
 
     it('treats only the closing user as a sole member workspace and blocks orphaned shared work', async () => {

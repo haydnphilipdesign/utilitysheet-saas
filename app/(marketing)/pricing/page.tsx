@@ -11,7 +11,7 @@ import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
   title: 'UtilitySheet Pricing for Seller Utility Link Workflows',
   description:
-    'View UtilitySheet pricing for Starter, Pro, and Teams. Compare saved seller forms, free submitted sheets, submitted-sheet editing, branded utility sheet output, Property Handoff Packet mode, and team workflows.',
+    'View UtilitySheet pricing for Free, Pro, and Teams. Compare saved seller forms, free submitted sheets, submitted-sheet editing, branded utility sheet output, Property Handoff Packet mode, and team workflows.',
   path: '/pricing',
   keywords: [
     'utility sheet pricing',

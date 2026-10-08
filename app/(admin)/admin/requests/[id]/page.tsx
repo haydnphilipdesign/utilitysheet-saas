@@ -97,7 +97,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                         <div className="py-1"><span className="font-medium text-sm text-muted-foreground block">Seller Email</span> {request.seller_email || 'N/A'}</div>
                         <Separator className="my-2" />
                         <div className="py-1">
-                            <span className="font-medium text-sm text-muted-foreground block">Agent Account</span>
+                            <span className="font-medium text-sm text-muted-foreground block">Owner account</span>
                             {request.account_id ? (
                                 <AdminAccountPreview
                                     account={{

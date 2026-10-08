@@ -159,7 +159,7 @@ export async function buildAccountClosureReview(input: {
                 if (state === 'unsettled') {
                     blockers.push({
                         code: 'workspace_billing_unsettled',
-                        message: `The Team plan for ${name} has an unpaid balance. Switch to ${name} and pay it in Billing, then come back.`,
+                        message: `The Teams plan for ${name} has an unpaid balance. Switch to ${name} and pay it in Billing, then come back.`,
                         action: billingAction,
                     });
                 }
@@ -235,14 +235,14 @@ export function resolveClosureTransfers(
     for (const organizationId of Object.keys(submitted)) {
         const workspace = known.get(organizationId);
         if (!workspace || !workspace.needsTransfer) {
-            return { ok: false, error: 'Choose an admin only for workspaces that hold your records.' };
+            return { ok: false, error: 'Choose an admin only for workspaces where you have work to hand over.' };
         }
     }
     for (const workspace of review.sharedWorkspaces) {
         if (!workspace.needsTransfer) continue;
         const target = submitted[workspace.id];
         if (!target || !workspace.adminOptions.some((admin) => admin.accountId === target)) {
-            return { ok: false, error: `Choose who should receive your records in ${workspace.name}.` };
+            return { ok: false, error: `Choose who should take over your work in ${workspace.name}.` };
         }
         transfers[workspace.id] = target;
     }

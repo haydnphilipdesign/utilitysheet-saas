@@ -159,7 +159,7 @@ describe('Email Templates', () => {
             expect(html).toContain('water');
             expect(html).toContain('Municipal Water');
             expect(html).toContain('Needs Attention');
-            expect(html).toContain('Unresolved Utility Providers');
+            expect(html).toContain('Providers without contact details');
         });
 
         it('handles entries without display name', () => {
@@ -172,7 +172,7 @@ describe('Email Templates', () => {
             });
 
             expect(html).toContain('gas');
-            expect(html).toContain('No name provided');
+            expect(html).toContain('No name given');
         });
 
         it('uses warning color scheme', () => {

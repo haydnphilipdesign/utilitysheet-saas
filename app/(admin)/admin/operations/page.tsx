@@ -28,8 +28,8 @@ export const dynamic = 'force-dynamic';
 
 const INCIDENT_LABELS: Record<string, { title: string; investigate: string }> = {
     'pdf:generation_failed': {
-        title: 'Packet PDF generation failed unexpectedly',
-        investigate: 'Open the linked request and download its packet PDF. If it fails again, check server logs for "[pdf][packet_attachment] failed".',
+        title: 'Sheet PDF generation failed unexpectedly',
+        investigate: 'Open the linked request and download its PDF. If it fails again, check server logs for "[pdf][packet_attachment] failed".',
     },
     'billing_webhook:processing_failed': {
         title: 'A verified Stripe event could not be processed',

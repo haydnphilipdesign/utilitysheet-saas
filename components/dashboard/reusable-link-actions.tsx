@@ -54,12 +54,12 @@ export function ReusableLinkActions({
                         type="button"
                         size="sm"
                         variant="outline"
-                        aria-label="Copy reusable seller link SMS message"
+                        aria-label="Copy a text message with your reusable seller link"
                         onClick={onCopySms}
                         className="min-h-11 active:scale-[0.98] sm:min-h-0"
                     >
                         <MessageSquare className="mr-2 h-4 w-4" />
-                        SMS
+                        Text
                     </Button>
                 ) : null}
                 {onOpenEmail ? (

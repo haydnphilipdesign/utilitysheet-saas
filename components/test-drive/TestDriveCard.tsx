@@ -144,7 +144,7 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
             trackEvent('test_drive_seller_link_copied', { source });
             toast.success('Seller link copied');
         } catch {
-            toast.error('Failed to copy seller link');
+            toast.error('We couldn’t copy the seller link.');
         }
     };
 

@@ -62,7 +62,7 @@ async function getEditorContext(id: string) {
             response: NextResponse.json(
                 {
                     error: 'Upgrade required',
-                    message: 'Editing submitted info sheets is available on Pro and Team workspaces.',
+                    message: 'Editing a submitted sheet is part of Pro and Teams.',
                 },
                 { status: 403 }
             ),
@@ -234,7 +234,7 @@ export async function PATCH(
             return NextResponse.json(
                 {
                     error: 'Conflict',
-                    message: 'This info sheet was updated elsewhere. Reload to get the latest version before saving.',
+                    message: 'Someone else changed this sheet. Reload to get the latest version before saving.',
                 },
                 { status: 409 }
             );

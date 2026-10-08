@@ -866,7 +866,7 @@ export async function POST(
                         sendTCCompletionNotificationEmail({
                             tcEmail: recipient.email,
                             tcName: recipient.name,
-                            propertyAddress: accessLocked ? 'Locked — upgrade to view' : requestData.property_address,
+                            propertyAddress: accessLocked ? 'Locked. Upgrade to view.' : requestData.property_address,
                             sellerName: accessLocked ? undefined : requestData.seller_name || undefined,
                             requestId: requestData.id,
                             attachPdf: recipient.attachPdf,
