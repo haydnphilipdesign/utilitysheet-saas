@@ -211,7 +211,7 @@ describe('Suggestions Pipeline', () => {
                 { display_name: 'Duke Energy', confidence: 0.66, rationale_short: 'Alternative electric service in portions of Florida', contact_phone: null, contact_website: null },
             ]));
 
-        const result = await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+        const result = await getSuggestions('123 Main St, Miami, FL 33101', 'internet');
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
         expect(generateJSONWithMetaMock).toHaveBeenCalledWith(
             expect.any(String),
@@ -272,10 +272,6 @@ describe('Suggestions Pipeline', () => {
             .mockResolvedValueOnce(ok([
                 { display_name: 'Florida Power & Light (FPL)', confidence: 0.75, rationale_short: 'Serves this area', contact_phone: null, contact_website: null },
                 { display_name: 'Duke Energy', confidence: 0.63, rationale_short: 'Regional provider', contact_phone: null, contact_website: null },
-            ]))
-            .mockResolvedValueOnce(ok([
-                { display_name: 'Florida Power & Light (FPL)', confidence: 0.9, rationale_short: 'Primary provider', contact_phone: null, contact_website: null },
-                { display_name: 'Duke Energy', confidence: 0.65, rationale_short: 'Alternative', contact_phone: null, contact_website: null },
             ]));
 
         getProviderMemoryCandidatesMock.mockResolvedValue([
@@ -321,20 +317,18 @@ describe('Suggestions Pipeline', () => {
         ]);
         generateJSONWithMetaMock
             .mockResolvedValueOnce(aiResult('Mechanicsburg Borough Water'))
-            .mockResolvedValueOnce(aiResult('Mechanicsburg Borough Water'))
-            .mockResolvedValueOnce(aiResult('Carlisle Borough Water'))
             .mockResolvedValueOnce(aiResult('Carlisle Borough Water'));
 
         const mechanicsburg = await getSuggestions('29 Clover Lane, Mechanicsburg, PA 17050', 'water');
         const carlisle = await getSuggestions('14 High St, Carlisle, PA 17013', 'water');
 
-        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(4);
+        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
         expect(mechanicsburg[0].display_name).toBe('Mechanicsburg Borough Water');
         expect(carlisle[0].display_name).toBe('Carlisle Borough Water');
 
         const sameCity = await getSuggestions('410 Market St, Mechanicsburg, PA 17050', 'water');
 
-        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(4);
+        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
         expect(sameCity[0].display_name).toBe('Mechanicsburg Borough Water');
     });
 
@@ -455,6 +449,29 @@ describe('Suggestions Pipeline', () => {
         expect(result.suggestions.map((item) => item.display_name)).toEqual(['EPB']);
     });
 
+    it('skips the verify pass where one provider serves an address', async () => {
+        isGeminiConfiguredMock.mockReturnValue(true);
+        const answer = () => ok([
+            { display_name: 'Spectrum', confidence: 0.9, rationale_short: 'Serves this area', contact_phone: null, contact_website: null },
+            { display_name: 'Metronet', confidence: 0.7, rationale_short: 'Fiber in this area', contact_phone: null, contact_website: null },
+        ]);
+        generateJSONWithMetaMock.mockResolvedValue(answer());
+
+        for (const category of ['electric', 'gas', 'water', 'sewer'] as const) {
+            generateJSONWithMetaMock.mockClear();
+            const result = await getSuggestionsFresh('100 Main St, Dayton, OH 45424', category);
+            expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
+            expect(result.outcome).toMatchObject({ source: 'ai_primary', attemptCount: 1 });
+        }
+        for (const category of ['trash', 'propane', 'oil', 'internet', 'cable'] as const) {
+            generateJSONWithMetaMock.mockClear();
+            const result = await getSuggestionsFresh('100 Main St, Dayton, OH 45424', category);
+            expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
+            expect(result.outcome).toMatchObject({ source: 'ai_verify', attemptCount: 2 });
+        }
+        generateJSONWithMetaMock.mockReset();
+    });
+
     it('asks for one provider where one serves an address and never for a padded list', () => {
         const electric = buildSuggestionPrompt('100 Main St, Chattanooga, TN 37402', 'electric');
         const trash = buildSuggestionPrompt('100 Main St, Chattanooga, TN 37402', 'trash');
@@ -540,7 +557,7 @@ describe('Suggestions Pipeline', () => {
                 .mockImplementationOnce(takes(3_000, twoProviders()))
                 .mockImplementationOnce(takes(3_000, twoProviders()));
 
-            await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+            await getSuggestions('123 Main St, Miami, FL 33101', 'internet');
 
             expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
             expect(generateJSONWithMetaMock.mock.calls.map(([, options]) => options.deadlineAt))
@@ -607,7 +624,7 @@ describe('Suggestions Pipeline', () => {
                 .mockResolvedValueOnce({ ...ok(providers), usage: usage(400, 2), failureKind: null })
                 .mockResolvedValueOnce({ ...ok(providers), usage: usage(650, 1), failureKind: null });
 
-            await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+            await getSuggestions('123 Main St, Miami, FL 33101', 'internet');
 
             expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
                 source: 'ai_verify',
@@ -630,7 +647,7 @@ describe('Suggestions Pipeline', () => {
                 .mockResolvedValueOnce({ ...ok(providers), usage: usage(400, 2), failureKind: null })
                 .mockResolvedValueOnce({ ...providerError(), usage: null, failureKind: 'timeout' });
 
-            await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+            await getSuggestions('123 Main St, Miami, FL 33101', 'internet');
 
             expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
                 source: 'ai_primary',

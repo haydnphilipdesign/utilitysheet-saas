@@ -1,6 +1,6 @@
 # AI integration, model selection and cost audit
 
-- Status: **In progress.** Slices 1 to 3 of 7 are done and committed and pushed to origin/main on 2026-10-12 (`214ad72`), deployment not verified. Slice 4 is done with its migration applied, committed and pushed the same day (`6ba63ff`), and its deployment was seen Ready on the production alias on 2026-10-12. Slice 5 is built, validated and has had its first run; it is committed and pushed (see "Progress" and the outcome sections). Slice 6 is in progress: R4 and R13 are committed and pushed, R8 is measured and awaits the owner's decision. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
+- Status: **In progress.** Slices 1 to 3 of 7 are done and committed and pushed to origin/main on 2026-10-12 (`214ad72`), deployment not verified. Slice 4 is done with its migration applied, committed and pushed the same day (`6ba63ff`), and its deployment was seen Ready on the production alias on 2026-10-12. Slice 5 is built, validated and has had its first run; it is committed and pushed (see "Progress" and the outcome sections). Slice 6 is in progress: R4 and R13 are committed and pushed (`77e08ef`), R8 is committed and pushed. Slice 4 usage recording is confirmed on real production lookups. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
 - Scope: owner brief in chat on 2026-10-12. Audit of every AI and Google Maps integration, current model and pricing research, cost and accuracy analysis, evaluation framework proposal, prioritized roadmap. Investigation and documentation only.
 - Baseline: main at `c83b2eb`.
 - Deliverable: `docs/audits/2026-10-12-ai-integration-audit.md`.
@@ -45,7 +45,7 @@ Option B (incremental modernization), starting with the model-independent fixes 
 | 3. Search rework [R2] | Done 2026-10-12, pushed (`214ad72`) |
 | 4. Telemetry and alert [R5] | Done 2026-10-12, migration applied, committed and pushed |
 | 5. Evaluation script [R6] | Done 2026-10-12, first run made, pushed |
-| 6. Decided by the evaluation | In progress: R4 and R13 pushed 2026-10-12; R8 measured, decision open; R9, R10, R11 open |
+| 6. Decided by the evaluation | In progress: R4 and R13 pushed 2026-10-12; R8 pushed 2026-10-12; search-prompt measurement next; R9, R10, R11 open |
 | 7. As time allows | Not started |
 
 ## Implementation slices (approved order)
@@ -193,7 +193,7 @@ No code change; `--passes one` turns the verify pass off. Same 30 cases, same co
 | Token cost per run | $0.050 | $0.025 |
 
 - Reading: for electric, gas, water and sewer the verify pass changed nothing in 20 of 20 cases and doubles the wait. For propane, oil and internet the accepted name was first less often without it (3 cases moved from first to second or third). That difference is about the size of the reordering seen between repeat runs of the same configuration, so it is suggestive, not established.
-- Recommendation for the owner (not built): skip the verify pass for electric, gas, water and sewer; keep it for the other categories until a repeat run on more multi-provider cases settles it. Roughly: half the wait and half the calls for most lookups, no measured loss.
+- Recommendation for the owner (agreed and built the same day, see the R8 section below): skip the verify pass for electric, gas, water and sewer; keep it for the other categories until a repeat run on more multi-provider cases settles it. Roughly: half the wait and half the calls for most lookups, no measured loss.
 - Limits as before: 30 cases, single runs, 10 multi-provider cases only.
 
 ## Hosting settings the owner showed on 2026-10-12 (screenshot in chat, not verified here)
@@ -201,9 +201,35 @@ No code change; `--passes one` turns the verify pass off. Same 30 cases, same co
 `SUGGESTIONS_SHADOW_MODE=true`, `SUGGESTIONS_SERVE_NEW_PIPELINE=true`, `SUGGESTIONS_CANARY_PERCENT=100`, `GEMINI_GOOGLE_SEARCH_GROUNDING=true`, `ENABLE_REQUEST_DIAGNOSTICS=false`. `SUGGESTIONS_MIN_VALID_RESULTS` is not set.
 
 - **Finding (read from code, `runSuggestionPipeline` and `runSearchPipeline`):** with shadow mode on, every fresh suggestion lookup and every fresh search also runs the legacy pipeline as a shadow: one extra model call each, whose answer is only logged as a count comparison and whose usage is not recorded. With the canary at 100 the new pipeline is always the one served, so the shadow serves no purpose. It also waits for the slower of the two before answering, and its failures count toward the shared circuit breaker.
-- Owner action recommended: delete `SUGGESTIONS_SHADOW_MODE` (and the two companions) in hosting, then redeploy. No code change is needed; with it unset only the new pipeline runs. The evaluation already runs without it. Until then Admin Telemetry usage is a floor: it leaves out the shadow call.
+- Owner action recommended (owner reported it done the same day): delete `SUGGESTIONS_SHADOW_MODE` (and the two companions) in hosting, then redeploy. No code change is needed; with it unset only the new pipeline runs. The evaluation already runs without it. Until then Admin Telemetry usage is a floor: it leaves out the shadow call.
 - Slice 7 (R14) removes the legacy pipeline and these switches from the code.
+
+## Slice 6, R8 decision and build: no verify pass where one provider serves an address (2026-10-12, Claude Opus 5.5)
+
+- Owner agreed in chat on 2026-10-12 to the recommendation above. Built and validated, then committed and pushed to origin/main with owner authorization in chat on 2026-10-12. Deployment not verified here.
+- Change (`lib/providers/suggestion-service.ts`, `runTwoPassSuggestionPipeline`): the verify pass runs only for trash, propane, oil, internet and cable. Electric, gas, water and sewer take one pass; the recovery pass still runs when that pass is rejected. `SUGGESTIONS_TWO_PASS_VERIFY=false` still turns verify off everywhere. No prompt, gate or cache key change, so no version bump.
+- Tests: the two-pass, deadline and usage tests now use a category that verifies; one new test covers both groups. `scripts/eval/README.md` says what `--passes two` now means.
+- Confirmation run, same 30 cases (40 model calls, 0 searches):
+
+| Measure | Two passes everywhere | Verify for multi-provider only |
+|---|---|---|
+| Correct top answer | 27/30 | 25/30 |
+| Correct answer in top 3 | 28/30 | 28/30 |
+| Ended on the generic list | 0/30 | 0/30 |
+| One-provider cases (20): top answer / top 3 | 20 / 20 | 19 / 20 |
+| Multi-provider cases (10): top answer / top 3 | 7 / 8 | 6 / 8 |
+| Latency p50, all / one-provider cases | 6.6 s | 3.5 s / 3.2 s |
+| Model calls | 60 | 40 |
+
+- Reading: top 3 and the generic-list rate are unchanged; the wait for electric, gas, water and sewer is about half. Top answer is 2 lower in this run. One is a one-provider case (Pocono Lake electric: the accepted utility came second behind a neighboring one; it was first in the earlier one-pass run of the same code path), one is a multi-provider case whose pipeline did not change. Both are within the reordering seen between repeat runs, but a single run cannot show the change is free.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 225 files / 1766 passed; security scan and `git diff --check` passed. Production build and Playwright not run.
+
+## Production check of slice 4 (2026-10-12)
+
+Confirmed by the owner's Admin Telemetry screenshot and a read-only aggregate query: after the `6ba63ff` deployment, 6 fresh suggestion runs and 6 contact lookups recorded tokens and thinking level `low`, each with 0 searches and 0 sources (suggestions: 11 passes, 5,340 prompt, 3,700 output and 5,794 thinking tokens, average 9.2 s; contacts: about 460 prompt, 100 output and 400 thinking tokens each, average 3.6 s). So production also answers without searching, as the evaluation found, and the monthly search allowance is not being used. Those runs were on the old prompt (`provider-suggestions-v1`).
+
+Owner reported in chat on 2026-10-12 (not verified here): `SUGGESTIONS_SHADOW_MODE`, `SUGGESTIONS_SERVE_NEW_PIPELINE` and `SUGGESTIONS_CANARY_PERCENT` are deleted in hosting. Two production deployments were Ready at about 17:50 and 17:56 UTC; which one carries the deletion was not checked.
 
 ## Next action
 
-Owner: delete `SUGGESTIONS_SHADOW_MODE` in hosting and redeploy; decide on skipping the verify pass for one-provider categories. Then the third agreed measurement: a prompt that tells the model to search (the only one that uses the search allowance), after confirming on Admin Telemetry that a production lookup records tokens and whether searches are 0 there. Still owed: verify the 12 hard cases and add local ones.
+Owner agreed in chat on 2026-10-12 to commit and push R8 and to the last agreed measurement: a prompt that tells the model to search, the only one that uses the search allowance (production and the evaluation both show 0 searches today, so this would add a cost that does not exist now; measure what it adds before deciding). Still open in slice 6: R9 model trial, R10 county and township, R11 honest fallback. Still owed: verify the 12 hard cases and add local ones.

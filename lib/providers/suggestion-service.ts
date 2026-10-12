@@ -55,7 +55,8 @@ const DEFAULT_PIPELINE_DEADLINE_MS = 15000;
 const MIN_PASS_MS = 2000;
 // One provider the model is confident about beats the generic national list.
 const DEFAULT_MIN_VALID_SUGGESTIONS = 1;
-// One provider serves an address in these categories, so the prompt asks for one.
+// One provider serves an address in these categories, so the prompt asks for
+// one and the verify pass is skipped.
 const SINGLE_PROVIDER_CATEGORIES: ReadonlySet<UtilityCategory> = new Set(['electric', 'gas', 'water', 'sewer']);
 const DEFAULT_MIN_TOP_CONFIDENCE = 0.45;
 // A search names a provider, so one match is a complete answer whatever
@@ -1341,7 +1342,10 @@ async function runTwoPassSuggestionPipeline(
     let chosenSource: SuggestionSource | null = null;
     let chosenSuggestions: ProviderSuggestion[] = [];
 
-    if (isTwoPassVerifyEnabled() && primaryPass.suggestions.length > 0 && hasBudgetRemaining(startedAt, maxPipelineMs, deadlineAt)) {
+    // Measured on the evaluation cases: where one provider serves an address the
+    // verify pass changed no answer and doubled the wait, so it is skipped there.
+    const verifies = isTwoPassVerifyEnabled() && !SINGLE_PROVIDER_CATEGORIES.has(category);
+    if (verifies && primaryPass.suggestions.length > 0 && hasBudgetRemaining(startedAt, maxPipelineMs, deadlineAt)) {
         const verifyPass = await runAiPass(
             buildSuggestionVerificationPrompt(parsed, category, primaryPass.suggestions),
             category,

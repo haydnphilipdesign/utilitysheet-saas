@@ -33,7 +33,8 @@ npm run eval:run -- --silver 18 --hard 12 --label baseline --yes
 npm run eval:compare -- .eval/results/a.json .eval/results/b.json
 ```
 
-`--yes` calls the real model. A case costs up to three model calls, and a call
+`--yes` calls the real model. A case costs up to three model calls (two for
+electric, gas, water and sewer), and a call
 can run several Google searches from the 5,000 a month production shares. The
 run stops after four cases in a row end with a model call failure.
 
@@ -43,7 +44,7 @@ Options (defaults are production's settings as known on 2026-10-12):
 |---|---|---|
 | `--model` | a Gemini model name | `gemini-3.1-flash-lite` |
 | `--thinking` | `default`, `minimal`, `low`, `medium`, `high` | `low` |
-| `--passes` | `one` (no verify pass), `two` | `two` |
+| `--passes` | `one` (no verify pass), `two` (verify where the product uses it: not for electric, gas, water or sewer) | `two` |
 | `--recovery` | `on`, `off` | `on` |
 | `--grounding` | `on`, `off` | `on` |
 | `--silver`, `--hard` | how many cases of each kind; `0` for none | all |
