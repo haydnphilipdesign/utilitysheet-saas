@@ -139,7 +139,7 @@ transient provider incompatibility cannot persist for days or months.
 
 The scheduled monitor (`/api/cron/ops-monitor`, every 15 minutes) reads the fresh runs of the last 24 hours per feature (`lib/ops/ai-health.ts`). Cache hits are ignored. A run counts as degraded when:
 
-- provider suggestions ended on the generic list (`source = 'fallback'`), whatever the cause;
+- provider suggestions ended on the generic list (`source = 'fallback'`), whatever the cause. Since 2026-10-12 the seller then sees no list for electric, gas, water and sewer, and national names labelled "Common providers" for the other categories;
 - a provider search or contact lookup failed at the model call (`status` is `error` or `parse_error`). An empty search and a contact that was not found are normal answers.
 
 When a feature has at least 10 fresh runs in the window and 50% or more are degraded, the monitor records one `ai` operational event (`provider_suggestions_degraded`, `provider_search_degraded` or `provider_contact_degraded`, with counts only), which appears under Service issues on Admin Operations. It is repeated once per window while the condition lasts, and a recovery is recorded when the share is back under the threshold with at least one fresh run. The same condition drives an `ai_degraded:<feature>` alert email when alerts are enabled. Nothing is checked or written inside a seller's request.

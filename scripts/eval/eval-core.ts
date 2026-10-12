@@ -36,6 +36,10 @@ export interface EvalCase {
     verified?: boolean;
     website_domain?: string;
     phone?: string;
+    /** Sent to the model only with `--locality on`. */
+    county?: string;
+    /** Township or other local government, where the city is only a mailing name. */
+    municipality?: string;
 }
 
 export interface SilverRow {
@@ -193,6 +197,8 @@ export function parseCases(payload: unknown, kind: CaseKind): EvalCase[] {
             verified: typeof item.verified === 'boolean' ? item.verified : undefined,
             website_domain: text('website_domain') || undefined,
             phone: text('phone') || undefined,
+            county: text('county') || undefined,
+            municipality: text('municipality') || undefined,
         };
     });
 }
@@ -575,6 +581,8 @@ export interface EvalConfig {
     passes: 'one' | 'two';
     recovery: boolean;
     grounding: boolean;
+    /** Whether a case's county and municipality went into the prompt. Absent in older result files. */
+    locality?: boolean;
 }
 
 export interface EvalResultFile {
@@ -629,6 +637,7 @@ export function renderComparison(results: Array<Pick<EvalResultFile, 'config' | 
         ['Thinking', (r) => r.config.thinking],
         ['Passes', (r) => `${r.config.passes}${r.config.recovery ? ' + recovery' : ''}`],
         ['Search grounding', (r) => (r.config.grounding ? 'on' : 'off')],
+        ['County and township', (r) => (r.config.locality ? 'on' : 'off')],
         ['Cases', (r) => String(r.summary.cases)],
         ['Correct top answer', (r) => share(r.summary.top1, r.summary.cases)],
         ['Correct top answer, exact name', (r) => share(r.summary.top1_exact, r.summary.cases)],

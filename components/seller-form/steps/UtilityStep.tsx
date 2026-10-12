@@ -114,6 +114,10 @@ export function UtilityStep({
     // Belt-and-braces dedupe in the client so sellers never see near-duplicate
     // providers even if a cached API response predates the server-side layer.
     const dedupedSuggestions = useMemo(() => dedupeProviderSuggestions(suggestions || []), [suggestions]);
+    // National names offered when no lookup for the address succeeded are not a local answer.
+    const suggestionsLabel = dedupedSuggestions.length > 0 && dedupedSuggestions.every((item) => item.is_common)
+        ? 'Common providers'
+        : 'Suggested for your area';
 
     const trimmedQuery = searchQuery.trim();
     const canSearch = trimmedQuery.length >= MIN_SEARCH_CHARS;
@@ -496,7 +500,7 @@ export function UtilityStep({
                         </div>
                     ) : dedupedSuggestions.length > 0 ? (
                         <div className="space-y-3 sm:space-y-4">
-                            <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider font-semibold">Suggested for your area</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider font-semibold">{suggestionsLabel}</p>
 
                             <div className="grid grid-cols-1 gap-2 sm:gap-3">
                                 {dedupedSuggestions.slice(0, 3).map((suggestion) => (
@@ -627,7 +631,7 @@ export function UtilityStep({
                         {canSearch && hasLocalMatch && (
                             <>
                                 <div className="px-1 pt-2 pb-1">
-                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Suggested for your area</p>
+                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{suggestionsLabel}</p>
                                 </div>
                                 {localMatches.map((suggestion) => (
                                     <button
@@ -674,7 +678,7 @@ export function UtilityStep({
                         {!isSearching && (!searchQuery || !canSearch) && dedupedSuggestions.length > 0 && (
                             <>
                                 <div className="px-1 pt-2 pb-1">
-                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Suggested for your area</p>
+                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{suggestionsLabel}</p>
                                 </div>
                                 {dedupedSuggestions.map((suggestion) => (
                                     <button

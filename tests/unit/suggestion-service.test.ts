@@ -177,11 +177,16 @@ describe('Suggestions Pipeline', () => {
         delete process.env.SUGGESTIONS_CANARY_PERCENT;
     });
 
-    it('returns fallback providers when AI is not configured', async () => {
+    it('offers common national names, marked as such, when AI is not configured', async () => {
         isGeminiConfiguredMock.mockReturnValue(false);
-        const result = await getSuggestions('123 Main St, Raleigh, NC 27601', 'electric');
+        const result = await getSuggestions('123 Main St, Raleigh, NC 27601', 'internet');
         expect(result.length).toBeGreaterThan(0);
-        expect(result[0].display_name).toBeTruthy();
+        expect(result.every((item) => item.is_common === true)).toBe(true);
+
+        // A placeholder is not a provider a seller can pick.
+        const trash = await getSuggestions('123 Main St, Raleigh, NC 27601', 'trash');
+        expect(trash.map((item) => item.display_name)).toContain('Waste Management');
+        expect(trash.map((item) => item.display_name)).not.toContain('Municipal Sanitation');
         expect(setInCacheMock).toHaveBeenCalledWith(
             expect.any(String),
             expect.any(Array),
@@ -189,9 +194,17 @@ describe('Suggestions Pipeline', () => {
         );
     });
 
-    it('filters explicitly out-of-state fallback providers when state is known', async () => {
+    it('offers no national names where one provider serves an address', async () => {
         isGeminiConfiguredMock.mockReturnValue(false);
-        const result = await getSuggestions('13 Nemesia Ct W, Homosassa, FL 34446', 'water');
+        for (const category of ['electric', 'gas', 'water', 'sewer'] as const) {
+            expect(await getSuggestions('13 Nemesia Ct W, Homosassa, FL 34446', category)).toEqual([]);
+        }
+    });
+
+    it('filters explicitly out-of-state fallback providers from a name search when state is known', async () => {
+        isGeminiConfiguredMock.mockReturnValue(false);
+        const result = await searchProviders('water', 'water', '13 Nemesia Ct W, Homosassa, FL 34446');
+        expect(result.length).toBeGreaterThan(0);
         expect(
             result.some((item) =>
                 /california/i.test(`${item.display_name} ${item.rationale_short || ''}`)
@@ -233,7 +246,7 @@ describe('Suggestions Pipeline', () => {
 
         const result = await getSuggestions('13 Nemesia Ct W, Homosassa, FL 34446', 'water');
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
-        expect(result.length).toBeGreaterThan(0);
+        expect(result).toEqual([]);
         expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
             expect.objectContaining({
                 status: 'error',
@@ -472,6 +485,25 @@ describe('Suggestions Pipeline', () => {
         generateJSONWithMetaMock.mockReset();
     });
 
+    it('sends the county and municipality to the model only when a caller supplies them', async () => {
+        isGeminiConfiguredMock.mockReturnValue(true);
+        generateJSONWithMetaMock.mockResolvedValue(ok([
+            { display_name: 'East Pennsboro Township', confidence: 0.9, rationale_short: 'Bills the sewer', contact_phone: null, contact_website: null },
+        ]));
+        const address = '100 Main St, Enola, PA 17025';
+
+        generateJSONWithMetaMock.mockClear();
+        await getSuggestionsFresh(address, 'sewer');
+        expect(generateJSONWithMetaMock.mock.calls[0][0]).toBe(buildSuggestionPrompt(address, 'sewer'));
+
+        generateJSONWithMetaMock.mockClear();
+        await getSuggestionsFresh(address, 'sewer', { county: 'Cumberland County', municipality: 'East Pennsboro Township' });
+        const prompt = generateJSONWithMetaMock.mock.calls[0][0] as string;
+        expect(prompt).toContain('County: Cumberland County');
+        expect(prompt).toContain('Municipality: East Pennsboro Township');
+        generateJSONWithMetaMock.mockReset();
+    });
+
     it('asks for one provider where one serves an address and never for a padded list', () => {
         const electric = buildSuggestionPrompt('100 Main St, Chattanooga, TN 37402', 'electric');
         const trash = buildSuggestionPrompt('100 Main St, Chattanooga, TN 37402', 'trash');
@@ -587,13 +619,13 @@ describe('Suggestions Pipeline', () => {
             );
         });
 
-        it('records a timed-out lookup as a provider error and serves the fallback list', async () => {
+        it('records a timed-out lookup as a provider error and offers no national names for electric', async () => {
             generateJSONWithMetaMock.mockImplementationOnce(takes(10_000, providerError()));
 
             const result = await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
 
             expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
-            expect(result.length).toBeGreaterThan(0);
+            expect(result).toEqual([]);
             expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
                 expect.objectContaining({
                     status: 'error',

@@ -132,6 +132,19 @@ describe('UtilityStep provider search', () => {
         vi.unstubAllGlobals();
     });
 
+    it('calls national names common providers, not suggestions for the area', () => {
+        const { unmount } = render(<SearchHarness />);
+        expect(screen.getByText('Suggested for your area')).toBeInTheDocument();
+        unmount();
+
+        render(<SearchHarness suggestions={[
+            { display_name: 'Xfinity (Comcast)', confidence: 0.6, is_common: true },
+            { display_name: 'Spectrum', confidence: 0.6, is_common: true },
+        ]} />);
+        expect(screen.getByText('Common providers')).toBeInTheDocument();
+        expect(screen.queryByText('Suggested for your area')).not.toBeInTheDocument();
+    });
+
     it('shows a loaded suggestion that matches the typed name without asking the server', async () => {
         const onNext = vi.fn();
         render(<SearchHarness onNext={onNext} />);

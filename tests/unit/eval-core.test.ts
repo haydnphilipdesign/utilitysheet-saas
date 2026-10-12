@@ -135,6 +135,10 @@ describe('evaluation cases', () => {
         expect(cases.length).toBeGreaterThanOrEqual(10);
         expect(new Set(cases.map((item) => item.id)).size).toBe(cases.length);
         expect(cases.every((item) => item.kind === 'hard' && item.note)).toBe(true);
+        if (name === 'local-hard-cases.json') {
+            expect(cases.every((item) => item.county)).toBe(true);
+            expect(cases.find((item) => item.id === 'local-pa-enola-sewer')?.municipality).toBe('East Pennsboro Township');
+        }
     });
 
     it('selects the same spread of cases for the same seed', () => {

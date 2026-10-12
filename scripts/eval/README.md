@@ -53,6 +53,7 @@ Options (defaults are production's settings as known on 2026-10-12):
 | `--passes` | `one` (no verify pass), `two` (verify where the product uses it: not for electric, gas, water or sewer) | `two` |
 | `--recovery` | `on`, `off` | `on` |
 | `--grounding` | `on`, `off` | `on` |
+| `--locality` | `on` (send a case's `county` and `municipality` to the model), `off` | `off` |
 | `--silver`, `--hard` | how many cases of each kind; `0` for none | all |
 | `--hard-cases` | path of the hard case file | `scripts/eval/cases/hard-cases.json` |
 | `--min-confirmations` | seller answers a silver case needs | `2` |

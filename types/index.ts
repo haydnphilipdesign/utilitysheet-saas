@@ -508,6 +508,8 @@ export interface ProviderSuggestion {
     rationale_short?: string;
     contact_phone?: string;
     contact_website?: string;
+    /** A well-known national name shown when no lookup for this address succeeded. */
+    is_common?: boolean;
 }
 
 export interface ProviderContact {

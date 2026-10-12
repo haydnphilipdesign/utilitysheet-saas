@@ -35,6 +35,27 @@ describe('location-parser', () => {
         expect(context.lines.some((line) => line.startsWith('Location Issues:'))).toBe(true);
     });
 
+    it('adds the county and a municipality that differs from the mailing city', () => {
+        const parsed = parseAddressWithConfidence('100 Main St, Enola, PA 17025');
+        const plain = buildLocationContext(parsed).lines;
+        expect(plain.join('\n')).not.toMatch(/County|Municipality/);
+
+        const lines = buildLocationContext({
+            ...parsed,
+            county: 'Cumberland County',
+            municipality: 'East Pennsboro Township',
+        }).lines;
+        expect(lines.slice(0, 4)).toEqual([
+            'City: Enola',
+            expect.stringMatching(/^Municipality: East Pennsboro Township \(/),
+            'County: Cumberland County',
+            'State: PA',
+        ]);
+
+        // A municipality that only repeats the city adds nothing.
+        expect(buildLocationContext({ ...parsed, municipality: 'enola' }).lines).toEqual(plain);
+    });
+
     it('parses no-comma addresses without duplicating city state and zip into the street', () => {
         const parsed = parseAddressWithConfidence('135 acorn ln kunkletown pa 18058');
         expect(parsed.street).toBe('135 acorn ln');

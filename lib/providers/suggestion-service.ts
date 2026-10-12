@@ -12,6 +12,7 @@ import { getFromCache, setInCache } from '@/lib/cache';
 import {
     US_STATES,
     buildLocationContext,
+    type LocalityHint,
     type ParsedLocation,
     parseAddressWithConfidence,
 } from '@/lib/address/location-parser';
@@ -387,7 +388,7 @@ const FALLBACK_PROVIDERS: FallbackProviders = {
         { display_name: 'Waste Management', confidence: 0.6, rationale_short: 'Largest waste services company in North America' },
         { display_name: 'Republic Services', confidence: 0.6, rationale_short: 'Second-largest waste services company in the US' },
         { display_name: 'Waste Connections', confidence: 0.5, rationale_short: 'Major waste services company' },
-        { display_name: 'Municipal Sanitation', confidence: 0.4, rationale_short: 'Many cities provide trash pickup directly' },
+        { display_name: 'Municipal Sanitation', confidence: 0.4, rationale_short: 'Many cities provide trash pickup directly', is_generic: true },
     ],
     propane: [
         { display_name: 'AmeriGas', confidence: 0.6, rationale_short: 'Largest retail propane distributor in the US' },
@@ -1016,28 +1017,27 @@ function getNameMatchScore(providerName: string, query: string): number {
     return 0;
 }
 
+/**
+ * What a seller is offered when no lookup for the address succeeded. Where one
+ * provider serves an address a national name is almost never that provider, so
+ * nothing is offered and the seller searches or types. Elsewhere the national
+ * names are offered, marked so the screen can call them common, not local.
+ */
 function getFallbackSuggestions(
     category: UtilityCategory,
     location: ParsedLocation | undefined
 ): ProviderSuggestion[] {
-    const source = FALLBACK_PROVIDERS[category] || [];
+    if (SINGLE_PROVIDER_CATEGORIES.has(category)) {
+        return [];
+    }
+
     const targetState = location?.state?.toUpperCase();
+    const source = (FALLBACK_PROVIDERS[category] || []).filter((item) =>
+        !item.is_generic && (!targetState || !item.service_states || item.service_states.includes(targetState))
+    );
 
-    let filteredSource = source;
-    if (targetState) {
-        filteredSource = source.filter((item) => !item.service_states || item.service_states.includes(targetState));
-    }
-
-    if (category === 'water' || category === 'sewer') {
-        const specific = filteredSource.filter((item) => !item.is_generic);
-        if (specific.length >= 2) {
-            filteredSource = specific;
-        } else if (specific.length === 1) {
-            filteredSource = [...specific, ...filteredSource.filter((item) => item.is_generic).slice(0, 1)];
-        }
-    }
-
-    return normalizeAndRankSuggestions(filterSuggestionsForState(filteredSource, location).suggestions, category, 5);
+    return normalizeAndRankSuggestions(filterSuggestionsForState(source, location).suggestions, category, 5)
+        .map((item) => ({ ...item, is_common: true }));
 }
 
 function getFallbackSearchResults(
@@ -1303,12 +1303,13 @@ async function runLegacySuggestionPipeline(
 async function runTwoPassSuggestionPipeline(
     address: string,
     category: UtilityCategory,
-    context?: SuggestionContext
+    context?: SuggestionContext,
+    locality?: LocalityHint
 ): Promise<PipelineResult> {
     const startedAt = Date.now();
     const deadlineAt = startedAt + getPipelineDeadlineMs();
     const maxPipelineMs = getMaxPipelineMs();
-    const parsed = await resolveParsedLocation(address);
+    const parsed: ParsedLocation = { ...await resolveParsedLocation(address), ...locality };
     let attempts = 0;
     let upstreamReason: SuggestionReasonCode | null = null;
     const tally: PassTally = { usage: null, errorKind: null };
@@ -1803,13 +1804,15 @@ export async function searchProviders(
 /**
  * Run a fresh suggestion lookup for evaluation (scripts/eval). Like
  * searchProvidersFresh, this bypasses cache, account-scoped provider memory
- * and seller-facing AI telemetry.
+ * and seller-facing AI telemetry. `locality` adds the county and township to
+ * the prompt; seller lookups do not send them yet.
  */
 export async function getSuggestionsFresh(
     address: string,
-    category: UtilityCategory
+    category: UtilityCategory,
+    locality?: LocalityHint
 ): Promise<ProviderSearchDiagnostic> {
-    return runTwoPassSuggestionPipeline(address, category);
+    return runTwoPassSuggestionPipeline(address, category, undefined, locality);
 }
 
 /**

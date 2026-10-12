@@ -72,10 +72,11 @@ function readOptions(args: string[]): Options {
     const passes = oneOf('passes', flag(args, 'passes'), ['one', 'two'] as const, 'two');
     const recovery = oneOf('recovery', flag(args, 'recovery'), ['on', 'off'] as const, 'on') === 'on';
     const grounding = oneOf('grounding', flag(args, 'grounding'), ['on', 'off'] as const, 'on') === 'on';
-    const label = (flag(args, 'label') || `${model}-${thinking}-${passes}pass${grounding ? '' : '-nosearch'}`)
+    const locality = oneOf('locality', flag(args, 'locality'), ['on', 'off'] as const, 'off') === 'on';
+    const label = (flag(args, 'label') || `${model}-${thinking}-${passes}pass${grounding ? '' : '-nosearch'}${locality ? '-locality' : ''}`)
         .toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/^-|-$/g, '');
     return {
-        config: { label, model, thinking, passes, recovery, grounding },
+        config: { label, model, thinking, passes, recovery, grounding, locality },
         silverLimit: wholeNumber('silver', flag(args, 'silver')),
         hardLimit: wholeNumber('hard', flag(args, 'hard')),
         minConfirmations: wholeNumber('min-confirmations', flag(args, 'min-confirmations')) ?? 2,
@@ -157,6 +158,9 @@ async function main(): Promise<void> {
 
     console.log(`Configuration "${config.label}": model ${config.model}, thinking ${config.thinking}, ${config.passes} pass(es), recovery ${config.recovery ? 'on' : 'off'}, search ${config.grounding ? 'on' : 'off'}`);
     console.log(`Cases: ${cases.length} (${cases.filter((item) => item.kind === 'silver').length} silver, ${cases.filter((item) => item.kind === 'hard').length} hard)`);
+    if (config.locality) {
+        console.log(`County or municipality sent for ${cases.filter((item) => item.county || item.municipality).length} of ${cases.length} cases.`);
+    }
     console.log(`Model calls: at most ${maxCalls}. ${config.grounding ? 'Each call can run several Google searches from the shared monthly allowance.' : 'No searches.'}`);
 
     if (cases.length === 0) {
@@ -194,11 +198,12 @@ async function main(): Promise<void> {
         if (parsed.city !== item.city || parsed.state !== item.state || parsed.zip !== item.zip) {
             console.warn(`  ${item.id}: the address parser read "${parsed.city}, ${parsed.state} ${parsed.zip}".`);
         }
-        let result = await getSuggestionsFresh(address, item.category);
+        const locality = config.locality ? { county: item.county, municipality: item.municipality } : undefined;
+        let result = await getSuggestionsFresh(address, item.category, locality);
         if (result.outcome.errorKind === 'circuit_open') {
             console.warn(`  ${item.id}: circuit breaker open, waiting ${CIRCUIT_WAIT_MS / 1000} s and trying once more.`);
             await sleep(CIRCUIT_WAIT_MS);
-            result = await getSuggestionsFresh(address, item.category);
+            result = await getSuggestionsFresh(address, item.category, locality);
         }
         return scoreCase(item, {
             suggestions: result.suggestions,

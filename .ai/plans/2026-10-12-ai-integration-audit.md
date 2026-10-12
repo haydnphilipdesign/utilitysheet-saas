@@ -1,6 +1,6 @@
 # AI integration, model selection and cost audit
 
-- Status: **In progress.** Slices 1 to 3 of 7 are done and committed and pushed to origin/main on 2026-10-12 (`214ad72`), deployment not verified. Slice 4 is done with its migration applied, committed and pushed the same day (`6ba63ff`), and its deployment was seen Ready on the production alias on 2026-10-12. Slice 5 is built, validated and has had its first run; it is committed and pushed (see "Progress" and the outcome sections). Slice 6 is in progress: R4 and R13 are committed and pushed (`77e08ef`), R8 is committed and pushed. Slice 4 usage recording is confirmed on real production lookups. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
+- Status: **In progress.** Slices 1 to 3 of 7 are done and committed and pushed to origin/main on 2026-10-12 (`214ad72`), deployment not verified. Slice 4 is done with its migration applied, committed and pushed the same day (`6ba63ff`), and its deployment was seen Ready on the production alias on 2026-10-12. Slice 5 is built, validated and has had its first run; it is committed and pushed (see "Progress" and the outcome sections). Slice 6 is in progress: R4 and R13 are committed and pushed (`77e08ef`), R8 is committed and pushed; R10 and R9 are measured with nothing to ship, and R11 is built and pushed (later session on 2026-10-12), so slice 6 is complete and slice 7 remains. Slice 4 usage recording is confirmed on real production lookups. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
 - Scope: owner brief in chat on 2026-10-12. Audit of every AI and Google Maps integration, current model and pricing research, cost and accuracy analysis, evaluation framework proposal, prioritized roadmap. Investigation and documentation only.
 - Baseline: main at `c83b2eb`.
 - Deliverable: `docs/audits/2026-10-12-ai-integration-audit.md`.
@@ -45,7 +45,7 @@ Option B (incremental modernization), starting with the model-independent fixes 
 | 3. Search rework [R2] | Done 2026-10-12, pushed (`214ad72`) |
 | 4. Telemetry and alert [R5] | Done 2026-10-12, migration applied, committed and pushed |
 | 5. Evaluation script [R6] | Done 2026-10-12, first run made, pushed |
-| 6. Decided by the evaluation | In progress: R4 and R13 pushed 2026-10-12; R8 pushed 2026-10-12 (`3be14f5`); search prompt measured, no effect, not shipped; search tool off measured, keep it on; R9, R10, R11 open |
+| 6. Decided by the evaluation | Done 2026-10-12: R4 and R13 pushed 2026-10-12; R8 pushed 2026-10-12 (`3be14f5`); search prompt measured, no effect, not shipped; search tool off measured, keep it on; R10 measured, no effect, plumbing not built; R9 measured, stay on the current model; R11 pushed |
 | 7. As time allows | Not started |
 
 ## Implementation slices (approved order)
@@ -319,6 +319,65 @@ Owner agreed in chat. `--grounding off`, same code and cases, 21 model calls, no
 - Limits: one run each, 17 cases; partial matching flatters the tool-off column.
 - Session total: 438 model calls.
 
+## Slice 6, R10: county and township context (2026-10-12, Claude Opus 5.5, later session)
+
+Status: **measured (owner agreed in chat): no effect. The production plumbing is not built and is not recommended on this evidence.** The measurement seam stays and is pushed with R11.
+
+- Verified in code: the suggestion pipeline receives the address as one string and parses city, state and ZIP from it; `parseGooglePlaceAddress` drops Google's county and uses the township only when there is no city; `requests.property_address_structured` is JSONB, so county and township can be stored there with no migration.
+- Built, measurement only: `LocalityHint` (`county`, `municipality`) on `ParsedLocation`; `buildLocationContext` adds a `Municipality:` line (only when it differs from the city) and a `County:` line; `getSuggestionsFresh` takes the hint as a third argument; `--locality on|off` in the runner (default off) and optional `county` / `municipality` on a case. No seller lookup passes a hint, so production prompts are unchanged and no version was bumped.
+- The 17 local cases now carry a county, and 7 carry a municipality (Enola, Boalsburg twice, Rancocas, Effort, Tobyhanna, Kresgeville). **Assumption:** these values are general knowledge and the case notes, not read from Google Places.
+- What the run can and cannot show: the fifth measurement already has water and sewer right in 12 of 13 at first place, so the possible gain on these cases is one (Rancocas). The run mainly shows whether the extra lines do harm, for example pulling Bellbrook water (city) toward the county.
+- **Not measured and a real risk for the production plumbing:** what Google returns as the township for an address inside an incorporated city. In Ohio a city often sits inside a township of another name; sending that township could mislead. Read real Places output for a few such addresses before storing or sending it.
+- If the run supports it, the production work is: keep county and township in `parseGooglePlaceAddress` and `PropertyAddressStructured`, carry them from the two address fields to request creation, pass them to `getSuggestions`, add them to the suggestion cache key and bump the prompt and cache versions. Applies only to addresses picked from autocomplete.
+- Validation (Node 20.19.0): `tests/unit/{location-parser,eval-core,suggestion-service}.test.ts` 72/72; `tsc` clean; ESLint on changed files clean; `git diff --check` passed; plan-only runner output: 17 cases, at most 51 calls.
+
+- **Result, one run at `c902e17` plus this section's changes, production settings, 21 model calls, no failures** (`.eval/results/20261012T185320Z-local-hard-locality.*`, ignored), against the fifth measurement:
+
+| Measure | Without | With county and township |
+|---|---|---|
+| Correct top answer, all 17 | 15 | 15 |
+| Correct answer in top 3, all 17 | 16 | 16 |
+| Water and sewer (13): top answer / top 3 | 12 / 13 | 12 / 13 |
+| Top answer with the exact name | 13 | 11 |
+| Website domain matched | 15 of 16 | 14 of 16 |
+| Latency p50 | 3.2 s | 3.6 s |
+
+- Every one of the 17 cases returned the same provider first in both runs. Rancocas, the case R10 was meant to help, still put the private water company first and the right authority second with "Westampton Township" and "Burlington County" in the prompt. The two exact-name differences are longer names for the same provider ("City of Bellbrook Water Department", "Borough of Woodstown Water/Sewer Department"). No harm seen either: Bellbrook water stayed with the city.
+- Reading: with the search tool on, the model already finds the township or county provider from city, state and ZIP. The context adds nothing measurable on these cases, and the plumbing would split the cache further and carry the unmeasured Ohio township risk. **Recommendation: do not build it now.** Reopen if production shows wrong water or sewer answers in township addresses. One run, 17 cases, so a small effect cannot be excluded.
+
+## Slice 6, R9: model trial (2026-10-12, Claude Opus 5.5, later session)
+
+Owner agreed in chat to both models on both case sets. Production settings (thinking `low`, verify for multi-provider categories, recovery on, search tool on), one run each, no code change. 111 model calls. Results: `.eval/results/20261012T1854*-r9-35fl-30.*`, `20261012T1855*-r9-35fl-local.*`, `20261012T1855*-r9-38f-30.*`, `20261012T1857*-r9-38f-local.*` (ignored). The current model's columns are the earlier runs (`verify-multi-only` and the fifth measurement).
+
+| Measure | `gemini-3.1-flash-lite` (current) | `gemini-3.5-flash-lite` | `gemini-3.8-flash` |
+|---|---|---|---|
+| 30 cases: top answer / top 3 | 25 / 28 | 26 / 27 | 26 / 26 |
+| 30 cases: generic list / timeouts | 0 / 0 | 0 / 0 | 2 / 2 |
+| 17 local cases: top answer / top 3 | 15 / 16 | 14 / 14 (15 / 15, see below) | 11 / 11 |
+| 17 local cases: generic list / timeouts | 0 / 0 | 0 / 0 | 5 / 5 |
+| Latency p50, 30 cases / local | 3.5 s / 3.2 s | 3.2 s / 2.9 s | 5.9 s / 6.4 s |
+| Latency p50, electric, gas, water, sewer | 3.2 s / 3.1 s | 2.2 s / 2.1 s | 4.6 s / 4.4 s |
+| Token cost, 30-case run | $0.040 | $0.023 | $0.031 |
+
+- **`gemini-3.8-flash` does not fit the 10 second call limit:** 7 of 47 cases timed out and went to the generic list (the local run hit the stop rule on its last cases). Where it answered it was as accurate as the others. It would need a longer timeout, which sellers would feel. Not recommended.
+- **`gemini-3.5-flash-lite` works and is about a second faster per call.** 61 calls, no failure and no empty or unreadable answer, so the July fault did not recur. Accuracy is the same within the run-to-run variation seen today: one more top answer on the 30 cases, one fewer in the top 3 (Tobyhanna propane, the accepted dealer came fourth). On the local cases one "miss" is a scoring artifact ("Greene County Sanitary Engineer", the right provider with a clipped name), and Rancocas returned the private water company alone where the current model also gives the right authority second.
+- It reported no thinking tokens at `low`. Its token cost per run is lower despite the higher list price, but "not reported" is not proof of zero, so read the cost as a floor.
+- **Recommendation: stay on `gemini-3.1-flash-lite`.** The README rule asks that a change lower neither rate; top 3 was lower by one and by two (one after the scoring artifact) on single runs. The trial does show `gemini-3.5-flash-lite` is a ready replacement if the current model is retired: set `GEMINI_MODEL_NAME` in hosting, no code change, and the suggestion, search and contact caches start empty because the model name is part of their keys. A repeat run of both models would be needed before switching for speed alone.
+- Limits: single runs, 47 cases, search and contact lookups not covered, thinking level `low` only.
+- Model use in this session: 21 (R10) + 111 (R9) = 132 calls with the search tool attached. Day total 570.
+
+## Slice 6, R11: honest fallback (2026-10-12, Claude Opus 5.5, later session)
+
+Status: **built, validated, committed and pushed to origin/main with owner authorization in chat on 2026-10-12. Deployment not verified here.** Owner chose "split by category" in chat on 2026-10-12.
+
+- Before: when no AI answer was usable the seller saw national names under "Suggested for your area", including placeholders such as "Municipal Water Authority" (report I5: 31% acceptance, half the sellers typed their own).
+- Now (`getFallbackSuggestions` in `lib/providers/suggestion-service.ts`): for electric, gas, water and sewer the list is empty, so the seller gets the existing "Help us find your provider" screen with Search and "I'm not sure". For trash, propane, oil, internet and cable the national names are still offered, each marked `is_common`, and the placeholder "Municipal Sanitation" is left out. `components/seller-form/steps/UtilityStep.tsx` shows "Common providers" in place of "Suggested for your area" (three places) when every loaded suggestion is marked. `ProviderSuggestion` gained optional `is_common`.
+- Unchanged: the outcome is still recorded as `source = 'fallback'`, so telemetry, Admin Telemetry and the AI health alert count it as before; the 5 minute cache time for a fallback; search by name against the national list (`getFallbackSearchResults`); picking a common provider is still stored as `suggested_confirmed`. No prompt or cache version change (a fallback is cached for 5 minutes).
+- How often it shows: 0 of 47 evaluation cases on the current model after R4; in production it now needs a timeout, a model error or a rejected answer. Production rate after the R4 deployment was not read.
+- Files: the two above, `types/index.ts`, `docs/ai-telemetry.md` (one sentence), `tests/unit/suggestion-service.test.ts`, `tests/unit/utility-step-search.test.tsx`.
+- Validation for the whole session's changes (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 225 files / 1771 passed; security scan and `git diff --check` passed. **Not run:** Playwright and the production build; the new label is covered by a render test only and was not seen in a browser. Not verified: the hosted site.
+- For the owner to look at: the label "Common providers", and that Admin Telemetry's acceptance table will show fallback rows with no items for the four one-provider categories.
+
 ## Next action
 
-Owner: look up the Grounding with Google Search count for 2026-10-12 on Google's side; it settles whether searches run under the JSON format and what today's runs used. Until then, treat every evaluation run with the tool on as spending searches, and ask before another. Still open in slice 6: R9 model trial (`--model`, no code change), R10 county and township, R11 honest fallback wording. A small follow-up worth doing: say on Admin Telemetry and in `docs/ai-telemetry.md` that the search count is not reported for JSON-format calls. The 12 hard cases are checked (11 verified); the 17 local cases are in their own file, uncommitted and not yet run. More rural propane and oil cases would need a phone call or the dealers' own town lists.
+Slice 6 is complete and pushed. No migration is pending. Owner: confirm the deployment and look at a seller form. Slice 7 (R12 source-based trust, R14 removal of the legacy pipeline and its switches) is what remains. Still open from earlier, owner: look up the Grounding with Google Search count for 2026-10-12 on Google's side; it settles whether searches run under the JSON format and what today's runs used. Until then, treat every evaluation run with the tool on as spending searches, and ask before another. Still open in slice 6: R9 model trial (`--model`, no code change), R10 county and township, R11 honest fallback wording. A small follow-up worth doing: say on Admin Telemetry and in `docs/ai-telemetry.md` that the search count is not reported for JSON-format calls. The 12 hard cases are checked (11 verified); the 17 local cases are in their own file, uncommitted and not yet run. More rural propane and oil cases would need a phone call or the dealers' own town lists.

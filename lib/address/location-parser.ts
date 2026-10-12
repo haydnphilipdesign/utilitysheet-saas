@@ -3,7 +3,16 @@ import type { PropertyAddressStructured } from '@/types';
 export type LocationConfidence = 'high' | 'medium' | 'low';
 export type LocationSource = 'local' | 'verified';
 
-export interface ParsedLocation {
+/**
+ * What an address string cannot say: the county, and the township or other
+ * local government when the mailing city is only a postal name.
+ */
+export interface LocalityHint {
+    county?: string | null;
+    municipality?: string | null;
+}
+
+export interface ParsedLocation extends LocalityHint {
     raw: string;
     normalized: string;
     street: string | null;
@@ -444,6 +453,12 @@ export function parseAddressWithConfidence(address: string): ParsedLocation {
 export function buildLocationContext(parsed: ParsedLocation): { label: string; lines: string[] } {
     const lines: string[] = [];
     if (parsed.city) lines.push(`City: ${parsed.city}`);
+    const municipality = cleanSegment(parsed.municipality || '');
+    if (municipality && municipality.toLowerCase() !== (parsed.city || '').toLowerCase()) {
+        lines.push(`Municipality: ${municipality} (local government for this address; the city above may be only its mailing name)`);
+    }
+    const county = cleanSegment(parsed.county || '');
+    if (county) lines.push(`County: ${county}`);
     if (parsed.state) lines.push(`State: ${parsed.state}`);
     if (parsed.zip) lines.push(`ZIP: ${parsed.zip}`);
     lines.push(`Location Confidence: ${parsed.confidence}`);
