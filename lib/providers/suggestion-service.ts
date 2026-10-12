@@ -41,10 +41,11 @@ const PROVIDER_MEMORY_CACHE_TTL_SECONDS = 6 * 60 * 60;
 // invalidates caches that may still hold near-duplicate suggestion lists.
 // v8: keyed by state + full ZIP + city instead of the ZIP prefix, so one
 // town's providers are no longer served to another town.
-const SUGGESTION_CACHE_VERSION = 'v8';
+// v9: suggestion prompts and gate accept a single provider (provider-suggestions-v2).
+const SUGGESTION_CACHE_VERSION = 'v9';
 const SEARCH_CACHE_VERSION = 'v8';
 const PROVIDER_MEMORY_CACHE_VERSION = 'v1';
-const SUGGESTION_PROMPT_VERSION = 'provider-suggestions-v1';
+const SUGGESTION_PROMPT_VERSION = 'provider-suggestions-v2';
 const SEARCH_PROMPT_VERSION = 'provider-search-v2';
 const DEFAULT_MAX_PIPELINE_MS = 6000;
 // Hard limit for all the AI passes of one lookup. SUGGESTIONS_MAX_TOTAL_MS
@@ -52,9 +53,13 @@ const DEFAULT_MAX_PIPELINE_MS = 6000;
 const DEFAULT_PIPELINE_DEADLINE_MS = 15000;
 // A pass with less time than this left is not started.
 const MIN_PASS_MS = 2000;
-const DEFAULT_MIN_VALID_SUGGESTIONS = 2;
+// One provider the model is confident about beats the generic national list.
+const DEFAULT_MIN_VALID_SUGGESTIONS = 1;
+// One provider serves an address in these categories, so the prompt asks for one.
+const SINGLE_PROVIDER_CATEGORIES: ReadonlySet<UtilityCategory> = new Set(['electric', 'gas', 'water', 'sewer']);
 const DEFAULT_MIN_TOP_CONFIDENCE = 0.45;
-// A search names a provider, so one match is a complete answer.
+// A search names a provider, so one match is a complete answer whatever
+// SUGGESTIONS_MIN_VALID_RESULTS says.
 const SEARCH_MIN_VALID_RESULTS = 1;
 
 export type SuggestionReasonCode =
@@ -480,13 +485,34 @@ const STATE_NAME_ALIASES = Array.from(
     ).entries()
 ).map(([alias, abbr]) => ({ alias, abbr }));
 
-function detectStateMentions(text: string): Set<string> {
-    const normalized = text.toLowerCase();
+// "Kansas City", "Delaware County", "Indiana Township": a place, not the state.
+const PLACE_WORD_AFTER_STATE = '(?:city|county|township|twp|borough|parish|heights|avenue|ave|street|road)';
+const STATE_MENTION_PATTERNS = STATE_NAME_ALIASES.map((state) => ({
+    ...state,
+    pattern: new RegExp(`\\b${escapeRegex(state.alias)}\\b(?!\\s+${PLACE_WORD_AFTER_STATE}\\b)`, 'i'),
+}));
+// "Washington" names a city, counties and companies far more often than the state.
+const WASHINGTON_STATE_PATTERN = /\bwashington state\b|\bstate of washington\b/i;
+
+/**
+ * States a provider name or rationale names. A state's name used as a place
+ * name is not a mention: the property's own city, "<State> City", "<State>
+ * County" and the like, and a bare "Washington".
+ */
+function detectStateMentions(text: string, location?: ParsedLocation): Set<string> {
+    let normalized = text.toLowerCase();
+    const city = location?.city?.toLowerCase().trim();
+    if (city) {
+        normalized = normalized.split(city).join(' ');
+    }
     const detected = new Set<string>();
 
-    for (const state of STATE_NAME_ALIASES) {
-        const pattern = new RegExp(`\\b${escapeRegex(state.alias)}\\b`, 'i');
-        if (pattern.test(normalized)) {
+    for (const state of STATE_MENTION_PATTERNS) {
+        if (state.alias === 'washington') {
+            if (WASHINGTON_STATE_PATTERN.test(normalized)) detected.add(state.abbr);
+            continue;
+        }
+        if (state.pattern.test(normalized)) {
             detected.add(state.abbr);
         }
     }
@@ -517,7 +543,7 @@ function filterSuggestionsForState(
         }
 
         const haystack = `${suggestion.display_name} ${suggestion.rationale_short || ''}`;
-        const mentionedStates = detectStateMentions(haystack);
+        const mentionedStates = detectStateMentions(haystack, location);
         if (mentionedStates.size > 0 && !mentionedStates.has(targetState)) {
             rejectedCount++;
             continue;
@@ -795,6 +821,9 @@ function buildSuggestionPrompt(address: string | ParsedLocation, category: Utili
     const parsed = typeof address === 'string' ? parseAddressWithConfidence(address) : address;
     const location = buildLocationContext(parsed);
     const locationLines = location.lines.length > 0 ? location.lines.join('\n') : 'Location: Unknown';
+    const countRule = SINGLE_PROVIDER_CATEGORIES.has(category)
+        ? 'One provider usually serves an address for this category. Return that provider alone when you know it. Add another only when this area is genuinely split between providers. Never add names to fill the list.'
+        : 'Return up to 5 providers that actually serve this area, ordered by confidence (highest first). Fewer is fine; never add names to fill the list.';
 
 return `You are an expert on utility providers in the United States.
 
@@ -816,7 +845,7 @@ Return a JSON array of provider suggestions. Each object must have exactly these
 - "contact_website": string or null - Provider website URL starting with "https://"
 
 RULES:
-1. Return 5-8 candidate providers, ordered by confidence (highest first).
+1. ${countRule}
 2. Only include providers you are reasonably confident serve this specific area.
 3. Avoid obvious out-of-state providers when state context is known.
 4. If you are uncertain about providers for this area, return an empty array: []
@@ -862,6 +891,13 @@ RULES:
 5. For phone/website, only include if you are confident they are correct. Use null if unsure.`;
 }
 
+/** How many names the verify and recovery passes should keep. */
+function getListSizeRule(category: UtilityCategory): string {
+    return SINGLE_PROVIDER_CATEGORIES.has(category)
+        ? 'One provider is a complete answer. Do not add names to fill the list.'
+        : 'Several providers can serve one address for this category: keep every one that does, and do not add names to fill the list.';
+}
+
 function buildSuggestionVerificationPrompt(
     address: string | ParsedLocation,
     category: UtilityCategory,
@@ -888,7 +924,8 @@ Utility Category: ${category}
 Candidate Providers JSON:
 ${serializedCandidates}
 
-Return a JSON array of 3 to 5 providers that are most likely correct for this location.
+Return a JSON array of the candidates that are correct for this location, at most 5, best first.
+${getListSizeRule(category)}
 Each object must contain exactly:
 - "display_name": string
 - "confidence": number between 0 and 1
@@ -914,7 +951,8 @@ ${locationLines}
 Location Confidence: ${parsed.confidence}
 Utility Category: ${category}
 
-Return a JSON array of 3 to 5 providers with strongest evidence for this exact area.
+Return a JSON array of up to 5 providers with the strongest evidence for this exact area.
+${getListSizeRule(category)}
 Each object must contain exactly:
 - "display_name": string
 - "confidence": number between 0 and 1
@@ -1821,6 +1859,8 @@ export const __testing = {
     US_STATES,
     buildSuggestionPrompt,
     buildSearchPrompt,
+    buildSuggestionVerificationPrompt,
+    buildSuggestionRecoveryPrompt,
     getFallbackSearchResults,
     parseAiSuggestionsPayload,
     applyQualityGates,

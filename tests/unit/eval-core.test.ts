@@ -168,6 +168,8 @@ describe('evaluation matching', () => {
     it('matches exact names through the canonical key', () => {
         expect(matchProviderName('PA American Water', ['Pennsylvania American Water'])).toBe('exact');
         expect(matchProviderName('PPL Electric Utilities, Inc.', ['PPL Electric Utilities'])).toBe('exact');
+        expect(matchProviderName('Kauaʻi Island Utility Cooperative', ['Kauai Island Utility Cooperative'])).toBe('exact');
+        expect(matchProviderName('Hellers Gas', ['Heller’s Gas'])).toBe('exact');
     });
 
     it('matches partially when the identifying words of one name are in the other', () => {

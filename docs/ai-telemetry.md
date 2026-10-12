@@ -17,7 +17,7 @@ One row represents one provider suggestion or provider search run shown to a sel
 - `category`: utility category such as `electric`, `water`, or `trash`. May be empty for a contact lookup.
 - `provider`: AI provider name, currently `gemini`.
 - `model`: configured Gemini model name.
-- `prompt_version`: application-level prompt version, such as `provider-suggestions-v1`.
+- `prompt_version`: application-level prompt version, such as `provider-suggestions-v2`.
 - `served_pipeline`: suggestion pipeline that served the result, such as `new` or `legacy`.
 - `source`: final source, such as `ai_primary`, `ai_verify`, `ai_recovery`, `history_blend`, `fallback`, or `cache`.
 - `status`: normalized status: `success`, `fallback`, `error`, `parse_error`, or `quality_rejected`.

@@ -1,6 +1,6 @@
 # AI integration, model selection and cost audit
 
-- Status: **In progress.** Slices 1 to 3 of 7 are done and committed and pushed to origin/main on 2026-10-12 (`214ad72`), deployment not verified. Slice 4 is done with its migration applied, committed and pushed the same day (`6ba63ff`), and its deployment was seen Ready on the production alias on 2026-10-12. Slice 5 is built, validated and has had its first run; it is committed on main and not pushed (see "Progress" and the outcome sections). Slice 6 is in progress. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
+- Status: **In progress.** Slices 1 to 3 of 7 are done and committed and pushed to origin/main on 2026-10-12 (`214ad72`), deployment not verified. Slice 4 is done with its migration applied, committed and pushed the same day (`6ba63ff`), and its deployment was seen Ready on the production alias on 2026-10-12. Slice 5 is built, validated and has had its first run; it is committed and pushed (see "Progress" and the outcome sections). Slice 6 is in progress: R4 and R13 are committed and pushed, R8 is measured and awaits the owner's decision. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
 - Scope: owner brief in chat on 2026-10-12. Audit of every AI and Google Maps integration, current model and pricing research, cost and accuracy analysis, evaluation framework proposal, prioritized roadmap. Investigation and documentation only.
 - Baseline: main at `c83b2eb`.
 - Deliverable: `docs/audits/2026-10-12-ai-integration-audit.md`.
@@ -44,8 +44,8 @@ Option B (incremental modernization), starting with the model-independent fixes 
 | 2. Timeouts [R3] | Done 2026-10-12, pushed (`214ad72`) |
 | 3. Search rework [R2] | Done 2026-10-12, pushed (`214ad72`) |
 | 4. Telemetry and alert [R5] | Done 2026-10-12, migration applied, committed and pushed |
-| 5. Evaluation script [R6] | Done 2026-10-12, first run made, committed, not pushed |
-| 6. Decided by the evaluation | Not started |
+| 5. Evaluation script [R6] | Done 2026-10-12, first run made, pushed |
+| 6. Decided by the evaluation | In progress: R4 and R13 pushed 2026-10-12; R8 measured, decision open; R9, R10, R11 open |
 | 7. As time allows | Not started |
 
 ## Implementation slices (approved order)
@@ -146,6 +146,64 @@ Verified in code before starting: `ai_generation_runs.feature` and `operational_
 - Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 225 files / 1760 passed; security scan and `git diff --check` passed. The export and the runner were exercised by the real export and the real run. Production build and Playwright not run (no seller screen changed).
 - Live actions in this slice: read-only aggregate checks of recent AI runs, the read-only export, 59 model calls and 2 Google searches. No live write, commit, push or deploy.
 
+## Slice 6, first measurement: single-provider answers [R4] and the state-name filter [R13] (2026-10-12, Claude Opus 5.5)
+
+Owner agreed in chat to repeat runs on the same 30 cases. Built, validated, then committed and pushed to origin/main with owner authorization in chat on 2026-10-12. Deployment not verified here.
+
+- What changed (`lib/providers/suggestion-service.ts`):
+  - First-pass prompt: for electric, gas, water and sewer it asks for the one provider that serves the address, a second only where the area is genuinely split; for the other categories "up to 5 that actually serve this area". The "5-8 candidates" rule is gone. Verify and recovery prompts no longer ask for "3 to 5": one-provider categories say one is a complete answer, the others say to keep every provider that serves the address.
+  - Gate: one confident name is accepted in every category (`DEFAULT_MIN_VALID_SUGGESTIONS` 2 to 1). The confidence floor (0.45) is unchanged. `SUGGESTIONS_MIN_VALID_RESULTS` still overrides it; the owner reported in chat on 2026-10-12 that it is not set in hosting, so the new default applies.
+  - State-name filter: a state's name used as a place is no longer read as that state: the property's own city ("Kansas City", MO), "<State> City / County / Township / Borough ...", and a bare "Washington" (only "Washington State" or "State of Washington" count). A name or rationale that names another state is still rejected.
+  - Versions: prompt `provider-suggestions-v2`; suggestion cache `v9` (search cache stays `v8`). On deploy the suggestion cache starts empty again.
+- Scoring fix in `scripts/eval/eval-core.ts`: accents and apostrophe-like marks are dropped before matching ("Kauaʻi" is "Kauai"). All four runs below are scored with that rule; under the old rule the baseline numbers are the same.
+- Result, same 30 cases and settings (`gemini-3.1-flash-lite`, thinking `low`, two passes plus recovery), one run each:
+
+| Measure | Before (baseline) | After (final) |
+|---|---|---|
+| Correct top answer | 20/30 | 27/30 |
+| Correct answer in top 3 | 24/30 | 28/30 |
+| Ended on the generic list | 7/30 | 0/30 |
+| Hard cases, correct top answer | 6/12 | 12/12 |
+| Silver cases, top answer / top 3 | 14 / 18 of 18 | 15 / 16 of 18 |
+| Extra names per one-provider case | 2.5 | 0.3 |
+| Latency p50 / p95 | 8.6 s / 11.5 s | 6.6 s / 10.9 s |
+| Token cost per run | $0.068 | $0.050 |
+| Searches | 0 | 0 |
+
+- Two intermediate runs explain two design choices: with the gate at 1 only for one-provider categories, both cable cases fell to the generic list (the model returned one name, the gate wanted two), so the gate is 1 everywhere; with "one provider is a complete answer" in every verify prompt, cable and trash lists shrank to one name, so the later passes now differ by category (names per multi-provider case: 4.4 before, 4.0 after).
+- Honest reading: the hard-case and generic-list gains are far larger than the run-to-run variation seen (a case or two per run). The silver top-3 count went from 18 to 16. Both losses are multi-provider cases: Kresgeville propane (the accepted dealer was returned in one of the three later runs and not in the others) and Dayton cable (sellers named a satellite and a fiber company; the model now leads with the cable incumbent). Not proven to be noise.
+- Limits unchanged from slice 5: 30 cases, single runs, unverified hard answers, silver answers that favor the old pipeline, suggestions only.
+- Validation (Node 20.19.0): tests written with the change; `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 225 files / 1765 passed; security scan and `git diff --check` passed. Production build and Playwright not run (no seller screen changed). Not verified: the hosted site, the hosting value of `SUGGESTIONS_MIN_VALID_RESULTS`.
+- Model use for this measurement: 3 runs, 180 model calls, 0 searches. Session total: 239 model calls, 2 searches.
+- Seller-visible effect once deployed: one-provider categories usually show one suggestion where they showed three to five; the seller can still search or type another name.
+
+## Slice 6, second measurement: one pass versus two [R8] (2026-10-12, Claude Opus 5.5)
+
+No code change; `--passes one` turns the verify pass off. Same 30 cases, same code as the "after" run above, one run each. 30 model calls, 0 searches.
+
+| Measure | Two passes | One pass |
+|---|---|---|
+| Correct top answer | 27/30 | 24/30 |
+| Correct answer in top 3 | 28/30 | 28/30 |
+| Ended on the generic list | 0/30 | 0/30 |
+| One-provider cases (20), correct top answer | 20 | 20 |
+| Multi-provider cases (10), correct top answer / top 3 | 7 / 8 | 4 / 8 |
+| Latency p50 / p95 | 6.6 s / 10.9 s | 3.4 s / 5.0 s |
+| Model calls | 60 | 30 |
+| Token cost per run | $0.050 | $0.025 |
+
+- Reading: for electric, gas, water and sewer the verify pass changed nothing in 20 of 20 cases and doubles the wait. For propane, oil and internet the accepted name was first less often without it (3 cases moved from first to second or third). That difference is about the size of the reordering seen between repeat runs of the same configuration, so it is suggestive, not established.
+- Recommendation for the owner (not built): skip the verify pass for electric, gas, water and sewer; keep it for the other categories until a repeat run on more multi-provider cases settles it. Roughly: half the wait and half the calls for most lookups, no measured loss.
+- Limits as before: 30 cases, single runs, 10 multi-provider cases only.
+
+## Hosting settings the owner showed on 2026-10-12 (screenshot in chat, not verified here)
+
+`SUGGESTIONS_SHADOW_MODE=true`, `SUGGESTIONS_SERVE_NEW_PIPELINE=true`, `SUGGESTIONS_CANARY_PERCENT=100`, `GEMINI_GOOGLE_SEARCH_GROUNDING=true`, `ENABLE_REQUEST_DIAGNOSTICS=false`. `SUGGESTIONS_MIN_VALID_RESULTS` is not set.
+
+- **Finding (read from code, `runSuggestionPipeline` and `runSearchPipeline`):** with shadow mode on, every fresh suggestion lookup and every fresh search also runs the legacy pipeline as a shadow: one extra model call each, whose answer is only logged as a count comparison and whose usage is not recorded. With the canary at 100 the new pipeline is always the one served, so the shadow serves no purpose. It also waits for the slower of the two before answering, and its failures count toward the shared circuit breaker.
+- Owner action recommended: delete `SUGGESTIONS_SHADOW_MODE` (and the two companions) in hosting, then redeploy. No code change is needed; with it unset only the new pipeline runs. The evaluation already runs without it. Until then Admin Telemetry usage is a floor: it leaves out the shadow call.
+- Slice 7 (R14) removes the legacy pipeline and these switches from the code.
+
 ## Next action
 
-Owner agreed in chat on 2026-10-12 to commit slice 5 and to these slice 6 measurements in this order, each a small run on the same 30 cases: (a) single-provider prompt and gate [R4] and the state-name filter [R13], which the first run shows cost 6 of 12 hard cases; (b) one pass versus two [R8]; (c) a prompt that tells the model to search, to learn what grounding costs and adds. Before (c), confirm on Admin Telemetry that production lookups also show 0 searches. Owed for the case file: verify the 12 hard cases and add local ones.
+Owner: delete `SUGGESTIONS_SHADOW_MODE` in hosting and redeploy; decide on skipping the verify pass for one-provider categories. Then the third agreed measurement: a prompt that tells the model to search (the only one that uses the search allowance), after confirming on Admin Telemetry that a production lookup records tokens and whether searches are 0 there. Still owed: verify the 12 hard cases and add local ones.

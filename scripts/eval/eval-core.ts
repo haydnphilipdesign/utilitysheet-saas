@@ -266,8 +266,18 @@ const GENERIC_TOKENS = new Set([
     'tv', 'of', 'the', 'and',
 ]);
 
+/**
+ * The product's canonical key, after dropping accents and apostrophe-like
+ * marks so "Kauaʻi" and "Kauai", "Heller's" and "Hellers" are one name.
+ */
+function nameKey(name: string): string {
+    return canonicalProviderKey(
+        name.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/['’‘ʻʼ`]/g, '')
+    );
+}
+
 function distinctiveTokens(name: string): string[] {
-    return canonicalProviderKey(name).split(' ').filter((token) => token && !GENERIC_TOKENS.has(token));
+    return nameKey(name).split(' ').filter((token) => token && !GENERIC_TOKENS.has(token));
 }
 
 /**
@@ -278,9 +288,9 @@ function distinctiveTokens(name: string): string[] {
  * only identifying word also match.
  */
 export function matchProviderName(returned: string, accepted: string[]): MatchKind {
-    const key = canonicalProviderKey(returned);
+    const key = nameKey(returned);
     if (!key) return null;
-    if (accepted.some((name) => canonicalProviderKey(name) === key)) return 'exact';
+    if (accepted.some((name) => nameKey(name) === key)) return 'exact';
 
     const tokens = distinctiveTokens(returned);
     if (tokens.length === 0) return null;

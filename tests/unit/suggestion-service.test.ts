@@ -48,6 +48,8 @@ const {
     getSearchCacheKey,
     buildSuggestionPrompt,
     buildSearchPrompt,
+    buildSuggestionVerificationPrompt,
+    buildSuggestionRecoveryPrompt,
     getFallbackSearchResults,
     applyQualityGates,
 } = __testing;
@@ -415,12 +417,96 @@ describe('Suggestions Pipeline', () => {
         );
     });
 
-    it('accepts one search result but still requires two suggestions', () => {
-        const single = [{ display_name: 'Silver Spring Township Authority', confidence: 0.9, rationale_short: 'Sewer authority' }];
+    it('accepts one search result in any category', () => {
+        const single = [{ display_name: 'Penn Waste', confidence: 0.9, rationale_short: 'Trash hauler' }];
 
-        expect(applyQualityGates(single, 'sewer', undefined, 1).accepted).toBe(true);
-        expect(applyQualityGates(single, 'sewer', undefined).accepted).toBe(false);
-        expect(applyQualityGates([], 'sewer', undefined, 1).accepted).toBe(false);
+        expect(applyQualityGates(single, 'trash', undefined, 1).accepted).toBe(true);
+        expect(applyQualityGates([], 'trash', undefined, 1).accepted).toBe(false);
+    });
+
+    it('accepts one confident suggestion in every category', () => {
+        const single = [{ display_name: 'EPB', confidence: 0.9, rationale_short: 'City-owned electric utility' }];
+
+        for (const category of ['electric', 'gas', 'water', 'sewer', 'trash', 'propane', 'oil', 'internet', 'cable'] as const) {
+            expect(applyQualityGates(single, category, undefined).accepted).toBe(true);
+        }
+        expect(applyQualityGates([{ ...single[0], confidence: 0.2 }], 'electric', undefined).accepted).toBe(false);
+        expect(applyQualityGates([], 'electric', undefined).accepted).toBe(false);
+
+        process.env.SUGGESTIONS_MIN_VALID_RESULTS = '2';
+        try {
+            expect(applyQualityGates(single, 'electric', undefined).accepted).toBe(false);
+        } finally {
+            delete process.env.SUGGESTIONS_MIN_VALID_RESULTS;
+        }
+    });
+
+    it('serves a single correct utility instead of the generic list', async () => {
+        isGeminiConfiguredMock.mockReturnValue(true);
+        process.env.SUGGESTIONS_TWO_PASS_VERIFY = 'false';
+        generateJSONWithMetaMock.mockResolvedValueOnce(ok([
+            { display_name: 'EPB', confidence: 0.95, rationale_short: 'City-owned electric utility', contact_phone: null, contact_website: null },
+        ]));
+
+        const result = await getSuggestionsFresh('100 Main St, Chattanooga, TN 37402', 'electric')
+            .finally(() => { delete process.env.SUGGESTIONS_TWO_PASS_VERIFY; });
+
+        expect(result.outcome.source).toBe('ai_primary');
+        expect(result.suggestions.map((item) => item.display_name)).toEqual(['EPB']);
+    });
+
+    it('asks for one provider where one serves an address and never for a padded list', () => {
+        const electric = buildSuggestionPrompt('100 Main St, Chattanooga, TN 37402', 'electric');
+        const trash = buildSuggestionPrompt('100 Main St, Chattanooga, TN 37402', 'trash');
+
+        expect(electric).toContain('Return that provider alone when you know it.');
+        expect(trash).toContain('Return up to 5 providers that actually serve this area');
+        expect(electric).not.toContain('5-8');
+        expect(trash).not.toContain('5-8');
+    });
+
+    it('keeps every real option in the later passes where several providers serve an address', () => {
+        const address = '100 Main St, Dayton, OH 45424';
+        const candidates = [{ display_name: 'Spectrum', confidence: 0.9 }, { display_name: 'Metronet', confidence: 0.7 }];
+
+        for (const prompt of [
+            buildSuggestionVerificationPrompt(address, 'cable', candidates),
+            buildSuggestionRecoveryPrompt(address, 'cable'),
+        ]) {
+            expect(prompt).toContain('keep every one that does');
+            expect(prompt).not.toContain('One provider is a complete answer');
+        }
+        for (const prompt of [
+            buildSuggestionVerificationPrompt(address, 'electric', candidates),
+            buildSuggestionRecoveryPrompt(address, 'electric'),
+        ]) {
+            expect(prompt).toContain('One provider is a complete answer');
+        }
+    });
+
+    it('does not read a place name as another state', () => {
+        const location = (city: string, state: string, zip: string) => ({
+            raw: `100 Main St, ${city}, ${state} ${zip}`,
+            normalized: '',
+            street: '100 Main St',
+            city,
+            state,
+            zip,
+            confidence: 'high' as const,
+            issues: [],
+            source: 'local' as const,
+        });
+        const one = (display_name: string, rationale_short: string) => [{ display_name, confidence: 0.9, rationale_short }];
+
+        // The property's own city carries another state's name.
+        expect(applyQualityGates(one('Kansas City Water Services', 'Serves Kansas City residents'), 'water', location('Kansas City', 'MO', '64106')).accepted).toBe(true);
+        expect(applyQualityGates(one('KC Water', 'City water utility for Kansas City'), 'water', location('Kansas City', 'MO', '64106')).accepted).toBe(true);
+        // A company and a county that carry a state's name.
+        expect(applyQualityGates(one('Washington Gas', 'Natural gas utility for Arlington'), 'gas', location('Arlington', 'VA', '22201')).accepted).toBe(true);
+        expect(applyQualityGates(one('Delaware County Regional Water Authority', 'Serves Media'), 'sewer', location('Media', 'PA', '19063')).accepted).toBe(true);
+        // A provider that names another state is still rejected.
+        expect(applyQualityGates(one('California Water Service', 'California water provider'), 'water', location('Kansas City', 'MO', '64106')).reasonCode).toBe('state_mismatch_rejected');
+        expect(applyQualityGates(one('Puget Sound Energy', 'Serves Washington State'), 'gas', location('Arlington', 'VA', '22201')).reasonCode).toBe('state_mismatch_rejected');
     });
 
     describe('overall deadline', () => {
