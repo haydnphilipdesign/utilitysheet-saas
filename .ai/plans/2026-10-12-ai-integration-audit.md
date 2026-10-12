@@ -279,6 +279,46 @@ Owner asked in chat. Web reading only: no model call, no live database read, no 
 - **Finalized the same day (owner agreed to the recommendation in chat, no case dropped):** the 17 cases are in the new `scripts/eval/cases/local-hard-cases.json`; the draft in `.eval/` is gone. `scripts/eval/README.md` describes the file and the `--hard-cases` option; `tests/unit/eval-core.test.ts` reads both committed files. Uncommitted; no run has been made on these cases (a full run is at most 51 model calls and needs the owner's go-ahead).
 - Validation (Node 20.19.0): `tests/unit/eval-core.test.ts` 19/19; ESLint on the test file clean; the runner's plan-only mode reads the new file (17 hard cases, no model call); `git diff --check` passed. Full Vitest, `tsc` and the security scan not rerun (JSON, one test and a README changed).
 
+- Committed on main as `a7bb16c` with owner authorization in chat on 2026-10-12. Not pushed.
+
+## Slice 6, fifth measurement: the 17 local cases (2026-10-12, Claude Opus 5.5)
+
+Owner agreed in chat. One run at `a7bb16c`, production settings (`gemini-3.1-flash-lite`, thinking `low`, verify for multi-provider categories, recovery on, search tool on). 21 model calls, no failures. Results: `.eval/results/20261012T183725Z-local-hard-a7bb16c.*` (ignored).
+
+| Measure | All 17 | Water and sewer (13) | Propane and oil (4) |
+|---|---|---|---|
+| Correct top answer | 15 | 12 | 3 |
+| Correct answer in top 3 | 16 | 13 | 3 |
+| Ended on the generic list | 0 | 0 | 0 |
+
+- Also: latency p50 3.2 s, p95 8.9 s; website domain matched in 15 of 16; water and sewer returned one name in 12 of 13 cases; token cost $0.018.
+- The one water miss at first place is Rancocas, NJ (a village in Westampton Township): the large private water company came first and the right authority second. It is the only case of 13 where the model returned two names. One case, but it is the kind R10 (county and township context) is meant to help.
+- Old Saybrook oil returned five local dealers and not the accepted one. That is the case file's known limit (one checked dealer accepted where several deliver), not evidence of a wrong answer; the five names were not checked.
+- Reading: on small-town and township water and sewer the current pipeline was right in 12 of 13 at first place and 13 of 13 in the top two, in one pass at about 3 seconds. This is the first evidence on small places; it is one run of 13 cases, and four of the answers were scored by partial name match or an accepted alternate.
+- Session total after this run: 417 model calls.
+
+## Slice 6, sixth measurement: the 17 local cases with the search tool off (2026-10-12, Claude Opus 5.5)
+
+Owner agreed in chat. `--grounding off`, same code and cases, 21 model calls, no searches. Results: `.eval/results/20261012T184154Z-local-hard-no-search.*` (ignored).
+
+| Measure | Search tool on | Search tool off |
+|---|---|---|
+| Correct top answer, all 17 | 15 | 10 |
+| Correct answer in top 3, all 17 | 16 | 10 |
+| Water and sewer (13): top answer / top 3 | 12 / 13 | 9 / 9 |
+| Propane and oil (4): top 3 | 3 | 1 |
+| Top answer with the exact name | 13 | 1 |
+| Website domain matched | 15 of 16 | 7 of 10 |
+| Latency p50 | 3.2 s | 1.6 s |
+
+- With the tool off the model stops naming the real provider and writes a plausible one from the place name: "City of Eastlake Water Department" (the county supplies it), "City of Bellbrook Water & Sewer Department" for sewer (the county), "Harris Township Water Authority" for Boalsburg sewer (a regional authority), and New Jersey American Water alone for Rancocas. The split and township cases are exactly the ones it loses.
+- The count of 9 is generous. Several of those are partial name matches on an invented department ("Lehighton Borough Water Department" for the Lehighton Water Authority, with the wrong website); only 1 of 17 top answers carried the provider's exact name, against 13 with the tool on.
+- Propane lost the dealer with an office in the village to national brands, as in the fourth measurement.
+- **Decision supported: keep the search tool on for every category, including electric, gas, water and sewer.** The "possible later option" in the fourth measurement (tool off for those four) is withdrawn: it held on large utilities and fails on small places. The halved wait is not worth it.
+- This also strengthens the fourth measurement's correction: the tool's presence changes answers on facts the model does not know, so searches do appear to run under the JSON format even though none is reported.
+- Limits: one run each, 17 cases; partial matching flatters the tool-off column.
+- Session total: 438 model calls.
+
 ## Next action
 
-Owner: say whether to commit the case files. Owner: look up the Grounding with Google Search count for 2026-10-12 on Google's side; it settles whether searches run under the JSON format and what today's runs used. Until then, treat every evaluation run with the tool on as spending searches, and ask before another. Still open in slice 6: R9 model trial (`--model`, no code change), R10 county and township, R11 honest fallback wording. A small follow-up worth doing: say on Admin Telemetry and in `docs/ai-telemetry.md` that the search count is not reported for JSON-format calls. The 12 hard cases are checked (11 verified); the 17 local cases are in their own file, uncommitted and not yet run. More rural propane and oil cases would need a phone call or the dealers' own town lists.
+Owner: look up the Grounding with Google Search count for 2026-10-12 on Google's side; it settles whether searches run under the JSON format and what today's runs used. Until then, treat every evaluation run with the tool on as spending searches, and ask before another. Still open in slice 6: R9 model trial (`--model`, no code change), R10 county and township, R11 honest fallback wording. A small follow-up worth doing: say on Admin Telemetry and in `docs/ai-telemetry.md` that the search count is not reported for JSON-format calls. The 12 hard cases are checked (11 verified); the 17 local cases are in their own file, uncommitted and not yet run. More rural propane and oil cases would need a phone call or the dealers' own town lists.
