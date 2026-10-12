@@ -21,6 +21,14 @@ export type FormTelemetry = {
 };
 export type EventTelemetry = { event: string; count: number; requests: number };
 export type AiTelemetry = { feature: string; status: string; runs: number; cached: number; freshLatencyMs: number | null };
+/** Fresh runs only. `measuredRuns` are the ones that carry usage; the totals cover those. */
+export type AiUsageTelemetry = {
+    feature: string; freshRuns: number; measuredRuns: number; passes: number; searchQueries: number;
+    promptTokens: number; outputTokens: number; thinkingTokens: number; toolPromptTokens: number;
+    timeouts: number; otherFailures: number;
+};
+/** Submitted provider entries by the first suggestion list the seller was shown for that utility. */
+export type AiAcceptanceTelemetry = { shown: string; entries: number; accepted: number };
 
 export type UsageTelemetry = {
     created: number; opened: number; completed: number; completedWithoutOpen: number;
@@ -127,7 +135,7 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
     if (!sql) return null;
     // Enforce the bound at runtime too, rather than trusting only the TS caller.
     const windowDays = telemetryDays(String(days));
-    const [formRows, eventRows, aiRows, usage] = await Promise.all([
+    const [formRows, eventRows, aiRows, aiUsageRows, aiAcceptanceRows, usage] = await Promise.all([
         sql`
             WITH customers AS (
                 SELECT id FROM accounts WHERE role = 'user'
@@ -179,6 +187,39 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
                 AND r.deleted_at IS NULL AND COALESCE(r.is_demo, FALSE) = FALSE
             GROUP BY g.feature, g.status ORDER BY g.feature, g.status
         `,
+        // Cost follows every fresh run, so this one is not limited to customer requests.
+        sql`
+            SELECT g.feature, COUNT(*) AS fresh_runs,
+                COUNT(*) FILTER (WHERE g.prompt_tokens IS NOT NULL OR g.search_query_count IS NOT NULL) AS measured_runs,
+                COALESCE(SUM(g.attempt_count), 0) AS passes,
+                COALESCE(SUM(g.search_query_count), 0) AS search_queries,
+                COALESCE(SUM(g.prompt_tokens), 0) AS prompt_tokens,
+                COALESCE(SUM(g.output_tokens), 0) AS output_tokens,
+                COALESCE(SUM(g.thinking_tokens), 0) AS thinking_tokens,
+                COALESCE(SUM(g.tool_prompt_tokens), 0) AS tool_prompt_tokens,
+                COUNT(*) FILTER (WHERE g.error_kind = 'timeout') AS timeouts,
+                COUNT(*) FILTER (WHERE g.error_kind IS NOT NULL AND g.error_kind <> 'timeout') AS other_failures
+            FROM ai_generation_runs g
+            WHERE g.cache_hit = FALSE AND g.created_at >= NOW() - ${windowDays} * INTERVAL '1 day'
+            GROUP BY g.feature ORDER BY g.feature
+        `,
+        sql`
+            WITH live AS (
+                SELECT r.id FROM requests r JOIN accounts a ON a.id = r.account_id AND a.role = 'user'
+                WHERE r.deleted_at IS NULL AND COALESCE(r.is_demo, FALSE) = FALSE
+                    AND r.metered_at >= NOW() - ${windowDays} * INTERVAL '1 day'
+            ), shown AS (
+                SELECT DISTINCT ON (g.request_id, g.category) g.request_id, g.category, COALESCE(g.source, 'unknown') AS shown
+                FROM ai_generation_runs g JOIN live r ON r.id = g.request_id
+                WHERE g.feature = 'provider_suggestions'
+                ORDER BY g.request_id, g.category, g.created_at, g.id
+            )
+            SELECT s.shown, COUNT(*) AS entries,
+                COUNT(*) FILTER (WHERE u.entry_mode = 'suggested_confirmed') AS accepted
+            FROM utility_entries u JOIN shown s ON s.request_id = u.request_id AND s.category = u.category
+            WHERE u.entry_mode IN ('suggested_confirmed', 'search_selected', 'free_text')
+            GROUP BY s.shown ORDER BY entries DESC, s.shown
+        `,
         getUsageTelemetry(windowDays),
     ]);
     const row = formRows[0];
@@ -193,5 +234,13 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
         days: windowDays, forms, usage,
         events: eventRows.map((e) => ({ event: String(e.event), count: Number(e.count), requests: Number(e.requests) })) as EventTelemetry[],
         ai: aiRows.map((g) => ({ feature: String(g.feature), status: String(g.status), runs: Number(g.runs), cached: Number(g.cached), freshLatencyMs: g.fresh_latency_ms == null ? null : Number(g.fresh_latency_ms) })) as AiTelemetry[],
+        aiUsage: aiUsageRows.map((g) => ({
+            feature: String(g.feature), freshRuns: Number(g.fresh_runs), measuredRuns: Number(g.measured_runs),
+            passes: Number(g.passes), searchQueries: Number(g.search_queries),
+            promptTokens: Number(g.prompt_tokens), outputTokens: Number(g.output_tokens),
+            thinkingTokens: Number(g.thinking_tokens), toolPromptTokens: Number(g.tool_prompt_tokens),
+            timeouts: Number(g.timeouts), otherFailures: Number(g.other_failures),
+        })) as AiUsageTelemetry[],
+        aiAcceptance: aiAcceptanceRows.map((g) => ({ shown: String(g.shown), entries: Number(g.entries), accepted: Number(g.accepted) })) as AiAcceptanceTelemetry[],
     };
 }

@@ -12,7 +12,7 @@
  */
 import { getStatementExecutor, type StatementExecutor } from '@/lib/neon/statements';
 
-export type OperationalCategory = 'email' | 'pdf' | 'billing_webhook';
+export type OperationalCategory = 'email' | 'pdf' | 'billing_webhook' | 'ai';
 export type OperationalOutcome = 'failure' | 'success';
 export type OperationalSeverity = 'info' | 'warning' | 'critical';
 
@@ -28,6 +28,8 @@ const METADATA_ALLOWLIST = new Set([
     'deliveryStatus',
     'operationId',
     'bounceType',
+    'runCount',
+    'windowHours',
 ]);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

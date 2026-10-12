@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import { ProviderSuggestion, UtilityCategory } from '@/types';
-import { generateJSONWithMeta, getGeminiModelName, isGeminiConfigured } from '@/lib/ai/gemini-client';
+import {
+    generateJSONWithMeta,
+    getGeminiModelName,
+    getGeminiThinkingLevelName,
+    isGeminiConfigured,
+    type GeminiFailureKind,
+    type GeminiUsage,
+} from '@/lib/ai/gemini-client';
 import { getFromCache, setInCache } from '@/lib/cache';
 import {
     US_STATES,
@@ -11,7 +18,12 @@ import {
 import { resolveParsedLocation } from '@/lib/address/location-verifier';
 import { createHash } from 'crypto';
 import { getProviderMemoryCandidates, type ProviderMemoryCandidate } from '@/lib/neon/queries/provider-memory';
-import { createAiSuggestionRun, type AiTelemetryFeature, type AiTelemetryStatus } from '@/lib/neon/queries/ai-telemetry';
+import {
+    createAiSuggestionRun,
+    type AiRunUsage,
+    type AiTelemetryFeature,
+    type AiTelemetryStatus,
+} from '@/lib/neon/queries/ai-telemetry';
 import { canonicalProviderKey, dedupeProviderSuggestions } from '@/lib/providers/canonicalize';
 import {
     AI_REQUEST_FORMAT_VERSION,
@@ -74,6 +86,10 @@ export interface SuggestionOutcome {
     localityZip3: string | null;
     localityCity: string | null;
     servedPipeline: 'new' | 'legacy';
+    /** Added up over the answered AI passes; absent or null when none answered. */
+    usage?: AiRunUsage | null;
+    /** The first AI pass failure of the lookup, if any. */
+    errorKind?: GeminiFailureKind | null;
 }
 
 interface ParsedAddress {
@@ -109,6 +125,33 @@ export type ProviderSearchDiagnostic = PipelineResult;
 interface AiPassResult {
     suggestions: ProviderSuggestion[];
     reasonCode: SuggestionReasonCode | null;
+    usage: GeminiUsage | null;
+    errorKind: GeminiFailureKind | null;
+}
+
+/** Usage and first failure of the AI passes of one lookup. */
+interface PassTally {
+    usage: AiRunUsage | null;
+    errorKind: GeminiFailureKind | null;
+}
+
+function addCount(total: number | null, next: number | null): number | null {
+    if (next === null) return total;
+    return (total ?? 0) + next;
+}
+
+function tallyPass(tally: PassTally, pass: AiPassResult): void {
+    tally.errorKind = tally.errorKind ?? pass.errorKind;
+    if (!pass.usage) return;
+    const total = tally.usage;
+    tally.usage = {
+        promptTokens: addCount(total?.promptTokens ?? null, pass.usage.promptTokens),
+        outputTokens: addCount(total?.outputTokens ?? null, pass.usage.outputTokens),
+        thinkingTokens: addCount(total?.thinkingTokens ?? null, pass.usage.thinkingTokens),
+        toolPromptTokens: addCount(total?.toolPromptTokens ?? null, pass.usage.toolPromptTokens),
+        searchQueryCount: addCount(total?.searchQueryCount ?? null, pass.usage.searchQueryCount),
+        sourceCount: addCount(total?.sourceCount ?? null, pass.usage.sourceCount),
+    };
 }
 
 interface SearchPipelineParams {
@@ -579,6 +622,7 @@ function buildOutcome(params: {
     suggestions: ProviderSuggestion[];
     location: ParsedLocation | undefined;
     servedPipeline: 'new' | 'legacy';
+    tally?: PassTally;
 }): SuggestionOutcome {
     return {
         category: params.category,
@@ -592,6 +636,8 @@ function buildOutcome(params: {
         localityZip3: params.location?.zip ? params.location.zip.slice(0, 3) : null,
         localityCity: params.location?.city || null,
         servedPipeline: params.servedPipeline,
+        usage: params.tally?.usage ?? null,
+        errorKind: params.tally?.errorKind ?? null,
     };
 }
 
@@ -670,6 +716,9 @@ async function persistSuggestionTelemetry(params: {
             localityCity: params.outcome.localityCity,
             suggestionCount: params.outcome.suggestionCount,
             cacheHit: Boolean(params.cacheHit),
+            usage: params.outcome.usage ?? null,
+            thinkingLevel: params.outcome.attemptCount > 0 ? getGeminiThinkingLevelName() : null,
+            errorKind: params.outcome.errorKind ?? null,
             suggestions: params.suggestions,
         });
     } catch (error) {
@@ -696,6 +745,8 @@ function buildCachedOutcome(params: {
         localityZip3: params.location?.zip ? params.location.zip.slice(0, 3) : null,
         localityCity: params.location?.city || null,
         servedPipeline: 'new',
+        usage: null,
+        errorKind: null,
     };
 }
 
@@ -999,6 +1050,8 @@ async function runAiPass(
         return {
             suggestions: [],
             reasonCode: 'ai_unconfigured',
+            usage: null,
+            errorKind: 'unconfigured',
         };
     }
 
@@ -1006,16 +1059,21 @@ async function runAiPass(
         responseJsonSchema: PROVIDER_SUGGESTION_RESPONSE_SCHEMA,
         deadlineAt,
     });
+    const usage = response.usage ?? null;
     if (response.failure === 'provider_error') {
         return {
             suggestions: [],
             reasonCode: 'ai_provider_error',
+            usage,
+            errorKind: response.failureKind ?? 'api_error',
         };
     }
     if (response.failure === 'parse_error') {
         return {
             suggestions: [],
             reasonCode: 'ai_parse_error',
+            usage,
+            errorKind: null,
         };
     }
 
@@ -1024,12 +1082,16 @@ async function runAiPass(
         return {
             suggestions: [],
             reasonCode: 'ai_empty',
+            usage,
+            errorKind: null,
         };
     }
 
     return {
         suggestions: normalizeAndRankSuggestions(parsed, category, maxItems),
         reasonCode: null,
+        usage,
+        errorKind: null,
     };
 }
 
@@ -1152,7 +1214,9 @@ async function runLegacySuggestionPipeline(
     const startedAt = Date.now();
     const deadlineAt = startedAt + getPipelineDeadlineMs();
     const parsed = await resolveParsedLocation(address);
+    const tally: PassTally = { usage: null, errorKind: null };
     const primary = await runAiPass(buildSuggestionPrompt(parsed, category), category, 5, deadlineAt);
+    tallyPass(tally, primary);
 
     if (primary.suggestions.length > 0) {
         const filtered = normalizeAndRankSuggestions(
@@ -1173,6 +1237,7 @@ async function runLegacySuggestionPipeline(
                     suggestions: filtered,
                     location: parsed,
                     servedPipeline: 'legacy',
+                    tally,
                 }),
             };
         }
@@ -1191,6 +1256,7 @@ async function runLegacySuggestionPipeline(
             suggestions: fallback,
             location: parsed,
             servedPipeline: 'legacy',
+            tally,
         }),
     };
 }
@@ -1206,6 +1272,7 @@ async function runTwoPassSuggestionPipeline(
     const parsed = await resolveParsedLocation(address);
     let attempts = 0;
     let upstreamReason: SuggestionReasonCode | null = null;
+    const tally: PassTally = { usage: null, errorKind: null };
 
     if (!isGeminiConfigured()) {
         const fallback = getFallbackSuggestions(category, parsed);
@@ -1221,11 +1288,13 @@ async function runTwoPassSuggestionPipeline(
                 suggestions: fallback,
                 location: parsed,
                 servedPipeline: 'new',
+                tally: { usage: null, errorKind: 'unconfigured' },
             }),
         };
     }
 
     const primaryPass = await runAiPass(buildSuggestionPrompt(parsed, category), category, 8, deadlineAt);
+    tallyPass(tally, primaryPass);
     attempts++;
     upstreamReason = mergeUpstreamReason(upstreamReason, primaryPass.reasonCode);
     const primaryGate = applyQualityGates(primaryPass.suggestions, category, parsed);
@@ -1241,6 +1310,7 @@ async function runTwoPassSuggestionPipeline(
             5,
             deadlineAt
         );
+        tallyPass(tally, verifyPass);
         attempts++;
         upstreamReason = mergeUpstreamReason(upstreamReason, verifyPass.reasonCode);
         const verifyGate = applyQualityGates(verifyPass.suggestions, category, parsed);
@@ -1261,6 +1331,7 @@ async function runTwoPassSuggestionPipeline(
 
     if (!chosenSource && isRecoveryPassEnabled() && hasBudgetRemaining(startedAt, maxPipelineMs, deadlineAt)) {
         const recoveryPass = await runAiPass(buildSuggestionRecoveryPrompt(parsed, category), category, 5, deadlineAt);
+        tallyPass(tally, recoveryPass);
         attempts++;
         upstreamReason = mergeUpstreamReason(upstreamReason, recoveryPass.reasonCode);
         const recoveryGate = applyQualityGates(recoveryPass.suggestions, category, parsed);
@@ -1288,6 +1359,7 @@ async function runTwoPassSuggestionPipeline(
                 suggestions: blended.suggestions,
                 location: parsed,
                 servedPipeline: 'new',
+                tally,
             }),
         };
     }
@@ -1305,6 +1377,7 @@ async function runTwoPassSuggestionPipeline(
             suggestions: fallback,
             location: parsed,
             servedPipeline: 'new',
+            tally,
         }),
     };
 }
@@ -1318,6 +1391,8 @@ async function runLegacySearchPipeline(params: SearchPipelineParams): Promise<Pi
         5,
         deadlineAt
     );
+    const tally: PassTally = { usage: null, errorKind: null };
+    tallyPass(tally, primary);
 
     if (primary.suggestions.length > 0) {
         const gated = applyQualityGates(primary.suggestions, params.category, params.resolvedAddress);
@@ -1334,6 +1409,7 @@ async function runLegacySearchPipeline(params: SearchPipelineParams): Promise<Pi
                     suggestions: gated.suggestions,
                     location: params.resolvedAddress,
                     servedPipeline: 'legacy',
+                    tally,
                 }),
             };
         }
@@ -1352,6 +1428,7 @@ async function runLegacySearchPipeline(params: SearchPipelineParams): Promise<Pi
             suggestions: fallback,
             location: params.resolvedAddress,
             servedPipeline: 'legacy',
+            tally,
         }),
     };
 }
@@ -1378,6 +1455,7 @@ async function runSinglePassSearchPipeline(params: SearchPipelineParams): Promis
                 suggestions: fallback,
                 location: params.resolvedAddress,
                 servedPipeline: 'new',
+                tally: { usage: null, errorKind: 'unconfigured' },
             }),
         };
     }
@@ -1388,6 +1466,8 @@ async function runSinglePassSearchPipeline(params: SearchPipelineParams): Promis
         8,
         deadlineAt
     );
+    const tally: PassTally = { usage: null, errorKind: null };
+    tallyPass(tally, pass);
     const gate = applyQualityGates(
         pass.suggestions,
         params.category,
@@ -1414,6 +1494,7 @@ async function runSinglePassSearchPipeline(params: SearchPipelineParams): Promis
                 suggestions: blended.suggestions,
                 location: params.resolvedAddress,
                 servedPipeline: 'new',
+                tally,
             }),
         };
     }
@@ -1431,6 +1512,7 @@ async function runSinglePassSearchPipeline(params: SearchPipelineParams): Promis
             suggestions: fallback,
             location: params.resolvedAddress,
             servedPipeline: 'new',
+            tally,
         }),
     };
 }

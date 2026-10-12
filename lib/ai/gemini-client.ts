@@ -49,10 +49,38 @@ interface GeminiRequestConfig {
 
 export type JSONFailureReason = 'provider_error' | 'parse_error';
 
+/** Why no answer came back. Recorded in AI telemetry as `error_kind`. */
+export type GeminiFailureKind =
+    | 'unconfigured'
+    | 'circuit_open'
+    | 'deadline'
+    | 'timeout'
+    | 'rate_limited'
+    | 'empty_response'
+    | 'api_error';
+
+/**
+ * What one answered call used. Token counts are null when the provider did not
+ * report them. Attempts that failed before an answer are not included.
+ */
+export interface GeminiUsage {
+    promptTokens: number | null;
+    outputTokens: number | null;
+    thinkingTokens: number | null;
+    /** Tokens of search results fed back to the model. */
+    toolPromptTokens: number | null;
+    /** Google Search queries the model ran for this answer. */
+    searchQueryCount: number;
+    /** Distinct web sources the answer was grounded on. */
+    sourceCount: number;
+}
+
 export interface JSONGenerationResult<T> {
     data: T | null;
     failure: JSONFailureReason | null;
     groundingSourceUrls: string[];
+    usage: GeminiUsage | null;
+    failureKind: GeminiFailureKind | null;
 }
 
 export interface JSONGenerationOptions {
@@ -66,6 +94,19 @@ class GeminiTimeoutError extends Error {
         super(`Gemini call timed out after ${timeoutMs}ms`);
         this.name = 'GeminiTimeoutError';
     }
+}
+
+class GeminiEmptyResponseError extends Error {
+    constructor() {
+        super('Gemini returned no candidate text');
+        this.name = 'GeminiEmptyResponseError';
+    }
+}
+
+type RetryResult<T> = { ok: true; value: T } | { ok: false; kind: GeminiFailureKind };
+
+function failed(kind: GeminiFailureKind): { ok: false; kind: GeminiFailureKind } {
+    return { ok: false, kind };
 }
 
 interface GeminiErrorMetadata {
@@ -304,11 +345,11 @@ async function withRetry<T>(
     fn: (signal: AbortSignal) => Promise<T>,
     deadlineAt?: number,
     retries: number = MAX_RETRIES
-): Promise<T | null> {
+): Promise<RetryResult<T>> {
     // Check circuit breaker first
     if (!isCircuitClosed()) {
         console.warn('[Gemini] Circuit breaker is OPEN, skipping AI call');
-        return null;
+        return failed('circuit_open');
     }
 
     const callTimeoutMs = getCallTimeoutMs();
@@ -318,39 +359,42 @@ async function withRetry<T>(
         const remainingMs = deadline - Date.now();
         if (remainingMs < MIN_ATTEMPT_MS) {
             console.warn('[Gemini] Deadline reached, skipping AI call');
-            return null;
+            return failed('deadline');
         }
 
         try {
             const result = await withTimeout(fn, Math.min(callTimeoutMs, remainingMs));
             recordSuccess();
-            return result;
+            return { ok: true, value: result };
         } catch (error) {
             if (error instanceof GeminiTimeoutError) {
                 console.error(`[Gemini] ${error.message}`);
                 recordFailure();
-                return null;
+                return failed('timeout');
             }
 
             const metadata = extractGeminiErrorMetadata(error);
+            const kind: GeminiFailureKind = error instanceof GeminiEmptyResponseError
+                ? 'empty_response'
+                : metadata.status === 429 ? 'rate_limited' : 'api_error';
             const isLastAttempt = attempt === retries - 1;
             if (!metadata.retryable) {
                 console.error('[Gemini] Non-retryable API error:', metadata);
                 recordFailure();
-                return null;
+                return failed(kind);
             }
 
             if (isLastAttempt) {
                 console.error(`[Gemini] All ${retries} attempts failed:`, metadata);
                 recordFailure();
-                return null;
+                return failed(kind);
             }
 
             const delay = BASE_DELAY_MS * Math.pow(2, attempt);
             if (deadline - Date.now() - delay < MIN_ATTEMPT_MS) {
                 console.error('[Gemini] No time left to retry before the deadline:', metadata);
                 recordFailure();
-                return null;
+                return failed(kind);
             }
 
             console.warn(
@@ -359,7 +403,7 @@ async function withRetry<T>(
             await sleep(delay);
         }
     }
-    return null;
+    return failed('api_error');
 }
 
 /**
@@ -417,6 +461,12 @@ export function getGeminiModelName(): string {
     return MODEL_NAME;
 }
 
+/** The thinking level sent with each call, or 'default' when none is sent. */
+export function getGeminiThinkingLevelName(): string {
+    const level = getThinkingLevel();
+    return level && supportsThinkingConfig(MODEL_NAME) ? String(level) : 'default';
+}
+
 /**
  * Generate content using Gemini with retry logic
  * Returns null if not configured or on error after retries
@@ -428,7 +478,7 @@ export async function generateContent(prompt: string): Promise<string | null> {
         return null;
     }
 
-    return withRetry(async (signal) => {
+    const result = await withRetry(async (signal) => {
         const response = await genAI.models.generateContent({
             ...requestConfig,
             config: { ...requestConfig.config, abortSignal: signal },
@@ -436,6 +486,7 @@ export async function generateContent(prompt: string): Promise<string | null> {
         });
         return response.text ?? '';
     });
+    return result.ok ? result.value : null;
 }
 
 /**
@@ -465,10 +516,12 @@ export async function generateJSONWithMeta<T>(
             data: null,
             failure: 'provider_error',
             groundingSourceUrls: [],
+            usage: null,
+            failureKind: 'unconfigured',
         };
     }
 
-    const responseData = await withRetry(async (signal) => {
+    const attempt = await withRetry(async (signal) => {
         const response = await genAI.models.generateContent({
             ...requestConfig,
             config: { ...requestConfig.config, abortSignal: signal },
@@ -476,22 +529,27 @@ export async function generateJSONWithMeta<T>(
         });
         const text = response.text?.trim();
         if (!response.candidates?.length || !text) {
-            throw new Error('Gemini returned no candidate text');
+            throw new GeminiEmptyResponseError();
         }
 
+        const groundingSourceUrls = getGroundingSourceUrls(response);
         return {
             text,
-            groundingSourceUrls: getGroundingSourceUrls(response),
+            groundingSourceUrls,
+            usage: getUsage(response, groundingSourceUrls.length),
         };
     }, options.deadlineAt);
 
-    if (!responseData) {
+    if (!attempt.ok) {
         return {
             data: null,
             failure: 'provider_error',
             groundingSourceUrls: [],
+            usage: null,
+            failureKind: attempt.kind,
         };
     }
+    const responseData = attempt.value;
 
     try {
         // With JSON mode, response should be clean JSON, but still handle edge cases
@@ -505,6 +563,8 @@ export async function generateJSONWithMeta<T>(
             data: JSON.parse(jsonStr) as T,
             failure: null,
             groundingSourceUrls: responseData.groundingSourceUrls,
+            usage: responseData.usage,
+            failureKind: null,
         };
     } catch (error) {
         console.error('[Gemini] Error parsing JSON response:', {
@@ -514,8 +574,28 @@ export async function generateJSONWithMeta<T>(
             data: null,
             failure: 'parse_error',
             groundingSourceUrls: responseData.groundingSourceUrls,
+            usage: responseData.usage,
+            failureKind: null,
         };
     }
+}
+
+function tokenCount(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.round(value) : null;
+}
+
+function getUsage(response: GenerateContentResponse, sourceCount: number): GeminiUsage {
+    const usage = response.usageMetadata;
+    const searchQueryCount = (response.candidates || [])
+        .reduce((total, candidate) => total + (candidate.groundingMetadata?.webSearchQueries?.length ?? 0), 0);
+    return {
+        promptTokens: tokenCount(usage?.promptTokenCount),
+        outputTokens: tokenCount(usage?.candidatesTokenCount),
+        thinkingTokens: tokenCount(usage?.thoughtsTokenCount),
+        toolPromptTokens: tokenCount(usage?.toolUsePromptTokenCount),
+        searchQueryCount,
+        sourceCount,
+    };
 }
 
 function getGroundingSourceUrls(response: GenerateContentResponse): string[] {

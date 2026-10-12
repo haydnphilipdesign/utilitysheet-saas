@@ -1,15 +1,25 @@
 import { sql } from '@/lib/neon/db';
 import type { ProviderEntryMode, ProviderSuggestion, UtilityCategory } from '@/types';
 
-export type AiTelemetryFeature = 'provider_suggestions' | 'provider_search';
+export type AiTelemetryFeature = 'provider_suggestions' | 'provider_search' | 'provider_contact';
 export type AiTelemetryStatus = 'success' | 'fallback' | 'error' | 'parse_error' | 'quality_rejected';
+
+/** Totals over the answered model calls of one run. Null means not reported. */
+export interface AiRunUsage {
+    promptTokens: number | null;
+    outputTokens: number | null;
+    thinkingTokens: number | null;
+    toolPromptTokens: number | null;
+    searchQueryCount: number | null;
+    sourceCount: number | null;
+}
 
 export interface CreateAiSuggestionRunInput {
     requestId?: string;
     accountId?: string;
     organizationId?: string | null;
     feature: AiTelemetryFeature;
-    category: UtilityCategory;
+    category: UtilityCategory | null;
     provider: string;
     model: string | null;
     promptVersion: string;
@@ -25,6 +35,11 @@ export interface CreateAiSuggestionRunInput {
     localityCity: string | null;
     suggestionCount: number;
     cacheHit?: boolean;
+    /** Omitted for cache hits and for runs that made no answered model call. */
+    usage?: AiRunUsage | null;
+    thinkingLevel?: string | null;
+    /** First model-call failure of the run (timeout, rate_limited, ...). */
+    errorKind?: string | null;
     suggestions: ProviderSuggestion[];
 }
 
@@ -49,6 +64,11 @@ function clampConfidence(value: unknown): number | null {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return null;
     return Math.max(0, Math.min(1, numeric));
+}
+
+function clampCount(value: number | null | undefined): number | null {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null;
+    return Math.min(2_000_000_000, Math.round(value));
 }
 
 function toStatus(input: CreateAiSuggestionRunInput): AiTelemetryStatus {
@@ -92,7 +112,15 @@ export async function createAiSuggestionRun(input: CreateAiSuggestionRunInput): 
             locality_zip3,
             locality_city,
             suggestion_count,
-            cache_hit
+            cache_hit,
+            prompt_tokens,
+            output_tokens,
+            thinking_tokens,
+            tool_prompt_tokens,
+            search_query_count,
+            source_count,
+            thinking_level,
+            error_kind
         ) VALUES (
             ${input.requestId || null},
             ${input.accountId || null},
@@ -113,7 +141,15 @@ export async function createAiSuggestionRun(input: CreateAiSuggestionRunInput): 
             ${input.localityZip3},
             ${input.localityCity},
             ${input.suggestionCount},
-            ${Boolean(input.cacheHit)}
+            ${Boolean(input.cacheHit)},
+            ${clampCount(input.usage?.promptTokens)},
+            ${clampCount(input.usage?.outputTokens)},
+            ${clampCount(input.usage?.thinkingTokens)},
+            ${clampCount(input.usage?.toolPromptTokens)},
+            ${clampCount(input.usage?.searchQueryCount)},
+            ${clampCount(input.usage?.sourceCount)},
+            ${input.thinkingLevel ? input.thinkingLevel.slice(0, 40) : null},
+            ${input.errorKind ? input.errorKind.slice(0, 40) : null}
         )
         RETURNING id
     `;

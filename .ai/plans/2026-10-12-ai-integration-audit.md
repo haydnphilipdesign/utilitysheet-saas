@@ -1,6 +1,6 @@
 # AI integration, model selection and cost audit
 
-- Status: **In progress.** Slices 1 to 3 of 7 are done and committed on main on 2026-10-12, not pushed or deployed (see "Progress" and the outcome sections); slice 4 is next. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
+- Status: **In progress.** Slices 1 to 3 of 7 are done and committed and pushed to origin/main on 2026-10-12 (`214ad72`), deployment not verified. Slice 4 is done with its migration applied, committed and pushed the same day, deployment not verified (see "Progress" and the outcome sections); slice 5 is next. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
 - Scope: owner brief in chat on 2026-10-12. Audit of every AI and Google Maps integration, current model and pricing research, cost and accuracy analysis, evaluation framework proposal, prioritized roadmap. Investigation and documentation only.
 - Baseline: main at `c83b2eb`.
 - Deliverable: `docs/audits/2026-10-12-ai-integration-audit.md`.
@@ -40,10 +40,10 @@ Option B (incremental modernization), starting with the model-independent fixes 
 
 | Slice | Status |
 |---|---|
-| 1. Cache per city [R1] | Done 2026-10-12, uncommitted, not deployed |
-| 2. Timeouts [R3] | Done 2026-10-12, uncommitted, not deployed |
-| 3. Search rework [R2] | Done 2026-10-12, uncommitted, not deployed |
-| 4. Telemetry and alert [R5] | Not started |
+| 1. Cache per city [R1] | Done 2026-10-12, pushed (`214ad72`) |
+| 2. Timeouts [R3] | Done 2026-10-12, pushed (`214ad72`) |
+| 3. Search rework [R2] | Done 2026-10-12, pushed (`214ad72`) |
+| 4. Telemetry and alert [R5] | Done 2026-10-12, migration applied, committed and pushed |
 | 5. Evaluation script [R6] | Not started |
 | 6. Decided by the evaluation | Not started |
 | 7. As time allows | Not started |
@@ -98,6 +98,31 @@ Risks to carry: slice 1 increases fresh lookups until slice 3 lands, so do them 
 - Not verified: a real model call, the hosted site, a signed-in browser, dark mode, a real phone keyboard (the Enter key hint is set to "search").
 - For the owner to look at: the two new labels, `Search for "<name>"` and `Search more providers`.
 
+## Slice 4 design (2026-10-12, Claude Opus 5.5, implemented as written)
+
+Verified in code before starting: `ai_generation_runs.feature` and `operational_events.category` are both limited by a check; `/api/cron/ops-monitor` is scheduled every 15 minutes in `vercel.json` (the route's own comment saying it is not scheduled is stale); telemetry writes are best-effort; about 400 fresh suggestion lookups a month, so a one-hour window rarely holds enough runs to judge.
+
+- Client (`lib/ai/gemini-client.ts`): `generateJSONWithMeta` also returns usage read from the answer that was used (prompt, output, thinking and tool-prompt tokens, search queries run, distinct sources) and, on failure, what kind it was (timeout, deadline, circuit open, rate limited, empty answer, other API error, not configured). Usage of an attempt that failed is not available.
+- Run rows: the pipelines add up usage over their passes and store it with the thinking level and the first failure kind. Cached rows leave the new columns empty.
+- Contact lookups: recorded in `ai_generation_runs` as feature `provider_contact` (fresh and cached), linked to the request, with no provider name stored.
+- Migration `migrations-ai-usage-telemetry.sql`: nullable columns `prompt_tokens`, `output_tokens`, `thinking_tokens`, `tool_prompt_tokens`, `search_query_count`, `source_count`, `thinking_level`, `error_kind`; the feature check also allows `provider_contact`; the operational category check also allows `ai`; one index on `created_at`. Additive, rerunnable. Two columns beyond the plan's list (`tool_prompt_tokens`, needed to total a call's cost; `error_kind`, the timeout split slice 2 left open).
+- Alert: evaluated by the scheduled monitor, not in the seller's request. Per feature over the last 24 hours of fresh runs, with at least 10 runs: suggestions count as degraded when they ended on the generic list; search and contact lookups when the model call failed (an empty search is normal). At 50% or more the monitor records an `ai` operational event (shown on Admin Operations) and the alert condition fires; a later healthy window records the recovery. Thresholds are environment values.
+- Admin telemetry: a usage table (calls, searches, tokens per feature) and an acceptance table by what the seller was shown.
+
+## Slice 4 outcome (2026-10-12, Claude Opus 5.5)
+
+- Built as the design section above describes. No prompt, cache key, gate, route contract or seller screen changed.
+- Files, application: `lib/ai/gemini-client.ts` (usage and failure kind on `generateJSONWithMeta`, `getGeminiThinkingLevelName`), `lib/providers/suggestion-service.ts` (usage and first failure added up over the passes of both pipelines), `lib/providers/contact-service.ts` (contact lookups recorded; `resolveContactFresh` still records nothing), `app/api/seller/[token]/route.ts` (passes the request, account and workspace so the contact row is linked), `lib/neon/queries/ai-telemetry.ts`, new `lib/ops/ai-health.ts`, `lib/ops/{alerts,events,overview}.ts`, `app/api/cron/ops-monitor/route.ts`, `lib/neon/queries/admin-telemetry.ts`, `app/(admin)/admin/{telemetry,operations}/page.tsx`.
+- Files, schema and documents: new `migrations-ai-usage-telemetry.sql`, `schema.sql`, `docs/ai-telemetry.md`, `ADMIN.md`, `docs/admin-operations-runbook.md`. `.env.example` gained the three `OPS_ALERT_AI_*` lines, but that file is ignored by git here, so the change is local only.
+- Files, tests: new `tests/unit/ai-usage-telemetry-storage.test.ts`; updated `tests/unit/{gemini-client,suggestion-service,contact-service,ops-monitoring,ops-instrumentation,admin-telemetry,admin-operations-ui}.test.ts(x)` and `tests/unit/admin-telemetry-page.test.tsx`.
+- Migration: **applied** to the configured Neon database on 2026-10-12 with owner authorization in chat (psql 17.11, stop on error, transaction-local 10s lock and 180s statement timeouts, from a scratch copy that differs from the repository file only by those two lines). Live check names were read first and match the ones the migration replaces. Aggregates only: 5,311 runs (2,809 suggestions, 2,502 searches), 16,226 suggestion items and 32 operational events before and after, row fingerprints identical; 22 columns became 30, all eight new ones nullable and empty on every row; both checks widened; the new index present; no contact row and no `ai` event yet.
+- The deployed application is unaffected by the migration (both checks are only widened and it names none of the new columns). The new application needs the migration first, which is done.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on the changed files clean; focused files passed, then full Vitest with native PostgreSQL 224 files / 1741 passed; the migration is tested against embedded PostgreSQL from the deployed shape (with and without the operations tables, run twice, rows kept, same columns as `schema.sql`); security scan and `git diff --check` passed.
+- Not verified: a real model call, so whether Gemini reports `usageMetadata` and `webSearchQueries` for the configured model with search grounding is read from the SDK types only (missing values are stored as empty, not as zero); the Admin Telemetry and Operations pages in a browser (Admin has no fixture; both are covered by render tests); the hosted site; an alert email. Production build and Playwright were not run (no seller screen changed).
+- Decisions the owner may want to change: thresholds (50% of at least 10 fresh runs in 24 hours, `OPS_ALERT_AI_*`); suggestions count as degraded on the generic list only, so a failed verify pass that still served an AI answer does not count; a contact lookup that found nothing is recorded as a success with `ai_empty`; the usage table counts every fresh run, including demo and unlinked ones, unlike the other Admin tables; acceptance uses the first list shown for a request and utility.
+- Known limits: usage of an attempt that failed or timed out is not reported by the provider, so totals are a floor; at about 13 fresh suggestion lookups a day, an outage is reported once 10 fresh runs accumulate, and the alert email also needs `OPS_ALERTS_ENABLED` and `OPS_ALERT_EMAIL` (not verified in hosting); retries inside one pass are not counted (`attempt_count` is passes).
+- Stale comment corrected: the monitor route said it was not scheduled; `vercel.json` has run it every 15 minutes since 2026-10-05.
+
 ## Next action
 
-Slices 1 to 3 are committed together (owner authorization in chat, 2026-10-12) and not pushed; ask before pushing. Next is slice 4 (telemetry and alert): read `lib/neon/queries/ai-telemetry.ts`, `docs/ai-telemetry.md`, `lib/ops/`, and `usageMetadata` / grounding metadata in the installed `@google/genai` types. Its migration is approved to be written and applied, with aggregate before and after checks, before any push.
+Slice 4 is committed and pushed (owner authorization in chat, 2026-10-12). After it is live, one real seller lookup should show non-empty usage on Admin Telemetry, which confirms the provider reports it. Then slice 5 (evaluation script), which needs an owner-approved export for the silver cases.

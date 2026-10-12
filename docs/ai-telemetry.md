@@ -10,11 +10,11 @@ This system is intentionally small. It is not an AI audit log of raw prompts or 
 
 ### `ai_generation_runs`
 
-One row represents one provider suggestion or provider search run shown to a seller. It stores summarized run metadata:
+One row represents one provider suggestion or provider search run shown to a seller, or one provider contact lookup made after a seller submits. It stores summarized run metadata:
 
 - `request_id`, `account_id`, `organization_id`: relational context for later joins.
-- `feature`: currently `provider_suggestions` or `provider_search`.
-- `category`: utility category such as `electric`, `water`, or `trash`.
+- `feature`: `provider_suggestions`, `provider_search` or `provider_contact`.
+- `category`: utility category such as `electric`, `water`, or `trash`. May be empty for a contact lookup.
 - `provider`: AI provider name, currently `gemini`.
 - `model`: configured Gemini model name.
 - `prompt_version`: application-level prompt version, such as `provider-suggestions-v1`.
@@ -25,6 +25,14 @@ One row represents one provider suggestion or provider search run shown to a sel
 - `latency_ms`, `attempt_count`, `suggestion_count`, `cache_hit`.
 - `locality_state`, `locality_zip3`, `locality_city`: locality metadata only. No street address is stored.
 - `created_at`.
+- `prompt_tokens`, `output_tokens`, `thinking_tokens`, `tool_prompt_tokens`: token counts reported by the provider, added up over the AI passes of the run that returned an answer. `tool_prompt_tokens` is the search-result text fed back to the model.
+- `search_query_count`: Google Search queries the model ran. `source_count`: distinct web sources the answers were grounded on (a count; the addresses are not stored).
+- `thinking_level`: the level sent with the calls (`minimal`, `low`, `medium`, `high`), or `default` when none was sent.
+- `error_kind`: the first model-call failure of the run: `timeout`, `deadline` (no time left to start a call), `circuit_open`, `rate_limited`, `empty_response`, `api_error` or `unconfigured`. A run can carry this and still have served an AI answer from another pass.
+
+The usage columns were added by `migrations-ai-usage-telemetry.sql`. They are empty on rows written before it, on every cache hit, and on runs where no call returned an answer. An attempt that failed or timed out reports no usage, although Google may still bill it, so the totals are a floor, not an invoice.
+
+For `provider_contact` rows: `status` is `success` when the model answered (with `reason_code = 'ai_empty'` and `suggestion_count = 0` when it found no usable phone or start/stop link, `suggestion_count = 1` when it did), `error` when the call failed and `parse_error` when the answer was not valid JSON. No provider name and no contact value is stored.
 
 ### `ai_suggestion_items`
 
@@ -49,6 +57,8 @@ Fresh pipeline results persist:
 
 - A run row in `ai_generation_runs`.
 - One item row per shown suggestion in `ai_suggestion_items`.
+
+Provider contact lookups are recorded from `resolveContact()` in `lib/providers/contact-service.ts`, one row per lookup, fresh or cached, linked to the request. `resolveContactFresh()` and `searchProvidersFresh()` (incident and support review) record nothing.
 
 Cached results are also persisted as runs, with:
 
@@ -88,7 +98,7 @@ AI telemetry intentionally does not store:
 - Full seller submission payloads.
 - Property Handoff Packet field values (stored packet mode `advanced`).
 
-Provider names shown to sellers are stored because they are the object being evaluated. Location is limited to state, ZIP3, and city.
+Provider names shown to sellers are stored because they are the object being evaluated. Location is limited to state, ZIP3, and city. Contact lookups store no provider name, phone number or link, only whether one was found. Usage is stored as counts; search queries and source addresses are not stored.
 
 ## Reduced `seller_submitted` Event Logging
 
@@ -124,6 +134,21 @@ Provider suggestion, provider search, and contact cache namespaces include the c
 and the application request-format version. Usable AI results retain their normal positive cache
 durations. Generic provider/search fallbacks and contact misses are cached for five minutes so a
 transient provider incompatibility cannot persist for days or months.
+
+## AI Health Observation
+
+The scheduled monitor (`/api/cron/ops-monitor`, every 15 minutes) reads the fresh runs of the last 24 hours per feature (`lib/ops/ai-health.ts`). Cache hits are ignored. A run counts as degraded when:
+
+- provider suggestions ended on the generic list (`source = 'fallback'`), whatever the cause;
+- a provider search or contact lookup failed at the model call (`status` is `error` or `parse_error`). An empty search and a contact that was not found are normal answers.
+
+When a feature has at least 10 fresh runs in the window and 50% or more are degraded, the monitor records one `ai` operational event (`provider_suggestions_degraded`, `provider_search_degraded` or `provider_contact_degraded`, with counts only), which appears under Service issues on Admin Operations. It is repeated once per window while the condition lasts, and a recovery is recorded when the share is back under the threshold with at least one fresh run. The same condition drives an `ai_degraded:<feature>` alert email when alerts are enabled. Nothing is checked or written inside a seller's request.
+
+Thresholds: `OPS_ALERT_AI_SHARE_PCT` (50), `OPS_ALERT_AI_MIN_RUNS` (10), `OPS_ALERT_AI_WINDOW_HOURS` (24). They are starting points, not validated benchmarks. About one in five fresh suggestion lookups ended on the generic list before the prompt work planned for later; a threshold below that level would fire constantly. At low traffic a real outage is reported only once 10 fresh runs have accumulated.
+
+## Admin Telemetry
+
+`/admin/telemetry` shows three AI tables: outcomes by feature and status, usage by feature (fresh runs, AI passes, search queries, tokens, timeouts and other failed calls), and suggestion acceptance by what the seller was shown. Definitions are in `ADMIN.md`, Telemetry.
 
 ## Future AI Review Tooling
 
@@ -247,6 +272,42 @@ LEFT JOIN utility_entries ue
    AND ue.category = r.category
 WHERE r.request_id = '00000000-0000-0000-0000-000000000000'
 ORDER BY r.created_at DESC, i.rank ASC;
+```
+
+### Usage By Feature And Model
+
+```sql
+SELECT
+    feature,
+    model,
+    thinking_level,
+    COUNT(*) AS fresh_runs,
+    COUNT(*) FILTER (WHERE prompt_tokens IS NOT NULL OR search_query_count IS NOT NULL) AS runs_with_usage,
+    SUM(attempt_count) AS ai_passes,
+    SUM(search_query_count) AS search_queries,
+    SUM(prompt_tokens) AS prompt_tokens,
+    SUM(tool_prompt_tokens) AS search_result_tokens,
+    SUM(thinking_tokens) AS thinking_tokens,
+    SUM(output_tokens) AS output_tokens
+FROM ai_generation_runs
+WHERE cache_hit IS FALSE
+  AND created_at >= NOW() - INTERVAL '30 days'
+GROUP BY feature, model, thinking_level
+ORDER BY feature, model, thinking_level;
+```
+
+### Model-Call Failures By Kind
+
+```sql
+SELECT
+    feature,
+    error_kind,
+    COUNT(*) AS run_count
+FROM ai_generation_runs
+WHERE error_kind IS NOT NULL
+  AND created_at >= NOW() - INTERVAL '30 days'
+GROUP BY feature, error_kind
+ORDER BY feature, run_count DESC;
 ```
 
 ### Cached Vs. Fresh Suggestion/Search Runs

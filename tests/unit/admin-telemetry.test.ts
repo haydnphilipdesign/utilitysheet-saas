@@ -21,8 +21,10 @@ beforeAll(async () => {
             is_demo boolean DEFAULT false, deleted_at timestamptz, metered_at timestamptz, created_at timestamptz DEFAULT NOW());
         CREATE TABLE event_logs (id serial, request_id text, event_type text, event_data jsonb, created_at timestamptz DEFAULT NOW());
         CREATE TABLE utility_entries (request_id text, category text, entry_mode text);
-        CREATE TABLE ai_generation_runs (request_id text, feature text, status text, cache_hit boolean,
-            latency_ms integer, created_at timestamptz DEFAULT NOW());
+        CREATE TABLE ai_generation_runs (id serial, request_id text, feature text, status text, cache_hit boolean,
+            latency_ms integer, created_at timestamptz DEFAULT NOW(), category text, source text, attempt_count integer,
+            prompt_tokens integer, output_tokens integer, thinking_tokens integer, tool_prompt_tokens integer,
+            search_query_count integer, source_count integer, thinking_level text, error_kind text);
         INSERT INTO accounts VALUES ('multi','user'), ('workspaces','user'), ('empty','user'), ('admin','admin');
         INSERT INTO intake_links VALUES ('f1','multi',NULL,true), ('f2','multi',NULL,false),
             ('w1','workspaces','one',true), ('w2','workspaces','two',true), ('a1','admin',NULL,true);
@@ -128,6 +130,39 @@ describe('admin telemetry against PostgreSQL', () => {
             ]);
         } finally { await db.exec('ROLLBACK;'); }
     });
+    it('totals usage over every fresh run and groups acceptance by the first list shown', async () => {
+        await db.exec(`BEGIN;
+            INSERT INTO ai_generation_runs (request_id,feature,category,source,status,cache_hit,attempt_count,
+                prompt_tokens,output_tokens,thinking_tokens,tool_prompt_tokens,search_query_count,error_kind,created_at) VALUES
+                ('r1','provider_suggestions','electric','ai_verify','success',false,2,1000,100,50,2000,3,NULL,NOW() - INTERVAL '2 minutes'),
+                ('r1','provider_suggestions','electric','cache','success',true,0,NULL,NULL,NULL,NULL,NULL,NULL,NOW()),
+                ('r3','provider_suggestions','electric','fallback','error',false,2,NULL,NULL,NULL,NULL,NULL,'timeout',NOW()),
+                ('legacy','provider_suggestions','water','cache','success',true,0,NULL,NULL,NULL,NULL,NULL,NULL,NOW()),
+                ('admin-r','provider_suggestions','electric','ai_verify','success',false,2,500,NULL,NULL,NULL,1,NULL,NOW()),
+                ('r1','provider_contact','electric','ai_primary','error',false,1,NULL,NULL,NULL,NULL,NULL,'rate_limited',NOW());
+            INSERT INTO utility_entries VALUES ('r1','electric','suggested_confirmed'), ('r3','electric','free_text'),
+                ('legacy','water','suggested_confirmed'), ('legacy','gas','unknown'), ('r1','water','unknown'),
+                ('r1','gas','free_text'), ('admin-r','electric','suggested_confirmed');
+        `);
+        try {
+            const result = (await getAdminTelemetry(30))!;
+            expect(result.aiUsage).toContainEqual({
+                feature: 'provider_suggestions', freshRuns: 3, measuredRuns: 2, passes: 6, searchQueries: 4,
+                promptTokens: 1500, outputTokens: 100, thinkingTokens: 50, toolPromptTokens: 2000, timeouts: 1, otherFailures: 0,
+            });
+            expect(result.aiUsage).toContainEqual({
+                feature: 'provider_contact', freshRuns: 1, measuredRuns: 0, passes: 1, searchQueries: 0,
+                promptTokens: 0, outputTokens: 0, thinkingTokens: 0, toolPromptTokens: 0, timeouts: 0, otherFailures: 1,
+            });
+            // The admin's request, entries with no recorded list and "unknown" answers are left out;
+            // r1 counts under the fresh list it saw first, not the later cache hit.
+            expect(result.aiAcceptance).toEqual([
+                { shown: 'ai_verify', entries: 1, accepted: 1 },
+                { shown: 'cache', entries: 1, accepted: 1 },
+                { shown: 'fallback', entries: 1, accepted: 0 },
+            ]);
+        } finally { await db.exec('ROLLBACK;'); }
+    });
     it('returns genuine zero observations for an empty database', async () => {
         await db.exec('BEGIN; DELETE FROM accounts;');
         try {
@@ -135,6 +170,7 @@ describe('admin telemetry against PostgreSQL', () => {
             expect(Object.values(result!.forms).every((value) => value === 0)).toBe(true);
             expect(result?.events).toEqual([]);
             expect(result?.ai).toEqual([]);
+            expect(result?.aiAcceptance).toEqual([]);
             expect(result?.usage).toMatchObject({ created: 0, opened: 0, completed: 0, medianHours: null,
                 currentAccounts: 0, previousAccounts: 0, returningAccounts: 0, testDriveAccounts: 0,
                 modules: [], providers: [] });

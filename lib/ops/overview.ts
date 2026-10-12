@@ -5,7 +5,7 @@
  * observations yet", "stale" and "zero failures". A missing table or failed
  * query is never rendered as zero incidents.
  */
-import { SCHEDULED_JOBS, type ScheduledJobName } from '@/lib/ops/events';
+import { SCHEDULED_JOBS, type OperationalCategory, type ScheduledJobName } from '@/lib/ops/events';
 import { getStatementExecutor, isMissingRelationError, type SqlRow, type StatementExecutor } from '@/lib/neon/statements';
 
 export type SectionState<T> =
@@ -41,7 +41,7 @@ const LIST_LIMIT = 50;
 export type Incident = {
     sourceKey: string;
     fingerprint: string;
-    category: 'email' | 'pdf' | 'billing_webhook';
+    category: OperationalCategory;
     code: string;
     severity: 'info' | 'warning' | 'critical';
     firstOccurredAt: string;

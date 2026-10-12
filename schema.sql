@@ -271,7 +271,7 @@ CREATE TABLE IF NOT EXISTS ai_generation_runs (
     request_id UUID REFERENCES requests(id) ON DELETE SET NULL,
     account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
     organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
-    feature TEXT NOT NULL CHECK (feature IN ('provider_suggestions', 'provider_search')),
+    feature TEXT NOT NULL CHECK (feature IN ('provider_suggestions', 'provider_search', 'provider_contact')),
     category TEXT,
     provider TEXT NOT NULL DEFAULT 'gemini',
     model TEXT,
@@ -288,7 +288,19 @@ CREATE TABLE IF NOT EXISTS ai_generation_runs (
     locality_city TEXT,
     suggestion_count INTEGER NOT NULL DEFAULT 0,
     cache_hit BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Usage of the answered model calls of the run. NULL means not recorded
+    -- (rows before migrations-ai-usage-telemetry.sql, and every cache hit).
+    prompt_tokens INTEGER,
+    output_tokens INTEGER,
+    thinking_tokens INTEGER,
+    tool_prompt_tokens INTEGER,
+    search_query_count INTEGER,
+    source_count INTEGER,
+    thinking_level TEXT,
+    -- First model-call failure of the run: timeout, deadline, circuit_open,
+    -- rate_limited, empty_response, api_error or unconfigured.
+    error_kind TEXT
 );
 
 CREATE TABLE IF NOT EXISTS ai_suggestion_items (
@@ -462,6 +474,7 @@ CREATE INDEX IF NOT EXISTS idx_account_closures_pending ON account_closures(upda
 CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_request_created ON ai_generation_runs(request_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_feature_category_created ON ai_generation_runs(feature, category, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_status_created ON ai_generation_runs(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_generation_runs_created ON ai_generation_runs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_suggestion_items_request_category_name ON ai_suggestion_items(request_id, category, normalized_name);
 CREATE INDEX IF NOT EXISTS idx_ai_suggestion_items_run_rank ON ai_suggestion_items(run_id, rank);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_admin_id ON admin_audit_logs(admin_id);
@@ -1057,7 +1070,7 @@ CREATE INDEX IF NOT EXISTS idx_reminder_operations_unresolved
 -- Operational observations, job runs and alert state. See migrations-operational-events.sql.
 CREATE TABLE IF NOT EXISTS operational_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    category TEXT NOT NULL CHECK (category IN ('email', 'pdf', 'billing_webhook')),
+    category TEXT NOT NULL CHECK (category IN ('email', 'pdf', 'billing_webhook', 'ai')),
     code TEXT NOT NULL CHECK (char_length(code) BETWEEN 1 AND 80),
     outcome TEXT NOT NULL CHECK (outcome IN ('failure', 'success')),
     severity TEXT NOT NULL DEFAULT 'warning' CHECK (severity IN ('info', 'warning', 'critical')),

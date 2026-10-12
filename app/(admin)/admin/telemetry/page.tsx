@@ -7,6 +7,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 export const dynamic = 'force-dynamic';
 
+const AI_FEATURE_LABELS: Record<string, string> = {
+    provider_suggestions: 'Provider suggestions',
+    provider_search: 'Provider search',
+    provider_contact: 'Contact lookup',
+};
+const AI_SHOWN_LABELS: Record<string, string> = {
+    ai_primary: 'Fresh AI result, first pass',
+    ai_verify: 'Fresh AI result, verified',
+    ai_recovery: 'Fresh AI result, recovery pass',
+    history_blend: 'Fresh AI result with workspace history',
+    cache: 'Cached result',
+    fallback: 'Generic national list',
+};
+
 export default async function AdminTelemetryPage({ searchParams }: {
     searchParams: Promise<{ days?: string | string[] }>;
 }) {
@@ -20,6 +34,8 @@ export default async function AdminTelemetryPage({ searchParams }: {
     }
     if (!data) return <div role="status" className="p-6">Database not configured. Telemetry is unavailable.</div>;
     const f = data.forms;
+    const aiUsage = data.aiUsage ?? [];
+    const aiAcceptance = data.aiAcceptance ?? [];
     const count = (n: number) => n.toLocaleString();
     const adoption = f.formAccounts ? `${Math.round(100 * f.multiFormAccounts / f.formAccounts)}%` : '—';
     const completion = f.attributedRequests ? `${Math.round(100 * f.completedRequests / f.attributedRequests)}%` : '—';
@@ -67,12 +83,28 @@ export default async function AdminTelemetryPage({ searchParams }: {
             </table></div> : <p className="text-sm text-muted-foreground">No request events recorded in this period.</p>}</CardContent>
         </Card>
         <Card>
-            <CardHeader><CardTitle>AI suggestions and search</CardTitle><CardDescription>Recorded runs in the last {days} days linked to non-demo, non-deleted customer requests. Unlinked runs are excluded. Fresh latency excludes cache hits.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>AI suggestions, search and contact lookups</CardTitle><CardDescription>Recorded runs in the last {days} days linked to non-demo, non-deleted customer requests. Unlinked runs are excluded. Fresh latency excludes cache hits. A contact lookup that found nothing counts as a success.</CardDescription></CardHeader>
             <CardContent>{data.ai.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm">
                 <caption className="sr-only">AI telemetry by feature and outcome</caption>
                 <thead><tr className="border-b">{['Feature', 'Outcome', 'Runs', 'Cache hits', 'Average fresh latency'].map((label) => <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead>
-                <tbody>{data.ai.map((g) => <tr key={`${g.feature}-${g.status}`} className="border-b"><th scope="row" className="p-2 font-normal">{g.feature === 'provider_search' ? 'Provider search' : 'Provider suggestions'}</th><td className="p-2">{g.status.replaceAll('_', ' ')}</td><td className="p-2 tabular-nums">{count(g.runs)}</td><td className="p-2 tabular-nums">{count(g.cached)}</td><td className="p-2 tabular-nums">{g.freshLatencyMs == null ? '—' : `${count(g.freshLatencyMs)} ms`}</td></tr>)}</tbody>
+                <tbody>{data.ai.map((g) => <tr key={`${g.feature}-${g.status}`} className="border-b"><th scope="row" className="p-2 font-normal">{AI_FEATURE_LABELS[g.feature] ?? g.feature}</th><td className="p-2">{g.status.replaceAll('_', ' ')}</td><td className="p-2 tabular-nums">{count(g.runs)}</td><td className="p-2 tabular-nums">{count(g.cached)}</td><td className="p-2 tabular-nums">{g.freshLatencyMs == null ? '—' : `${count(g.freshLatencyMs)} ms`}</td></tr>)}</tbody>
             </table></div> : <p className="text-sm text-muted-foreground">No AI runs recorded in this period.</p>}</CardContent>
+        </Card>
+        <Card>
+            <CardHeader><CardTitle>AI usage</CardTitle><CardDescription>Every fresh run in the last {days} days, including demo and unlinked ones, because each one costs the same. Searches and tokens are totals over the runs that recorded usage; runs from before usage was recorded, and attempts that failed before an answer, add nothing. Google bills searches per query and tokens per million.</CardDescription></CardHeader>
+            <CardContent>{aiUsage.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+                <caption className="sr-only">AI usage by feature for the selected period</caption>
+                <thead><tr className="border-b">{['Feature', 'Fresh runs', 'With usage', 'AI passes', 'Search queries', 'Prompt tokens', 'Search result tokens', 'Thinking tokens', 'Output tokens', 'Timeouts', 'Other failed calls'].map((label, index) => <th key={label} scope="col" className={`p-2 ${index ? 'text-right' : ''}`}>{label}</th>)}</tr></thead>
+                <tbody>{aiUsage.map((g) => <tr key={g.feature} className="border-b"><th scope="row" className="p-2 font-normal">{AI_FEATURE_LABELS[g.feature] ?? g.feature}</th>{[g.freshRuns, g.measuredRuns, g.passes, g.searchQueries, g.promptTokens, g.toolPromptTokens, g.thinkingTokens, g.outputTokens, g.timeouts, g.otherFailures].map((value, index) => <td key={index} className="p-2 text-right tabular-nums">{count(value)}</td>)}</tr>)}</tbody>
+            </table></div> : <p className="text-sm text-muted-foreground">No fresh AI runs recorded in this period.</p>}</CardContent>
+        </Card>
+        <Card>
+            <CardHeader><CardTitle>Suggestion acceptance by what the seller was shown</CardTitle><CardDescription>Provider entries on customer requests first submitted in the last {days} days, grouped by the first suggestion list shown for that utility. Accepted means the seller picked a suggested provider; the rest searched or typed a name. Entries answered as unknown or not applicable are left out. Acceptance is a proxy for accuracy, not proof.</CardDescription></CardHeader>
+            <CardContent>{aiAcceptance.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm">
+                <caption className="sr-only">Suggestion acceptance by source for the selected period</caption>
+                <thead><tr className="border-b"><th scope="col" className="p-2">Shown</th><th scope="col" className="p-2 text-right">Entries</th><th scope="col" className="p-2 text-right">Accepted</th><th scope="col" className="p-2 text-right">Acceptance</th></tr></thead>
+                <tbody>{aiAcceptance.map((g) => <tr key={g.shown} className="border-b"><th scope="row" className="p-2 font-normal">{AI_SHOWN_LABELS[g.shown] ?? g.shown.replaceAll('_', ' ')}</th><td className="p-2 text-right tabular-nums">{count(g.entries)}</td><td className="p-2 text-right tabular-nums">{count(g.accepted)}</td><td className="p-2 text-right tabular-nums">{g.entries ? `${Math.round(100 * g.accepted / g.entries)}%` : '—'}</td></tr>)}</tbody>
+            </table></div> : <p className="text-sm text-muted-foreground">No submitted entries with a recorded suggestion list in this period.</p>}</CardContent>
         </Card>
         <p className="text-sm text-muted-foreground">Aggregates only; no seller answers or raw telemetry payloads are displayed. Browser events sent to Vercel Analytics are separate and are not included. See <Link href="/admin/growth" className="underline">Growth</Link> for acquisition and activation, or <Link href="/admin/abandonment" className="underline">Seller Progress</Link> for completion steps.</p>
     </div>;

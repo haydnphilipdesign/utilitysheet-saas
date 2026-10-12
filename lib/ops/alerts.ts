@@ -13,6 +13,7 @@
  * report a database or site outage. That requires an external probe.
  */
 import { getResend } from '@/lib/resend';
+import { AI_HEALTH_LABELS, loadAiHealth, type AiFeatureHealth, type AiHealthConfig } from '@/lib/ops/ai-health';
 import { JOB_LABELS, type JobStatus } from '@/lib/ops/overview';
 import { getStatementExecutor, type StatementExecutor } from '@/lib/neon/statements';
 
@@ -22,6 +23,7 @@ export type AlertConfig = {
     pdfFailureThreshold: number;
     pdfWindowMinutes: number;
     jobOverdueHours: number;
+    ai: AiHealthConfig;
 };
 
 function positiveInt(value: string | undefined, fallback: number, min: number, max: number) {
@@ -39,6 +41,11 @@ export function getAlertConfig(env: NodeJS.ProcessEnv = process.env): AlertConfi
         pdfFailureThreshold: positiveInt(env.OPS_ALERT_PDF_FAILURE_THRESHOLD, 3, 1, 1000),
         pdfWindowMinutes: positiveInt(env.OPS_ALERT_PDF_WINDOW_MINUTES, 15, 1, 1440),
         jobOverdueHours: positiveInt(env.OPS_ALERT_JOB_OVERDUE_HOURS, 26, 1, 24 * 14),
+        ai: {
+            sharePct: positiveInt(env.OPS_ALERT_AI_SHARE_PCT, 50, 1, 100),
+            minRuns: positiveInt(env.OPS_ALERT_AI_MIN_RUNS, 10, 1, 10000),
+            windowHours: positiveInt(env.OPS_ALERT_AI_WINDOW_HOURS, 24, 1, 24 * 7),
+        },
     };
 }
 
@@ -47,6 +54,7 @@ export type AlertSnapshot = {
     unrecoveredBillingFailures24h: number;
     emailDeliveryFailures24h: number;
     jobs: JobStatus[];
+    aiHealth: AiFeatureHealth[];
 };
 
 export type AlertCondition = { key: string; firing: boolean; summary: string };
@@ -83,6 +91,14 @@ export function evaluateAlertConditions(snapshot: AlertSnapshot, config: AlertCo
             summary: `${JOB_LABELS[job.jobName]} failed on its last run`,
         });
     }
+
+    for (const item of snapshot.aiHealth) {
+        conditions.push({
+            key: `ai_degraded:${item.feature}`,
+            firing: item.firing,
+            summary: `${item.degraded} of ${item.runs} ${AI_HEALTH_LABELS[item.feature]} in the last ${config.ai.windowHours} hours`,
+        });
+    }
     return conditions;
 }
 
@@ -110,7 +126,12 @@ export function planAlertNotifications(
     return notifications;
 }
 
-export async function loadAlertSnapshot(db: StatementExecutor, jobs: JobStatus[], config: AlertConfig): Promise<AlertSnapshot> {
+export async function loadAlertSnapshot(
+    db: StatementExecutor,
+    jobs: JobStatus[],
+    config: AlertConfig,
+    aiHealth?: AiFeatureHealth[]
+): Promise<AlertSnapshot> {
     const rows = await db.run({
         text: `
             SELECT
@@ -140,6 +161,7 @@ export async function loadAlertSnapshot(db: StatementExecutor, jobs: JobStatus[]
         unrecoveredBillingFailures24h: Number(rows[0]?.billing_failures ?? 0),
         emailDeliveryFailures24h: Number(rows[0]?.email_failures ?? 0),
         jobs,
+        aiHealth: aiHealth ?? await loadAiHealth(db, config.ai),
     };
 }
 
@@ -220,12 +242,14 @@ export async function runAlertEvaluation(input: {
     config?: AlertConfig;
     db?: StatementExecutor;
     notify?: AlertNotifier;
+    /** Already loaded by the monitor; read here when omitted. */
+    aiHealth?: AiFeatureHealth[];
 }): Promise<AlertRunResult> {
     const db = input.db ?? getStatementExecutor();
     const config = input.config ?? getAlertConfig();
     const notify = input.notify ?? sendAlertEmail;
 
-    const snapshot = await loadAlertSnapshot(db, input.jobs, config);
+    const snapshot = await loadAlertSnapshot(db, input.jobs, config, input.aiHealth);
     const conditions = evaluateAlertConditions(snapshot, config);
     const planned = planAlertNotifications(conditions, await loadAlertStates(db));
     const result: AlertRunResult = {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { observeAiHealth } from '@/lib/ops/ai-health';
 import { getAlertConfig, runAlertEvaluation } from '@/lib/ops/alerts';
 import { finishJobRun, getOpsRetentionDays, pruneOperationalObservations, startJobRun } from '@/lib/ops/events';
 import { getJobStatuses } from '@/lib/ops/overview';
@@ -7,11 +8,13 @@ import { getStatementExecutor, isMissingRelationError } from '@/lib/neon/stateme
 
 /**
  * Evaluates alert conditions and, when enabled, prunes expired observations.
+ * It also records an operational event when too many fresh AI runs end badly
+ * (lib/ops/ai-health.ts), so that shows on Admin Operations with alerts off.
  *
- * NOT scheduled: this route has no entry in vercel.json. Adding a schedule, and
- * turning on OPS_ALERTS_ENABLED or OPS_RETENTION_PRUNE_ENABLED, are separate
- * owner-approved release steps (docs/admin-operations-runbook.md). Called
- * without those flags it only reports what would fire; it sends and deletes nothing.
+ * Scheduled every 15 minutes in vercel.json. OPS_ALERTS_ENABLED and
+ * OPS_RETENTION_PRUNE_ENABLED are separate owner-approved release steps
+ * (docs/admin-operations-runbook.md). Without those flags it sends and deletes
+ * nothing.
  */
 export async function GET(request: Request) {
     const cronSecret = process.env.CRON_SECRET;
@@ -26,7 +29,9 @@ export async function GET(request: Request) {
     const jobRun = await startJobRun('ops_monitor');
     try {
         const db = getStatementExecutor();
-        const alerts = await runAlertEvaluation({ db, jobs: await getJobStatuses(db), config: getAlertConfig() });
+        const config = getAlertConfig();
+        const ai = await observeAiHealth({ db, config: config.ai });
+        const alerts = await runAlertEvaluation({ db, jobs: await getJobStatuses(db), config, aiHealth: ai.health ?? [] });
 
         let pruned: { events: number; jobRuns: number } | null = null;
         if (process.env.OPS_RETENTION_PRUNE_ENABLED === 'true') {
@@ -37,6 +42,8 @@ export async function GET(request: Request) {
             firing: alerts.conditionsFiring.length,
             sent: alerts.sent,
             failed: alerts.failed,
+            aiDegraded: ai.failures,
+            aiRecovered: ai.recoveries,
             prunedEvents: pruned?.events ?? 0,
             prunedJobRuns: pruned?.jobRuns ?? 0,
         });

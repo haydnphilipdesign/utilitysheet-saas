@@ -15,6 +15,7 @@ import {
     runAlertEvaluation,
     type AlertConfig,
 } from '@/lib/ops/alerts';
+import { isAiHealthFiring, loadAiHealth, observeAiHealth } from '@/lib/ops/ai-health';
 import { applyEmailDeliveryEvent, deliveryStatusForEventType } from '@/lib/ops/email-delivery';
 import {
     finishJobRun,
@@ -62,7 +63,7 @@ beforeEach(async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     await db.exec(`
         TRUNCATE admin_triage_items, ops_alert_state, job_runs, operational_events, reminder_operations,
-            admin_audit_logs, event_logs, requests, accounts CASCADE;
+            admin_audit_logs, event_logs, ai_generation_runs, requests, accounts CASCADE;
         INSERT INTO accounts (id, email, role, created_at) VALUES
             ('${ADMIN}', 'admin@example.com', 'admin', NOW()), ('${ADMIN_2}', 'admin2@example.com', 'admin', NOW()),
             ('${OWNER}', 'owner@example.com', 'user', NOW()), ('${IDLE}', 'idle@example.com', 'user', NOW() - INTERVAL '30 days');
@@ -76,7 +77,7 @@ beforeEach(async () => {
 describe('schema mirror', () => {
     it('applies each new migration idempotently on top of schema.sql', async () => {
         const { readFileSync } = await import('node:fs');
-        for (const file of ['migrations-reminder-operations.sql', 'migrations-operational-events.sql', 'migrations-admin-triage.sql']) {
+        for (const file of ['migrations-reminder-operations.sql', 'migrations-operational-events.sql', 'migrations-admin-triage.sql', 'migrations-ai-usage-telemetry.sql']) {
             await db.exec(readFileSync(file, 'utf8'));
             await db.exec(readFileSync(file, 'utf8'));
         }
@@ -91,9 +92,13 @@ describe('schema mirror', () => {
             CREATE TABLE accounts (id UUID PRIMARY KEY);
             CREATE TABLE requests (id UUID PRIMARY KEY);
         `);
-        for (const file of ['migrations-reminder-operations.sql', 'migrations-operational-events.sql', 'migrations-admin-triage.sql']) {
+        // The AI usage migration widens the category check created just above;
+        // its ai_generation_runs part has its own test in ai-telemetry.test.ts.
+        await fresh.exec(`CREATE TABLE ai_generation_runs (id UUID PRIMARY KEY, feature TEXT NOT NULL, created_at TIMESTAMPTZ)`);
+        for (const file of ['migrations-reminder-operations.sql', 'migrations-operational-events.sql', 'migrations-admin-triage.sql', 'migrations-ai-usage-telemetry.sql']) {
             await fresh.exec(readFileSync(file, 'utf8'));
         }
+        await fresh.exec(`INSERT INTO operational_events (category, code, outcome, fingerprint) VALUES ('ai', 'x', 'failure', 'ai:x')`);
         const columns = async (target: PGlite) => (await target.query<{ c: string }>(`
             SELECT table_name || '.' || column_name || ':' || data_type AS c FROM information_schema.columns
             WHERE table_name IN ('reminder_operations','operational_events','job_runs','ops_alert_state','admin_triage_items')
@@ -283,7 +288,10 @@ describe('email delivery evidence', () => {
 });
 
 describe('alerts', () => {
-    const config: AlertConfig = { enabled: true, destination: 'owner@example.com', pdfFailureThreshold: 3, pdfWindowMinutes: 15, jobOverdueHours: 26 };
+    const config: AlertConfig = {
+        enabled: true, destination: 'owner@example.com', pdfFailureThreshold: 3, pdfWindowMinutes: 15, jobOverdueHours: 26,
+        ai: { sharePct: 50, minRuns: 10, windowHours: 24 },
+    };
     const pdfFailure = () => recordOperationalEvent({ db: exec, category: 'pdf', code: 'generation_failed', outcome: 'failure' });
 
     it('is off unless both the switch and a valid destination are set', () => {
@@ -301,7 +309,7 @@ describe('alerts', () => {
         });
         const firing = (snapshot: Parameters<typeof evaluateAlertConditions>[0]) =>
             evaluateAlertConditions(snapshot, config).filter((condition) => condition.firing).map((condition) => condition.key);
-        const quiet = { pdfFailuresInWindow: 0, unrecoveredBillingFailures24h: 0, emailDeliveryFailures24h: 0, jobs: [] };
+        const quiet = { pdfFailuresInWindow: 0, unrecoveredBillingFailures24h: 0, emailDeliveryFailures24h: 0, jobs: [], aiHealth: [] };
 
         expect(firing({ ...quiet, pdfFailuresInWindow: 2 })).toEqual([]);
         expect(firing({ ...quiet, pdfFailuresInWindow: 3 })).toEqual(['pdf_failures']);
@@ -354,6 +362,100 @@ describe('alerts', () => {
         expect(message.text).toContain('/admin/operations');
         expect(message.text).not.toMatch(/@|\/s\/|token/i);
         expect(planAlertNotifications([{ key: 'x', firing: false, summary: '' }], new Map())).toEqual([]);
+    });
+});
+
+describe('AI health', () => {
+    const ai = { sharePct: 50, minRuns: 10, windowHours: 24 };
+    const config: AlertConfig = {
+        enabled: true, destination: 'owner@example.com', pdfFailureThreshold: 3, pdfWindowMinutes: 15, jobOverdueHours: 26, ai,
+    };
+    const runs = (feature: string, source: string, status: string, n: number, extra = '') => db.exec(`
+        INSERT INTO ai_generation_runs (feature, prompt_version, source, status, cache_hit${extra ? ', created_at' : ''})
+        SELECT '${feature}', 'v', '${source}', '${status}', ${source === 'cache'}${extra ? `, ${extra}` : ''} FROM generate_series(1, ${n})
+    `);
+    const health = async (feature: string) => (await loadAiHealth(exec, ai)).find((item) => item.feature === feature);
+    const events = () => queryRows(db, `SELECT code, outcome, severity, metadata FROM operational_events WHERE category = 'ai' ORDER BY occurred_at, outcome`);
+
+    it('needs enough fresh runs and the configured share', () => {
+        expect(isAiHealthFiring(9, 9, ai)).toBe(false);
+        expect(isAiHealthFiring(10, 4, ai)).toBe(false);
+        expect(isAiHealthFiring(10, 5, ai)).toBe(true);
+        expect(isAiHealthFiring(0, 0, ai)).toBe(false);
+    });
+
+    it('counts generic-list suggestions and failed model calls, and ignores cache hits and old runs', async () => {
+        await runs('provider_suggestions', 'fallback', 'fallback', 6);
+        await runs('provider_suggestions', 'ai_verify', 'success', 4);
+        // A later pass that failed while an AI answer was still served is not a degraded lookup.
+        await runs('provider_suggestions', 'ai_primary', 'error', 2);
+        await runs('provider_suggestions', 'cache', 'success', 50);
+        await runs('provider_suggestions', 'fallback', 'fallback', 30, `NOW() - INTERVAL '2 days'`);
+        // An empty search ends on the fallback list and is a normal answer.
+        await runs('provider_search', 'fallback', 'fallback', 12);
+        await runs('provider_search', 'fallback', 'error', 3);
+        await runs('provider_contact', 'ai_primary', 'parse_error', 1);
+
+        expect(await loadAiHealth(exec, ai)).toEqual([
+            { feature: 'provider_suggestions', runs: 12, degraded: 6, firing: true },
+            { feature: 'provider_search', runs: 15, degraded: 3, firing: false },
+            { feature: 'provider_contact', runs: 1, degraded: 1, firing: false },
+        ]);
+    });
+
+    it('records one event per episode, repeats it after a full window, and records the recovery', async () => {
+        await runs('provider_suggestions', 'fallback', 'fallback', 10);
+        expect(await observeAiHealth({ db: exec, config: ai })).toMatchObject({ failures: 1, recoveries: 0 });
+        expect(await observeAiHealth({ db: exec, config: ai })).toMatchObject({ failures: 0, recoveries: 0 });
+        expect(await events()).toEqual([{
+            code: 'provider_suggestions_degraded', outcome: 'failure', severity: 'warning',
+            metadata: { runCount: 10, failedCount: 10, windowHours: 24 },
+        }]);
+        expect((await getIncidentSummary(exec)).incidents).toMatchObject([
+            { fingerprint: 'ai:provider_suggestions_degraded', category: 'ai', occurrences: 1, unrecovered: 1 },
+        ]);
+
+        // Still degraded a day later: one more occurrence, so a resolved item returns to the queue.
+        await db.exec(`UPDATE operational_events SET occurred_at = NOW() - INTERVAL '25 hours', last_seen_at = NOW() - INTERVAL '25 hours'`);
+        expect(await observeAiHealth({ db: exec, config: ai })).toMatchObject({ failures: 1 });
+
+        // Healthy runs bring the share under the threshold.
+        await runs('provider_suggestions', 'ai_verify', 'success', 11);
+        expect((await health('provider_suggestions'))?.firing).toBe(false);
+        expect(await observeAiHealth({ db: exec, config: ai })).toMatchObject({ failures: 0, recoveries: 1 });
+        expect(await observeAiHealth({ db: exec, config: ai })).toMatchObject({ failures: 0, recoveries: 0 });
+        expect((await getIncidentSummary(exec)).incidents[0]).toMatchObject({ occurrences: 2, unrecovered: 0 });
+    });
+
+    it('does not call an empty window a recovery', async () => {
+        await runs('provider_contact', 'ai_primary', 'error', 10);
+        expect(await observeAiHealth({ db: exec, config: ai })).toMatchObject({ failures: 1 });
+        await db.exec(`UPDATE ai_generation_runs SET created_at = NOW() - INTERVAL '2 days'`);
+        expect(await observeAiHealth({ db: exec, config: ai })).toMatchObject({ failures: 0, recoveries: 0 });
+        expect(await events()).toHaveLength(1);
+    });
+
+    it('alerts once when a feature degrades and once when it recovers', async () => {
+        const notify = vi.fn().mockResolvedValue(true);
+        const run = () => runAlertEvaluation({ db: exec, jobs: [], config, notify });
+
+        await runs('provider_search', 'fallback', 'error', 9);
+        expect((await run()).planned).toEqual([]);
+        await runs('provider_search', 'fallback', 'error', 1);
+        const fired = await run();
+        expect(fired).toMatchObject({ sent: 1, conditionsFiring: ['ai_degraded:provider_search'] });
+        expect(fired.planned[0].summary).toBe('10 of 10 fresh provider searches failed at the model call in the last 24 hours');
+        expect((await run()).planned).toEqual([]);
+
+        await runs('provider_search', 'ai_primary', 'success', 11);
+        expect((await run()).planned).toEqual([expect.objectContaining({ key: 'ai_degraded:provider_search', kind: 'recovered' })]);
+        expect(notify).toHaveBeenCalledTimes(2);
+    });
+
+    it('never throws from the monitor entry point', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const broken: StatementExecutor = { run: async () => { throw new Error('connection reset'); }, transaction: async () => [] };
+        expect(await observeAiHealth({ db: broken, config: ai })).toEqual({ health: null, failures: 0, recoveries: 0 });
     });
 });
 

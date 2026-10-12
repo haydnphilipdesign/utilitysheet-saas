@@ -771,6 +771,9 @@ export async function POST(
                 const contact = await resolveContact(target.providerName, {
                     category: target.category,
                     address: requestData.property_address,
+                    requestId: requestData.id,
+                    accountId: requestData.account_id,
+                    organizationId: requestData.organization_id ?? null,
                 });
                 if (hasValidContact(contact)) {
                     const resolvedPhone = contact?.customer_service_phone || null;

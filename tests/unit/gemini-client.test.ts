@@ -103,7 +103,96 @@ describe('gemini-client grounding config', () => {
             data: { name: 'Duke Energy' },
             failure: null,
             groundingSourceUrls: ['https://example.com/source'],
+            usage: {
+                promptTokens: null,
+                outputTokens: null,
+                thinkingTokens: null,
+                toolPromptTokens: null,
+                searchQueryCount: 0,
+                sourceCount: 1,
+            },
+            failureKind: null,
         });
+    });
+
+    it('reports tokens, search queries and distinct sources of the answer', async () => {
+        generateContentMock.mockResolvedValue({
+            candidates: [{
+                content: { parts: [{ text: '{"name":"Duke Energy"}' }] },
+                groundingMetadata: {
+                    webSearchQueries: ['duke energy raleigh', 'raleigh electric utility'],
+                    groundingChunks: [
+                        { web: { uri: 'https://example.com/a' } },
+                        { web: { uri: 'https://example.com/a' } },
+                        { web: { uri: 'https://example.com/b' } },
+                    ],
+                },
+            }],
+            text: '{"name":"Duke Energy"}',
+            usageMetadata: {
+                promptTokenCount: 412,
+                candidatesTokenCount: 58,
+                thoughtsTokenCount: 120,
+                toolUsePromptTokenCount: 1900,
+                totalTokenCount: 2490,
+            },
+        });
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const result = await generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: {} });
+
+        expect(result.usage).toEqual({
+            promptTokens: 412,
+            outputTokens: 58,
+            thinkingTokens: 120,
+            toolPromptTokens: 1900,
+            searchQueryCount: 2,
+            sourceCount: 2,
+        });
+    });
+
+    it('keeps the usage of an answer that could not be parsed', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        generateContentMock.mockResolvedValue({
+            candidates: [{ content: { parts: [{ text: 'not json' }] } }],
+            text: 'not json',
+            usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 3 },
+        });
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const result = await generateJSONWithMeta<unknown>('prompt', { responseJsonSchema: {} });
+
+        expect(result).toMatchObject({
+            failure: 'parse_error',
+            failureKind: null,
+            usage: { promptTokens: 10, outputTokens: 3, searchQueryCount: 0 },
+        });
+    });
+
+    it('names the thinking level that is sent, or default when none is', async () => {
+        const first = await import('@/lib/ai/gemini-client');
+        expect(first.getGeminiThinkingLevelName()).toBe('default');
+
+        vi.resetModules();
+        process.env.GEMINI_THINKING_LEVEL = 'low';
+        const second = await import('@/lib/ai/gemini-client');
+        expect(second.getGeminiThinkingLevelName()).toBe('low');
+
+        vi.resetModules();
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        process.env.GEMINI_THINKING_LEVEL = 'turbo';
+        const third = await import('@/lib/ai/gemini-client');
+        expect(third.getGeminiThinkingLevelName()).toBe('default');
+    });
+
+    it('reports a missing API key as unconfigured', async () => {
+        delete process.env.GOOGLE_AI_API_KEY;
+        vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const result = await generateJSONWithMeta<unknown>('prompt', { responseJsonSchema: {} });
+
+        expect(result).toMatchObject({ failure: 'provider_error', failureKind: 'unconfigured', usage: null });
     });
 
     it('warns once and ignores deprecated grounding threshold when provided', async () => {
@@ -276,7 +365,34 @@ describe('gemini-client retry behavior', () => {
             data: null,
             failure: 'provider_error',
             groundingSourceUrls: [],
+            usage: null,
+            failureKind: 'empty_response',
         });
+        expect(generateContentMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('tells a rate limit apart from other API errors', async () => {
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+
+        generateContentMock.mockRejectedValue({ status: 429, message: 'Too many requests' });
+        const limited = generateJSONWithMeta<unknown>('prompt', { responseJsonSchema: {} });
+        await vi.runAllTimersAsync();
+        expect((await limited).failureKind).toBe('rate_limited');
+    });
+
+    it('reports a rejected request as an API error and an open circuit as such', async () => {
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        generateContentMock.mockRejectedValue({ status: 400, message: 'Bad request' });
+
+        for (let call = 0; call < 3; call += 1) {
+            const rejected = generateJSONWithMeta<unknown>('prompt', { responseJsonSchema: {} });
+            await vi.runAllTimersAsync();
+            expect((await rejected).failureKind).toBe('api_error');
+        }
+
+        // Three failures in a row open the circuit; the next call is not sent.
+        const skipped = await generateJSONWithMeta<unknown>('prompt', { responseJsonSchema: {} });
+        expect(skipped.failureKind).toBe('circuit_open');
         expect(generateContentMock).toHaveBeenCalledTimes(3);
     });
 });
@@ -287,7 +403,9 @@ describe('gemini-client timeouts', () => {
         properties: { name: { type: 'string' } },
         required: ['name'],
     };
-    const providerError = { data: null, failure: 'provider_error', groundingSourceUrls: [] };
+    const providerError = (failureKind: string) => ({
+        data: null, failure: 'provider_error', groundingSourceUrls: [], usage: null, failureKind,
+    });
 
     function failAfter(ms: number, error: unknown) {
         return () => new Promise((_resolve, reject) => {
@@ -333,7 +451,7 @@ describe('gemini-client timeouts', () => {
         const promise = generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: schema });
 
         expect(await settledAfter(promise, 9_999)).toBe('pending');
-        expect(await settledAfter(promise, 1)).toEqual(providerError);
+        expect(await settledAfter(promise, 1)).toEqual(providerError('timeout'));
         expect(generateContentMock).toHaveBeenCalledTimes(1);
 
         const signal = generateContentMock.mock.calls[0][0].config.abortSignal as AbortSignal;
@@ -350,7 +468,7 @@ describe('gemini-client timeouts', () => {
         const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
         const promise = generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: schema });
 
-        expect(await settledAfter(promise, 3_000)).toEqual(providerError);
+        expect(await settledAfter(promise, 3_000)).toEqual(providerError('timeout'));
     });
 
     it('cuts a call short when the caller deadline comes before the per-call timeout', async () => {
@@ -363,7 +481,7 @@ describe('gemini-client timeouts', () => {
         });
 
         expect(await settledAfter(promise, 3_999)).toBe('pending');
-        expect(await settledAfter(promise, 1)).toEqual(providerError);
+        expect(await settledAfter(promise, 1)).toEqual(providerError('timeout'));
     });
 
     it('does not start a retry that the deadline leaves no room for', async () => {
@@ -375,7 +493,7 @@ describe('gemini-client timeouts', () => {
             deadlineAt: Date.now() + 5_000,
         });
 
-        expect(await settledAfter(promise, 5_000)).toEqual(providerError);
+        expect(await settledAfter(promise, 5_000)).toEqual(providerError('api_error'));
         expect(generateContentMock).toHaveBeenCalledTimes(1);
     });
 
@@ -385,7 +503,7 @@ describe('gemini-client timeouts', () => {
         const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
         const promise = generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: schema });
 
-        expect(await settledAfter(promise, 20_000)).toEqual(providerError);
+        expect(await settledAfter(promise, 20_000)).toEqual(providerError('api_error'));
         expect(generateContentMock).toHaveBeenCalledTimes(2);
     });
 
@@ -396,7 +514,7 @@ describe('gemini-client timeouts', () => {
             deadlineAt: Date.now() - 1,
         });
 
-        expect(result).toEqual(providerError);
+        expect(result).toEqual(providerError('deadline'));
         expect(generateContentMock).not.toHaveBeenCalled();
     });
 });

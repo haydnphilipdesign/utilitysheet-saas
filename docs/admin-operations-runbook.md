@@ -223,7 +223,7 @@ Until this is done, delivery shows as "not confirmed" everywhere. That is accura
 2. In Vercel set `OPS_ALERT_EMAIL=<address>` and `OPS_ALERTS_ENABLED=true`, then redeploy.
 3. Alerts are only evaluated when step c is done.
 
-Default thresholds: three unexpected PDF failures in 15 minutes; any unrecovered billing webhook failure; any bounce, complaint or send failure in 24 hours; a scheduled job failed, or more than 26 hours without success. One message when a condition starts, one when it clears. These are starting points, not validated benchmarks; override with the `OPS_ALERT_*` variables in `.env.example`.
+Default thresholds: three unexpected PDF failures in 15 minutes; any unrecovered billing webhook failure; any bounce, complaint or send failure in 24 hours; a scheduled job failed, or more than 26 hours without success; half or more of at least 10 fresh AI runs of one feature ending badly in 24 hours. One message when a condition starts, one when it clears. These are starting points, not validated benchmarks; override with the `OPS_ALERT_*` variables in `.env.example`.
 
 **c. Schedule the monitor route.** Done 2026-10-05 on owner request: `vercel.json` runs `/api/cron/ops-monitor` every 15 minutes (Vercel Pro). The entry is shown here for reference.
 
@@ -272,7 +272,7 @@ To do it safely:
 | Packet PDF | Unexpected generation failures on the public download; sampled success | Immediate | Not linked to a request; the attachment on completion email is reflected only through 2.1's failure event; branding test PDFs are not observed | Vercel logs |
 | Billing webhook | Signature-verified events that failed processing, and their recovery by Stripe event ID | Immediate | Events Stripe never sent; unverified requests; whether Stripe and stored access actually agree | Stripe dashboard, Events |
 | Scheduled jobs | Start, finish, duration, status and counts for the three scheduled jobs | After each run | A job that never starts shows "not observed" then "overdue" only after the grace period; weekly summary is unmonitored | Vercel Cron |
-| AI suggestions | Existing aggregate outcomes | Per run | Not on the Operations page | Admin Telemetry |
+| AI suggestions, search and contact lookups | A service issue when half or more of at least 10 fresh runs of a feature end badly in 24 hours (suggestions on the generic list; search or contact calls failing) | Up to 15 minutes after the tenth run, and only while the monitor job runs | A slow decline below the threshold; wrong but plausible answers; an outage at very low traffic until 10 runs accumulate | Admin Telemetry (outcomes, usage, acceptance); Google AI Studio and Cloud billing |
 | Database and site | Nothing in-app beyond "this page loaded" | n/a | Cannot detect its own outage | External probe, Neon and Vercel status |
 
 Observations are kept for 90 days by default once pruning is enabled. Audit logs follow their own policy and are never pruned with them.
@@ -289,6 +289,9 @@ All are optional and default to off. `.env.example` is ignored by git in this re
 | `OPS_ALERT_PDF_FAILURE_THRESHOLD` | `3` | Unexpected PDF failures in the window that start an alert. |
 | `OPS_ALERT_PDF_WINDOW_MINUTES` | `15` | Window for the PDF threshold. |
 | `OPS_ALERT_JOB_OVERDUE_HOURS` | `26` | Wording of the overdue alert. The page's overdue rule is fixed at 26 hours. |
+| `OPS_ALERT_AI_SHARE_PCT` | `50` | Share of fresh AI runs of one feature ending badly that starts an AI service issue and alert. |
+| `OPS_ALERT_AI_MIN_RUNS` | `10` | Fresh runs needed in the window before the share is judged. |
+| `OPS_ALERT_AI_WINDOW_HOURS` | `24` | Window for the AI share (1 to 168). |
 | `OPS_EVENT_RETENTION_DAYS` | `90` | Retention for operational observations (7 to 365). |
 | `OPS_RETENTION_PRUNE_ENABLED` | `false` | Must be `true` for the monitor route to delete expired observations. |
 

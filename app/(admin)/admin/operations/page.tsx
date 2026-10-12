@@ -59,6 +59,18 @@ const INCIDENT_LABELS: Record<string, { title: string; investigate: string }> = 
         title: 'The email provider could not deliver a seller reminder',
         investigate: 'Open the request to see the reminder history, then check the message in the email provider dashboard.',
     },
+    'ai:provider_suggestions_degraded': {
+        title: 'Many provider suggestion lookups are ending on the generic list',
+        investigate: 'Sellers are seeing national provider names in place of local ones. On Telemetry, look at AI usage for timeouts or rate limits, then check the Gemini model name, API key and Google Cloud quota. Each occurrence covers one monitoring window.',
+    },
+    'ai:provider_search_degraded': {
+        title: 'Many provider searches are failing at the model call',
+        investigate: 'Sellers can still type a provider name. On Telemetry, look at AI usage for timeouts or rate limits, then check the Gemini model name, API key and Google Cloud quota.',
+    },
+    'ai:provider_contact_degraded': {
+        title: 'Many provider contact lookups are failing at the model call',
+        investigate: 'Sheets are being produced without looked-up phone numbers and links. On Telemetry, look at AI usage for timeouts or rate limits, then check the Gemini model name, API key and Google Cloud quota.',
+    },
 };
 
 const JOB_HEALTH: Record<JobHealth, { label: string; tone: 'ok' | 'warn' | 'bad' | 'muted' }> = {
@@ -364,7 +376,7 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
                             ['Email sending', process.env.RESEND_API_KEY ? 'Provider key is configured. Configuration is not proof that sending works.' : 'Provider key is NOT configured in this environment.'],
                             ['Delivery webhook', process.env.RESEND_WEBHOOK_SECRET ? 'Signing secret is configured. Registration with the provider is verified outside this app.' : 'Not configured. Delivery, bounce and complaint evidence is not being received.'],
                             ['Alerts', alertConfig.enabled ? 'Enabled with a destination configured. They only run when the monitor job is scheduled.' : 'Disabled. Nothing is sent; this page is the only place problems appear.'],
-                            ['AI suggestions', 'Aggregate outcomes are on the Telemetry page.'],
+                            ['AI suggestions', `Reported above when ${alertConfig.ai.sharePct}% or more of at least ${alertConfig.ai.minRuns} fresh runs in ${alertConfig.ai.windowHours} hours end badly; checked by the monitor job. Outcomes, usage and acceptance are on the Telemetry page.`],
                             ['Retention', `Observations are kept for ${getOpsRetentionDays()} days${process.env.OPS_RETENTION_PRUNE_ENABLED === 'true' ? '' : ' once pruning is enabled (it is currently off)'}. Audit logs are never pruned with them.`],
                         ] as const).map(([label, text]) => (
                             <div key={label}>

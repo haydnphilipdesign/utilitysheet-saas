@@ -28,7 +28,7 @@ vi.mock('@/app/(admin)/admin/requests/actions', () => ({
 }));
 vi.mock('@/app/(admin)/admin/operations/actions', () => ({ updateTriageAdminAction: mocks.triage }));
 vi.mock('@/lib/admin', () => ({ requireAdmin: mocks.requireAdmin }));
-vi.mock('@/lib/ops/alerts', () => ({ getAlertConfig: () => ({ enabled: false }) }));
+vi.mock('@/lib/ops/alerts', () => ({ getAlertConfig: () => ({ enabled: false, ai: { sharePct: 50, minRuns: 10, windowHours: 24 } }) }));
 vi.mock('@/lib/ops/events', () => ({ getOpsRetentionDays: () => 90 }));
 vi.mock('@/lib/ops/overview', async (original) => ({
     ...(await original<typeof import('@/lib/ops/overview')>()),

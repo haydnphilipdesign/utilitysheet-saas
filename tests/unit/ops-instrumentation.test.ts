@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     verify: vi.fn(),
     applyDelivery: vi.fn(),
     runAlerts: vi.fn(),
+    observeAi: vi.fn(),
     getJobStatuses: vi.fn(),
     reconcile: vi.fn(),
     requireAdmin: vi.fn(),
@@ -62,7 +63,11 @@ vi.mock('@/lib/ops/email-delivery', async (original) => ({
     ...(await original<typeof import('@/lib/ops/email-delivery')>()),
     applyEmailDeliveryEvent: mocks.applyDelivery,
 }));
-vi.mock('@/lib/ops/alerts', () => ({ getAlertConfig: () => ({ enabled: false }), runAlertEvaluation: mocks.runAlerts }));
+vi.mock('@/lib/ops/alerts', () => ({
+    getAlertConfig: () => ({ enabled: false, ai: { sharePct: 50, minRuns: 10, windowHours: 24 } }),
+    runAlertEvaluation: mocks.runAlerts,
+}));
+vi.mock('@/lib/ops/ai-health', () => ({ observeAiHealth: mocks.observeAi }));
 vi.mock('@/lib/ops/overview', () => ({ getJobStatuses: mocks.getJobStatuses }));
 vi.mock('@/lib/neon/statements', async (original) => ({
     ...(await original<typeof import('@/lib/neon/statements')>()),
@@ -102,6 +107,7 @@ const cron = (handler: (request: Request) => Promise<Response>, token = 'cron-se
 
 beforeEach(() => {
     vi.clearAllMocks();
+    mocks.observeAi.mockResolvedValue({ health: [], failures: 0, recoveries: 0 });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_test');

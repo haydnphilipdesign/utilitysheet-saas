@@ -12,6 +12,7 @@ vi.mock('@/lib/ai/gemini-client', () => ({
     isGeminiConfigured: isGeminiConfiguredMock,
     generateJSONWithMeta: generateJSONWithMetaMock,
     getGeminiModelName: () => 'gemini-test',
+    getGeminiThinkingLevelName: () => 'low',
 }));
 
 vi.mock('@/lib/neon/queries/provider-memory', () => ({
@@ -496,6 +497,93 @@ describe('Suggestions Pipeline', () => {
                     upstreamReasonCode: 'ai_provider_error',
                 })
             );
+        });
+    });
+
+    describe('usage telemetry', () => {
+        const providers = [
+            { display_name: 'Florida Power & Light (FPL)', confidence: 0.9, rationale_short: 'Serves most of Florida', contact_phone: null, contact_website: null },
+            { display_name: 'Duke Energy', confidence: 0.6, rationale_short: 'Serves parts of Florida', contact_phone: null, contact_website: null },
+        ];
+        const usage = (promptTokens: number, searchQueryCount: number) => ({
+            promptTokens, outputTokens: 50, thinkingTokens: null, toolPromptTokens: 1000, searchQueryCount, sourceCount: 3,
+        });
+
+        beforeEach(() => {
+            isGeminiConfiguredMock.mockReturnValue(true);
+            generateJSONWithMetaMock.mockReset();
+            getProviderMemoryCandidatesMock.mockResolvedValue([]);
+        });
+
+        it('adds up the usage of both passes and records the thinking level', async () => {
+            generateJSONWithMetaMock
+                .mockResolvedValueOnce({ ...ok(providers), usage: usage(400, 2), failureKind: null })
+                .mockResolvedValueOnce({ ...ok(providers), usage: usage(650, 1), failureKind: null });
+
+            await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+
+            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+                source: 'ai_verify',
+                attemptCount: 2,
+                thinkingLevel: 'low',
+                errorKind: null,
+                usage: {
+                    promptTokens: 1050,
+                    outputTokens: 100,
+                    thinkingTokens: null,
+                    toolPromptTokens: 2000,
+                    searchQueryCount: 3,
+                    sourceCount: 6,
+                },
+            }));
+        });
+
+        it('keeps the usage of the pass that answered and the kind of the pass that failed', async () => {
+            generateJSONWithMetaMock
+                .mockResolvedValueOnce({ ...ok(providers), usage: usage(400, 2), failureKind: null })
+                .mockResolvedValueOnce({ ...providerError(), usage: null, failureKind: 'timeout' });
+
+            await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+
+            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+                source: 'ai_primary',
+                attemptCount: 2,
+                errorKind: 'timeout',
+                usage: expect.objectContaining({ promptTokens: 400, searchQueryCount: 2 }),
+            }));
+        });
+
+        it('records a search pass with its usage', async () => {
+            generateJSONWithMetaMock.mockResolvedValueOnce({ ...ok(providers.slice(0, 1)), usage: usage(300, 1), failureKind: null });
+
+            await searchProviders('florida power', 'electric', '123 Main St, Miami, FL 33101');
+
+            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+                feature: 'provider_search',
+                thinkingLevel: 'low',
+                usage: expect.objectContaining({ promptTokens: 300, searchQueryCount: 1, sourceCount: 3 }),
+            }));
+        });
+
+        it('records no usage or thinking level for a cache hit', async () => {
+            generateJSONWithMetaMock.mockResolvedValue({ ...ok(providers), usage: usage(400, 2), failureKind: null });
+            await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+            await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+
+            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+                source: 'cache', cacheHit: true, usage: null, thinkingLevel: null, errorKind: null,
+            }));
+        });
+
+        it('records an unconfigured lookup without usage', async () => {
+            isGeminiConfiguredMock.mockReturnValue(false);
+
+            await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+
+            expect(generateJSONWithMetaMock).not.toHaveBeenCalled();
+            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+                source: 'fallback', attemptCount: 0, usage: null, thinkingLevel: null, errorKind: 'unconfigured',
+            }));
         });
     });
 

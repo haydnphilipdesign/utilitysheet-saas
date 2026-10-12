@@ -77,12 +77,26 @@ aggregates only; it never reads event payloads, seller answers, form names/intro
   not the count of submissions arriving during the window. NULL provenance remains unattributed.
 - **Request events** counts event occurrences and distinct requests by event type, using event time,
   including events on older requests. The top 50 types are shown. Repeated events are not unique users.
-- **AI runs** groups recorded runs by feature and outcome using run time, counts cache hits, and averages
-  latency across fresh runs only. Both event and AI summaries require a retained, non-demo customer
-  request; unlinked AI runs are excluded. No observations and unavailable data have different states.
+- **AI runs** groups recorded runs by feature (suggestions, search, contact lookup) and outcome using
+  run time, counts cache hits, and averages latency across fresh runs only. Both event and AI summaries
+  require a retained, non-demo customer request; unlinked AI runs are excluded. No observations and
+  unavailable data have different states.
+- **AI usage** totals every fresh run in the window by feature, including demo and unlinked runs,
+  because cost does not depend on who asked: fresh runs, runs that recorded usage, AI passes, search
+  queries, prompt, search-result, thinking and output tokens, timeouts and other failed calls. Totals
+  cover only runs that recorded usage; runs from before `migrations-ai-usage-telemetry.sql` and
+  attempts that failed before an answer add nothing, so this is a floor, not Google's invoice.
+- **Suggestion acceptance** takes provider entries on customer requests first submitted in the
+  window, and groups them by the source of the first suggestion list recorded for that request and
+  utility (fresh AI by pass, cached, or the generic list). Accepted means the entry was picked from
+  the suggestions; the denominator also holds entries the seller searched for or typed. Entries
+  answered as unknown or not applicable, and entries with no recorded list, are left out. It is a
+  proxy for accuracy, not proof.
 
-The source is existing `intake_links`, `requests`, `event_logs`, and `ai_generation_runs` data, queried
-under `lib/neon/queries/admin-telemetry.ts`. No new collection or migration is required. Records deleted
+The source is existing `intake_links`, `requests`, `event_logs`, `utility_entries` and
+`ai_generation_runs` data, queried under `lib/neon/queries/admin-telemetry.ts`. The AI usage table
+reads the columns added by `migrations-ai-usage-telemetry.sql`; the page reports "temporarily
+unavailable" until that migration is applied. Records deleted
 through existing lifecycle policies stop contributing; this is not an immutable historical warehouse.
 Friday's saved-form release provided request attribution, but not dedicated create/duplicate/copy-link
 action history. Vercel browser analytics is a separate source and is not imported into this page.
@@ -303,8 +317,14 @@ Procedures: `docs/admin-operations-runbook.md`.
 - Expected outcomes are not incidents: invalid packet links, locked packets, rate limits and
   unverified webhook signatures.
 
+AI health: when half or more of at least 10 fresh AI runs of one feature end badly within 24 hours
+(suggestions on the generic list; search or contact lookups failing at the model call), the monitor
+job records an `ai` service issue here. Rules and thresholds: `docs/ai-telemetry.md`, AI Health
+Observation.
+
 Data sources (all additive; see the runbook's source table for blind spots):
-`operational_events`, `job_runs`, `ops_alert_state` (`migrations-operational-events.sql`),
+`operational_events`, `job_runs`, `ops_alert_state` (`migrations-operational-events.sql`; the `ai`
+category is allowed by `migrations-ai-usage-telemetry.sql`),
 `reminder_operations` (`migrations-reminder-operations.sql`), `admin_triage_items`
 (`migrations-admin-triage.sql`). Metadata is an allowlist of short scalars; no tokens, seller answers,
 email bodies, provider payloads or raw exceptions are stored or shown.

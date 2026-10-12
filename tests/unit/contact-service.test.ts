@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/lib/ai/gemini-client', () => ({
     generateJSONWithMeta: vi.fn(),
     getGeminiModelName: () => 'gemini-test',
+    getGeminiThinkingLevelName: () => 'low',
     isGeminiConfigured: vi.fn(),
+}));
+
+vi.mock('@/lib/neon/queries/ai-telemetry', () => ({
+    createAiSuggestionRun: vi.fn(async () => 'run_1'),
 }));
 
 vi.mock('@/lib/cache', () => ({
@@ -14,6 +19,7 @@ vi.mock('@/lib/cache', () => ({
 import { generateJSONWithMeta, isGeminiConfigured } from '@/lib/ai/gemini-client';
 import { PROVIDER_CONTACT_RESPONSE_SCHEMA } from '@/lib/ai/response-schemas';
 import { getFromCache, setInCache } from '@/lib/cache';
+import { createAiSuggestionRun } from '@/lib/neon/queries/ai-telemetry';
 import {
     hasValidContact,
     resolveContact,
@@ -24,6 +30,7 @@ const generateJSONWithMetaMock = vi.mocked(generateJSONWithMeta);
 const isGeminiConfiguredMock = vi.mocked(isGeminiConfigured);
 const getFromCacheMock = vi.mocked(getFromCache);
 const setInCacheMock = vi.mocked(setInCache);
+const createAiSuggestionRunMock = vi.mocked(createAiSuggestionRun);
 
 describe('contact-service', () => {
     beforeEach(() => {
@@ -43,6 +50,8 @@ describe('contact-service', () => {
             },
             failure: null,
             groundingSourceUrls: [],
+            usage: null,
+            failureKind: null,
         });
 
         const result = await resolveContact('Example Utility');
@@ -64,6 +73,8 @@ describe('contact-service', () => {
             },
             failure: null,
             groundingSourceUrls: [],
+            usage: null,
+            failureKind: null,
         });
 
         const result = await resolveContact('Example Utility');
@@ -96,6 +107,8 @@ describe('contact-service', () => {
             },
             failure: null,
             groundingSourceUrls: [],
+            usage: null,
+            failureKind: null,
         });
 
         await resolveContact('Silver Spring Township', {
@@ -122,6 +135,8 @@ describe('contact-service', () => {
             data: { customer_service_phone: '1-800-555-1212' },
             failure: null,
             groundingSourceUrls: [],
+            usage: null,
+            failureKind: null,
         });
 
         await resolveContact('Borough Water Department', {
@@ -148,6 +163,8 @@ describe('contact-service', () => {
             data: null,
             failure: 'provider_error',
             groundingSourceUrls: [],
+            usage: null,
+            failureKind: null,
         });
 
         await expect(resolveContact('Unknown Utility')).resolves.toBeNull();
@@ -170,6 +187,8 @@ describe('contact-service', () => {
             },
             failure: null,
             groundingSourceUrls: ['https://duke-energy.com/contact'],
+            usage: null,
+            failureKind: null,
         });
 
         const result = await resolveContactFresh('Duke Energy', {
@@ -189,5 +208,110 @@ describe('contact-service', () => {
         });
         expect(getFromCacheMock).not.toHaveBeenCalled();
         expect(setInCacheMock).not.toHaveBeenCalled();
+        expect(createAiSuggestionRunMock).not.toHaveBeenCalled();
+    });
+
+    it('records a found contact with its usage and no provider name', async () => {
+        generateJSONWithMetaMock.mockResolvedValue({
+            data: { customer_service_phone: '1-800-555-1212' },
+            failure: null,
+            groundingSourceUrls: ['https://example.com/a'],
+            usage: { promptTokens: 300, outputTokens: 40, thinkingTokens: 20, toolPromptTokens: 900, searchQueryCount: 2, sourceCount: 1 },
+            failureKind: null,
+        });
+
+        await resolveContact('Borough Water Department', {
+            category: 'water',
+            address: '29 Clover Lane, Mechanicsburg, PA 17050',
+            requestId: 'req_1',
+            accountId: 'acct_1',
+            organizationId: 'org_1',
+        });
+
+        expect(createAiSuggestionRunMock).toHaveBeenCalledTimes(1);
+        const run = createAiSuggestionRunMock.mock.calls[0][0];
+        expect(run).toMatchObject({
+            feature: 'provider_contact',
+            category: 'water',
+            requestId: 'req_1',
+            accountId: 'acct_1',
+            organizationId: 'org_1',
+            model: 'gemini-test',
+            promptVersion: 'provider-contact-v1',
+            source: 'ai_primary',
+            status: 'success',
+            reasonCode: null,
+            attemptCount: 1,
+            suggestionCount: 1,
+            cacheHit: false,
+            thinkingLevel: 'low',
+            errorKind: null,
+            localityState: 'PA',
+            localityZip3: '170',
+            localityCity: 'Mechanicsburg',
+            usage: { promptTokens: 300, outputTokens: 40, thinkingTokens: 20, toolPromptTokens: 900, searchQueryCount: 2, sourceCount: 1 },
+            suggestions: [],
+        });
+        const serialized = JSON.stringify(run);
+        expect(serialized).not.toContain('Borough Water');
+        expect(serialized).not.toContain('Clover');
+        expect(serialized).not.toContain('555-1212');
+    });
+
+    it('records a contact that was not found as an empty answer, not as an error', async () => {
+        generateJSONWithMetaMock.mockResolvedValue({
+            data: { main_website: 'https://example.com' },
+            failure: null,
+            groundingSourceUrls: [],
+            usage: null,
+            failureKind: null,
+        });
+
+        await resolveContact('Unknown Utility', { category: 'gas' });
+
+        expect(createAiSuggestionRunMock.mock.calls[0][0]).toMatchObject({
+            feature: 'provider_contact', status: 'success', reasonCode: 'ai_empty', suggestionCount: 0, usage: null,
+        });
+    });
+
+    it('records a timed-out lookup as an error with its kind', async () => {
+        generateJSONWithMetaMock.mockResolvedValue({
+            data: null,
+            failure: 'provider_error',
+            groundingSourceUrls: [],
+            usage: null,
+            failureKind: 'timeout',
+        });
+
+        await resolveContact('Slow Utility', { category: 'gas' });
+
+        expect(createAiSuggestionRunMock.mock.calls[0][0]).toMatchObject({
+            status: 'error', reasonCode: 'ai_provider_error', errorKind: 'timeout', suggestionCount: 0,
+        });
+    });
+
+    it('records a cached contact as a cache hit with no model call', async () => {
+        getFromCacheMock.mockResolvedValue({ v: { customer_service_phone: '1-800-555-1212' } });
+
+        await resolveContact('Example Utility', { category: 'electric' });
+
+        expect(generateJSONWithMetaMock).not.toHaveBeenCalled();
+        expect(createAiSuggestionRunMock.mock.calls[0][0]).toMatchObject({
+            source: 'cache', cacheHit: true, attemptCount: 0, latencyMs: 0, suggestionCount: 1, usage: null, thinkingLevel: null,
+        });
+    });
+
+    it('still returns the contact when telemetry cannot be written', async () => {
+        createAiSuggestionRunMock.mockRejectedValueOnce(new Error('column "prompt_tokens" does not exist'));
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        generateJSONWithMetaMock.mockResolvedValue({
+            data: { customer_service_phone: '1-800-555-1212' },
+            failure: null,
+            groundingSourceUrls: [],
+            usage: null,
+            failureKind: null,
+        });
+
+        await expect(resolveContact('Example Utility')).resolves.toMatchObject({ customer_service_phone: '1-800-555-1212' });
     });
 });

@@ -19,9 +19,23 @@ describe('admin telemetry page', () => {
             forms: 4, activeForms: 3, requests: 6, attributedRequests: 5, completedRequests: 2, usedForms: 4, multiFormUsers: 1 },
             events: [{ event: 'seller_submitted', count: 2, requests: 1 }],
             ai: [{ feature: 'provider_search', status: 'success', runs: 2, cached: 1, freshLatencyMs: 120 },
-                { feature: 'provider_suggestions', status: 'fallback', runs: 1, cached: 1, freshLatencyMs: null }] });
+                { feature: 'provider_suggestions', status: 'fallback', runs: 1, cached: 1, freshLatencyMs: null },
+                { feature: 'provider_contact', status: 'success', runs: 3, cached: 0, freshLatencyMs: 900 }],
+            aiUsage: [{ feature: 'provider_suggestions', freshRuns: 12, measuredRuns: 10, passes: 21, searchQueries: 37,
+                promptTokens: 48210, outputTokens: 3120, thinkingTokens: 990, toolPromptTokens: 61500, timeouts: 2, otherFailures: 1 }],
+            aiAcceptance: [{ shown: 'ai_verify', entries: 8, accepted: 7 }, { shown: 'fallback', entries: 3, accepted: 1 }] });
         render(await Page({ searchParams: Promise.resolve({}) }));
-        expect(screen.getAllByRole('table')).toHaveLength(3);
+        expect(screen.getAllByRole('table')).toHaveLength(5);
+        const usage = screen.getByRole('table', { name: 'AI usage by feature for the selected period' });
+        expect(usage).toHaveTextContent('Provider suggestions');
+        expect(usage).toHaveTextContent('48,210');
+        expect(usage).toHaveTextContent('37');
+        const acceptance = screen.getByRole('table', { name: 'Suggestion acceptance by source for the selected period' });
+        expect(acceptance).toHaveTextContent('Fresh AI result, verified');
+        expect(acceptance).toHaveTextContent('88%');
+        expect(acceptance).toHaveTextContent('Generic national list');
+        expect(acceptance).toHaveTextContent('33%');
+        expect(screen.getByRole('table', { name: 'AI telemetry by feature and outcome' })).toHaveTextContent('Contact lookup');
         expect(screen.getByText('1.5 h')).toBeInTheDocument();
         expect(screen.getByText('Mailbox & Home Access')).toBeInTheDocument();
         expect(screen.getByText(/50% of previous-period accounts/)).toBeInTheDocument();
@@ -40,6 +54,8 @@ describe('admin telemetry page', () => {
         expect(screen.getByRole('link', { name: 'Last 7 days' })).toHaveAttribute('aria-current', 'page');
         expect(screen.getByText(/No request events recorded/)).toBeInTheDocument();
         expect(screen.getByText(/No AI runs recorded/)).toBeInTheDocument();
+        expect(screen.getByText(/No fresh AI runs recorded/)).toBeInTheDocument();
+        expect(screen.getByText(/No submitted entries with a recorded suggestion list/)).toBeInTheDocument();
         expect(screen.getByText(/No submitted provider entries/)).toBeInTheDocument();
         expect(screen.getByText(/not assigned to a form retroactively/)).toBeInTheDocument();
         expect(screen.getByText(/Completion reflects the current outcome/)).toBeInTheDocument();
