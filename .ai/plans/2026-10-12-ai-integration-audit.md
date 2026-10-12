@@ -1,6 +1,6 @@
 # AI integration, model selection and cost audit
 
-- Status: **In progress.** Slices 1 to 3 of 7 are done and committed and pushed to origin/main on 2026-10-12 (`214ad72`), deployment not verified. Slice 4 is done with its migration applied, committed and pushed the same day, deployment not verified (see "Progress" and the outcome sections); slice 5 is next. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
+- Status: **In progress.** Slices 1 to 3 of 7 are done and committed and pushed to origin/main on 2026-10-12 (`214ad72`), deployment not verified. Slice 4 is done with its migration applied, committed and pushed the same day (`6ba63ff`), and its deployment was seen Ready on the production alias on 2026-10-12. Slice 5 is built, validated and has had its first run; it is committed on main and not pushed (see "Progress" and the outcome sections). Slice 6 is in progress. Investigation completed 2026-10-12 by Claude Code (Opus 5.5); the owner approved Option B in chat the same day (see "Owner decision").
 - Scope: owner brief in chat on 2026-10-12. Audit of every AI and Google Maps integration, current model and pricing research, cost and accuracy analysis, evaluation framework proposal, prioritized roadmap. Investigation and documentation only.
 - Baseline: main at `c83b2eb`.
 - Deliverable: `docs/audits/2026-10-12-ai-integration-audit.md`.
@@ -44,7 +44,7 @@ Option B (incremental modernization), starting with the model-independent fixes 
 | 2. Timeouts [R3] | Done 2026-10-12, pushed (`214ad72`) |
 | 3. Search rework [R2] | Done 2026-10-12, pushed (`214ad72`) |
 | 4. Telemetry and alert [R5] | Done 2026-10-12, migration applied, committed and pushed |
-| 5. Evaluation script [R6] | Not started |
+| 5. Evaluation script [R6] | Done 2026-10-12, first run made, committed, not pushed |
 | 6. Decided by the evaluation | Not started |
 | 7. As time allows | Not started |
 
@@ -123,6 +123,29 @@ Verified in code before starting: `ai_generation_runs.feature` and `operational_
 - Known limits: usage of an attempt that failed or timed out is not reported by the provider, so totals are a floor; at about 13 fresh suggestion lookups a day, an outage is reported once 10 fresh runs accumulate, and the alert email also needs `OPS_ALERTS_ENABLED` and `OPS_ALERT_EMAIL` (not verified in hosting); retries inside one pass are not counted (`attempt_count` is passes).
 - Stale comment corrected: the monitor route said it was not scheduled; `vercel.json` has run it every 15 minutes since 2026-10-05.
 
+## Slice 5 outcome (2026-10-12, Claude Opus 5.5)
+
+- Built: `scripts/eval/` (`eval-core.ts` pure case building, matching, scoring, totals and output; `export-silver-cases.ts`; `run-eval.ts`; `compare-evals.ts`; `cases/hard-cases.json`; `README.md`), `tests/unit/eval-core.test.ts`, three `eval:*` package scripts, `/.eval/` in `.gitignore`. One application change: `getSuggestionsFresh` in `lib/providers/suggestion-service.ts` (the two-pass pipeline with no cache, workspace history or telemetry, like `searchProvidersFresh`), with a unit test. No prompt, gate, route, schema or seller screen changed.
+- How it runs: one configuration per run (model, thinking level, one or two passes, recovery, search on or off), set through the pipeline's own environment settings before it is loaded; `DATABASE_URL` and the cache settings are removed in the process, so a run cannot reach the live database or cache. Without `--yes` it prints the plan only. Prompt and gate variants are code changes: run before and after with different labels; the result file records the commit.
+- Export (owner-approved in chat, read-only transaction, run once on 2026-10-12): the query selects city, state, ZIP, category, entry mode and provider name only; no street address, name, email, phone or identifier is selected. Left out: demo and deleted requests, requests edited after submission, non-answers and anything that looks like contact details. Result: 2,920 seller answers kept, grouped into 1,940 cases in 406 localities (18 states, mostly OH, PA, KY, NJ); 553 cases have 2 or more answers. File: `.eval/cases/silver.json`, ignored. **Not safe to commit:** a few typed names read like a person's name.
+- Hard cases: 12 written from general knowledge, each marked `"verified": false`. Still owed (owner or a later session): check them against the providers' own sites, and add about 8 more of the kinds section 9 lists that need local knowledge (township differs from mailing city, unincorporated land, rural propane or oil, new subdivision).
+- Slice 4 check before the run: the `6ba63ff` deployment was Ready and on the production alias by about 16:02 UTC. No seller lookup was recorded after that during this session, so **usage on a real production lookup is still unconfirmed**; Admin Telemetry was not opened (no signed-in browser). The evaluation itself confirmed that the provider reports token counts for the configured model.
+- First run (owner-approved, stated beforehand as at most 90 calls): 30 cases (18 silver with 2 or more answers, two per category; 12 hard), `gemini-3.1-flash-lite`, thinking `low`, two passes plus recovery, search on, at `6ba63ff` plus this slice's changes. 55 model calls, no failures, no unreadable answers.
+
+| Measure | All 30 | Silver 18 | Hard 12 |
+|---|---|---|---|
+| Correct top answer | 20 (67%) | 14 | 6 |
+| Correct answer in top 3 | 24 (80%) | 18 | 6 |
+| Ended on the generic list | 7 (23%) | 1 | 6 |
+
+- Also measured: latency p50 8.6 s, p95 11.5 s. Per call about 440 prompt, 310 output and 440 thinking tokens. Token cost $0.068 for the run, $0.0028 per case with a top-3 answer. Extra names per one-provider case: 2.5.
+- **Finding 1, search is on but was never used.** All 55 calls reported 0 searches, 0 sources and no search-result tokens. Four raw calls were made to understand this (59 calls in all): the same model with the search tool did not search for a plain "which utility serves" question with or without the JSON schema, nor did `gemini-3.5-flash-lite`; it did search (2 queries, metadata returned) when the prompt told it to search and cite. So the tool works on this key and the telemetry code can read it; with today's prompts the model answers from memory. To verify on production telemetry once lookups land: whether searches are 0 there too. If so, the 5,000 monthly searches are untouched and the audit's search-cost range is $0. Not verified: whether the model searches under the JSON schema when told to.
+- **Finding 2, one right answer is thrown away.** 5 of the 6 hard misses are `quality_gate_failed`: single-utility cities (Chattanooga, Sacramento, Lihue, Memphis, Jacksonville) where the gate wants 2 names, so the seller would see the national list. A raw call for Chattanooga returned the right utility alone. The sixth (Kansas City, MO water) is `state_mismatch_rejected`, the state-name filter. This is direct evidence for R4 and R13.
+- Finding 3: thinking at `low` uses about 440 tokens a call, four times the audit's assumption, and more than the visible answer.
+- Limits of this run: 30 cases, one run each (no repeat, so no measure of run-to-run variation); silver answers picked from a suggestion favor the current pipeline; the hard answers are unverified; partial name matching is a proxy; search and contact lookups are not covered; latency per pass and source-domain quality are not measured.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 225 files / 1760 passed; security scan and `git diff --check` passed. The export and the runner were exercised by the real export and the real run. Production build and Playwright not run (no seller screen changed).
+- Live actions in this slice: read-only aggregate checks of recent AI runs, the read-only export, 59 model calls and 2 Google searches. No live write, commit, push or deploy.
+
 ## Next action
 
-Slice 4 is committed and pushed (owner authorization in chat, 2026-10-12). After it is live, one real seller lookup should show non-empty usage on Admin Telemetry, which confirms the provider reports it. Then slice 5 (evaluation script), which needs an owner-approved export for the silver cases.
+Owner agreed in chat on 2026-10-12 to commit slice 5 and to these slice 6 measurements in this order, each a small run on the same 30 cases: (a) single-provider prompt and gate [R4] and the state-name filter [R13], which the first run shows cost 6 of 12 hard cases; (b) one pass versus two [R8]; (c) a prompt that tells the model to search, to learn what grounding costs and adds. Before (c), confirm on Admin Telemetry that production lookups also show 0 searches. Owed for the case file: verify the 12 hard cases and add local ones.

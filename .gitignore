@@ -61,3 +61,5 @@ Screenshot_*.jpeg
 # local QA harness specs and review screenshots
 .qa-artifacts/
 /.incident-reports/
+# evaluation case exports and results (scripts/eval)
+/.eval/

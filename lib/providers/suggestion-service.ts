@@ -1759,6 +1759,18 @@ export async function searchProviders(
 }
 
 /**
+ * Run a fresh suggestion lookup for evaluation (scripts/eval). Like
+ * searchProvidersFresh, this bypasses cache, account-scoped provider memory
+ * and seller-facing AI telemetry.
+ */
+export async function getSuggestionsFresh(
+    address: string,
+    category: UtilityCategory
+): Promise<ProviderSearchDiagnostic> {
+    return runTwoPassSuggestionPipeline(address, category);
+}
+
+/**
  * Run a fresh location-aware provider search for incident/support review.
  * This intentionally bypasses cache, account-scoped provider memory, and
  * seller-facing AI telemetry.

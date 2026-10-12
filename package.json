@@ -19,6 +19,9 @@
     "incident:provider-repair": "tsx --env-file=.env --env-file=.env.local scripts/incident/provider-resolution-repair.ts",
     "incident:credit": "node --env-file=.env --env-file=.env.local scripts/incident/credit-paid-customers.mjs",
     "incident:email": "tsx --env-file=.env --env-file=.env.local scripts/incident/send-provider-incident-update.ts",
+    "eval:export": "tsx --env-file=.env --env-file=.env.local scripts/eval/export-silver-cases.ts",
+    "eval:run": "tsx --env-file=.env --env-file=.env.local scripts/eval/run-eval.ts",
+    "eval:compare": "tsx scripts/eval/compare-evals.ts",
     "security:scan": "node scripts/security/scan-artifacts.mjs"
   },
   "dependencies": {

@@ -36,6 +36,7 @@ setInCacheMock.mockImplementation(async (key: string, value: unknown) => {
 import {
     __testing,
     getSuggestions,
+    getSuggestionsFresh,
     searchProviders,
     searchProvidersFresh,
 } from '@/lib/providers/suggestion-service';
@@ -604,6 +605,25 @@ describe('Suggestions Pipeline', () => {
         expect(result.suggestions[0].display_name).toBe('Duke Energy');
         expect(getFromCacheMock).not.toHaveBeenCalled();
         expect(setInCacheMock).not.toHaveBeenCalled();
+        expect(createAiSuggestionRunMock).not.toHaveBeenCalled();
+    });
+
+    it('runs fresh suggestions without cache, provider memory or telemetry', async () => {
+        isGeminiConfiguredMock.mockReturnValue(true);
+        process.env.SUGGESTIONS_TWO_PASS_VERIFY = 'false';
+        generateJSONWithMetaMock.mockResolvedValueOnce(ok([
+            { display_name: 'Duke Energy', confidence: 0.9, rationale_short: 'Serves Raleigh', contact_phone: null, contact_website: null },
+            { display_name: 'Wake Electric', confidence: 0.6, rationale_short: 'Cooperative nearby', contact_phone: null, contact_website: null },
+        ]));
+
+        const result = await getSuggestionsFresh('123 Main St, Raleigh, NC 27601', 'electric');
+
+        expect(result.outcome.source).toBe('ai_primary');
+        expect(result.outcome.attemptCount).toBe(1);
+        expect(result.suggestions.map((item) => item.display_name)).toEqual(['Duke Energy', 'Wake Electric']);
+        expect(getFromCacheMock).not.toHaveBeenCalled();
+        expect(setInCacheMock).not.toHaveBeenCalled();
+        expect(getProviderMemoryCandidatesMock).not.toHaveBeenCalled();
         expect(createAiSuggestionRunMock).not.toHaveBeenCalled();
     });
 });
