@@ -73,9 +73,6 @@ describe('Suggestion Service', () => {
         isGeminiConfiguredMock.mockReturnValue(false);
 
         delete process.env.INCLUDE_AI_SUGGESTION_CONTACTS;
-        delete process.env.SUGGESTIONS_SHADOW_MODE;
-        delete process.env.SUGGESTIONS_SERVE_NEW_PIPELINE;
-        delete process.env.SUGGESTIONS_CANARY_PERCENT;
         delete process.env.SUGGESTIONS_TWO_PASS_VERIFY;
         delete process.env.SUGGESTIONS_ENABLE_RECOVERY_PASS;
         delete process.env.SUGGESTIONS_MAX_TOTAL_MS;
@@ -172,9 +169,6 @@ describe('Suggestions Pipeline', () => {
         vi.clearAllMocks();
         isGeminiConfiguredMock.mockReturnValue(true);
 
-        delete process.env.SUGGESTIONS_SHADOW_MODE;
-        delete process.env.SUGGESTIONS_SERVE_NEW_PIPELINE;
-        delete process.env.SUGGESTIONS_CANARY_PERCENT;
     });
 
     it('offers common national names, marked as such, when AI is not configured', async () => {

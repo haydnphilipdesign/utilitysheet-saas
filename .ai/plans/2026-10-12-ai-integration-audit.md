@@ -46,7 +46,7 @@ Option B (incremental modernization), starting with the model-independent fixes 
 | 4. Telemetry and alert [R5] | Done 2026-10-12, migration applied, committed and pushed |
 | 5. Evaluation script [R6] | Done 2026-10-12, first run made, pushed |
 | 6. Decided by the evaluation | Done 2026-10-12: R4 and R13 pushed 2026-10-12; R8 pushed 2026-10-12 (`3be14f5`); search prompt measured, no effect, not shipped; search tool off measured, keep it on; R10 measured, no effect, plumbing not built; R9 measured, stay on the current model; R11 pushed |
-| 7. As time allows | Not started |
+| 7. As time allows | In progress: R13 done in slice 6; R14 (legacy pipeline, switches, `.env.example`) pushed 2026-10-12; R12 open |
 
 ## Implementation slices (approved order)
 
@@ -378,6 +378,22 @@ Status: **built, validated, committed and pushed to origin/main with owner autho
 - Validation for the whole session's changes (Node 20.19.0): `tsc` clean; ESLint on changed files clean; full Vitest with native PostgreSQL 225 files / 1771 passed; security scan and `git diff --check` passed. **Not run:** Playwright and the production build; the new label is covered by a render test only and was not seen in a browser. Not verified: the hosted site.
 - For the owner to look at: the label "Common providers", and that Admin Telemetry's acceptance table will show fallback rows with no items for the four one-provider categories.
 
+## Slice 7, R14: legacy pipeline removed (2026-10-12, Claude Opus 5.5, later session)
+
+Status: **built, validated, committed and pushed to origin/main with owner authorization in chat on 2026-10-12. Deployment not verified here.** Owner asked in chat for the legacy suggestion pipeline, its three shadow-mode switches and the stale `.env.example` entry.
+
+- Removed from `lib/providers/suggestion-service.ts` (about 220 lines): `runLegacySuggestionPipeline`, `runLegacySearchPipeline`, `isShadowModeEnabled`, `shouldServeNewPipeline`, `logShadowComparison`, and the shadow branches of `runSuggestionPipeline` and `runSearchPipeline`. `SUGGESTIONS_SHADOW_MODE`, `SUGGESTIONS_SERVE_NEW_PIPELINE` and `SUGGESTIONS_CANARY_PERCENT` are no longer read anywhere.
+- Behavior: none changes while those variables are unset, which the owner reported for hosting earlier today (not verified here). If one is still set it is now ignored, so the extra unrecorded model call per lookup cannot come back.
+- **Cache keys are unchanged on purpose:** the `:new` suffix stays, so cached suggestions and searches keep being read. Telemetry still writes `served_pipeline = 'new'`; no schema change, no migration.
+- Also: the evaluation runner and the suggestion tests no longer clear the three variables; `docs/ai-telemetry.md` says `served_pipeline` is always `new` now.
+- `.env.example`: the "Rollout controls" block is gone and the model lines now name the code's real default, `gemini-3.1-flash-lite` (they said `gemini-3.5-flash`). **That file is ignored by git in this repository, so this edit is local only and is not part of any commit.**
+- Left alone, not asked for (report I9, also under R14): unused `generateContent`, `generateJSON`, `resolveContacts`, `getCircuitBreakerStatus` and the deprecated `GEMINI_GROUNDING_DYNAMIC_THRESHOLD` warning.
+- Validation (Node 20.19.0): `tsc` clean; ESLint on the three changed code files clean; full Vitest with native PostgreSQL 225 files / 1771 passed; security scan and `git diff --check` passed. Not run: Playwright, production build, a model call. Not verified: hosted site, hosting variables.
+- Price question answered in chat from the list prices in `scripts/eval/eval-core.ts` (read 2026-10-12): `gemini-3.5-flash-lite` is $0.30 / $2.50 per million input / output tokens against $0.25 / $1.50 for the current model.
+
 ## Next action
+
+**After R14 (pushed):** the only required item left in this plan is R12 (source-based trust for phone numbers and websites). The paragraph below is the earlier text.
+
 
 Slice 6 is complete and pushed. No migration is pending. Owner: confirm the deployment and look at a seller form. Slice 7 (R12 source-based trust, R14 removal of the legacy pipeline and its switches) is what remains. Still open from earlier, owner: look up the Grounding with Google Search count for 2026-10-12 on Google's side; it settles whether searches run under the JSON format and what today's runs used. Until then, treat every evaluation run with the tool on as spending searches, and ask before another. Still open in slice 6: R9 model trial (`--model`, no code change), R10 county and township, R11 honest fallback wording. A small follow-up worth doing: say on Admin Telemetry and in `docs/ai-telemetry.md` that the search count is not reported for JSON-format calls. The 12 hard cases are checked (11 verified); the 17 local cases are in their own file, uncommitted and not yet run. More rural propane and oil cases would need a phone call or the dealers' own town lists.

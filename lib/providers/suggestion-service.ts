@@ -92,7 +92,7 @@ export interface SuggestionOutcome {
     localityState: string | null;
     localityZip3: string | null;
     localityCity: string | null;
-    servedPipeline: 'new' | 'legacy';
+    servedPipeline: 'new';
     /** Added up over the answered AI passes; absent or null when none answered. */
     usage?: AiRunUsage | null;
     /** The first AI pass failure of the lookup, if any. */
@@ -245,28 +245,6 @@ function getTopConfidenceThreshold(): number {
     return parseFloatEnv(process.env.SUGGESTIONS_MIN_TOP_CONFIDENCE, DEFAULT_MIN_TOP_CONFIDENCE, 0.05, 0.95);
 }
 
-function isShadowModeEnabled(): boolean {
-    return parseBooleanEnv(process.env.SUGGESTIONS_SHADOW_MODE, false);
-}
-
-function shouldServeNewPipeline(seed: string): boolean {
-    if (!isShadowModeEnabled()) {
-        return true;
-    }
-
-    const serveNew = parseBooleanEnv(process.env.SUGGESTIONS_SERVE_NEW_PIPELINE, false);
-    if (!serveNew) {
-        return false;
-    }
-
-    const canaryPercent = parseIntEnv(process.env.SUGGESTIONS_CANARY_PERCENT, 0, 0, 100);
-    if (canaryPercent >= 100) return true;
-    if (canaryPercent <= 0) return false;
-
-    const bucket = Number.parseInt(hashCacheKeyPart(seed).slice(0, 8), 16) % 100;
-    return bucket < canaryPercent;
-}
-
 function sanitizeLocalityToken(input: string | null | undefined): string {
     if (!input) return 'unknown';
     const token = input
@@ -335,8 +313,10 @@ function getSearchCacheKey(
     return `provider-search:${SEARCH_CACHE_VERSION}:${getAiCacheToken()}:${scope}:${getLocalityCacheToken(parsed)}:${categoryKey}:${queryHash}`;
 }
 
-function getPipelineCacheKey(baseKey: string, serveNew: boolean): string {
-    return `${baseKey}:${serveNew ? 'new' : 'legacy'}`;
+// The suffix dates from when a second pipeline existed; it stays so entries
+// already cached keep being read.
+function getPipelineCacheKey(baseKey: string): string {
+    return `${baseKey}:new`;
 }
 
 function getProviderMemoryCacheKey(
@@ -649,7 +629,7 @@ function buildOutcome(params: {
     startedAt: number;
     suggestions: ProviderSuggestion[];
     location: ParsedLocation | undefined;
-    servedPipeline: 'new' | 'legacy';
+    servedPipeline: 'new';
     tally?: PassTally;
 }): SuggestionOutcome {
     return {
@@ -678,19 +658,6 @@ function logSuggestionOutcome(outcome: SuggestionOutcome): void {
         localityCity: null,
     };
     console.log('[Suggestions] outcome', sanitized);
-}
-
-function logShadowComparison(params: {
-    category: UtilityCategory;
-    servedPipeline: 'new' | 'legacy';
-    servedCount: number;
-    shadowCount: number;
-    servedSource: SuggestionSource;
-    shadowSource: SuggestionSource;
-}): void {
-    const enableTelemetry = process.env.NODE_ENV !== 'production' || process.env.SUGGESTIONS_LOG_TELEMETRY === 'true';
-    if (!enableTelemetry) return;
-    console.log('[Suggestions] shadow_compare', params);
 }
 
 function getTelemetryStatus(outcome: SuggestionOutcome): AiTelemetryStatus {
@@ -1246,60 +1213,6 @@ function blendWithProviderMemory(
     };
 }
 
-async function runLegacySuggestionPipeline(
-    address: string,
-    category: UtilityCategory
-): Promise<PipelineResult> {
-    const startedAt = Date.now();
-    const deadlineAt = startedAt + getPipelineDeadlineMs();
-    const parsed = await resolveParsedLocation(address);
-    const tally: PassTally = { usage: null, errorKind: null };
-    const primary = await runAiPass(buildSuggestionPrompt(parsed, category), category, 5, deadlineAt);
-    tallyPass(tally, primary);
-
-    if (primary.suggestions.length > 0) {
-        const filtered = normalizeAndRankSuggestions(
-            filterSuggestionsForState(primary.suggestions, parsed).suggestions,
-            category,
-            5
-        );
-        if (filtered.length > 0) {
-            return {
-                suggestions: filtered,
-                outcome: buildOutcome({
-                    category,
-                    source: 'ai_primary',
-                    reasonCode: null,
-                    upstreamReasonCode: primary.reasonCode,
-                    attemptCount: 1,
-                    startedAt,
-                    suggestions: filtered,
-                    location: parsed,
-                    servedPipeline: 'legacy',
-                    tally,
-                }),
-            };
-        }
-    }
-
-    const fallback = getFallbackSuggestions(category, parsed);
-    return {
-        suggestions: fallback,
-        outcome: buildOutcome({
-            category,
-            source: 'fallback',
-            reasonCode: 'fallback_used',
-            upstreamReasonCode: primary.reasonCode || 'quality_gate_failed',
-            attemptCount: 1,
-            startedAt,
-            suggestions: fallback,
-            location: parsed,
-            servedPipeline: 'legacy',
-            tally,
-        }),
-    };
-}
-
 async function runTwoPassSuggestionPipeline(
     address: string,
     category: UtilityCategory,
@@ -1425,57 +1338,6 @@ async function runTwoPassSuggestionPipeline(
     };
 }
 
-async function runLegacySearchPipeline(params: SearchPipelineParams): Promise<PipelineResult> {
-    const startedAt = Date.now();
-    const deadlineAt = startedAt + getPipelineDeadlineMs();
-    const primary = await runAiPass(
-        buildSearchPrompt(params.query, params.category, params.resolvedAddress),
-        params.category,
-        5,
-        deadlineAt
-    );
-    const tally: PassTally = { usage: null, errorKind: null };
-    tallyPass(tally, primary);
-
-    if (primary.suggestions.length > 0) {
-        const gated = applyQualityGates(primary.suggestions, params.category, params.resolvedAddress);
-        if (gated.accepted) {
-            return {
-                suggestions: gated.suggestions,
-                outcome: buildOutcome({
-                    category: params.category,
-                    source: 'ai_primary',
-                    reasonCode: null,
-                    upstreamReasonCode: primary.reasonCode,
-                    attemptCount: 1,
-                    startedAt,
-                    suggestions: gated.suggestions,
-                    location: params.resolvedAddress,
-                    servedPipeline: 'legacy',
-                    tally,
-                }),
-            };
-        }
-    }
-
-    const fallback = getFallbackSearchResults(params.query, params.category, params.resolvedAddress);
-    return {
-        suggestions: fallback,
-        outcome: buildOutcome({
-            category: params.category,
-            source: 'fallback',
-            reasonCode: 'fallback_used',
-            upstreamReasonCode: primary.reasonCode || 'quality_gate_failed',
-            attemptCount: 1,
-            startedAt,
-            suggestions: fallback,
-            location: params.resolvedAddress,
-            servedPipeline: 'legacy',
-            tally,
-        }),
-    };
-}
-
 /**
  * One grounded pass with a gate that accepts a single match. A search that
  * finds nothing ends on the name-matched fallback list instead of asking again.
@@ -1565,90 +1427,29 @@ async function runSuggestionPipeline(
     category: UtilityCategory,
     context?: SuggestionContext
 ): Promise<PipelineResult> {
-    const seed = `${getCacheKey(address, category, context)}:${category}`;
-    const serveNew = shouldServeNewPipeline(seed);
-
-    if (!isShadowModeEnabled()) {
-        const result = await runTwoPassSuggestionPipeline(address, category, context);
-        logSuggestionOutcome(result.outcome);
-        await persistSuggestionTelemetry({
-            feature: 'provider_suggestions',
-            context,
-            outcome: result.outcome,
-            suggestions: result.suggestions,
-            promptVersion: SUGGESTION_PROMPT_VERSION,
-        });
-        return result;
-    }
-
-    const served = serveNew
-        ? runTwoPassSuggestionPipeline(address, category, context)
-        : runLegacySuggestionPipeline(address, category);
-    const shadow = serveNew
-        ? runLegacySuggestionPipeline(address, category)
-        : runTwoPassSuggestionPipeline(address, category, context);
-
-    const [servedResult, shadowResult] = await Promise.all([served, shadow]);
-    logSuggestionOutcome(servedResult.outcome);
+    const result = await runTwoPassSuggestionPipeline(address, category, context);
+    logSuggestionOutcome(result.outcome);
     await persistSuggestionTelemetry({
         feature: 'provider_suggestions',
         context,
-        outcome: servedResult.outcome,
-        suggestions: servedResult.suggestions,
+        outcome: result.outcome,
+        suggestions: result.suggestions,
         promptVersion: SUGGESTION_PROMPT_VERSION,
     });
-    logShadowComparison({
-        category,
-        servedPipeline: serveNew ? 'new' : 'legacy',
-        servedCount: servedResult.suggestions.length,
-        shadowCount: shadowResult.suggestions.length,
-        servedSource: servedResult.outcome.source,
-        shadowSource: shadowResult.outcome.source,
-    });
-    return servedResult;
+    return result;
 }
 
 async function runSearchPipeline(params: SearchPipelineParams): Promise<PipelineResult> {
-    const addressSeed = params.resolvedAddress
-        ? `${params.resolvedAddress.state || 'na'}:${params.resolvedAddress.zip || params.resolvedAddress.city || 'na'}`
-        : 'na';
-    const serveNew = shouldServeNewPipeline(
-        `${getScopeToken(params.context)}:${params.category}:${params.query.toLowerCase()}:${addressSeed}`
-    );
-
-    if (!isShadowModeEnabled()) {
-        const result = await runSinglePassSearchPipeline(params);
-        logSuggestionOutcome(result.outcome);
-        await persistSuggestionTelemetry({
-            feature: 'provider_search',
-            context: params.context,
-            outcome: result.outcome,
-            suggestions: result.suggestions,
-            promptVersion: SEARCH_PROMPT_VERSION,
-        });
-        return result;
-    }
-
-    const served = serveNew ? runSinglePassSearchPipeline(params) : runLegacySearchPipeline(params);
-    const shadow = serveNew ? runLegacySearchPipeline(params) : runSinglePassSearchPipeline(params);
-    const [servedResult, shadowResult] = await Promise.all([served, shadow]);
-    logSuggestionOutcome(servedResult.outcome);
+    const result = await runSinglePassSearchPipeline(params);
+    logSuggestionOutcome(result.outcome);
     await persistSuggestionTelemetry({
         feature: 'provider_search',
         context: params.context,
-        outcome: servedResult.outcome,
-        suggestions: servedResult.suggestions,
+        outcome: result.outcome,
+        suggestions: result.suggestions,
         promptVersion: SEARCH_PROMPT_VERSION,
     });
-    logShadowComparison({
-        category: params.category,
-        servedPipeline: serveNew ? 'new' : 'legacy',
-        servedCount: servedResult.suggestions.length,
-        shadowCount: shadowResult.suggestions.length,
-        servedSource: servedResult.outcome.source,
-        shadowSource: shadowResult.outcome.source,
-    });
-    return servedResult;
+    return result;
 }
 
 // ============================================================================
@@ -1665,7 +1466,7 @@ export async function getSuggestions(
     context?: SuggestionContext
 ): Promise<ProviderSuggestion[]> {
     const baseKey = getCacheKey(address, category, context);
-    const cacheKey = getPipelineCacheKey(baseKey, shouldServeNewPipeline(baseKey));
+    const cacheKey = getPipelineCacheKey(baseKey);
 
     const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
     if (cached) {
@@ -1753,7 +1554,7 @@ export async function searchProviders(
 
     const resolvedCategory = category || 'electric';
     const baseKey = getSearchCacheKey(trimmedQuery, resolvedCategory, address, context);
-    const cacheKey = getPipelineCacheKey(baseKey, shouldServeNewPipeline(baseKey));
+    const cacheKey = getPipelineCacheKey(baseKey);
     const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
     if (cached) {
         const parsed = address ? await resolveParsedLocation(address) : undefined;
