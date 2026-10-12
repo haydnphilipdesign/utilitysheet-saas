@@ -1,0 +1,138 @@
+[
+  {
+    "id": "local-oh-oberlin-water",
+    "city": "Oberlin", "state": "OH", "zip": "44074", "category": "water",
+    "accepted": ["City of Oberlin", "City of Oberlin Water Division", "Oberlin Water Department"],
+    "website_domain": "cityofoberlin.com",
+    "note": "Small college town with its own water; a rural water authority serves the land around it.",
+    "verified": true
+  },
+  {
+    "id": "local-nj-collingswood-water",
+    "city": "Collingswood", "state": "NJ", "zip": "08107", "category": "water",
+    "accepted": ["Collingswood Water Department", "Borough of Collingswood"],
+    "website_domain": "collingswood.com",
+    "note": "Borough water system surrounded by a large investor-owned water company.",
+    "verified": true
+  },
+  {
+    "id": "local-nj-hammonton-water",
+    "city": "Hammonton", "state": "NJ", "zip": "08037", "category": "water",
+    "accepted": ["Hammonton Water Department", "Town of Hammonton Municipal Utilities", "Town of Hammonton"],
+    "website_domain": "townofhammonton.org",
+    "note": "Town-run water from its own wells.",
+    "verified": true
+  },
+  {
+    "id": "local-oh-oxford-water",
+    "city": "Oxford", "state": "OH", "zip": "45056", "category": "water",
+    "accepted": ["City of Oxford"],
+    "website_domain": "cityofoxford.org",
+    "note": "Small city with its own water, sewer and refuse inside a county that also runs a water system.",
+    "verified": true
+  },
+  {
+    "id": "local-pa-lehighton-water",
+    "city": "Lehighton", "state": "PA", "zip": "18235", "category": "water",
+    "accepted": ["Lehighton Water Authority"],
+    "website_domain": "lehightonwater.com",
+    "note": "Small borough authority; also supplies Weissport and parts of two townships.",
+    "verified": true
+  },
+  {
+    "id": "local-oh-bellbrook-water",
+    "city": "Bellbrook", "state": "OH", "zip": "45305", "category": "water",
+    "accepted": ["City of Bellbrook"],
+    "website_domain": "bellbrook.gov",
+    "note": "Water comes from the city, sewer from the county (see the sewer case).",
+    "verified": true
+  },
+  {
+    "id": "local-oh-bellbrook-sewer",
+    "city": "Bellbrook", "state": "OH", "zip": "45305", "category": "sewer",
+    "accepted": ["Greene County Sanitary Engineering", "Greene County Sanitary Engineering Department"],
+    "website_domain": "greenecountyohio.gov",
+    "note": "Sewer comes from the county although the city runs the water.",
+    "verified": true
+  },
+  {
+    "id": "local-oh-eastlake-water",
+    "city": "Eastlake", "state": "OH", "zip": "44095", "category": "water",
+    "accepted": ["Lake County Department of Utilities", "Lake County Utilities"],
+    "website_domain": "lakecountyohio.gov",
+    "note": "County water in a city that owns its own sewer system; the county only bills for that sewer.",
+    "verified": true
+  },
+  {
+    "id": "local-nj-woodstown-sewer",
+    "city": "Woodstown", "state": "NJ", "zip": "08090", "category": "sewer",
+    "accepted": ["Woodstown Borough Municipal Utilities Authority", "Woodstown Municipal Utilities Authority", "Borough of Woodstown"],
+    "website_domain": "historicwoodstown.org",
+    "note": "Small borough authority; its page sits on the borough's site.",
+    "verified": true
+  },
+  {
+    "id": "local-pa-enola-sewer",
+    "city": "Enola", "state": "PA", "zip": "17025", "category": "sewer",
+    "accepted": ["East Pennsboro Township"],
+    "website_domain": "eastpennsboro.net",
+    "note": "Mailing city is not a municipality: Enola is in East Pennsboro Township, which bills the sewer.",
+    "verified": true
+  },
+  {
+    "id": "local-pa-boalsburg-water",
+    "city": "Boalsburg", "state": "PA", "zip": "16827", "category": "water",
+    "accepted": ["State College Borough Water Authority", "SCBWA"],
+    "website_domain": "scbwa.org",
+    "note": "Mailing city is not a municipality: Boalsburg is in Harris Township, supplied by a neighboring borough's authority.",
+    "verified": true
+  },
+  {
+    "id": "local-pa-boalsburg-sewer",
+    "city": "Boalsburg", "state": "PA", "zip": "16827", "category": "sewer",
+    "accepted": ["University Area Joint Authority", "UAJA"],
+    "website_domain": "uaja.com",
+    "note": "Mailing city is not a municipality: Harris Township is served by a regional joint sewer authority.",
+    "verified": true
+  },
+  {
+    "id": "local-nj-rancocas-water",
+    "city": "Rancocas", "state": "NJ", "zip": "08073", "category": "water",
+    "accepted": ["Willingboro Municipal Utilities Authority", "Willingboro MUA", "WMUA"],
+    "website_domain": "wmua.info",
+    "note": "Mailing city is a village in Westampton Township, served by the neighboring township's authority.",
+    "verified": true
+  },
+  {
+    "id": "local-pa-effort-propane",
+    "city": "Effort", "state": "PA", "zip": "18330", "category": "propane",
+    "accepted": ["Heller's Gas"],
+    "website_domain": "hellersgas.com",
+    "note": "Rural propane: a regional dealer with an office in the village. Other dealers deliver here too.",
+    "verified": true
+  },
+  {
+    "id": "local-pa-tobyhanna-propane",
+    "city": "Tobyhanna", "state": "PA", "zip": "18466", "category": "propane",
+    "accepted": ["Heller's Gas"],
+    "website_domain": "hellersgas.com",
+    "note": "Rural propane: the dealer lists the village as a service area. Other dealers deliver here too.",
+    "verified": true
+  },
+  {
+    "id": "local-ct-old-saybrook-oil",
+    "city": "Old Saybrook", "state": "CT", "zip": "06475", "category": "oil",
+    "accepted": ["Wilcox Energy"],
+    "website_domain": "wilcox-energy.com",
+    "note": "Local oil dealer based in the next town; a company of the same name exists in another state.",
+    "verified": true
+  },
+  {
+    "id": "local-pa-kresgeville-oil",
+    "city": "Kresgeville", "state": "PA", "zip": "18333", "category": "oil",
+    "accepted": ["R.F. Ohl"],
+    "website_domain": "rfohl.com",
+    "note": "Rural oil: the dealer lists the village as a delivery area. Not a name sellers gave; other dealers deliver here too.",
+    "verified": true
+  }
+]

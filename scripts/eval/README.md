@@ -14,6 +14,12 @@ not evaluated.
 - `scripts/eval/cases/hard-cases.json` (committed): hand-written hard places.
   `"verified": false` means the answer has not yet been checked against the
   provider's own site.
+- `scripts/eval/cases/local-hard-cases.json` (committed): small-town water and
+  sewer, places whose mailing city is not the municipality, and rural propane
+  and oil, each read on the provider's own site. It is a separate file so the
+  12 cases above stay the same set between runs; run it with
+  `--hard-cases scripts/eval/cases/local-hard-cases.json`. Propane and oil
+  cases accept one checked dealer although others deliver there too.
 - `.eval/cases/silver.json` (ignored, never commit without reading it): built
   from past seller answers by `npm run eval:export`. It reads the live database
   and needs the owner's approval each time. It holds city, state, ZIP and
@@ -48,6 +54,7 @@ Options (defaults are production's settings as known on 2026-10-12):
 | `--recovery` | `on`, `off` | `on` |
 | `--grounding` | `on`, `off` | `on` |
 | `--silver`, `--hard` | how many cases of each kind; `0` for none | all |
+| `--hard-cases` | path of the hard case file | `scripts/eval/cases/hard-cases.json` |
 | `--min-confirmations` | seller answers a silver case needs | `2` |
 | `--seed` | changes which cases are picked | `eval` |
 | `--concurrency` | 1 to 4 | `2` |

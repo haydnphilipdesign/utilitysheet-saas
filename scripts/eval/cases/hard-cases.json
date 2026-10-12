@@ -5,7 +5,7 @@
     "accepted": ["Austin Energy"],
     "website_domain": "austinenergy.com",
     "note": "City-owned electric utility inside a deregulated state.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-tn-chattanooga-electric",
@@ -13,7 +13,7 @@
     "accepted": ["EPB", "Electric Power Board of Chattanooga"],
     "website_domain": "epb.com",
     "note": "City-owned electric utility known by an abbreviation.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-ca-sacramento-electric",
@@ -21,7 +21,7 @@
     "accepted": ["SMUD", "Sacramento Municipal Utility District"],
     "website_domain": "smud.org",
     "note": "Municipal district surrounded by a large investor-owned utility.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-tx-houston-electric",
@@ -29,7 +29,7 @@
     "accepted": ["CenterPoint Energy"],
     "website_domain": "centerpointenergy.com",
     "note": "Deregulated market: the delivery company is the right answer, a retail supplier is not.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-tx-dallas-electric",
@@ -37,14 +37,14 @@
     "accepted": ["Oncor", "Oncor Electric Delivery"],
     "website_domain": "oncor.com",
     "note": "Deregulated market: the delivery company is the right answer, a retail supplier is not.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-va-arlington-gas",
     "city": "Arlington", "state": "VA", "zip": "22201", "category": "gas",
     "accepted": ["Washington Gas"],
     "website_domain": "washingtongas.com",
-    "note": "Provider name contains another state's name.",
+    "note": "Provider name contains another state's name. The provider's site confirms Virginia but does not name Arlington in text.",
     "verified": false
   },
   {
@@ -53,7 +53,7 @@
     "accepted": ["KC Water", "Kansas City Water Services", "Kansas City Water"],
     "website_domain": "kcwater.us",
     "note": "City and provider names contain another state's name.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-hi-lihue-electric",
@@ -61,7 +61,7 @@
     "accepted": ["Kauai Island Utility Cooperative", "KIUC"],
     "website_domain": "kiuc.coop",
     "note": "Electric cooperative; the rest of the state has a different utility.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-ca-los-angeles-water",
@@ -69,7 +69,7 @@
     "accepted": ["Los Angeles Department of Water and Power", "LADWP"],
     "website_domain": "ladwp.com",
     "note": "City department that provides both water and electric.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-tn-memphis-gas",
@@ -77,7 +77,7 @@
     "accepted": ["Memphis Light, Gas and Water", "MLGW"],
     "website_domain": "mlgw.com",
     "note": "One city-owned utility for electric, gas and water.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-fl-jacksonville-electric",
@@ -85,7 +85,7 @@
     "accepted": ["JEA", "Jacksonville Electric Authority"],
     "website_domain": "jea.com",
     "note": "City-owned utility in a state where the generic list names another company.",
-    "verified": false
+    "verified": true
   },
   {
     "id": "hard-pa-philadelphia-gas",
@@ -93,6 +93,6 @@
     "accepted": ["Philadelphia Gas Works", "PGW"],
     "website_domain": "pgworks.com",
     "note": "City-owned gas utility.",
-    "verified": false
+    "verified": true
   }
 ]

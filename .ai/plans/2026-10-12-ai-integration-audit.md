@@ -45,7 +45,7 @@ Option B (incremental modernization), starting with the model-independent fixes 
 | 3. Search rework [R2] | Done 2026-10-12, pushed (`214ad72`) |
 | 4. Telemetry and alert [R5] | Done 2026-10-12, migration applied, committed and pushed |
 | 5. Evaluation script [R6] | Done 2026-10-12, first run made, pushed |
-| 6. Decided by the evaluation | In progress: R4 and R13 pushed 2026-10-12; R8 pushed 2026-10-12; search-prompt measurement next; R9, R10, R11 open |
+| 6. Decided by the evaluation | In progress: R4 and R13 pushed 2026-10-12; R8 pushed 2026-10-12 (`3be14f5`); search prompt measured, no effect, not shipped; search tool off measured, keep it on; R9, R10, R11 open |
 | 7. As time allows | Not started |
 
 ## Implementation slices (approved order)
@@ -139,7 +139,7 @@ Verified in code before starting: `ai_generation_runs.feature` and `operational_
 | Ended on the generic list | 7 (23%) | 1 | 6 |
 
 - Also measured: latency p50 8.6 s, p95 11.5 s. Per call about 440 prompt, 310 output and 440 thinking tokens. Token cost $0.068 for the run, $0.0028 per case with a top-3 answer. Extra names per one-provider case: 2.5.
-- **Finding 1, search is on but was never used.** All 55 calls reported 0 searches, 0 sources and no search-result tokens. Four raw calls were made to understand this (59 calls in all): the same model with the search tool did not search for a plain "which utility serves" question with or without the JSON schema, nor did `gemini-3.5-flash-lite`; it did search (2 queries, metadata returned) when the prompt told it to search and cite. So the tool works on this key and the telemetry code can read it; with today's prompts the model answers from memory. To verify on production telemetry once lookups land: whether searches are 0 there too. If so, the 5,000 monthly searches are untouched and the audit's search-cost range is $0. Not verified: whether the model searches under the JSON schema when told to.
+- **Finding 1 (corrected later the same day, see "Slice 6, fourth measurement": the reported count is unreliable under the JSON format), search is on but was never used.** All 55 calls reported 0 searches, 0 sources and no search-result tokens. Four raw calls were made to understand this (59 calls in all): the same model with the search tool did not search for a plain "which utility serves" question with or without the JSON schema, nor did `gemini-3.5-flash-lite`; it did search (2 queries, metadata returned) when the prompt told it to search and cite. So the tool works on this key and the telemetry code can read it; with today's prompts the model answers from memory. To verify on production telemetry once lookups land: whether searches are 0 there too. If so, the 5,000 monthly searches are untouched and the audit's search-cost range is $0. Not verified: whether the model searches under the JSON schema when told to.
 - **Finding 2, one right answer is thrown away.** 5 of the 6 hard misses are `quality_gate_failed`: single-utility cities (Chattanooga, Sacramento, Lihue, Memphis, Jacksonville) where the gate wants 2 names, so the seller would see the national list. A raw call for Chattanooga returned the right utility alone. The sixth (Kansas City, MO water) is `state_mismatch_rejected`, the state-name filter. This is direct evidence for R4 and R13.
 - Finding 3: thinking at `low` uses about 440 tokens a call, four times the audit's assumption, and more than the visible answer.
 - Limits of this run: 30 cases, one run each (no repeat, so no measure of run-to-run variation); silver answers picked from a suggestion favor the current pipeline; the hard answers are unverified; partial name matching is a proxy; search and contact lookups are not covered; latency per pass and source-domain quality are not measured.
@@ -226,10 +226,59 @@ No code change; `--passes one` turns the verify pass off. Same 30 cases, same co
 
 ## Production check of slice 4 (2026-10-12)
 
-Confirmed by the owner's Admin Telemetry screenshot and a read-only aggregate query: after the `6ba63ff` deployment, 6 fresh suggestion runs and 6 contact lookups recorded tokens and thinking level `low`, each with 0 searches and 0 sources (suggestions: 11 passes, 5,340 prompt, 3,700 output and 5,794 thinking tokens, average 9.2 s; contacts: about 460 prompt, 100 output and 400 thinking tokens each, average 3.6 s). So production also answers without searching, as the evaluation found, and the monthly search allowance is not being used. Those runs were on the old prompt (`provider-suggestions-v1`).
+Confirmed by the owner's Admin Telemetry screenshot and a read-only aggregate query: after the `6ba63ff` deployment, 6 fresh suggestion runs and 6 contact lookups recorded tokens and thinking level `low`, each with 0 searches and 0 sources (suggestions: 11 passes, 5,340 prompt, 3,700 output and 5,794 thinking tokens, average 9.2 s; contacts: about 460 prompt, 100 output and 400 thinking tokens each, average 3.6 s). The reported search count is 0 in production as in the evaluation; that count was later found unreliable under the JSON format (see "Slice 6, fourth measurement"), so it does not show the allowance is unused. Those runs were on the old prompt (`provider-suggestions-v1`).
 
 Owner reported in chat on 2026-10-12 (not verified here): `SUGGESTIONS_SHADOW_MODE`, `SUGGESTIONS_SERVE_NEW_PIPELINE` and `SUGGESTIONS_CANARY_PERCENT` are deleted in hosting. Two production deployments were Ready at about 17:50 and 17:56 UTC; which one carries the deletion was not checked.
 
+## Slice 6, third measurement: telling the model to search (2026-10-12, Claude Opus 5.5)
+
+Owner agreed in chat. Nothing shipped: the prompt line was a temporary local edit, removed after the run (`git status` clean).
+
+- What was tried: one sentence added to all three suggestion prompts, "Before answering, use Google Search to check which providers serve this exact location, and base your answer on what you find." Same 30 cases, at `3be14f5`.
+- Result: **the model still ran 0 searches** in 41 calls. Accuracy, wait and cost were the same as without the sentence within run-to-run variation (top answer 25/30 both, top 3 29 against 28, generic list 0, p50 3.4 s).
+- Three raw calls to find out why: asked outright to search for propane companies in one town, `gemini-3.1-flash-lite` ran no search as plain text or with the JSON schema, and neither did `gemini-3.5-flash-lite`. Earlier the same model did search when asked for a current phone number and recent news with citations. So these models decide for themselves, and they treat "which utility serves this town" as something they already know. An instruction in the prompt does not change that.
+- What this was taken to mean at the time (**withdrawn**, see "Slice 6, fourth measurement"): Google Search grounding contributes nothing to suggestions today, in production or in the evaluation, and cannot be switched on by wording alone. The audit's search-cost range is $0, and the "grounded" label on these answers is not earned. Not tested: forcing a search some other way, or a larger model.
+- Suggested follow-up (not run, needs the owner's go-ahead): one run with `--grounding off`. If results are the same, the search tool can be turned off for suggestions, which removes the dependency on combining structured output with built-in tools (the cause of the July incident, and documented by Google as a preview feature).
+- Model use: 41 calls plus 3 raw calls, 0 searches. Session total: 353 model calls, 2 searches.
+
+## Slice 6, fourth measurement: search tool off, and a correction (2026-10-12, Claude Opus 5.5)
+
+Owner agreed in chat. `--grounding off`, same 30 cases at `3be14f5`, 40 model calls. No code change.
+
+| Measure | Search tool on | Search tool off |
+|---|---|---|
+| Correct top answer | 25/30 | 25/30 |
+| Correct answer in top 3 | 28/30 | 25/30 |
+| One-provider cases (20): top answer | 19 to 20 | 20 |
+| Hard cases (12): top answer | 12 | 12 |
+| Multi-provider cases (10): top 3 | 8 | 5 |
+| Latency p50 / p95 | 3.5 s / 9.3 s | 1.7 s / 4.6 s |
+| Per call: prompt / thinking tokens | about 505 / 330 | about 375 / 110 |
+| Token cost per run | $0.040 | $0.025 |
+
+- With the tool off, propane and oil answers changed character: the local dealers sellers actually named (returned in every run with the tool on) were replaced by national brands and by names that did not appear in any other run. Electric, gas, water, sewer and all 12 hard cases were unaffected.
+- **Correction to findings recorded earlier today** ("search is on but was never used", "the monthly allowance is untouched", "search cost is $0", "grounding contributes nothing"). Those rested on the reported search count, and that count is not reliable when a JSON schema is attached. Evidence: one prompt that reports 3 searches and 3 sources as plain text reports 0 of each with the JSON schema, while its thinking tokens double (218 to 435) and the tool still adds about 115 prompt tokens; and the table above shows the tool's presence changes answers, token use and wait. The likely reading is that searches do run under the JSON format and are not reported back. A second reading, that the tool only makes the model think longer, fits the tokens and the wait but not the appearance of real small local dealers.
+- Consequences:
+  - `search_query_count` and `source_count` in AI telemetry, and "Search queries" on Admin Telemetry, will read 0 for every suggestion, search and contact call. That says nothing about what Google counts or bills. The columns are still correct for any call made without a JSON schema (none today).
+  - What Google counts can only be read on Google's side. Owner check: the usage or billing page for Grounding with Google Search for 2026-10-12. Today's evaluation made about 320 calls with the tool attached; if searches ran, they came out of the shared 5,000.
+  - The audit's search-cost range stays an open estimate, not $0.
+  - The search-prompt measurement above still stands as measured (the added sentence changed no result), but its explanation ("the model decides not to search") is withdrawn.
+- Decision supported by this run: **keep the search tool on.** Turning it off loses local providers in the categories where sellers most need them.
+- Possible later option, not recommended yet: tool off for electric, gas, water and sewer only (no loss on these 20 cases, half the wait). The 20 cases are mostly large utilities; small boroughs and townships are under-represented, so measure on more local water and sewer cases first.
+- Model use: 40 calls plus 3 raw calls. Session total: 396 model calls. Searches reported by the API: 5. Searches actually run: unknown, see above.
+
+## Case file check (2026-10-12, Claude Opus 5.5)
+
+Owner asked in chat. Web reading only: no model call, no live database read, no commit.
+
+- **The 12 hard cases, checked against the providers' own sites.** No answer was wrong. 11 are now `"verified": true` in `scripts/eval/cases/hard-cases.json`. Arlington, VA gas stays `false`: the provider's site confirms Virginia and lists Arlington County among Virginia code authorities, but its territory map is an image and no text names Arlington. Three checks rest on a search excerpt of the provider's page because the page itself could not be fetched (CenterPoint 403, Oncor timeout, JEA bot check). Three aliases are not spelled out on the pages read and are kept only as matching aids: "Electric Power Board of Chattanooga", "Kansas City Water Services", "Jacksonville Electric Authority" (the last appears in a JEA disclosure report as a former name).
+- **17 local hard cases drafted, not finalized:** `.eval/cases/local-hard-cases.draft.json` (ignored folder, awaiting the owner's review). Places come from `silver.json`; every accepted name was read on the provider's own site. 9 small-town water and sewer, 4 where the mailing city is not the municipality (Enola, Boalsburg twice, Rancocas), 4 rural propane and oil. The file holds place, category, public provider names and domains only; no seller-typed text.
+- Weaker points in the draft: Bellbrook sewer and Eastlake water rest on search excerpts of the county pages (direct fetch refused or the page did not show the list); that Boalsburg is in Harris Township is general knowledge, not on the provider sites; Kresgeville oil uses a dealer verified on its own site (R.F. Ohl) that is not a name sellers gave.
+- Could not be verified on a provider site, so left out: Paraco for Kresgeville and Saylorsburg (branch 2 miles away, no town list), Liberty Oil, Stiff Oil, Snedeker Energy and Kern River Propane (no own site found), R.D. Holder and Santmyer (no town list). Rural propane and oil are thin for that reason: 4 cases, 3 of them in the Poconos.
+- **Open decision for the owner:** where the local cases go. Adding them to `hard-cases.json` changes which cases `--hard 12` picks, so earlier runs stop being comparable. Recommended: a second committed file, `scripts/eval/cases/local-hard-cases.json`, run with the existing `--hard-cases` option, plus a README line.
+- **Finalized the same day (owner agreed to the recommendation in chat, no case dropped):** the 17 cases are in the new `scripts/eval/cases/local-hard-cases.json`; the draft in `.eval/` is gone. `scripts/eval/README.md` describes the file and the `--hard-cases` option; `tests/unit/eval-core.test.ts` reads both committed files. Uncommitted; no run has been made on these cases (a full run is at most 51 model calls and needs the owner's go-ahead).
+- Validation (Node 20.19.0): `tests/unit/eval-core.test.ts` 19/19; ESLint on the test file clean; the runner's plan-only mode reads the new file (17 hard cases, no model call); `git diff --check` passed. Full Vitest, `tsc` and the security scan not rerun (JSON, one test and a README changed).
+
 ## Next action
 
-Owner agreed in chat on 2026-10-12 to commit and push R8 and to the last agreed measurement: a prompt that tells the model to search, the only one that uses the search allowance (production and the evaluation both show 0 searches today, so this would add a cost that does not exist now; measure what it adds before deciding). Still open in slice 6: R9 model trial, R10 county and township, R11 honest fallback. Still owed: verify the 12 hard cases and add local ones.
+Owner: say whether to commit the case files. Owner: look up the Grounding with Google Search count for 2026-10-12 on Google's side; it settles whether searches run under the JSON format and what today's runs used. Until then, treat every evaluation run with the tool on as spending searches, and ask before another. Still open in slice 6: R9 model trial (`--model`, no code change), R10 county and township, R11 honest fallback wording. A small follow-up worth doing: say on Admin Telemetry and in `docs/ai-telemetry.md` that the search count is not reported for JSON-format calls. The 12 hard cases are checked (11 verified); the 17 local cases are in their own file, uncommitted and not yet run. More rural propane and oil cases would need a phone call or the dealers' own town lists.

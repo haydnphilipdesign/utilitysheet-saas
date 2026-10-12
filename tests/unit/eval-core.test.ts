@@ -129,8 +129,8 @@ describe('evaluation cases', () => {
             .toThrow(/zip/);
     });
 
-    it('reads the committed hard cases', () => {
-        const file = path.resolve(__dirname, '../../scripts/eval/cases/hard-cases.json');
+    it.each(['hard-cases.json', 'local-hard-cases.json'])('reads the committed %s', (name) => {
+        const file = path.resolve(__dirname, '../../scripts/eval/cases', name);
         const cases = parseCases(JSON.parse(readFileSync(file, 'utf8')), 'hard');
         expect(cases.length).toBeGreaterThanOrEqual(10);
         expect(new Set(cases.map((item) => item.id)).size).toBe(cases.length);
