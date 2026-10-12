@@ -104,17 +104,42 @@ describe('contact-service', () => {
         });
 
         expect(getFromCacheMock).toHaveBeenCalledWith(
-            expect.stringContaining('contact:v2:gemini-test:structured-json-v2:ai:sewer:pa:170')
+            expect.stringContaining('contact:v3:gemini-test:structured-json-v2:ai:sewer:pa:17050:mechanicsburg:')
         );
         expect(generateJSONWithMetaMock).toHaveBeenCalledWith(
             expect.stringMatching(/Utility Category: sewer[\s\S]*Mechanicsburg/),
             { responseJsonSchema: PROVIDER_CONTACT_RESPONSE_SCHEMA }
         );
         expect(setInCacheMock).toHaveBeenCalledWith(
-            expect.stringContaining('contact:v2:gemini-test:structured-json-v2:ai:sewer:pa:170'),
+            expect.stringContaining('contact:v3:gemini-test:structured-json-v2:ai:sewer:pa:17050:mechanicsburg:'),
             expect.anything(),
             expect.any(Number)
         );
+    });
+
+    it('keeps the same provider name in two cities of one ZIP3 in separate cache entries', async () => {
+        generateJSONWithMetaMock.mockResolvedValue({
+            data: { customer_service_phone: '1-800-555-1212' },
+            failure: null,
+            groundingSourceUrls: [],
+        });
+
+        await resolveContact('Borough Water Department', {
+            category: 'water',
+            address: '29 Clover Lane, Mechanicsburg, PA 17050',
+        });
+        await resolveContact('Borough Water Department', {
+            category: 'water',
+            address: '14 High St, Carlisle, PA 17013',
+        });
+        await resolveContact('Borough Water Department', {
+            category: 'water',
+            address: '410 Market St, Mechanicsburg, PA 17050',
+        });
+
+        const keys = getFromCacheMock.mock.calls.map(([key]) => key);
+        expect(keys[0]).not.toBe(keys[1]);
+        expect(keys[0]).toBe(keys[2]);
     });
 
     it('caches a failed contact lookup for only five minutes', async () => {

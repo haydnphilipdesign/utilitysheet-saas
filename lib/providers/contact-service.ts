@@ -15,7 +15,7 @@ import { ProviderContact, UtilityCategory } from '@/types';
 
 const POSITIVE_CACHE_TTL_SECONDS = 90 * 24 * 60 * 60;
 const NEGATIVE_CACHE_TTL_SECONDS = 5 * 60;
-const CONTACT_CACHE_VERSION = 'v2';
+const CONTACT_CACHE_VERSION = 'v3';
 
 type CachedContact = { v: ProviderContact | null };
 
@@ -56,9 +56,12 @@ function getContextCacheScope(context?: ContactLookupContext): string {
     }
 
     const parsed = parseAddressWithConfidence(context.address);
+    // State + full ZIP + city, the locality the prompt uses to tell apart
+    // same-named boroughs, townships and authorities.
     const state = sanitizeCacheToken(parsed.state);
-    const locality = sanitizeCacheToken(parsed.zip ? parsed.zip.slice(0, 3) : parsed.city);
-    return `${category}:${state}:${locality}`;
+    const zip = parsed.zip ? sanitizeCacheToken(parsed.zip) : 'nozip';
+    const city = sanitizeCacheToken(parsed.city);
+    return `${category}:${state}:${zip}:${city}`;
 }
 
 function toCacheKey(providerNameOrId: string, context?: ContactLookupContext): string {

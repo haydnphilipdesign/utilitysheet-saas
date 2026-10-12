@@ -16,6 +16,15 @@ const ALLOWED_THINKING_LEVELS = ['minimal', 'low', 'medium', 'high'] as const;
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 500;
 
+// Timeout configuration. One call to the model may take this long; all the
+// attempts of one generation together may take twice that unless the caller
+// passes its own deadline.
+const DEFAULT_CALL_TIMEOUT_MS = 10_000;
+const MIN_CALL_TIMEOUT_MS = 1_000;
+const MAX_CALL_TIMEOUT_MS = 60_000;
+// An attempt with less time than this left is not worth starting (and billing).
+const MIN_ATTEMPT_MS = 1_000;
+
 // Circuit breaker configuration
 interface CircuitBreakerState {
     failures: number;
@@ -48,6 +57,15 @@ export interface JSONGenerationResult<T> {
 
 export interface JSONGenerationOptions {
     responseJsonSchema: unknown;
+    /** Epoch milliseconds after which no attempt may still be running. */
+    deadlineAt?: number;
+}
+
+class GeminiTimeoutError extends Error {
+    constructor(timeoutMs: number) {
+        super(`Gemini call timed out after ${timeoutMs}ms`);
+        this.name = 'GeminiTimeoutError';
+    }
 }
 
 interface GeminiErrorMetadata {
@@ -242,11 +260,49 @@ function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function getCallTimeoutMs(): number {
+    const parsed = Number.parseInt(process.env.GEMINI_CALL_TIMEOUT_MS || '', 10);
+    if (!Number.isFinite(parsed)) {
+        return DEFAULT_CALL_TIMEOUT_MS;
+    }
+    return Math.max(MIN_CALL_TIMEOUT_MS, Math.min(MAX_CALL_TIMEOUT_MS, parsed));
+}
+
 /**
- * Retry a function with exponential backoff
+ * Run one attempt, giving up after timeoutMs. The signal asks the SDK to drop
+ * the request; the race ends the wait even if it does not.
+ */
+async function withTimeout<T>(
+    fn: (signal: AbortSignal) => Promise<T>,
+    timeoutMs: number
+): Promise<T> {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+            reject(new GeminiTimeoutError(timeoutMs));
+            controller.abort();
+        }, timeoutMs);
+    });
+
+    const attempt = fn(controller.signal);
+    // The abandoned attempt may still reject after the timeout has won.
+    attempt.catch(() => undefined);
+
+    try {
+        return await Promise.race([attempt, timedOut]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
+ * Retry a function with exponential backoff, a timeout on each attempt and a
+ * deadline for all of them together. A timed-out attempt is not retried.
  */
 async function withRetry<T>(
-    fn: () => Promise<T>,
+    fn: (signal: AbortSignal) => Promise<T>,
+    deadlineAt?: number,
     retries: number = MAX_RETRIES
 ): Promise<T | null> {
     // Check circuit breaker first
@@ -255,12 +311,27 @@ async function withRetry<T>(
         return null;
     }
 
+    const callTimeoutMs = getCallTimeoutMs();
+    const deadline = deadlineAt ?? Date.now() + callTimeoutMs * 2;
+
     for (let attempt = 0; attempt < retries; attempt++) {
+        const remainingMs = deadline - Date.now();
+        if (remainingMs < MIN_ATTEMPT_MS) {
+            console.warn('[Gemini] Deadline reached, skipping AI call');
+            return null;
+        }
+
         try {
-            const result = await fn();
+            const result = await withTimeout(fn, Math.min(callTimeoutMs, remainingMs));
             recordSuccess();
             return result;
         } catch (error) {
+            if (error instanceof GeminiTimeoutError) {
+                console.error(`[Gemini] ${error.message}`);
+                recordFailure();
+                return null;
+            }
+
             const metadata = extractGeminiErrorMetadata(error);
             const isLastAttempt = attempt === retries - 1;
             if (!metadata.retryable) {
@@ -276,6 +347,12 @@ async function withRetry<T>(
             }
 
             const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+            if (deadline - Date.now() - delay < MIN_ATTEMPT_MS) {
+                console.error('[Gemini] No time left to retry before the deadline:', metadata);
+                recordFailure();
+                return null;
+            }
+
             console.warn(
                 `[Gemini] Attempt ${attempt + 1} failed (status=${metadata.status ?? 'unknown'}, code=${metadata.code ?? 'unknown'}, retryable=${metadata.retryable}), retrying in ${delay}ms...`
             );
@@ -351,9 +428,10 @@ export async function generateContent(prompt: string): Promise<string | null> {
         return null;
     }
 
-    return withRetry(async () => {
+    return withRetry(async (signal) => {
         const response = await genAI.models.generateContent({
             ...requestConfig,
+            config: { ...requestConfig.config, abortSignal: signal },
             contents: prompt,
         });
         return response.text ?? '';
@@ -390,9 +468,10 @@ export async function generateJSONWithMeta<T>(
         };
     }
 
-    const responseData = await withRetry(async () => {
+    const responseData = await withRetry(async (signal) => {
         const response = await genAI.models.generateContent({
             ...requestConfig,
+            config: { ...requestConfig.config, abortSignal: signal },
             contents: prompt,
         });
         const text = response.text?.trim();
@@ -404,7 +483,7 @@ export async function generateJSONWithMeta<T>(
             text,
             groundingSourceUrls: getGroundingSourceUrls(response),
         };
-    });
+    }, options.deadlineAt);
 
     if (!responseData) {
         return {

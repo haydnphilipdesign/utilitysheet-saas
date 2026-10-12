@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     ArrowLeft,
@@ -22,7 +22,8 @@ import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import { UtilityCategory, ProviderSuggestion, TrashPickupDay, TrashUtilityExtra } from '@/types';
 import { trackEvent } from '@/lib/analytics/events';
-import { dedupeProviderSuggestions } from '@/lib/providers/canonicalize';
+import { canonicalProviderKey, dedupeProviderSuggestions } from '@/lib/providers/canonicalize';
+import { filterSuggestionsByQuery } from '@/lib/providers/local-match';
 import { NO_TRASH_SERVICE_LABEL, UTILITY_PROVIDER_HELPERS, getUtilityProviderPrompt } from '@/lib/packet/seller-questions';
 import { PickupDaySelector, type PickupDaySpecial } from '../PickupDaySelector';
 import { wizardFocusRing, wizardGhostButton, wizardPrimaryButton, wizardSecondaryButton, wizardTextInput } from '../wizard-ui';
@@ -39,6 +40,13 @@ const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }
     internet: { icon: Wifi, color: 'text-purple-500' },
     cable: { icon: Tv, color: 'text-indigo-500' },
 };
+
+// Typing filters the suggestions already loaded. The server (an AI lookup) is
+// asked only when nothing loaded matches and the seller pauses on a longer
+// name, or when they press Search or Enter.
+const MIN_SEARCH_CHARS = 2;
+const AUTO_SEARCH_MIN_CHARS = 4;
+const AUTO_SEARCH_PAUSE_MS = 900;
 
 function toWeekdays(days: TrashPickupDay[] | null | undefined): TrashPickupDay[] {
     if (!Array.isArray(days)) return [];
@@ -85,52 +93,101 @@ export function UtilityStep({
 }: UtilityStepProps) {
     const [mode, setMode] = useState<'view' | 'search' | 'meter' | 'trash_details'>('view');
     const [searchQuery, setSearchQuery] = useState('');
-    const [rawSearchResults, setRawSearchResults] = useState<ProviderSuggestion[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
+    // Server results are kept with the query they answer, and the search in
+    // flight with the query it is for, so text typed since shows neither.
+    const [searchOutcome, setSearchOutcome] = useState<{ query: string; results: ProviderSuggestion[] } | null>(null);
+    const [activeSearch, setActiveSearch] = useState<{ query: string; id: number } | null>(null);
+    const searchAbortRef = useRef<AbortController | null>(null);
+    const autoSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const searchIdRef = useRef(0);
+
+    // Start over when the wizard moves this step to another utility.
+    const [shownCategory, setShownCategory] = useState(category);
+    if (shownCategory !== category) {
+        setShownCategory(category);
+        setMode('view');
+        setSearchQuery('');
+        setSearchOutcome(null);
+        setActiveSearch(null);
+    }
 
     // Belt-and-braces dedupe in the client so sellers never see near-duplicate
     // providers even if a cached API response predates the server-side layer.
     const dedupedSuggestions = useMemo(() => dedupeProviderSuggestions(suggestions || []), [suggestions]);
-    const searchResults = useMemo(() => dedupeProviderSuggestions(rawSearchResults), [rawSearchResults]);
 
-    useEffect(() => {
-        setMode('view');
-        setSearchQuery('');
-        setRawSearchResults([]);
-    }, [category]);
+    const trimmedQuery = searchQuery.trim();
+    const canSearch = trimmedQuery.length >= MIN_SEARCH_CHARS;
+    const localMatches = useMemo(
+        () => (canSearch ? filterSuggestionsByQuery(dedupedSuggestions, trimmedQuery) : []),
+        [canSearch, dedupedSuggestions, trimmedQuery]
+    );
+    const hasLocalMatch = localMatches.length > 0;
+    const hasSearched = canSearch && searchOutcome?.query === trimmedQuery;
+    const isSearching = canSearch && activeSearch?.query === trimmedQuery;
+    const searchResults = useMemo(() => {
+        if (!hasSearched || !searchOutcome) return [];
+        const shown = new Set(localMatches.map((item) => canonicalProviderKey(item.display_name)));
+        return dedupeProviderSuggestions(searchOutcome.results)
+            .filter((item) => !shown.has(canonicalProviderKey(item.display_name)));
+    }, [hasSearched, searchOutcome, localMatches]);
 
-    useEffect(() => {
-        if (!searchQuery || searchQuery.length < 2) {
-            setRawSearchResults([]);
-            return;
+    const runSearch = useCallback(async (query: string) => {
+        if (autoSearchTimerRef.current) {
+            clearTimeout(autoSearchTimerRef.current);
+            autoSearchTimerRef.current = null;
+        }
+        searchAbortRef.current?.abort();
+        const controller = new AbortController();
+        searchAbortRef.current = controller;
+        const id = ++searchIdRef.current;
+        setActiveSearch({ query, id });
+
+        let results: ProviderSuggestion[] = [];
+        try {
+            const res = await fetch(`/api/seller/${encodeURIComponent(token)}/suggestions/search?query=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`, {
+                signal: controller.signal,
+            });
+            if (res.ok) {
+                const body: unknown = await res.json();
+                results = Array.isArray(body) ? body : [];
+            }
+        } catch (e) {
+            if (!(e instanceof DOMException && e.name === 'AbortError')) {
+                console.error(e);
+            }
         }
 
-        const controller = new AbortController();
-        const timer = setTimeout(async () => {
-            setIsSearching(true);
-            try {
-                const res = await fetch(`/api/seller/${encodeURIComponent(token)}/suggestions/search?query=${encodeURIComponent(searchQuery)}&category=${encodeURIComponent(category)}`, {
-                    signal: controller.signal,
-                });
-                if (res.ok) {
-                    setRawSearchResults(await res.json());
-                } else {
-                    setRawSearchResults([]);
-                }
-            } catch (e) {
-                if (!(e instanceof DOMException && e.name === 'AbortError')) {
-                    console.error(e);
-                }
-            } finally {
-                setIsSearching(false);
-            }
-        }, 300);
+        setActiveSearch((current) => (current?.id === id ? null : current));
+        // Newer text or another utility has taken over.
+        if (controller.signal.aborted) return;
+        setSearchOutcome({ query, results });
+    }, [category, token]);
+
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        if (trimmedQuery.length >= AUTO_SEARCH_MIN_CHARS && !hasLocalMatch) {
+            timer = setTimeout(() => {
+                autoSearchTimerRef.current = null;
+                void runSearch(trimmedQuery);
+            }, AUTO_SEARCH_PAUSE_MS);
+            autoSearchTimerRef.current = timer;
+        }
 
         return () => {
-            clearTimeout(timer);
-            controller.abort();
+            if (timer) clearTimeout(timer);
+            autoSearchTimerRef.current = null;
+            // A search still in flight was for the text being replaced.
+            searchAbortRef.current?.abort();
+            searchAbortRef.current = null;
         };
-    }, [searchQuery, category, token]);
+    }, [trimmedQuery, hasLocalMatch, runSearch]);
+
+    const nothingFound = hasSearched && !hasLocalMatch && searchResults.length === 0;
+
+    const handleSearchNow = () => {
+        if (!canSearch || isSearching || hasSearched) return;
+        void runSearch(trimmedQuery);
+    };
 
     const currentUtilityState = state.utilities[category];
     const shouldGateElectricMeter = collectElectricMeterNumber && category === 'electric';
@@ -242,8 +299,8 @@ export function UtilityStep({
     const handleManualEntry = () => {
         updateState(category, {
             entry_mode: 'free_text',
-            display_name: searchQuery,
-            raw_text: searchQuery,
+            display_name: trimmedQuery,
+            raw_text: trimmedQuery,
             canonical_id: null,
             confidence_score: null,
         });
@@ -286,9 +343,13 @@ export function UtilityStep({
     };
 
     const handleManualEntryFromSearch = () => {
+        // The typed name can now be used before or after a search, so the
+        // event says which and how many matches were on screen.
         trackEvent('seller_provider_search_no_results_committed', {
             category,
-            query_length: searchQuery.length,
+            query_length: trimmedQuery.length,
+            searched: hasSearched,
+            result_count: localMatches.length + searchResults.length,
             location: 'seller_flow',
         });
         handleManualEntry();
@@ -541,6 +602,13 @@ export function UtilityStep({
                             placeholder={`Search ${categoryLabel} providers...`}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleSearchNow();
+                                }
+                            }}
+                            enterKeyHint="search"
                             className={`py-3 sm:py-4 pl-10 sm:pl-12 pr-10 sm:pr-12 text-base sm:text-sm ${wizardTextInput}`}
                             data-testid="seller-provider-search-input"
                         />
@@ -556,6 +624,25 @@ export function UtilityStep({
                         )}
                     </div>
                     <div className="space-y-2 max-h-[280px] sm:max-h-[350px] overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
+                        {canSearch && hasLocalMatch && (
+                            <>
+                                <div className="px-1 pt-2 pb-1">
+                                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Suggested for your area</p>
+                                </div>
+                                {localMatches.map((suggestion) => (
+                                    <button
+                                        type="button"
+                                        key={suggestion.display_name}
+                                        onClick={() => handleConfirmSuggestion(suggestion)}
+                                        className={`w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border hover:border-ring rounded-xl text-left transition-all group active:scale-[0.98] ${wizardFocusRing}`}
+                                    >
+                                        <span className="font-medium text-foreground transition-colors text-sm sm:text-base truncate">{suggestion.display_name}</span>
+                                        <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
+                                    </button>
+                                ))}
+                            </>
+                        )}
+
                         {isSearching && (
                             <div className="p-4 flex items-center justify-center gap-2 text-muted-foreground text-xs sm:text-sm" role="status">
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -563,19 +650,28 @@ export function UtilityStep({
                             </div>
                         )}
 
-                        {!isSearching && searchQuery.length >= 2 && searchResults.map((result) => (
-                            <button
-                                type="button"
-                                key={result.display_name}
-                                onClick={() => handleSelectResult(result)}
-                                className={`w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border hover:border-ring rounded-xl text-left transition-all group active:scale-[0.98] ${wizardFocusRing}`}
-                            >
-                                <span className="font-medium text-foreground transition-colors text-sm sm:text-base truncate">{result.display_name}</span>
-                                <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
-                            </button>
-                        ))}
+                        {!isSearching && hasSearched && searchResults.length > 0 && (
+                            <>
+                                {hasLocalMatch && (
+                                    <div className="px-1 pt-2 pb-1">
+                                        <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">More matches</p>
+                                    </div>
+                                )}
+                                {searchResults.map((result) => (
+                                    <button
+                                        type="button"
+                                        key={result.display_name}
+                                        onClick={() => handleSelectResult(result)}
+                                        className={`w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border hover:border-ring rounded-xl text-left transition-all group active:scale-[0.98] ${wizardFocusRing}`}
+                                    >
+                                        <span className="font-medium text-foreground transition-colors text-sm sm:text-base truncate">{result.display_name}</span>
+                                        <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
+                                    </button>
+                                ))}
+                            </>
+                        )}
 
-                        {!isSearching && (!searchQuery || searchQuery.length < 2) && dedupedSuggestions.length > 0 && (
+                        {!isSearching && (!searchQuery || !canSearch) && dedupedSuggestions.length > 0 && (
                             <>
                                 <div className="px-1 pt-2 pb-1">
                                     <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Suggested for your area</p>
@@ -603,26 +699,40 @@ export function UtilityStep({
                             </>
                         )}
 
-                        {!isSearching && searchQuery.length >= 2 && searchResults.length === 0 && (
+                        {!isSearching && canSearch && (
                             <div className="pt-3 pb-2 space-y-3">
-                                <p className="text-muted-foreground text-xs sm:text-sm text-center">
-                                    No matches in our directory. That&apos;s ok, you can still use this name.
-                                </p>
+                                {nothingFound && (
+                                    <p className="text-muted-foreground text-xs sm:text-sm text-center">
+                                        No matches in our directory. That&apos;s ok, you can still use this name.
+                                    </p>
+                                )}
+                                {!hasSearched && (
+                                    <button
+                                        type="button"
+                                        onClick={handleSearchNow}
+                                        className={`w-full py-3 text-sm sm:text-base font-semibold ${hasLocalMatch ? wizardSecondaryButton : wizardPrimaryButton}`}
+                                        data-testid="seller-provider-search-run"
+                                    >
+                                        {hasLocalMatch ? 'Search more providers' : `Search for "${trimmedQuery}"`}
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     onClick={handleManualEntryFromSearch}
-                                    className={`w-full py-3 text-sm sm:text-base font-semibold ${wizardPrimaryButton}`}
+                                    className={`w-full py-3 text-sm sm:text-base font-semibold ${nothingFound ? wizardPrimaryButton : wizardSecondaryButton}`}
                                     data-testid="seller-provider-use-typed"
                                 >
-                                    {`Use "${searchQuery}"`}
+                                    {`Use "${trimmedQuery}"`}
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setSearchQuery('')}
-                                    className={`w-full py-2.5 text-sm ${wizardSecondaryButton}`}
-                                >
-                                    Search again
-                                </button>
+                                {nothingFound && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchQuery('')}
+                                        className={`w-full py-2.5 text-sm ${wizardSecondaryButton}`}
+                                    >
+                                        Search again
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

@@ -280,3 +280,123 @@ describe('gemini-client retry behavior', () => {
         expect(generateContentMock).toHaveBeenCalledTimes(3);
     });
 });
+
+describe('gemini-client timeouts', () => {
+    const schema = {
+        type: 'object',
+        properties: { name: { type: 'string' } },
+        required: ['name'],
+    };
+    const providerError = { data: null, failure: 'provider_error', groundingSourceUrls: [] };
+
+    function failAfter(ms: number, error: unknown) {
+        return () => new Promise((_resolve, reject) => {
+            setTimeout(() => reject(error), ms);
+        });
+    }
+
+    async function settledAfter<T>(promise: Promise<T>, ms: number): Promise<T | 'pending'> {
+        await vi.advanceTimersByTimeAsync(ms);
+        return Promise.race([promise, Promise.resolve('pending' as const)]);
+    }
+
+    beforeEach(() => {
+        vi.resetModules();
+        vi.useFakeTimers();
+        process.env.GOOGLE_AI_API_KEY = 'test-api-key';
+        delete process.env.GEMINI_GOOGLE_SEARCH_GROUNDING;
+        delete process.env.GEMINI_THINKING_LEVEL;
+        delete process.env.GEMINI_CALL_TIMEOUT_MS;
+        generateContentMock.mockReset();
+        GoogleGenAIMock.mockReset();
+        GoogleGenAIMock.mockImplementation(function MockGoogleGenAI() {
+            return {
+                models: {
+                    generateContent: generateContentMock,
+                },
+            };
+        });
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        delete process.env.GEMINI_CALL_TIMEOUT_MS;
+    });
+
+    it('ends a hung call at the per-call timeout, aborts it and does not retry', async () => {
+        generateContentMock.mockImplementation(() => new Promise(() => undefined));
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const promise = generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: schema });
+
+        expect(await settledAfter(promise, 9_999)).toBe('pending');
+        expect(await settledAfter(promise, 1)).toEqual(providerError);
+        expect(generateContentMock).toHaveBeenCalledTimes(1);
+
+        const signal = generateContentMock.mock.calls[0][0].config.abortSignal as AbortSignal;
+        expect(signal.aborted).toBe(true);
+
+        await vi.runAllTimersAsync();
+        expect(generateContentMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('reads the per-call timeout from GEMINI_CALL_TIMEOUT_MS', async () => {
+        process.env.GEMINI_CALL_TIMEOUT_MS = '3000';
+        generateContentMock.mockImplementation(() => new Promise(() => undefined));
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const promise = generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: schema });
+
+        expect(await settledAfter(promise, 3_000)).toEqual(providerError);
+    });
+
+    it('cuts a call short when the caller deadline comes before the per-call timeout', async () => {
+        generateContentMock.mockImplementation(() => new Promise(() => undefined));
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const promise = generateJSONWithMeta<{ name: string }>('prompt', {
+            responseJsonSchema: schema,
+            deadlineAt: Date.now() + 4_000,
+        });
+
+        expect(await settledAfter(promise, 3_999)).toBe('pending');
+        expect(await settledAfter(promise, 1)).toEqual(providerError);
+    });
+
+    it('does not start a retry that the deadline leaves no room for', async () => {
+        generateContentMock.mockImplementation(failAfter(4_000, { status: 500, message: 'Internal error' }));
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const promise = generateJSONWithMeta<{ name: string }>('prompt', {
+            responseJsonSchema: schema,
+            deadlineAt: Date.now() + 5_000,
+        });
+
+        expect(await settledAfter(promise, 5_000)).toEqual(providerError);
+        expect(generateContentMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('bounds slow retries without a caller deadline to twice the per-call timeout', async () => {
+        generateContentMock.mockImplementation(failAfter(9_000, { status: 500, message: 'Internal error' }));
+
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const promise = generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: schema });
+
+        expect(await settledAfter(promise, 20_000)).toEqual(providerError);
+        expect(generateContentMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not call the model when the deadline has already passed', async () => {
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const result = await generateJSONWithMeta<{ name: string }>('prompt', {
+            responseJsonSchema: schema,
+            deadlineAt: Date.now() - 1,
+        });
+
+        expect(result).toEqual(providerError);
+        expect(generateContentMock).not.toHaveBeenCalled();
+    });
+});

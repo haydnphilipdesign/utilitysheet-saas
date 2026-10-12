@@ -257,6 +257,46 @@ test.describe('Seller wizard full journey', () => {
         await expect(page.getByRole('heading', { name: 'All Done!' })).toBeVisible();
     });
 
+    test('search narrows the loaded suggestions and asks the server once for an unknown name', async ({ page }) => {
+        const searched: string[] = [];
+        await page.route(`**/api/seller/${TOKEN}/suggestions/search**`, async (route) => {
+            searched.push(new URL(route.request().url()).searchParams.get('query') || '');
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify([{ display_name: 'Hilltop Electric Co-op', confidence: 0.9 }]),
+            });
+        });
+
+        await page.goto(`/s/${TOKEN}`);
+        await page.getByTestId('seller-welcome-continue').click();
+        await page.getByRole('button', { name: 'Public Water' }).click();
+        await page.getByRole('button', { name: 'Septic System' }).click();
+        await page.getByRole('button', { name: 'Natural Gas' }).click();
+        await page.getByRole('button', { name: 'Continue' }).click();
+
+        await expect(page.getByRole('heading', { name: 'Electric Provider' })).toBeVisible();
+        await page.getByRole('button', { name: 'Search for another' }).click();
+        const input = page.getByTestId('seller-provider-search-input');
+
+        // A name already loaded for this address is found without the server.
+        await input.pressSequentially('met-ed', { delay: 60 });
+        await expect(page.getByRole('button', { name: 'Met-Ed (FirstEnergy)' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'PPL Electric Utilities', exact: false })).toHaveCount(0);
+        await expect(page.getByTestId('seller-provider-use-typed')).toHaveText('Use "met-ed"');
+        await page.waitForTimeout(1500);
+        expect(searched).toEqual([]);
+
+        // An unknown name is looked up once, after the seller stops typing.
+        await input.fill('');
+        await input.pressSequentially('hilltop', { delay: 60 });
+        await expect(page.getByRole('button', { name: 'Hilltop Electric Co-op' })).toBeVisible();
+        expect(searched).toEqual(['hilltop']);
+
+        await page.getByRole('button', { name: 'Hilltop Electric Co-op' }).click();
+        await expect(page.getByRole('heading', { name: 'Water Provider' })).toBeVisible();
+    });
+
     test('offers "Same as Internet" first on Cable/TV and copies the name only', async ({ page }) => {
         await page.route('**/api/**', async (route) => {
             const isSellerRequest = new URL(route.request().url()).pathname === `/api/seller/${TOKEN}`;

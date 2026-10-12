@@ -203,6 +203,8 @@ type AnalyticsEventMap = {
   seller_provider_search_no_results_committed: BasePayload & {
     category: string;
     query_length: number;
+    searched: boolean;
+    result_count: number;
   };
   seller_advanced_section_skipped: BasePayload & {
     module: string;

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const isGeminiConfiguredMock = vi.hoisted(() => vi.fn());
 const generateJSONWithMetaMock = vi.hoisted(() => vi.fn());
@@ -43,6 +43,7 @@ import { PROVIDER_SUGGESTION_RESPONSE_SCHEMA } from '@/lib/ai/response-schemas';
 const {
     parseAddress,
     getCacheKey,
+    getSearchCacheKey,
     buildSuggestionPrompt,
     buildSearchPrompt,
     getFallbackSearchResults,
@@ -116,6 +117,49 @@ describe('Suggestion Service', () => {
         expect(key).toContain('gemini-test');
         expect(key).toContain('structured-json-v2');
     });
+
+    it('keys the suggestion cache by state, full ZIP and city', () => {
+        const key = getCacheKey('29 Clover Lane, Mechanicsburg, PA 17050', 'water');
+
+        expect(key).toContain(':pa:17050:mechanicsburg:water');
+    });
+
+    it('gives two cities in one ZIP3 separate suggestion cache keys', () => {
+        const mechanicsburg = getCacheKey('29 Clover Lane, Mechanicsburg, PA 17050', 'water');
+        const carlisle = getCacheKey('14 High St, Carlisle, PA 17013', 'water');
+
+        expect(mechanicsburg).not.toBe(carlisle);
+    });
+
+    it('gives two cities that share a ZIP separate suggestion cache keys', () => {
+        const mechanicsburg = getCacheKey('29 Clover Lane, Mechanicsburg, PA 17050', 'water');
+        const hampden = getCacheKey('8 Oak Dr, Hampden Township, PA 17050', 'water');
+
+        expect(mechanicsburg).not.toBe(hampden);
+    });
+
+    it('shares the suggestion cache key across streets and city spellings in one city and ZIP', () => {
+        const first = getCacheKey('29 Clover Lane, Mechanicsburg, PA 17050', 'water');
+        const second = getCacheKey('410 Market St,  MECHANICSBURG , PA 17050-1234', 'water');
+
+        expect(first).toBe(second);
+    });
+
+    it('falls back to the city alone when the address has no ZIP', () => {
+        const key = getCacheKey('29 Clover Lane, Mechanicsburg, PA', 'water');
+
+        expect(key).toContain(':pa:nozip:mechanicsburg:water');
+    });
+
+    it('gives two cities in one ZIP3 separate search cache keys', () => {
+        const mechanicsburg = getSearchCacheKey('silver spring', 'sewer', '29 Clover Lane, Mechanicsburg, PA 17050');
+        const carlisle = getSearchCacheKey('silver spring', 'sewer', '14 High St, Carlisle, PA 17013');
+        const sameCity = getSearchCacheKey('Silver Spring ', 'sewer', '410 Market St, Mechanicsburg, PA 17050');
+
+        expect(mechanicsburg).toContain(':pa:17050:mechanicsburg:sewer:');
+        expect(mechanicsburg).not.toBe(carlisle);
+        expect(mechanicsburg).toBe(sameCity);
+    });
 });
 
 describe('Suggestions Pipeline', () => {
@@ -167,7 +211,7 @@ describe('Suggestions Pipeline', () => {
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
         expect(generateJSONWithMetaMock).toHaveBeenCalledWith(
             expect.any(String),
-            { responseJsonSchema: PROVIDER_SUGGESTION_RESPONSE_SCHEMA }
+            { responseJsonSchema: PROVIDER_SUGGESTION_RESPONSE_SCHEMA, deadlineAt: expect.any(Number) }
         );
         expect(result.length).toBeGreaterThanOrEqual(2);
         expect(result[0].display_name).toMatch(/Florida Power/i);
@@ -266,6 +310,30 @@ describe('Suggestions Pipeline', () => {
         expect(memoryOnlySuggestion?.rationale_short).not.toMatch(/historical|account|submission/i);
     });
 
+    it('looks up each city in one ZIP3 separately and reuses the result within a city', async () => {
+        const aiResult = (name: string) => ok([
+            { display_name: name, confidence: 0.9, rationale_short: 'Serves this area', contact_phone: null, contact_website: null },
+            { display_name: 'Pennsylvania American Water', confidence: 0.6, rationale_short: 'Serves nearby areas', contact_phone: null, contact_website: null },
+        ]);
+        generateJSONWithMetaMock
+            .mockResolvedValueOnce(aiResult('Mechanicsburg Borough Water'))
+            .mockResolvedValueOnce(aiResult('Mechanicsburg Borough Water'))
+            .mockResolvedValueOnce(aiResult('Carlisle Borough Water'))
+            .mockResolvedValueOnce(aiResult('Carlisle Borough Water'));
+
+        const mechanicsburg = await getSuggestions('29 Clover Lane, Mechanicsburg, PA 17050', 'water');
+        const carlisle = await getSuggestions('14 High St, Carlisle, PA 17013', 'water');
+
+        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(4);
+        expect(mechanicsburg[0].display_name).toBe('Mechanicsburg Borough Water');
+        expect(carlisle[0].display_name).toBe('Carlisle Borough Water');
+
+        const sameCity = await getSuggestions('410 Market St, Mechanicsburg, PA 17050', 'water');
+
+        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(4);
+        expect(sameCity[0].display_name).toBe('Mechanicsburg Borough Water');
+    });
+
     it('does not share search cache across account scopes', async () => {
         generateJSONWithMetaMock
             .mockResolvedValueOnce(ok([
@@ -273,16 +341,8 @@ describe('Suggestions Pipeline', () => {
                 { display_name: 'Dominion Energy', confidence: 0.6, rationale_short: 'Regional option', contact_phone: null, contact_website: null },
             ]))
             .mockResolvedValueOnce(ok([
-                { display_name: 'Duke Energy', confidence: 0.92, rationale_short: 'Verified query match', contact_phone: null, contact_website: null },
-                { display_name: 'Dominion Energy', confidence: 0.59, rationale_short: 'Secondary match', contact_phone: null, contact_website: null },
-            ]))
-            .mockResolvedValueOnce(ok([
                 { display_name: 'Duke Energy', confidence: 0.9, rationale_short: 'Query match', contact_phone: null, contact_website: null },
                 { display_name: 'Dominion Energy', confidence: 0.6, rationale_short: 'Regional option', contact_phone: null, contact_website: null },
-            ]))
-            .mockResolvedValueOnce(ok([
-                { display_name: 'Duke Energy', confidence: 0.92, rationale_short: 'Verified query match', contact_phone: null, contact_website: null },
-                { display_name: 'Dominion Energy', confidence: 0.59, rationale_short: 'Secondary match', contact_phone: null, contact_website: null },
             ]));
 
         const ctxA = { requestId: 'ra', accountId: 'acct-a', organizationId: 'org-a' };
@@ -293,7 +353,150 @@ describe('Suggestions Pipeline', () => {
 
         expect(a.length).toBeGreaterThan(0);
         expect(b.length).toBeGreaterThan(0);
-        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(4);
+        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns a single exact search match from one AI pass', async () => {
+        generateJSONWithMetaMock.mockResolvedValueOnce(ok([
+            { display_name: 'Silver Spring Township Authority', confidence: 0.9, rationale_short: 'Sewer authority for the township', contact_phone: null, contact_website: null },
+        ]));
+
+        // History that does not match the typed name must not be added.
+        getProviderMemoryCandidatesMock.mockResolvedValue([
+            { display_name: 'Duke Energy', normalized_name: 'duke energy', occurrences: 6, avg_confidence: 0.7, locality_score: 3 },
+        ]);
+
+        const context = { requestId: 'r1', accountId: 'acct-1', organizationId: null };
+        const result = await searchProviders('silver spring', 'sewer', '29 Clover Lane, Mechanicsburg, PA 17050', context);
+
+        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
+        expect(result.map((item) => item.display_name)).toEqual(['Silver Spring Township Authority']);
+        expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                feature: 'provider_search',
+                source: 'ai_primary',
+                status: 'success',
+                attemptCount: 1,
+                promptVersion: 'provider-search-v2',
+            })
+        );
+        expect(setInCacheMock).toHaveBeenCalledWith(expect.any(String), expect.any(Array), 7 * 24 * 60 * 60);
+    });
+
+    it('does not run a second search pass when the model finds nothing', async () => {
+        generateJSONWithMetaMock.mockResolvedValueOnce(ok([]));
+
+        const result = await searchProviders('zzzz unknown', 'sewer', '29 Clover Lane, Mechanicsburg, PA 17050');
+
+        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
+        expect(result).toEqual([]);
+        expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                source: 'fallback',
+                reasonCode: 'fallback_used',
+                upstreamReasonCode: 'ai_empty',
+                attemptCount: 1,
+            })
+        );
+    });
+
+    it('records a search answer the gate rejected apart from an empty one', async () => {
+        generateJSONWithMetaMock.mockResolvedValueOnce(ok([
+            { display_name: 'Silver Spring Township Authority', confidence: 0.2, rationale_short: 'Weak match', contact_phone: null, contact_website: null },
+        ]));
+
+        await searchProviders('silver spring', 'sewer', '29 Clover Lane, Mechanicsburg, PA 17050');
+
+        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
+        expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+            expect.objectContaining({ source: 'fallback', upstreamReasonCode: 'quality_gate_failed' })
+        );
+    });
+
+    it('accepts one search result but still requires two suggestions', () => {
+        const single = [{ display_name: 'Silver Spring Township Authority', confidence: 0.9, rationale_short: 'Sewer authority' }];
+
+        expect(applyQualityGates(single, 'sewer', undefined, 1).accepted).toBe(true);
+        expect(applyQualityGates(single, 'sewer', undefined).accepted).toBe(false);
+        expect(applyQualityGates([], 'sewer', undefined, 1).accepted).toBe(false);
+    });
+
+    describe('overall deadline', () => {
+        const twoProviders = () => ok([
+            { display_name: 'Florida Power & Light (FPL)', confidence: 0.9, rationale_short: 'Serves most of Florida', contact_phone: null, contact_website: null },
+            { display_name: 'Duke Energy', confidence: 0.6, rationale_short: 'Serves parts of Florida', contact_phone: null, contact_website: null },
+        ]);
+        const startedAt = new Date('2026-10-12T12:00:00Z').getTime();
+
+        function takes(ms: number, result: unknown) {
+            return async () => {
+                vi.setSystemTime(Date.now() + ms);
+                return result;
+            };
+        }
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            vi.setSystemTime(startedAt);
+            generateJSONWithMetaMock.mockReset();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            delete process.env.SUGGESTIONS_MAX_TOTAL_MS;
+            delete process.env.SUGGESTIONS_DEADLINE_MS;
+        });
+
+        it('gives every suggestion pass the same 15 second deadline', async () => {
+            generateJSONWithMetaMock
+                .mockImplementationOnce(takes(3_000, twoProviders()))
+                .mockImplementationOnce(takes(3_000, twoProviders()));
+
+            await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+
+            expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
+            expect(generateJSONWithMetaMock.mock.calls.map(([, options]) => options.deadlineAt))
+                .toEqual([startedAt + 15_000, startedAt + 15_000]);
+        });
+
+        it('gives the search pass the deadline set by SUGGESTIONS_DEADLINE_MS', async () => {
+            process.env.SUGGESTIONS_DEADLINE_MS = '9000';
+            generateJSONWithMetaMock.mockImplementationOnce(takes(2_000, twoProviders()));
+
+            await searchProviders('florida power', 'electric', '123 Main St, Miami, FL 33101');
+
+            expect(generateJSONWithMetaMock.mock.calls.map(([, options]) => options.deadlineAt))
+                .toEqual([startedAt + 9_000]);
+        });
+
+        it('serves the first answer without starting a pass the deadline leaves no room for', async () => {
+            process.env.SUGGESTIONS_MAX_TOTAL_MS = '15000';
+            generateJSONWithMetaMock.mockImplementationOnce(takes(14_000, twoProviders()));
+
+            const result = await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+
+            expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
+            expect(result[0].display_name).toMatch(/Florida Power/i);
+            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+                expect.objectContaining({ source: 'ai_primary', status: 'success', attemptCount: 1 })
+            );
+        });
+
+        it('records a timed-out lookup as a provider error and serves the fallback list', async () => {
+            generateJSONWithMetaMock.mockImplementationOnce(takes(10_000, providerError()));
+
+            const result = await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
+
+            expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
+            expect(result.length).toBeGreaterThan(0);
+            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+                expect.objectContaining({
+                    status: 'error',
+                    reasonCode: 'fallback_used',
+                    upstreamReasonCode: 'ai_provider_error',
+                })
+            );
+        });
     });
 
     it('runs a fresh diagnostic search without cache or telemetry writes', async () => {
@@ -301,10 +504,6 @@ describe('Suggestions Pipeline', () => {
             .mockResolvedValueOnce(ok([
                 { display_name: 'Duke Energy', confidence: 0.9, rationale_short: 'Query match', contact_phone: '800-777-9898', contact_website: 'https://duke-energy.com' },
                 { display_name: 'Dominion Energy', confidence: 0.6, rationale_short: 'Regional option', contact_phone: null, contact_website: null },
-            ]))
-            .mockResolvedValueOnce(ok([
-                { display_name: 'Duke Energy', confidence: 0.94, rationale_short: 'Verified local provider', contact_phone: '800-777-9898', contact_website: 'https://duke-energy.com' },
-                { display_name: 'Dominion Energy', confidence: 0.58, rationale_short: 'Secondary match', contact_phone: null, contact_website: null },
             ]));
 
         const result = await searchProvidersFresh(
@@ -313,7 +512,7 @@ describe('Suggestions Pipeline', () => {
             '123 Main St, Raleigh, NC 27601'
         );
 
-        expect(result.outcome.source).toBe('ai_verify');
+        expect(result.outcome.source).toBe('ai_primary');
         expect(result.suggestions[0].display_name).toBe('Duke Energy');
         expect(getFromCacheMock).not.toHaveBeenCalled();
         expect(setInCacheMock).not.toHaveBeenCalled();

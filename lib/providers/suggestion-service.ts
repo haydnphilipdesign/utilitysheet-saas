@@ -27,14 +27,23 @@ const FALLBACK_CACHE_TTL_SECONDS = 5 * 60;
 const PROVIDER_MEMORY_CACHE_TTL_SECONDS = 6 * 60 * 60;
 // v6: canonical dedup layer (state-abbreviation + alias aware) — bumping
 // invalidates caches that may still hold near-duplicate suggestion lists.
-const SUGGESTION_CACHE_VERSION = 'v7';
-const SEARCH_CACHE_VERSION = 'v7';
+// v8: keyed by state + full ZIP + city instead of the ZIP prefix, so one
+// town's providers are no longer served to another town.
+const SUGGESTION_CACHE_VERSION = 'v8';
+const SEARCH_CACHE_VERSION = 'v8';
 const PROVIDER_MEMORY_CACHE_VERSION = 'v1';
 const SUGGESTION_PROMPT_VERSION = 'provider-suggestions-v1';
-const SEARCH_PROMPT_VERSION = 'provider-search-v1';
+const SEARCH_PROMPT_VERSION = 'provider-search-v2';
 const DEFAULT_MAX_PIPELINE_MS = 6000;
+// Hard limit for all the AI passes of one lookup. SUGGESTIONS_MAX_TOTAL_MS
+// only decides whether another pass may start; this ends a pass that is running.
+const DEFAULT_PIPELINE_DEADLINE_MS = 15000;
+// A pass with less time than this left is not started.
+const MIN_PASS_MS = 2000;
 const DEFAULT_MIN_VALID_SUGGESTIONS = 2;
 const DEFAULT_MIN_TOP_CONFIDENCE = 0.45;
+// A search names a provider, so one match is a complete answer.
+const SEARCH_MIN_VALID_RESULTS = 1;
 
 export type SuggestionReasonCode =
     | 'ai_unconfigured'
@@ -174,6 +183,10 @@ function getMaxPipelineMs(): number {
     return parseIntEnv(process.env.SUGGESTIONS_MAX_TOTAL_MS, DEFAULT_MAX_PIPELINE_MS, 1500, 15000);
 }
 
+function getPipelineDeadlineMs(): number {
+    return parseIntEnv(process.env.SUGGESTIONS_DEADLINE_MS, DEFAULT_PIPELINE_DEADLINE_MS, 3000, 60000);
+}
+
 function getMinValidSuggestions(): number {
     return parseIntEnv(process.env.SUGGESTIONS_MIN_VALID_RESULTS, DEFAULT_MIN_VALID_SUGGESTIONS, 1, 5);
 }
@@ -224,15 +237,24 @@ function getScopeToken(context?: SuggestionContext): string {
 }
 
 /**
+ * State + full ZIP + city, the same locality the prompt describes. A ZIP
+ * prefix alone spans many towns, and one ZIP can span more than one.
+ */
+function getLocalityCacheToken(parsed: ParsedAddress): string {
+    const state = sanitizeLocalityToken(parsed.state || 'default');
+    const zip = parsed.zip ? sanitizeLocalityToken(parsed.zip) : 'nozip';
+    const city = sanitizeLocalityToken(parsed.city);
+    return `${state}:${zip}:${city}`;
+}
+
+/**
  * Generate cache key from address and category
- * Uses tenant scope + state + zip prefix for locality-specific caching
+ * Uses tenant scope + state + ZIP + city for locality-specific caching
  */
 function getCacheKey(address: string, category: UtilityCategory, context?: SuggestionContext): string {
     const parsed = parseAddress(address);
     const scope = getScopeToken(context);
-    const state = sanitizeLocalityToken(parsed.state || 'default');
-    const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `suggestions:${SUGGESTION_CACHE_VERSION}:${getAiCacheToken()}:${scope}:${state}:${locality}:${category}`;
+    return `suggestions:${SUGGESTION_CACHE_VERSION}:${getAiCacheToken()}:${scope}:${getLocalityCacheToken(parsed)}:${category}`;
 }
 
 function hashCacheKeyPart(input: string): string {
@@ -260,9 +282,7 @@ function getSearchCacheKey(
     }
 
     const parsed = parseAddress(address);
-    const state = sanitizeLocalityToken(parsed.state || 'default');
-    const locality = sanitizeLocalityToken(parsed.zip ? parsed.zip.substring(0, 3) : (parsed.city || 'unknown'));
-    return `provider-search:${SEARCH_CACHE_VERSION}:${getAiCacheToken()}:${scope}:${state}:${locality}:${categoryKey}:${queryHash}`;
+    return `provider-search:${SEARCH_CACHE_VERSION}:${getAiCacheToken()}:${scope}:${getLocalityCacheToken(parsed)}:${categoryKey}:${queryHash}`;
 }
 
 function getPipelineCacheKey(baseKey: string, serveNew: boolean): string {
@@ -502,7 +522,8 @@ function parseAiSuggestionsPayload(payload: unknown): ProviderSuggestion[] {
 function applyQualityGates(
     suggestions: ProviderSuggestion[],
     category: UtilityCategory,
-    location: ParsedLocation | undefined
+    location: ParsedLocation | undefined,
+    minValidResults: number = getMinValidSuggestions()
 ): QualityGateResult {
     const normalized = normalizeAndRankSuggestions(suggestions, category, 8);
     const stateFiltered = filterSuggestionsForState(normalized, location);
@@ -517,7 +538,7 @@ function applyQualityGates(
         };
     }
 
-    if (ranked.length < getMinValidSuggestions()) {
+    if (ranked.length < minValidResults) {
         return {
             accepted: false,
             suggestions: ranked,
@@ -543,8 +564,9 @@ function applyQualityGates(
     };
 }
 
-function hasBudgetRemaining(startedAt: number, maxMs: number): boolean {
-    return Date.now() - startedAt < maxMs;
+function hasBudgetRemaining(startedAt: number, maxMs: number, deadlineAt: number): boolean {
+    const now = Date.now();
+    return now - startedAt < maxMs && deadlineAt - now >= MIN_PASS_MS;
 }
 
 function buildOutcome(params: {
@@ -855,78 +877,6 @@ Rules:
 3. If unsure, return [].`;
 }
 
-function buildSearchVerificationPrompt(
-    query: string,
-    category: UtilityCategory,
-    candidates: ProviderSuggestion[],
-    address?: ParsedLocation
-): string {
-    const location = address ? buildLocationContext(address) : null;
-    const locationLines = location?.lines?.length ? location.lines.join('\n') : 'Location: Unknown';
-    const serializedCandidates = JSON.stringify(
-        candidates.map((item) => ({
-            display_name: item.display_name,
-            confidence: item.confidence,
-            rationale_short: item.rationale_short || '',
-        }))
-    );
-
-    return `You are validating search results for a US utility provider lookup.
-
-User Query:
-<<<
-${escapePromptLiteral(query)}
->>>
-Expected Category: ${category}
-Location Context (non-PII):
-${locationLines}
-
-Candidate Providers JSON:
-${serializedCandidates}
-
-Return a JSON array of up to 5 best matches.
-Each object must contain exactly:
-- "display_name": string
-- "confidence": number between 0 and 1
-- "rationale_short": string
-- "contact_phone": string or null
-- "contact_website": string or null
-
-Rules:
-1. Keep only candidates relevant to the query text.
-2. Prefer providers that likely serve the location context.
-3. If uncertain, return [].`;
-}
-
-function buildSearchRecoveryPrompt(
-    query: string,
-    category: UtilityCategory,
-    address?: ParsedLocation
-): string {
-    const location = address ? buildLocationContext(address) : null;
-    const locationLines = location?.lines?.length ? location.lines.join('\n') : 'Location: Unknown';
-
-    return `You are doing a final recovery lookup for a US utility search.
-
-User Query:
-<<<
-${escapePromptLiteral(query)}
->>>
-Expected Category: ${category}
-Location Context (non-PII):
-${locationLines}
-
-Return a JSON array of up to 5 providers that best match both the query and location.
-Each object must contain exactly:
-- "display_name": string
-- "confidence": number between 0 and 1
-- "rationale_short": string
-- "contact_phone": string or null
-- "contact_website": string or null
-
-If no good matches are found, return [].`;
-}
-
 function levenshteinDistance(a: string, b: string): number {
     if (a === b) return 0;
     if (a.length === 0) return b.length;
@@ -1042,7 +992,8 @@ function getFallbackSearchResults(
 async function runAiPass(
     prompt: string,
     category: UtilityCategory,
-    maxItems: number
+    maxItems: number,
+    deadlineAt: number
 ): Promise<AiPassResult> {
     if (!isGeminiConfigured()) {
         return {
@@ -1053,6 +1004,7 @@ async function runAiPass(
 
     const response = await generateJSONWithMeta<unknown>(prompt, {
         responseJsonSchema: PROVIDER_SUGGESTION_RESPONSE_SCHEMA,
+        deadlineAt,
     });
     if (response.failure === 'provider_error') {
         return {
@@ -1198,8 +1150,9 @@ async function runLegacySuggestionPipeline(
     category: UtilityCategory
 ): Promise<PipelineResult> {
     const startedAt = Date.now();
+    const deadlineAt = startedAt + getPipelineDeadlineMs();
     const parsed = await resolveParsedLocation(address);
-    const primary = await runAiPass(buildSuggestionPrompt(parsed, category), category, 5);
+    const primary = await runAiPass(buildSuggestionPrompt(parsed, category), category, 5, deadlineAt);
 
     if (primary.suggestions.length > 0) {
         const filtered = normalizeAndRankSuggestions(
@@ -1248,6 +1201,7 @@ async function runTwoPassSuggestionPipeline(
     context?: SuggestionContext
 ): Promise<PipelineResult> {
     const startedAt = Date.now();
+    const deadlineAt = startedAt + getPipelineDeadlineMs();
     const maxPipelineMs = getMaxPipelineMs();
     const parsed = await resolveParsedLocation(address);
     let attempts = 0;
@@ -1271,7 +1225,7 @@ async function runTwoPassSuggestionPipeline(
         };
     }
 
-    const primaryPass = await runAiPass(buildSuggestionPrompt(parsed, category), category, 8);
+    const primaryPass = await runAiPass(buildSuggestionPrompt(parsed, category), category, 8, deadlineAt);
     attempts++;
     upstreamReason = mergeUpstreamReason(upstreamReason, primaryPass.reasonCode);
     const primaryGate = applyQualityGates(primaryPass.suggestions, category, parsed);
@@ -1280,11 +1234,12 @@ async function runTwoPassSuggestionPipeline(
     let chosenSource: SuggestionSource | null = null;
     let chosenSuggestions: ProviderSuggestion[] = [];
 
-    if (isTwoPassVerifyEnabled() && primaryPass.suggestions.length > 0 && hasBudgetRemaining(startedAt, maxPipelineMs)) {
+    if (isTwoPassVerifyEnabled() && primaryPass.suggestions.length > 0 && hasBudgetRemaining(startedAt, maxPipelineMs, deadlineAt)) {
         const verifyPass = await runAiPass(
             buildSuggestionVerificationPrompt(parsed, category, primaryPass.suggestions),
             category,
-            5
+            5,
+            deadlineAt
         );
         attempts++;
         upstreamReason = mergeUpstreamReason(upstreamReason, verifyPass.reasonCode);
@@ -1304,8 +1259,8 @@ async function runTwoPassSuggestionPipeline(
         chosenSuggestions = primaryGate.suggestions;
     }
 
-    if (!chosenSource && isRecoveryPassEnabled() && hasBudgetRemaining(startedAt, maxPipelineMs)) {
-        const recoveryPass = await runAiPass(buildSuggestionRecoveryPrompt(parsed, category), category, 5);
+    if (!chosenSource && isRecoveryPassEnabled() && hasBudgetRemaining(startedAt, maxPipelineMs, deadlineAt)) {
+        const recoveryPass = await runAiPass(buildSuggestionRecoveryPrompt(parsed, category), category, 5, deadlineAt);
         attempts++;
         upstreamReason = mergeUpstreamReason(upstreamReason, recoveryPass.reasonCode);
         const recoveryGate = applyQualityGates(recoveryPass.suggestions, category, parsed);
@@ -1356,10 +1311,12 @@ async function runTwoPassSuggestionPipeline(
 
 async function runLegacySearchPipeline(params: SearchPipelineParams): Promise<PipelineResult> {
     const startedAt = Date.now();
+    const deadlineAt = startedAt + getPipelineDeadlineMs();
     const primary = await runAiPass(
         buildSearchPrompt(params.query, params.category, params.resolvedAddress),
         params.category,
-        5
+        5,
+        deadlineAt
     );
 
     if (primary.suggestions.length > 0) {
@@ -1399,11 +1356,13 @@ async function runLegacySearchPipeline(params: SearchPipelineParams): Promise<Pi
     };
 }
 
-async function runTwoPassSearchPipeline(params: SearchPipelineParams): Promise<PipelineResult> {
+/**
+ * One grounded pass with a gate that accepts a single match. A search that
+ * finds nothing ends on the name-matched fallback list instead of asking again.
+ */
+async function runSinglePassSearchPipeline(params: SearchPipelineParams): Promise<PipelineResult> {
     const startedAt = Date.now();
-    const maxPipelineMs = getMaxPipelineMs();
-    let attempts = 0;
-    let upstreamReason: SuggestionReasonCode | null = null;
+    const deadlineAt = startedAt + getPipelineDeadlineMs();
 
     if (!isGeminiConfigured()) {
         const fallback = getFallbackSearchResults(params.query, params.category, params.resolvedAddress);
@@ -1414,7 +1373,7 @@ async function runTwoPassSearchPipeline(params: SearchPipelineParams): Promise<P
                 source: 'fallback',
                 reasonCode: 'fallback_used',
                 upstreamReasonCode: 'ai_unconfigured',
-                attemptCount: attempts,
+                attemptCount: 0,
                 startedAt,
                 suggestions: fallback,
                 location: params.resolvedAddress,
@@ -1423,72 +1382,34 @@ async function runTwoPassSearchPipeline(params: SearchPipelineParams): Promise<P
         };
     }
 
-    const primaryPass = await runAiPass(
+    const pass = await runAiPass(
         buildSearchPrompt(params.query, params.category, params.resolvedAddress),
         params.category,
-        8
+        8,
+        deadlineAt
     );
-    attempts++;
-    upstreamReason = mergeUpstreamReason(upstreamReason, primaryPass.reasonCode);
-    const primaryGate = applyQualityGates(primaryPass.suggestions, params.category, params.resolvedAddress);
-    upstreamReason = mergeUpstreamReason(upstreamReason, primaryGate.reasonCode);
+    const gate = applyQualityGates(
+        pass.suggestions,
+        params.category,
+        params.resolvedAddress,
+        SEARCH_MIN_VALID_RESULTS
+    );
+    // Keep "the model found nothing" apart from "the gate rejected its answer".
+    const upstreamReason = pass.reasonCode ?? gate.reasonCode;
 
-    let chosenSource: SuggestionSource | null = null;
-    let chosenSuggestions: ProviderSuggestion[] = [];
-
-    if (isTwoPassVerifyEnabled() && primaryPass.suggestions.length > 0 && hasBudgetRemaining(startedAt, maxPipelineMs)) {
-        const verifyPass = await runAiPass(
-            buildSearchVerificationPrompt(params.query, params.category, primaryPass.suggestions, params.resolvedAddress),
-            params.category,
-            5
-        );
-        attempts++;
-        upstreamReason = mergeUpstreamReason(upstreamReason, verifyPass.reasonCode);
-        const verifyGate = applyQualityGates(verifyPass.suggestions, params.category, params.resolvedAddress);
-
-        if (verifyGate.accepted) {
-            chosenSource = 'ai_verify';
-            chosenSuggestions = verifyGate.suggestions;
-        } else if (primaryGate.accepted) {
-            chosenSource = 'ai_primary';
-            chosenSuggestions = primaryGate.suggestions;
-        } else if (verifyGate.reasonCode) {
-            upstreamReason = mergeUpstreamReason(upstreamReason, verifyGate.reasonCode);
-        }
-    } else if (primaryGate.accepted) {
-        chosenSource = 'ai_primary';
-        chosenSuggestions = primaryGate.suggestions;
-    }
-
-    if (!chosenSource && isRecoveryPassEnabled() && hasBudgetRemaining(startedAt, maxPipelineMs)) {
-        const recoveryPass = await runAiPass(
-            buildSearchRecoveryPrompt(params.query, params.category, params.resolvedAddress),
-            params.category,
-            5
-        );
-        attempts++;
-        upstreamReason = mergeUpstreamReason(upstreamReason, recoveryPass.reasonCode);
-        const recoveryGate = applyQualityGates(recoveryPass.suggestions, params.category, params.resolvedAddress);
-        if (recoveryGate.accepted) {
-            chosenSource = 'ai_recovery';
-            chosenSuggestions = recoveryGate.suggestions;
-        } else if (recoveryGate.reasonCode) {
-            upstreamReason = mergeUpstreamReason(upstreamReason, recoveryGate.reasonCode);
-        }
-    }
-
-    if (chosenSource && chosenSuggestions.length > 0) {
-        const memory = await getScopedProviderMemory(params.category, params.resolvedAddress, params.context);
-        const blended = blendWithProviderMemory(chosenSuggestions, memory, params.category);
-        const source = blended.usedMemory ? 'history_blend' : chosenSource;
+    if (gate.accepted) {
+        // Only history that matches what was typed belongs in a search result.
+        const memory = (await getScopedProviderMemory(params.category, params.resolvedAddress, params.context))
+            .filter((candidate) => getNameMatchScore(candidate.display_name, params.query) > 0);
+        const blended = blendWithProviderMemory(gate.suggestions, memory, params.category);
         return {
             suggestions: blended.suggestions,
             outcome: buildOutcome({
                 category: params.category,
-                source,
+                source: blended.usedMemory ? 'history_blend' : 'ai_primary',
                 reasonCode: null,
                 upstreamReasonCode: upstreamReason,
-                attemptCount: attempts,
+                attemptCount: 1,
                 startedAt,
                 suggestions: blended.suggestions,
                 location: params.resolvedAddress,
@@ -1505,7 +1426,7 @@ async function runTwoPassSearchPipeline(params: SearchPipelineParams): Promise<P
             source: 'fallback',
             reasonCode: 'fallback_used',
             upstreamReasonCode: upstreamReason,
-            attemptCount: attempts,
+            attemptCount: 1,
             startedAt,
             suggestions: fallback,
             location: params.resolvedAddress,
@@ -1571,7 +1492,7 @@ async function runSearchPipeline(params: SearchPipelineParams): Promise<Pipeline
     );
 
     if (!isShadowModeEnabled()) {
-        const result = await runTwoPassSearchPipeline(params);
+        const result = await runSinglePassSearchPipeline(params);
         logSuggestionOutcome(result.outcome);
         await persistSuggestionTelemetry({
             feature: 'provider_search',
@@ -1583,8 +1504,8 @@ async function runSearchPipeline(params: SearchPipelineParams): Promise<Pipeline
         return result;
     }
 
-    const served = serveNew ? runTwoPassSearchPipeline(params) : runLegacySearchPipeline(params);
-    const shadow = serveNew ? runLegacySearchPipeline(params) : runTwoPassSearchPipeline(params);
+    const served = serveNew ? runSinglePassSearchPipeline(params) : runLegacySearchPipeline(params);
+    const shadow = serveNew ? runLegacySearchPipeline(params) : runSinglePassSearchPipeline(params);
     const [servedResult, shadowResult] = await Promise.all([served, shadow]);
     logSuggestionOutcome(servedResult.outcome);
     await persistSuggestionTelemetry({
@@ -1785,7 +1706,7 @@ export async function searchProvidersFresh(
     }
 
     const resolvedAddress = await resolveParsedLocation(address);
-    return runTwoPassSearchPipeline({
+    return runSinglePassSearchPipeline({
         query: trimmedQuery,
         category,
         resolvedAddress,
@@ -1798,6 +1719,7 @@ export async function searchProvidersFresh(
 export const __testing = {
     parseAddress,
     getCacheKey,
+    getSearchCacheKey,
     isValidPhone,
     isValidUrl,
     validateSuggestion,
