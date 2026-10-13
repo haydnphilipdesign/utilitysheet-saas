@@ -17,7 +17,7 @@ vi.mock('@/lib/pdf/packet-attachment', () => ({
     createPacketPdfAttachmentForRequest: createPacketPdfAttachmentForRequestMock,
 }));
 
-import { sendTCCompletionNotificationEmail } from '@/lib/email/email-service';
+import { sendSellerNotificationEmail, sendTCCompletionNotificationEmail } from '@/lib/email/email-service';
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -73,7 +73,7 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: true,
         });
 
-        expect(result).toEqual({ success: true, attachmentStatus: 'attached' });
+        expect(result).toEqual({ success: true, messageId: 'email_123', attachmentStatus: 'attached', pdfEvidence: null });
         expect(createPacketPdfAttachmentForRequestMock).toHaveBeenCalledWith('req_1');
 
         expect(sendEmailMock).toHaveBeenCalledTimes(1);
@@ -93,7 +93,7 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: false,
         });
 
-        expect(result).toEqual({ success: true, attachmentStatus: 'disabled' });
+        expect(result).toEqual({ success: true, messageId: 'email_123', attachmentStatus: 'disabled', pdfEvidence: null });
         expect(createPacketPdfAttachmentForRequestMock).not.toHaveBeenCalled();
 
         const payload = sendEmailMock.mock.calls[0][0];
@@ -113,7 +113,7 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: true,
         });
 
-        expect(result).toEqual({ success: true, attachmentStatus: 'failed' });
+        expect(result).toEqual({ success: true, messageId: 'email_123', attachmentStatus: 'failed', pdfEvidence: null });
         expect(createPacketPdfAttachmentForRequestMock).toHaveBeenCalledWith('req_3');
 
         const payload = sendEmailMock.mock.calls[0][0];
@@ -138,7 +138,7 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: true,
         });
 
-        expect(result).toEqual({ success: true, attachmentStatus: 'attached' });
+        expect(result).toEqual({ success: true, messageId: 'email_123', attachmentStatus: 'attached', pdfEvidence: null });
         const payload = sendEmailMock.mock.calls[0][0];
         expect(payload.to).toBe('haydn@multimedium.dev');
         expect(payload.subject).toBe('Utility Info Submitted for 123 Main Street, Anytown, PA 18301');
@@ -155,7 +155,7 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             attachPdf: false,
         });
 
-        expect(result).toEqual({ success: true, attachmentStatus: 'disabled' });
+        expect(result).toEqual({ success: true, messageId: 'email_123', attachmentStatus: 'disabled', pdfEvidence: null });
         const payload = sendEmailMock.mock.calls[0][0];
         expect(payload.to).toBe('tc@example.com');
     });
@@ -180,12 +180,72 @@ describe('sendTCCompletionNotificationEmail attachments', () => {
             isTestDrive: true,
         });
 
-        expect(result).toEqual({ success: true, attachmentStatus: 'attached' });
+        expect(result).toEqual({ success: true, messageId: 'email_123', attachmentStatus: 'attached', pdfEvidence: null });
         const payload = sendEmailMock.mock.calls[0][0];
         expect(payload.to).toBe('verified@example.com');
         expect(payload.subject).toMatch(/Your test sheet is ready/i);
         expect(payload.html).toContain('This is your test sheet');
         expect(payload.html).not.toContain('/from-a-closing');
         expect(payload.html).not.toContain('/dashboard/settings?tab=referrals');
+    });
+});
+
+describe('send results carry handoff evidence', () => {
+    const evidence = {
+        requestId: '12345678-1234-1234-1234-123456789abc', isDemo: false, packetMode: 'simple', renderStrategy: 'print_pdf',
+        launchStrategy: 'default', outcome: 'rendered', skipReason: null, failureStage: null, errorName: null,
+        totalMs: 4000, dataMs: 40, launchMs: 800, renderMs: 3000, bytes: 16,
+    };
+    const completion = (attachPdf: boolean) => sendTCCompletionNotificationEmail({
+        tcEmail: 'tc@example.com', propertyAddress: '123 Main St', requestId: '12345678-1234-1234-1234-123456789abc', attachPdf,
+    });
+    const invitation = () => sendSellerNotificationEmail({ sellerEmail: 'sam@example.com', propertyAddress: '123 Main St', sellerToken: 'seller-token' });
+
+    beforeEach(() => {
+        for (const level of ['log', 'warn', 'error'] as const) vi.spyOn(console, level).mockImplementation(() => undefined);
+    });
+
+    it('returns the provider message id and the PDF execution evidence for an accepted completion email', async () => {
+        createPacketPdfAttachmentForRequestMock.mockResolvedValue({
+            status: 'attached', attachment: { filename: 'a.pdf', content: Buffer.from('fake-pdf-content'), contentType: 'application/pdf' }, evidence,
+        });
+        expect(await completion(true)).toEqual({ success: true, messageId: 'email_123', attachmentStatus: 'attached', pdfEvidence: evidence });
+    });
+
+    it('reports an accepted email whose attachment failed as exactly that', async () => {
+        const failed = { ...evidence, outcome: 'failed', failureStage: 'browser_launch', errorName: 'Error', bytes: null };
+        createPacketPdfAttachmentForRequestMock.mockResolvedValue({ status: 'failed', error: 'Chromium crashed', evidence: failed });
+        expect(await completion(true)).toEqual({ success: true, messageId: 'email_123', attachmentStatus: 'failed', pdfEvidence: failed });
+        expect(sendEmailMock.mock.calls[0][0].attachments).toBeUndefined();
+    });
+
+    it('returns a provider refusal as a result with its error name, not as a throw', async () => {
+        sendEmailMock.mockResolvedValue({ data: null, error: { message: 'Invalid `to` field', name: 'validation_error', statusCode: 422 } });
+        expect(await completion(false)).toEqual({
+            success: false, error: 'Invalid `to` field', errorCode: 'validation_error', attachmentStatus: 'disabled', pdfEvidence: null,
+        });
+        expect(await invitation()).toEqual({ success: false, error: 'Invalid `to` field', errorCode: 'validation_error' });
+    });
+
+    it('keeps the real attachment outcome when the send itself throws', async () => {
+        createPacketPdfAttachmentForRequestMock.mockResolvedValue({
+            status: 'attached', attachment: { filename: 'a.pdf', content: Buffer.from('fake-pdf-content'), contentType: 'application/pdf' }, evidence,
+        });
+        sendEmailMock.mockRejectedValue(new Error('socket hang up'));
+        // The PDF was produced; only the send has no known outcome.
+        expect(await completion(true)).toEqual({ success: false, error: 'socket hang up', threw: true, attachmentStatus: 'attached', pdfEvidence: evidence });
+        expect(await completion(false)).toMatchObject({ success: false, threw: true, attachmentStatus: 'disabled', pdfEvidence: null });
+    });
+
+    it('marks the attachment failed when the attachment step itself throws', async () => {
+        createPacketPdfAttachmentForRequestMock.mockRejectedValue(new Error('unexpected'));
+        expect(await completion(true)).toMatchObject({ success: false, threw: true, attachmentStatus: 'failed', pdfEvidence: null });
+        expect(sendEmailMock).not.toHaveBeenCalled();
+    });
+
+    it('returns the provider message id for an accepted invitation and flags a thrown send', async () => {
+        expect(await invitation()).toEqual({ success: true, messageId: 'email_123' });
+        sendEmailMock.mockRejectedValue(new Error('fetch failed'));
+        expect(await invitation()).toEqual({ success: false, error: 'fetch failed', threw: true });
     });
 });

@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
     updateAccountSubscription: vi.fn(),
     verify: vi.fn(),
     applyDelivery: vi.fn(),
+    applyNotification: vi.fn(),
+    recordHandoff: vi.fn(),
     runAlerts: vi.fn(),
     observeAi: vi.fn(),
     getJobStatuses: vi.fn(),
@@ -62,6 +64,10 @@ vi.mock('@/lib/resend', () => ({ getResend: () => ({ webhooks: { verify: mocks.v
 vi.mock('@/lib/ops/email-delivery', async (original) => ({
     ...(await original<typeof import('@/lib/ops/email-delivery')>()),
     applyEmailDeliveryEvent: mocks.applyDelivery,
+}));
+vi.mock('@/lib/neon/queries/handoff-evidence', () => ({
+    applyNotificationDeliveryEvent: mocks.applyNotification,
+    recordHandoffEvidence: mocks.recordHandoff,
 }));
 vi.mock('@/lib/ops/alerts', () => ({
     getAlertConfig: () => ({ enabled: false, ai: { sharePct: 50, minRuns: 10, windowHours: 24 } }),
@@ -117,6 +123,8 @@ beforeEach(() => {
     mocks.checkRateLimit.mockResolvedValue({ success: true });
     mocks.recordEvent.mockResolvedValue(true);
     mocks.recordSuccess.mockResolvedValue(true);
+    mocks.recordHandoff.mockResolvedValue(true);
+    mocks.applyNotification.mockResolvedValue({ matched: false });
     mocks.startJobRun.mockImplementation(async (jobName: string) => ({ id: 'run-1', jobName, startedAtMs: 0 }));
     mocks.constructEvent.mockReturnValue(subscriptionEvent);
     mocks.getAccountById.mockResolvedValue({ id: 'acct-1', closure_status: 'active' });
@@ -154,6 +162,74 @@ describe('packet PDF route', () => {
         const response = await pdf();
         expect(response.status).toBe(200);
         expect(mocks.recordSuccess).toHaveBeenCalledWith({ category: 'pdf', code: 'generation_failed' });
+    });
+
+    const REQUEST_ID = '00000000-0000-4000-8000-0000000000d1';
+    const evidence = (overrides: Record<string, unknown>) => ({
+        requestId: REQUEST_ID, isDemo: false, packetMode: 'advanced', renderStrategy: 'print_pdf', launchStrategy: 'default',
+        outcome: 'rendered', skipReason: null, failureStage: null, errorName: null,
+        totalMs: 4200, dataMs: 80, launchMs: 900, renderMs: 3100, bytes: 51234, ...overrides,
+    });
+    const storedPdf = () => mocks.recordHandoff.mock.calls.map((call) => call[0].pdfRenders[0]);
+
+    it('records execution evidence for a resolved request with its coarse response status', async () => {
+        mocks.createPdf.mockResolvedValue({
+            status: 'attached', attachment: { filename: '12 Private Rd.pdf', content: Buffer.from('pdf'), contentType: 'application/pdf' },
+            evidence: evidence({}),
+        });
+        expect((await pdf()).status).toBe(200);
+        mocks.createPdf.mockResolvedValue({ status: 'skipped', reason: 'locked', evidence: evidence({ outcome: 'skipped', skipReason: 'locked', packetMode: null, renderStrategy: null, launchStrategy: null, bytes: null }) });
+        expect((await pdf()).status).toBe(402);
+        mocks.createPdf.mockResolvedValue({ status: 'skipped', reason: 'not_submitted', evidence: evidence({ outcome: 'skipped', skipReason: 'not_submitted', isDemo: true }) });
+        expect((await pdf()).status).toBe(404);
+
+        expect(storedPdf()).toEqual([
+            expect.objectContaining({ requestId: REQUEST_ID, surface: 'download', mode: 'live', outcome: 'rendered', httpStatus: 200, packetMode: 'advanced', renderStrategy: 'print_pdf', launchStrategy: 'default', totalMs: 4200, renderMs: 3100, bytes: 51234 }),
+            expect.objectContaining({ outcome: 'skipped', skipReason: 'locked', httpStatus: 402 }),
+            expect.objectContaining({ outcome: 'skipped', skipReason: 'not_submitted', httpStatus: 404, mode: 'test' }),
+        ]);
+        // Expected statuses are evidence, not incidents, and nothing identifying is stored.
+        expect(mocks.recordEvent).not.toHaveBeenCalled();
+        expect(JSON.stringify(mocks.recordHandoff.mock.calls)).not.toMatch(/secret-public-token|Private Rd|\.pdf/);
+    });
+
+    it('stores nothing for an unknown link, a rate-limited request or an unresolved failure', async () => {
+        mocks.createPdf.mockResolvedValue({ status: 'skipped', reason: 'not_found', evidence: evidence({ requestId: null, isDemo: null, outcome: 'skipped', skipReason: 'not_found' }) });
+        expect((await pdf()).status).toBe(404);
+        mocks.checkRateLimit.mockResolvedValueOnce({ success: false });
+        expect((await pdf()).status).toBe(429);
+        mocks.createPdf.mockResolvedValue({ status: 'failed', error: 'lookup failed', evidence: evidence({ requestId: null, isDemo: null, outcome: 'failed', failureStage: 'data', errorName: 'Error' }) });
+        expect((await pdf()).status).toBe(500);
+        expect(mocks.recordHandoff).not.toHaveBeenCalled();
+        // The data failure is still an incident, named by its stage.
+        expect(mocks.recordEvent).toHaveBeenCalledTimes(1);
+        expect(mocks.recordEvent.mock.calls[0][0]).toMatchObject({ category: 'pdf', requestId: null, metadata: { reasonCode: 'data_failed' } });
+    });
+
+    it('separates browser-launch and render failures and links the incident to the request', async () => {
+        mocks.createPdf.mockResolvedValue({ status: 'failed', error: 'Chromium crashed at /tmp/x', evidence: evidence({ outcome: 'failed', failureStage: 'browser_launch', errorName: 'Error', launchStrategy: null, renderMs: null, bytes: null }) });
+        expect((await pdf()).status).toBe(500);
+        mocks.createPdf.mockResolvedValue({ status: 'failed', error: 'Navigation timeout', evidence: evidence({ outcome: 'failed', failureStage: 'render', errorName: 'TimeoutError', bytes: null }) });
+        expect((await pdf()).status).toBe(500);
+
+        expect(mocks.recordEvent.mock.calls.map((call) => call[0])).toEqual([
+            expect.objectContaining({ requestId: REQUEST_ID, metadata: { reasonCode: 'browser_launch_failed' } }),
+            expect.objectContaining({ requestId: REQUEST_ID, metadata: { reasonCode: 'render_failed' } }),
+        ]);
+        expect(storedPdf()).toEqual([
+            expect.objectContaining({ outcome: 'failed', failureStage: 'browser_launch', errorName: 'Error', httpStatus: 500 }),
+            expect.objectContaining({ outcome: 'failed', failureStage: 'render', errorName: 'TimeoutError', httpStatus: 500 }),
+        ]);
+        expect(JSON.stringify([mocks.recordEvent.mock.calls, mocks.recordHandoff.mock.calls])).not.toMatch(/Chromium|Navigation|tmp/);
+    });
+
+    it('still serves the PDF when evidence cannot be stored', async () => {
+        mocks.recordHandoff.mockResolvedValue(false);
+        mocks.createPdf.mockResolvedValue({
+            status: 'attached', attachment: { filename: 'packet.pdf', content: Buffer.from('pdf'), contentType: 'application/pdf' },
+            evidence: evidence({}),
+        });
+        expect((await pdf()).status).toBe(200);
     });
 });
 
@@ -216,6 +292,39 @@ describe('Resend delivery webhook', () => {
         mocks.verify.mockReturnValue({ type: 'email.delivered', data: { email_id: 'msg_unknown' } });
         mocks.applyDelivery.mockResolvedValue({ matched: false });
         expect(await (await resendWebhook()).json()).toEqual({ received: true, tracked: false });
+    });
+
+    it('leaves a matched reminder to its own contract and never asks notification evidence', async () => {
+        mocks.verify.mockReturnValue({ type: 'email.delivered', data: { email_id: 'msg_reminder' } });
+        mocks.applyDelivery.mockResolvedValue({ matched: true });
+        expect(await (await resendWebhook()).json()).toEqual({ received: true, tracked: true });
+        expect(mocks.applyNotification).not.toHaveBeenCalled();
+    });
+
+    it('matches completion and invitation evidence for messages reminders did not claim', async () => {
+        mocks.verify.mockReturnValue({ type: 'email.bounced', data: { email_id: 'msg_completion', to: ['owner@example.com'], subject: 'Utility Info Submitted' } });
+        mocks.applyDelivery.mockResolvedValue({ matched: false });
+        mocks.applyNotification.mockResolvedValue({ matched: true });
+        expect(await (await resendWebhook()).json()).toEqual({ received: true, tracked: true });
+        expect(mocks.applyNotification).toHaveBeenCalledWith({ providerMessageId: 'msg_completion', status: 'bounced', webhookMessageId: 'wh_1' });
+    });
+
+    it('acknowledges instead of looping when the notification evidence migration is pending', async () => {
+        mocks.verify.mockReturnValue({ type: 'email.delivered', data: { email_id: 'msg_other' } });
+        mocks.applyDelivery.mockResolvedValue({ matched: false });
+        mocks.applyNotification.mockRejectedValue(Object.assign(new Error('relation missing'), { code: '42P01' }));
+        const response = await resendWebhook();
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ received: true, tracked: false });
+    });
+
+    it('asks the provider to retry when notification evidence cannot be written', async () => {
+        mocks.verify.mockReturnValue({ type: 'email.delivered', data: { email_id: 'msg_other' } });
+        mocks.applyDelivery.mockResolvedValue({ matched: false });
+        mocks.applyNotification.mockRejectedValue(new Error('connection reset by peer'));
+        const response = await resendWebhook();
+        expect(response.status).toBe(503);
+        expect(JSON.stringify(await response.json())).not.toContain('connection');
     });
 
     it('asks the provider to retry when the durable write fails', async () => {

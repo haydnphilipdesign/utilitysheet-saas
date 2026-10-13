@@ -4,6 +4,7 @@ import type { BrandProfile } from '@/types';
 import { DEFAULT_MESSAGE_TEMPLATES, escapeHtml, firstNameFromFullName, plainTextToHtml, renderTemplate } from '@/lib/message-templates';
 import { createPacketPdfAttachmentForRequest } from '@/lib/pdf/packet-attachment';
 import { FEEDBACK_CATEGORY_LABELS, type FeedbackCategory } from '@/lib/feedback/constants';
+import type { PdfRenderEvidence } from '@/lib/telemetry/handoff-evidence';
 
 function getAppBaseUrl(): string {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -298,7 +299,7 @@ export async function sendSellerNotificationEmail({
     agentName,
     brandProfile,
     sellerToken,
-}: SendSellerNotificationEmailParams): Promise<{ success: boolean; error?: string }> {
+}: SendSellerNotificationEmailParams): Promise<NotificationSendResult> {
     // Construct the seller form URL
     const baseUrl = getAppBaseUrl();
     const sellerFormUrl = `${baseUrl}/s/${sellerToken}`;
@@ -379,7 +380,7 @@ export async function sendSellerNotificationEmail({
     const replyTo = safeReplyToEmail(brandProfile?.contact_email);
 
     try {
-        const { error } = await getResend().emails.send({
+        const { data, error } = await getResend().emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: sellerEmail,
             subject,
@@ -389,19 +390,36 @@ export async function sendSellerNotificationEmail({
 
         if (error) {
             logDiagnostic('error', 'email_send_failed', { operation: 'seller_notification' }, error);
-            return { success: false, error: error.message };
+            return { success: false, error: error.message, errorCode: error.name };
         }
 
         logDiagnostic('log', 'email_send_accepted', { operation: 'seller_notification' });
-        return { success: true };
+        return { success: true, messageId: data?.id };
     } catch (error) {
         logDiagnostic('error', 'email_send_failed', { operation: 'seller_notification' }, error);
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
+            threw: true,
         };
     }
 }
+
+/**
+ * Outcome of one invitation or completion send, with enough to record
+ * handoff evidence. A refusal can be returned (not thrown): callers must read
+ * `success` rather than rely on catching.
+ */
+export type NotificationSendResult = {
+    success: boolean;
+    error?: string;
+    /** Provider message ID when the provider accepted the message. */
+    messageId?: string;
+    /** Provider error name for a returned (not thrown) rejection. */
+    errorCode?: string;
+    /** True when the request threw before any provider response (timeout, network, configuration). */
+    threw?: boolean;
+};
 
 export type SellerReminderEmail = {
     from: string;
@@ -1101,10 +1119,10 @@ export async function sendTCCompletionNotificationEmail({
     showReferralFooter = false,
     referralCode = null,
     isTestDrive = false,
-}: SendTCCompletionNotificationEmailParams): Promise<{
-    success: boolean;
-    error?: string;
+}: SendTCCompletionNotificationEmailParams): Promise<NotificationSendResult & {
     attachmentStatus: CompletionAttachmentStatus;
+    /** What the PDF execution did, when one was attempted for this recipient. */
+    pdfEvidence?: PdfRenderEvidence | null;
 }> {
     // Construct the dashboard URL to view the completed request
     const baseUrl = getAppBaseUrl();
@@ -1124,8 +1142,13 @@ export async function sendTCCompletionNotificationEmail({
         isTestDrive,
     });
 
+    // Declared outside the try so a send that throws still reports what
+    // really happened to the attachment.
+    let attachmentStatus: CompletionAttachmentStatus = attachPdf ? 'skipped' : 'disabled';
+    let attachmentResolved = !attachPdf;
+    let pdfEvidence: PdfRenderEvidence | null = null;
+
     try {
-        let attachmentStatus: CompletionAttachmentStatus = attachPdf ? 'skipped' : 'disabled';
         let attachments:
             | Array<{ filename: string; content: Buffer; contentType?: string }>
             | undefined;
@@ -1133,6 +1156,8 @@ export async function sendTCCompletionNotificationEmail({
         if (attachPdf) {
             logDiagnostic('log', 'email_attachment_attempted', { requestId });
             const attachmentResult = await createPacketPdfAttachmentForRequest(requestId);
+            attachmentResolved = true;
+            pdfEvidence = attachmentResult.evidence ?? null;
 
             if (attachmentResult.status === 'attached') {
                 attachmentStatus = 'attached';
@@ -1164,7 +1189,7 @@ export async function sendTCCompletionNotificationEmail({
         }
 
         const resend = getResend();
-        const { error } = await resend.emails.send({
+        const { data, error } = await resend.emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: getDemoEmailRecipient(tcEmail),
             subject: isTestDrive
@@ -1176,17 +1201,20 @@ export async function sendTCCompletionNotificationEmail({
 
         if (error) {
             logDiagnostic('error', 'email_send_failed', { operation: 'completion_notification' }, error);
-            return { success: false, error: error.message, attachmentStatus };
+            return { success: false, error: error.message, errorCode: error.name, attachmentStatus, pdfEvidence };
         }
 
         logDiagnostic('log', 'email_send_accepted', { operation: 'completion_notification' });
-        return { success: true, attachmentStatus };
+        return { success: true, messageId: data?.id, attachmentStatus, pdfEvidence };
     } catch (error) {
         logDiagnostic('error', 'email_send_failed', { operation: 'completion_notification' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
-            attachmentStatus: 'failed',
+            threw: true,
+            // An attachment step that itself threw has failed; otherwise keep its real outcome.
+            attachmentStatus: attachmentResolved ? attachmentStatus : 'failed',
+            pdfEvidence,
         };
     }
 }

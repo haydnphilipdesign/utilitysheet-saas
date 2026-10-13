@@ -269,3 +269,38 @@ No schema, dependency, retention, deployment or production change. Rows are
 removed with their request. The account export lists event types and times
 only, so these types appear there without payloads. Durable rationale:
 [seller diagnostic observations](../.ai/decisions/2026-10-13-seller-diagnostic-observations.md).
+
+## Email handoff and PDF execution evidence (Slice 6)
+
+Completion emails, seller invitations and sheet PDFs leave a small server-side
+record. Contract: `lib/telemetry/handoff-evidence.ts`. Storage:
+`notification_observations` and `pdf_render_observations`
+(`migrations-handoff-evidence.sql`). Decision:
+`.ai/decisions/2026-10-13-handoff-notification-evidence.md`.
+
+| Record | Fields |
+| --- | --- |
+| Notification, one per recipient slot | random operation id, request id, purpose (`completion_notification`, `request_invitation`), live/test, slot number, intended recipient count, send outcome (`accepted`, `failed`, `unknown`, `no_recipients`), provider message id, coarse failure code, attachment status, provider delivery status and its time |
+| PDF render | request id, operation id and slot for attachments, surface (`download`, `completion_attachment`), live/test, packet mode, render and launch strategy, outcome, expected skip reason, failed stage, error class name, coarse HTTP status for downloads, total/data/launch/render milliseconds, byte size |
+
+Never stored: email addresses, recipient or seller names, property address,
+seller or packet links, filenames, subject, HTML, answers, raw provider errors
+or exception messages. Recipients are positions within one send. The provider
+message id is used only to match signed delivery callbacks and is not shown
+in Admin. Failure codes and error names must look like identifiers
+(`^[A-Za-z0-9_]+$`) or they are replaced or dropped.
+
+Rules:
+
+- Evidence is recorded only after a request is resolved. An unknown link, a
+  rate-limited download and a lookup that failed before resolving store no
+  row.
+- Writes go through `writeAuxiliary` (one attempt, 500 ms, no retry). A
+  failure logs one redacted `auxiliary_write_failed` marker with
+  `observation: handoff_evidence` and changes no send, download or submission.
+- 200 notification rows and 300 PDF rows per request; past that nothing more
+  is stored for the request. Rows are deleted with the request. There is no
+  time-based pruning yet (Slice 9).
+- Accepted means the provider took the message. Delivered is the provider's
+  report. Neither proves a person read it. A missing record is unknown.
+- Seller reminders are unchanged and stay in `reminder_operations`.

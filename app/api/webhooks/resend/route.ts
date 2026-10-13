@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getResend } from '@/lib/resend';
 import { applyEmailDeliveryEvent, deliveryStatusForEventType } from '@/lib/ops/email-delivery';
+import { applyNotificationDeliveryEvent } from '@/lib/neon/queries/handoff-evidence';
 import { errorNameOf } from '@/lib/ops/events';
 import { isMissingRelationError } from '@/lib/neon/statements';
 
@@ -8,6 +9,7 @@ export const runtime = 'nodejs';
 
 /**
  * Resend delivery webhook (delivered, delayed, bounced, complained, failed).
+ * Matches seller reminders first, then completion and invitation evidence.
  *
  * The signature is verified against the raw request body with the Resend SDK
  * before anything is parsed or stored. Only the event type and the provider
@@ -49,8 +51,19 @@ export async function POST(request: Request) {
     }
 
     try {
+        // Reminders keep their own contract and are asked first.
         const { matched } = await applyEmailDeliveryEvent({ providerMessageId, status, webhookMessageId: id });
-        return NextResponse.json({ received: true, tracked: matched });
+        if (matched) return NextResponse.json({ received: true, tracked: true });
+
+        try {
+            const notification = await applyNotificationDeliveryEvent({ providerMessageId, status, webhookMessageId: id });
+            return NextResponse.json({ received: true, tracked: notification.matched });
+        } catch (error) {
+            // Before the handoff-evidence migration there is nothing to match. Asking
+            // the provider to retry would redeliver every non-reminder event forever.
+            if (isMissingRelationError(error)) return NextResponse.json({ received: true, tracked: false });
+            throw error;
+        }
     } catch (error) {
         // A failed durable write must be retried by the provider, not acknowledged.
         console.error(JSON.stringify({

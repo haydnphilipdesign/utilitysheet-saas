@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { getIntakeBrandProfile, getUsableSellerForm, getRequests, workspaceHasOtherRequestOwners, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
+import { recordOperationalEvent, recordOperationalSuccess } from '@/lib/ops/events';
+import { recordHandoffEvidence } from '@/lib/neon/queries/handoff-evidence';
+import { buildNotificationEvidence, type SettledSend } from '@/lib/telemetry/handoff-evidence';
 import { requestCreationRatelimit, checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { createRequestBodySchema } from '@/lib/validation/schemas';
@@ -265,22 +268,49 @@ export async function POST(request: Request) {
             }
 
             // Send email notification - await with error handling (non-blocking to request success)
+            let invitation: SettledSend;
             try {
-                await sendSellerNotificationEmail({
-                    sellerEmail: parsedBody.data.sellerEmail,
-                    sellerName: parsedBody.data.sellerName,
-                    propertyAddress: parsedBody.data.propertyAddress,
-                    closingDate: parsedBody.data.closingDate,
-                    agentName,
-                    brandProfile: brandProfile || undefined,
-                    sellerToken: newRequest.seller_token || newRequest.public_token,
-                });
+                invitation = {
+                    status: 'fulfilled',
+                    value: await sendSellerNotificationEmail({
+                        sellerEmail: parsedBody.data.sellerEmail,
+                        sellerName: parsedBody.data.sellerName,
+                        propertyAddress: parsedBody.data.propertyAddress,
+                        closingDate: parsedBody.data.closingDate,
+                        agentName,
+                        brandProfile: brandProfile || undefined,
+                        sellerToken: newRequest.seller_token || newRequest.public_token,
+                    }),
+                };
             } catch (emailError) {
                 // Log but don't fail the request - email is non-critical
+                invitation = { status: 'rejected' };
                 if (process.env.NODE_ENV !== 'production') {
                     console.error('Failed to send seller notification email:', emailError);
                 }
             }
+
+            // Best-effort observation. A refusal is returned, not thrown, so the
+            // result is read here; neither write can change the response.
+            const invitationAccepted = invitation.status === 'fulfilled' && invitation.value?.success === true;
+            await Promise.all([
+                invitationAccepted
+                    ? recordOperationalSuccess({ category: 'email', code: 'invitation_send_failed' })
+                    : recordOperationalEvent({
+                        category: 'email',
+                        code: 'invitation_send_failed',
+                        outcome: 'failure',
+                        requestId: newRequest.id,
+                        metadata: { recipientCount: 1, failedCount: 1 },
+                    }),
+                recordHandoffEvidence(buildNotificationEvidence({
+                    operationId: crypto.randomUUID(),
+                    requestId: newRequest.id,
+                    purpose: 'request_invitation',
+                    mode: 'live',
+                    sends: [invitation],
+                })),
+            ]);
         }
 
         return NextResponse.json(newRequest, { status: 201 });

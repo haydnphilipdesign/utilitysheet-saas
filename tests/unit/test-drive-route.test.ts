@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     createEventLog: vi.fn(),
     sendSellerNotificationEmail: vi.fn(),
     buildStructuredPropertyAddress: vi.fn(),
+    recordHandoff: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -32,6 +33,7 @@ vi.mock('@/lib/address/structured-address', () => ({
 vi.mock('@/lib/email/email-service', () => ({
     sendSellerNotificationEmail: mocks.sendSellerNotificationEmail,
 }));
+vi.mock('@/lib/neon/queries/handoff-evidence', () => ({ recordHandoffEvidence: mocks.recordHandoff }));
 vi.mock('@/lib/neon/queries', () => ({
     getTestDriveRequestState: mocks.getTestDriveRequestState,
     getOrCreateTestDriveRequest: mocks.getOrCreateTestDriveRequest,
@@ -112,6 +114,7 @@ describe('/api/test-drive', () => {
         mocks.getBrandProfile.mockResolvedValue({ id: 'brand_1', contact_name: 'Test TC' });
         mocks.buildStructuredPropertyAddress.mockResolvedValue(null);
         mocks.sendSellerNotificationEmail.mockResolvedValue({ success: true });
+        mocks.recordHandoff.mockResolvedValue(true);
     });
 
     it('rejects unauthenticated status and creation', async () => {
@@ -211,6 +214,27 @@ describe('/api/test-drive', () => {
         expect(mocks.createEventLog).toHaveBeenCalledWith(expect.objectContaining({
             eventType: 'test_drive_invitation_failed',
         }), { signal: expect.any(AbortSignal) });
+    });
+
+    it('records the test invitation as test-mode evidence, and a returned refusal as failed', async () => {
+        const requestId = '00000000-0000-4000-8000-0000000000d2';
+        mocks.getOrCreateTestDriveRequest.mockResolvedValue({ request: { ...demoRequest, id: requestId }, created: true, hasLiveSubmission: false });
+        mocks.sendSellerNotificationEmail.mockResolvedValueOnce({ success: true, messageId: 'msg_test_invite' });
+        expect((await post()).status).toBe(201);
+        mocks.sendSellerNotificationEmail.mockResolvedValueOnce({ success: false, error: 'provider down', errorCode: 'application_error' });
+        expect((await post()).status).toBe(201);
+
+        expect(mocks.recordHandoff.mock.calls.map((call) => call[0].notifications[0])).toEqual([
+            expect.objectContaining({ requestId, purpose: 'request_invitation', mode: 'test', sendOutcome: 'accepted', providerMessageId: 'msg_test_invite' }),
+            expect.objectContaining({ requestId, purpose: 'request_invitation', mode: 'test', sendOutcome: 'failed', failureCode: 'application_error' }),
+        ]);
+        expect(JSON.stringify(mocks.recordHandoff.mock.calls)).not.toMatch(/verified@example\.com|seller_token|provider down/);
+    });
+
+    it('still starts the test when handoff evidence cannot be stored', async () => {
+        mocks.recordHandoff.mockResolvedValue(false);
+        expect((await post()).status).toBe(201);
+        expect(mocks.sendSellerNotificationEmail).toHaveBeenCalledTimes(1);
     });
 
     it('does not let telemetry failure prevent invitation delivery or resume access', async () => {

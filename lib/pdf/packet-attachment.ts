@@ -4,8 +4,10 @@ import puppeteer from 'puppeteer-core';
 import { jsPDF } from 'jspdf';
 import { fitRectWithin } from '@/lib/pdf-fit';
 import { calculateSimplePdfFitDiagnostics } from '@/lib/pdf/simple-fit-diagnostics';
-import { getPacketDataByRequestId, getPacketDataByPublicToken } from '@/lib/packet/packet-data';
+import { getPacketDataByRequestId, getPacketDataByPublicToken, type PacketDataResult } from '@/lib/packet/packet-data';
 import { buildPacketPdfHtml, type PacketPdfData } from '@/lib/pdf/packet-html';
+import { errorNameOf } from '@/lib/ops/events';
+import type { PdfFailureStage, PdfLaunchStrategy, PdfRenderEvidence } from '@/lib/telemetry/handoff-evidence';
 
 export interface PacketPdfAttachment {
     filename: string;
@@ -13,12 +15,26 @@ export interface PacketPdfAttachment {
     contentType: 'application/pdf';
 }
 
+/** `evidence` describes the execution only: no filename, HTML, answers or link. */
 export type PacketPdfAttachmentResult =
-    | { status: 'attached'; attachment: PacketPdfAttachment }
-    | { status: 'skipped'; reason: 'not_found' | 'not_submitted' | 'locked' }
-    | { status: 'failed'; error: string };
+    | { status: 'attached'; attachment: PacketPdfAttachment; evidence: PdfRenderEvidence }
+    | { status: 'skipped'; reason: 'not_found' | 'not_submitted' | 'locked'; evidence: PdfRenderEvidence }
+    | { status: 'failed'; error: string; evidence: PdfRenderEvidence };
 
-type LaunchStrategy = 'env_executable' | 'bin_path' | 'pack_url' | 'default';
+type LaunchStrategy = PdfLaunchStrategy;
+
+/** Filled in as a render proceeds, so a failure can be attributed to the stage it reached. */
+type RenderTrace = {
+    stage: PdfFailureStage;
+    renderStrategy: 'print_pdf' | 'screenshot' | null;
+    launchStrategy: LaunchStrategy | null;
+    launchMs: number | null;
+    renderMs: number | null;
+};
+
+const newRenderTrace = (): RenderTrace => ({
+    stage: 'build_html', renderStrategy: null, launchStrategy: null, launchMs: null, renderMs: null,
+});
 
 async function resolveLaunchOptions(): Promise<{
     executablePath: string;
@@ -67,9 +83,18 @@ async function resolveLaunchOptions(): Promise<{
     };
 }
 
-async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: string; content: Buffer }> {
+async function renderPacketPdfBuffer(
+    data: PacketPdfData,
+    trace: RenderTrace = newRenderTrace(),
+): Promise<{ filename: string; content: Buffer }> {
+    trace.stage = 'build_html';
     const render = buildPacketPdfHtml(data);
+    trace.renderStrategy = render.renderStrategy === 'print_pdf' ? 'print_pdf' : 'screenshot';
+
+    trace.stage = 'browser_launch';
+    const launchStartedAt = Date.now();
     const launchOptions = await resolveLaunchOptions();
+    trace.launchStrategy = launchOptions.strategy;
     logDiagnostic('log', 'pdf_launch', {
         strategy: launchOptions.strategy,
         headless: launchOptions.headless,
@@ -87,8 +112,11 @@ async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: s
             deviceScaleFactor: 2,
         },
     });
+    const renderStartedAt = Date.now();
+    trace.launchMs = renderStartedAt - launchStartedAt;
 
     try {
+        trace.stage = 'page_load';
         const page = await browser.newPage();
         await page.setContent(render.html, { waitUntil: 'networkidle0' });
         await page.waitForSelector(render.rootSelector, { timeout: 15000 });
@@ -105,6 +133,7 @@ async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: s
             }));
         });
 
+        trace.stage = 'render';
         if (render.renderStrategy === 'print_pdf') {
             const pdfBuffer = await page.pdf({
                 format: 'letter',
@@ -184,12 +213,14 @@ async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: s
             content: Buffer.from(pdf.output('arraybuffer')),
         };
     } finally {
+        // Page load plus rendering, whether or not it succeeded.
+        trace.renderMs = Date.now() - renderStartedAt;
         await browser.close();
     }
 }
 
-async function createPacketPdfAttachment(data: PacketPdfData): Promise<PacketPdfAttachment> {
-    const rendered = await renderPacketPdfBuffer(data);
+async function createPacketPdfAttachment(data: PacketPdfData, trace?: RenderTrace): Promise<PacketPdfAttachment> {
+    const rendered = await renderPacketPdfBuffer(data, trace);
 
     return {
         filename: rendered.filename,
@@ -208,60 +239,81 @@ export async function createPacketPdfAttachmentFromData(data: PacketPdfData): Pr
     return createPacketPdfAttachment(data);
 }
 
-export async function createPacketPdfAttachmentForRequest(requestId: string): Promise<PacketPdfAttachmentResult> {
+/**
+ * Resolves the packet, renders it and reports what the execution did. The
+ * request is only known once the caller's id or link resolved to one.
+ */
+async function createPacketPdfAttachmentFromLookup(
+    lookup: () => Promise<PacketDataResult>,
+    knownRequestId: string | null,
+): Promise<PacketPdfAttachmentResult> {
+    const startedAt = Date.now();
+    const trace = newRenderTrace();
+    const evidence: PdfRenderEvidence = {
+        requestId: knownRequestId, isDemo: null, packetMode: null, renderStrategy: null, launchStrategy: null,
+        outcome: 'failed', skipReason: null, failureStage: null, errorName: null,
+        totalMs: 0, dataMs: null, launchMs: null, renderMs: null, bytes: null,
+    };
+    let dataResolved = false;
+
     try {
-        const packetResult = await getPacketDataByRequestId(requestId);
+        const packetResult = await lookup();
+        dataResolved = true;
+        evidence.dataMs = Date.now() - startedAt;
 
-        if (packetResult.status === 'not_found') {
-            return { status: 'skipped', reason: 'not_found' };
+        if (packetResult.status === 'not_found' || packetResult.status === 'not_submitted' || packetResult.status === 'locked') {
+            if (packetResult.status !== 'not_found' && packetResult.request) {
+                evidence.requestId = packetResult.request.id;
+                evidence.isDemo = packetResult.request.isDemo;
+            }
+            evidence.outcome = 'skipped';
+            evidence.skipReason = packetResult.status;
+            evidence.totalMs = Date.now() - startedAt;
+            return { status: 'skipped', reason: packetResult.status, evidence };
         }
 
-        if (packetResult.status === 'not_submitted') {
-            return { status: 'skipped', reason: 'not_submitted' };
-        }
+        evidence.requestId = packetResult.data.request.id;
+        evidence.isDemo = packetResult.data.meta.is_demo === true;
+        evidence.packetMode = packetResult.data.mode === 'advanced' ? 'advanced' : 'simple';
 
-        if (packetResult.status === 'locked') {
-            return { status: 'skipped', reason: 'locked' };
-        }
-
-        const attachment = await createPacketPdfAttachment(packetResult.data);
-        return { status: 'attached', attachment };
+        const attachment = await createPacketPdfAttachment(packetResult.data, trace);
+        Object.assign(evidence, {
+            outcome: 'rendered',
+            renderStrategy: trace.renderStrategy,
+            launchStrategy: trace.launchStrategy,
+            launchMs: trace.launchMs,
+            renderMs: trace.renderMs,
+            bytes: attachment.content.byteLength,
+            totalMs: Date.now() - startedAt,
+        } satisfies Partial<PdfRenderEvidence>);
+        return { status: 'attached', attachment, evidence };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown PDF generation error';
-        logDiagnostic('warn', 'pdf_attachment_failed', { requestId }, error);
+        logDiagnostic('warn', 'pdf_attachment_failed', knownRequestId ? { requestId: knownRequestId } : {}, error);
+        Object.assign(evidence, {
+            outcome: 'failed',
+            failureStage: dataResolved ? trace.stage : 'data',
+            errorName: errorNameOf(error),
+            renderStrategy: trace.renderStrategy,
+            launchStrategy: trace.launchStrategy,
+            launchMs: trace.launchMs,
+            renderMs: trace.renderMs,
+            totalMs: Date.now() - startedAt,
+        } satisfies Partial<PdfRenderEvidence>);
         return {
             status: 'failed',
             error: errorMessage,
+            evidence,
         };
     }
 }
 
+export async function createPacketPdfAttachmentForRequest(requestId: string): Promise<PacketPdfAttachmentResult> {
+    return createPacketPdfAttachmentFromLookup(() => getPacketDataByRequestId(requestId), requestId);
+}
+
 export async function createPacketPdfAttachmentForPublicToken(token: string): Promise<PacketPdfAttachmentResult> {
-    try {
-        const packetResult = await getPacketDataByPublicToken(token);
-
-        if (packetResult.status === 'not_found') {
-            return { status: 'skipped', reason: 'not_found' };
-        }
-
-        if (packetResult.status === 'not_submitted') {
-            return { status: 'skipped', reason: 'not_submitted' };
-        }
-
-        if (packetResult.status === 'locked') {
-            return { status: 'skipped', reason: 'locked' };
-        }
-
-        const attachment = await createPacketPdfAttachment(packetResult.data);
-        return { status: 'attached', attachment };
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown PDF generation error';
-        logDiagnostic('warn', 'pdf_attachment_failed', {}, error);
-        return {
-            status: 'failed',
-            error: errorMessage,
-        };
-    }
+    return createPacketPdfAttachmentFromLookup(() => getPacketDataByPublicToken(token), null);
 }
 
 export const __testing = {

@@ -101,8 +101,11 @@ export interface PacketAdvancedSection {
 export type PacketDataResult =
     | { status: 'ok'; data: PacketDataPayload }
     | { status: 'not_found' }
-    | { status: 'not_submitted' }
-    | { status: 'locked'; message: string };
+    /** `request` identifies the resolved request for diagnostics; it is never sent to a client. */
+    | { status: 'not_submitted'; request?: ResolvedPacketRequest }
+    | { status: 'locked'; message: string; request?: ResolvedPacketRequest };
+
+export type ResolvedPacketRequest = { id: string; isDemo: boolean };
 
 type RequestWithPacketFields = Request & {
     is_locked?: boolean | null;
@@ -308,7 +311,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
     const requestWithPacketFields = requestData as RequestWithPacketFields;
 
     if (requestData.status !== 'submitted') {
-        return { status: 'not_submitted' };
+        return { status: 'not_submitted', request: { id: requestData.id, isDemo: requestWithPacketFields.is_demo === true } };
     }
 
     let brandProfile = null;
@@ -327,7 +330,7 @@ async function buildPacketDataFromRequest(requestData: Request): Promise<PacketD
 
     const isLocked = Boolean(requestWithPacketFields.is_locked);
     if (isLocked && !isPro) {
-        return { status: 'locked', message: PACKET_LOCKED_MESSAGE };
+        return { status: 'locked', message: PACKET_LOCKED_MESSAGE, request: { id: requestData.id, isDemo: isTestDrive } };
     }
 
     const forceShowPoweredBy = !isPro;

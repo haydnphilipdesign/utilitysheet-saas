@@ -229,7 +229,8 @@ describe('packet-data builder', () => {
 
         const result = await getPacketDataByRequestId('req_locked');
 
-        expect(result).toEqual({ status: 'locked', message: PACKET_LOCKED_MESSAGE });
+        // The resolved request rides along for diagnostics only; routes never send it to a client.
+        expect(result).toEqual({ status: 'locked', message: PACKET_LOCKED_MESSAGE, request: { id: 'req_locked', isDemo: false } });
     });
 
     it('returns not_submitted when request has not been submitted yet', async () => {
@@ -244,7 +245,7 @@ describe('packet-data builder', () => {
         });
 
         const result = await getPacketDataByPublicToken('token_3');
-        expect(result).toEqual({ status: 'not_submitted' });
+        expect(result).toEqual({ status: 'not_submitted', request: { id: 'req_3', isDemo: false } });
     });
 
     it('maps meter_number for electric utility entries', async () => {

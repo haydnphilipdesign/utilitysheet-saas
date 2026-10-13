@@ -21,6 +21,9 @@ const mocks = vi.hoisted(() => ({
     getOrganizationByIdMock: vi.fn(),
     buildStructuredPropertyAddressMock: vi.fn(),
     sellerEmailMock: vi.fn(),
+    recordEventMock: vi.fn(),
+    recordSuccessMock: vi.fn(),
+    recordHandoffMock: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -43,6 +46,15 @@ vi.mock('@/lib/address/structured-address', () => ({
 
 vi.mock('@/lib/email/email-service', () => ({
     sendSellerNotificationEmail: mocks.sellerEmailMock,
+}));
+
+vi.mock('@/lib/ops/events', () => ({
+    recordOperationalEvent: mocks.recordEventMock,
+    recordOperationalSuccess: mocks.recordSuccessMock,
+}));
+
+vi.mock('@/lib/neon/queries/handoff-evidence', () => ({
+    recordHandoffEvidence: mocks.recordHandoffMock,
 }));
 
 vi.mock('@/lib/neon/queries', () => ({
@@ -91,8 +103,71 @@ describe('POST /api/requests advanced gating', () => {
         expect(JSON.stringify(warn.mock.calls)).not.toMatch(/private|SQL|address|token|sentinel/);
         warn.mockRestore();
     });
+    describe('invitation handoff evidence', () => {
+        const REQUEST_ID = '00000000-0000-4000-8000-0000000000d1';
+        const create = (body: Record<string, unknown> = {}) => POST(new Request('http://localhost/api/requests', {
+            method: 'POST', body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701', sellerEmail: 'seller@example.test', sellerName: 'Sam Seller', ...body }),
+        }));
+        const stored = () => mocks.recordHandoffMock.mock.calls.map((call) => call[0].notifications);
+        beforeEach(() => mocks.createRequestMock.mockResolvedValue({ id: REQUEST_ID, seller_token: 'synthetic-token' }));
+
+        it('records an accepted invitation by slot with the provider message id and no address', async () => {
+            mocks.sellerEmailMock.mockResolvedValue({ success: true, messageId: 'msg_invite' });
+            expect((await create()).status).toBe(201);
+            expect(stored()).toEqual([[expect.objectContaining({
+                requestId: REQUEST_ID, purpose: 'request_invitation', mode: 'live', recipientSlot: 0, intendedRecipients: 1,
+                sendOutcome: 'accepted', providerMessageId: 'msg_invite', failureCode: null, attachmentStatus: 'not_applicable',
+            })]]);
+            expect(mocks.recordSuccessMock).toHaveBeenCalledWith({ category: 'email', code: 'invitation_send_failed' });
+            expect(mocks.recordEventMock).not.toHaveBeenCalled();
+            expect(JSON.stringify(mocks.recordHandoffMock.mock.calls)).not.toMatch(/example\.test|Sam Seller|Main St|synthetic-token/);
+        });
+
+        it('treats a returned refusal as a failed handoff even though nothing was thrown', async () => {
+            mocks.sellerEmailMock.mockResolvedValue({ success: false, error: 'Invalid `to` field: seller@example.test', errorCode: 'validation_error' });
+            const response = await create();
+            // The request is still created; only the email failed.
+            expect(response.status).toBe(201);
+            expect(stored()[0][0]).toMatchObject({ sendOutcome: 'failed', failureCode: 'validation_error', providerMessageId: null });
+            expect(mocks.recordEventMock).toHaveBeenCalledWith({
+                category: 'email', code: 'invitation_send_failed', outcome: 'failure', requestId: REQUEST_ID,
+                metadata: { recipientCount: 1, failedCount: 1 },
+            });
+            expect(JSON.stringify([mocks.recordEventMock.mock.calls, mocks.recordHandoffMock.mock.calls])).not.toMatch(/example\.test|Invalid/);
+        });
+
+        it('records a thrown send as unknown, not as sent or failed', async () => {
+            vi.spyOn(console, 'error').mockImplementation(() => undefined);
+            mocks.sellerEmailMock.mockRejectedValue(new Error('socket hang up'));
+            expect((await create()).status).toBe(201);
+            expect(stored()[0][0]).toMatchObject({ sendOutcome: 'unknown', failureCode: 'threw' });
+            expect(mocks.recordEventMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('still creates the request when neither observation can be stored', async () => {
+            mocks.sellerEmailMock.mockResolvedValue({ success: true, messageId: 'msg_invite' });
+            mocks.recordSuccessMock.mockResolvedValue(false);
+            mocks.recordHandoffMock.mockResolvedValue(false);
+            const response = await create();
+            expect(response.status).toBe(201);
+            expect(await response.json()).toMatchObject({ id: REQUEST_ID });
+            expect(mocks.sellerEmailMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('records nothing when no invitation is requested', async () => {
+            expect((await create({ sendSellerEmail: false })).status).toBe(201);
+            expect((await create({ sellerEmail: undefined })).status).toBe(201);
+            expect(mocks.sellerEmailMock).not.toHaveBeenCalled();
+            expect(mocks.recordHandoffMock).not.toHaveBeenCalled();
+            expect(mocks.recordEventMock).not.toHaveBeenCalled();
+        });
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
+        mocks.recordEventMock.mockResolvedValue(true);
+        mocks.recordSuccessMock.mockResolvedValue(true);
+        mocks.recordHandoffMock.mockResolvedValue(true);
         mocks.createRequestMock.mockResolvedValue({ id: 'new-request', seller_token: 'synthetic-token' });
         mocks.getSellerFormMock.mockResolvedValue({ ...savedForm, account_id: 'acct_1' });
         mocks.getIntakeBrandProfileMock.mockResolvedValue(null);

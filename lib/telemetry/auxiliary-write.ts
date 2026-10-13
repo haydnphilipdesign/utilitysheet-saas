@@ -7,7 +7,7 @@ export type AuxiliaryObservation =
     | 'test_drive_invitation_succeeded' | 'test_drive_invitation_failed'
     | 'test_drive_delivery_succeeded' | 'test_drive_delivery_failed'
     | 'ai_run' | 'ai_selection' | 'operational_event' | 'operational_success'
-    | 'job_start' | 'job_finish' | 'seller_observation';
+    | 'job_start' | 'job_finish' | 'seller_observation' | 'handoff_evidence';
 
 /**
  * Only auxiliary observations belong here. Pass the signal to the actual I/O.
