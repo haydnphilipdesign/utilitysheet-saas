@@ -5,9 +5,16 @@ change in telemetry Slice 1, and for reopening them safely. The reason for the
 pause and the 31-minute figure are in
 [telemetry-privacy.md](telemetry-privacy.md#required-releasecounter-key-migration-procedure).
 
-**Nothing here has been performed.** The code is local, on branch
-`codex/maintenance-mode`. Every step in "Procedure" is a production action
-that needs the owner's explicit approval at the time.
+> **Owner decision, 2026-10-13:** the Slice 1 release did **not** use this
+> procedure. The owner accepted briefly looser rate limits and released it as
+> an ordinary deployment (see the amendment in
+> `.ai/decisions/2026-10-13-capability-safe-telemetry.md`). Maintenance mode
+> ships off by default and remains available as a general pause switch. This
+> runbook is kept for a future change where a strict pause is wanted.
+
+**The paused procedure below has never been performed.** Every step in
+"Procedure" is a production action that needs the owner's explicit approval
+at the time.
 
 ## Rules that do not bend
 

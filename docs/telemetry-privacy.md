@@ -28,6 +28,13 @@ Rejected limiter calls still propagate to existing route error handling.
 
 ### Required release/counter-key migration procedure
 
+> **Owner decision, 2026-10-13:** Slice 1 is released as an ordinary rolling
+> deployment. The owner accepted that old and new buckets are separate for up
+> to about 31 minutes after it goes live, which briefly gives identifiers a
+> fresh allowance on the five affected endpoints. The strict procedure below
+> was therefore **not used** for this release. It is kept for any future
+> identifier change where a pause is wanted.
+
 **Do not perform a rolling cutover with traffic:** raw and digest buckets are
 different, so each version would grant a fresh allowance. The installed SDK
 reads a weighted previous sliding bucket and retains keys for `2 * window +

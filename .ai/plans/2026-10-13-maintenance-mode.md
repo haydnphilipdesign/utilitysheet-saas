@@ -86,3 +86,7 @@ Validation (Node 20.19.0, installed CLIs, Redis variables cleared, `node_modules
 Local-only working-copy note: `scripts/demo-seed.mjs` shows as modified because its line endings were normalized to LF so its test can run in a fresh worktree. It is deliberately not committed.
 
 Remaining required local work: none. Everything else is a production action listed in the runbook.
+
+## Release decision (2026-10-13, after completion)
+
+The owner chose an ordinary rolling release of Slice 1 instead of the paused cutover, accepting briefly looser limits (amendment in `../decisions/2026-10-13-capability-safe-telemetry.md`), and asked for maintenance mode to be included. `codex/maintenance-mode` was fast-forwarded into `main` and pushed with the owner's authorization. Maintenance mode is off and was not activated. The paused procedure in the runbook was not used. The owner asked whether the switch is in Admin; it is not (environment variable plus redeploy). An Admin toggle would be new, optional work.

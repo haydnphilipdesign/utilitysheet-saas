@@ -1,6 +1,6 @@
 # Capability-safe auxiliary telemetry
 
-- Date: 2026-10-13. Status: accepted for local Slice 1 implementation; release separately authorized.
+- Date: 2026-10-13. Status: accepted for local Slice 1 implementation. **Release amended by the owner on 2026-10-13: see "Amendment" below.**
 - Plan: `../plans/2026-10-13-telemetry-audit-and-improvements.md`.
 
 ## Context and decision
@@ -33,3 +33,21 @@ future labels/campaigns need explicit allowlist updates. SDK hooks are verified
 with installed packages and intercepted synthetic browser collectors; hosted
 script/dashboard behavior remains unverified. Procedure and validation limits:
 `../../docs/telemetry-privacy.md`.
+
+## Amendment (2026-10-13): owner accepted an ordinary release
+
+The owner reviewed the pause procedure and chose to release Slice 1 as an
+ordinary rolling deployment, without the traffic pause, drain or 31-minute
+wait. Accepted consequence: for up to about 31 minutes after the new version
+goes live, the old raw-key buckets and the new digest buckets are separate,
+so an identifier that had used its allowance on one of the five affected
+endpoints gets a fresh one. No rate limiting is disabled and no key is
+deleted; the old buckets simply expire. Reason: for a product of this size
+the brief loosening costs less than a customer-visible pause.
+
+This supersedes "Immediate rolling rollout/rollback is unsafe" above for this
+release. A rollback to an old-scheme deployment has the same brief effect and
+is accepted on the same terms. The strict procedure stays documented in
+`../../docs/maintenance-cutover-runbook.md` for any future change where the
+owner wants it. Maintenance mode ships with this release, off, as a general
+pause switch; see `2026-10-13-maintenance-gate.md`.
