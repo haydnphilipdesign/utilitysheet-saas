@@ -36,7 +36,7 @@ describe('sendTCCompletionNotificationEmail referral footer', () => {
             referralCode: 'tc-team',
         });
 
-        expect(result).toEqual({ success: true, attachmentStatus: 'disabled' });
+        expect(result).toEqual({ success: true, messageId: 'email_123', attachmentStatus: 'disabled', pdfEvidence: null });
         const html = sendEmailMock.mock.calls[0][0].html as string;
         expect(html).toContain('/from-a-closing?');
         expect(html).toContain('utm_source=utilitysheet_email');

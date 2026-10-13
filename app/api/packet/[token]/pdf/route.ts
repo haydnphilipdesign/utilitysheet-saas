@@ -7,6 +7,8 @@ import { createPacketPdfAttachmentForPublicToken } from '@/lib/pdf/packet-attach
 import { packetPdfRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/network/client-ip';
 import { errorNameOf, recordOperationalEvent, recordOperationalSuccess } from '@/lib/ops/events';
+import { recordHandoffEvidence } from '@/lib/neon/queries/handoff-evidence';
+import { pdfFailureReasonCode, pdfObservationFromEvidence } from '@/lib/telemetry/handoff-evidence';
 
 export const runtime = 'nodejs';
 
@@ -42,8 +44,17 @@ export async function GET(
 
         const attachmentResult = await createPacketPdfAttachmentForPublicToken(token);
 
+        // Execution evidence for a resolved request only: an unknown link stores nothing.
+        const recordPdfEvidence = (httpStatus: number) => {
+            const observation = pdfObservationFromEvidence(attachmentResult.evidence, { surface: 'download', httpStatus });
+            return observation ? recordHandoffEvidence({ notifications: [], pdfRenders: [observation] }) : Promise.resolve(false);
+        };
+
         if (attachmentResult.status === 'attached') {
-            await recordOperationalSuccess({ category: 'pdf', code: 'generation_failed' });
+            await Promise.all([
+                recordOperationalSuccess({ category: 'pdf', code: 'generation_failed' }),
+                recordPdfEvidence(200),
+            ]);
             const safeFilename = attachmentResult.attachment.filename.replaceAll('"', '');
             return new NextResponse(new Uint8Array(attachmentResult.attachment.content), {
                 status: 200,
@@ -58,6 +69,7 @@ export async function GET(
 
         if (attachmentResult.status === 'skipped') {
             if (attachmentResult.reason === 'locked') {
+                await recordPdfEvidence(402);
                 return NextResponse.json(
                     {
                         error: 'Upgrade required',
@@ -67,6 +79,7 @@ export async function GET(
                 );
             }
 
+            await recordPdfEvidence(404);
             return NextResponse.json(
                 { error: 'Request not found' },
                 { status: 404, headers: getRateLimitHeaders(rateLimitResult) }
@@ -74,12 +87,17 @@ export async function GET(
         }
 
         // Invalid tokens, locked packets and rate limits above are expected outcomes, not incidents.
-        await recordOperationalEvent({
-            category: 'pdf',
-            code: 'generation_failed',
-            outcome: 'failure',
-            metadata: { reasonCode: 'renderer_failed' },
-        });
+        await Promise.all([
+            recordOperationalEvent({
+                category: 'pdf',
+                code: 'generation_failed',
+                outcome: 'failure',
+                requestId: attachmentResult.evidence?.requestId ?? null,
+                // The stage that failed: data lookup, HTML build, browser launch, page load or render.
+                metadata: { reasonCode: pdfFailureReasonCode(attachmentResult.evidence) },
+            }),
+            recordPdfEvidence(500),
+        ]);
         return NextResponse.json(
             { error: 'Failed to generate PDF' },
             { status: 500, headers: getRateLimitHeaders(rateLimitResult) }

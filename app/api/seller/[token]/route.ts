@@ -20,6 +20,8 @@ import { markAiSuggestionSelection } from '@/lib/neon/queries/ai-telemetry';
 import { buildSellerSubmittedEventSummary } from '@/lib/telemetry/seller-submission';
 import { scheduleReferralCreditAward } from '@/lib/referrals/award-referral-credit';
 import { errorNameOf, recordOperationalEvent, recordOperationalSuccess } from '@/lib/ops/events';
+import { recordHandoffEvidence } from '@/lib/neon/queries/handoff-evidence';
+import { buildNotificationEvidence } from '@/lib/telemetry/handoff-evidence';
 import {
     filterAdvancedPacketDataByExclusions,
     getAdvancedModuleVisibleFieldKeys,
@@ -854,6 +856,10 @@ export async function POST(
                 : [])
             : buildSubmissionRecipients(recipientCandidates, { accessLocked });
 
+        // Groups every recipient slot (and its PDF render) of this handoff attempt.
+        const handoffOperationId = crypto.randomUUID();
+        const handoffMode = isTestDriveSubmission ? 'test' : 'live';
+
         if (submissionRecipients.length > 0) {
             try {
                 // Mirrors the packet page's rule: free-plan workspaces carry the
@@ -894,17 +900,25 @@ export async function POST(
                 const failedDeliveries = deliveryResults.filter(
                     (result) => result.status === 'rejected' || !result.value.success
                 ).length;
-                if (failedDeliveries > 0) {
-                    await recordOperationalEvent({
-                        category: 'email',
-                        code: 'completion_send_failed',
-                        outcome: 'failure',
+                await Promise.all([
+                    failedDeliveries > 0
+                        ? recordOperationalEvent({
+                            category: 'email',
+                            code: 'completion_send_failed',
+                            outcome: 'failure',
+                            requestId: requestData.id,
+                            metadata: { recipientCount: deliveryResults.length, failedCount: failedDeliveries },
+                        })
+                        : recordOperationalSuccess({ category: 'email', code: 'completion_send_failed' }),
+                    // One outcome per recipient slot, never the address itself.
+                    recordHandoffEvidence(buildNotificationEvidence({
+                        operationId: handoffOperationId,
                         requestId: requestData.id,
-                        metadata: { recipientCount: deliveryResults.length, failedCount: failedDeliveries },
-                    });
-                } else {
-                    await recordOperationalSuccess({ category: 'email', code: 'completion_send_failed' });
-                }
+                        purpose: 'completion_notification',
+                        mode: handoffMode,
+                        sends: deliveryResults,
+                    })),
+                ]);
 
                 if (isTestDriveSubmission) {
                     const firstResult = deliveryResults[0];
@@ -947,6 +961,13 @@ export async function POST(
             }
         } else {
             console.warn('TC notification skipped: no eligible recipients');
+            await recordHandoffEvidence(buildNotificationEvidence({
+                operationId: handoffOperationId,
+                requestId: requestData.id,
+                purpose: 'completion_notification',
+                mode: handoffMode,
+                sends: [],
+            }));
             if (isTestDriveSubmission) {
                 await recordAuxiliaryEvent({
                     requestId: requestData.id,

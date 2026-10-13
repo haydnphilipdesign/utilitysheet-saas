@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AdminPageHeader } from '@/components/admin/primitives';
+import { HandoffEvidenceCard } from '@/components/admin/HandoffEvidence';
 import { TriageControls, type TriageView } from '@/components/admin/TriageControls';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,7 @@ import {
 } from '@/lib/ops/overview';
 import { effectiveTriageState, getTriageRecords, type TriageRecord } from '@/lib/ops/triage';
 import { isMissingRelationError } from '@/lib/neon/statements';
+import { loadHandoffEvidenceSummary } from '@/lib/neon/queries/handoff-evidence';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +48,34 @@ const INCIDENT_LABELS: Record<string, { title: string; investigate: string }> = 
     'email:completion_send_failed': {
         title: 'Completion email to the customer was not sent',
         investigate: 'The seller submission itself succeeded. Open the request; the customer can still view it in their dashboard.',
+    },
+    'email:invitation_send_failed': {
+        title: 'Invitation email to a seller was not sent',
+        investigate: 'The request itself was created. Open the request, confirm the seller email, then send a reminder or share the seller link another way.',
+    },
+    'email:completion_bounced': {
+        title: 'A completion email to the customer bounced',
+        investigate: 'The customer address is probably wrong or full. The sheet is still in their dashboard; open the request and check the owner account email.',
+    },
+    'email:completion_complained': {
+        title: 'A customer marked a completion email as spam',
+        investigate: 'Open the request and check who received it. They can turn submission email off in their notification settings.',
+    },
+    'email:completion_undelivered': {
+        title: 'The email provider could not deliver a completion email',
+        investigate: 'The sheet is still in the customer dashboard. Open the request for its email history, then check the message in the email provider dashboard.',
+    },
+    'email:invitation_bounced': {
+        title: 'An invitation email to a seller bounced',
+        investigate: 'The seller address is probably wrong. Open the request and confirm the seller email with the customer.',
+    },
+    'email:invitation_complained': {
+        title: 'A seller marked the invitation email as spam',
+        investigate: 'Do not send reminders to this seller. Tell the customer to contact them another way.',
+    },
+    'email:invitation_undelivered': {
+        title: 'The email provider could not deliver an invitation email',
+        investigate: 'Open the request for its email history, then check the message in the email provider dashboard. The customer can share the seller link directly.',
     },
     'email:reminder_bounced': {
         title: 'A seller reminder bounced',
@@ -133,7 +163,10 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
     const showHandled = params.show === 'all';
 
     const now = new Date();
-    const snapshot = await getOperationsSnapshot({ now, followUpPage });
+    const [snapshot, handoffEvidence] = await Promise.all([
+        getOperationsSnapshot({ now, followUpPage }),
+        loadHandoffEvidenceSummary(),
+    ]);
 
     const incidents = snapshot.incidents.status === 'ok' ? snapshot.incidents.data.incidents : [];
     const unresolvedReminders = snapshot.reminders.status === 'ok' ? snapshot.reminders.data.unresolved : [];
@@ -332,7 +365,7 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
                         ) : <Unavailable state={snapshot.reminders} what="Reminder tracking" />}
                         <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                             &quot;Delivery not confirmed&quot; stays that way unless the delivery webhook is registered{process.env.RESEND_WEBHOOK_SECRET ? '' : ' (it is not configured in this environment)'}.
-                            Reminders sent before tracking existed, and all other email, have no delivery evidence here.
+                            Reminders sent before tracking existed have no delivery evidence. Completion and invitation email is shown separately below; all other email has none.
                         </p>
                     </CardContent>
                 </Card>
@@ -365,6 +398,8 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
                         </p>
                     </CardContent>
                 </Card>
+
+                <HandoffEvidenceCard state={handoffEvidence} webhookConfigured={Boolean(process.env.RESEND_WEBHOOK_SECRET)} />
 
                 <Card className="border-border/70 bg-card shadow-sm xl:col-span-2">
                     <CardHeader>

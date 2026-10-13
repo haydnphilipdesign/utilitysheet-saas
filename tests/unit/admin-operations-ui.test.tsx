@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     snapshot: vi.fn(),
     triageRecords: vi.fn(),
     requireAdmin: vi.fn(),
+    handoffEvidence: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -34,6 +35,7 @@ vi.mock('@/lib/ops/overview', async (original) => ({
     ...(await original<typeof import('@/lib/ops/overview')>()),
     getOperationsSnapshot: mocks.snapshot,
 }));
+vi.mock('@/lib/neon/queries/handoff-evidence', () => ({ loadHandoffEvidenceSummary: mocks.handoffEvidence }));
 vi.mock('@/lib/ops/triage', async (original) => ({
     ...(await original<typeof import('@/lib/ops/triage')>()),
     getTriageRecords: mocks.triageRecords,
@@ -64,6 +66,7 @@ beforeEach(() => {
     mocks.triage.mockResolvedValue({ success: true });
     mocks.requireAdmin.mockResolvedValue({});
     mocks.triageRecords.mockResolvedValue(new Map());
+    mocks.handoffEvidence.mockResolvedValue({ status: 'not_installed' });
 });
 
 describe('RequestAdminActions', () => {
@@ -259,6 +262,38 @@ describe('Operations page', () => {
     const emptyFollowUp = { inactiveRequests: { total: 0, items: [] }, accountsNotStarted: { total: 0, items: [] } };
     const now = new Date().toISOString();
     const page = async (params: Record<string, string> = {}) => render(await OperationsPage({ searchParams: Promise.resolve(params) }));
+
+    it('shows email handoff and PDF evidence as its own section, and a pending migration as not installed', async () => {
+        const quiet = {
+            generatedAt: now, incidents: ok({ incidents: [], firstObservationAt: now, lastObservationAt: now, truncated: false }),
+            jobs: ok([]), reminders: ok(emptyReminders), followUp: ok(emptyFollowUp),
+        };
+        mocks.snapshot.mockResolvedValue(quiet);
+        const pending = await page();
+        expect(screen.getByText(/email handoff and pdf evidence is not installed yet/i)).toBeInTheDocument();
+        expect(screen.queryByRole('region', { name: /completion email to the customer/i })).not.toBeInTheDocument();
+        pending.unmount();
+
+        const purpose = {
+            operations: 4, noRecipients: 1, partialOperations: 1, attempted: 5, accepted: 4, failed: 1, unknown: 0, delivered: 2, delayed: 0,
+            bounced: 1, complained: 0, deliveryFailed: 0, deliveryUnknown: 1, attachmentAttached: 3, attachmentFailed: 1, attachmentSkipped: 0,
+        };
+        const surface = { rendered: 3, failed: 1, skipped: 0, failedByStage: { data: 0, build_html: 0, browser_launch: 1, page_load: 0, render: 0 }, medianMs: 4200, p95Ms: 9100, medianBytes: 51200 };
+        mocks.handoffEvidence.mockResolvedValue(ok({
+            windowDays: 30, testOperations: 2, firstObservationAt: now, lastObservationAt: now,
+            notifications: { completion_notification: purpose, request_invitation: { ...purpose, operations: 0, noRecipients: 0, attempted: 0, accepted: 0 } },
+            pdf: { completion_attachment: surface, download: { ...surface, rendered: 0, failed: 0, failedByStage: { ...surface.failedByStage, browser_launch: 0 }, medianMs: null, p95Ms: null, medianBytes: null } },
+        }));
+        await page();
+        const completion = screen.getByRole('region', { name: /completion email to the customer/i });
+        expect(within(completion).getByText('4 of 5')).toBeInTheDocument();
+        expect(within(completion).getByText(/some recipients accepted, others not/i)).toBeInTheDocument();
+        const attachments = screen.getByRole('region', { name: /pdfs attached to completion email/i });
+        expect(within(attachments).getByText('4.2s')).toBeInTheDocument();
+        expect(within(attachments).getByText(/failed while starting the browser/i)).toBeInTheDocument();
+        expect(within(screen.getByRole('region', { name: /pdf downloads/i })).getAllByText('n/a')).toHaveLength(3);
+        expect(screen.getByText(/2 seller test sends are left out/i)).toBeInTheDocument();
+    });
 
     it('says monitoring is not installed instead of showing zero incidents', async () => {
         mocks.snapshot.mockResolvedValue({

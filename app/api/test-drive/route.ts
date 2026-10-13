@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server';
 import { buildStructuredPropertyAddress } from '@/lib/address/structured-address';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 import { sendSellerNotificationEmail } from '@/lib/email/email-service';
+import { recordHandoffEvidence } from '@/lib/neon/queries/handoff-evidence';
+import { buildNotificationEvidence, type SettledSend } from '@/lib/telemetry/handoff-evidence';
 import {
     createEventLog,
     getBrandProfile,
@@ -148,6 +150,7 @@ export async function POST(_request: Request) {
             });
 
             let invitationSucceeded = false;
+            let invitation: SettledSend = { status: 'rejected' };
             try {
                 const resolvedBrandProfile = result.request.brand_profile_id
                     ? await getBrandProfile(result.request.brand_profile_id)
@@ -160,18 +163,28 @@ export async function POST(_request: Request) {
                     brandProfile: resolvedBrandProfile || undefined,
                     sellerToken: result.request.seller_token || result.request.public_token,
                 });
+                invitation = { status: 'fulfilled', value: emailResult };
                 invitationSucceeded = emailResult.success;
             } catch (emailError) {
                 console.error('Failed to send test-drive invitation:', emailError);
             }
 
-            await recordAuxiliaryEvent({
-                requestId: result.request.id,
-                eventType: invitationSucceeded
-                    ? 'test_drive_invitation_succeeded'
-                    : 'test_drive_invitation_failed',
-                eventData: { recipient: 'authenticated_verified_email' },
-            });
+            await Promise.all([
+                recordAuxiliaryEvent({
+                    requestId: result.request.id,
+                    eventType: invitationSucceeded
+                        ? 'test_drive_invitation_succeeded'
+                        : 'test_drive_invitation_failed',
+                    eventData: { recipient: 'authenticated_verified_email' },
+                }),
+                recordHandoffEvidence(buildNotificationEvidence({
+                    operationId: crypto.randomUUID(),
+                    requestId: result.request.id,
+                    purpose: 'request_invitation',
+                    mode: 'test',
+                    sends: [invitation],
+                })),
+            ]);
         }
 
         return NextResponse.json(

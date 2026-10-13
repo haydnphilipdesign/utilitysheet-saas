@@ -63,7 +63,7 @@ Do not work around it by asking the customer to send a reminder. Their button is
 ### 2.3 A packet PDF fails
 
 1. **Issues & Triage** shows "Sheet PDF generation failed unexpectedly" with a count. One isolated failure can be a transient browser start. Three within 15 minutes is the alert threshold.
-2. The failure is not linked to a request, because the download route only knows the packet's private link and does not store it. Use the customer's report, or the time of the failure against Vercel logs (search `[diagnostic] packet_pdf_failed` or `pdf_attachment_failed`).
+2. Once `migrations-handoff-evidence.sql` is applied, the issue links to the most recent affected request, and that request's page lists each PDF attempt under "Email and PDF evidence" with the stage that failed (loading the sheet data, building the page, starting the browser, loading the page, producing the PDF) and how long it took. A failure before the link resolved to a request has no request; use the customer's report, or the time of the failure against Vercel logs (search `[diagnostic] packet_pdf_failed` or `pdf_attachment_failed`).
 3. Open the affected request in the customer's view and download the PDF yourself.
 4. If every PDF fails: check the Vercel function logs for the PDF route and recent deployments. Roll back the deployment if it started with a release.
 
@@ -268,8 +268,8 @@ To do it safely:
 | Area | Evidence | Freshness | Blind spots | Where to look next |
 | --- | --- | --- | --- | --- |
 | Seller reminder email | One record per attempt: accepted, rejected, unknown; delivery if the webhook is registered | Immediate; delivery within about a minute | Reminders sent before release; anything if the webhook is not registered | Resend dashboard |
-| Completion email to customer | A failure event when sending fails at submission | Immediate | No delivery evidence (provider ID is not stored); weekly summary, invitations, activation and referral email are not observed | Resend dashboard |
-| Packet PDF | Unexpected generation failures on the public download; sampled success | Immediate | Not linked to a request; the attachment on completion email is reflected only through 2.1's failure event; branding test PDFs are not observed | Vercel logs |
+| Completion email to customer, invitation email to seller | One record per recipient position: accepted, rejected, unknown, or nobody eligible; attachment outcome; delivery if the webhook is registered. A failure event when sending fails | Immediate; delivery within about a minute | Needs `migrations-handoff-evidence.sql`; nothing before release; best effort, so a missing record is unknown; weekly summary, activation, referral and workspace invite email are not observed | Request page "Email and PDF evidence"; Resend dashboard |
+| Packet PDF | One record per download or completion attachment for a resolved request: outcome, failed stage, duration, size. Unexpected failures also raise an issue; success is sampled there | Immediate | Unknown links, rate-limited requests and lookups that failed before resolving a request store no record; branding test PDFs are not observed | Request page; Vercel logs |
 | Billing webhook | Signature-verified events that failed processing, and their recovery by Stripe event ID | Immediate | Events Stripe never sent; unverified requests; whether Stripe and stored access actually agree | Stripe dashboard, Events |
 | Scheduled jobs | Start, finish, duration, status and counts for the three scheduled jobs | After each run | A job that never starts shows "not observed" then "overdue" only after the grace period; weekly summary is unmonitored | Vercel Cron |
 | AI suggestions, search and contact lookups | A service issue when half or more of at least 10 fresh runs of a feature end badly in 24 hours (suggestions on the generic list; search or contact calls failing) | Up to 15 minutes after the tenth run, and only while the monitor job runs | A slow decline below the threshold; wrong but plausible answers; an outage at very low traffic until 10 runs accumulate | Admin Telemetry (outcomes, usage, acceptance); Google AI Studio and Cloud billing |
@@ -300,3 +300,22 @@ Existing variables this work relies on, unchanged: `CRON_SECRET` (monitor route)
 ## Local telemetry definition corrections (2026-10-13)
 
 Slice 4 changes report interpretation, not customer submission/billing behavior. AI usage labels count failed runs and expose missing token/search metadata; fresh pipeline latency is split by model/prompt with sample counts. Grounding totals are nullable, and historical zero rows remain ambiguous. Completion/activation uses first metering even after reopen, with an explicit timed legacy fallback in Growth. Seller Progress separates seller endpoint observations from operator/technical events and keeps absent evidence unknown. PDF launch diagnostics carry independent finite `mode` (Simple/Advanced) and `renderStrategy` (`print_pdf` for both current modes); filenames/content remain excluded. No schema/settings/data change, live call or deployment was performed. Monitoring coverage/stuck/partial-state improvements remain separately scoped Slice 7.
+
+## Email handoff and PDF evidence (2026-10-13, local, not deployed)
+
+Migration: `migrations-handoff-evidence.sql` creates `notification_observations` and `pdf_render_observations`. It is additive and idempotent, changes no existing table and backfills nothing. Order relative to deploy does not matter: until it runs, writers log one redacted marker, the Operations card and the request page say the evidence is not installed, and the delivery webhook acknowledges messages it cannot match. Running it needs the owner's approval like any other production SQL.
+
+```sql
+SELECT table_name FROM information_schema.tables
+WHERE table_name IN ('notification_observations', 'pdf_render_observations')
+ORDER BY 1;  -- expect 2 rows
+```
+
+Reading it:
+
+- **A customer says the completion email never arrived.** Open the request, "Email and PDF evidence". "Accepted by provider" with "delivery not confirmed" means look in the Resend dashboard (or register the webhook, section 5.5). "Rejected, not sent" or "Outcome unknown" means it probably did not go; the sheet is in their dashboard either way. "Not attempted: nobody was eligible" means every recipient has submission email turned off. Recipients are numbered in the order tried (owner first, then workspace admins); addresses are not stored here.
+- **"PDF failed, sent without it".** The email went without the attachment. The PDF list beside it names the stage. The customer can still download from the sheet page.
+- **Nothing listed.** Unknown, not "nothing sent". Recording is best effort and starts at release.
+- New issues: "Invitation email to a seller was not sent", and bounce, spam-complaint and undelivered issues for completion and invitation email (these need the webhook). Seller test sends never raise them.
+
+Rollback: the tables are unused by older code; leave them in place. They are deleted with their request and have no time-based pruning yet.

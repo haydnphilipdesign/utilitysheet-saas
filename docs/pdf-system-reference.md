@@ -242,6 +242,12 @@ The address portion uses the first comma-separated address segment, replaces non
 
 Packet attachments are skipped for missing, unsubmitted, or locked requests. The public PDF route maps those states to its HTTP responses; email attachment generation logs and returns a structured failure without crashing the surrounding email flow.
 
+### Execution evidence (added October 13, 2026)
+
+`createPacketPdfAttachmentForRequest` and `createPacketPdfAttachmentForPublicToken` return an `evidence` object beside their result. It describes the execution only: the resolved request id and live/test flag, packet mode, render strategy, browser launch strategy, outcome, expected skip reason, the stage a failure reached (`data`, `build_html`, `browser_launch`, `page_load`, `render`), a coarse error class name, total/data/launch/render milliseconds and byte size. It never contains the link, filename, HTML or answers. `createPacketPdfAttachmentFromData` (Branding Profile test PDFs) is unchanged and unobserved.
+
+The download route and the completion email record that evidence in `pdf_render_observations` once a request is resolved (see `docs/telemetry-privacy.md`). Recording is best effort and cannot change the response. 402, not-submitted 404 and 500 are stored with their status; an unknown-link 404, 429 and 503 store nothing. Rendering, pagination, page settings, filenames, gating and selectable text are untouched: one PDF is still produced per download and per recipient who wants the attachment.
+
 ## Preview and test-PDF architecture
 
 Production PDF output is authoritative, and since the July 2026 Branding Profile redesign the preview surfaces reuse it rather than approximating it:

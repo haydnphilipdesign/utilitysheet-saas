@@ -292,7 +292,10 @@ Procedures: `docs/admin-operations-runbook.md`.
   unknown outcome, and scheduled jobs that failed, partly failed or are overdue. Each shows why it
   exists, first and last occurrence, count, whether a later success was observed, and a next step.
 - **Evidence**: reminder email counts for 30 days, the three scheduled jobs, and a plain statement of
-  what the page can and cannot establish.
+  what the page can and cannot establish. A separate card covers completion and invitation email
+  (accepted, rejected, unknown, nobody eligible, partial sends, delivery, attachment outcome) and
+  sheet PDFs (produced, failed by stage, expected skips, typical and slow duration, size) for live
+  requests over 30 days. It states when recording began and that an empty store is not proof of health.
 - **Customer follow-up**: open requests with no seller activity for 7+ days and accounts that never
   started. These are not failures. Totals are raw counts that triage never changes, and they link to
   the existing filtered lists.
@@ -315,15 +318,19 @@ Data sources (all additive; see the runbook's source table for blind spots):
 `operational_events`, `job_runs`, `ops_alert_state` (`migrations-operational-events.sql`; the `ai`
 category is allowed by `migrations-ai-usage-telemetry.sql`),
 `reminder_operations` (`migrations-reminder-operations.sql`), `admin_triage_items`
-(`migrations-admin-triage.sql`). Metadata is an allowlist of short scalars; no tokens, seller answers,
+(`migrations-admin-triage.sql`), `notification_observations` and `pdf_render_observations`
+(`migrations-handoff-evidence.sql`; decision
+`.ai/decisions/2026-10-13-handoff-notification-evidence.md`). Metadata is an allowlist of short scalars; no tokens, seller answers,
 email bodies, provider payloads or raw exceptions are stored or shown.
 
 Limits that are deliberate:
 
 - It cannot detect a database or site outage, because it needs the database to load. That needs an
   external uptime probe, which is documented but not provisioned.
-- Only reminder email has delivery evidence. Other email has none.
-- PDF failures are not tied to a request, because the route only has the private packet link.
+- Reminder, completion and invitation email have delivery evidence once the webhook is registered.
+  Other email has none. Completion and invitation evidence is best effort and starts at release.
+- A PDF failure is tied to a request once the packet link or id has resolved to one. A failure
+  before that has no request.
 - Only the three jobs scheduled in `vercel.json` are monitored. The weekly summary is unscheduled and
   is never reported overdue.
 - Alerts, the delivery webhook, the monitor schedule and retention pruning are all off until the
@@ -341,3 +348,13 @@ Impersonation is intentionally disabled by default (and hidden from the UI).
 
 - The banner is gated behind `ADMIN_ENABLE_IMPERSONATION=true`.
 - A true “support-mode” impersonation flow is not implemented yet.
+
+## Request page: email and PDF evidence
+
+`/admin/requests/[id]` lists what was recorded about that request's invitation email, completion
+email and PDFs (newest 25 of each), above the technical event history. Recipients appear as
+"recipient 1 of 2", never as addresses; provider message IDs are not shown. Each email line gives
+the send outcome, the provider's delivery report when one was received, and the attachment outcome.
+Each PDF line gives the outcome, the failed stage or expected skip, duration and size. Nothing
+listed means unknown, not that nothing was sent. Read-only: there is no resend or retry here; seller
+reminders remain the audited action on the same page.

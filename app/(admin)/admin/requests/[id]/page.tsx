@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { sql } from '@/lib/neon/db';
 import { UtilityEntriesTable } from '@/components/admin/UtilityEntriesTable';
 import { EventLogTable } from '@/components/admin/EventLogTable';
+import { RequestHandoffEvidence } from '@/components/admin/HandoffEvidence';
 import { RequestAdminActions } from '@/components/admin/RequestAdminActions';
 import { AdminAccountPreview } from '@/components/admin/AdminAccountPreview';
 import { AdminPageHeader } from '@/components/admin/primitives';
@@ -9,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { getLatestRequestsForUsers } from '@/lib/admin';
+import { loadRequestHandoffEvidence } from '@/lib/neon/queries/handoff-evidence';
 import type { EventLog, UtilityEntry } from '@/types';
 
 async function getRequestData(requestId: string) {
@@ -44,6 +46,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
 
     const { request, entries, logs } = data;
     const latestRequests = request.account_id ? await getLatestRequestsForUsers([request.account_id]) : {};
+    const handoffEvidence = await loadRequestHandoffEvidence({ requestId: request.id });
 
     return (
         <div className="space-y-6">
@@ -124,6 +127,8 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
                 <h3 className="text-lg font-medium mb-4">Utility Entries</h3>
                 <UtilityEntriesTable entries={entries as unknown as UtilityEntry[]} />
             </div>
+
+            <RequestHandoffEvidence state={handoffEvidence} />
 
             <div>
                 <h3 className="text-lg font-medium mb-1">Technical event history</h3>
