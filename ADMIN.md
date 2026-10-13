@@ -289,9 +289,9 @@ Procedures: `docs/admin-operations-runbook.md`.
 
 - **Service issues**: unexpected packet PDF failures, verified billing webhook events that failed
   processing, completion email send failures, reminder bounces/complaints/failures, reminders with an
-  unknown outcome, and scheduled jobs that failed, partly failed or are overdue. Each shows why it
+  unknown outcome, and scheduled jobs that failed, partly failed, have no finish after the running grace or are overdue. Each shows why it
   exists, first and last occurrence, count, whether a later success was observed, and a next step.
-- **Evidence**: reminder email counts for 30 days, the three scheduled jobs, and a plain statement of
+- **Evidence**: reminder email counts for 30 days, three daily jobs plus the Operations monitor heartbeat, per-collector last retained record timestamps, and a plain statement of
   what the page can and cannot establish.
 - **Customer follow-up**: open requests with no seller activity for 7+ days and accounts that never
   started. These are not failures. Totals are raw counts that triage never changes, and they link to
@@ -324,10 +324,12 @@ Limits that are deliberate:
   external uptime probe, which is documented but not provisioned.
 - Only reminder email has delivery evidence. Other email has none.
 - PDF failures are not tied to a request, because the route only has the private packet link.
-- Only the three jobs scheduled in `vercel.json` are monitored. The weekly summary is unscheduled and
+- All four jobs scheduled in `vercel.json` are monitored. Daily overdue uses the shared override (default 26 hours); the monitor uses 15-minute interval + 15-minute grace. Running beyond 15 minutes is labelled missing finish/stuck. Never observed stays unknown. Latest recorded outcome and partial coverage remain explicit. The weekly summary is unscheduled and
   is never reported overdue.
-- Alerts, the delivery webhook, the monitor schedule and retention pruning are all off until the
-  owner activates them (runbook section 5.5).
+- Alerts, the delivery webhook and retention pruning require owner activation (runbook section 5.5). The monitor source schedule already exists; hosted execution and external uptime/heartbeat checks remain unverified.
+
+
+Slice 7 monitoring coverage: collector timestamps show the last retained PDF, billing, email and AI operational observation, AI execution record, seller browser diagnostic and tracked reminder operation. They provide no denominator or collection-rate claim. Failed reads render unavailable rather than zero. Monitor AI read failure or observation-write failure marks its run partial; empty AI windows do not establish recovery. Alert provider acceptance is counted separately from a failed alert-state write (later duplicate possible). Its current start is excluded from its own alert evaluation so previous partial/failed/stuck evidence remains visible. No external probe, destination or responder is verified by this local implementation.
 
 ## Account Entitlement Overrides
 

@@ -257,12 +257,12 @@ describe('Operations page', () => {
     const ok = <T,>(data: T) => ({ status: 'ok' as const, data });
     const emptyReminders = { windowDays: 30, accepted: 0, delivered: 0, delayed: 0, bounced: 0, complained: 0, deliveryFailed: 0, deliveryUnknown: 0, notSent: 0, unresolved: [] };
     const emptyFollowUp = { inactiveRequests: { total: 0, items: [] }, accountsNotStarted: { total: 0, items: [] } };
-    const now = new Date().toISOString();
+    const now = '2026-10-13T12:00:00Z';
     const page = async (params: Record<string, string> = {}) => render(await OperationsPage({ searchParams: Promise.resolve(params) }));
 
     it('says monitoring is not installed instead of showing zero incidents', async () => {
         mocks.snapshot.mockResolvedValue({
-            generatedAt: now, incidents: { status: 'not_installed' }, jobs: { status: 'not_installed' },
+            generatedAt: now, coverage: ok([]), incidents: { status: 'not_installed' }, jobs: { status: 'not_installed' },
             reminders: { status: 'not_installed' }, followUp: ok(emptyFollowUp),
         });
         await page();
@@ -272,7 +272,7 @@ describe('Operations page', () => {
     });
 
     it('distinguishes no observations yet from a genuinely quiet service', async () => {
-        const base = { generatedAt: now, jobs: ok([]), reminders: ok(emptyReminders), followUp: ok(emptyFollowUp) };
+        const base = { generatedAt: now, coverage: ok([]), jobs: ok([]), reminders: ok(emptyReminders), followUp: ok(emptyFollowUp) };
         mocks.snapshot.mockResolvedValue({ ...base, incidents: ok({ incidents: [], firstObservationAt: null, lastObservationAt: null, truncated: false }) });
         const first = await page();
         expect(screen.getByText(/has not recorded any observation yet/i)).toBeInTheDocument();
@@ -290,7 +290,7 @@ describe('Operations page', () => {
             severity: 'warning', firstOccurredAt: now, lastOccurredAt: now, occurrences: 4, unrecovered: 2, lastSuccessAt: null, latestRequestId: REQUEST_ID,
         };
         mocks.snapshot.mockResolvedValue({
-            generatedAt: now,
+            generatedAt: now, coverage: ok([]),
             incidents: ok({ incidents: [incident], firstObservationAt: now, lastObservationAt: now, truncated: false }),
             jobs: ok([
                 { jobName: 'activation_reconcile', health: 'ok', lastStartedAt: now, lastStatus: 'success', lastDurationMs: 1200, lastSuccessAt: now, firstObservedAt: now },
@@ -325,5 +325,27 @@ describe('Operations page', () => {
         expect(within(followUp).getByRole('link', { name: '12 open requests' })).toHaveAttribute('href', '/admin/requests?activity=stale7d');
         expect(within(followUp).getByText(/every candidate on this page is snoozed or dismissed/i)).toBeInTheDocument();
         expect(within(followUp).getByText(/inactivity alone is not an incident/i)).toBeInTheDocument();
+    });
+
+    it('renders the monitor heartbeat, partial/stuck outcomes and honest collector coverage', async () => {
+        const base = { generatedAt: now, incidents: ok({ incidents: [], firstObservationAt: null, lastObservationAt: null, truncated: false }),
+            reminders: ok(emptyReminders), followUp: ok(emptyFollowUp) };
+        const monitor = { jobName: 'ops_monitor', health: 'partial', lastStatus: 'partial', firstObservedAt: now,
+            lastStartedAt: now, lastSuccessAt: null, lastDurationMs: 100 };
+        mocks.snapshot.mockResolvedValue({ ...base, jobs: ok([monitor]), coverage: ok([
+            { collector: 'ai_runs', lastRecordAt: null }, { collector: 'seller', lastRecordAt: now },
+        ]) });
+        const first = await page();
+        expect(screen.getByText('Operations monitor')).toBeInTheDocument();
+        expect(screen.getByText(/every 15 minutes.*overdue after 30 minutes/i)).toBeInTheDocument();
+        expect(screen.getByText('Finished with some failures')).toBeInTheDocument();
+        expect(screen.getByText(/never observed in retained records; coverage unknown/i)).toBeInTheDocument();
+        expect(screen.getByText(/last recorded outcome partial/i)).toBeInTheDocument();
+        expect(screen.getByText(/do not establish a collection rate/i)).toBeInTheDocument();
+        first.unmount();
+        mocks.snapshot.mockResolvedValue({ ...base, jobs: ok([{ ...monitor, health: 'stuck', lastStatus: 'running' }]), coverage: { status: 'error' } });
+        await page();
+        expect(screen.getByText('Running too long (finish not recorded)')).toBeInTheDocument();
+        expect(screen.getByText(/collector coverage could not be loaded/i)).toBeInTheDocument();
     });
 });

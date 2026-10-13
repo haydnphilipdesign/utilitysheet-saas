@@ -85,10 +85,11 @@ Never: edit billing fields in the database by hand, or grant access to make a co
 
 ### 2.5 A scheduled job is missed or failed
 
-1. **Issues & Triage, Scheduled jobs** shows last start, duration and last success for the three scheduled jobs.
-   - **No runs observed yet**: monitoring has not seen it run. This is not "overdue". Expect it for up to a day after release.
-   - **Finished with some failures**: it ran but some items failed. Signup reconciliation and account closure retry will try those again next run.
-   - **Overdue without success**: the shared `OPS_ALERT_JOB_OVERDUE_HOURS` threshold (default 26, bounded 1-336) has passed. Admin classification and alert text use the same threshold. Never observed remains unknown.
+1. **Issues & Triage, Scheduled jobs** shows source schedule, last start/outcome, duration and last success for the three daily jobs and the 15-minute Operations monitor heartbeat.
+   - **No runs observed yet**: monitoring has not seen it run. Coverage is unknown; it stays unknown until a run is actually recorded. Check hosted scheduling rather than inferring an overdue run from absence.
+   - **Finished with some failures**: it ran but some items failed. Signup reconciliation and account closure retry will try those again next run. For the monitor this includes unavailable AI reads, failed observation writes or unsuccessful alert/state writes.
+   - **Overdue without success**: the daily-job `OPS_ALERT_JOB_OVERDUE_HOURS` threshold (default 26, bounded 1-336) has passed since last success, or since first retained start if no success exists. The monitor instead uses its own 15-minute interval plus 15-minute grace (30 minutes total). Admin and alerts share these rules; never observed stays unknown.
+   - **Running (finish not recorded yet)**: start recorded within the 15-minute running grace. **Running too long (finish not recorded)** takes precedence after that grace, even if success is also overdue. A lost finish write can look stuck; verify hosting logs before treating it as proof execution is still running. Last recorded outcome remains visible when the main label is overdue.
 2. Open Vercel, Cron Jobs, and check the run and its logs.
 3. Signup reconciliation can be run by hand from **Admin, Users** (Sync verified signups). It needs a reason and is audited.
 4. Account closures that exhausted retries are logged as "Account closure stuck; needs support review". Handle those individually.
@@ -223,17 +224,11 @@ Until this is done, delivery shows as "not confirmed" everywhere. That is accura
 2. In Vercel set `OPS_ALERT_EMAIL=<address>` and `OPS_ALERTS_ENABLED=true`, then redeploy.
 3. Alerts are only evaluated when step c is done.
 
-Default thresholds: three unexpected PDF failures in 15 minutes; any unrecovered billing webhook failure; any bounce, complaint or send failure in 24 hours; a scheduled job failed, or more than 26 hours without success; half or more of at least 10 fresh AI runs of one feature ending badly in 24 hours. One message when a condition starts, one when it clears. These are starting points, not validated benchmarks; override with the `OPS_ALERT_*` variables in `.env.example`.
+Default thresholds: three unexpected PDF failures in 15 minutes; any unrecovered billing webhook failure; any bounce, complaint or send failure in 24 hours; a scheduled job failed, finished partial, exceeded its 15-minute running grace, or has no success within its overdue window (daily default 26 hours; monitor 30 minutes); half or more of at least 10 fresh AI runs of one feature ending badly in 24 hours. One message per condition when it starts, one when completed evidence clears it. Unavailable evidence, an in-progress job and an empty AI window do not establish recovery. An accepted notification whose state write failed is reported separately; the next run can repeat it. These are starting points, not validated benchmarks; override with the `OPS_ALERT_*` variables in `.env.example`.
 
 **c. Schedule the monitor route.** Done 2026-10-05 on owner request: `vercel.json` runs `/api/cron/ops-monitor` every 15 minutes (Vercel Pro). The entry is shown here for reference.
 
-Add to the `crons` array and deploy:
-
-```json
-{ "path": "/api/cron/ops-monitor", "schedule": "*/15 * * * *" }
-```
-
-Check your Vercel plan's cron limits first. A less frequent schedule works; alerts are then delayed by up to that interval. The route uses the existing `CRON_SECRET`. With alerts disabled it only reports what would fire.
+The source schedule is already configured; do not add a duplicate or change it for Slice 7. Hosted scheduling is unverified. The route uses the existing `CRON_SECRET`. With alerts disabled it evaluates conditions and records AI health/heartbeat evidence but sends nothing. Its own currently running row is excluded from alert evaluation so the previous outcome is not masked; the read-only Admin heartbeat includes it.
 
 **d. Retention pruning.** Deletes old observations.
 
@@ -271,7 +266,7 @@ To do it safely:
 | Completion email to customer | A failure event when sending fails at submission | Immediate | No delivery evidence (provider ID is not stored); weekly summary, invitations, activation and referral email are not observed | Resend dashboard |
 | Packet PDF | Unexpected generation failures on the public download; sampled success | Immediate | Not linked to a request; the attachment on completion email is reflected only through 2.1's failure event; branding test PDFs are not observed | Vercel logs |
 | Billing webhook | Signature-verified events that failed processing, and their recovery by Stripe event ID | Immediate | Events Stripe never sent; unverified requests; whether Stripe and stored access actually agree | Stripe dashboard, Events |
-| Scheduled jobs | Start, finish, duration, status and counts for the three scheduled jobs | After each run | A job that never starts shows "not observed" then "overdue" only after the grace period; weekly summary is unmonitored | Vercel Cron |
+| Scheduled jobs | Start, finish, duration, status and counts for three daily jobs and the monitor heartbeat | After each run | Never-observed stays unknown; established success becomes overdue after its schedule/grace; a missing finish becomes stuck; partial includes monitor coverage failures; weekly summary is unmonitored | Vercel Cron |
 | AI suggestions, search and contact lookups | A service issue when half or more of at least 10 fresh runs of a feature end badly in 24 hours (suggestions on the generic list; search or contact calls failing) | Up to 15 minutes after the tenth run, and only while the monitor job runs | A slow decline below the threshold; wrong but plausible answers; an outage at very low traffic until 10 runs accumulate | Admin Telemetry (outcomes, usage, acceptance); Google AI Studio and Cloud billing |
 | Database and site | Nothing in-app beyond "this page loaded" | n/a | Cannot detect its own outage | External probe, Neon and Vercel status |
 
@@ -288,7 +283,7 @@ All are optional and default to off. `.env.example` is ignored by git in this re
 | `OPS_ALERT_EMAIL` | unset | Destination for alerts. |
 | `OPS_ALERT_PDF_FAILURE_THRESHOLD` | `3` | Unexpected PDF failures in the window that start an alert. |
 | `OPS_ALERT_PDF_WINDOW_MINUTES` | `15` | Window for the PDF threshold. |
-| `OPS_ALERT_JOB_OVERDUE_HOURS` | `26` | Wording of the overdue alert. The page's overdue rule is fixed at 26 hours. |
+| `OPS_ALERT_JOB_OVERDUE_HOURS` | `26` | Shared daily overdue classification and alert text, bounded 1-336 hours. Does not override the monitor's 30-minute window. |
 | `OPS_ALERT_AI_SHARE_PCT` | `50` | Share of fresh AI runs of one feature ending badly that starts an AI service issue and alert. |
 | `OPS_ALERT_AI_MIN_RUNS` | `10` | Fresh runs needed in the window before the share is judged. |
 | `OPS_ALERT_AI_WINDOW_HOURS` | `24` | Window for the AI share (1 to 168). |
@@ -299,4 +294,11 @@ Existing variables this work relies on, unchanged: `CRON_SECRET` (monitor route)
 
 ## Local telemetry definition corrections (2026-10-13)
 
-Slice 4 changes report interpretation, not customer submission/billing behavior. AI usage labels count failed runs and expose missing token/search metadata; fresh pipeline latency is split by model/prompt with sample counts. Grounding totals are nullable, and historical zero rows remain ambiguous. Completion/activation uses first metering even after reopen, with an explicit timed legacy fallback in Growth. Seller Progress separates seller endpoint observations from operator/technical events and keeps absent evidence unknown. PDF launch diagnostics carry independent finite `mode` (Simple/Advanced) and `renderStrategy` (`print_pdf` for both current modes); filenames/content remain excluded. No schema/settings/data change, live call or deployment was performed. Monitoring coverage/stuck/partial-state improvements remain separately scoped Slice 7.
+Slice 4 changes report interpretation, not customer submission/billing behavior. AI usage labels count failed runs and expose missing token/search metadata; fresh pipeline latency is split by model/prompt with sample counts. Grounding totals are nullable, and historical zero rows remain ambiguous. Completion/activation uses first metering even after reopen, with an explicit timed legacy fallback in Growth. Seller Progress separates seller endpoint observations from operator/technical events and keeps absent evidence unknown. PDF launch diagnostics carry independent finite `mode` (Simple/Advanced) and `renderStrategy` (`print_pdf` for both current modes); filenames/content remain excluded. No schema/settings/data change, live call or deployment was performed. Slice 7 adds read-only per-collector retained timestamps, the monitor heartbeat and running/stuck/partial coverage labels. Missing timestamps mean unknown; event-driven or sampled collectors have no expected cadence, so old timestamps are not proof of a stopped collector. A failed AI health read marks the monitor partial/unavailable instead of claiming healthy coverage. No live model probe is used.
+
+
+## Slice 7 external verification — unverified (2026-10-13)
+
+Local code and fixtures were inspected only. No hosted settings/data, alert destination, uptime service or independent heartbeat check was inspected, enabled or contacted. The DB-stored heartbeat cannot detect or notify through a total DB/site outage.
+
+Owner approval remains needed to inspect the existing external monitor and hosted cron/destination settings, identify the responder and escalation path, probe public `/api/health` without a secret header, and determine whether an independent monitor heartbeat check already exists. No public heartbeat endpoint is added here and the cron secret must not be shared with a probe. Registering/changing a probe or webhook, changing the alert destination/flags, sending a test alert, enabling or running pruning, migrations and deployment each require separate authorization. This list records unverified release checks, not required remaining local Slice 7 work.

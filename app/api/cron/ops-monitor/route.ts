@@ -31,28 +31,35 @@ export async function GET(request: Request) {
         const db = getStatementExecutor();
         const config = getAlertConfig();
         const ai = await observeAiHealth({ db, config: config.ai });
-        const alerts = await runAlertEvaluation({ db, jobs: await getJobStatuses(db, new Date(), config.jobOverdueHours), config, aiHealth: ai.health ?? [] });
+        const alerts = await runAlertEvaluation({ db, jobs: await getJobStatuses(db, new Date(), config.jobOverdueHours, jobRun.id), config, aiHealth: ai.health });
+        const monitoringStatus = ai.status === 'ok' && alerts.failed === 0 && jobRun.id ? 'success' : 'partial';
 
         let pruned: { events: number; jobRuns: number } | null = null;
         if (process.env.OPS_RETENTION_PRUNE_ENABLED === 'true') {
             pruned = await pruneOperationalObservations({ db, retentionDays: getOpsRetentionDays() });
         }
 
-        await finishJobRun(jobRun, alerts.failed > 0 ? 'partial' : 'success', {
+        await finishJobRun(jobRun, monitoringStatus, {
             firing: alerts.conditionsFiring.length,
             sent: alerts.sent,
             failed: alerts.failed,
             aiDegraded: ai.failures,
             aiRecovered: ai.recoveries,
+            aiUnavailable: ai.status === 'unavailable' ? 1 : 0,
+            aiPartial: ai.status === 'partial' ? 1 : 0,
+            alertStateWriteFailed: alerts.stateWriteFailed,
             prunedEvents: pruned?.events ?? 0,
             prunedJobRuns: pruned?.jobRuns ?? 0,
         });
         return NextResponse.json({
+            monitoringStatus,
+            aiCoverage: ai.status,
             alertsEnabled: alerts.enabled,
             conditionsFiring: alerts.conditionsFiring,
             notificationsPlanned: alerts.planned.map(({ key, kind }) => ({ key, kind })),
             sent: alerts.sent,
             failed: alerts.failed,
+            stateWriteFailed: alerts.stateWriteFailed,
             pruned,
         });
     } catch (error) {

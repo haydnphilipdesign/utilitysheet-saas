@@ -151,9 +151,9 @@ export async function recordOperationalSuccess(input: Omit<OperationalEventInput
 // ---------------------------------------------------------------------------
 
 /** Jobs with a schedule in vercel.json. Anything else is never reported overdue. */
-export const SCHEDULED_JOBS = ['activation_reconcile', 'activation_reengagement', 'account_closure_retry'] as const;
+export const SCHEDULED_JOBS = ['activation_reconcile', 'activation_reengagement', 'account_closure_retry', 'ops_monitor'] as const;
 export type ScheduledJobName = (typeof SCHEDULED_JOBS)[number];
-export type JobName = ScheduledJobName | 'ops_monitor';
+export type JobName = ScheduledJobName;
 export type JobRunHandle = { id: string | null; jobName: JobName; startedAtMs: number };
 
 function countsOnly(summary: Record<string, unknown>): Record<string, number> {
