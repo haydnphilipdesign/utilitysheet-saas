@@ -66,6 +66,9 @@ async function intercept(context: BrowserContext, page: Page, options: {
         } else if (options.offline?.() && !request.isNavigationRequest()) {
             if (url.pathname === `${api}/observations`) fixture.sentWhileOffline += 1;
             await route.abort('internetdisconnected');
+        } else if (url.pathname === '/api/maintenance') {
+            // Asked after an unexplained failure; these fixtures are never in a maintenance pause.
+            await route.fulfill({ json: { maintenance: false, expectedBackAt: null } });
         } else if (url.pathname === `${api}/observations`) {
             fixture.batches.push(JSON.parse(request.postData()!));
             if (options.collector === 'abort') await route.abort();

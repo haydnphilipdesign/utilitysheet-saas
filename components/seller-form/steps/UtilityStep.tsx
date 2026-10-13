@@ -29,6 +29,7 @@ import { PickupDaySelector, type PickupDaySpecial } from '../PickupDaySelector';
 import { wizardFocusRing, wizardGhostButton, wizardPrimaryButton, wizardSecondaryButton, wizardTextInput } from '../wizard-ui';
 import type { SellerObserver } from '@/lib/telemetry/seller-observer';
 import { durationBucket, errorCodeForStatus, SELLER_OBSERVATION_MAX_RESULT_COUNT } from '@/lib/telemetry/seller-observations';
+import { detectMaintenance, type MaintenanceNotice } from '@/lib/maintenance/client';
 
 // Category-specific icons
 const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }> = {
@@ -74,6 +75,12 @@ interface UtilityStepProps {
     observer?: SellerObserver;
     /** True when the suggestion request for this utility failed, so an empty list is not "no suggestions". */
     suggestionsUnavailable?: boolean;
+    /** True while suggestions and lookup are paused for maintenance, which is not "no suggestions". */
+    maintenancePaused?: boolean;
+    /** A lookup was refused because of a maintenance pause. */
+    onMaintenance?: (notice: MaintenanceNotice) => void;
+    /** A lookup worked again after a pause. */
+    onMaintenanceOver?: () => void;
     collectElectricMeterNumber?: boolean;
     /** True when this step was opened from a Review row and returns there. */
     isReviewEdit?: boolean;
@@ -93,6 +100,9 @@ export function UtilityStep({
     token,
     observer,
     suggestionsUnavailable = false,
+    maintenancePaused = false,
+    onMaintenance,
+    onMaintenanceOver,
     collectElectricMeterNumber = false,
     isReviewEdit = false,
     onNoService,
@@ -103,7 +113,7 @@ export function UtilityStep({
     const [searchQuery, setSearchQuery] = useState('');
     // Server results are kept with the query they answer, and the search in
     // flight with the query it is for, so text typed since shows neither.
-    const [searchOutcome, setSearchOutcome] = useState<{ query: string; results: ProviderSuggestion[] } | null>(null);
+    const [searchOutcome, setSearchOutcome] = useState<{ query: string; results: ProviderSuggestion[]; paused?: boolean } | null>(null);
     const [activeSearch, setActiveSearch] = useState<{ query: string; id: number } | null>(null);
     const searchAbortRef = useRef<AbortController | null>(null);
     const autoSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -180,6 +190,8 @@ export function UtilityStep({
         let results: ProviderSuggestion[] = [];
         const searchStartedAt = Date.now();
         let searchFailure: { error_code: ReturnType<typeof errorCodeForStatus>; status?: number } | null = null;
+        let pausedNotice: MaintenanceNotice | null = null;
+        let answered = false;
         try {
             const res = await fetch(`/api/seller/${encodeURIComponent(token)}/suggestions/search?query=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`, {
                 signal: controller.signal,
@@ -187,8 +199,10 @@ export function UtilityStep({
             if (res.ok) {
                 const body: unknown = await res.json();
                 results = Array.isArray(body) ? body : [];
+                answered = true;
             } else {
                 searchFailure = { error_code: errorCodeForStatus(res.status), status: res.status };
+                pausedNotice = await detectMaintenance(res);
             }
         } catch (e) {
             if (!(e instanceof DOMException && e.name === 'AbortError')) {
@@ -200,7 +214,9 @@ export function UtilityStep({
         setActiveSearch((current) => (current?.id === id ? null : current));
         // Newer text or another utility has taken over.
         if (controller.signal.aborted) return;
-        setSearchOutcome({ query, results });
+        setSearchOutcome({ query, results, paused: pausedNotice !== null });
+        if (pausedNotice) onMaintenance?.(pausedNotice);
+        else if (answered) onMaintenanceOver?.();
         const duration = durationBucket(Date.now() - searchStartedAt);
         if (searchFailure) {
             observer?.observe({
@@ -221,7 +237,7 @@ export function UtilityStep({
                 duration,
             });
         }
-    }, [category, token, observer]);
+    }, [category, token, observer, onMaintenance, onMaintenanceOver]);
 
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout> | null = null;
@@ -243,6 +259,9 @@ export function UtilityStep({
     }, [trimmedQuery, hasLocalMatch, runSearch]);
 
     const nothingFound = hasSearched && !hasLocalMatch && searchResults.length === 0;
+    // The lookup never ran, so "no matches" would be untrue.
+    const lookupPaused = hasSearched && searchOutcome?.paused === true;
+    const suggestionsPaused = maintenancePaused && suggestionsUnavailable;
 
     const handleSearchNow = () => {
         if (!canSearch || isSearching || hasSearched) return;
@@ -613,9 +632,13 @@ export function UtilityStep({
                                 <Search className="h-6 w-6 sm:h-8 sm:w-8 text-[color:var(--brand-accent)]" />
                             </div>
                             <div>
-                                <h4 className="text-base sm:text-lg font-medium text-foreground">Help us find your provider</h4>
-                                <p className="text-muted-foreground text-xs sm:text-sm mt-1">
-                                    {providerHelper || "We don't have a suggestion for this one. You can search by name, or skip if you're not sure."}
+                                <h4 className="text-base sm:text-lg font-medium text-foreground">
+                                    {suggestionsPaused ? 'Provider suggestions are paused' : 'Help us find your provider'}
+                                </h4>
+                                <p className="text-muted-foreground text-xs sm:text-sm mt-1" data-testid={suggestionsPaused ? 'seller-suggestions-paused' : undefined}>
+                                    {suggestionsPaused
+                                        ? 'We’re doing a short planned update, so we can’t suggest providers right now. You can type your provider’s name, or choose I’m not sure.'
+                                        : providerHelper || "We don't have a suggestion for this one. You can search by name, or skip if you're not sure."}
                                 </p>
                             </div>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3">
@@ -624,7 +647,7 @@ export function UtilityStep({
                                     onClick={() => setMode('search')}
                                     className={`w-full py-3 text-sm sm:text-base ${wizardPrimaryButton}`}
                                 >
-                                    Search Providers
+                                    {suggestionsPaused ? 'Type provider name' : 'Search Providers'}
                                 </button>
                                 <button
                                     type="button"
@@ -762,8 +785,10 @@ export function UtilityStep({
                         {!isSearching && canSearch && (
                             <div className="pt-3 pb-2 space-y-3">
                                 {nothingFound && (
-                                    <p className="text-muted-foreground text-xs sm:text-sm text-center">
-                                        No matches in our directory. That&apos;s ok, you can still use this name.
+                                    <p className="text-muted-foreground text-xs sm:text-sm text-center" role={lookupPaused ? 'status' : undefined} data-testid={lookupPaused ? 'seller-search-paused' : undefined}>
+                                        {lookupPaused
+                                            ? 'Provider lookup is paused for a short planned update. You can still use this name.'
+                                            : <>No matches in our directory. That&apos;s ok, you can still use this name.</>}
                                     </p>
                                 )}
                                 {!hasSearched && (

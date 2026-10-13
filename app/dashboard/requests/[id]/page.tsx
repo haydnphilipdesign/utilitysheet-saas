@@ -14,7 +14,7 @@ import { ReopenRequestDialog } from '@/components/requests/ReopenRequestDialog';
 import type { Request } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { generatePacketPdf } from '@/lib/pdf-generator';
+import { generatePacketPdf, notifyPacketPdfFailure } from '@/lib/pdf-generator';
 import { ADVANCED_MODULE_DEFAULTS, PACKET_MODE_LABELS } from '@/lib/packet/modules';
 import { trackEvent } from '@/lib/analytics/events';
 
@@ -129,7 +129,7 @@ export default function RequestDetailsPage({ params }: { params: Promise<{ id: s
             toast.success('PDF downloaded');
         } catch (error) {
             console.error('Error generating PDF:', error);
-            toast.error('We couldn’t create the PDF. Try again.');
+            notifyPacketPdfFailure(error);
         } finally {
             setDownloadingPdf(false);
         }

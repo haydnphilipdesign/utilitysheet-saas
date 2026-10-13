@@ -1,5 +1,6 @@
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
+import { maintenanceResponse } from '@/lib/maintenance/server';
 import { NextResponse } from 'next/server';
 import { PACKET_LOCKED_MESSAGE } from '@/lib/packet/packet-data';
 import { createPacketPdfAttachmentForPublicToken } from '@/lib/pdf/packet-attachment';
@@ -13,6 +14,10 @@ export async function GET(
     request: Request,
     { params }: { params: Promise<{ token: string }> }
 ) {
+    // Paused for a planned cutover: refuse before the limiter and every side effect.
+    const maintenance = maintenanceResponse('packet_pdf', request);
+    if (maintenance) return maintenance;
+
     try {
         const { token } = await params;
         const ip = getClientIp(request);

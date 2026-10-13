@@ -17,7 +17,7 @@ import type { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
 import { resolveBrandColor, getPacketTitle, hexToRgba } from '@/lib/branding/deliverable';
-import { generatePacketPdf } from '@/lib/pdf-generator';
+import { generatePacketPdf, notifyPacketPdfFailure } from '@/lib/pdf-generator';
 import { getHomeBasicsRows } from '@/lib/packet/seller-questions';
 import { HOA_SECTION_TITLE, getHoaDetailRows } from '@/lib/packet/hoa';
 import { toast } from 'sonner';
@@ -232,7 +232,7 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
             toast.success('PDF downloaded');
         } catch (error) {
             console.error('Error generating PDF:', error);
-            toast.error('We couldn’t create the PDF. Try again.');
+            notifyPacketPdfFailure(error);
         } finally {
             setDownloading(false);
         }

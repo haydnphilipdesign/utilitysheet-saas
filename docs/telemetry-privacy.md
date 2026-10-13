@@ -34,6 +34,9 @@ reads a weighted previous sliding bucket and retains keys for `2 * window +
 1000 ms`. The longest affected window is 15 minutes; waiting just 15 minutes
 is insufficient. No raw-key compatibility mode is included in the patch.
 
+The traffic gate, its coverage limits and the step-by-step operator procedure
+are in [maintenance-cutover-runbook.md](maintenance-cutover-runbook.md).
+
 With separate explicit owner authorization for the release:
 
 1. Block new traffic to all five affected endpoints on every hostname/version

@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Textarea } from '@/components/ui/textarea';
 import { UTILITY_CATEGORIES, UTILITY_CATEGORY_KEYS } from '@/lib/constants';
-import { generatePacketPdf } from '@/lib/pdf-generator';
+import { generatePacketPdf, notifyPacketPdfFailure } from '@/lib/pdf-generator';
 import {
     ADVANCED_MODULE_FIELD_METADATA,
     ADVANCED_MODULE_LABELS,
@@ -610,7 +610,7 @@ export function SubmittedSheetEditor({ requestId }: { requestId: string }) {
             toast.success(successMessage);
         } catch (error) {
             console.error('Failed to download packet PDF:', error);
-            toast.error('We couldn’t create the PDF. Try again.');
+            notifyPacketPdfFailure(error);
         } finally {
             setDownloadingPdf(false);
         }

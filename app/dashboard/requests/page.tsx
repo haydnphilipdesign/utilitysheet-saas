@@ -37,7 +37,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { trackEvent } from '@/lib/analytics/events';
-import { generatePacketPdf } from '@/lib/pdf-generator';
+import { generatePacketPdf, notifyPacketPdfFailure } from '@/lib/pdf-generator';
 import {
     DEFAULT_REQUEST_LIST_SORT,
     REQUESTS_DEFAULT_PAGE_SIZE,
@@ -222,7 +222,7 @@ export default function RequestsPage() {
             toast.success('PDF downloaded');
         } catch (downloadError) {
             console.error('Error generating PDF:', downloadError);
-            toast.error('We couldn’t create the PDF. Try again.');
+            notifyPacketPdfFailure(downloadError);
         } finally {
             setDownloadingPdfToken(null);
         }

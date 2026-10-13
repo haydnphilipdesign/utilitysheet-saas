@@ -17,6 +17,8 @@ import { SellerLayout } from '@/components/seller-form/SellerLayout';
 import { SellerStatusNotice } from '@/components/seller-form/steps/SellerStatusNotice';
 import type { SellerPrefill } from '@/lib/seller-form/prefill';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
+import { checkMaintenanceStatus, type MaintenanceNotice as MaintenancePause } from '@/lib/maintenance/client';
+import { MaintenanceNotice, draftGuidance } from '@/components/maintenance/MaintenanceNotice';
 
 interface RequestData {
     seller_intro?: string | null;
@@ -52,6 +54,9 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
     const [requestData, setRequestData] = useState<RequestData | null>(null);
     const [suggestions, setSuggestions] = useState<Record<UtilityCategory, ProviderSuggestion[]>>({} as Record<UtilityCategory, ProviderSuggestion[]>);
     const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
+    // Set when the form is opened during a planned pause: the wizard is not started.
+    const [maintenance, setMaintenance] = useState<MaintenancePause | null>(null);
+    const [hasLocalDraft, setHasLocalDraft] = useState(false);
 
     const handleRetry = () => {
         setLoading(true);
@@ -61,7 +66,21 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
 
     const loadRequestData = async () => {
         try {
-            const response = await fetch(`/api/seller/${resolvedParams.token}`);
+            // Asked alongside the form so ordinary loads are not slowed down.
+            const [response, maintenanceCheck] = await Promise.all([
+                fetch(`/api/seller/${resolvedParams.token}`),
+                checkMaintenanceStatus(),
+            ]);
+            if (maintenanceCheck.state === 'paused') {
+                try {
+                    setHasLocalDraft(localStorage.getItem(`us_seller_draft:${resolvedParams.token}`) !== null);
+                } catch {
+                    setHasLocalDraft(false);
+                }
+                setMaintenance(maintenanceCheck.notice);
+            } else {
+                setMaintenance(null);
+            }
 
             if (!response.ok) {
                 if (response.status === 404) {
@@ -148,6 +167,35 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                     </p>
                 </div>
             </div>
+        );
+    }
+
+    // A sent form has nothing left to do, so the pause is only shown for an open one.
+    if (maintenance && !requestData.submitted) {
+        return (
+            <SellerLayout
+                progress={0}
+                address={requestData.property_address}
+                stepName="Paused"
+                completedCount={0}
+                totalCount={0}
+                brandProfile={brandProfile}
+            >
+                <MaintenanceNotice
+                    variant="screen"
+                    testId="seller-maintenance-screen"
+                    title="This form is paused for maintenance"
+                    notice={maintenance}
+                    onReopened={handleRetry}
+                >
+                    <p>
+                        We’re doing a short planned update, so this form can’t be filled in or sent right now.
+                        Nothing is wrong with your link.
+                    </p>
+                    {hasLocalDraft && <p data-testid="seller-maintenance-draft">{draftGuidance('saved')}</p>}
+                    <p>Please open this same link again a little later.</p>
+                </MaintenanceNotice>
+            </SellerLayout>
         );
     }
 

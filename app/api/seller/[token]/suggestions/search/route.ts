@@ -1,6 +1,7 @@
 import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
+import { maintenanceResponse } from '@/lib/maintenance/server';
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
 import { createEventLog } from '@/lib/neon/queries/event-logs';
@@ -17,6 +18,10 @@ export async function GET(
     request: Request,
     { params }: { params: Promise<{ token: string }> }
 ) {
+    // Paused for a planned cutover: refuse before the limiter and every side effect.
+    const maintenance = maintenanceResponse('seller_suggestion_search', request);
+    if (maintenance) return maintenance;
+
     try {
         const { token } = await params;
 

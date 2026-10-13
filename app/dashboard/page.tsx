@@ -35,7 +35,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { generatePacketPdf } from '@/lib/pdf-generator';
+import { generatePacketPdf, notifyPacketPdfFailure } from '@/lib/pdf-generator';
 import { trackEvent } from '@/lib/analytics/events';
 import { mergeFeaturedProductUpdate } from '@/lib/product-updates';
 import type { DashboardStats, ProductUpdate, Request } from '@/types';
@@ -498,7 +498,7 @@ export default function DashboardPage() {
             toast.success('PDF downloaded');
         } catch (error) {
             console.error('Error generating PDF:', error);
-            toast.error('We couldn’t create the PDF. Try again.');
+            notifyPacketPdfFailure(error);
         } finally {
             setDownloadingPdfToken(null);
         }

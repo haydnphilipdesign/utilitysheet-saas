@@ -10,6 +10,8 @@ import { GooglePlacesAddressInput } from '@/components/address/GooglePlacesAddre
 import { trackEvent } from '@/lib/analytics/events';
 import { INTRO_SEEN_STORAGE_KEY } from '@/lib/seller-forms/intro-copy';
 import { IntakeIntro } from './IntakeIntro';
+import { checkMaintenanceStatus, type MaintenanceNotice as MaintenancePause } from '@/lib/maintenance/client';
+import { MaintenanceNotice } from '@/components/maintenance/MaintenanceNotice';
 import {
     type IntakeAddressParts,
     type IntakeMissingField,
@@ -82,6 +84,18 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
     const [showConfirmAddress, setShowConfirmAddress] = useState(false);
     const [confirmAddress, setConfirmAddress] = useState<ConfirmAddressFields>(EMPTY_CONFIRM_ADDRESS);
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<IntakeMissingField, string>>>({});
+    // A form started during a planned pause could not be sent, so it is not started.
+    const [maintenance, setMaintenance] = useState<MaintenancePause | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        void checkMaintenanceStatus().then((check) => {
+            if (!cancelled && check.state === 'paused') setMaintenance(check.notice);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -344,6 +358,20 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
                         <span className="text-sm">Loading…</span>
                     </div>
                 </div>
+            ) : maintenance && !loadError ? (
+                <MaintenanceNotice
+                    variant="screen"
+                    testId="intake-maintenance-screen"
+                    title="This form is paused for maintenance"
+                    notice={maintenance}
+                    onReopened={() => setMaintenance(null)}
+                >
+                    <p>
+                        We’re doing a short planned update, so this form can’t be started right now.
+                        Nothing is wrong with your link.
+                    </p>
+                    <p>Please open this same link again a little later.</p>
+                </MaintenanceNotice>
             ) : loadError ? (
                 <div className="flex-1 flex items-center justify-center">
                     <div className="w-full max-w-md bg-card/60 border border-border rounded-2xl p-8 text-center space-y-5">

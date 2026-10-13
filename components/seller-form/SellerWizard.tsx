@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { SellerLayout } from './SellerLayout';
@@ -37,6 +37,8 @@ import { createEmptyHoaAnswers } from '@/lib/packet/hoa';
 import { FUEL_UTILITY_CATEGORY_BY_FUEL, OPTIONAL_UTILITY_CATEGORIES } from '@/lib/packet/seller-questions';
 import { createSellerObserver } from '@/lib/telemetry/seller-observer';
 import { durationBucket, errorCodeForStatus, SELLER_OBSERVATION_MAX_ATTEMPT } from '@/lib/telemetry/seller-observations';
+import { detectMaintenance, type MaintenanceNotice as MaintenancePause } from '@/lib/maintenance/client';
+import { MaintenanceNotice, draftGuidance, type DraftStorageState } from '@/components/maintenance/MaintenanceNotice';
 
 type RequiredBasicsField = 'water_source' | 'sewer_type';
 const REQUIRED_BASICS_FIELDS: RequiredBasicsField[] = ['water_source', 'sewer_type'];
@@ -277,6 +279,35 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
     // Categories whose suggestion request failed: the step still shows its empty state.
     const [suggestionLoadFailed, setSuggestionLoadFailed] = useState<Partial<Record<UtilityCategory, boolean>>>({});
+    // A planned pause of sending and suggestions. The answers stay here; nothing is resent for the seller.
+    const [maintenance, setMaintenance] = useState<{ notice: MaintenancePause; submitRefused: boolean } | null>(null);
+    const [maintenanceOver, setMaintenanceOver] = useState(false);
+    const maintenanceActiveRef = useRef(false);
+    const pausedSuggestionCategoriesRef = useRef(new Set<UtilityCategory>());
+    // What the draft write actually did, so guidance during a pause is not a guess.
+    const [draftStorage, setDraftStorage] = useState<DraftStorageState>('none');
+    const reportMaintenance = useCallback((notice: MaintenancePause, submitRefused = false) => {
+        maintenanceActiveRef.current = true;
+        setMaintenanceOver(false);
+        setMaintenance((current) => ({ notice, submitRefused: submitRefused || current?.submitRefused === true }));
+    }, []);
+    const endMaintenance = useCallback(() => {
+        if (!maintenanceActiveRef.current) return;
+        maintenanceActiveRef.current = false;
+        setMaintenance(null);
+        setMaintenanceOver(true);
+        // Lists refused during the pause are asked for again. That is a read; sending stays manual.
+        const paused = [...pausedSuggestionCategoriesRef.current];
+        pausedSuggestionCategoriesRef.current.clear();
+        if (paused.length === 0) return;
+        const without = <T,>(record: Partial<Record<UtilityCategory, T>>) => {
+            const next = { ...record };
+            paused.forEach((category) => delete next[category]);
+            return next;
+        };
+        setSuggestionLoadFailed((prev) => without(prev));
+        setSuggestionsByCategory((prev) => without(prev) as Record<UtilityCategory, ProviderSuggestion[]>);
+    }, []);
     // Advisory diagnostics only. Nothing below waits on, or fails because of, an observation.
     const observer = useMemo(
         () => createSellerObserver({ token, editVersion, enabled: !isDemo }),
@@ -484,13 +515,14 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         reviewedAdvancedModules,
                     })
                 );
+                setDraftStorage('saved');
                 if (currentStep > Step.WELCOME && currentStep < Step.SUCCESS) {
                     setAutosaveFlash(true);
                     if (autosaveFlashTimer.current) clearTimeout(autosaveFlashTimer.current);
                     autosaveFlashTimer.current = setTimeout(() => setAutosaveFlash(false), 1400);
                 }
             } catch {
-                // ignore
+                setDraftStorage('unavailable');
             }
         }, 250);
 
@@ -561,8 +593,15 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         (async () => {
             try {
                 const res = await fetch(`/api/seller/${token}/suggestions?categories=${encodeURIComponent(categoriesToFetch.join(','))}`);
+                const pause = res.ok ? null : await detectMaintenance(res);
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) observeSuggestionFailure(errorCodeForStatus(res.status), res.status);
+                if (pause) {
+                    categoriesToFetch.forEach((category) => pausedSuggestionCategoriesRef.current.add(category));
+                    reportMaintenance(pause);
+                } else if (res.ok) {
+                    endMaintenance();
+                }
 
                 const fetched = (res.ok ? data.suggestions : {}) as Partial<Record<UtilityCategory, ProviderSuggestion[]>>;
                 setSuggestionsByCategory((prev) => {
@@ -592,7 +631,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 });
             }
         })();
-    }, [currentStep, utilityIndex, visibleUtilities, token, isDemo, suggestionsByCategory, loadingSuggestions, observer]);
+    }, [currentStep, utilityIndex, visibleUtilities, token, isDemo, suggestionsByCategory, loadingSuggestions, observer, reportMaintenance, endMaintenance]);
 
     useEffect(() => {
         setState((prev) => {
@@ -1018,8 +1057,20 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         packet_mode: state.packet_mode,
                     });
                 }
+                maintenanceActiveRef.current = false;
+                setMaintenance(null);
+                setMaintenanceOver(false);
                 setCurrentStep(Step.SUCCESS);
             } else {
+                const pause = await detectMaintenance(response);
+                if (pause) {
+                    // Refused before anything was stored. The answers stay on the page and in
+                    // the draft, and the same key is reused when the seller submits again.
+                    observeSubmissionFailure(errorCodeForStatus(response.status), response.status);
+                    reportMaintenance(pause, true);
+                    setSubmitting(false);
+                    return;
+                }
                 const errorBody = await response.json().catch(() => null);
                 console.error('Submission failed', {
                     status: response.status,
@@ -1055,6 +1106,38 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         });
         handleSubmit();
     };
+
+    const maintenanceDraftGuidance = draftGuidance(isDemo ? 'none' : draftStorage);
+    const maintenanceBanner = maintenance ? (
+        <MaintenanceNotice
+            variant="banner"
+            testId="seller-maintenance-banner"
+            urgent={maintenance.submitRefused}
+            title={maintenance.submitRefused ? 'Not sent yet: paused for maintenance' : 'Paused for maintenance'}
+            notice={maintenance.notice}
+            onReopened={endMaintenance}
+        >
+            <p>
+                {maintenance.submitRefused
+                    ? 'We’re doing a short planned update, so your answers could not be sent just now. They are still on this page.'
+                    : 'We’re doing a short planned update. Provider suggestions and sending this form are paused, but you can keep filling in your answers.'}
+            </p>
+            {maintenanceDraftGuidance && <p data-testid="seller-maintenance-draft">{maintenanceDraftGuidance}</p>}
+            <p>
+                {maintenance.submitRefused
+                    ? 'Once we’re back, tap Submit again. Nothing is sent until you do.'
+                    : 'You can send the form once we’re back.'}
+            </p>
+        </MaintenanceNotice>
+    ) : maintenanceOver && currentStep !== Step.SUCCESS ? (
+        <div
+            role="status"
+            data-testid="seller-maintenance-over"
+            className="rounded-xl border border-border bg-muted/50 p-4 text-sm text-foreground"
+        >
+            We’re back. {currentStep === Step.REVIEW ? 'Tap Submit to send your answers.' : 'You can carry on and send the form when you’re ready.'}
+        </div>
+    ) : null;
 
     return (
         <SellerLayout
@@ -1094,6 +1177,9 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     brandProfile={brandProfile}
                 />
             )}
+            {!terminalNotice && maintenanceBanner && currentStep !== Step.REVIEW && currentStep !== Step.SUCCESS && (
+                <div className="mb-4">{maintenanceBanner}</div>
+            )}
             {!terminalNotice && (
             <AnimatePresence mode={shouldReduceMotion ? 'sync' : 'wait'} initial={!shouldReduceMotion}>
                 {currentStep === Step.WELCOME && (
@@ -1131,6 +1217,9 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         token={token}
                         observer={observer}
                         suggestionsUnavailable={!!suggestionLoadFailed[visibleUtilities[utilityIndex]]}
+                        maintenancePaused={maintenance !== null}
+                        onMaintenance={reportMaintenance}
+                        onMaintenanceOver={endMaintenance}
                         collectElectricMeterNumber={collectElectricMeterNumber}
                         isReviewEdit={navigationMode === 'review_edit'}
                         onNoService={visibleUtilities[utilityIndex] === 'trash' ? declineTrashService : undefined}
@@ -1178,6 +1267,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         advancedData={state.advanced}
                         submitError={submitError}
                         onRetry={handleRetrySubmit}
+                        notice={maintenanceBanner}
                     />
                 )}
 

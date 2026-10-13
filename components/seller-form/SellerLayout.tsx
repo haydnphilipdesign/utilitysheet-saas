@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Mail, Phone, Globe, Check, Send, Loader2 } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import { buildBrandAccentStyle, resolveBrandColor } from '@/lib/branding/deliverable';
+import { detectMaintenance } from '@/lib/maintenance/client';
 
 interface BrandProfile {
     name?: string;
@@ -32,6 +33,7 @@ interface SellerLayoutProps {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SAVE_LINK_PAUSED_MESSAGE = 'Emailing this link is paused for a short planned update, so nothing was sent. This page’s web address is your link: bookmark or copy it to come back later.';
 
 function SaveLinkAffordance({ token, stepName }: { token: string; stepName: string }) {
     const [open, setOpen] = useState(false);
@@ -58,6 +60,10 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
             if (res.ok) {
                 setDone(true);
                 trackEvent('seller_save_link_sent', { step: stepName, success: true, location: 'seller_flow' });
+            } else if (await detectMaintenance(res)) {
+                // Not sent, and not a failure: the seller is told how to come back without the email.
+                setError(SAVE_LINK_PAUSED_MESSAGE);
+                trackEvent('seller_save_link_sent', { step: stepName, success: false, location: 'seller_flow' });
             } else {
                 const body = await res.json().catch(() => null);
                 setError(body?.error || 'Could not send. Please try again.');

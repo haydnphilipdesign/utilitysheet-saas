@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Pencil, Loader2, ArrowRight, Zap, Droplets, Flame, Fuel, FlameKindling, Trash2, Wifi, Tv, Waves, AlertTriangle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -43,6 +44,8 @@ interface ReviewStepProps {
     onEditAdvancedModule?: (moduleKey: AdvancedModuleKey) => void;
     submitError?: { kind: 'network' | 'server' | 'rate_limit' | 'unknown'; message: string } | null;
     onRetry?: () => void;
+    /** Shown above the buttons, where a refused submit is noticed. */
+    notice?: ReactNode;
 }
 
 export function ReviewStep({
@@ -63,6 +66,7 @@ export function ReviewStep({
     onEditAdvancedModule,
     submitError,
     onRetry,
+    notice,
 }: ReviewStepProps) {
     const utilityLabels = Object.fromEntries(
         UTILITY_CATEGORIES.map((category) => [category.key, category.label])
@@ -349,6 +353,8 @@ export function ReviewStep({
                     </div>
                 )}
             </div>
+
+            {notice}
 
             {submitError && (
                 <div

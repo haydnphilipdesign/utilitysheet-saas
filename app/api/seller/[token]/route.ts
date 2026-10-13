@@ -1,6 +1,7 @@
 import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
+import { maintenanceResponse } from '@/lib/maintenance/server';
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getOrganizationMemberRole, getReferralIdentityForm, getUtilityEntriesByRequestId, createEventLog } from '@/lib/neon/queries';
 import { submitSellerRequest, type SellerSubmissionEntryRow } from '@/lib/neon/queries/seller-submission';
@@ -472,6 +473,10 @@ export async function POST(
     request: Request,
     { params }: { params: Promise<{ token: string }> }
 ) {
+    // Paused for a planned cutover: refuse before the limiter and every side effect.
+    const maintenance = maintenanceResponse('seller_submission', request);
+    if (maintenance) return maintenance;
+
     try {
         const { token } = await params;
 
