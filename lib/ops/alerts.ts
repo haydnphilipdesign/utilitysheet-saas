@@ -14,7 +14,7 @@
  */
 import { getResend } from '@/lib/resend';
 import { AI_HEALTH_LABELS, loadAiHealth, type AiFeatureHealth, type AiHealthConfig } from '@/lib/ops/ai-health';
-import { JOB_LABELS, getJobOverdueHours, type JobStatus } from '@/lib/ops/overview';
+import { JOB_LABELS, jobOverdueMinutes, getJobOverdueHours, type JobStatus } from '@/lib/ops/overview';
 import { getStatementExecutor, type StatementExecutor } from '@/lib/neon/statements';
 
 export type AlertConfig = {
@@ -57,7 +57,7 @@ export type AlertSnapshot = {
     aiHealth: AiFeatureHealth[];
 };
 
-export type AlertCondition = { key: string; firing: boolean; summary: string };
+export type AlertCondition = { key: string; firing: boolean; summary: string; evaluable?: boolean };
 
 export function evaluateAlertConditions(snapshot: AlertSnapshot, config: AlertConfig): AlertCondition[] {
     const conditions: AlertCondition[] = [
@@ -79,16 +79,32 @@ export function evaluateAlertConditions(snapshot: AlertSnapshot, config: AlertCo
     ];
 
     for (const job of snapshot.jobs) {
+        const overdueMinutes = jobOverdueMinutes(job.jobName, config.jobOverdueHours);
+        const completed = job.lastStatus !== null && job.lastStatus !== 'running';
         // `not_observed` and `within_grace` never fire: an unobserved job is not an overdue job.
         conditions.push({
             key: `job_overdue:${job.jobName}`,
             firing: job.health === 'overdue',
-            summary: `${JOB_LABELS[job.jobName]} has not succeeded in over ${config.jobOverdueHours} hours`,
+            summary: `${JOB_LABELS[job.jobName]} has not succeeded in over ${job.jobName === 'ops_monitor' ? `${overdueMinutes} minutes` : `${config.jobOverdueHours} hours`}`,
+            evaluable: job.health === 'overdue' || job.lastStatus === 'success',
         });
         conditions.push({
             key: `job_failed:${job.jobName}`,
-            firing: job.health === 'failed',
+            firing: job.lastStatus === 'failed',
             summary: `${JOB_LABELS[job.jobName]} failed on its last run`,
+            evaluable: job.lastStatus === 'failed' || job.lastStatus === 'success',
+        });
+        conditions.push({
+            key: `job_partial:${job.jobName}`,
+            firing: job.lastStatus === 'partial',
+            summary: `${JOB_LABELS[job.jobName]} finished with partial coverage or failures`,
+            evaluable: job.lastStatus === 'partial' || job.lastStatus === 'success',
+        });
+        conditions.push({
+            key: `job_stuck:${job.jobName}`,
+            firing: job.health === 'stuck',
+            summary: `${JOB_LABELS[job.jobName]} has a run with no finish recorded after its running grace`,
+            evaluable: completed || job.health === 'stuck',
         });
     }
 
@@ -97,6 +113,7 @@ export function evaluateAlertConditions(snapshot: AlertSnapshot, config: AlertCo
             key: `ai_degraded:${item.feature}`,
             firing: item.firing,
             summary: `${item.degraded} of ${item.runs} ${AI_HEALTH_LABELS[item.feature]} in the last ${config.ai.windowHours} hours`,
+            evaluable: item.runs > 0,
         });
     }
     return conditions;
@@ -116,6 +133,7 @@ export function planAlertNotifications(
 ): AlertNotification[] {
     const notifications: AlertNotification[] = [];
     for (const condition of conditions) {
+        if (condition.evaluable === false) continue;
         const previous = states.get(condition.key)?.status ?? 'ok';
         if (condition.firing && previous !== 'firing') {
             notifications.push({ key: condition.key, kind: 'firing', summary: condition.summary });
@@ -130,7 +148,7 @@ export async function loadAlertSnapshot(
     db: StatementExecutor,
     jobs: JobStatus[],
     config: AlertConfig,
-    aiHealth?: AiFeatureHealth[]
+    aiHealth?: AiFeatureHealth[] | null
 ): Promise<AlertSnapshot> {
     const rows = await db.run({
         text: `
@@ -161,7 +179,8 @@ export async function loadAlertSnapshot(
         unrecoveredBillingFailures24h: Number(rows[0]?.billing_failures ?? 0),
         emailDeliveryFailures24h: Number(rows[0]?.email_failures ?? 0),
         jobs,
-        aiHealth: aiHealth ?? await loadAiHealth(db, config.ai),
+        // null is an explicitly failed read, not a request to retry or infer recovery.
+        aiHealth: aiHealth === undefined ? await loadAiHealth(db, config.ai) : aiHealth ?? [],
     };
 }
 
@@ -229,6 +248,8 @@ export type AlertRunResult = {
     planned: AlertNotification[];
     sent: number;
     failed: number;
+    /** Accepted notification whose dedup/recovery state could not be saved. */
+    stateWriteFailed: number;
 };
 
 /**
@@ -243,7 +264,7 @@ export async function runAlertEvaluation(input: {
     db?: StatementExecutor;
     notify?: AlertNotifier;
     /** Already loaded by the monitor; read here when omitted. */
-    aiHealth?: AiFeatureHealth[];
+    aiHealth?: AiFeatureHealth[] | null;
 }): Promise<AlertRunResult> {
     const db = input.db ?? getStatementExecutor();
     const config = input.config ?? getAlertConfig();
@@ -258,14 +279,22 @@ export async function runAlertEvaluation(input: {
         planned,
         sent: 0,
         failed: 0,
+        stateWriteFailed: 0,
     };
     if (!config.enabled || !config.destination) return result;
 
     for (const notification of planned) {
-        const delivered = await notify({ to: config.destination, ...buildAlertMessage(notification) });
+        let delivered = false;
+        try { delivered = await notify({ to: config.destination, ...buildAlertMessage(notification) }); }
+        catch { /* A rejected adapter is an unsuccessful notification. */ }
         if (delivered) {
-            await saveAlertState(db, notification);
             result.sent += 1;
+            try { await saveAlertState(db, notification); }
+            catch {
+                // The provider accepted it; another run may repeat it without saved state.
+                result.stateWriteFailed += 1;
+                result.failed += 1;
+            }
         } else {
             result.failed += 1;
         }

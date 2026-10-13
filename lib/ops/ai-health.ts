@@ -83,7 +83,7 @@ export async function recordAiHealthObservations(
     db: StatementExecutor,
     health: AiFeatureHealth[],
     config: AiHealthConfig
-): Promise<{ failures: number; recoveries: number }> {
+): Promise<{ failures: number; recoveries: number; failedWrites: number }> {
     const rows = await db.run({
         text: `
             SELECT fingerprint,
@@ -102,7 +102,7 @@ export async function recordAiHealthObservations(
     });
     const episodes = new Map(rows.map((row) => [String(row.fingerprint), { recent: row.recent === true, open: row.open === true }] as const));
 
-    const result = { failures: 0, recoveries: 0 };
+    const result = { failures: 0, recoveries: 0, failedWrites: 0 };
     for (const item of health) {
         const code = aiHealthCode(item.feature);
         const episode = episodes.get(`ai:${code}`) ?? { recent: false, open: false };
@@ -110,8 +110,10 @@ export async function recordAiHealthObservations(
 
         if (item.firing && !(episode.open && episode.recent)) {
             if (await recordOperationalEvent({ db, category: 'ai', code, outcome: 'failure', metadata })) result.failures += 1;
+            else result.failedWrites += 1;
         } else if (!item.firing && episode.open && item.runs > 0 && item.degraded * 100 < config.sharePct * item.runs) {
             if (await recordOperationalEvent({ db, category: 'ai', code, outcome: 'success', severity: 'info', metadata })) result.recoveries += 1;
+            else result.failedWrites += 1;
         }
     }
     return result;
@@ -119,12 +121,13 @@ export async function recordAiHealthObservations(
 
 /**
  * Monitor entry point. Never throws: a failed read is logged and reported as
- * "not observed" so the other alert conditions are still evaluated.
+ * unavailable so the other alert conditions are still evaluated.
  */
 export async function observeAiHealth(input: { db: StatementExecutor; config: AiHealthConfig }): Promise<{
     health: AiFeatureHealth[] | null;
     failures: number;
     recoveries: number;
+    status: 'ok' | 'partial' | 'unavailable';
 }> {
     const logFailure = (message: string, error: unknown) => console.error(JSON.stringify({
         level: 'error',
@@ -137,12 +140,13 @@ export async function observeAiHealth(input: { db: StatementExecutor; config: Ai
         health = await loadAiHealth(input.db, input.config);
     } catch (error) {
         logFailure('ai_health_not_observed', error);
-        return { health: null, failures: 0, recoveries: 0 };
+        return { health: null, failures: 0, recoveries: 0, status: 'unavailable' };
     }
     try {
-        return { health, ...(await recordAiHealthObservations(input.db, health, input.config)) };
+        const result = await recordAiHealthObservations(input.db, health, input.config);
+        return { health, failures: result.failures, recoveries: result.recoveries, status: result.failedWrites > 0 ? 'partial' : 'ok' };
     } catch (error) {
         logFailure('ai_health_not_recorded', error);
-        return { health, failures: 0, recoveries: 0 };
+        return { health, failures: 0, recoveries: 0, status: 'partial' };
     }
 }

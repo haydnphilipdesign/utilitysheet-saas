@@ -172,6 +172,8 @@ When a feature has at least 10 fresh runs in the window and 50% or more are degr
 
 Thresholds: `OPS_ALERT_AI_SHARE_PCT` (50), `OPS_ALERT_AI_MIN_RUNS` (10), `OPS_ALERT_AI_WINDOW_HOURS` (24). They are starting points, not validated benchmarks. About one in five fresh suggestion lookups ended on the generic list before the prompt work planned for later; a threshold below that level would fire constantly. At low traffic a real outage is reported only once 10 fresh runs have accumulated.
 
+A failed AI health read is unavailable, never an empty successful window: the monitor records a partial run and reports `aiCoverage: unavailable`. Failed health-observation writes also mark it partial while keeping loaded health available for alert evaluation. No fresh runs means insufficient evidence to recover a previous AI alert. Admin collector coverage shows retained record timestamps only, not a collection rate. No live model call is made by monitoring.
+
 ## Admin Telemetry
 
 `/admin/telemetry` separates feature/outcome/model/prompt cohorts, with average, p50/p95 and timed fresh sample count. Cache hits and NULL/negative timings are excluded; latency measures pipeline time, including retries but excluding telemetry persistence and full HTTP/browser time. Usage shows per-token reporting coverage, reported search coverage and ambiguous historical zero rows. Failures count runs with a first recorded failure, including recovered runs, not transport calls. Pass counts exclude transport retries. Acceptance groups current entries by the first recorded suggestion result before first metered submission, with an unrecorded bucket; rendering, exposure linkage and accuracy remain unverified. Definitions are in `ADMIN.md`, Telemetry.

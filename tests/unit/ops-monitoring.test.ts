@@ -29,6 +29,7 @@ import {
 import {
     classifyJob,
     describeCollection,
+    getCollectorCoverage,
     getFollowUpCandidates,
     getIncidentSummary,
     getJobStatuses,
@@ -221,7 +222,7 @@ describe('scheduled jobs', () => {
             summary: expect.stringContaining('6 hours') }));
         expect((await getJobStatuses(exec, new Date(), 48))[0].health).toBe('ok');
         vi.stubEnv('OPS_ALERT_JOB_OVERDUE_HOURS', '6');
-        try { expect((await getOperationsSnapshot({ db: exec })).jobs).toMatchObject({ status: 'ok', data: [expect.objectContaining({ health: 'overdue' }), expect.anything(), expect.anything()] }); }
+        try { expect((await getOperationsSnapshot({ db: exec })).jobs).toMatchObject({ status: 'ok', data: [expect.objectContaining({ health: 'overdue' }), expect.anything(), expect.anything(), expect.anything()] }); }
         finally { vi.unstubAllEnvs(); }
     });
     const base = { jobName: 'activation_reconcile' as const, lastDurationMs: 10 };
@@ -230,8 +231,8 @@ describe('scheduled jobs', () => {
 
     it('never calls an unobserved job overdue and honours the initial grace window', () => {
         expect(classifyJob({ ...base, firstObservedAt: null, lastStartedAt: null, lastStatus: null, lastSuccessAt: null }, now)).toBe('not_observed');
-        expect(classifyJob({ ...base, firstObservedAt: ago(2), lastStartedAt: ago(2), lastStatus: 'running', lastSuccessAt: null }, now)).toBe('within_grace');
-        expect(classifyJob({ ...base, firstObservedAt: ago(27), lastStartedAt: ago(27), lastStatus: 'running', lastSuccessAt: null }, now)).toBe('overdue');
+        expect(classifyJob({ ...base, firstObservedAt: ago(2), lastStartedAt: ago(2), lastStatus: 'running', lastSuccessAt: null }, now)).toBe('stuck');
+        expect(classifyJob({ ...base, firstObservedAt: ago(27), lastStartedAt: ago(27), lastStatus: 'running', lastSuccessAt: null }, now)).toBe('stuck');
     });
 
     it('distinguishes ok, partial, failed and overdue', () => {
@@ -244,7 +245,7 @@ describe('scheduled jobs', () => {
         expect(classifyJob({ ...seen, lastStartedAt: ago(30), lastStatus: 'success', lastSuccessAt: ago(26.1) }, now)).toBe('overdue');
     });
 
-    it('records runs with count-only summaries and reports only the three scheduled jobs', async () => {
+    it('records runs with count-only summaries and reports all four scheduled jobs', async () => {
         const run = await startJobRun('activation_reconcile', exec);
         await finishJobRun(run, 'partial', { created: 2, failures: 1, emails: ['a@example.com'], note: 'text' }, exec);
         const other = await startJobRun('ops_monitor', exec);
@@ -254,7 +255,7 @@ describe('scheduled jobs', () => {
 
         const jobs = await getJobStatuses(exec);
         expect(jobs.map((job) => [job.jobName, job.health])).toEqual([
-            ['activation_reconcile', 'partial'], ['activation_reengagement', 'not_observed'], ['account_closure_retry', 'not_observed'],
+            ['activation_reconcile', 'partial'], ['activation_reengagement', 'not_observed'], ['account_closure_retry', 'not_observed'], ['ops_monitor', 'ok'],
         ]);
     });
 });
@@ -321,7 +322,7 @@ describe('alerts', () => {
 
     it('applies thresholds and never fires for unobserved or in-grace jobs', () => {
         const job = (health: 'not_observed' | 'within_grace' | 'overdue' | 'failed' | 'partial') => ({
-            jobName: 'activation_reconcile' as const, health, lastStartedAt: null, lastStatus: null, lastDurationMs: null, lastSuccessAt: null, firstObservedAt: null,
+            jobName: 'activation_reconcile' as const, health, lastStartedAt: null, lastStatus: health === 'failed' ? 'failed' as const : health === 'partial' ? 'partial' as const : null, lastDurationMs: null, lastSuccessAt: null, firstObservedAt: null,
         });
         const firing = (snapshot: Parameters<typeof evaluateAlertConditions>[0]) =>
             evaluateAlertConditions(snapshot, config).filter((condition) => condition.firing).map((condition) => condition.key);
@@ -330,7 +331,8 @@ describe('alerts', () => {
         expect(firing({ ...quiet, pdfFailuresInWindow: 2 })).toEqual([]);
         expect(firing({ ...quiet, pdfFailuresInWindow: 3 })).toEqual(['pdf_failures']);
         expect(firing({ ...quiet, unrecoveredBillingFailures24h: 1, emailDeliveryFailures24h: 1 })).toEqual(['billing_webhook_failure', 'email_delivery_failure']);
-        expect(firing({ ...quiet, jobs: [job('not_observed'), job('within_grace'), job('partial')] })).toEqual([]);
+        expect(firing({ ...quiet, jobs: [job('not_observed'), job('within_grace')] })).toEqual([]);
+        expect(firing({ ...quiet, jobs: [job('partial')] })).toEqual(['job_partial:activation_reconcile']);
         expect(firing({ ...quiet, jobs: [job('overdue')] })).toEqual(['job_overdue:activation_reconcile']);
         expect(firing({ ...quiet, jobs: [job('failed')] })).toEqual(['job_failed:activation_reconcile']);
     });
@@ -471,7 +473,7 @@ describe('AI health', () => {
     it('never throws from the monitor entry point', async () => {
         vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const broken: StatementExecutor = { run: async () => { throw new Error('connection reset'); }, transaction: async () => [] };
-        expect(await observeAiHealth({ db: broken, config: ai })).toEqual({ health: null, failures: 0, recoveries: 0 });
+        expect(await observeAiHealth({ db: broken, config: ai })).toEqual({ health: null, failures: 0, recoveries: 0, status: 'unavailable' });
     });
 });
 
@@ -583,5 +585,123 @@ describe('triage', () => {
         expect(await one('SELECT status, last_activity_at, updated_at FROM requests')).toEqual(requestBefore);
         expect(await count('SELECT COUNT(*)::int AS n FROM event_logs')).toBe(0);
         expect(await count(`SELECT COUNT(*)::int AS n FROM reminder_operations WHERE state = 'pending'`)).toBe(0);
+    });
+});
+
+describe('Slice 7 heartbeat and coverage', () => {
+    const now = new Date('2026-10-13T12:00:00Z');
+    const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60000).toISOString();
+    const job = (extra: Partial<Parameters<typeof classifyJob>[0]> = {}) => ({
+        jobName: 'ops_monitor' as const, firstObservedAt: minutesAgo(120), lastStartedAt: minutesAgo(15),
+        lastSuccessAt: minutesAgo(15), lastStatus: 'success' as const, lastDurationMs: 100, ...extra,
+    });
+
+    it('uses fixed-clock monitor boundaries independently of the daily override', () => {
+        expect(classifyJob(job({ firstObservedAt: null, lastStartedAt: null, lastSuccessAt: null, lastStatus: null }), now, 1)).toBe('not_observed');
+        expect(classifyJob(job({ lastSuccessAt: minutesAgo(30) }), now, 1)).toBe('ok');
+        expect(classifyJob(job({ lastSuccessAt: minutesAgo(30.01) }), now, 336)).toBe('overdue');
+        expect(classifyJob(job({ firstObservedAt: minutesAgo(5), lastSuccessAt: null, lastStatus: 'partial' }), now)).toBe('partial');
+        expect(classifyJob(job({ firstObservedAt: minutesAgo(5), lastSuccessAt: null, lastStatus: 'failed' }), now)).toBe('failed');
+        expect(classifyJob(job({ firstObservedAt: minutesAgo(5), lastSuccessAt: null, lastStatus: null }), now)).toBe('within_grace');
+        expect(classifyJob(job({ lastStatus: 'running', lastStartedAt: minutesAgo(15) }), now)).toBe('running');
+        expect(classifyJob(job({ lastStatus: 'running', lastStartedAt: minutesAgo(15.01) }), now)).toBe('stuck');
+        expect(classifyJob(job({ lastStatus: 'running', lastStartedAt: minutesAgo(1), lastSuccessAt: minutesAgo(31) }), now)).toBe('overdue');
+    });
+
+    it('reads retained heartbeat evidence and excludes the current monitor run', async () => {
+        const completed = await startJobRun('ops_monitor', exec);
+        await finishJobRun(completed, 'partial', { aiUnavailable: 1 }, exec);
+        await db.query(`UPDATE job_runs SET started_at=$1::timestamptz, finished_at=$1::timestamptz WHERE id=$2::uuid`, [minutesAgo(20), completed.id]);
+        const current = await startJobRun('ops_monitor', exec);
+        await db.query(`UPDATE job_runs SET started_at=$1::timestamptz WHERE id=$2::uuid`, [minutesAgo(1), current.id]);
+        expect((await getJobStatuses(exec, now)).find(item => item.jobName === 'ops_monitor')).toMatchObject({ health: 'running', lastStatus: 'running' });
+        expect((await getJobStatuses(exec, now, 26, current.id)).find(item => item.jobName === 'ops_monitor')).toMatchObject({ health: 'partial', lastStatus: 'partial', lastSuccessAt: null });
+        await db.query(`UPDATE job_runs SET started_at=$1::timestamptz WHERE id=$2::uuid`, [minutesAgo(16), current.id]);
+        expect((await getJobStatuses(exec, now)).find(item => item.jobName === 'ops_monitor')?.health).toBe('stuck');
+    });
+
+    it('matches expected schedules to the unchanged source cron configuration', async () => {
+        const { readFileSync } = await import('node:fs');
+        const { JOB_SCHEDULES } = await import('@/lib/ops/overview');
+        const crons = JSON.parse(readFileSync('vercel.json', 'utf8')).crons;
+        expect(Object.keys(JOB_SCHEDULES).map(name => name.replaceAll('_', '-')))
+            .toEqual(crons.map((cron: { path: string }) => cron.path.split('/').at(-1)));
+        expect(crons.map((cron: { schedule: string }) => cron.schedule)).toEqual(['0 12 * * *', '30 12 * * *', '0 13 * * *', '*/15 * * * *']);
+    });
+
+    it('reports per-collector retained timestamps without counting unrelated seller events', async () => {
+        const empty = await getCollectorCoverage(exec);
+        expect(empty.find(item => item.collector === 'seller')?.lastRecordAt).toBeNull();
+        expect(empty.find(item => item.collector === 'reminders')?.lastRecordAt).not.toBeNull();
+        await db.query(`INSERT INTO event_logs (request_id, event_type, created_at) VALUES ($1, 'seller_viewed', $2), ($1, 'seller_step_viewed', $3)`, [REQ, minutesAgo(1), minutesAgo(10)]);
+        await recordOperationalEvent({ db: exec, category: 'pdf', code: 'generation_failed', outcome: 'failure' });
+        const coverage = await getCollectorCoverage(exec);
+        expect(coverage).toHaveLength(7);
+        expect(coverage.find(item => item.collector === 'seller')?.lastRecordAt).toBe(minutesAgo(10));
+        expect(coverage.find(item => item.collector === 'pdf')?.lastRecordAt).not.toBeNull();
+        expect(coverage.find(item => item.collector === 'ai_runs')?.lastRecordAt).toBeNull();
+        const failed: StatementExecutor = { run: async () => { throw new Error('unavailable'); }, transaction: async () => [] };
+        expect((await getOperationsSnapshot({ db: failed, now })).coverage.status).toBe('error');
+    });
+});
+
+describe('Slice 7 alert uncertainty', () => {
+    const config: AlertConfig = {
+        enabled: true, destination: 'owner@example.com', pdfFailureThreshold: 3, pdfWindowMinutes: 15,
+        jobOverdueHours: 26, ai: { sharePct: 50, minRuns: 10, windowHours: 24 },
+    };
+    const quiet = { pdfFailuresInWindow: 0, unrecoveredBillingFailures24h: 0, emailDeliveryFailures24h: 0, jobs: [], aiHealth: [] };
+    const now = '2026-10-13T12:00:00Z';
+
+    it('labels monitor partial, stuck and overdue with its own grace and avoids false recoveries', () => {
+        const job = { jobName: 'ops_monitor' as const, health: 'partial' as const, lastStatus: 'partial' as const,
+            firstObservedAt: now, lastStartedAt: now, lastSuccessAt: null, lastDurationMs: 10 };
+        const firing = evaluateAlertConditions({ ...quiet, jobs: [job] }, config);
+        expect(firing.filter(item => item.firing).map(item => item.key)).toEqual(['job_partial:ops_monitor']);
+        expect(evaluateAlertConditions({ ...quiet, jobs: [{ ...job, health: 'overdue' }] }, config))
+            .toContainEqual(expect.objectContaining({ key: 'job_overdue:ops_monitor', firing: true, summary: expect.stringContaining('30 minutes') }));
+        expect(evaluateAlertConditions({ ...quiet, jobs: [{ ...job, health: 'stuck', lastStatus: 'running' }] }, config))
+            .toContainEqual(expect.objectContaining({ key: 'job_stuck:ops_monitor', firing: true }));
+        const states = new Map([['job_partial:ops_monitor', { status: 'firing' as const }]]);
+        expect(planAlertNotifications(evaluateAlertConditions({ ...quiet, jobs: [{ ...job, health: 'running', lastStatus: 'running' }] }, config), states)).toEqual([]);
+        expect(planAlertNotifications(evaluateAlertConditions({ ...quiet, jobs: [{ ...job, health: 'failed', lastStatus: 'failed' }] }, config), states))
+            .not.toContainEqual(expect.objectContaining({ key: 'job_partial:ops_monitor', kind: 'recovered' }));
+        expect(planAlertNotifications(firing, new Map([['job_failed:ops_monitor', { status: 'firing' }]])))
+            .not.toContainEqual(expect.objectContaining({ key: 'job_failed:ops_monitor', kind: 'recovered' }));
+        expect(planAlertNotifications(evaluateAlertConditions({ ...quiet, jobs: [{ ...job, health: 'ok', lastStatus: 'success', lastSuccessAt: now }] }, config), states))
+            .toEqual([expect.objectContaining({ key: 'job_partial:ops_monitor', kind: 'recovered' })]);
+    });
+
+    it('does not recover AI alerts on an empty window or a failed read', async () => {
+        await db.exec(`INSERT INTO ops_alert_state (alert_key, status) VALUES ('ai_degraded:provider_search', 'firing')`);
+        const notify = vi.fn().mockResolvedValue(true);
+        expect((await runAlertEvaluation({ db: exec, jobs: [], config, notify })).planned).toEqual([]);
+        expect((await runAlertEvaluation({ db: exec, jobs: [], config, notify, aiHealth: null })).planned).toEqual([]);
+        expect(notify).not.toHaveBeenCalled();
+        expect(await one(`SELECT status FROM ops_alert_state`)).toEqual({ status: 'firing' });
+    });
+
+    it('keeps accepted alerts distinct from failed state writes, which can cause a later duplicate', async () => {
+        for (let i = 0; i < 3; i++) await recordOperationalEvent({ db: exec, category: 'pdf', code: 'generation_failed', outcome: 'failure' });
+        const broken: StatementExecutor = {
+            run: (statement, options) => statement.text.includes('INSERT INTO ops_alert_state') ? Promise.reject(new Error('write unavailable')) : exec.run(statement, options),
+            transaction: exec.transaction,
+        };
+        const notify = vi.fn().mockResolvedValue(true);
+        const run = () => runAlertEvaluation({ db: broken, jobs: [], config, notify });
+        expect(await run()).toMatchObject({ sent: 1, failed: 1, stateWriteFailed: 1 });
+        expect(await count('SELECT COUNT(*)::int AS n FROM ops_alert_state')).toBe(0);
+        expect(await run()).toMatchObject({ sent: 1, stateWriteFailed: 1 });
+        expect(notify).toHaveBeenCalledTimes(2);
+    });
+
+    it('marks failed AI observation writes partial while preserving the loaded read', async () => {
+        await db.exec(`INSERT INTO ai_generation_runs (feature, prompt_version, source, status, cache_hit)
+            SELECT 'provider_search', 'v', 'fallback', 'error', FALSE FROM generate_series(1, 10)`);
+        const broken: StatementExecutor = {
+            run: (statement, options) => statement.text.includes('INSERT INTO operational_events') ? Promise.reject(new Error('write unavailable')) : exec.run(statement, options),
+            transaction: exec.transaction,
+        };
+        expect(await observeAiHealth({ db: broken, config: config.ai })).toMatchObject({ status: 'partial', health: expect.any(Array), failures: 0 });
     });
 });

@@ -14,6 +14,9 @@ import {
     FOLLOW_UP_PAGE_SIZE,
     INCIDENT_LOOKBACK_DAYS,
     JOB_LABELS,
+    JOB_SCHEDULES,
+    COLLECTOR_LABELS,
+    jobOverdueMinutes,
     getJobOverdueHours,
     describeCollection,
     getOperationsSnapshot,
@@ -107,6 +110,8 @@ const JOB_HEALTH: Record<JobHealth, { label: string; tone: 'ok' | 'warn' | 'bad'
     ok: { label: 'Succeeded', tone: 'ok' },
     partial: { label: 'Finished with some failures', tone: 'warn' },
     failed: { label: 'Failed', tone: 'bad' },
+    running: { label: 'Running (finish not recorded yet)', tone: 'muted' },
+    stuck: { label: 'Running too long (finish not recorded)', tone: 'bad' },
     overdue: { label: 'Overdue without success', tone: 'bad' },
     within_grace: { label: 'Observed, no success yet (within grace window)', tone: 'muted' },
     not_observed: { label: 'No runs observed yet', tone: 'muted' },
@@ -171,7 +176,7 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
     const incidents = snapshot.incidents.status === 'ok' ? snapshot.incidents.data.incidents : [];
     const unresolvedReminders = snapshot.reminders.status === 'ok' ? snapshot.reminders.data.unresolved : [];
     const jobs = snapshot.jobs.status === 'ok' ? snapshot.jobs.data : [];
-    const jobProblems = jobs.filter((job) => job.health === 'failed' || job.health === 'partial' || job.health === 'overdue');
+    const jobProblems = jobs.filter((job) => job.health === 'failed' || job.health === 'partial' || job.health === 'overdue' || job.health === 'stuck');
     const followUps: FollowUpCandidate[] = snapshot.followUp.status === 'ok'
         ? [...snapshot.followUp.data.inactiveRequests.items, ...snapshot.followUp.data.accountsNotStarted.items]
         : [];
@@ -374,7 +379,7 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
                     <CardHeader>
                         <CardTitle className="text-base">Scheduled jobs</CardTitle>
                         <CardDescription>
-                            The three jobs with a configured schedule. A job is overdue only after monitoring has watched it for more than {getJobOverdueHours()} hours without a success.
+                            Three daily jobs and the operations monitor heartbeat. Source schedules are shown below; hosted execution is unverified. Never observed means unknown, even after a grace window.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -383,9 +388,13 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
                                 {jobs.map((job) => (
                                     <li key={job.jobName} className="text-sm">
                                         <div className="font-medium text-foreground">{JOB_LABELS[job.jobName]}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {JOB_SCHEDULES[job.jobName].schedule}{' · '}overdue after {jobOverdueMinutes(job.jobName, getJobOverdueHours())} minutes without success{' · '}running grace {JOB_SCHEDULES[job.jobName].maxRunningMinutes} minutes
+                                        </div>
                                         <div className={`text-xs ${TONE_CLASS[JOB_HEALTH[job.health].tone]}`}>{JOB_HEALTH[job.health].label}</div>
                                         <div className="text-xs text-muted-foreground">
                                             Last start {job.lastStartedAt ? formatAdminDate(job.lastStartedAt) : 'not observed'}
+                                            {' · '}last recorded outcome {job.lastStatus ?? 'unknown'}
                                             {job.lastDurationMs !== null ? ` · ${(job.lastDurationMs / 1000).toFixed(1)}s` : ''}
                                             {' · '}last success {job.lastSuccessAt ? formatAdminDate(job.lastSuccessAt) : 'none observed'}
                                         </div>
@@ -400,6 +409,32 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
                 </Card>
 
                 <HandoffEvidenceCard state={handoffEvidence} webhookConfigured={Boolean(process.env.RESEND_WEBHOOK_SECRET)} />
+
+                <Card className="border-border/70 bg-card shadow-sm xl:col-span-2">
+                    <CardHeader>
+                        <CardTitle className="text-base">Collector coverage</CardTitle>
+                        <CardDescription>
+                            Last retained record for each source. Activity can be absent, blocked, sampled or lost. These timestamps do not establish a collection rate or service health.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {snapshot.coverage.status === 'ok' ? (
+                            <dl className="grid gap-x-6 gap-y-3 text-sm md:grid-cols-2">
+                                {snapshot.coverage.data.map((item) => (
+                                    <div key={item.collector}>
+                                        <dt className="font-medium">{COLLECTOR_LABELS[item.collector]}</dt>
+                                        <dd className="text-xs text-muted-foreground">
+                                            {item.lastRecordAt ? `Last recorded ${formatAdminDate(item.lastRecordAt)}` : 'Never observed in retained records; coverage unknown'}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        ) : <Unavailable state={snapshot.coverage} what="Collector coverage" />}
+                        <p className="mt-3 text-xs text-muted-foreground">
+                            AI health is evaluated by the monitor from recorded fresh runs, not a live model probe. A partial monitor run means some checks or writes could not be completed. Database and site outages still require an independent external probe.
+                        </p>
+                    </CardContent>
+                </Card>
 
                 <Card className="border-border/70 bg-card shadow-sm xl:col-span-2">
                     <CardHeader>

@@ -113,7 +113,7 @@ const cron = (handler: (request: Request) => Promise<Response>, token = 'cron-se
 
 beforeEach(() => {
     vi.clearAllMocks();
-    mocks.observeAi.mockResolvedValue({ health: [], failures: 0, recoveries: 0 });
+    mocks.observeAi.mockResolvedValue({ health: [], failures: 0, recoveries: 0, status: 'ok' });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_test');
@@ -356,11 +356,11 @@ describe('scheduled jobs', () => {
         expect(mocks.runAlerts).not.toHaveBeenCalled();
 
         mocks.getJobStatuses.mockResolvedValue([]);
-        mocks.runAlerts.mockResolvedValue({ enabled: false, conditionsFiring: ['pdf_failures'], planned: [{ key: 'pdf_failures', kind: 'firing', summary: 's' }], sent: 0, failed: 0 });
+        mocks.runAlerts.mockResolvedValue({ enabled: false, conditionsFiring: ['pdf_failures'], planned: [{ key: 'pdf_failures', kind: 'firing', summary: 's' }], sent: 0, failed: 0, stateWriteFailed: 0 });
         const response = await cron(monitorGet);
         expect(await response.json()).toEqual({
             alertsEnabled: false, conditionsFiring: ['pdf_failures'], notificationsPlanned: [{ key: 'pdf_failures', kind: 'firing' }],
-            sent: 0, failed: 0, pruned: null,
+            sent: 0, failed: 0, stateWriteFailed: 0, pruned: null, monitoringStatus: 'success', aiCoverage: 'ok',
         });
         expect(mocks.prune).not.toHaveBeenCalled();
 
@@ -375,6 +375,34 @@ describe('scheduled jobs', () => {
         const response = await cron(monitorGet);
         expect(response.status).toBe(503);
         expect(mocks.finishJobRun).toHaveBeenLastCalledWith(expect.anything(), 'failed');
+    });
+
+    it('marks a failed AI read partial and excludes its own in-progress heartbeat', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-10-13T12:00:00Z'));
+        try {
+            mocks.getJobStatuses.mockResolvedValue([]);
+            mocks.observeAi.mockResolvedValue({ health: null, failures: 0, recoveries: 0, status: 'unavailable' });
+            mocks.runAlerts.mockResolvedValue({ enabled: false, conditionsFiring: [], planned: [], sent: 0, failed: 0, stateWriteFailed: 0 });
+            const response = await cron(monitorGet);
+            expect(await response.json()).toMatchObject({ monitoringStatus: 'partial', aiCoverage: 'unavailable', sent: 0 });
+            expect(mocks.getJobStatuses).toHaveBeenCalledWith(expect.anything(), new Date('2026-10-13T12:00:00Z'), undefined, 'run-1');
+            expect(mocks.runAlerts).toHaveBeenCalledWith(expect.objectContaining({ aiHealth: null }));
+            expect(mocks.finishJobRun).toHaveBeenLastCalledWith(expect.anything(), 'partial', expect.objectContaining({ aiUnavailable: 1 }));
+            expect(mocks.prune).not.toHaveBeenCalled();
+        } finally { vi.useRealTimers(); }
+    });
+
+    it('marks partial AI writes, accepted alert state-write failure and missing start evidence partial', async () => {
+        mocks.getJobStatuses.mockResolvedValue([]);
+        mocks.observeAi.mockResolvedValue({ health: [], failures: 0, recoveries: 0, status: 'partial' });
+        mocks.runAlerts.mockResolvedValue({ enabled: true, conditionsFiring: [], planned: [], sent: 1, failed: 1, stateWriteFailed: 1 });
+        expect(await (await cron(monitorGet)).json()).toMatchObject({ monitoringStatus: 'partial', aiCoverage: 'partial', sent: 1, stateWriteFailed: 1 });
+        expect(mocks.finishJobRun).toHaveBeenLastCalledWith(expect.anything(), 'partial', expect.objectContaining({ aiPartial: 1, alertStateWriteFailed: 1 }));
+        mocks.observeAi.mockResolvedValue({ health: [], failures: 0, recoveries: 0, status: 'ok' });
+        mocks.runAlerts.mockResolvedValue({ enabled: false, conditionsFiring: [], planned: [], sent: 0, failed: 0, stateWriteFailed: 0 });
+        mocks.startJobRun.mockResolvedValueOnce({ id: null, jobName: 'ops_monitor', startedAtMs: 0 });
+        expect(await (await cron(monitorGet)).json()).toMatchObject({ monitoringStatus: 'partial' });
     });
 });
 

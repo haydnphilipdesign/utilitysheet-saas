@@ -140,6 +140,8 @@ export type JobHealth =
     | 'ok'
     | 'partial'
     | 'failed'
+    | 'running'
+    | 'stuck'
     | 'overdue';
 
 export type JobStatus = {
@@ -156,7 +158,21 @@ export const JOB_LABELS: Record<ScheduledJobName, string> = {
     activation_reconcile: 'Signup reconciliation',
     activation_reengagement: 'Activation re-engagement email',
     account_closure_retry: 'Account closure retry',
+    ops_monitor: 'Operations monitor',
 };
+
+/** Source schedules only; hosted execution/configuration is unverified. */
+export const JOB_SCHEDULES: Record<ScheduledJobName, { schedule: string; intervalMinutes: number; graceMinutes: number; maxRunningMinutes: number }> = {
+    activation_reconcile: { schedule: 'Daily at 12:00 UTC', intervalMinutes: 1440, graceMinutes: 120, maxRunningMinutes: 15 },
+    activation_reengagement: { schedule: 'Daily at 12:30 UTC', intervalMinutes: 1440, graceMinutes: 120, maxRunningMinutes: 15 },
+    account_closure_retry: { schedule: 'Daily at 13:00 UTC', intervalMinutes: 1440, graceMinutes: 120, maxRunningMinutes: 15 },
+    ops_monitor: { schedule: 'Every 15 minutes', intervalMinutes: 15, graceMinutes: 15, maxRunningMinutes: 15 },
+};
+
+export function jobOverdueMinutes(jobName: ScheduledJobName, dailyOverdueHours = JOB_OVERDUE_HOURS): number {
+    const schedule = JOB_SCHEDULES[jobName];
+    return jobName === 'ops_monitor' ? schedule.intervalMinutes + schedule.graceMinutes : dailyOverdueHours * 60;
+}
 
 /**
  * Pure classification so grace windows and overdue thresholds can be tested
@@ -165,19 +181,21 @@ export const JOB_LABELS: Record<ScheduledJobName, string> = {
  */
 export function classifyJob(input: Omit<JobStatus, 'health'>, now: Date, overdueHours = JOB_OVERDUE_HOURS): JobHealth {
     if (!input.firstObservedAt || !input.lastStartedAt) return 'not_observed';
-    const thresholdMs = overdueHours * 60 * 60 * 1000;
+    const thresholdMs = jobOverdueMinutes(input.jobName, overdueHours) * 60 * 1000;
     const nowMs = now.getTime();
     const lastSuccessMs = input.lastSuccessAt ? Date.parse(input.lastSuccessAt) : null;
     const sinceBaseline = nowMs - (lastSuccessMs ?? Date.parse(input.firstObservedAt));
 
+    if (input.lastStatus === 'running' && nowMs - Date.parse(input.lastStartedAt) > JOB_SCHEDULES[input.jobName].maxRunningMinutes * 60 * 1000) return 'stuck';
     if (sinceBaseline > thresholdMs) return 'overdue';
+    if (input.lastStatus === 'running') return 'running';
     if (input.lastStatus === 'failed') return 'failed';
     if (input.lastStatus === 'partial') return 'partial';
     if (lastSuccessMs === null) return 'within_grace';
     return 'ok';
 }
 
-export async function getJobStatuses(db: StatementExecutor, now = new Date(), overdueHours = getJobOverdueHours()): Promise<JobStatus[]> {
+export async function getJobStatuses(db: StatementExecutor, now = new Date(), overdueHours = getJobOverdueHours(), excludeRunId: string | null = null): Promise<JobStatus[]> {
     const rows = await db.run({
         text: `
             SELECT j.job_name,
@@ -188,9 +206,10 @@ export async function getJobStatuses(db: StatementExecutor, now = new Date(), ov
                 (ARRAY_AGG(j.duration_ms ORDER BY j.started_at DESC))[1] AS last_duration_ms
             FROM job_runs j
             WHERE j.job_name = ANY($1::text[])
+              AND ($2::uuid IS NULL OR j.id <> $2::uuid)
             GROUP BY j.job_name
         `,
-        params: [[...SCHEDULED_JOBS]],
+        params: [[...SCHEDULED_JOBS], excludeRunId],
     });
     const byName = new Map(rows.map((row) => [String(row.job_name), row] as const));
 
@@ -406,12 +425,46 @@ export async function getFollowUpCandidates(db: StatementExecutor, page = 1): Pr
 // Whole-page snapshot
 // ---------------------------------------------------------------------------
 
+export const COLLECTOR_LABELS = {
+    pdf: 'PDF operational observations',
+    billing_webhook: 'Billing webhook observations',
+    email: 'Email operational observations',
+    ai: 'AI health observations',
+    ai_runs: 'AI execution records',
+    seller: 'Seller browser diagnostics',
+    reminders: 'Tracked reminder operations',
+} as const;
+export type CollectorCoverage = {
+    collector: keyof typeof COLLECTOR_LABELS;
+    lastRecordAt: string | null;
+};
+
+/** Retained timestamps only: no denominator or claim about unrecorded activity. */
+export async function getCollectorCoverage(db: StatementExecutor): Promise<CollectorCoverage[]> {
+    const rows = await db.run({
+        text: `
+            SELECT category AS collector, MAX(last_seen_at) AS last_at
+            FROM operational_events GROUP BY category
+            UNION ALL SELECT 'ai_runs', MAX(created_at) FROM ai_generation_runs
+            UNION ALL SELECT 'seller', MAX(created_at) FROM event_logs
+                WHERE event_type = ANY($1::text[])
+            UNION ALL SELECT 'reminders', MAX(updated_at) FROM reminder_operations
+        `,
+        params: [['seller_step_viewed', 'seller_step_completed', 'seller_submission_attempted',
+            'seller_submission_failed', 'seller_suggestions_rendered', 'seller_suggestions_failed']],
+    });
+    const byCollector = new Map(rows.map((row) => [String(row.collector), iso(row.last_at)]));
+    return (Object.keys(COLLECTOR_LABELS) as CollectorCoverage['collector'][])
+        .map((collector) => ({ collector, lastRecordAt: byCollector.get(collector) ?? null }));
+}
+
 export type OperationsSnapshot = {
     generatedAt: string;
     incidents: SectionState<IncidentSummary>;
     jobs: SectionState<JobStatus[]>;
     reminders: SectionState<ReminderEmailSummary>;
     followUp: SectionState<FollowUpSummary>;
+    coverage: SectionState<CollectorCoverage[]>;
 };
 
 export async function getOperationsSnapshot(input: { db?: StatementExecutor; now?: Date; followUpPage?: number } = {}): Promise<OperationsSnapshot> {
@@ -421,16 +474,17 @@ export async function getOperationsSnapshot(input: { db?: StatementExecutor; now
         db = input.db ?? getStatementExecutor();
     } catch {
         const error = { status: 'error' } as const;
-        return { generatedAt: now.toISOString(), incidents: error, jobs: error, reminders: error, followUp: error };
+        return { generatedAt: now.toISOString(), incidents: error, jobs: error, reminders: error, followUp: error, coverage: error };
     }
 
-    const [incidents, jobs, reminders, followUp] = await Promise.all([
+    const [incidents, jobs, reminders, followUp, coverage] = await Promise.all([
         section(() => getIncidentSummary(db)),
         section(() => getJobStatuses(db, now)),
         section(() => getReminderEmailSummary(db)),
         section(() => getFollowUpCandidates(db, input.followUpPage)),
+        section(() => getCollectorCoverage(db)),
     ]);
-    return { generatedAt: now.toISOString(), incidents, jobs, reminders, followUp };
+    return { generatedAt: now.toISOString(), incidents, jobs, reminders, followUp, coverage };
 }
 
 /** Observations older than this suggest collection has stopped, not that all is well. */
