@@ -455,7 +455,7 @@ export function scoreCase(item: EvalCase, run: CaseRun, model: string): CaseScor
         top3: top3Index === -1 ? null : matches[top3Index],
         first_match_rank: firstIndex === -1 ? null : firstIndex + 1,
         extra_count: extras,
-        unsourced_extra_count: run.source !== 'fallback' && (run.usage?.sourceCount ?? 0) === 0 ? extras : 0,
+        unsourced_extra_count: run.source !== 'fallback' && run.usage?.sourceCount === 0 ? extras : 0,
         website_match: item.website_domain && matched
             ? domainsMatch(websiteDomain(matched.contact_website), item.website_domain)
             : null,
@@ -521,6 +521,9 @@ export interface EvalSummary {
     token_cost_usd: number | null;
     /** Searches at list price, as if the free monthly allowance were used up. */
     search_cost_usd: number | null;
+    /** Reported token + search estimate, available only with coverage for every case. */
+    total_cost_usd: number | null;
+    cases_with_search_metadata: number;
     /** Token and search cost divided by cases with an accepted name in the top 3. */
     cost_per_top3_usd: number | null;
 }
@@ -533,8 +536,12 @@ export function summarize(scores: CaseScore[]): EvalSummary {
     const top3 = scores.filter((score) => score.top3 !== null).length;
     const tokenCost = sumOrNull(scores.map((score) => score.token_cost_usd));
     const searches = sumOrNull(scores.map((score) => score.search_queries));
-    const searchCost = searches === null ? null : searches * SEARCH_QUERY_PRICE_USD;
-    const totalCost = tokenCost === null && searchCost === null ? null : (tokenCost ?? 0) + (searchCost ?? 0);
+    const searchCoverage = scores.filter(score => score.search_queries !== null).length;
+    const searchCost = scores.length > 0 && searchCoverage === scores.length && searches !== null
+        ? searches * SEARCH_QUERY_PRICE_USD : null;
+    const completeTokens = scores.length > 0 && scores.every(score => score.token_cost_usd !== null
+        && score.prompt_tokens !== null && score.output_tokens !== null && score.thinking_tokens !== null);
+    const totalCost = completeTokens && tokenCost !== null && searchCost !== null ? tokenCost + searchCost : null;
 
     return {
         cases: scores.length,
@@ -565,6 +572,8 @@ export function summarize(scores: CaseScore[]): EvalSummary {
         cases_with_usage: scores.filter((score) => score.prompt_tokens !== null).length,
         token_cost_usd: tokenCost,
         search_cost_usd: searchCost,
+        total_cost_usd: totalCost,
+        cases_with_search_metadata: searchCoverage,
         cost_per_top3_usd: totalCost === null || top3 === 0 ? null : totalCost / top3,
     };
 }
@@ -643,26 +652,28 @@ export function renderComparison(results: Array<Pick<EvalResultFile, 'config' | 
         ['Correct top answer, exact name', (r) => share(r.summary.top1_exact, r.summary.cases)],
         ['Correct answer in top 3', (r) => share(r.summary.top3, r.summary.cases)],
         ['Ended on the generic list', (r) => share(r.summary.fallback, r.summary.cases)],
-        ['Model call failures', (r) => String(r.summary.model_errors)],
+        ['Runs with model failure', (r) => String(r.summary.model_errors)],
         ['Unreadable answers', (r) => String(r.summary.parse_errors)],
         ['Extra names per one-provider case', (r) => r.summary.single_provider_extras_avg === null
             ? 'n/a'
             : `${r.summary.single_provider_extras_avg.toFixed(1)} (${r.summary.single_provider_cases} cases)`],
-        ['Extra names with no source', (r) => String(r.summary.unsourced_extras)],
+        ['Extra names with reported zero sources', (r) => String(r.summary.unsourced_extras)],
         ['Website matches', (r) => share(r.summary.website_matched, r.summary.website_checked)],
         ['Phone matches', (r) => share(r.summary.phone_matched, r.summary.phone_checked)],
         ['Latency p50', (r) => seconds(r.summary.latency_p50_ms)],
         ['Latency p95', (r) => seconds(r.summary.latency_p95_ms)],
-        ['Model calls', (r) => String(r.summary.passes)],
-        ['Searches', (r) => count(r.summary.search_queries)],
-        ['Sources', (r) => count(r.summary.sources)],
+        ['AI passes (transport retries excluded)', (r) => String(r.summary.passes)],
+        ['Reported searches (partial totals)', (r) => count(r.summary.search_queries)],
+        ['Reported sources (summed per pass)', (r) => count(r.summary.sources)],
         ['Prompt tokens', (r) => count(r.summary.prompt_tokens)],
         ['Output tokens', (r) => count(r.summary.output_tokens)],
         ['Thinking tokens', (r) => count(r.summary.thinking_tokens)],
         ['Search-result tokens', (r) => count(r.summary.tool_prompt_tokens)],
-        ['Token cost', (r) => usd(r.summary.token_cost_usd)],
-        ['Search cost at list price', (r) => usd(r.summary.search_cost_usd, 2)],
-        ['Cost per case with a top-3 answer', (r) => usd(r.summary.cost_per_top3_usd)],
+        ['Token-only lower-bound estimate', (r) => usd(r.summary.token_cost_usd)],
+        ['Cases with search metadata', (r) => r.summary.cases_with_search_metadata == null ? 'unknown (legacy)' : share(r.summary.cases_with_search_metadata, r.summary.cases)],
+        ['Reported total cost estimate', (r) => usd(r.summary.total_cost_usd ?? null)],
+        ['Search cost at list price', (r) => usd(r.summary.cases_with_search_metadata === r.summary.cases ? r.summary.search_cost_usd : null, 2)],
+        ['Cost per case with a top-3 answer', (r) => usd(r.summary.total_cost_usd == null ? null : r.summary.cost_per_top3_usd)],
     ];
     const header = `| Measure | ${results.map((r) => r.config.label).join(' | ')} |`;
     const divider = `|---|${results.map(() => '---').join('|')}|`;

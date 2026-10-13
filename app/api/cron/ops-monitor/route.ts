@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         const db = getStatementExecutor();
         const config = getAlertConfig();
         const ai = await observeAiHealth({ db, config: config.ai });
-        const alerts = await runAlertEvaluation({ db, jobs: await getJobStatuses(db), config, aiHealth: ai.health ?? [] });
+        const alerts = await runAlertEvaluation({ db, jobs: await getJobStatuses(db, new Date(), config.jobOverdueHours), config, aiHealth: ai.health ?? [] });
 
         let pruned: { events: number; jobRuns: number } | null = null;
         if (process.env.OPS_RETENTION_PRUNE_ENABLED === 'true') {

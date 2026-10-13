@@ -143,7 +143,7 @@ describe('operational events', () => {
         expect(handle.id).toBeNull();
         await expect(finishJobRun(handle, 'success', {}, broken)).resolves.toBeUndefined();
         const logged = (console.warn as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((call) => String(call[0])).join('\n');
-        expect(logged).toContain('operational_event_not_recorded');
+        expect(logged).toContain('auxiliary_write_failed');
         expect(logged).not.toContain('does not exist');
     });
 
@@ -208,6 +208,22 @@ describe('page states', () => {
 });
 
 describe('scheduled jobs', () => {
+    it('uses a nondefault effective overdue threshold in database statuses and alerts', async () => {
+        const handle = await startJobRun('activation_reconcile', exec);
+        await finishJobRun(handle, 'success', {}, exec);
+        await db.exec(`UPDATE job_runs SET started_at=NOW()-INTERVAL '10 hours', finished_at=NOW()-INTERVAL '10 hours'`);
+        const config = getAlertConfig({ NODE_ENV: 'test', OPS_ALERT_JOB_OVERDUE_HOURS: '6' });
+        const jobs = await getJobStatuses(exec, new Date(), config.jobOverdueHours);
+        expect(jobs[0].health).toBe('overdue');
+        const conditions = evaluateAlertConditions({ jobs, aiHealth: [], pdfFailuresInWindow: 0,
+            unrecoveredBillingFailures24h: 0, emailDeliveryFailures24h: 0 }, config);
+        expect(conditions).toContainEqual(expect.objectContaining({ key: 'job_overdue:activation_reconcile', firing: true,
+            summary: expect.stringContaining('6 hours') }));
+        expect((await getJobStatuses(exec, new Date(), 48))[0].health).toBe('ok');
+        vi.stubEnv('OPS_ALERT_JOB_OVERDUE_HOURS', '6');
+        try { expect((await getOperationsSnapshot({ db: exec })).jobs).toMatchObject({ status: 'ok', data: [expect.objectContaining({ health: 'overdue' }), expect.anything(), expect.anything()] }); }
+        finally { vi.unstubAllEnvs(); }
+    });
     const base = { jobName: 'activation_reconcile' as const, lastDurationMs: 10 };
     const now = new Date('2026-10-05T12:00:00Z');
     const ago = (h: number) => new Date(now.getTime() - hours(h)).toISOString();

@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Figtree } from 'next/font/google';
 import { Toaster } from 'sonner';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/next';
+import { TelemetryCollectors } from '@/components/providers/telemetry-collectors';
 import { StackAuthProvider } from '@/components/providers/stack-auth-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { GrowthAttributionCapture } from '@/components/growth/growth-attribution-capture';
@@ -102,8 +101,7 @@ export default function RootLayout({
             position="bottom-center"
           />
         </ThemeProvider>
-        <Analytics />
-        <SpeedInsights />
+        <TelemetryCollectors />
       </body>
     </html>
   );

@@ -22,7 +22,7 @@ beforeAll(async () => {
         CREATE TABLE event_logs (id serial, request_id text, event_type text, event_data jsonb, created_at timestamptz DEFAULT NOW());
         CREATE TABLE utility_entries (request_id text, category text, entry_mode text);
         CREATE TABLE ai_generation_runs (id serial, request_id text, feature text, status text, cache_hit boolean,
-            latency_ms integer, created_at timestamptz DEFAULT NOW(), category text, source text, attempt_count integer,
+            model text, prompt_version text, latency_ms integer, created_at timestamptz DEFAULT NOW(), category text, source text, attempt_count integer,
             prompt_tokens integer, output_tokens integer, thinking_tokens integer, tool_prompt_tokens integer,
             search_query_count integer, source_count integer, thinking_level text, error_kind text);
         INSERT INTO accounts VALUES ('multi','user'), ('workspaces','user'), ('empty','user'), ('admin','admin');
@@ -56,6 +56,31 @@ beforeEach(() => {
 });
 
 describe('admin telemetry against PostgreSQL', () => {
+    it('separates latency cohorts, nullable timings and usage coverage from reported zero', async () => {
+        await db.exec(`BEGIN;
+            DELETE FROM ai_generation_runs;
+            INSERT INTO ai_generation_runs (request_id,feature,status,cache_hit,latency_ms,model,prompt_version,
+                search_query_count,prompt_tokens,error_kind) VALUES
+                ('r1','provider_search','success',false,100,'model-a','v1',NULL,NULL,NULL),
+                ('r1','provider_search','success',false,300,'model-a','v1',0,0,'timeout'),
+                ('r1','provider_search','success',false,NULL,'model-a','v1',2,20,NULL),
+                ('r1','provider_search','success',true,0,'model-a','v1',NULL,NULL,NULL),
+                ('r1','provider_search','success',false,9000,'model-b','v1',NULL,NULL,NULL),
+                ('r1','provider_search','success',false,-1,'model-a','v2',NULL,NULL,NULL);
+        `);
+        try {
+            const result = (await getAdminTelemetry(30))!;
+            expect(result.ai).toEqual(expect.arrayContaining([
+                expect.objectContaining({ model: 'model-a', promptVersion: 'v1', freshSamples: 2,
+                    freshLatencyMs: 200, freshP50Ms: 200, freshP95Ms: 290, runs: 4, cached: 1 }),
+                expect.objectContaining({ model: 'model-b', freshSamples: 1, freshP95Ms: 9000 }),
+                expect.objectContaining({ promptVersion: 'v2', freshSamples: 0, freshP50Ms: null, freshP95Ms: null }),
+            ]));
+            expect(result.aiUsage).toEqual([expect.objectContaining({ freshRuns: 5, measuredRuns: 2,
+                searchMeasuredRuns: 2, searchZeroRuns: 1, searchQueries: 2, promptMeasuredRuns: 2,
+                promptTokens: 20, outputTokens: null, outputMeasuredRuns: 0, timeouts: 1 })]);
+        } finally { await db.exec('ROLLBACK;'); }
+    });
     it('counts same-scope adoption, distinct usage and attributed completions without join multiplication', async () => {
         const result = await getAdminTelemetry(30);
         expect(result?.forms).toEqual({ accounts: 3, formAccounts: 2, multiFormAccounts: 1,
@@ -66,8 +91,8 @@ describe('admin telemetry against PostgreSQL', () => {
             { event: 'seller_opened', count: 1, requests: 1 },
         ]);
         expect(result?.ai).toEqual([
-            { feature: 'provider_search', status: 'success', runs: 2, cached: 1, freshLatencyMs: 120 },
-            { feature: 'provider_suggestions', status: 'fallback', runs: 1, cached: 1, freshLatencyMs: null },
+            { feature: 'provider_search', status: 'success', runs: 2, cached: 1, freshLatencyMs: 120, freshSamples: 1, freshP50Ms: 120, freshP95Ms: 120, model: null, promptVersion: null },
+            { feature: 'provider_suggestions', status: 'fallback', runs: 1, cached: 1, freshLatencyMs: null, freshSamples: 0, freshP50Ms: null, freshP95Ms: null, model: null, promptVersion: null },
         ]);
     });
     it('changes only the request cohort when an older request enters the window', async () => {
@@ -136,8 +161,8 @@ describe('admin telemetry against PostgreSQL', () => {
                 prompt_tokens,output_tokens,thinking_tokens,tool_prompt_tokens,search_query_count,error_kind,created_at) VALUES
                 ('r1','provider_suggestions','electric','ai_verify','success',false,2,1000,100,50,2000,3,NULL,NOW() - INTERVAL '2 minutes'),
                 ('r1','provider_suggestions','electric','cache','success',true,0,NULL,NULL,NULL,NULL,NULL,NULL,NOW()),
-                ('r3','provider_suggestions','electric','fallback','error',false,2,NULL,NULL,NULL,NULL,NULL,'timeout',NOW()),
-                ('legacy','provider_suggestions','water','cache','success',true,0,NULL,NULL,NULL,NULL,NULL,NULL,NOW()),
+                ('r3','provider_suggestions','electric','fallback','error',false,2,NULL,NULL,NULL,NULL,NULL,'timeout',NOW() - INTERVAL '1 minute'),
+                ('legacy','provider_suggestions','water','cache','success',true,0,NULL,NULL,NULL,NULL,NULL,NULL,NOW() - INTERVAL '1 minute'),
                 ('admin-r','provider_suggestions','electric','ai_verify','success',false,2,500,NULL,NULL,NULL,1,NULL,NOW()),
                 ('r1','provider_contact','electric','ai_primary','error',false,1,NULL,NULL,NULL,NULL,NULL,'rate_limited',NOW());
             INSERT INTO utility_entries VALUES ('r1','electric','suggested_confirmed'), ('r3','electric','free_text'),
@@ -146,20 +171,21 @@ describe('admin telemetry against PostgreSQL', () => {
         `);
         try {
             const result = (await getAdminTelemetry(30))!;
-            expect(result.aiUsage).toContainEqual({
+            expect(result.aiUsage).toContainEqual(expect.objectContaining({
                 feature: 'provider_suggestions', freshRuns: 3, measuredRuns: 2, passes: 6, searchQueries: 4,
-                promptTokens: 1500, outputTokens: 100, thinkingTokens: 50, toolPromptTokens: 2000, timeouts: 1, otherFailures: 0,
-            });
-            expect(result.aiUsage).toContainEqual({
-                feature: 'provider_contact', freshRuns: 1, measuredRuns: 0, passes: 1, searchQueries: 0,
-                promptTokens: 0, outputTokens: 0, thinkingTokens: 0, toolPromptTokens: 0, timeouts: 0, otherFailures: 1,
-            });
+                promptTokens: 1500, outputTokens: 100, thinkingTokens: 50, toolPromptTokens: 2000, timeouts: 1, otherFailures: 0, searchMeasuredRuns: 2,
+            }));
+            expect(result.aiUsage).toContainEqual(expect.objectContaining({
+                feature: 'provider_contact', freshRuns: 1, measuredRuns: 0, passes: 1, searchQueries: null,
+                promptTokens: null, outputTokens: null, thinkingTokens: null, toolPromptTokens: null, timeouts: 0, otherFailures: 1, searchMeasuredRuns: 0,
+            }));
             // The admin's request, entries with no recorded list and "unknown" answers are left out;
             // r1 counts under the fresh list it saw first, not the later cache hit.
             expect(result.aiAcceptance).toEqual([
-                { shown: 'ai_verify', entries: 1, accepted: 1 },
-                { shown: 'cache', entries: 1, accepted: 1 },
-                { shown: 'fallback', entries: 1, accepted: 0 },
+                { served: 'ai_verify', entries: 1, accepted: 1 },
+                { served: 'cache', entries: 1, accepted: 1 },
+                { served: 'fallback', entries: 1, accepted: 0 },
+                { served: 'unrecorded', entries: 1, accepted: 0 },
             ]);
         } finally { await db.exec('ROLLBACK;'); }
     });

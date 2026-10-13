@@ -2,6 +2,7 @@ import { savedForm } from '../fixtures/saved-seller-forms';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
+    createEventLog: vi.fn(),
     getIntakeLinkByBaseSlug: vi.fn(),
     getAccountById: vi.fn(),
     getAccountOrganizations: vi.fn(),

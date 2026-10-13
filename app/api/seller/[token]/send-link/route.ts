@@ -1,9 +1,14 @@
+import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
+import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken, getDefaultBrandProfile, getAccountById, createEventLog } from '@/lib/neon/queries';
 import { sql } from '@/lib/neon/db';
 import { sendSellerReminderEmail } from '@/lib/email/email-service';
 import { reminderRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
+
+const recordAuxiliaryEvent = auxiliaryEventWriter(createEventLog);
 
 export const runtime = 'nodejs';
 
@@ -16,7 +21,7 @@ export async function POST(
     try {
         const { token } = await params;
 
-        const rateLimitResult = await checkRateLimit(reminderRatelimit, `seller-send-link:${token}`, {
+        const rateLimitResult = await checkRateLimit(reminderRatelimit, capabilityRateLimitIdentifier('seller-send-link', `seller-send-link:${token}`), {
             requirePersistent: process.env.NODE_ENV === 'production',
         });
         if (isRateLimitUnavailable(rateLimitResult)) {
@@ -83,7 +88,7 @@ export async function POST(
 
         const ipAddress = getClientIpOrNull(request);
         const userAgent = request.headers.get('user-agent') || null;
-        await createEventLog({
+        await recordAuxiliaryEvent({
             requestId: requestData.id,
             eventType: 'seller_self_send_link',
             eventData: { actor: 'seller', channel: 'email' },
@@ -93,7 +98,7 @@ export async function POST(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error sending seller self-link email:', error);
+        logDiagnostic('error', 'seller_self_link_failed', {}, error);
         return NextResponse.json({ error: 'We couldn’t send the email. Please try again.' }, { status: 500 });
     }
 }

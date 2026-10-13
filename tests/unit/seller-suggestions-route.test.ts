@@ -1,3 +1,4 @@
+import { createEventLog } from '@/lib/neon/queries/event-logs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
@@ -18,7 +19,7 @@ vi.mock('@/lib/rate-limit', () => ({
     aiRatelimit: {},
     checkRateLimit: vi.fn(),
     getRateLimitHeaders: vi.fn(() => ({})),
-    isRateLimitUnavailable: vi.fn(() => false),
+    isRateLimitUnavailable: vi.fn((result: { reason?: string }) => result.reason === 'unavailable'),
 }));
 
 vi.mock('@/lib/address/structured-address', () => ({
@@ -29,8 +30,16 @@ import { GET } from '@/app/api/seller/[token]/suggestions/route';
 import { getRequestBySellerToken, getRequestByToken, getOrganizationById } from '@/lib/neon/queries';
 import { getAllSuggestions } from '@/lib/providers/suggestion-service';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 
 describe('GET /api/seller/[token]/suggestions', () => {
+    it.each([['limited', 429], ['unavailable', 503]] as const)('preserves %s enforcement before suggestion calls', async (reason, status) => {
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({ id: 'r1', account_id: 'acct-1', property_address: '123 Test Street' } as never);
+        vi.mocked(checkRateLimit).mockResolvedValue({ success: false, limit: 20, remaining: 0, reset: 12345, reason });
+        const response = await GET(new Request('http://localhost/api/seller/seller-token/suggestions?categories=electric'), { params: Promise.resolve({ token: 'seller-token' }) });
+        expect(response.status).toBe(status);
+        expect(getAllSuggestions).not.toHaveBeenCalled();
+    });
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(checkRateLimit).mockResolvedValue({
@@ -39,6 +48,23 @@ describe('GET /api/seller/[token]/suggestions', () => {
             remaining: 19,
             reset: 999999,
         } as never);
+    });
+
+    it.each(['reject', 'slow'] as const)('preserves provider output without repeating generation when observation is %s', async (failure) => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({ id: 'r1', account_id: 'acct-1', property_address: '123 Main St, Raleigh, NC 27601', utility_categories: ['electric'] } as never);
+        const result = {"electric":[{"display_name":"Fixture Electric","confidence":0.9}]};
+        vi.mocked(getAllSuggestions).mockResolvedValueOnce(result as never);
+        if (failure === 'reject') vi.mocked(createEventLog).mockRejectedValueOnce(new Error('private sentinel'));
+        else vi.mocked(createEventLog).mockImplementationOnce(() => new Promise(() => {}));
+        const response = await GET(new Request('http://localhost/api/seller/seller-token/suggestions?categories=electric'), { params: Promise.resolve({ token: 'seller-token' }) });
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ suggestions: result });
+        expect(getAllSuggestions).toHaveBeenCalledTimes(1);
+        expect(createEventLog).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify(warn.mock.calls)).not.toContain('private sentinel');
+        warn.mockRestore();
     });
 
     it('returns 404 for unknown token', async () => {
@@ -101,10 +127,11 @@ describe('GET /api/seller/[token]/suggestions', () => {
             electric: [{ display_name: 'Duke Energy', confidence: 0.9 }],
         } as never);
 
-        const req = new Request('http://localhost/api/seller/seller-token/suggestions?categories=electric');
+        const req = new Request('http://localhost/api/seller/seller-token/suggestions?categories=electric', { headers: { 'x-vercel-forwarded-for': '1.2.3.4' } });
         const res = await GET(req, { params: Promise.resolve({ token: 'seller-token' }) });
 
         expect(res.status).toBe(200);
+        expect(checkRateLimit).toHaveBeenCalledWith(expect.anything(), capabilityRateLimitIdentifier('seller-ai', 'seller-token:1.2.3.4'), expect.anything());
         expect(getAllSuggestions).toHaveBeenCalledWith(
             '123 Main St, Raleigh, NC 27601',
             ['electric'],

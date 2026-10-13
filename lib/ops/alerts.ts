@@ -14,7 +14,7 @@
  */
 import { getResend } from '@/lib/resend';
 import { AI_HEALTH_LABELS, loadAiHealth, type AiFeatureHealth, type AiHealthConfig } from '@/lib/ops/ai-health';
-import { JOB_LABELS, type JobStatus } from '@/lib/ops/overview';
+import { JOB_LABELS, getJobOverdueHours, type JobStatus } from '@/lib/ops/overview';
 import { getStatementExecutor, type StatementExecutor } from '@/lib/neon/statements';
 
 export type AlertConfig = {
@@ -40,7 +40,7 @@ export function getAlertConfig(env: NodeJS.ProcessEnv = process.env): AlertConfi
         destination: validDestination,
         pdfFailureThreshold: positiveInt(env.OPS_ALERT_PDF_FAILURE_THRESHOLD, 3, 1, 1000),
         pdfWindowMinutes: positiveInt(env.OPS_ALERT_PDF_WINDOW_MINUTES, 15, 1, 1440),
-        jobOverdueHours: positiveInt(env.OPS_ALERT_JOB_OVERDUE_HOURS, 26, 1, 24 * 14),
+        jobOverdueHours: getJobOverdueHours(env),
         ai: {
             sharePct: positiveInt(env.OPS_ALERT_AI_SHARE_PCT, 50, 1, 100),
             minRuns: positiveInt(env.OPS_ALERT_AI_MIN_RUNS, 10, 1, 10000),

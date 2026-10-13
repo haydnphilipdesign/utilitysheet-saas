@@ -1,3 +1,6 @@
+import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
+import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken, getBrandProfile, getDefaultBrandProfile, getAccountById, getOrganizationById, getOrganizationAdminRecipients, getOrganizationMemberRole, getReferralIdentityForm, getUtilityEntriesByRequestId, createEventLog } from '@/lib/neon/queries';
 import { submitSellerRequest, type SellerSubmissionEntryRow } from '@/lib/neon/queries/seller-submission';
@@ -33,6 +36,8 @@ import type {
     TrashPickupDay,
     UtilityCategory,
 } from '@/types';
+
+const recordAuxiliaryEvent = auxiliaryEventWriter(createEventLog);
 
 export const runtime = 'nodejs';
 
@@ -339,7 +344,7 @@ export async function GET(
         const ipAddress = getClientIpOrNull(request);
         const userAgent = request.headers.get('user-agent') || null;
 
-        await createEventLog({
+        await recordAuxiliaryEvent({
             requestId: requestData.id,
             eventType: 'seller_opened',
             eventData: { actor: 'seller' },
@@ -457,7 +462,7 @@ export async function GET(
             suggestions: {},
         });
     } catch (error) {
-        console.error('Error fetching seller data:', error);
+        logDiagnostic('error', 'seller_read_failed', {}, error);
         return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
     }
 }
@@ -471,7 +476,7 @@ export async function POST(
         const { token } = await params;
 
         // Rate limit by token to prevent submission spam
-        const rateLimitResult = await checkRateLimit(formSubmissionRatelimit, token, { requirePersistent: process.env.NODE_ENV === 'production' });
+        const rateLimitResult = await checkRateLimit(formSubmissionRatelimit, capabilityRateLimitIdentifier('seller-submission', token), { requirePersistent: process.env.NODE_ENV === 'production' });
         if (isRateLimitUnavailable(rateLimitResult)) {
             return NextResponse.json(
                 { error: 'Temporarily unavailable. Please try again shortly.' },
@@ -721,7 +726,7 @@ export async function POST(
 
         for (const selection of suggestionSelections) {
             await markAiSuggestionSelection(selection).catch((selectionError) => {
-                console.error('Failed to record suggestion selection:', selectionError);
+                logDiagnostic('error', 'seller_selection_telemetry_failed', {}, selectionError);
             });
         }
 
@@ -813,7 +818,7 @@ export async function POST(
                 ownerIsMember = Boolean(await getOrganizationMemberRole(organization.id, requestData.account_id));
             } catch (membershipError) {
                 // Unknown membership: the workspace's sheet is not sent to someone who may have left.
-                console.error('Failed to confirm request owner membership:', membershipError);
+                logDiagnostic('error', 'seller_membership_failed', {}, membershipError);
                 ownerIsMember = false;
             }
         }
@@ -901,7 +906,7 @@ export async function POST(
                     const deliverySucceeded = firstResult?.status === 'fulfilled'
                         && firstResult.value.success
                         && firstResult.value.attachmentStatus === 'attached';
-                    await createEventLog({
+                    await recordAuxiliaryEvent({
                         requestId: requestData.id,
                         eventType: deliverySucceeded
                             ? 'test_drive_delivery_succeeded'
@@ -912,8 +917,6 @@ export async function POST(
                                 && firstResult.value.attachmentStatus === 'attached',
                             recipient: 'initiating_account_email',
                         },
-                    }).catch((eventError) => {
-                        console.error('Failed to record test-drive delivery outcome:', eventError);
                     });
                 }
             } catch (emailError) {
@@ -924,9 +927,9 @@ export async function POST(
                     requestId: requestData.id,
                     metadata: { reasonCode: 'route_exception', errorName: errorNameOf(emailError) },
                 });
-                console.error('Failed to send TC completion notification email:', emailError);
+                logDiagnostic('error', 'seller_email_failed', {}, emailError);
                 if (isTestDriveSubmission) {
-                    await createEventLog({
+                    await recordAuxiliaryEvent({
                         requestId: requestData.id,
                         eventType: 'test_drive_delivery_failed',
                         eventData: {
@@ -934,13 +937,13 @@ export async function POST(
                             pdf_attached: false,
                             recipient: 'initiating_account_email',
                         },
-                    }).catch(() => undefined);
+                    });
                 }
             }
         } else {
             console.warn('TC notification skipped: no eligible recipients');
             if (isTestDriveSubmission) {
-                await createEventLog({
+                await recordAuxiliaryEvent({
                     requestId: requestData.id,
                     eventType: 'test_drive_delivery_failed',
                     eventData: {
@@ -948,7 +951,7 @@ export async function POST(
                         pdf_attached: false,
                         recipient: 'initiating_account_email',
                     },
-                }).catch(() => undefined);
+                });
             }
         }
 
@@ -964,13 +967,13 @@ export async function POST(
                     requestId: requestData.id,
                 });
             } catch (alertError) {
-                console.error('Failed to send contact resolution alert:', alertError);
+                logDiagnostic('error', 'seller_contact_alert_failed', {}, alertError);
             }
         }
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error submitting seller form:', error);
+        logDiagnostic('error', 'seller_submit_failed', {}, error);
         return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 });
     }
 }

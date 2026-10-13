@@ -312,7 +312,7 @@ describe('Operations page', () => {
         const service = screen.getByRole('region', { name: /service issues/i });
         expect(within(service).getByText(/sheet pdf generation failed unexpectedly/i)).toBeInTheDocument();
         expect(within(service).getByText(/2 with no later success observed/i)).toBeInTheDocument();
-        expect(within(service).getByText(/account closure retry: no success in over 26 hours/i)).toBeInTheDocument();
+        expect(within(service).getByText(/account closure retry: overdue without success/i)).toBeInTheDocument();
         expect(within(service).getByRole('link', { name: /most recent affected request/i })).toHaveAttribute('href', `/admin/requests/${REQUEST_ID}`);
         expect(within(service).queryByText('1 Open St')).not.toBeInTheDocument();
 

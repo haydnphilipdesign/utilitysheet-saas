@@ -27,6 +27,8 @@ import { filterSuggestionsByQuery } from '@/lib/providers/local-match';
 import { NO_TRASH_SERVICE_LABEL, UTILITY_PROVIDER_HELPERS, getUtilityProviderPrompt } from '@/lib/packet/seller-questions';
 import { PickupDaySelector, type PickupDaySpecial } from '../PickupDaySelector';
 import { wizardFocusRing, wizardGhostButton, wizardPrimaryButton, wizardSecondaryButton, wizardTextInput } from '../wizard-ui';
+import type { SellerObserver } from '@/lib/telemetry/seller-observer';
+import { durationBucket, errorCodeForStatus, SELLER_OBSERVATION_MAX_RESULT_COUNT } from '@/lib/telemetry/seller-observations';
 
 // Category-specific icons
 const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }> = {
@@ -68,6 +70,10 @@ interface UtilityStepProps {
     suggestions: ProviderSuggestion[];
     loadingSuggestions?: boolean;
     token: string;
+    /** Advisory diagnostics; absent in previews and the public demo. */
+    observer?: SellerObserver;
+    /** True when the suggestion request for this utility failed, so an empty list is not "no suggestions". */
+    suggestionsUnavailable?: boolean;
     collectElectricMeterNumber?: boolean;
     /** True when this step was opened from a Review row and returns there. */
     isReviewEdit?: boolean;
@@ -85,6 +91,8 @@ export function UtilityStep({
     suggestions,
     loadingSuggestions = false,
     token,
+    observer,
+    suggestionsUnavailable = false,
     collectElectricMeterNumber = false,
     isReviewEdit = false,
     onNoService,
@@ -119,6 +127,29 @@ export function UtilityStep({
         ? 'Common providers'
         : 'Suggested for your area';
 
+    // Counts and reasons only: which providers were listed is never observed.
+    const stepShownAtRef = useRef<number | null>(null);
+    const observedSuggestionsForRef = useRef<UtilityCategory | null>(null);
+    const listedSuggestionCount = Math.min(dedupedSuggestions.length, 3);
+    useEffect(() => {
+        stepShownAtRef.current = Date.now();
+    }, []);
+    useEffect(() => {
+        if (!observer || loadingSuggestions || mode !== 'view') return;
+        if (observedSuggestionsForRef.current === category) return;
+        observedSuggestionsForRef.current = category;
+        observer.observe({
+            type: 'seller_suggestions_rendered',
+            category,
+            source: 'initial',
+            result_count: listedSuggestionCount,
+            ...(listedSuggestionCount === 0
+                ? { empty_reason: suggestionsUnavailable ? 'load_failed' as const : 'no_suggestions' as const }
+                : {}),
+            duration: durationBucket(Date.now() - (stepShownAtRef.current ?? Date.now())),
+        });
+    }, [observer, loadingSuggestions, mode, category, listedSuggestionCount, suggestionsUnavailable]);
+
     const trimmedQuery = searchQuery.trim();
     const canSearch = trimmedQuery.length >= MIN_SEARCH_CHARS;
     const localMatches = useMemo(
@@ -147,6 +178,8 @@ export function UtilityStep({
         setActiveSearch({ query, id });
 
         let results: ProviderSuggestion[] = [];
+        const searchStartedAt = Date.now();
+        let searchFailure: { error_code: ReturnType<typeof errorCodeForStatus>; status?: number } | null = null;
         try {
             const res = await fetch(`/api/seller/${encodeURIComponent(token)}/suggestions/search?query=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`, {
                 signal: controller.signal,
@@ -154,10 +187,13 @@ export function UtilityStep({
             if (res.ok) {
                 const body: unknown = await res.json();
                 results = Array.isArray(body) ? body : [];
+            } else {
+                searchFailure = { error_code: errorCodeForStatus(res.status), status: res.status };
             }
         } catch (e) {
             if (!(e instanceof DOMException && e.name === 'AbortError')) {
                 console.error(e);
+                searchFailure = { error_code: typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'network' };
             }
         }
 
@@ -165,7 +201,27 @@ export function UtilityStep({
         // Newer text or another utility has taken over.
         if (controller.signal.aborted) return;
         setSearchOutcome({ query, results });
-    }, [category, token]);
+        const duration = durationBucket(Date.now() - searchStartedAt);
+        if (searchFailure) {
+            observer?.observe({
+                type: 'seller_suggestions_failed',
+                category,
+                source: 'search',
+                error_code: searchFailure.error_code,
+                ...(searchFailure.status && searchFailure.status >= 400 && searchFailure.status <= 599 ? { status: searchFailure.status } : {}),
+                duration,
+            });
+        } else {
+            observer?.observe({
+                type: 'seller_suggestions_rendered',
+                category,
+                source: 'search',
+                result_count: Math.min(results.length, SELLER_OBSERVATION_MAX_RESULT_COUNT),
+                ...(results.length === 0 ? { empty_reason: 'no_results' as const } : {}),
+                duration,
+            });
+        }
+    }, [category, token, observer]);
 
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout> | null = null;

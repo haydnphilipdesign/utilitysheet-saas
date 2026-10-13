@@ -11,6 +11,21 @@ import Page from '@/app/(admin)/admin/telemetry/page';
 import { AdminAuthorizationError } from '@/lib/admin';
 afterEach(cleanup);
 describe('admin telemetry page', () => {
+    it('renders unknown usage separately from measured zero and explains run failures', async () => {
+        mocks.get.mockResolvedValue({ usage: emptyUsage, forms: { accounts: 0, formAccounts: 0, multiFormAccounts: 0,
+            forms: 0, activeForms: 0, requests: 0, attributedRequests: 0, completedRequests: 0, usedForms: 0, multiFormUsers: 0 },
+            events: [], ai: [], aiUsage: [{ feature: 'provider_search', freshRuns: 1, measuredRuns: 1, passes: 1,
+                searchQueries: null, searchMeasuredRuns: 0, searchZeroRuns: 0, promptTokens: 0, promptMeasuredRuns: 1,
+                outputTokens: null, outputMeasuredRuns: 0, thinkingTokens: null, thinkingMeasuredRuns: 0,
+                toolPromptTokens: null, toolPromptMeasuredRuns: 0, timeouts: 0, otherFailures: 0 }] });
+        render(await Page({ searchParams: Promise.resolve({}) }));
+        const table = screen.getByRole('table', { name: 'AI usage by feature for the selected period' });
+        expect(table).toHaveTextContent('Unknown');
+        expect(table).toHaveTextContent('0 (1 runs)');
+        expect(table).toHaveTextContent('Runs with timeout');
+        expect(table).toHaveTextContent('Runs with other failure');
+        expect(document.body.textContent).not.toMatch(/Other failed calls|NaN|Infinity|undefined/);
+    });
     it('renders recorded counts and distinguishes cached-only latency', async () => {
         mocks.get.mockResolvedValue({ usage: { ...emptyUsage, created: 4, opened: 3, completed: 2,
             medianHours: 1.5, timedCompletions: 2, advanced: 2, previousAccounts: 2, returningAccounts: 1,
@@ -18,12 +33,12 @@ describe('admin telemetry page', () => {
             providers: [{ category: 'electric', total: 2, suggested: 1, searched: 0, manual: 1, unknown: 0, unclassified: 0, notApplicable: 0 }] }, forms: { accounts: 3, formAccounts: 2, multiFormAccounts: 1,
             forms: 4, activeForms: 3, requests: 6, attributedRequests: 5, completedRequests: 2, usedForms: 4, multiFormUsers: 1 },
             events: [{ event: 'seller_submitted', count: 2, requests: 1 }],
-            ai: [{ feature: 'provider_search', status: 'success', runs: 2, cached: 1, freshLatencyMs: 120 },
-                { feature: 'provider_suggestions', status: 'fallback', runs: 1, cached: 1, freshLatencyMs: null },
-                { feature: 'provider_contact', status: 'success', runs: 3, cached: 0, freshLatencyMs: 900 }],
-            aiUsage: [{ feature: 'provider_suggestions', freshRuns: 12, measuredRuns: 10, passes: 21, searchQueries: 37,
+            ai: [{ feature: 'provider_search', status: 'success', runs: 2, cached: 1, freshLatencyMs: 120, freshSamples: 1, freshP50Ms: 120, freshP95Ms: 120, model: 'fixture-model', promptVersion: 'v2' },
+                { feature: 'provider_suggestions', status: 'fallback', runs: 1, cached: 1, freshLatencyMs: null, freshSamples: 0, freshP50Ms: null, freshP95Ms: null, model: null, promptVersion: null },
+                { feature: 'provider_contact', status: 'success', runs: 3, cached: 0, freshLatencyMs: 900, freshSamples: 3, freshP50Ms: 800, freshP95Ms: 1000, model: 'fixture-model', promptVersion: 'v1' }],
+            aiUsage: [{ feature: 'provider_suggestions', freshRuns: 12, measuredRuns: 10, passes: 21, searchQueries: 37, searchMeasuredRuns: 9, searchZeroRuns: 2, promptMeasuredRuns: 10, outputMeasuredRuns: 8, thinkingMeasuredRuns: 7, toolPromptMeasuredRuns: 9,
                 promptTokens: 48210, outputTokens: 3120, thinkingTokens: 990, toolPromptTokens: 61500, timeouts: 2, otherFailures: 1 }],
-            aiAcceptance: [{ shown: 'ai_verify', entries: 8, accepted: 7 }, { shown: 'fallback', entries: 3, accepted: 1 }] });
+            aiAcceptance: [{ served: 'ai_verify', entries: 8, accepted: 7 }, { served: 'fallback', entries: 3, accepted: 1 }] });
         render(await Page({ searchParams: Promise.resolve({}) }));
         expect(screen.getAllByRole('table')).toHaveLength(5);
         const usage = screen.getByRole('table', { name: 'AI usage by feature for the selected period' });
@@ -41,8 +56,8 @@ describe('admin telemetry page', () => {
         expect(screen.getByText(/50% of previous-period accounts/)).toBeInTheDocument();
         expect(screen.getByRole('table', { name: 'Provider entry methods by utility category' })).toHaveTextContent('electric');
         expect(screen.getByText('seller_submitted')).toBeInTheDocument();
-        expect(screen.getByText('120 ms')).toBeInTheDocument();
-        expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('120 ms')[0]).toBeInTheDocument();
+        expect(screen.getAllByText('Unknown').length).toBeGreaterThan(0);
         expect(screen.getByText(/40% of form-based requests/)).toBeInTheDocument();
         expect(screen.getByText(/50% of accounts with forms/)).toBeInTheDocument();
     });
@@ -55,10 +70,10 @@ describe('admin telemetry page', () => {
         expect(screen.getByText(/No request events recorded/)).toBeInTheDocument();
         expect(screen.getByText(/No AI runs recorded/)).toBeInTheDocument();
         expect(screen.getByText(/No fresh AI runs recorded/)).toBeInTheDocument();
-        expect(screen.getByText(/No submitted entries with a recorded suggestion list/)).toBeInTheDocument();
+        expect(screen.getByText(/No eligible submitted provider entries/)).toBeInTheDocument();
         expect(screen.getByText(/No submitted provider entries/)).toBeInTheDocument();
         expect(screen.getByText(/not assigned to a form retroactively/)).toBeInTheDocument();
-        expect(screen.getByText(/Completion reflects the current outcome/)).toBeInTheDocument();
+        expect(screen.getByText(/Completion reflects a recorded first submission/)).toBeInTheDocument();
         expect(document.body.textContent).not.toMatch(/NaN|Infinity/);
     });
     it('shows database absence as unavailable', async () => {

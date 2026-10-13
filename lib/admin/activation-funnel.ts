@@ -171,13 +171,13 @@ export async function getActivationFunnelStats(): Promise<ActivationFunnelStats 
             SELECT
                 account_id,
                 COUNT(*) FILTER (
-                    WHERE status = 'submitted'
+                    WHERE (metered_at IS NOT NULL OR (status = 'submitted' AND last_activity_at IS NOT NULL))
                       AND deleted_at IS NULL
                       AND COALESCE(is_demo, FALSE) = FALSE
                       AND COALESCE(metered_at, last_activity_at) >= NOW() - INTERVAL '30 days'
                 )::int AS submitted_count_30d,
                 MIN(COALESCE(metered_at, last_activity_at)) FILTER (
-                    WHERE status = 'submitted'
+                    WHERE (metered_at IS NOT NULL OR (status = 'submitted' AND last_activity_at IS NOT NULL))
                       AND deleted_at IS NULL
                       AND COALESCE(is_demo, FALSE) = FALSE
                 ) AS first_submitted_at
@@ -229,7 +229,7 @@ export async function getGrowthSourceStats(): Promise<GrowthSourceStats[]> {
         WITH activated_accounts AS (
             SELECT DISTINCT account_id
             FROM requests
-            WHERE status = 'submitted'
+            WHERE (metered_at IS NOT NULL OR (status = 'submitted' AND last_activity_at IS NOT NULL))
               AND deleted_at IS NULL
               AND COALESCE(is_demo, FALSE) = FALSE
         )
@@ -272,7 +272,7 @@ export async function getReferralLoopStats(): Promise<ReferralLoopStats | null> 
             activated_accounts AS (
                 SELECT DISTINCT account_id
                 FROM requests
-                WHERE status = 'submitted'
+                WHERE (metered_at IS NOT NULL OR (status = 'submitted' AND last_activity_at IS NOT NULL))
                   AND deleted_at IS NULL
                   AND COALESCE(is_demo, FALSE) = FALSE
             )

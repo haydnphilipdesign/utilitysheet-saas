@@ -210,7 +210,7 @@ describe('/api/test-drive', () => {
         });
         expect(mocks.createEventLog).toHaveBeenCalledWith(expect.objectContaining({
             eventType: 'test_drive_invitation_failed',
-        }));
+        }), { signal: expect.any(AbortSignal) });
     });
 
     it('does not let telemetry failure prevent invitation delivery or resume access', async () => {

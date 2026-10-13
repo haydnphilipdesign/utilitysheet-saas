@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { GoogleGenAI } from '@google/genai';
 import type { GenerateContentConfig, GenerateContentResponse, ThinkingLevel, Tool } from '@google/genai';
 
@@ -69,10 +70,10 @@ export interface GeminiUsage {
     thinkingTokens: number | null;
     /** Tokens of search results fed back to the model. */
     toolPromptTokens: number | null;
-    /** Google Search queries the model ran for this answer. */
-    searchQueryCount: number;
-    /** Distinct web sources the answer was grounded on. */
-    sourceCount: number;
+    /** Reported queries; null when any candidate omits query metadata. Not billed usage. */
+    searchQueryCount: number | null;
+    /** Distinct reported web sources for this answer; null when metadata is absent. */
+    sourceCount: number | null;
 }
 
 export interface JSONGenerationResult<T> {
@@ -111,8 +112,6 @@ function failed(kind: GeminiFailureKind): { ok: false; kind: GeminiFailureKind }
 
 interface GeminiErrorMetadata {
     status: number | null;
-    code: string | number | null;
-    message: string;
     retryable: boolean;
 }
 
@@ -130,9 +129,7 @@ function getThinkingLevel(): ThinkingLevel | undefined {
         return raw as ThinkingLevel;
     }
 
-    console.warn(
-        `[Gemini] Ignoring invalid GEMINI_THINKING_LEVEL="${raw}". Expected one of: ${ALLOWED_THINKING_LEVELS.join(', ')}.`
-    );
+    logDiagnostic('warn', 'gemini_invalid_thinking_level');
     return undefined;
 }
 
@@ -219,23 +216,8 @@ function extractGeminiErrorMetadata(error: unknown): GeminiErrorMetadata {
             ? statusCandidate
             : null;
 
-    const codeCandidates = [errorObject.code, nestedError?.code];
-    const codeCandidate = codeCandidates.find(
-        (value) => typeof value === 'string' || typeof value === 'number'
-    );
-
-    const messageCandidates = [errorObject.message, nestedError?.message];
-    const messageCandidate = messageCandidates.find(
-        (value) => typeof value === 'string' && value.trim().length > 0
-    ) as string | undefined;
-    const message =
-        messageCandidate ||
-        (error instanceof Error ? error.message : 'Unknown Gemini API error');
-
     return {
         status,
-        code: (codeCandidate as string | number | undefined) ?? null,
-        message,
         retryable: getRetryabilityFromStatus(status),
     };
 }
@@ -368,7 +350,7 @@ async function withRetry<T>(
             return { ok: true, value: result };
         } catch (error) {
             if (error instanceof GeminiTimeoutError) {
-                console.error(`[Gemini] ${error.message}`);
+                logDiagnostic('error', 'gemini_timeout', { attempt: attempt + 1 }, error);
                 recordFailure();
                 return failed('timeout');
             }
@@ -379,27 +361,25 @@ async function withRetry<T>(
                 : metadata.status === 429 ? 'rate_limited' : 'api_error';
             const isLastAttempt = attempt === retries - 1;
             if (!metadata.retryable) {
-                console.error('[Gemini] Non-retryable API error:', metadata);
+                logDiagnostic('error', 'gemini_api_failed', { reason: 'non_retryable', attempt: attempt + 1, failureKind: kind }, error);
                 recordFailure();
                 return failed(kind);
             }
 
             if (isLastAttempt) {
-                console.error(`[Gemini] All ${retries} attempts failed:`, metadata);
+                logDiagnostic('error', 'gemini_api_failed', { reason: 'attempts_exhausted', attempt: attempt + 1, failureKind: kind }, error);
                 recordFailure();
                 return failed(kind);
             }
 
             const delay = BASE_DELAY_MS * Math.pow(2, attempt);
             if (deadline - Date.now() - delay < MIN_ATTEMPT_MS) {
-                console.error('[Gemini] No time left to retry before the deadline:', metadata);
+                logDiagnostic('error', 'gemini_api_failed', { reason: 'deadline', attempt: attempt + 1, failureKind: kind }, error);
                 recordFailure();
                 return failed(kind);
             }
 
-            console.warn(
-                `[Gemini] Attempt ${attempt + 1} failed (status=${metadata.status ?? 'unknown'}, code=${metadata.code ?? 'unknown'}, retryable=${metadata.retryable}), retrying in ${delay}ms...`
-            );
+            logDiagnostic('warn', 'gemini_retry', { attempt: attempt + 1, delayMs: delay, retryable: metadata.retryable, failureKind: kind }, error);
             await sleep(delay);
         }
     }
@@ -432,9 +412,7 @@ export function getGeminiModel(
             thinkingLevel,
         };
     } else if (thinkingLevel) {
-        console.warn(
-            `[Gemini] GEMINI_THINKING_LEVEL is set, but "${MODEL_NAME}" does not appear to support thinkingConfig. Omitting thinkingConfig.`
-        );
+        logDiagnostic('warn', 'gemini_thinking_unsupported');
     }
 
     const tools = getGroundingTools();
@@ -567,9 +545,7 @@ export async function generateJSONWithMeta<T>(
             failureKind: null,
         };
     } catch (error) {
-        console.error('[Gemini] Error parsing JSON response:', {
-            message: error instanceof Error ? error.message : 'Unknown parse error',
-        });
+        logDiagnostic('error', 'gemini_parse_failed', {}, error);
         return {
             data: null,
             failure: 'parse_error',
@@ -586,15 +562,20 @@ function tokenCount(value: unknown): number | null {
 
 function getUsage(response: GenerateContentResponse, sourceCount: number): GeminiUsage {
     const usage = response.usageMetadata;
-    const searchQueryCount = (response.candidates || [])
-        .reduce((total, candidate) => total + (candidate.groundingMetadata?.webSearchQueries?.length ?? 0), 0);
+    const candidates = response.candidates ?? [];
+    const queriesKnown = candidates.length > 0 && candidates.every(candidate =>
+        Array.isArray(candidate.groundingMetadata?.webSearchQueries));
+    const sourcesKnown = candidates.length > 0 && candidates.every(candidate =>
+        Array.isArray(candidate.groundingMetadata?.groundingChunks));
+    const searchQueryCount = queriesKnown ? candidates.reduce((total, candidate) =>
+        total + candidate.groundingMetadata!.webSearchQueries!.length, 0) : null;
     return {
         promptTokens: tokenCount(usage?.promptTokenCount),
         outputTokens: tokenCount(usage?.candidatesTokenCount),
         thinkingTokens: tokenCount(usage?.thoughtsTokenCount),
         toolPromptTokens: tokenCount(usage?.toolUsePromptTokenCount),
         searchQueryCount,
-        sourceCount,
+        sourceCount: sourcesKnown ? sourceCount : null,
     };
 }
 

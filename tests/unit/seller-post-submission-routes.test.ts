@@ -55,6 +55,7 @@ import { GET as sellerGet, POST as sellerPost } from '@/app/api/seller/[token]/r
 import { POST as sendLink } from '@/app/api/seller/[token]/send-link/route';
 import { DELETE as closeReopen, POST as reopen } from '@/app/api/requests/[id]/reopen/route';
 import { PATCH as patchRequest } from '@/app/api/requests/[id]/route';
+import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 
 const ADDRESS = '12 Original Road, Easton, PA 18040';
 const stored = {
@@ -78,6 +79,45 @@ const answers = {
 const submit = (body: Record<string, unknown>) => sellerPost(new Request('http://localhost/api/seller/seller-fixture', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 }), sellerContext);
+
+describe('auxiliary seller observations', () => {
+    it.each(['reject', 'slow'] as const)('returns the seller form and transitions status despite %s open evidence', async (failure) => {
+        mocks.requestByToken.mockResolvedValueOnce({ ...stored, status: 'sent' });
+        if (failure === 'reject') mocks.event.mockRejectedValueOnce(new Error('private sentinel'));
+        else mocks.event.mockImplementationOnce(() => new Promise(() => {}));
+        const response = await sellerGet(new Request('http://localhost/api/seller/seller-fixture'), sellerContext);
+        expect(response.status).toBe(200);
+        expect((await response.json()).request).toMatchObject({ property_address: ADDRESS, edit_version: 0 });
+        expect(mocks.sql).toHaveBeenCalledTimes(1);
+        expect(mocks.sql.mock.calls[0][0].join(' ')).toContain("status = 'in_progress'");
+        expect(mocks.event).toHaveBeenCalledTimes(1);
+        expect(mocks.reminderEmail).not.toHaveBeenCalled();
+        expect(mocks.submit).not.toHaveBeenCalled();
+    });
+
+    it.each(['reject', 'slow'] as const)('keeps accepted self-link delivery successful without resending when evidence is %s', async (failure) => {
+        mocks.reminderEmail.mockResolvedValueOnce({ success: true });
+        if (failure === 'reject') mocks.event.mockRejectedValueOnce(new Error('private sentinel'));
+        else mocks.event.mockImplementationOnce(() => new Promise(() => {}));
+        const response = await sendLink(new Request('http://localhost/api/seller/seller-fixture/send-link', {
+            method: 'POST', body: JSON.stringify({ email: 'seller@example.test' }),
+        }), sellerContext);
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ success: true });
+        expect(mocks.reminderEmail).toHaveBeenCalledTimes(1);
+        expect(mocks.event).toHaveBeenCalledTimes(1);
+        expect(mocks.submit).not.toHaveBeenCalled();
+        expect(mocks.sql).not.toHaveBeenCalled();
+    });
+
+    it('keeps required submission failure retryable with no notification side effects', async () => {
+        mocks.submit.mockRejectedValueOnce(new Error('required atomic evidence failed'));
+        expect((await submit({ ...answers, edit_version: 0, submission_key: 'retry-key-0001' })).status).toBe(500);
+        expect(mocks.completionEmail).not.toHaveBeenCalled();
+        expect(mocks.suggestion).not.toHaveBeenCalled();
+        expect(mocks.referral).not.toHaveBeenCalled();
+    });
+});
 
 function expectNoSideEffects() {
     expect(mocks.completionEmail).not.toHaveBeenCalled();
@@ -109,8 +149,19 @@ beforeEach(() => {
 });
 
 describe('seller submission route', () => {
+    it.each([[false, 429], [true, 503]])('preserves limited/unavailable submission and return-link outcomes (%s)', async (unavailable, status) => {
+        mocks.rateLimit.mockResolvedValue({ success: false, unavailable });
+        expect((await submit(answers)).status).toBe(status);
+        expect((await sendLink(new Request('http://localhost/api/seller/seller-fixture/send-link', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'seller@example.test' }),
+        }), sellerContext)).status).toBe(status);
+        expect(mocks.submit).not.toHaveBeenCalled();
+        expect(mocks.reminderEmail).not.toHaveBeenCalled();
+        expect(mocks.completionEmail).not.toHaveBeenCalled();
+    });
     it('stores once, then runs side effects only for the accepted submission', async () => {
         const response = await submit({ ...answers, edit_version: 0, submission_key: 'retry-key-0001' });
+        expect(mocks.rateLimit).toHaveBeenCalledWith(expect.anything(), capabilityRateLimitIdentifier('seller-submission', 'seller-fixture'), expect.anything());
 
         expect(response.status).toBe(200);
         expect(mocks.submit).toHaveBeenCalledTimes(1);
@@ -290,6 +341,7 @@ describe('seller form data', () => {
 
         expect(response.status).toBe(409);
         expect(mocks.reminderEmail).not.toHaveBeenCalled();
+        expect(mocks.rateLimit).toHaveBeenCalledWith(expect.anything(), capabilityRateLimitIdentifier('seller-send-link', 'seller-send-link:seller-fixture'), expect.anything());
     });
 });
 

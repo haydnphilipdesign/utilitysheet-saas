@@ -196,6 +196,31 @@ describe('evaluation matching', () => {
 });
 
 describe('evaluation scoring', () => {
+    it('keeps costs unknown with partial grounding, but retains a token-only lower bound', () => {
+        const known = scoreCase(evalCase(), run(['PPL Electric Utilities']), 'gemini-3.1-flash-lite');
+        const unknown = { ...known, search_queries: null, sources: null };
+        expect(summarize([known, unknown])).toMatchObject({ cases_with_search_metadata: 1,
+            search_cost_usd: null, total_cost_usd: null, cost_per_top3_usd: null });
+        expect(summarize([known, unknown]).token_cost_usd).toBeGreaterThan(0);
+        const zero = { ...known, search_queries: 0 };
+        expect(summarize([zero])).toMatchObject({ search_cost_usd: 0, total_cost_usd: known.token_cost_usd,
+            cost_per_top3_usd: known.token_cost_usd });
+        expect(summarize([{ ...known, token_cost_usd: null }]).total_cost_usd).toBeNull();
+        expect(summarize([]).total_cost_usd).toBeNull();
+    });
+
+    it('does not present legacy result-file cost estimates as covered', () => {
+        const summary = summarize([scoreCase(evalCase(), run(['PPL Electric Utilities']), 'gemini-3.1-flash-lite')]);
+        const legacy = { ...summary };
+        Reflect.deleteProperty(legacy, 'cases_with_search_metadata');
+        Reflect.deleteProperty(legacy, 'total_cost_usd');
+        const config = { label: 'legacy', model: 'fixture', thinking: 'low', passes: 'two' as const, recovery: true, grounding: true };
+        const table = renderComparison([{ config, summary: legacy }]);
+        expect(table).toContain('| Cases with search metadata | unknown (legacy) |');
+        expect(table).toContain('| Search cost at list price | n/a |');
+        expect(table).toContain('| Cost per case with a top-3 answer | n/a |');
+    });
+
     it('scores rank, extras, usage and cost for an answered case', () => {
         const score = scoreCase(
             evalCase({ website_domain: 'pplelectric.com', phone: '1-800-342-5775' }),
@@ -276,8 +301,10 @@ describe('evaluation scoring', () => {
             search_queries: 6,
             cases_with_usage: 2,
         });
-        expect(summary.search_cost_usd).toBeCloseTo(6 * 0.014, 10);
-        expect(summary.cost_per_top3_usd).toBeCloseTo(((summary.token_cost_usd ?? 0) + 6 * 0.014) / 2, 10);
+        expect(summary.search_cost_usd).toBeNull();
+        expect(summary.total_cost_usd).toBeNull();
+        expect(summary.cases_with_search_metadata).toBe(2);
+        expect(summary.cost_per_top3_usd).toBeNull();
 
         const config = { label: 'now', model: 'gemini-3.1-flash-lite', thinking: 'low', passes: 'two' as const, recovery: true, grounding: true };
         const table = renderComparison([{ config, summary }, { config: { ...config, label: 'one-pass', passes: 'one' }, summary }]);

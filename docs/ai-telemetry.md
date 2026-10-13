@@ -10,7 +10,7 @@ This system is intentionally small. It is not an AI audit log of raw prompts or 
 
 ### `ai_generation_runs`
 
-One row represents one provider suggestion or provider search run shown to a seller, or one provider contact lookup made after a seller submits. It stores summarized run metadata:
+One row represents one provider suggestion or provider search pipeline result generated/served for a seller (without browser acknowledgment), or one provider contact lookup made after a seller submits. It stores summarized run metadata:
 
 - `request_id`, `account_id`, `organization_id`: relational context for later joins.
 - `feature`: `provider_suggestions`, `provider_search` or `provider_contact`.
@@ -26,7 +26,7 @@ One row represents one provider suggestion or provider search run shown to a sel
 - `locality_state`, `locality_zip3`, `locality_city`: locality metadata only. No street address is stored.
 - `created_at`.
 - `prompt_tokens`, `output_tokens`, `thinking_tokens`, `tool_prompt_tokens`: token counts reported by the provider, added up over the AI passes of the run that returned an answer. `tool_prompt_tokens` is the search-result text fed back to the model.
-- `search_query_count`: Google Search queries the model ran. `source_count`: distinct web sources the answers were grounded on (a count; the addresses are not stored).
+- `search_query_count`: reported query-array counts, not billed searches. `source_count`: distinct reported web URLs per answer, summed across passes (the same source in two passes counts twice). Missing arrays/candidates produce NULL; explicit empty arrays produce zero. If any pipeline pass omits grounding metadata or fails without usage, run grounding totals remain NULL. Token totals retain the available answered-pass lower bound. Historical zero rows written before this local change may mean omitted metadata; no backfill or deployment boundary is claimed.
 - `thinking_level`: the level sent with the calls (`minimal`, `low`, `medium`, `high`), or `default` when none was sent.
 - `error_kind`: the first model-call failure of the run: `timeout`, `deadline` (no time left to start a call), `circuit_open`, `rate_limited`, `empty_response`, `api_error` or `unconfigured`. A run can carry this and still have served an AI answer from another pass.
 
@@ -36,29 +36,39 @@ For `provider_contact` rows: `status` is `success` when the model answered (with
 
 ### `ai_suggestion_items`
 
-One row represents one suggestion item that was shown as part of an AI generation run. It stores:
+One row represents one suggestion item generated/served as part of an AI generation run. It stores:
 
 - `run_id`: parent `ai_generation_runs` row.
 - `request_id`, `category`: duplicated for simpler correlation queries.
-- `rank`: order shown to the seller.
-- `display_name`: provider name shown to the seller.
+- `rank`: order in the generated/served result.
+- `display_name`: provider name in the generated/served result.
 - `normalized_name`: lowercased provider name normalized for matching.
 - `canonical_id`: provider canonical ID when available.
 - `confidence`: AI/provider confidence when available.
 - `source`: copied from the run source.
-- `contact_present`: whether phone or website was present in the shown suggestion.
-- `selected_by_seller`, `final_entry_mode`, `final_provider_name`, `final_canonical_id`, `final_confidence_score`, `selected_at`: seller-selection correlation fields populated on submission when a shown suggestion is selected.
+- `contact_present`: whether phone or website was present in the served suggestion.
+- `selected_by_seller`, `final_entry_mode`, `final_provider_name`, `final_canonical_id`, `final_confidence_score`, `selected_at`: seller-selection correlation fields populated on submission when a served suggestion is selected.
 
 ## Recording Flow
+
+AI run/item persistence and selection observations are awaited within one
+500 ms budget per operation. The deadline aborts Neon's HTTP fetch; failures
+return a telemetry fallback and emit one redacted `auxiliary_write_failed`
+marker. Provider results and accepted submissions retain their primary outcome.
+The budget is separate from pipeline latency and does not bound an entire
+request. Run and item inserts remain separate statements: a timeout or item
+failure can leave a run without items, and HTTP abort does not prove rollback.
+No automatic telemetry retry or historical completeness is implied. See
+[auxiliary observation boundaries](telemetry-privacy.md#auxiliary-observation-failure-isolation).
 
 Provider suggestion runs are recorded from `getSuggestions()` after the pipeline produces suggestions. Provider search runs are recorded from `searchProviders()`.
 
 Fresh pipeline results persist:
 
 - A run row in `ai_generation_runs`.
-- One item row per shown suggestion in `ai_suggestion_items`.
+- One item row per served suggestion in `ai_suggestion_items`.
 
-Provider contact lookups are recorded from `resolveContact()` in `lib/providers/contact-service.ts`, one row per lookup, fresh or cached, linked to the request. `resolveContactFresh()` and `searchProvidersFresh()` (incident and support review) record nothing.
+Provider contact lookups are recorded from `resolveContact()` in `lib/providers/contact-service.ts`, rows for fresh/cached lookups when collected, linked to the request. Feature-disabled lookups produce no row; in-flight deduplication can share a lookup without recording each consumer separately. `resolveContactFresh()` and `searchProvidersFresh()` (incident and support review) record nothing.
 
 Cached results are also persisted as runs, with:
 
@@ -80,12 +90,28 @@ The seller submission route persists those values to existing `utility_entries.c
 
 This lets future analysis compare:
 
-- Suggestions shown.
+- Suggestion results generated/served.
 - Suggestions selected.
 - Final submitted utility entries.
 - Later dashboard edits.
 
 ## Privacy Rules
+
+Browser collectors, first-touch attribution and capability-bearing rate-limit
+identifiers have separate collection rules and release requirements in
+[telemetry-privacy.md](telemetry-privacy.md). Those boundaries do not change the
+AI table contract below or retroactively clean historical data.
+
+Affected Gemini, provider suggestion/contact, email, PDF and public seller/intake
+diagnostics use `lib/telemetry/diagnostics.ts`. Fixed event codes and finite
+property allowlists replace raw provider/SQL exceptions, parsed output fragments,
+provider/locality free text, attachment filenames and recipient logs. Exception
+names are allowlisted class labels; HTTP-derived families describe response
+categories, not verified root causes. The returned service error contracts and
+delivered packet/email content are unchanged. New intake `request_created`
+event data contains configuration and address-validation/canonicalization flags,
+without address or link-slug copies. See the remaining log inventory in
+[telemetry-privacy.md](telemetry-privacy.md); this is not repository-wide redaction.
 
 AI telemetry intentionally does not store:
 
@@ -98,7 +124,7 @@ AI telemetry intentionally does not store:
 - Full seller submission payloads.
 - Property Handoff Packet field values (stored packet mode `advanced`).
 
-Provider names shown to sellers are stored because they are the object being evaluated. Location is limited to state, ZIP3, and city. Contact lookups store no provider name, phone number or link, only whether one was found. Usage is stored as counts; search queries and source addresses are not stored.
+Provider names generated/served for sellers are stored because they are the object being evaluated. Location is limited to state, ZIP3, and city. Contact lookups store no provider name, phone number or link, only whether one was found. Usage is stored as counts; search queries and source addresses are not stored.
 
 ## Reduced `seller_submitted` Event Logging
 
@@ -148,7 +174,7 @@ Thresholds: `OPS_ALERT_AI_SHARE_PCT` (50), `OPS_ALERT_AI_MIN_RUNS` (10), `OPS_AL
 
 ## Admin Telemetry
 
-`/admin/telemetry` shows three AI tables: outcomes by feature and status, usage by feature (fresh runs, AI passes, search queries, tokens, timeouts and other failed calls), and suggestion acceptance by what the seller was shown. Definitions are in `ADMIN.md`, Telemetry.
+`/admin/telemetry` separates feature/outcome/model/prompt cohorts, with average, p50/p95 and timed fresh sample count. Cache hits and NULL/negative timings are excluded; latency measures pipeline time, including retries but excluding telemetry persistence and full HTTP/browser time. Usage shows per-token reporting coverage, reported search coverage and ambiguous historical zero rows. Failures count runs with a first recorded failure, including recovered runs, not transport calls. Pass counts exclude transport retries. Acceptance groups current entries by the first recorded suggestion result before first metered submission, with an unrecorded bucket; rendering, exposure linkage and accuracy remain unverified. Definitions are in `ADMIN.md`, Telemetry.
 
 ## Future AI Review Tooling
 
@@ -157,7 +183,7 @@ An internal AI Review page can use these tables to surface questionable runs:
 - `status IN ('fallback', 'error', 'parse_error', 'quality_rejected')`
 - low confidence suggestions
 - categories with high free-text/manual-entry rates
-- suggestions shown but not selected
+- suggestions generated/served but not matched to a submitted selection
 - seller-selected providers later edited in the dashboard
 - state or ZIP3/category combinations with frequent fallback
 
@@ -215,18 +241,20 @@ GROUP BY category
 ORDER BY free_text_rate_pct DESC NULLS LAST;
 ```
 
-### Average Latency By Source And Pipeline
+### Fresh Pipeline Latency By Model And Prompt (Last 30 Days)
 
 ```sql
 SELECT
-    source,
-    served_pipeline,
-    COUNT(*) AS run_count,
+    feature, status, model, prompt_version,
+    COUNT(*) AS timed_fresh_samples,
     ROUND(AVG(latency_ms)) AS avg_latency_ms,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency_ms,
     PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
 FROM ai_generation_runs
 WHERE cache_hit IS FALSE
-GROUP BY source, served_pipeline
+  AND latency_ms >= 0
+  AND created_at >= NOW() - INTERVAL '30 days'
+GROUP BY feature, status, model, prompt_version
 ORDER BY avg_latency_ms DESC;
 ```
 
@@ -282,7 +310,9 @@ SELECT
     model,
     thinking_level,
     COUNT(*) AS fresh_runs,
-    COUNT(*) FILTER (WHERE prompt_tokens IS NOT NULL OR search_query_count IS NOT NULL) AS runs_with_usage,
+    COUNT(prompt_tokens) AS runs_with_prompt_metadata,
+    COUNT(search_query_count) AS runs_with_search_metadata,
+    COUNT(*) FILTER (WHERE search_query_count = 0) AS reported_zero_or_legacy_unknown_runs,
     SUM(attempt_count) AS ai_passes,
     SUM(search_query_count) AS search_queries,
     SUM(prompt_tokens) AS prompt_tokens,
@@ -296,7 +326,7 @@ GROUP BY feature, model, thinking_level
 ORDER BY feature, model, thinking_level;
 ```
 
-### Model-Call Failures By Kind
+### Runs With A First Recorded Model Failure By Kind
 
 ```sql
 SELECT
@@ -322,3 +352,7 @@ FROM ai_generation_runs
 GROUP BY feature, cache_hit
 ORDER BY feature, cache_hit;
 ```
+
+## Evaluation estimates
+
+Offline evaluation summaries keep reported token totals and a token-only lower-bound list-price estimate separate from search cost. Search cost is unknown unless every case has reported search metadata; total and cost-per-top-3 estimates also require priced token coverage for every case. Failed/timed-out passes can be billed without usage. These remain estimates from reported metadata using the existing price constants, excluding free allowances and unknown billing components; no invoice reconciliation or price refresh occurred. Historic evaluation files cannot supply missing coverage and are not rewritten. Unknown source coverage is not labelled as confirmed unsourced output.

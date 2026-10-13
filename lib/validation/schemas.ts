@@ -12,6 +12,21 @@ import {
     PACKET_MODES,
 } from '@/lib/packet/modules';
 
+import {
+    SELLER_OBSERVATION_DURATIONS,
+    SELLER_OBSERVATION_ERROR_CODES,
+    SELLER_OBSERVATION_ID_PATTERN,
+    SELLER_OBSERVATION_MAX_ATTEMPT,
+    SELLER_OBSERVATION_MAX_BATCH,
+    SELLER_OBSERVATION_MAX_RESULT_COUNT,
+    SELLER_OBSERVATION_NAVIGATION,
+    SELLER_OBSERVATION_SCHEMA_VERSION,
+    SELLER_OBSERVATION_STEPS,
+    SELLER_OBSERVATION_VISITS,
+    SELLER_SUGGESTION_EMPTY_REASONS,
+    SELLER_SUGGESTION_SOURCES,
+} from '@/lib/telemetry/seller-observations';
+
 export const utilityCategoryEnum = z.enum(
     UTILITY_CATEGORY_KEYS as [UtilityCategory, ...UtilityCategory[]]
 );
@@ -598,6 +613,79 @@ export const submittedSheetUpdateBodySchema = z.object({
                 message: 'Too many utility entries',
             })
     ),
+}).strict();
+
+/**
+ * Seller diagnostic observations. Strict objects of enums, bounded integers and
+ * random identifiers only: no field can carry an answer, a name, a query, a URL
+ * or an error message. The request, account and test/live mode are resolved on
+ * the server from the seller link, never taken from this body.
+ */
+const sellerObservationBase = {
+    id: z.string().regex(SELLER_OBSERVATION_ID_PATTERN),
+    seq: z.number().int().min(0).max(9999),
+};
+const sellerObservationStepFields = {
+    step: z.enum(SELLER_OBSERVATION_STEPS),
+    category: utilityCategoryEnum.optional(),
+    section: z.enum(ADVANCED_MODULE_KEYS as ['lawn_exterior', 'irrigation_seasonal_controls', 'mailbox_access', 'smart_home_security', 'service_providers']).optional(),
+    nav: z.enum(SELLER_OBSERVATION_NAVIGATION),
+};
+const sellerObservationDuration = z.enum(SELLER_OBSERVATION_DURATIONS);
+const sellerObservationFailureFields = {
+    error_code: z.enum(SELLER_OBSERVATION_ERROR_CODES),
+    status: z.number().int().min(400).max(599).optional(),
+    duration: sellerObservationDuration.optional(),
+};
+
+export const sellerObservationEventSchema = z.discriminatedUnion('type', [
+    z.object({
+        type: z.literal('seller_step_viewed'),
+        ...sellerObservationBase,
+        ...sellerObservationStepFields,
+        visit: z.enum(SELLER_OBSERVATION_VISITS),
+    }).strict(),
+    z.object({
+        type: z.literal('seller_step_completed'),
+        ...sellerObservationBase,
+        ...sellerObservationStepFields,
+        duration: sellerObservationDuration,
+    }).strict(),
+    z.object({
+        type: z.literal('seller_submission_attempted'),
+        ...sellerObservationBase,
+        attempt: z.number().int().min(1).max(SELLER_OBSERVATION_MAX_ATTEMPT),
+    }).strict(),
+    z.object({
+        type: z.literal('seller_submission_failed'),
+        ...sellerObservationBase,
+        attempt: z.number().int().min(1).max(SELLER_OBSERVATION_MAX_ATTEMPT),
+        ...sellerObservationFailureFields,
+    }).strict(),
+    z.object({
+        type: z.literal('seller_suggestions_rendered'),
+        ...sellerObservationBase,
+        category: utilityCategoryEnum,
+        source: z.enum(SELLER_SUGGESTION_SOURCES),
+        result_count: z.number().int().min(0).max(SELLER_OBSERVATION_MAX_RESULT_COUNT),
+        empty_reason: z.enum(SELLER_SUGGESTION_EMPTY_REASONS).optional(),
+        duration: sellerObservationDuration.optional(),
+    }).strict(),
+    z.object({
+        type: z.literal('seller_suggestions_failed'),
+        ...sellerObservationBase,
+        category: utilityCategoryEnum,
+        source: z.enum(SELLER_SUGGESTION_SOURCES),
+        ...sellerObservationFailureFields,
+    }).strict(),
+]);
+export type SellerObservationEvent = z.infer<typeof sellerObservationEventSchema>;
+
+export const sellerObservationBodySchema = z.object({
+    v: z.literal(SELLER_OBSERVATION_SCHEMA_VERSION),
+    session: z.string().regex(SELLER_OBSERVATION_ID_PATTERN),
+    edit_version: z.number().int().min(0).max(1_000_000),
+    events: z.array(sellerObservationEventSchema).min(1).max(SELLER_OBSERVATION_MAX_BATCH),
 }).strict();
 
 export * from './admin-schemas';

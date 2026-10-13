@@ -1,3 +1,4 @@
+import { createEventLog } from '@/lib/neon/queries/event-logs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/neon/queries', () => ({
@@ -9,11 +10,13 @@ vi.mock('@/lib/providers/suggestion-service', () => ({
     searchProviders: vi.fn(),
 }));
 
+vi.mock('@/lib/neon/queries/event-logs', () => ({ createEventLog: vi.fn(async () => undefined) }));
+
 vi.mock('@/lib/rate-limit', () => ({
     aiRatelimit: {},
     checkRateLimit: vi.fn(),
     getRateLimitHeaders: vi.fn(() => ({})),
-    isRateLimitUnavailable: vi.fn(() => false),
+    isRateLimitUnavailable: vi.fn((result: { reason?: string }) => result.reason === 'unavailable'),
 }));
 
 vi.mock('@/lib/address/structured-address', () => ({
@@ -24,8 +27,16 @@ import { GET } from '@/app/api/seller/[token]/suggestions/search/route';
 import { getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
 import { searchProviders } from '@/lib/providers/suggestion-service';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 
 describe('GET /api/seller/[token]/suggestions/search', () => {
+    it.each([['limited', 429], ['unavailable', 503]] as const)('preserves %s enforcement before provider search', async (reason, status) => {
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({ id: 'r1', account_id: 'acct-1', property_address: '123 Test Street' } as never);
+        vi.mocked(checkRateLimit).mockResolvedValue({ success: false, limit: 20, remaining: 0, reset: 12345, reason });
+        const response = await GET(new Request('http://localhost/api/seller/seller-token/suggestions/search?category=electric&query=test'), { params: Promise.resolve({ token: 'seller-token' }) });
+        expect(response.status).toBe(status);
+        expect(searchProviders).not.toHaveBeenCalled();
+    });
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(checkRateLimit).mockResolvedValue({
@@ -34,6 +45,23 @@ describe('GET /api/seller/[token]/suggestions/search', () => {
             remaining: 19,
             reset: 999999,
         } as never);
+    });
+
+    it.each(['reject', 'slow'] as const)('preserves provider output without repeating generation when observation is %s', async (failure) => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        vi.mocked(getRequestBySellerToken).mockResolvedValue({ id: 'r1', account_id: 'acct-1', property_address: '123 Main St, Raleigh, NC 27601', utility_categories: ['electric'] } as never);
+        const result = [{"display_name":"Fixture Electric","confidence":0.9}];
+        vi.mocked(searchProviders).mockResolvedValueOnce(result as never);
+        if (failure === 'reject') vi.mocked(createEventLog).mockRejectedValueOnce(new Error('private sentinel'));
+        else vi.mocked(createEventLog).mockImplementationOnce(() => new Promise(() => {}));
+        const response = await GET(new Request('http://localhost/api/seller/seller-token/suggestions/search?query=fixture&category=electric'), { params: Promise.resolve({ token: 'seller-token' }) });
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual(result);
+        expect(searchProviders).toHaveBeenCalledTimes(1);
+        expect(createEventLog).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify(warn.mock.calls)).not.toContain('private sentinel');
+        warn.mockRestore();
     });
 
     it('returns 404 for unknown token', async () => {
@@ -103,7 +131,7 @@ describe('GET /api/seller/[token]/suggestions/search', () => {
 
         expect(checkRateLimit).toHaveBeenCalledWith(
             expect.anything(),
-            'seller-token:1.2.3.4',
+            capabilityRateLimitIdentifier('seller-ai', 'seller-token:1.2.3.4'),
             { requirePersistent: false }
         );
         expect(searchProviders).toHaveBeenCalledWith(

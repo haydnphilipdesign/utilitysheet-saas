@@ -157,8 +157,8 @@ export async function getOperationsSummary(): Promise<OperationsSummary | null> 
 export async function getRequestVolume(): Promise<RequestVolume | null> {
     if (!sql) return null;
 
-    // Demo requests are excluded from the stale count so this agrees with `/admin/abandonment`,
-    // which excludes them throughout. `total_requests` counts every lifecycle row, matching the
+    // Legacy overview freshness uses request.last_activity_at, which can include operator work.
+    // Seller Progress separately ages only recorded seller endpoint observations. `total_requests` counts every lifecycle row, matching the
     // lifecycle breakdown rendered beside it.
     const result = await sql`
         SELECT

@@ -1,3 +1,6 @@
+import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
+import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
 import { createEventLog } from '@/lib/neon/queries/event-logs';
@@ -7,6 +10,8 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { aiRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { getClientIp } from '@/lib/network/client-ip';
 import { lazyBackfillRequestStructuredAddress } from '@/lib/address/structured-address';
+
+const recordAuxiliaryEvent = auxiliaryEventWriter(createEventLog);
 
 export async function GET(
     request: Request,
@@ -31,7 +36,7 @@ export async function GET(
         }
 
         const ip = getClientIp(request);
-        const rateLimitResult = await checkRateLimit(aiRatelimit, `${token}:${ip}`, { requirePersistent: process.env.NODE_ENV === 'production' });
+        const rateLimitResult = await checkRateLimit(aiRatelimit, capabilityRateLimitIdentifier('seller-ai', `${token}:${ip}`), { requirePersistent: process.env.NODE_ENV === 'production' });
         if (isRateLimitUnavailable(rateLimitResult)) {
             return NextResponse.json(
                 { error: 'Temporarily unavailable. Please try again shortly.' },
@@ -76,7 +81,7 @@ export async function GET(
         };
         const results = await searchProviders(query, category, requestData.property_address, context);
 
-        void createEventLog({
+        await recordAuxiliaryEvent({
             requestId: requestData.id,
             eventType: 'suggestions_search',
             eventData: {
@@ -85,13 +90,13 @@ export async function GET(
                 result_count: results.length,
                 top_results: results.slice(0, 5).map((item) => item.display_name),
             },
-        }).catch(() => undefined);
+        });
 
         return NextResponse.json(results, {
             headers: getRateLimitHeaders(rateLimitResult),
         });
     } catch (error) {
-        console.error('Error searching seller providers:', error);
+        logDiagnostic('error', 'seller_search_failed', {}, error);
         return NextResponse.json({ error: 'Failed to search providers' }, { status: 500 });
     }
 }

@@ -1,3 +1,5 @@
+import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 /**
  * Public reusable-link handlers shared by the flat (`/form/base`, earlier `/i/base`) and nested
  * (`/form/base/ending`) shapes. The target form is always resolved server-side;
@@ -25,6 +27,8 @@ import { publicFormScope } from './public';
 import { formRequestFields } from './config';
 import { formErrorResponse } from './errors';
 import { isValidLinkSuffix } from './links';
+
+const recordAuxiliaryEvent = auxiliaryEventWriter(createEventLog);
 
 export interface IntakeTarget {
     slug: string;
@@ -121,7 +125,7 @@ export async function intakeMetadataResponse(target: IntakeTarget) {
             utility_categories: normalizeIntakeUtilityCategories(intakeLink.default_utility_categories),
         });
     } catch (error) {
-        console.error('Error fetching intake link:', error);
+        logDiagnostic('error', 'intake_metadata_failed', {}, error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -163,15 +167,7 @@ export async function intakeStartResponse(request: Request, target: IntakeTarget
         }
         const intakeValidation = validateIntakeAddress(parsed.data.propertyAddress);
         if (!intakeValidation.isComplete) {
-            const missingFieldCounts = intakeValidation.missingFields.reduce<Record<string, number>>((acc, field) => {
-                acc[field] = (acc[field] || 0) + 1;
-                return acc;
-            }, {});
-            console.warn('[Intake start] Incomplete property address rejected', {
-                slug,
-                missingFields: intakeValidation.missingFields,
-                missingFieldCounts,
-            });
+            logDiagnostic('warn', 'intake_address_incomplete', { missingFieldCount: intakeValidation.missingFields.length });
             return NextResponse.json(
                 {
                     error: 'Incomplete address',
@@ -274,16 +270,12 @@ export async function intakeStartResponse(request: Request, target: IntakeTarget
         }
 
         const userAgent = request.headers.get('user-agent') || null;
-        await createEventLog({
+        await recordAuxiliaryEvent({
             requestId: newRequest.id,
             eventType: 'request_created',
             eventData: {
                 actor: 'seller',
                 source: 'intake_link',
-                slug,
-                ...(target.suffix !== undefined ? { suffix: target.suffix } : {}),
-                submitted_property_address: parsed.data.propertyAddress,
-                canonical_property_address: canonicalPropertyAddress,
                 address_was_canonicalized: parsed.data.propertyAddress !== canonicalPropertyAddress,
                 street_has_number: hasIntakeStreetNumber(intakeValidation.parsed.street),
                 utility_categories: utilityCategories,
@@ -301,7 +293,7 @@ export async function intakeStartResponse(request: Request, target: IntakeTarget
         return response;
     } catch (error) {
         if ((error as { code?: string })?.code === 'SF409') return formErrorResponse(error);
-        console.error('Error starting intake link:', error);
+        logDiagnostic('error', 'intake_start_failed', {}, error);
         return NextResponse.json({ error: 'We couldn’t start the form. Please try again.' }, { status: 500 });
     }
 }

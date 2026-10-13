@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/neon/db', () => ({
-    sql: mocks.sql,
+    sql: { query: mocks.sql },
 }));
 
 import {

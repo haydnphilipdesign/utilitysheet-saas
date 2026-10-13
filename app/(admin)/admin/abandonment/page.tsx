@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Activity, AlertCircle, Clock, ExternalLink, Inbox } from 'lucide-react';
-import { sql } from '@/lib/neon/db';
+import { getSellerProgressData } from '@/lib/neon/queries/admin-seller-progress';
+import { AdminAuthorizationError } from '@/lib/admin';
 import { Badge } from '@/components/ui/badge';
 import {
     AdminDataTableShell,
@@ -9,152 +10,9 @@ import {
     AdminStatStrip,
 } from '@/components/admin/primitives';
 import { formatAdminDate } from '@/lib/admin/date-format';
-import { describeSellerProgressEvent } from '@/lib/admin/seller-progress';
+import { describeSellerFailure, describeSellerProgressEvent, describeSellerStep } from '@/lib/admin/seller-progress';
 
 export const dynamic = 'force-dynamic';
-
-type LastEventRow = {
-    request_id: string;
-    property_address: string;
-    seller_name: string | null;
-    seller_email: string | null;
-    account_id: string | null;
-    user_name: string | null;
-    user_email: string | null;
-    request_created_at: string;
-    last_event_type: string | null;
-    last_event_data: Record<string, unknown> | null;
-    last_event_at: string | null;
-    hours_since_last_event: number | null;
-    is_reopened: boolean | null;
-};
-
-type SellerProgressData = {
-    totalRequests: number;
-    inProgressCount: number;
-    active24h: number;
-    inactive1To7d: number;
-    inactiveOver7d: number;
-    byLastEvent: Array<{ event_type: string; count: number }>;
-    byLastCategory: Array<{ category: string; count: number }>;
-    rows: LastEventRow[];
-};
-
-async function getSellerProgressData(): Promise<SellerProgressData | null> {
-    if (!sql) return null;
-
-    const [totalsRes, agedRes, byEventRes, byCategoryRes, rowsRes] = await Promise.all([
-        sql`
-            SELECT
-                COUNT(*) FILTER (WHERE status = 'in_progress')::int AS in_progress_count,
-                COUNT(*)::int AS total_requests
-            FROM requests
-            WHERE COALESCE(is_demo, FALSE) = FALSE
-        `,
-        sql`
-            SELECT
-                COUNT(*) FILTER (
-                    WHERE COALESCE(last_activity_at, created_at) >= NOW() - INTERVAL '24 hours'
-                )::int AS active_24h,
-                COUNT(*) FILTER (
-                    WHERE COALESCE(last_activity_at, created_at) < NOW() - INTERVAL '24 hours'
-                      AND COALESCE(last_activity_at, created_at) >= NOW() - INTERVAL '7 days'
-                )::int AS inactive_1_to_7d,
-                COUNT(*) FILTER (
-                    WHERE COALESCE(last_activity_at, created_at) < NOW() - INTERVAL '7 days'
-                )::int AS inactive_over_7d
-            FROM requests
-            WHERE status = 'in_progress'
-              AND COALESCE(is_demo, FALSE) = FALSE
-        `,
-        sql`
-            WITH last_events AS (
-                SELECT DISTINCT ON (el.request_id)
-                    el.request_id,
-                    el.event_type
-                FROM event_logs el
-                JOIN requests r ON r.id = el.request_id
-                WHERE r.status = 'in_progress'
-                  AND COALESCE(r.is_demo, FALSE) = FALSE
-                ORDER BY el.request_id, el.created_at DESC
-            )
-            SELECT event_type, COUNT(*)::int AS count
-            FROM last_events
-            GROUP BY event_type
-            ORDER BY count DESC
-        `,
-        sql`
-            WITH last_suggestions AS (
-                SELECT DISTINCT ON (el.request_id)
-                    el.request_id,
-                    el.event_data
-                FROM event_logs el
-                JOIN requests r ON r.id = el.request_id
-                WHERE r.status = 'in_progress'
-                  AND COALESCE(r.is_demo, FALSE) = FALSE
-                  AND el.event_type = 'suggestions_fetched'
-                ORDER BY el.request_id, el.created_at DESC
-            )
-            SELECT category, COUNT(*)::int AS count
-            FROM last_suggestions,
-                 LATERAL jsonb_array_elements_text(COALESCE(event_data->'categories', '[]'::jsonb)) AS category
-            GROUP BY category
-            ORDER BY count DESC
-        `,
-        sql`
-            WITH last_events AS (
-                SELECT DISTINCT ON (el.request_id)
-                    el.request_id,
-                    el.event_type,
-                    el.event_data,
-                    el.created_at AS last_event_at
-                FROM event_logs el
-                JOIN requests r ON r.id = el.request_id
-                WHERE r.status = 'in_progress'
-                  AND COALESCE(r.is_demo, FALSE) = FALSE
-                ORDER BY el.request_id, el.created_at DESC
-            )
-            SELECT
-                r.id AS request_id,
-                r.property_address,
-                r.seller_name,
-                r.seller_email,
-                r.account_id,
-                r.created_at AS request_created_at,
-                a.full_name AS user_name,
-                a.email AS user_email,
-                le.event_type AS last_event_type,
-                le.event_data AS last_event_data,
-                le.last_event_at,
-                EXTRACT(EPOCH FROM (NOW() - COALESCE(le.last_event_at, r.created_at))) / 3600.0 AS hours_since_last_event,
-                (r.metered_at IS NOT NULL AND r.seller_edit_version > 0) AS is_reopened
-            FROM requests r
-            LEFT JOIN accounts a ON r.account_id = a.id
-            LEFT JOIN last_events le ON le.request_id = r.id
-            WHERE r.status = 'in_progress'
-              AND COALESCE(r.is_demo, FALSE) = FALSE
-            ORDER BY COALESCE(le.last_event_at, r.created_at) DESC
-            LIMIT 200
-        `,
-    ]);
-
-    return {
-        totalRequests: Number(totalsRes[0]?.total_requests || 0),
-        inProgressCount: Number(totalsRes[0]?.in_progress_count || 0),
-        active24h: Number(agedRes[0]?.active_24h || 0),
-        inactive1To7d: Number(agedRes[0]?.inactive_1_to_7d || 0),
-        inactiveOver7d: Number(agedRes[0]?.inactive_over_7d || 0),
-        byLastEvent: byEventRes.map((row) => ({
-            event_type: String(row.event_type ?? 'unknown'),
-            count: Number(row.count || 0),
-        })),
-        byLastCategory: byCategoryRes.map((row) => ({
-            category: String(row.category ?? 'unknown'),
-            count: Number(row.count || 0),
-        })),
-        rows: rowsRes as unknown as LastEventRow[],
-    };
-}
 
 function formatElapsed(hours: number | null): string {
     if (hours == null) return 'No tracked activity';
@@ -168,15 +26,22 @@ function formatCategory(category: string) {
 }
 
 export default async function SellerProgressPage() {
-    const data = await getSellerProgressData();
+    let data;
+    try { data = await getSellerProgressData(); }
+    catch (error) {
+        if (error instanceof AdminAuthorizationError) throw error;
+        return <div role="alert" className="p-8">Seller progress is temporarily unavailable. Reload to try again.</div>;
+    }
 
-    if (!data) return <div className="p-8">Database not configured</div>;
+    if (!data) return <div className="p-8">Database not configured. Seller progress is unavailable.</div>;
 
     const inProgressRate = data.totalRequests > 0
         ? ((data.inProgressCount / data.totalRequests) * 100).toFixed(1)
         : '0.0';
     const topCategory = data.byLastCategory[0];
     const categoryObservationCount = data.byLastCategory.reduce((total, row) => total + row.count, 0);
+    const byLastStep = data.byLastStep ?? [];
+    const browserObserved = data.browserObserved ?? 0;
 
     return (
         <div className="space-y-6">
@@ -214,12 +79,13 @@ export default async function SellerProgressPage() {
                 ]}
             />
 
+            <p className="text-sm text-muted-foreground">Retained, non-demo customer requests only. {data.unknownActivity} in-progress requests have no recorded seller activity in this cycle and are excluded from age buckets. Fetch/search evidence does not prove a step was rendered or completed; browser step reports are advisory and can be missing.</p>
             <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-xl border border-border/70 bg-card p-6 shadow-sm">
                     <div className="mb-4">
                         <h2 className="text-lg font-medium">Last tracked seller stage</h2>
                         <p className="text-sm text-muted-foreground">
-                            Human-readable summary of the most recent event on each in-progress request.
+                            Most recent recorded seller endpoint or browser activity in the current submission/reopen cycle. Missing evidence remains unknown; it does not prove inactivity.
                         </p>
                     </div>
                     {data.byLastEvent.length === 0 ? (
@@ -286,11 +152,40 @@ export default async function SellerProgressPage() {
                 </div>
             </div>
 
+            <div className="rounded-xl border border-border/70 bg-card p-6 shadow-sm">
+                <div className="mb-4">
+                    <h2 className="text-lg font-medium">Last step viewed in the browser</h2>
+                    <p className="text-sm text-muted-foreground">
+                        Reported by the seller&apos;s browser for {browserObserved.toLocaleString()} of {data.inProgressCount.toLocaleString()} in-progress requests in their current editing session. Each request counts once, at the last step it reported; going back or reloading does not add to it. Requests without a report are unknown, not stuck: reports can be blocked or lost, and collection started with this version.
+                    </p>
+                </div>
+                {byLastStep.length === 0 ? (
+                    <AdminEmptyState title="No browser step reports" description="No in-progress request has a browser-reported step in its current editing session." />
+                ) : (
+                    <ul className="space-y-3">
+                        {byLastStep.map((row) => {
+                            const pct = browserObserved > 0 ? (row.count / browserObserved) * 100 : 0;
+                            return (
+                                <li key={`${row.step}:${row.category ?? ''}`} className="space-y-1">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="font-medium first-letter:uppercase">{describeSellerStep(row.step, row.category) ?? 'Unrecognized step'}</span>
+                                        <span className="text-muted-foreground">{row.count} ({pct.toFixed(0)}%)</span>
+                                    </div>
+                                    <div className="h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                                        <div className="h-full bg-primary/60" style={{ width: `${pct}%` }} />
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+            </div>
+
             <AdminDataTableShell>
                 <div className="border-b border-border/70 p-4">
                     <h2 className="text-lg font-medium">In-progress requests</h2>
                     <p className="text-sm text-muted-foreground">
-                        Most recent activity first, up to 200 requests. Rows marked Reopened were submitted before and reopened by the coordinator; they are included in the counts above. Open request inspection to review the event history or use existing audited recovery actions.
+                        Most recent recorded seller activity first, up to 200 requests. Rows marked Reopened were submitted before and reopened by the coordinator; they are included in the counts above. Open request inspection to review the event history or use existing audited recovery actions.
                     </p>
                 </div>
                 <div className="overflow-x-auto">
@@ -300,7 +195,7 @@ export default async function SellerProgressPage() {
                                 <th className="p-3 font-medium">Address</th>
                                 <th className="p-3 font-medium">Account</th>
                                 <th className="p-3 font-medium">Last tracked stage</th>
-                                <th className="p-3 font-medium">Last activity</th>
+                                <th className="p-3 font-medium">Last seller observation / other event</th>
                                 <th className="p-3 font-medium">Created</th>
                                 <th className="p-3 text-right font-medium">Action</th>
                             </tr>
@@ -332,8 +227,20 @@ export default async function SellerProgressPage() {
                                                     <code className="mt-1 block">{row.last_event_type}</code>
                                                 </details>
                                             ) : null}
+                                            {row.last_step ? (
+                                                <p className="mt-1 max-w-[320px] text-xs text-muted-foreground">
+                                                    Browser last viewed: {describeSellerStep(row.last_step, row.last_step_category) ?? 'unrecognized step'}
+                                                    {row.last_step_at ? <> · {formatAdminDate(row.last_step_at)}</> : null}
+                                                </p>
+                                            ) : null}
+                                            {row.last_failure_code ? (
+                                                <p className="mt-1 max-w-[320px] text-xs text-muted-foreground">
+                                                    Last reported submit problem: {describeSellerFailure(row.last_failure_code) ?? 'unclassified'}
+                                                    {row.last_failure_at ? <> · {formatAdminDate(row.last_failure_at)}</> : null}
+                                                </p>
+                                            ) : null}
                                         </td>
-                                        <td className="p-3 text-foreground">{formatElapsed(hours)}</td>
+                                        <td className="p-3 text-foreground">{formatElapsed(hours)}{row.last_other_event_at ? <p className="mt-1 text-xs text-muted-foreground">Operator / technical: {row.last_other_event_type} · {formatAdminDate(row.last_other_event_at)}</p> : null}</td>
                                         <td className="p-3 text-xs text-muted-foreground">{formatAdminDate(row.request_created_at)}</td>
                                         <td className="p-3 text-right">
                                             <Link

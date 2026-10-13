@@ -1,3 +1,5 @@
+import { writeAuxiliary } from '@/lib/telemetry/auxiliary-write';
+import { DatabaseUnavailableError } from '@/lib/neon/statements';
 import { sql } from '@/lib/neon/db';
 import type { ProviderEntryMode, ProviderSuggestion, UtilityCategory } from '@/types';
 
@@ -87,11 +89,15 @@ function toStatus(input: CreateAiSuggestionRunInput): AiTelemetryStatus {
     return 'success';
 }
 
-export async function createAiSuggestionRun(input: CreateAiSuggestionRunInput): Promise<string | null> {
-    if (!sql) return null;
+export function createAiSuggestionRun(input: CreateAiSuggestionRunInput): Promise<string | null> {
+    return writeAuxiliary('ai_run', signal => persistAiSuggestionRun(input, signal), null);
+}
+
+async function persistAiSuggestionRun(input: CreateAiSuggestionRunInput, signal: AbortSignal): Promise<string | null> {
+    if (!sql) throw new DatabaseUnavailableError();
 
     const status = toStatus(input);
-    const runRows = await sql`
+    const runRows = await sql.query(`
         INSERT INTO ai_generation_runs (
             request_id,
             account_id,
@@ -122,38 +128,68 @@ export async function createAiSuggestionRun(input: CreateAiSuggestionRunInput): 
             thinking_level,
             error_kind
         ) VALUES (
-            ${input.requestId || null},
-            ${input.accountId || null},
-            ${input.organizationId || null},
-            ${input.feature},
-            ${input.category},
-            ${input.provider},
-            ${input.model},
-            ${input.promptVersion},
-            ${input.servedPipeline},
-            ${input.source},
-            ${status},
-            ${input.reasonCode},
-            ${input.upstreamReasonCode},
-            ${input.latencyMs},
-            ${input.attemptCount},
-            ${input.localityState},
-            ${input.localityZip3},
-            ${input.localityCity},
-            ${input.suggestionCount},
-            ${Boolean(input.cacheHit)},
-            ${clampCount(input.usage?.promptTokens)},
-            ${clampCount(input.usage?.outputTokens)},
-            ${clampCount(input.usage?.thinkingTokens)},
-            ${clampCount(input.usage?.toolPromptTokens)},
-            ${clampCount(input.usage?.searchQueryCount)},
-            ${clampCount(input.usage?.sourceCount)},
-            ${input.thinkingLevel ? input.thinkingLevel.slice(0, 40) : null},
-            ${input.errorKind ? input.errorKind.slice(0, 40) : null}
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7,
+            $8,
+            $9,
+            $10,
+            $11,
+            $12,
+            $13,
+            $14,
+            $15,
+            $16,
+            $17,
+            $18,
+            $19,
+            $20,
+            $21,
+            $22,
+            $23,
+            $24,
+            $25,
+            $26,
+            $27,
+            $28
         )
         RETURNING id
-    `;
+    `, [
+        input.requestId || null,
+        input.accountId || null,
+        input.organizationId || null,
+        input.feature,
+        input.category,
+        input.provider,
+        input.model,
+        input.promptVersion,
+        input.servedPipeline,
+        input.source,
+        status,
+        input.reasonCode,
+        input.upstreamReasonCode,
+        input.latencyMs,
+        input.attemptCount,
+        input.localityState,
+        input.localityZip3,
+        input.localityCity,
+        input.suggestionCount,
+        Boolean(input.cacheHit),
+        clampCount(input.usage?.promptTokens),
+        clampCount(input.usage?.outputTokens),
+        clampCount(input.usage?.thinkingTokens),
+        clampCount(input.usage?.toolPromptTokens),
+        clampCount(input.usage?.searchQueryCount),
+        clampCount(input.usage?.sourceCount),
+        input.thinkingLevel ? input.thinkingLevel.slice(0, 40) : null,
+        input.errorKind ? input.errorKind.slice(0, 40) : null
+    ], { fetchOptions: { signal } });
 
+    signal.throwIfAborted();
     const runId = (runRows[0] as { id?: string } | undefined)?.id || null;
     if (!runId || input.suggestions.length === 0) {
         return runId;
@@ -173,7 +209,7 @@ export async function createAiSuggestionRun(input: CreateAiSuggestionRunInput): 
         return runId;
     }
 
-    await sql`
+    await sql.query(`
         INSERT INTO ai_suggestion_items (
             run_id,
             request_id,
@@ -187,9 +223,9 @@ export async function createAiSuggestionRun(input: CreateAiSuggestionRunInput): 
             contact_present
         )
         SELECT
-            ${runId}::uuid,
-            ${input.requestId || null}::uuid,
-            ${input.category},
+            $1::uuid,
+            $2::uuid,
+            $3,
             items.rank,
             items.display_name,
             items.normalized_name,
@@ -197,7 +233,7 @@ export async function createAiSuggestionRun(input: CreateAiSuggestionRunInput): 
             items.confidence,
             items.source,
             items.contact_present
-        FROM jsonb_to_recordset(${JSON.stringify(itemRows)}::jsonb) AS items(
+        FROM jsonb_to_recordset($4::jsonb) AS items(
             rank int,
             display_name text,
             normalized_name text,
@@ -206,34 +242,51 @@ export async function createAiSuggestionRun(input: CreateAiSuggestionRunInput): 
             source text,
             contact_present boolean
         )
-    `;
+    `, [
+        runId,
+        input.requestId || null,
+        input.category,
+        JSON.stringify(itemRows)
+    ], { fetchOptions: { signal } });
 
     return runId;
 }
 
-export async function markAiSuggestionSelection(input: MarkAiSuggestionSelectionInput): Promise<void> {
-    if (!sql) return;
+export function markAiSuggestionSelection(input: MarkAiSuggestionSelectionInput): Promise<void> {
+    return writeAuxiliary('ai_selection', signal => persistAiSuggestionSelection(input, signal), undefined);
+}
+
+async function persistAiSuggestionSelection(input: MarkAiSuggestionSelectionInput, signal: AbortSignal): Promise<void> {
+    if (!sql) throw new DatabaseUnavailableError();
 
     const normalizedName = normalizeSuggestionName(input.selectedName);
     if (!normalizedName) return;
 
-    await sql`
+    await sql.query(`
         UPDATE ai_suggestion_items
         SET
             selected_by_seller = TRUE,
-            final_entry_mode = ${input.finalEntryMode},
-            final_provider_name = ${input.selectedName},
-            final_canonical_id = ${input.canonicalId || null},
-            final_confidence_score = ${clampConfidence(input.confidenceScore)},
+            final_entry_mode = $1,
+            final_provider_name = $2,
+            final_canonical_id = $3,
+            final_confidence_score = $4,
             selected_at = NOW()
         WHERE id = (
             SELECT id
             FROM ai_suggestion_items
-            WHERE request_id = ${input.requestId}
-              AND category = ${input.category}
-              AND normalized_name = ${normalizedName}
+            WHERE request_id = $5
+              AND category = $6
+              AND normalized_name = $7
             ORDER BY created_at DESC, rank ASC
             LIMIT 1
         )
-    `;
+    `, [
+        input.finalEntryMode,
+        input.selectedName,
+        input.canonicalId || null,
+        clampConfidence(input.confidenceScore),
+        input.requestId,
+        input.category,
+        normalizedName
+    ], { fetchOptions: { signal } });
 }

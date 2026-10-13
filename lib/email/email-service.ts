@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { getResend } from '@/lib/resend';
 import type { BrandProfile } from '@/types';
 import { DEFAULT_MESSAGE_TEMPLATES, escapeHtml, firstNameFromFullName, plainTextToHtml, renderTemplate } from '@/lib/message-templates';
@@ -32,10 +33,7 @@ function getDemoEmailRecipient(toEmail: string): string {
         return toEmail;
     }
 
-    console.log('[email][demo_redirect] redirecting demo email recipient', {
-        originalRecipient: toEmail,
-        redirectTo,
-    });
+    logDiagnostic('log', 'email_demo_redirect');
     return redirectTo;
 }
 
@@ -381,7 +379,7 @@ export async function sendSellerNotificationEmail({
     const replyTo = safeReplyToEmail(brandProfile?.contact_email);
 
     try {
-        const { data, error } = await getResend().emails.send({
+        const { error } = await getResend().emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: sellerEmail,
             subject,
@@ -390,14 +388,14 @@ export async function sendSellerNotificationEmail({
         });
 
         if (error) {
-            console.error('Failed to send seller notification email:', error);
+            logDiagnostic('error', 'email_send_failed', { operation: 'seller_notification' }, error);
             return { success: false, error: error.message };
         }
 
-        console.log('Seller notification email sent successfully:', data?.id);
+        logDiagnostic('log', 'email_send_accepted', { operation: 'seller_notification' });
         return { success: true };
     } catch (error) {
-        console.error('Error sending seller notification email:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'seller_notification' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -542,14 +540,14 @@ export async function sendBuiltSellerReminderEmail(
         );
 
         if (error) {
-            console.error('Failed to send seller reminder email:', error);
+            logDiagnostic('error', 'email_send_failed', { operation: 'seller_reminder' }, error);
             return { success: false, error: error.message, errorCode: error.name };
         }
 
-        console.log('Seller reminder email sent successfully:', data?.id);
+        logDiagnostic('log', 'email_send_accepted', { operation: 'seller_reminder' });
         return { success: true, messageId: data?.id };
     } catch (error) {
-        console.error('Error sending seller reminder email:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'seller_reminder' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -674,7 +672,7 @@ export async function sendOrganizationInviteEmail(
     const { subject, html } = buildOrganizationInviteEmail(params);
 
     try {
-        const { data, error } = await getResend().emails.send({
+        const { error } = await getResend().emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: params.toEmail,
             subject,
@@ -682,14 +680,14 @@ export async function sendOrganizationInviteEmail(
         });
 
         if (error) {
-            console.error('Failed to send organization invite email:', error);
+            logDiagnostic('error', 'email_send_failed', { operation: 'organization_invite' }, error);
             return { success: false, error: error.message };
         }
 
-        console.log('Organization invite email sent successfully:', data?.id);
+        logDiagnostic('log', 'email_send_accepted', { operation: 'organization_invite' });
         return { success: true };
     } catch (error) {
-        console.error('Error sending organization invite email:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'organization_invite' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -784,12 +782,12 @@ export async function sendOrganizationInviteAcceptedEmail(
             html,
         });
         if (error) {
-            console.error('Failed to send invitation accepted email:', error);
+            logDiagnostic('error', 'email_send_failed', { operation: 'invitation_accepted' }, error);
             return { success: false, error: error.message };
         }
         return { success: true };
     } catch (error) {
-        console.error('Error sending invitation accepted email:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'invitation_accepted' }, error);
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 }
@@ -1027,7 +1025,7 @@ export async function sendFeedbackEmail({
         const feedbackEmail = process.env.FEEDBACK_EMAIL;
 
         if (!feedbackEmail) {
-            console.warn('FEEDBACK_EMAIL environment variable is not set. Feedback email will not be sent.');
+            logDiagnostic('warn', 'email_not_configured', { operation: 'feedback' });
             return { success: false, error: 'Configuration error' };
         }
 
@@ -1057,13 +1055,13 @@ export async function sendFeedbackEmail({
         });
 
         if (error) {
-            console.error('Failed to send feedback email:', error);
+            logDiagnostic('error', 'email_send_failed', { operation: 'feedback' }, error);
             return { success: false, error: error.message };
         }
 
         return { success: true };
     } catch (error) {
-        console.error('Error sending feedback email:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'feedback' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -1112,7 +1110,7 @@ export async function sendTCCompletionNotificationEmail({
     const baseUrl = getAppBaseUrl();
     const dashboardUrl = `${baseUrl}/dashboard/requests/${requestId}`;
 
-    console.log('sendTCCompletionNotificationEmail called:', { requestId });
+    logDiagnostic('log', 'email_send_started', { operation: 'completion_notification', requestId });
 
     const emailHtml = generateTCCompletionNotificationHtml({
         tcName,
@@ -1133,7 +1131,7 @@ export async function sendTCCompletionNotificationEmail({
             | undefined;
 
         if (attachPdf) {
-            console.log('[email][submission_attachment] attempted', { requestId });
+            logDiagnostic('log', 'email_attachment_attempted', { requestId });
             const attachmentResult = await createPacketPdfAttachmentForRequest(requestId);
 
             if (attachmentResult.status === 'attached') {
@@ -1144,34 +1142,29 @@ export async function sendTCCompletionNotificationEmail({
                     content: attachment.content,
                     contentType: attachment.contentType,
                 }];
-                console.log('[email][submission_attachment] generated', {
+                logDiagnostic('log', 'email_attachment_generated', {
                     requestId,
-                    filename: attachment.filename,
                     bytes: attachment.content.byteLength,
                 });
             } else if (attachmentResult.status === 'skipped') {
                 attachmentStatus = 'skipped';
-                console.log('[email][submission_attachment] skipped', {
+                logDiagnostic('log', 'email_attachment_skipped', {
                     requestId,
                     reason: attachmentResult.reason,
                 });
             } else {
                 attachmentStatus = 'failed';
-                console.warn('[email][submission_attachment] failed', {
-                    requestId,
-                    error: attachmentResult.error,
-                });
+                logDiagnostic('warn', 'email_attachment_failed', { requestId });
             }
         } else {
-            console.log('[email][submission_attachment] skipped', {
+            logDiagnostic('log', 'email_attachment_skipped', {
                 requestId,
                 reason: 'disabled',
             });
         }
 
-        console.log('Calling Resend API for TC notification...');
         const resend = getResend();
-        const { data, error } = await resend.emails.send({
+        const { error } = await resend.emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: getDemoEmailRecipient(tcEmail),
             subject: isTestDrive
@@ -1182,14 +1175,14 @@ export async function sendTCCompletionNotificationEmail({
         });
 
         if (error) {
-            console.error('Resend API returned error:', error.message);
+            logDiagnostic('error', 'email_send_failed', { operation: 'completion_notification' }, error);
             return { success: false, error: error.message, attachmentStatus };
         }
 
-        console.log('TC completion notification email sent successfully:', data?.id);
+        logDiagnostic('log', 'email_send_accepted', { operation: 'completion_notification' });
         return { success: true, attachmentStatus };
     } catch (error) {
-        console.error('Exception in sendTCCompletionNotificationEmail:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'completion_notification' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -1391,7 +1384,7 @@ export async function sendReferralCreditEarnedEmail({
 
     try {
         const resend = getResend();
-        const { data, error } = await resend.emails.send({
+        const { error } = await resend.emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: getDemoEmailRecipient(toEmail),
             subject: 'You earned a free month of Pro',
@@ -1399,14 +1392,14 @@ export async function sendReferralCreditEarnedEmail({
         });
 
         if (error) {
-            console.error('Resend API returned error:', error.message);
+            logDiagnostic('error', 'email_send_failed', { operation: 'referral_credit' }, error);
             return { success: false, error: error.message };
         }
 
-        console.log('Referral credit earned email sent successfully:', data?.id);
+        logDiagnostic('log', 'email_send_accepted', { operation: 'referral_credit' });
         return { success: true };
     } catch (error) {
-        console.error('Exception in sendReferralCreditEarnedEmail:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'referral_credit' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -1550,7 +1543,7 @@ export async function sendContactResolutionAlertEmail({
 
     try {
         const resend = getResend();
-        const { data, error } = await resend.emails.send({
+        const { error } = await resend.emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: tcEmail,
             subject: `Provider contact details missing for ${propertyAddress}`,
@@ -1558,14 +1551,14 @@ export async function sendContactResolutionAlertEmail({
         });
 
         if (error) {
-            console.error('Failed to send contact resolution alert:', error);
+            logDiagnostic('error', 'email_send_failed', { operation: 'contact_resolution_alert' }, error);
             return { success: false, error: error.message };
         }
 
-        console.log('Contact resolution alert email sent successfully:', data?.id);
+        logDiagnostic('log', 'email_send_accepted', { operation: 'contact_resolution_alert' });
         return { success: true };
     } catch (error) {
-        console.error('Error sending contact resolution alert:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'contact_resolution_alert' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -1720,7 +1713,7 @@ export async function sendWeeklySummaryEmail({
 
     try {
         const resend = getResend();
-        const { data, error } = await resend.emails.send({
+        const { error } = await resend.emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: tcEmail,
             subject: `📊 Your Weekly UtilitySheet Summary`,
@@ -1728,14 +1721,14 @@ export async function sendWeeklySummaryEmail({
         });
 
         if (error) {
-            console.error('Failed to send weekly summary email:', error);
+            logDiagnostic('error', 'email_send_failed', { operation: 'weekly_summary' }, error);
             return { success: false, error: error.message };
         }
 
-        console.log('Weekly summary email sent successfully:', data?.id);
+        logDiagnostic('log', 'email_send_accepted', { operation: 'weekly_summary' });
         return { success: true };
     } catch (error) {
-        console.error('Error sending weekly summary email:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'weekly_summary' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -1988,14 +1981,14 @@ export async function sendActivationReminderEmail({
         });
 
         if (error) {
-            console.error('Failed to send activation reminder email:', error);
+            logDiagnostic('error', 'email_send_failed', { operation: 'activation_reminder' }, error);
             return { success: false, error: error.message };
         }
 
-        console.log('Activation reminder email sent successfully');
+        logDiagnostic('log', 'email_send_accepted', { operation: 'activation_reminder' });
         return { success: true };
     } catch (error) {
-        console.error('Error sending activation reminder email:', error);
+        logDiagnostic('error', 'email_send_failed', { operation: 'activation_reminder' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -2069,12 +2062,12 @@ export async function sendAccountClosedEmail({
         });
 
         if (error) {
-            console.error('Failed to send account closed email:', error.message);
+            logDiagnostic('error', 'email_send_failed', { operation: 'account_closed' }, error);
             return { success: false, error: error.message };
         }
         return { success: true };
     } catch (error) {
-        console.error('Error sending account closed email');
+        logDiagnostic('error', 'email_send_failed', { operation: 'account_closed' }, error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',

@@ -35,6 +35,8 @@ import {
 import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { createEmptyHoaAnswers } from '@/lib/packet/hoa';
 import { FUEL_UTILITY_CATEGORY_BY_FUEL, OPTIONAL_UTILITY_CATEGORIES } from '@/lib/packet/seller-questions';
+import { createSellerObserver } from '@/lib/telemetry/seller-observer';
+import { durationBucket, errorCodeForStatus, SELLER_OBSERVATION_MAX_ATTEMPT } from '@/lib/telemetry/seller-observations';
 
 type RequiredBasicsField = 'water_source' | 'sewer_type';
 const REQUIRED_BASICS_FIELDS: RequiredBasicsField[] = ['water_source', 'sewer_type'];
@@ -273,6 +275,18 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     const autosaveFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
+    // Categories whose suggestion request failed: the step still shows its empty state.
+    const [suggestionLoadFailed, setSuggestionLoadFailed] = useState<Partial<Record<UtilityCategory, boolean>>>({});
+    // Advisory diagnostics only. Nothing below waits on, or fails because of, an observation.
+    const observer = useMemo(
+        () => createSellerObserver({ token, editVersion, enabled: !isDemo }),
+        [token, editVersion, isDemo]
+    );
+    useEffect(() => observer.attach(), [observer]);
+    const observedStepKeyRef = useRef<string | null>(null);
+    const stepStartedAtRef = useRef(0);
+    const skipStepObservationRef = useRef(false);
+    const submissionAttemptCountRef = useRef(0);
     const shouldReduceMotion = useReducedMotion();
     const collectElectricMeterNumber = initialRequestData.collect_electric_meter_number !== false;
     const collectHoaQuestions = initialRequestData.collect_hoa_questions !== false;
@@ -433,7 +447,11 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 }
             }
 
-            if (draftStep !== null) setCurrentStep(draftStep);
+            if (draftStep !== null) {
+                // The step shown before the draft loaded was never really viewed.
+                if (draftStep !== currentStep) skipStepObservationRef.current = true;
+                setCurrentStep(draftStep);
+            }
             if (draftUtilityIndex !== null) setUtilityIndex(draftUtilityIndex);
             if (parsed.v === 2 && typeof parsed.advancedModuleIndex === 'number') {
                 setAdvancedModuleIndex(Math.max(0, parsed.advancedModuleIndex));
@@ -524,10 +542,27 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             ...Object.fromEntries(categoriesToFetch.map((cat) => [cat, true])),
         }));
 
+        const suggestionsRequestedAt = Date.now();
+        const observeSuggestionFailure = (errorCode: ReturnType<typeof errorCodeForStatus>, status?: number) => {
+            setSuggestionLoadFailed((prev) => ({
+                ...prev,
+                ...Object.fromEntries(categoriesToFetch.map((cat) => [cat, true])),
+            }));
+            categoriesToFetch.forEach((category) => observer.observe({
+                type: 'seller_suggestions_failed',
+                category,
+                source: 'initial',
+                error_code: errorCode,
+                ...(status && status >= 400 && status <= 599 ? { status } : {}),
+                duration: durationBucket(Date.now() - suggestionsRequestedAt),
+            }));
+        };
+
         (async () => {
             try {
                 const res = await fetch(`/api/seller/${token}/suggestions?categories=${encodeURIComponent(categoriesToFetch.join(','))}`);
                 const data = await res.json().catch(() => ({}));
+                if (!res.ok) observeSuggestionFailure(errorCodeForStatus(res.status), res.status);
 
                 const fetched = (res.ok ? data.suggestions : {}) as Partial<Record<UtilityCategory, ProviderSuggestion[]>>;
                 setSuggestionsByCategory((prev) => {
@@ -539,6 +574,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 });
             } catch (error) {
                 console.error('Failed to load suggestions:', error);
+                observeSuggestionFailure(typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'network');
                 setSuggestionsByCategory((prev) => {
                     const next = { ...prev };
                     categoriesToFetch.forEach((cat) => {
@@ -556,7 +592,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 });
             }
         })();
-    }, [currentStep, utilityIndex, visibleUtilities, token, isDemo, suggestionsByCategory, loadingSuggestions]);
+    }, [currentStep, utilityIndex, visibleUtilities, token, isDemo, suggestionsByCategory, loadingSuggestions, observer]);
 
     useEffect(() => {
         setState((prev) => {
@@ -639,6 +675,48 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         });
     }, [currentStep, isDemo, isTestDrive, utilityIndex, visibleUtilities, state.packet_mode, currentAdvancedModule]);
 
+    // The step on screen as an allowlisted label; null while there is nothing to observe.
+    const observedStep = (() => {
+        if (terminalNotice) return null;
+        if (currentStep === Step.WELCOME) return { step: 'welcome' as const };
+        if (currentStep === Step.HOME_BASICS) return { step: 'home_basics' as const };
+        if (currentStep === Step.UTILITIES) {
+            const category = visibleUtilities[utilityIndex];
+            return category ? { step: 'utility' as const, category } : null;
+        }
+        if (currentStep === Step.ADVANCED_DETAILS) {
+            return currentAdvancedModule ? { step: 'advanced' as const, section: currentAdvancedModule } : null;
+        }
+        if (currentStep === Step.REVIEW) return { step: 'review' as const };
+        return { step: 'success' as const };
+    })();
+    const observedStepKey = observedStep
+        ? [observedStep.step, 'category' in observedStep ? observedStep.category : 'section' in observedStep ? observedStep.section : ''].join(':')
+        : null;
+
+    // One view per arrival at a step; re-renders of the same step are not views.
+    useEffect(() => {
+        if (skipStepObservationRef.current) {
+            skipStepObservationRef.current = false;
+            return;
+        }
+        if (!observedStep || !observedStepKey || observedStepKeyRef.current === observedStepKey) return;
+        observedStepKeyRef.current = observedStepKey;
+        stepStartedAtRef.current = Date.now();
+        observer.observe({ type: 'seller_step_viewed', ...observedStep, nav: navigationMode });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [observedStepKey, observer]);
+
+    const observeStepCompleted = () => {
+        if (!observedStep || observedStep.step === 'review' || observedStep.step === 'success') return;
+        observer.observe({
+            type: 'seller_step_completed',
+            ...observedStep,
+            nav: navigationMode,
+            duration: durationBucket(Date.now() - stepStartedAtRef.current),
+        });
+    };
+
     const totalUtilities = visibleUtilities.length;
     const totalAdvancedSteps = orderedAdvancedModules.length;
     // Step counter: 1 (basics) + N utilities + M advanced + 1 (review)
@@ -697,6 +775,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
     };
 
     const handleNext = () => {
+        observeStepCompleted();
         if (currentStep === Step.WELCOME) {
             setCurrentStep(Step.HOME_BASICS);
         } else if (currentStep === Step.HOME_BASICS) {
@@ -881,6 +960,23 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             : { key: createSubmissionKey(), digest };
         if (attempt !== submissionAttempt) setSubmissionAttempt(attempt);
 
+        submissionAttemptCountRef.current += 1;
+        const attemptNumber = Math.min(submissionAttemptCountRef.current, SELLER_OBSERVATION_MAX_ATTEMPT);
+        const submissionStartedAt = Date.now();
+        observer.observe({ type: 'seller_submission_attempted', attempt: attemptNumber });
+        const observeSubmissionFailure = (
+            errorCode: ReturnType<typeof errorCodeForStatus> | 'already_submitted' | 'stale_session',
+            status?: number
+        ) => {
+            observer.observe({
+                type: 'seller_submission_failed',
+                attempt: attemptNumber,
+                error_code: errorCode,
+                ...(status && status >= 400 && status <= 599 ? { status } : {}),
+                duration: durationBucket(Date.now() - submissionStartedAt),
+            });
+        };
+
         try {
             const response = await fetch(`/api/seller/${token}`, {
                 method: 'POST',
@@ -897,6 +993,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                 : null;
             if (refusal === 'ALREADY_SUBMITTED' || refusal === 'STALE_SESSION') {
                 // These answers can never be accepted, so they are not kept.
+                observeSubmissionFailure(refusal === 'ALREADY_SUBMITTED' ? 'already_submitted' : 'stale_session', 409);
                 clearDraft();
                 setTerminalNotice(refusal === 'ALREADY_SUBMITTED' ? 'submitted' : 'stale');
                 setSubmitting(false);
@@ -928,6 +1025,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     status: response.status,
                     error: errorBody,
                 });
+                observeSubmissionFailure(errorCodeForStatus(response.status), response.status);
                 const kind: 'server' | 'rate_limit' =
                     response.status === 429 ? 'rate_limit' : 'server';
                 const message = response.status === 429
@@ -939,6 +1037,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         } catch (err) {
             console.error('Failed to submit form:', err);
             const isNetwork = typeof navigator !== 'undefined' && navigator.onLine === false;
+            observeSubmissionFailure(isNetwork ? 'offline' : 'network');
             setSubmitError({
                 kind: isNetwork ? 'network' : 'unknown',
                 message: isNetwork
@@ -1030,6 +1129,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                         suggestions={suggestionsByCategory[visibleUtilities[utilityIndex]] || []}
                         loadingSuggestions={!!loadingSuggestions[visibleUtilities[utilityIndex]] && !Object.prototype.hasOwnProperty.call(suggestionsByCategory, visibleUtilities[utilityIndex])}
                         token={token}
+                        observer={observer}
+                        suggestionsUnavailable={!!suggestionLoadFailed[visibleUtilities[utilityIndex]]}
                         collectElectricMeterNumber={collectElectricMeterNumber}
                         isReviewEdit={navigationMode === 'review_edit'}
                         onNoService={visibleUtilities[utilityIndex] === 'trash' ? declineTrashService : undefined}

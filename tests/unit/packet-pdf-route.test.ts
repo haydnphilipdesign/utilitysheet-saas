@@ -11,13 +11,35 @@ vi.mock('@/lib/pdf/packet-attachment', () => ({
 }));
 
 import { GET } from '@/app/api/packet/[token]/pdf/route';
+import * as rateLimits from '@/lib/rate-limit';
+import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 
 beforeEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
 });
 
 describe('GET /api/packet/[token]/pdf', () => {
+    it.each([['limited', 429], ['unavailable', 503]] as const)('preserves %s enforcement before rendering', async (reason, status) => {
+        vi.spyOn(rateLimits, 'checkRateLimit').mockResolvedValue({ success: false, limit: 5, remaining: 0, reset: 12345, reason });
+        const response = await GET(new Request('http://localhost/api/packet/synthetic-secret/pdf'), { params: Promise.resolve({ token: 'synthetic-secret' }) });
+        expect(response.status).toBe(status);
+        expect(createPacketPdfAttachmentForPublicTokenMock).not.toHaveBeenCalled();
+    });
+    it('preserves generic download failure without logging exception or URL capability', async () => {
+        const sink = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const privateText = '987 Sentinel Street SellerSentinel seller@example.test token-sentinel password-sentinel postgres://sentinel';
+        createPacketPdfAttachmentForPublicTokenMock.mockRejectedValueOnce(new Error(privateText));
+        const response = await GET(new Request('http://localhost/api/packet/token-sentinel/pdf?password=password-sentinel'), { params: Promise.resolve({ token: 'token-sentinel' }) });
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'Failed to generate PDF' });
+        expect(sink).toHaveBeenCalledWith('[diagnostic] packet_pdf_failed', { errorName: 'Error', errorFamily: 'unclassified' });
+        expect(JSON.stringify(sink.mock.calls)).not.toContain(privateText);
+        sink.mockRestore();
+    });
+
     it('returns a PDF attachment for submitted unlocked packets', async () => {
+        const limiter = vi.spyOn(rateLimits, 'checkRateLimit');
         const content = Buffer.from('fake-pdf-content');
         createPacketPdfAttachmentForPublicTokenMock.mockResolvedValue({
             status: 'attached',
@@ -33,6 +55,7 @@ describe('GET /api/packet/[token]/pdf', () => {
         });
 
         expect(response.status).toBe(200);
+        expect(limiter).toHaveBeenCalledWith(rateLimits.packetPdfRatelimit, capabilityRateLimitIdentifier('packet-pdf', 'token:anonymous'), expect.anything());
         expect(response.headers.get('content-type')).toBe('application/pdf');
         expect(response.headers.get('content-disposition')).toContain('utility-info-sheet-main.pdf');
         expect(Buffer.from(await response.arrayBuffer())).toEqual(content);

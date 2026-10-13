@@ -16,7 +16,7 @@ export type SqlStatement = { text: string; params: unknown[] };
 export type SqlRow = Record<string, unknown>;
 
 export interface StatementExecutor {
-    run(statement: SqlStatement): Promise<SqlRow[]>;
+    run(statement: SqlStatement, options?: { signal?: AbortSignal }): Promise<SqlRow[]>;
     /** Runs every statement in order inside one transaction; returns one row set per statement. */
     transaction(statements: SqlStatement[]): Promise<SqlRow[][]>;
 }
@@ -34,8 +34,10 @@ export function getStatementExecutor(): StatementExecutor {
     const db = sql;
 
     return {
-        async run(statement) {
-            return (await db.query(statement.text, statement.params)) as SqlRow[];
+        async run(statement, options) {
+            return (await (options?.signal
+                ? db.query(statement.text, statement.params, { fetchOptions: { signal: options.signal } })
+                : db.query(statement.text, statement.params))) as SqlRow[];
         },
         async transaction(statements) {
             const results = await db.transaction(

@@ -20,15 +20,16 @@ export type FormTelemetry = {
     multiFormUsers: number;
 };
 export type EventTelemetry = { event: string; count: number; requests: number };
-export type AiTelemetry = { feature: string; status: string; runs: number; cached: number; freshLatencyMs: number | null };
-/** Fresh runs only. `measuredRuns` are the ones that carry usage; the totals cover those. */
+export type AiTelemetry = { feature: string; status: string; runs: number; cached: number; model: string | null; promptVersion: string | null; freshLatencyMs: number | null; freshSamples: number; freshP50Ms: number | null; freshP95Ms: number | null };
+/** Fresh runs only. `measuredRuns` carry any token metadata; each metric has its own reporting count. */
 export type AiUsageTelemetry = {
-    feature: string; freshRuns: number; measuredRuns: number; passes: number; searchQueries: number;
-    promptTokens: number; outputTokens: number; thinkingTokens: number; toolPromptTokens: number;
+    feature: string; freshRuns: number; measuredRuns: number; passes: number; searchQueries: number | null; searchMeasuredRuns: number; searchZeroRuns: number;
+    promptTokens: number | null; outputTokens: number | null; thinkingTokens: number | null; toolPromptTokens: number | null;
+    promptMeasuredRuns: number; outputMeasuredRuns: number; thinkingMeasuredRuns: number; toolPromptMeasuredRuns: number;
     timeouts: number; otherFailures: number;
 };
-/** Submitted provider entries by the first suggestion list the seller was shown for that utility. */
-export type AiAcceptanceTelemetry = { shown: string; entries: number; accepted: number };
+/** Current submitted provider entries by first recorded suggestion result; no browser render acknowledgment. */
+export type AiAcceptanceTelemetry = { served: string; entries: number; accepted: number };
 
 export type UsageTelemetry = {
     created: number; opened: number; completed: number; completedWithoutOpen: number;
@@ -177,26 +178,31 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
             GROUP BY e.event_type ORDER BY count DESC, e.event_type LIMIT 50
         `,
         sql`
-            SELECT g.feature, g.status, COUNT(*) AS runs,
+            SELECT g.feature, g.status, g.model, g.prompt_version, COUNT(*) AS runs,
                 COUNT(*) FILTER (WHERE g.cache_hit) AS cached,
-                ROUND(AVG(g.latency_ms) FILTER (WHERE g.cache_hit = FALSE)) AS fresh_latency_ms
+                ROUND(AVG(g.latency_ms) FILTER (WHERE g.cache_hit = FALSE AND g.latency_ms >= 0)) AS fresh_latency_ms,
+                COUNT(*) FILTER (WHERE g.cache_hit = FALSE AND g.latency_ms >= 0) AS fresh_samples,
+                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY g.latency_ms) FILTER (WHERE g.cache_hit = FALSE AND g.latency_ms >= 0) AS fresh_p50_ms,
+                PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY g.latency_ms) FILTER (WHERE g.cache_hit = FALSE AND g.latency_ms >= 0) AS fresh_p95_ms
             FROM ai_generation_runs g
             JOIN requests r ON r.id = g.request_id
             JOIN accounts a ON a.id = r.account_id AND a.role = 'user'
             WHERE g.created_at >= NOW() - ${windowDays} * INTERVAL '1 day'
                 AND r.deleted_at IS NULL AND COALESCE(r.is_demo, FALSE) = FALSE
-            GROUP BY g.feature, g.status ORDER BY g.feature, g.status
+            GROUP BY g.feature, g.status, g.model, g.prompt_version ORDER BY g.feature, g.status, g.model, g.prompt_version
         `,
-        // Cost follows every fresh run, so this one is not limited to customer requests.
+        // Usage covers all recorded fresh runs; these partial totals are not a billing ledger.
         sql`
             SELECT g.feature, COUNT(*) AS fresh_runs,
-                COUNT(*) FILTER (WHERE g.prompt_tokens IS NOT NULL OR g.search_query_count IS NOT NULL) AS measured_runs,
+                COUNT(*) FILTER (WHERE g.prompt_tokens IS NOT NULL OR g.output_tokens IS NOT NULL OR g.thinking_tokens IS NOT NULL OR g.tool_prompt_tokens IS NOT NULL) AS measured_runs,
                 COALESCE(SUM(g.attempt_count), 0) AS passes,
-                COALESCE(SUM(g.search_query_count), 0) AS search_queries,
-                COALESCE(SUM(g.prompt_tokens), 0) AS prompt_tokens,
-                COALESCE(SUM(g.output_tokens), 0) AS output_tokens,
-                COALESCE(SUM(g.thinking_tokens), 0) AS thinking_tokens,
-                COALESCE(SUM(g.tool_prompt_tokens), 0) AS tool_prompt_tokens,
+                SUM(g.search_query_count) AS search_queries,
+                COUNT(g.search_query_count) AS search_measured_runs,
+                COUNT(*) FILTER (WHERE g.search_query_count = 0) AS search_zero_runs,
+                SUM(g.prompt_tokens) AS prompt_tokens, COUNT(g.prompt_tokens) AS prompt_measured_runs,
+                SUM(g.output_tokens) AS output_tokens, COUNT(g.output_tokens) AS output_measured_runs,
+                SUM(g.thinking_tokens) AS thinking_tokens, COUNT(g.thinking_tokens) AS thinking_measured_runs,
+                SUM(g.tool_prompt_tokens) AS tool_prompt_tokens, COUNT(g.tool_prompt_tokens) AS tool_prompt_measured_runs,
                 COUNT(*) FILTER (WHERE g.error_kind = 'timeout') AS timeouts,
                 COUNT(*) FILTER (WHERE g.error_kind IS NOT NULL AND g.error_kind <> 'timeout') AS other_failures
             FROM ai_generation_runs g
@@ -205,20 +211,21 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
         `,
         sql`
             WITH live AS (
-                SELECT r.id FROM requests r JOIN accounts a ON a.id = r.account_id AND a.role = 'user'
+                SELECT r.id, r.metered_at FROM requests r JOIN accounts a ON a.id = r.account_id AND a.role = 'user'
                 WHERE r.deleted_at IS NULL AND COALESCE(r.is_demo, FALSE) = FALSE
                     AND r.metered_at >= NOW() - ${windowDays} * INTERVAL '1 day'
-            ), shown AS (
-                SELECT DISTINCT ON (g.request_id, g.category) g.request_id, g.category, COALESCE(g.source, 'unknown') AS shown
+            ), served AS (
+                SELECT DISTINCT ON (g.request_id, g.category) g.request_id, g.category, COALESCE(g.source, 'unknown') AS served
                 FROM ai_generation_runs g JOIN live r ON r.id = g.request_id
-                WHERE g.feature = 'provider_suggestions'
+                WHERE g.feature = 'provider_suggestions' AND g.created_at <= r.metered_at
                 ORDER BY g.request_id, g.category, g.created_at, g.id
             )
-            SELECT s.shown, COUNT(*) AS entries,
+            SELECT COALESCE(s.served, 'unrecorded') AS served, COUNT(*) AS entries,
                 COUNT(*) FILTER (WHERE u.entry_mode = 'suggested_confirmed') AS accepted
-            FROM utility_entries u JOIN shown s ON s.request_id = u.request_id AND s.category = u.category
+            FROM utility_entries u JOIN live r ON r.id = u.request_id
+            LEFT JOIN served s ON s.request_id = u.request_id AND s.category = u.category
             WHERE u.entry_mode IN ('suggested_confirmed', 'search_selected', 'free_text')
-            GROUP BY s.shown ORDER BY entries DESC, s.shown
+            GROUP BY COALESCE(s.served, 'unrecorded') ORDER BY entries DESC, served
         `,
         getUsageTelemetry(windowDays),
     ]);
@@ -233,14 +240,14 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
     return {
         days: windowDays, forms, usage,
         events: eventRows.map((e) => ({ event: String(e.event), count: Number(e.count), requests: Number(e.requests) })) as EventTelemetry[],
-        ai: aiRows.map((g) => ({ feature: String(g.feature), status: String(g.status), runs: Number(g.runs), cached: Number(g.cached), freshLatencyMs: g.fresh_latency_ms == null ? null : Number(g.fresh_latency_ms) })) as AiTelemetry[],
+        ai: aiRows.map((g) => ({ feature: String(g.feature), status: String(g.status), runs: Number(g.runs), cached: Number(g.cached), model: g.model == null ? null : String(g.model), promptVersion: g.prompt_version == null ? null : String(g.prompt_version), freshSamples: Number(g.fresh_samples), freshP50Ms: g.fresh_p50_ms == null ? null : Number(g.fresh_p50_ms), freshP95Ms: g.fresh_p95_ms == null ? null : Number(g.fresh_p95_ms), freshLatencyMs: g.fresh_latency_ms == null ? null : Number(g.fresh_latency_ms) })) as AiTelemetry[],
         aiUsage: aiUsageRows.map((g) => ({
             feature: String(g.feature), freshRuns: Number(g.fresh_runs), measuredRuns: Number(g.measured_runs),
-            passes: Number(g.passes), searchQueries: Number(g.search_queries),
-            promptTokens: Number(g.prompt_tokens), outputTokens: Number(g.output_tokens),
-            thinkingTokens: Number(g.thinking_tokens), toolPromptTokens: Number(g.tool_prompt_tokens),
+            passes: Number(g.passes), searchQueries: g.search_queries == null ? null : Number(g.search_queries), searchMeasuredRuns: Number(g.search_measured_runs), searchZeroRuns: Number(g.search_zero_runs),
+            promptTokens: g.prompt_tokens == null ? null : Number(g.prompt_tokens), promptMeasuredRuns: Number(g.prompt_measured_runs), outputTokens: g.output_tokens == null ? null : Number(g.output_tokens), outputMeasuredRuns: Number(g.output_measured_runs),
+            thinkingTokens: g.thinking_tokens == null ? null : Number(g.thinking_tokens), thinkingMeasuredRuns: Number(g.thinking_measured_runs), toolPromptTokens: g.tool_prompt_tokens == null ? null : Number(g.tool_prompt_tokens), toolPromptMeasuredRuns: Number(g.tool_prompt_measured_runs),
             timeouts: Number(g.timeouts), otherFailures: Number(g.other_failures),
         })) as AiUsageTelemetry[],
-        aiAcceptance: aiAcceptanceRows.map((g) => ({ shown: String(g.shown), entries: Number(g.entries), accepted: Number(g.accepted) })) as AiAcceptanceTelemetry[],
+        aiAcceptance: aiAcceptanceRows.map((g) => ({ served: String(g.served), entries: Number(g.entries), accepted: Number(g.accepted) })) as AiAcceptanceTelemetry[],
     };
 }

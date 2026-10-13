@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { createHash } from 'crypto';
 import { buildLocationContext, parseAddressWithConfidence } from '@/lib/address/location-parser';
 import {
@@ -259,7 +260,7 @@ async function persistContactTelemetry(params: {
         });
     } catch (error) {
         if (process.env.NODE_ENV !== 'production') {
-            console.warn('[Contact] Failed to persist AI telemetry:', error);
+            logDiagnostic('warn', 'contact_telemetry_failed', {}, error);
         }
     }
 }
@@ -292,7 +293,7 @@ export async function resolveContact(
     await persistContactTelemetry({ context, contact, lookup, latencyMs: Date.now() - startedAt });
 
     if (contact) {
-        console.log(`[Contact] Got AI contact info for ${providerNameOrId}`);
+        logDiagnostic('log', 'contact_resolved', { category: context?.category });
     }
 
     // Cache result (including null) to avoid repeated lookups

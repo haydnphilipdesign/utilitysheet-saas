@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { z } from 'zod';
 import { ProviderSuggestion, UtilityCategory } from '@/types';
 import {
@@ -140,6 +141,7 @@ interface AiPassResult {
 interface PassTally {
     usage: AiRunUsage | null;
     errorKind: GeminiFailureKind | null;
+    groundingIncomplete?: boolean;
 }
 
 function addCount(total: number | null, next: number | null): number | null {
@@ -149,15 +151,25 @@ function addCount(total: number | null, next: number | null): number | null {
 
 function tallyPass(tally: PassTally, pass: AiPassResult): void {
     tally.errorKind = tally.errorKind ?? pass.errorKind;
-    if (!pass.usage) return;
+    if (!pass.usage) {
+        tally.groundingIncomplete = true;
+        if (tally.usage) {
+            tally.usage.searchQueryCount = null;
+            tally.usage.sourceCount = null;
+        }
+        return;
+    }
     const total = tally.usage;
+    const first = total === null;
     tally.usage = {
         promptTokens: addCount(total?.promptTokens ?? null, pass.usage.promptTokens),
         outputTokens: addCount(total?.outputTokens ?? null, pass.usage.outputTokens),
         thinkingTokens: addCount(total?.thinkingTokens ?? null, pass.usage.thinkingTokens),
         toolPromptTokens: addCount(total?.toolPromptTokens ?? null, pass.usage.toolPromptTokens),
-        searchQueryCount: addCount(total?.searchQueryCount ?? null, pass.usage.searchQueryCount),
-        sourceCount: addCount(total?.sourceCount ?? null, pass.usage.sourceCount),
+        searchQueryCount: tally.groundingIncomplete || pass.usage.searchQueryCount === null || (!first && total.searchQueryCount === null)
+            ? null : (total?.searchQueryCount ?? 0) + pass.usage.searchQueryCount,
+        sourceCount: tally.groundingIncomplete || pass.usage.sourceCount === null || (!first && total.sourceCount === null)
+            ? null : (total?.sourceCount ?? 0) + pass.usage.sourceCount,
     };
 }
 
@@ -181,11 +193,6 @@ function parseAddress(address: string): ParsedAddress {
         city: parsed.city,
         zip: parsed.zip,
     };
-}
-
-function getNonPiiLocationContext(address: string): { label: string; lines: string[] } {
-    const parsed = parseAddressWithConfidence(address);
-    return buildLocationContext(parsed);
 }
 
 const suggestionSchema = z.object({
@@ -653,11 +660,12 @@ function logSuggestionOutcome(outcome: SuggestionOutcome): void {
     const enableTelemetry = process.env.NODE_ENV !== 'production' || process.env.SUGGESTIONS_LOG_TELEMETRY === 'true';
     if (!enableTelemetry) return;
 
-    const sanitized = {
-        ...outcome,
-        localityCity: null,
-    };
-    console.log('[Suggestions] outcome', sanitized);
+    logDiagnostic('log', 'suggestion_outcome', {
+        category: outcome.category, source: outcome.source,
+        reasonCode: outcome.reasonCode, upstreamReasonCode: outcome.upstreamReasonCode,
+        attemptCount: outcome.attemptCount, latencyMs: outcome.latencyMs,
+        suggestionCount: outcome.suggestionCount, failureKind: outcome.errorKind,
+    });
 }
 
 function getTelemetryStatus(outcome: SuggestionOutcome): AiTelemetryStatus {
@@ -718,7 +726,7 @@ async function persistSuggestionTelemetry(params: {
         });
     } catch (error) {
         if (process.env.NODE_ENV !== 'production') {
-            console.warn('[Suggestions] Failed to persist AI telemetry:', error);
+            logDiagnostic('warn', 'suggestion_telemetry_failed', {}, error);
         }
     }
 }
@@ -1488,12 +1496,8 @@ export async function getSuggestions(
     }
 
     const requestPromise = (async () => {
-        const location = getNonPiiLocationContext(address);
         const result = await runSuggestionPipeline(address, category, context);
         const suggestions = result.suggestions;
-        if (process.env.NODE_ENV !== 'production' || process.env.SUGGESTIONS_LOG_TELEMETRY === 'true') {
-            console.log(`[Suggestions] ${suggestions.length} suggestions for ${category} (${location.lines.join(', ')})`);
-        }
 
         await setInCache(
             cacheKey,

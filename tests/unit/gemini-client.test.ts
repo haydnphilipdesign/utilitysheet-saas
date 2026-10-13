@@ -108,11 +108,34 @@ describe('gemini-client grounding config', () => {
                 outputTokens: null,
                 thinkingTokens: null,
                 toolPromptTokens: null,
-                searchQueryCount: 0,
+                searchQueryCount: null,
                 sourceCount: 1,
             },
             failureKind: null,
         });
+    });
+
+    it.each([
+        [undefined, null, null],
+        [{ webSearchQueries: [], groundingChunks: [] }, 0, 0],
+        [{ webSearchQueries: ['synthetic query'] }, 1, null],
+    ])('distinguishes omitted grounding metadata from explicit empty arrays: %j', async (groundingMetadata, queries, sources) => {
+        generateContentMock.mockResolvedValue({ text: '{}', candidates: [{
+            content: { parts: [{ text: '{}' }] }, groundingMetadata,
+        }] });
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        expect((await generateJSONWithMeta('prompt', { responseJsonSchema: {} })).usage)
+            .toMatchObject({ searchQueryCount: queries, sourceCount: sources });
+    });
+
+    it('does not call partially covered candidates complete grounding metadata', async () => {
+        generateContentMock.mockResolvedValue({ text: '{}', candidates: [
+            { content: { parts: [{ text: '{}' }] }, groundingMetadata: { webSearchQueries: ['fixture'], groundingChunks: [] } },
+            { content: { parts: [{ text: '{}' }] } },
+        ] });
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        expect((await generateJSONWithMeta('prompt', { responseJsonSchema: {} })).usage)
+            .toMatchObject({ searchQueryCount: null, sourceCount: null });
     });
 
     it('reports tokens, search queries and distinct sources of the answer', async () => {
@@ -165,7 +188,7 @@ describe('gemini-client grounding config', () => {
         expect(result).toMatchObject({
             failure: 'parse_error',
             failureKind: null,
-            usage: { promptTokens: 10, outputTokens: 3, searchQueryCount: 0 },
+            usage: { promptTokens: 10, outputTokens: 3, searchQueryCount: null },
         });
     });
 
@@ -267,7 +290,7 @@ describe('gemini-client grounding config', () => {
         expect(modelParams?.model).toBe('gemini-3.1-flash-tts-preview');
         expect(modelParams?.config.thinkingConfig).toBeUndefined();
         expect(warnSpy).toHaveBeenCalledWith(
-            '[Gemini] GEMINI_THINKING_LEVEL is set, but "gemini-3.1-flash-tts-preview" does not appear to support thinkingConfig. Omitting thinkingConfig.'
+            '[diagnostic] gemini_thinking_unsupported', {}
         );
     });
 
@@ -280,7 +303,7 @@ describe('gemini-client grounding config', () => {
 
         expect(modelParams?.config.thinkingConfig).toBeUndefined();
         expect(warnSpy).toHaveBeenCalledWith(
-            '[Gemini] Ignoring invalid GEMINI_THINKING_LEVEL="turbo". Expected one of: minimal, low, medium, high.'
+            '[diagnostic] gemini_invalid_thinking_level', {}
         );
     });
 });
@@ -305,6 +328,33 @@ describe('gemini-client retry behavior', () => {
 
     afterEach(() => {
         vi.useRealTimers();
+    });
+
+    it.each([400, 429, 503])('preserves retries and safe status for %s without provider text', async status => {
+        const sinks = ['log', 'warn', 'error'].map(level => vi.spyOn(console, level as 'log' | 'warn' | 'error').mockImplementation(() => undefined));
+        generateContentMock.mockRejectedValue({ status, name: 'SellerSentinel', message: '987 Sentinel Street seller@example.test token-sentinel password-sentinel postgres://sentinel', code: 'token-sentinel', error: { message: 'password-sentinel' } });
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        const pending = generateJSONWithMeta('prompt', { responseJsonSchema: {} });
+        await vi.runAllTimersAsync();
+        expect(await pending).toMatchObject({ failure: 'provider_error', failureKind: status === 429 ? 'rate_limited' : 'api_error' });
+        expect(generateContentMock).toHaveBeenCalledTimes(status === 400 ? 1 : 3);
+        const logged = JSON.stringify(sinks.flatMap(sink => sink.mock.calls));
+        for (const sentinel of ['Sentinel', 'seller@example.test', 'token-sentinel', 'password-sentinel', 'postgres://sentinel']) expect(logged).not.toContain(sentinel);
+        expect(logged).toContain('gemini_api_failed');
+        expect(logged).toContain(String(status));
+        if (status !== 400) expect(logged).toContain('gemini_retry');
+        sinks.forEach(sink => sink.mockRestore());
+    });
+
+    it('keeps malformed provider output out of parse diagnostics', async () => {
+        const sink = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const privateText = '987 Sentinel Street SellerSentinel seller@example.test token-sentinel password-sentinel postgres://sentinel';
+        generateContentMock.mockResolvedValue({ candidates: [{}], text: privateText });
+        const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
+        expect(await generateJSONWithMeta('prompt', { responseJsonSchema: {} })).toMatchObject({ data: null, failure: 'parse_error' });
+        expect(sink).toHaveBeenCalledWith('[diagnostic] gemini_parse_failed', { errorName: 'SyntaxError', errorFamily: 'unclassified' });
+        expect(JSON.stringify(sink.mock.calls)).not.toContain(privateText);
+        sink.mockRestore();
     });
 
     it('does not retry non-retryable 400 errors', async () => {

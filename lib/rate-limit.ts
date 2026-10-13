@@ -271,6 +271,24 @@ export const organizationInviteLookupRatelimit: RateLimitPolicy = {
     prefix: 'ratelimit:org-invite-lookup',
 };
 
+/**
+ * Rate limiter for seller diagnostic observations (public seller link)
+ * Limit: 60 batches per minute per identifier (token + IP)
+ */
+export const sellerObservationRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(60, "60 s"),
+            analytics: true,
+            prefix: "ratelimit:seller-observation",
+        })
+        : null,
+    limit: 60,
+    windowMs: 60 * 1000,
+    prefix: 'ratelimit:seller-observation',
+};
+
 const memoryRateLimit = new Map<string, { count: number; resetAt: number }>();
 
 /**
@@ -306,6 +324,16 @@ export async function checkRateLimit(
 
     if (policy.limiter) {
         const result = await policy.limiter.limit(identifier);
+        // Upstash's built-in timeout returns success=true without enforcement.
+        if (result.reason === 'timeout') {
+            return {
+                success: false,
+                limit: policy.limit,
+                remaining: 0,
+                reset: Math.ceil((Date.now() + policy.windowMs) / 1000),
+                reason: 'unavailable',
+            };
+        }
         return {
             success: result.success,
             limit: result.limit,

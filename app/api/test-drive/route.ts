@@ -1,3 +1,4 @@
+import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
 import { formRequestFields } from '@/lib/seller-forms/config';
 import { NextResponse } from 'next/server';
 
@@ -19,6 +20,8 @@ import { stackServerApp } from '@/lib/stack/server';
 import { buildTestDriveState, TEST_DRIVE_PROPERTY_ADDRESS, TEST_DRIVE_SELLER_NAME } from '@/lib/test-drive/service';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import type { Request as StoredRequest } from '@/types';
+
+const recordAuxiliaryEvent = auxiliaryEventWriter(createEventLog);
 
 export const runtime = 'nodejs';
 
@@ -134,19 +137,15 @@ export async function POST(_request: Request) {
         }
 
         if (result.created) {
-            try {
-                await createEventLog({
-                    requestId: result.request.id,
-                    eventType: 'request_created',
-                    eventData: {
-                        actor: 'agent',
-                        is_demo: true,
-                        source: 'self_serve_test_drive',
-                    },
-                });
-            } catch (eventError) {
-                console.error('Failed to record test-drive creation:', eventError);
-            }
+            await recordAuxiliaryEvent({
+                requestId: result.request.id,
+                eventType: 'request_created',
+                eventData: {
+                    actor: 'agent',
+                    is_demo: true,
+                    source: 'self_serve_test_drive',
+                },
+            });
 
             let invitationSucceeded = false;
             try {
@@ -166,17 +165,13 @@ export async function POST(_request: Request) {
                 console.error('Failed to send test-drive invitation:', emailError);
             }
 
-            try {
-                await createEventLog({
-                    requestId: result.request.id,
-                    eventType: invitationSucceeded
-                        ? 'test_drive_invitation_succeeded'
-                        : 'test_drive_invitation_failed',
-                    eventData: { recipient: 'authenticated_verified_email' },
-                });
-            } catch (eventError) {
-                console.error('Failed to record test-drive invitation outcome:', eventError);
-            }
+            await recordAuxiliaryEvent({
+                requestId: result.request.id,
+                eventType: invitationSucceeded
+                    ? 'test_drive_invitation_succeeded'
+                    : 'test_drive_invitation_failed',
+                eventData: { recipient: 'authenticated_verified_email' },
+            });
         }
 
         return NextResponse.json(

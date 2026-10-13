@@ -14,6 +14,33 @@ beforeEach(() => {
 });
 
 describe('growth attribution', () => {
+    it('removes capabilities, free-text campaign values and unknown properties from old storage and posted data', async () => {
+        localStorage.setItem(GROWTH_ATTRIBUTION_STORAGE_KEY, JSON.stringify({
+            source: 'facebook', medium: 'synthetic-secret', campaign: '123 Sentinel Street',
+            content: 'private-account', referralCode: null,
+            landingPath: '/s/synthetic-secret?password=synthetic-password#private', token: 'synthetic-secret',
+        }));
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 500 })));
+        await persistPendingGrowthAttribution();
+        const stored = localStorage.getItem(GROWTH_ATTRIBUTION_STORAGE_KEY)!;
+        const sent = vi.mocked(fetch).mock.calls[0][1]?.body as string;
+        expect(JSON.parse(sent)).toEqual({ source: 'facebook', medium: null, campaign: null, content: null, referralCode: null, landingPath: '/s/[token]' });
+        expect(stored).toBe(sent);
+        for (const sentinel of ['synthetic-secret', 'synthetic-password', '123 Sentinel Street', 'private-account']) expect(sent).not.toContain(sentinel);
+    });
+
+    it('does not collect arbitrary campaign text or transform malformed referrals into codes', () => {
+        expect(parseGrowthAttribution(new URL('https://utilitysheet.com/?utm_campaign=synthetic-secret&ref=seller%40example.com'))).toBeNull();
+    });
+
+    it('continues safely with malformed or blocked browser storage', () => {
+        localStorage.setItem(GROWTH_ATTRIBUTION_STORAGE_KEY, 'not-json');
+        expect(readPendingGrowthAttribution()).toBeNull();
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+        expect(() => captureFirstTouchAttribution(new URL('https://utilitysheet.com/?utm_source=facebook'))).not.toThrow();
+    });
+
     it('normalizes allow-listed campaign fields', () => {
         const result = parseGrowthAttribution(new URL(
             'https://utilitysheet.com/auth/signup?utm_source=TC%20Collective&utm_medium=facebook&utm_campaign=handoff-kit&utm_content=case-study&ref=team-slug'

@@ -26,6 +26,34 @@ beforeEach(() => {
 });
 
 describe('sendTCCompletionNotificationEmail attachments', () => {
+    it.each(['attached', 'failed', 'rejected', 'thrown'] as const)('keeps sensitive content out of logs for %s while preserving send results', async scenario => {
+        const sinks = ['log', 'warn', 'error'].map(level => vi.spyOn(console, level as 'log' | 'warn' | 'error').mockImplementation(() => undefined));
+        const privateText = '987 Sentinel Street SellerSentinel seller@example.test token-sentinel password-sentinel postgres://sentinel';
+        process.env.DEMO_EMAIL_REDIRECT_TO = 'seller@example.test';
+        const filename = 'utility-info-sheet-987-Sentinel-Street.pdf';
+        createPacketPdfAttachmentForRequestMock.mockResolvedValue(scenario === 'attached'
+            ? { status: 'attached', attachment: { filename, content: Buffer.from('synthetic-pdf'), contentType: 'application/pdf' } }
+            : { status: 'failed', error: privateText });
+        if (scenario === 'rejected') sendEmailMock.mockResolvedValue({ data: null, error: { message: privateText, name: privateText, statusCode: 422 } });
+        if (scenario === 'thrown') sendEmailMock.mockRejectedValue(new Error(privateText));
+        const result = await sendTCCompletionNotificationEmail({ tcEmail: 'demo.tc@utilitysheet.test', propertyAddress: privateText,
+            sellerName: 'SellerSentinel', requestId: '12345678-1234-1234-1234-123456789abc', attachPdf: true });
+        expect(sendEmailMock).toHaveBeenCalledTimes(1);
+        const payload = sendEmailMock.mock.calls[0][0];
+        expect(payload.to).toBe('seller@example.test');
+        expect(payload.subject).toContain(privateText);
+        if (scenario === 'attached') expect(payload.attachments[0].filename).toBe(filename);
+        else expect(payload.attachments).toBeUndefined();
+        expect(result.success).toBe(scenario === 'attached' || scenario === 'failed');
+        if (scenario === 'rejected' || scenario === 'thrown') expect(result.error).toBe(privateText);
+        const logged = JSON.stringify(sinks.flatMap(sink => sink.mock.calls));
+        for (const sentinel of ['Sentinel', 'seller@example.test', 'token-sentinel', 'password-sentinel', 'postgres://sentinel']) expect(logged).not.toContain(sentinel);
+        expect(logged).toContain('email_demo_redirect');
+        expect(logged).toContain(scenario === 'attached' ? 'email_attachment_generated' : 'email_attachment_failed');
+        if (scenario === 'rejected') expect(logged).toContain('upstream_request');
+        sinks.forEach(sink => sink.mockRestore());
+    });
+
     it('includes a PDF attachment when attachPdf is enabled and generation succeeds', async () => {
         createPacketPdfAttachmentForRequestMock.mockResolvedValue({
             status: 'attached',

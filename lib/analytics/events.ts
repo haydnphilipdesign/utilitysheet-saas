@@ -138,12 +138,8 @@ type AnalyticsEventMap = {
     to_mode: "simple" | "advanced";
     reason: string;
   };
-  advanced_packet_generated: BasePayload & {
-    request_id?: string;
-  };
-  advanced_packet_downloaded: BasePayload & {
-    token?: string;
-  };
+  advanced_packet_generated: BasePayload;
+  advanced_packet_downloaded: BasePayload;
   packet_action_clicked: BasePayload & {
     action: "copy_link" | "download_pdf" | "phone_tap" | "website_tap";
   };

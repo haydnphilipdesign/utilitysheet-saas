@@ -24,8 +24,9 @@ describe('test-drive operational exclusions', () => {
 
     it('excludes demos from admin latest work and seller-progress/abandonment reporting', () => {
         expect(source('lib/admin/index.ts')).toContain('COALESCE(r.is_demo, FALSE) = FALSE');
-        const abandonment = source('app/(admin)/admin/abandonment/page.tsx');
-        expect(abandonment.match(/COALESCE\((?:r\.)?is_demo, FALSE\) = FALSE/g)?.length).toBeGreaterThanOrEqual(6);
+        // The reader now shares one filtered population; behavior is tested against
+        // embedded PostgreSQL in telemetry-report-definitions.test.ts.
+        expect(source('lib/neon/queries/admin-seller-progress.ts')).toContain('COALESCE(r.is_demo, FALSE) = FALSE');
     });
 
     it('preserves existing activation, habit, testimonial, and referral exclusions', () => {

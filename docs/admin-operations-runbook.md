@@ -63,7 +63,7 @@ Do not work around it by asking the customer to send a reminder. Their button is
 ### 2.3 A packet PDF fails
 
 1. **Issues & Triage** shows "Sheet PDF generation failed unexpectedly" with a count. One isolated failure can be a transient browser start. Three within 15 minutes is the alert threshold.
-2. The failure is not linked to a request, because the download route only knows the packet's private link and does not store it. Use the customer's report, or the time of the failure against Vercel logs (search `[pdf][packet_attachment] failed`).
+2. The failure is not linked to a request, because the download route only knows the packet's private link and does not store it. Use the customer's report, or the time of the failure against Vercel logs (search `[diagnostic] packet_pdf_failed` or `pdf_attachment_failed`).
 3. Open the affected request in the customer's view and download the PDF yourself.
 4. If every PDF fails: check the Vercel function logs for the PDF route and recent deployments. Roll back the deployment if it started with a release.
 
@@ -88,7 +88,7 @@ Never: edit billing fields in the database by hand, or grant access to make a co
 1. **Issues & Triage, Scheduled jobs** shows last start, duration and last success for the three scheduled jobs.
    - **No runs observed yet**: monitoring has not seen it run. This is not "overdue". Expect it for up to a day after release.
    - **Finished with some failures**: it ran but some items failed. Signup reconciliation and account closure retry will try those again next run.
-   - **No success in over 26 hours**: it is overdue.
+   - **Overdue without success**: the shared `OPS_ALERT_JOB_OVERDUE_HOURS` threshold (default 26, bounded 1-336) has passed. Admin classification and alert text use the same threshold. Never observed remains unknown.
 2. Open Vercel, Cron Jobs, and check the run and its logs.
 3. Signup reconciliation can be run by hand from **Admin, Users** (Sync verified signups). It needs a reason and is audited.
 4. Account closures that exhausted retries are logged as "Account closure stuck; needs support review". Handle those individually.
@@ -157,11 +157,11 @@ The goal is to know, before you need it, how far back you can restore and how lo
 
 ## 5. Release checklist for the operational-readiness work
 
-Status as of 2026-10-05: the three migrations in 5.2 were applied to production, and the work was committed and pushed. Sections 5.4 (smoke checks), 5.5 (optional activation) and 5.6 (browser verification) have not been done. Each remaining step needs the owner's go-ahead individually.
+Status as of 2026-10-05: the three migrations in 5.2 were applied to production, and the work was committed and pushed. Sections 5.4 (smoke checks) and 5.6 (browser verification) remain unverified here. The monitor source schedule in 5.5c is complete; other optional provider settings are unverified. Each remaining step needs the owner's go-ahead individually.
 
 ### 5.1 Before anything else
 
-- [ ] Review the diff and commit it (no commit has been made).
+- [x] Original operational-readiness work was committed/pushed on 2026-10-05. Review subsequent diffs separately; local Slice 1-4 work is uncommitted and not deployed.
 - [ ] Run the checks listed in `.ai/CURRENT.md` on the committed tree.
 - [ ] Do an authenticated browser check in a safe environment (see 5.6). This has not been done.
 
@@ -190,7 +190,7 @@ Rollback: the tables are unused by the old code, so leaving them in place is har
 ### 5.3 Deploy
 
 - [ ] Push and deploy as usual. No new environment variable is required for the deploy itself.
-- [ ] No change has been made to `vercel.json`. The three existing schedules are untouched.
+- [x] Source `vercel.json` includes the three daily jobs and the 15-minute ops monitor added on owner request on 2026-10-05. Hosted configuration has not been reverified by the local telemetry slices.
 
 Behaviour changes customers can notice: the reminder button now reports "already being sent" or "could not confirm" in rare cases instead of a raw provider error. Nothing else customer-facing changes.
 
@@ -296,3 +296,7 @@ All are optional and default to off. `.env.example` is ignored by git in this re
 | `OPS_RETENTION_PRUNE_ENABLED` | `false` | Must be `true` for the monitor route to delete expired observations. |
 
 Existing variables this work relies on, unchanged: `CRON_SECRET` (monitor route), `ADMIN_WRITES_DISABLED`, `STRIPE_SECRET_KEY` (only its prefix, to choose the Stripe dashboard link mode), `RESEND_API_KEY`, `NEXT_PUBLIC_APP_URL` (link in alert text).
+
+## Local telemetry definition corrections (2026-10-13)
+
+Slice 4 changes report interpretation, not customer submission/billing behavior. AI usage labels count failed runs and expose missing token/search metadata; fresh pipeline latency is split by model/prompt with sample counts. Grounding totals are nullable, and historical zero rows remain ambiguous. Completion/activation uses first metering even after reopen, with an explicit timed legacy fallback in Growth. Seller Progress separates seller endpoint observations from operator/technical events and keeps absent evidence unknown. PDF launch diagnostics carry independent finite `mode` (Simple/Advanced) and `renderStrategy` (`print_pdf` for both current modes); filenames/content remain excluded. No schema/settings/data change, live call or deployment was performed. Monitoring coverage/stuck/partial-state improvements remain separately scoped Slice 7.

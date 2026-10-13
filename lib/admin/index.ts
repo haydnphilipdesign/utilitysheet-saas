@@ -251,7 +251,7 @@ export async function searchUsers(params: {
                 SELECT MIN(COALESCE(r.metered_at, r.last_activity_at))
                 FROM requests r
                 WHERE r.account_id = ac.id
-                  AND r.status = 'submitted'
+                  AND (r.metered_at IS NOT NULL OR (r.status = 'submitted' AND r.last_activity_at IS NOT NULL))
                   AND r.deleted_at IS NULL
                   AND COALESCE(r.is_demo, FALSE) = FALSE
             ) >= NOW() - INTERVAL '7 days'
@@ -265,7 +265,7 @@ export async function searchUsers(params: {
                 SELECT COUNT(*)
                 FROM requests r
                 WHERE r.account_id = ac.id
-                  AND r.status = 'submitted'
+                  AND (r.metered_at IS NOT NULL OR (r.status = 'submitted' AND r.last_activity_at IS NOT NULL))
                   AND r.deleted_at IS NULL
                   AND COALESCE(r.is_demo, FALSE) = FALSE
                   AND COALESCE(r.metered_at, r.last_activity_at) >= NOW() - INTERVAL '30 days'

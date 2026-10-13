@@ -1,3 +1,5 @@
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
+import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 import { NextResponse } from 'next/server';
 import { PACKET_LOCKED_MESSAGE } from '@/lib/packet/packet-data';
 import { createPacketPdfAttachmentForPublicToken } from '@/lib/pdf/packet-attachment';
@@ -14,7 +16,7 @@ export async function GET(
     try {
         const { token } = await params;
         const ip = getClientIp(request);
-        const rateLimitResult = await checkRateLimit(packetPdfRatelimit, `${token}:${ip}`, { requirePersistent: process.env.NODE_ENV === 'production' });
+        const rateLimitResult = await checkRateLimit(packetPdfRatelimit, capabilityRateLimitIdentifier('packet-pdf', `${token}:${ip}`), { requirePersistent: process.env.NODE_ENV === 'production' });
 
         if (isRateLimitUnavailable(rateLimitResult)) {
             return NextResponse.json(
@@ -84,7 +86,7 @@ export async function GET(
             outcome: 'failure',
             metadata: { reasonCode: 'route_exception', errorName: errorNameOf(error) },
         });
-        console.error('Error generating packet PDF:', error);
+        logDiagnostic('error', 'packet_pdf_failed', {}, error);
         return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
     }
 }

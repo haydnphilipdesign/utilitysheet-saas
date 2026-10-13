@@ -11,6 +11,7 @@
  * docs/admin-operations-runbook.md).
  */
 import { getStatementExecutor, type StatementExecutor } from '@/lib/neon/statements';
+import { writeAuxiliary } from '@/lib/telemetry/auxiliary-write';
 
 export type OperationalCategory = 'email' | 'pdf' | 'billing_webhook' | 'ai';
 export type OperationalOutcome = 'failure' | 'success';
@@ -67,25 +68,13 @@ export type OperationalEventInput = {
     db?: StatementExecutor;
 };
 
-function logFallback(input: OperationalEventInput, error: unknown) {
-    console.warn(JSON.stringify({
-        level: 'warn',
-        message: 'operational_event_not_recorded',
-        category: input.category,
-        code: input.code,
-        outcome: input.outcome,
-        recordErrorName: errorNameOf(error),
-        recordErrorCode: (error as { code?: unknown } | null)?.code ?? null,
-    }));
-}
-
 /**
  * Records one observation. A provider redelivery of the same event (same
  * category, provider event ID and outcome) updates the existing row, so
  * duplicate callbacks cannot inflate incident counts.
  */
 export async function recordOperationalEvent(input: OperationalEventInput): Promise<boolean> {
-    try {
+    return writeAuxiliary('operational_event', async (signal) => {
         const db = input.db ?? getStatementExecutor();
         await db.run({
             text: `
@@ -109,12 +98,9 @@ export async function recordOperationalEvent(input: OperationalEventInput): Prom
                 input.correlationId ? input.correlationId.slice(0, 200) : null,
                 JSON.stringify(sanitizeOperationalMetadata(input.metadata)),
             ],
-        });
+        }, { signal });
         return true;
-    } catch (error) {
-        logFallback(input, error);
-        return false;
-    }
+    }, false);
 }
 
 /** How often routine success is sampled as "last successful observation". */
@@ -126,7 +112,7 @@ export const SUCCESS_SAMPLE_SECONDS = 15 * 60;
  * no success for this fingerprint was sampled recently.
  */
 export async function recordOperationalSuccess(input: Omit<OperationalEventInput, 'outcome' | 'severity'>): Promise<boolean> {
-    try {
+    return writeAuxiliary('operational_success', async (signal) => {
         const db = input.db ?? getStatementExecutor();
         const fingerprint = (input.fingerprint ?? `${input.category}:${input.code}`).slice(0, 160);
         await db.run({
@@ -155,12 +141,9 @@ export async function recordOperationalSuccess(input: Omit<OperationalEventInput
                 JSON.stringify(sanitizeOperationalMetadata(input.metadata)),
                 SUCCESS_SAMPLE_SECONDS,
             ],
-        });
+        }, { signal });
         return true;
-    } catch (error) {
-        logFallback({ ...input, outcome: 'success' }, error);
-        return false;
-    }
+    }, false);
 }
 
 // ---------------------------------------------------------------------------
@@ -183,18 +166,14 @@ function countsOnly(summary: Record<string, unknown>): Record<string, number> {
 
 export async function startJobRun(jobName: JobName, db?: StatementExecutor): Promise<JobRunHandle> {
     const handle: JobRunHandle = { id: null, jobName, startedAtMs: Date.now() };
-    try {
+    return writeAuxiliary('job_start', async (signal) => {
         const rows = await (db ?? getStatementExecutor()).run({
             text: `INSERT INTO job_runs (job_name) VALUES ($1) RETURNING id`,
             params: [jobName],
-        });
-        handle.id = rows[0] ? String(rows[0].id) : null;
-    } catch (error) {
-        console.warn(JSON.stringify({
-            level: 'warn', message: 'job_run_start_not_recorded', jobName, recordErrorName: errorNameOf(error),
-        }));
-    }
-    return handle;
+        }, { signal });
+        signal.throwIfAborted();
+        return { ...handle, id: rows[0] ? String(rows[0].id) : null };
+    }, handle);
 }
 
 export async function finishJobRun(
@@ -204,7 +183,7 @@ export async function finishJobRun(
     db?: StatementExecutor
 ): Promise<void> {
     if (!handle.id) return;
-    try {
+    return writeAuxiliary('job_finish', async (signal) => {
         await (db ?? getStatementExecutor()).run({
             text: `
                 UPDATE job_runs
@@ -212,13 +191,8 @@ export async function finishJobRun(
                 WHERE id = $1::uuid
             `,
             params: [handle.id, status, Math.max(0, Date.now() - handle.startedAtMs), JSON.stringify(countsOnly(summary))],
-        });
-    } catch (error) {
-        console.warn(JSON.stringify({
-            level: 'warn', message: 'job_run_finish_not_recorded', jobName: handle.jobName, status,
-            recordErrorName: errorNameOf(error),
-        }));
-    }
+        }, { signal });
+    }, undefined);
 }
 
 // ---------------------------------------------------------------------------

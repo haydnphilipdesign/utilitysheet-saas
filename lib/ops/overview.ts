@@ -125,8 +125,12 @@ export async function getIncidentSummary(db: StatementExecutor, lookbackDays = I
 // Scheduled jobs
 // ---------------------------------------------------------------------------
 
-/** Daily jobs are overdue after 26 hours without a success. */
+/** Default daily-job grace; the shared override applies to both Admin and alerts. */
 export const JOB_OVERDUE_HOURS = 26;
+export function getJobOverdueHours(env: NodeJS.ProcessEnv = process.env): number {
+    const parsed = Number.parseInt(env.OPS_ALERT_JOB_OVERDUE_HOURS || '', 10);
+    return Number.isFinite(parsed) ? Math.min(24 * 14, Math.max(1, parsed)) : JOB_OVERDUE_HOURS;
+}
 
 export type JobHealth =
     /** Never observed: monitoring has not seen this job run. Not the same as overdue. */
@@ -173,7 +177,7 @@ export function classifyJob(input: Omit<JobStatus, 'health'>, now: Date, overdue
     return 'ok';
 }
 
-export async function getJobStatuses(db: StatementExecutor, now = new Date()): Promise<JobStatus[]> {
+export async function getJobStatuses(db: StatementExecutor, now = new Date(), overdueHours = getJobOverdueHours()): Promise<JobStatus[]> {
     const rows = await db.run({
         text: `
             SELECT j.job_name,
@@ -200,7 +204,7 @@ export async function getJobStatuses(db: StatementExecutor, now = new Date()): P
             lastSuccessAt: iso(row?.last_success_at),
             firstObservedAt: iso(row?.first_observed_at),
         };
-        return { ...base, health: classifyJob(base, now) };
+        return { ...base, health: classifyJob(base, now, overdueHours) };
     });
 }
 

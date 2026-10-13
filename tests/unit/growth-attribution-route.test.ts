@@ -17,6 +17,21 @@ import { POST } from '@/app/api/growth/attribution/route';
 beforeEach(() => vi.clearAllMocks());
 
 describe('POST /api/growth/attribution', () => {
+    it('normalizes untrusted attribution again on the server before persistence', async () => {
+        getUser.mockResolvedValue({ id: 'auth_1' });
+        ensureAccountActivation.mockResolvedValue({ account: { id: 'acct_1' } });
+        const response = await POST(new Request('http://localhost/api/growth/attribution', {
+            method: 'POST', body: JSON.stringify({
+                source: 'facebook', medium: 'synthetic-secret', campaign: '123 Sentinel Street', content: 'private-account',
+                referralCode: null, landingPath: '/packet/synthetic-secret?password=secret', token: 'synthetic-secret',
+            }),
+        }));
+        expect(response.status).toBe(204);
+        expect(saveAttribution).toHaveBeenCalledWith('acct_1', {
+            source: 'facebook', medium: null, campaign: null, content: null, referralCode: null, landingPath: '/packet/[token]',
+        });
+    });
+
     it('rejects anonymous requests', async () => {
         getUser.mockResolvedValue(null);
         const response = await POST(new Request('http://localhost/api/growth/attribution', {

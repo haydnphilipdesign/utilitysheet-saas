@@ -3,12 +3,12 @@ import { PGlite } from '@electric-sql/pglite';
 import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSchemaDatabase, pgliteTaggedSql, queryRows } from '../helpers/pglite-db';
+import { createSchemaDatabase, queryRows } from '../helpers/pglite-db';
 
 const mocks = vi.hoisted(() => ({ sql: vi.fn() }));
-vi.mock('@/lib/neon/db', () => ({ sql: mocks.sql }));
+vi.mock('@/lib/neon/db', () => ({ sql: { query: mocks.sql } }));
 
-import { createAiSuggestionRun, type CreateAiSuggestionRunInput } from '@/lib/neon/queries/ai-telemetry';
+import { createAiSuggestionRun, markAiSuggestionSelection, type CreateAiSuggestionRunInput } from '@/lib/neon/queries/ai-telemetry';
 
 // Real schema.sql in disposable embedded PostgreSQL; no environment or credentials are read.
 let db: PGlite;
@@ -42,13 +42,57 @@ const columns = async (target: PGlite) => (await target.query<{ c: string }>(`
 
 beforeAll(async () => {
     db = await createSchemaDatabase();
-    const tagged = pgliteTaggedSql(db);
-    mocks.sql.mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) => tagged(strings, ...values));
+    mocks.sql.mockImplementation((text: string, values: unknown[]) => queryRows(db, text, values));
 }, 60000);
 afterAll(async () => { await db?.close(); });
 beforeEach(async () => { await db.exec('TRUNCATE ai_generation_runs CASCADE'); });
 
 describe('AI usage telemetry storage', () => {
+    it('persists items and selection correlation through the bounded parameterized writers', async () => {
+        const accountId = '00000000-0000-4000-8000-000000000001';
+        const requestId = '00000000-0000-4000-8000-000000000002';
+        await db.exec(`
+            INSERT INTO accounts (id, email) VALUES ('${accountId}', 'fixture@example.test');
+            INSERT INTO requests (id, account_id, property_address, public_token, seller_token)
+            VALUES ('${requestId}', '${accountId}', '123 Fixture St', 'fixture-public', 'fixture-seller');
+        `);
+        const id = await createAiSuggestionRun(run({
+            requestId, accountId, suggestionCount: 1,
+            suggestions: [{ display_name: 'Fixture Electric', canonical_id: 'fixture-electric', confidence: 0.9 }],
+        }));
+        expect(id).not.toBeNull();
+        await markAiSuggestionSelection({
+            requestId, category: 'electric', selectedName: '  Fixture Electric ',
+            finalEntryMode: 'suggested_confirmed', canonicalId: 'fixture-electric', confidenceScore: 0.9,
+        });
+        expect(await queryRows(db, `SELECT run_id, rank, display_name, normalized_name, selected_by_seller,
+            final_entry_mode, final_canonical_id FROM ai_suggestion_items`)).toEqual([{
+            run_id: id, rank: 1, display_name: 'Fixture Electric', normalized_name: 'fixture electric',
+            selected_by_seller: true, final_entry_mode: 'suggested_confirmed', final_canonical_id: 'fixture-electric',
+        }]);
+    });
+
+    it('returns a telemetry fallback with one marker when item failure leaves a partial run', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        await db.exec(`
+            CREATE OR REPLACE FUNCTION test_fail_ai_item() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN RAISE EXCEPTION 'private SQL sentinel'; END $$;
+            CREATE TRIGGER test_fail_ai_item BEFORE INSERT ON ai_suggestion_items FOR EACH ROW EXECUTE FUNCTION test_fail_ai_item();
+        `);
+        try {
+            expect(await createAiSuggestionRun(run({
+                suggestionCount: 1, suggestions: [{ display_name: 'Fixture Electric', confidence: 0.9 }],
+            }))).toBeNull();
+        } finally {
+            await db.exec('DROP TRIGGER test_fail_ai_item ON ai_suggestion_items');
+        }
+        expect(await queryRows(db, 'SELECT id FROM ai_generation_runs')).toHaveLength(1);
+        expect(await queryRows(db, 'SELECT id FROM ai_suggestion_items')).toEqual([]);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify(warn.mock.calls)).not.toContain('private SQL sentinel');
+        warn.mockRestore();
+    });
+
     it('stores the usage, thinking level and failure kind of a fresh run', async () => {
         await createAiSuggestionRun(run({
             usage: { promptTokens: 1050, outputTokens: 100, thinkingTokens: null, toolPromptTokens: 2000, searchQueryCount: 3, sourceCount: 6 },

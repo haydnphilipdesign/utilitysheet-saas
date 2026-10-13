@@ -104,6 +104,59 @@ describe('POST /api/intake/[slug]/start', () => {
         vi.mocked(createEventLog).mockResolvedValue(undefined as never);
     });
 
+    it.each(['reject', 'slow'] as const)('returns a usable resume cookie and resumes the same draft when observation is %s', async (failure) => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        if (failure === 'reject') vi.mocked(createEventLog).mockRejectedValueOnce(new Error('private sentinel'));
+        else vi.mocked(createEventLog).mockImplementationOnce(() => new Promise(() => {}));
+        const response = await POST(startRequest(), { params: Promise.resolve({ slug: 'test-slug' }) });
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ sellerToken: 'seller-token-1' });
+        const cookie = response.headers.get('set-cookie')!;
+        expect(cookie).toContain('HttpOnly');
+        vi.mocked(getRequestBySellerToken).mockResolvedValueOnce({
+            id: 'req-1', account_id: 'acct-1', organization_id: null, source_form_id: savedForm.id,
+            property_address: '123 Main St, Austin, TX 78701', status: 'draft',
+        } as never);
+        const resumed = await POST(new Request('http://localhost/api/intake/test-slug/start', {
+            method: 'POST', headers: { cookie: cookie.split(';')[0] },
+            body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }),
+        }), { params: Promise.resolve({ slug: 'test-slug' }) });
+        expect(resumed.status).toBe(200);
+        expect(await resumed.json()).toEqual({ sellerToken: 'seller-token-1' });
+        expect(createRequest).toHaveBeenCalledTimes(1);
+        expect(createEventLog).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify(warn.mock.calls)).not.toContain('private sentinel');
+        warn.mockRestore();
+    });
+
+    it('retains the address and resume cookie in business output with only flags/configuration in event data', async () => {
+        const response = await nestedStart(new Request('http://localhost/api/intake/token-sentinel/forms/name-sentinel/start', {
+            method: 'POST', body: JSON.stringify({ propertyAddress: '987 Sentinel Street, Austin, tx 78701' }),
+        }), nestedParams('token-sentinel', 'name-sentinel'));
+        expect(response.status).toBe(200);
+        expect(response.headers.get('set-cookie')).toContain('HttpOnly');
+        expect(await response.json()).toEqual({ sellerToken: 'seller-token-1' });
+        expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({ propertyAddress: '987 Sentinel Street, Austin, TX 78701' }));
+        expect(vi.mocked(createEventLog).mock.calls[0][0].eventData).toEqual({
+            actor: 'seller', source: 'intake_link', address_was_canonicalized: true, street_has_number: true,
+            utility_categories: expect.any(Array), packet_mode: 'simple', advanced_modules: [], advanced_module_exclusions: {},
+        });
+        expect(JSON.stringify(vi.mocked(createEventLog).mock.calls)).not.toMatch(/Sentinel Street|token-sentinel|name-sentinel|seller-token-1/);
+    });
+
+    it('keeps database exception text out of intake failure logs and preserves the response', async () => {
+        const sink = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const privateText = '987 Sentinel Street SellerSentinel seller@example.test token-sentinel password-sentinel postgres://sentinel';
+        vi.mocked(createRequest).mockRejectedValueOnce(new Error(privateText));
+        const response = await POST(startRequest(), { params: Promise.resolve({ slug: 'token-sentinel' }) });
+        expect(response.status).toBe(500);
+        expect(await response.json()).toEqual({ error: 'We couldn’t start the form. Please try again.' });
+        expect(sink).toHaveBeenCalledWith('[diagnostic] intake_start_failed', { errorName: 'Error', errorFamily: 'unclassified' });
+        expect(JSON.stringify(sink.mock.calls)).not.toContain(privateText);
+        sink.mockRestore();
+    });
+
     it('snapshots fixed workspace, form revision, introduction and concrete question switches', async () => {
         vi.mocked(getIntakeLinkByBaseSlug).mockResolvedValue({ ...savedForm, organization_id: 'org-A' } as never);
         vi.mocked(getAccountById).mockResolvedValue({ id: savedForm.account_id, role: 'user', subscription_status: 'free', active_organization_id: 'org-B' } as never);
@@ -223,7 +276,7 @@ describe('POST /api/intake/[slug]/start', () => {
         expect(createRequest).not.toHaveBeenCalled();
     });
 
-    it('allows and logs addresses that have a street name but no house number', async () => {
+    it('allows and records flags for addresses that have a street name but no house number', async () => {
         const request = new Request('http://localhost/api/intake/test-slug/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -238,11 +291,9 @@ describe('POST /api/intake/[slug]/start', () => {
         }));
         expect(createEventLog).toHaveBeenCalledWith(expect.objectContaining({
             eventData: expect.objectContaining({
-                submitted_property_address: 'Oakwood Court, Middle Smithfield Township, PA 18302',
-                canonical_property_address: 'Oakwood Court, Middle Smithfield Township, PA 18302',
                 street_has_number: false,
             }),
-        }));
+        }), { signal: expect.any(AbortSignal) });
     });
 
     it('creates request and returns seller token for complete address', async () => {
@@ -262,12 +313,10 @@ describe('POST /api/intake/[slug]/start', () => {
         }));
         expect(createEventLog).toHaveBeenCalledWith(expect.objectContaining({
             eventData: expect.objectContaining({
-                submitted_property_address: '123 Main St, Austin, TX 78701',
-                canonical_property_address: '123 Main St, Austin, TX 78701',
                 address_was_canonicalized: false,
                 street_has_number: true,
             }),
-        }));
+        }), { signal: expect.any(AbortSignal) });
     });
 
     it('starts a request for a Free account already at its monthly limit', async () => {
@@ -317,7 +366,7 @@ describe('POST /api/intake/[slug]/start', () => {
             eventData: expect.objectContaining({
                 utility_categories: ['electric', 'water', 'internet'],
             }),
-        }));
+        }), { signal: expect.any(AbortSignal) });
     });
 
     it('returns a generic 404 for an inactive reusable form', async () => {

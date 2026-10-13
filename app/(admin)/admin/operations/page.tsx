@@ -13,7 +13,7 @@ import {
     FOLLOW_UP_PAGE_SIZE,
     INCIDENT_LOOKBACK_DAYS,
     JOB_LABELS,
-    JOB_OVERDUE_HOURS,
+    getJobOverdueHours,
     describeCollection,
     getOperationsSnapshot,
     type FollowUpCandidate,
@@ -29,7 +29,7 @@ export const dynamic = 'force-dynamic';
 const INCIDENT_LABELS: Record<string, { title: string; investigate: string }> = {
     'pdf:generation_failed': {
         title: 'Sheet PDF generation failed unexpectedly',
-        investigate: 'Open the linked request and download its PDF. If it fails again, check server logs for "[pdf][packet_attachment] failed".',
+        investigate: 'Open the linked request and download its PDF. If it fails again, check server logs for "[diagnostic] packet_pdf_failed".',
     },
     'billing_webhook:processing_failed': {
         title: 'A verified Stripe event could not be processed',
@@ -77,7 +77,7 @@ const JOB_HEALTH: Record<JobHealth, { label: string; tone: 'ok' | 'warn' | 'bad'
     ok: { label: 'Succeeded', tone: 'ok' },
     partial: { label: 'Finished with some failures', tone: 'warn' },
     failed: { label: 'Failed', tone: 'bad' },
-    overdue: { label: `No success in over ${JOB_OVERDUE_HOURS} hours`, tone: 'bad' },
+    overdue: { label: 'Overdue without success', tone: 'bad' },
     within_grace: { label: 'Observed, no success yet (within grace window)', tone: 'muted' },
     not_observed: { label: 'No runs observed yet', tone: 'muted' },
 };
@@ -341,7 +341,7 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
                     <CardHeader>
                         <CardTitle className="text-base">Scheduled jobs</CardTitle>
                         <CardDescription>
-                            The three jobs with a configured schedule. A job is overdue only after monitoring has watched it for more than {JOB_OVERDUE_HOURS} hours without a success.
+                            The three jobs with a configured schedule. A job is overdue only after monitoring has watched it for more than {getJobOverdueHours()} hours without a success.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">

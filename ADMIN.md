@@ -77,21 +77,9 @@ aggregates only; it never reads event payloads, seller answers, form names/intro
   not the count of submissions arriving during the window. NULL provenance remains unattributed.
 - **Request events** counts event occurrences and distinct requests by event type, using event time,
   including events on older requests. The top 50 types are shown. Repeated events are not unique users.
-- **AI runs** groups recorded runs by feature (suggestions, search, contact lookup) and outcome using
-  run time, counts cache hits, and averages latency across fresh runs only. Both event and AI summaries
-  require a retained, non-demo customer request; unlinked AI runs are excluded. No observations and
-  unavailable data have different states.
-- **AI usage** totals every fresh run in the window by feature, including demo and unlinked runs,
-  because cost does not depend on who asked: fresh runs, runs that recorded usage, AI passes, search
-  queries, prompt, search-result, thinking and output tokens, timeouts and other failed calls. Totals
-  cover only runs that recorded usage; runs from before `migrations-ai-usage-telemetry.sql` and
-  attempts that failed before an answer add nothing, so this is a floor, not Google's invoice.
-- **Suggestion acceptance** takes provider entries on customer requests first submitted in the
-  window, and groups them by the source of the first suggestion list recorded for that request and
-  utility (fresh AI by pass, cached, or the generic list). Accepted means the entry was picked from
-  the suggestions; the denominator also holds entries the seller searched for or typed. Entries
-  answered as unknown or not applicable, and entries with no recorded list, are left out. It is a
-  proxy for accuracy, not proof.
+- **AI runs** groups by feature, outcome, model and prompt version using run time. Average and continuous p50/p95 pipeline latency include only non-cache rows with nonnegative timings, with a timed sample count. Unknown model/prompt cohorts remain labelled unknown. Time includes retries but excludes observation persistence and full HTTP/browser time. Customer runs require retained, non-demo requests owned by user accounts; unavailable data and empty results differ.
+- **AI usage** includes every recorded fresh run, including demo/admin/unlinked runs. Each token total has its own reporting sample count; no metadata renders Unknown, measured zero renders 0. Pass counts exclude transport retries. Timeout/other-failure counts are runs with a first recorded failure, including recovered runs, not failed-call counts. Search counts are reported metadata totals with coverage, not billed searches. Old zero rows may mean omitted metadata; no historical zero reclassification is possible. Usage and token-only cost estimates are lower bounds, not invoices.
+- **Submission choices** groups current provider entries on retained customer requests first metered in the window by the first recorded suggestion result before submission. Generated/served results do not establish browser impressions or that the selected provider came from that exact list. Missing observations use an unrecorded bucket. Unknown/not-applicable entries are excluded. Corrections can change current entries; the acceptance proxy is not immutable or verified accuracy.
 
 The source is existing `intake_links`, `requests`, `event_logs`, `utility_entries` and
 `ai_generation_runs` data, queried under `lib/neon/queries/admin-telemetry.ts`. The AI usage table
@@ -100,8 +88,9 @@ unavailable" until that migration is applied. Records deleted
 through existing lifecycle policies stop contributing; this is not an immutable historical warehouse.
 Friday's saved-form release provided request attribution, but not dedicated create/duplicate/copy-link
 action history. Vercel browser analytics is a separate source and is not imported into this page.
-Growth and Seller Progress retain their existing reports. Future telemetry sections should define
-their cohort, denominator, timestamp, exclusions and privacy rules just as explicitly.
+Growth activation, acquisition and referral conversion now use retained non-demo requests with `metered_at`, regardless of current status. Habit is at least three first-metered requests in 30 days. Legacy submitted rows lacking metering use `last_activity_at` as an explicit estimate; untimed legacy rows remain unknown. Reopen/correction does not move modern activation time. Deleted records stop contributing; this is not an immutable account history. Matching activated/habitual Users filters use the same predicate.
+
+Seller Progress uses retained, non-demo user-owned requests consistently. Its last seller evidence is an allowlist of open/suggestion/search/self-link endpoint events in the current creation/reopen cycle, separate from operator/technical timestamps. Unknown observations have their own count and stay out of age buckets. Suggestion fetches are generated/served evidence, not completed browser steps. The page also shows the last step each seller's browser reported viewing, and the last reported submit problem, from the Slice 5 diagnostic observations: each request counts once at its last reported step in its current editing session, and the card states how many in-progress requests have any report. A request without a report is unknown, not stuck; reports are advisory, can be blocked or lost, and exist only for activity after this version is deployed. Fields and limits: `docs/telemetry-privacy.md`. Categories are deduplicated per request; the detail table is capped at 200, totals are uncapped. Queries authorize before reading; failed reads render unavailable, not zero. Legacy overview request freshness still uses mutable request activity and is a different measure.
 
 ### Product usage reports
 
@@ -149,7 +138,7 @@ The predicates behind these filters mirror `lib/admin/activation-funnel.ts` and
 - `activation=no-setup` matches accounts with no completed onboarding and no non-deleted, non-demo request.
 - `activation=missing-defaults` matches accounts missing an active workspace, brand profile, or intake link.
 - `activation=activated-7d` matches accounts whose first live seller submission landed in the last 7 days.
-- `activation=habitual` matches accounts with 3 or more submitted requests in the last 30 days.
+- `activation=habitual` matches accounts with 3 or more first-metered live requests in the last 30 days (timed legacy submitted fallback).
 
 Overview links to these filters also carry `role=user`, because the activation funnel counts only
 `role = 'user'` accounts.

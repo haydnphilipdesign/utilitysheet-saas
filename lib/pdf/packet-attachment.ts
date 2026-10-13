@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import { jsPDF } from 'jspdf';
@@ -68,12 +69,12 @@ async function resolveLaunchOptions(): Promise<{
 
 async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: string; content: Buffer }> {
     const render = buildPacketPdfHtml(data);
-    const renderer = render.renderStrategy === 'print_pdf' ? 'advanced_renderer' : 'simple_renderer';
     const launchOptions = await resolveLaunchOptions();
-    console.log('[pdf][packet_attachment] launch_options', {
+    logDiagnostic('log', 'pdf_launch', {
         strategy: launchOptions.strategy,
         headless: launchOptions.headless,
-        renderer,
+        renderStrategy: render.renderStrategy ?? 'screenshot',
+        mode: data.mode ?? 'simple',
     });
 
     const browser = await puppeteer.launch({
@@ -156,8 +157,7 @@ async function renderPacketPdfBuffer(data: PacketPdfData): Promise<{ filename: s
             });
 
             if (!diagnostics.isReadable) {
-                console.warn('[pdf][simple_fit] readability_threshold_exceeded', {
-                    filename: render.filename,
+                logDiagnostic('warn', 'pdf_readability_warning', {
                     sourceWidth: Math.round(rootBox.width),
                     sourceHeight: Math.round(rootBox.height),
                     limitingDimension: diagnostics.limitingDimension,
@@ -228,7 +228,7 @@ export async function createPacketPdfAttachmentForRequest(requestId: string): Pr
         return { status: 'attached', attachment };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown PDF generation error';
-        console.warn('[pdf][packet_attachment] failed', { requestId, error: errorMessage });
+        logDiagnostic('warn', 'pdf_attachment_failed', { requestId }, error);
         return {
             status: 'failed',
             error: errorMessage,
@@ -256,7 +256,7 @@ export async function createPacketPdfAttachmentForPublicToken(token: string): Pr
         return { status: 'attached', attachment };
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown PDF generation error';
-        console.warn('[pdf][packet_attachment] failed', { error: errorMessage });
+        logDiagnostic('warn', 'pdf_attachment_failed', {}, error);
         return {
             status: 'failed',
             error: errorMessage,

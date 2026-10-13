@@ -1,3 +1,4 @@
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { NextResponse } from 'next/server';
 import { getPacketDataByPublicToken, PACKET_LOCKED_MESSAGE } from '@/lib/packet/packet-data';
 
@@ -37,7 +38,7 @@ export async function GET(
 
         return NextResponse.json(packetResult.data);
     } catch (error) {
-        console.error('Error fetching info sheet data:', error);
+        logDiagnostic('error', 'packet_read_failed', {}, error);
         return NextResponse.json({ error: 'Failed to fetch info sheet data' }, { status: 500 });
     }
 }

@@ -1,3 +1,5 @@
+import { telemetryPath } from '@/lib/analytics/route-policy';
+
 export const GROWTH_ATTRIBUTION_STORAGE_KEY = 'utilitysheet:growth-attribution:first-touch';
 
 export type GrowthAttribution = {
@@ -9,54 +11,64 @@ export type GrowthAttribution = {
     landingPath: string;
 };
 
-function normalize(value: string | null, maxLength = 100) {
-    const cleaned = value
-        ?.trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9._ -]/g, '')
-        .slice(0, maxLength);
-    return cleaned || null;
+// Values, not just parameter names, are allowlisted. Extend deliberately when
+// adding a campaign; arbitrary text (even slug-shaped text) can contain PII.
+const CAMPAIGN_VALUES = {
+    source: ['facebook', 'partner', 'tc collective', 'handoff-kit', 'utilitysheet_packet', 'utilitysheet_email', 'norma_suite'],
+    medium: ['facebook', 'social', 'resource', 'product_referral', 'cross_link'],
+    campaign: ['handoff-kit', '90-day-tc-growth', 'transaction_exposure'],
+    content: ['case-study', 'kit-cta', 'completion-email', 'from-a-closing'],
+} as const;
+
+function campaignValue(field: keyof typeof CAMPAIGN_VALUES, value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().toLowerCase();
+    return (CAMPAIGN_VALUES[field] as readonly string[]).includes(normalized) ? normalized : null;
 }
 
-function normalizeReferralCode(value: string | null) {
-    const cleaned = value
-        ?.trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9-]/g, '')
-        .slice(0, 60);
-    return cleaned || null;
+export function normalizeGrowthAttribution(input: unknown): GrowthAttribution | null {
+    if (!input || typeof input !== 'object') return null;
+    const data = input as Record<string, unknown>;
+    const referral = typeof data.referralCode === 'string' ? data.referralCode.trim().toLowerCase() : '';
+    const normalized: GrowthAttribution = {
+        source: campaignValue('source', data.source),
+        medium: campaignValue('medium', data.medium),
+        campaign: campaignValue('campaign', data.campaign),
+        content: campaignValue('content', data.content),
+        // Public product referral slug is intentional attribution, never a URL.
+        referralCode: /^[a-z0-9-]{1,60}$/.test(referral) ? referral : null,
+        landingPath: typeof data.landingPath === 'string' ? telemetryPath(data.landingPath) : '/other',
+    };
+    return normalized.source || normalized.medium || normalized.campaign || normalized.content || normalized.referralCode
+        ? normalized : null;
 }
 
 export function parseGrowthAttribution(url: URL): GrowthAttribution | null {
-    const source = normalize(url.searchParams.get('utm_source'));
-    const medium = normalize(url.searchParams.get('utm_medium'));
-    const campaign = normalize(url.searchParams.get('utm_campaign'));
-    const content = normalize(url.searchParams.get('utm_content'));
-    const referralCode = normalizeReferralCode(url.searchParams.get('ref'));
-
-    if (!source && !medium && !campaign && !content && !referralCode) {
-        return null;
-    }
-
-    return {
-        source,
-        medium,
-        campaign,
-        content,
-        referralCode,
-        landingPath: url.pathname.slice(0, 200) || '/',
-    };
+    return normalizeGrowthAttribution({
+        source: url.searchParams.get('utm_source'),
+        medium: url.searchParams.get('utm_medium'),
+        campaign: url.searchParams.get('utm_campaign'),
+        content: url.searchParams.get('utm_content'),
+        referralCode: url.searchParams.get('ref'),
+        landingPath: url.pathname,
+    });
 }
 
 export function readPendingGrowthAttribution(): GrowthAttribution | null {
     if (typeof window === 'undefined') return null;
-    const raw = window.localStorage.getItem(GROWTH_ATTRIBUTION_STORAGE_KEY);
-    if (!raw) return null;
-
     try {
-        return JSON.parse(raw) as GrowthAttribution;
+        const raw = window.localStorage.getItem(GROWTH_ATTRIBUTION_STORAGE_KEY);
+        if (!raw) return null;
+        const normalized = normalizeGrowthAttribution(JSON.parse(raw));
+        // Also migrate previously stored first-touch data before posting it.
+        if (normalized) {
+            window.localStorage.setItem(GROWTH_ATTRIBUTION_STORAGE_KEY, JSON.stringify(normalized));
+        } else {
+            window.localStorage.removeItem(GROWTH_ATTRIBUTION_STORAGE_KEY);
+        }
+        return normalized;
     } catch {
-        window.localStorage.removeItem(GROWTH_ATTRIBUTION_STORAGE_KEY);
+        try { window.localStorage.removeItem(GROWTH_ATTRIBUTION_STORAGE_KEY); } catch { /* unavailable storage */ }
         return null;
     }
 }
@@ -65,7 +77,7 @@ export function captureFirstTouchAttribution(url: URL) {
     if (typeof window === 'undefined' || readPendingGrowthAttribution()) return;
     const parsed = parseGrowthAttribution(url);
     if (parsed) {
-        window.localStorage.setItem(GROWTH_ATTRIBUTION_STORAGE_KEY, JSON.stringify(parsed));
+        try { window.localStorage.setItem(GROWTH_ATTRIBUTION_STORAGE_KEY, JSON.stringify(parsed)); } catch { /* optional attribution */ }
     }
 }
 
@@ -80,6 +92,6 @@ export async function persistPendingGrowthAttribution() {
     });
 
     if (response.ok) {
-        window.localStorage.removeItem(GROWTH_ATTRIBUTION_STORAGE_KEY);
+        try { window.localStorage.removeItem(GROWTH_ATTRIBUTION_STORAGE_KEY); } catch { /* optional attribution */ }
     }
 }

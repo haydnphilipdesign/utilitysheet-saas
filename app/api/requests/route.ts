@@ -1,3 +1,4 @@
+import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
 import { NextResponse } from 'next/server';
 import { getIntakeBrandProfile, getUsableSellerForm, getRequests, workspaceHasOtherRequestOwners, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
@@ -32,6 +33,8 @@ function sanitizeLockedRequest<T extends Record<string, unknown>>(r: T) {
         utility_entries: undefined,
     };
 }
+
+const recordAuxiliaryEvent = auxiliaryEventWriter(createEventLog);
 
 // GET /api/requests - Get all requests for the current user
 export async function GET(request: Request) {
@@ -230,7 +233,7 @@ export async function POST(request: Request) {
         // Log request creation event
         const ipAddress = getClientIpOrNull(request);
         const userAgent = request.headers.get('user-agent') || null;
-        await createEventLog({
+        await recordAuxiliaryEvent({
             requestId: newRequest.id,
             eventType: 'request_created',
             eventData: {

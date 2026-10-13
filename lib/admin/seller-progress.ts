@@ -19,11 +19,47 @@ function formatCategory(value: string) {
     return value.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+const SELLER_STEP_LABELS: Record<string, string> = {
+    welcome: 'Welcome',
+    home_basics: 'Home Basics',
+    utility: 'a provider step',
+    advanced: 'Additional Home Details',
+    review: 'Review',
+    success: 'the confirmation screen',
+};
+
+const SELLER_FAILURE_LABELS: Record<string, string> = {
+    validation: 'answers were not accepted',
+    already_submitted: 'already submitted',
+    stale_session: 'form was reopened after the page loaded',
+    conflict: 'conflicting request state',
+    rate_limited: 'too many attempts',
+    unavailable: 'service unavailable',
+    not_found: 'link not found',
+    forbidden: 'link not allowed to submit',
+    server_error: 'server error',
+    offline: 'seller was offline',
+    network: 'connection interrupted',
+    unknown: 'unclassified',
+};
+
+/** Readable name for a browser-reported step, or null for a value outside the contract. */
+export function describeSellerStep(step: string | null, category: string | null): string | null {
+    if (!step || !Object.prototype.hasOwnProperty.call(SELLER_STEP_LABELS, step)) return null;
+    if (step === 'utility' && category) return `${formatCategory(category)} provider`;
+    return SELLER_STEP_LABELS[step];
+}
+
+/** Readable reason for a browser-reported submission failure code, or null for a value outside the contract. */
+export function describeSellerFailure(code: string | null): string | null {
+    return code && Object.prototype.hasOwnProperty.call(SELLER_FAILURE_LABELS, code) ? SELLER_FAILURE_LABELS[code] : null;
+}
+
 export function describeSellerProgressEvent(
     eventType: string | null,
     eventData: Record<string, unknown> | null
 ): SellerProgressStage {
-    if (!eventType) {
+    if (!eventType || eventType === 'unknown') {
         return {
             label: 'No tracked seller activity',
             description: 'The request is in progress, but no seller event has been recorded.',
@@ -32,8 +68,8 @@ export function describeSellerProgressEvent(
 
     if (eventType === 'seller_opened') {
         return {
-            label: 'Opened seller form',
-            description: 'The seller loaded the form; no later tracked step is available.',
+            label: 'Seller form requested',
+            description: 'The seller endpoint was requested; no browser view or later step is confirmed.',
         };
     }
 
@@ -43,9 +79,9 @@ export function describeSellerProgressEvent(
             : [];
         return {
             label: categories.length > 0
-                ? `Reached ${categories.map(formatCategory).join(', ')}`
-                : 'Reached utility details',
-            description: 'Provider suggestions were loaded for a utility step.',
+                ? `Suggestions served for ${categories.map(formatCategory).join(', ')}`
+                : 'Suggestions served',
+            description: 'A suggestion result was generated/served; browser rendering and step completion are unconfirmed.',
         };
     }
 
@@ -53,8 +89,39 @@ export function describeSellerProgressEvent(
         const category = typeof eventData?.category === 'string' ? formatCategory(eventData.category) : null;
         return {
             label: category ? `Searched for a ${category} provider` : 'Searched for a provider',
-            description: 'The seller used provider search within the form.',
+            description: 'The provider search endpoint recorded a query; browser rendering is unconfirmed.',
         };
+    }
+
+    if (eventType === 'seller_self_send_link') {
+        return { label: 'Return link requested', description: 'The self-link endpoint accepted a send; receipt and form viewing are unconfirmed.' };
+    }
+
+    if (eventType === 'seller_step_viewed' || eventType === 'seller_step_completed') {
+        const step = describeSellerStep(
+            typeof eventData?.step === 'string' ? eventData.step : null,
+            typeof eventData?.category === 'string' ? eventData.category : null
+        );
+        return eventType === 'seller_step_viewed'
+            ? { label: step ? `Viewed ${step}` : 'Viewed a form step', description: 'The seller browser reported showing this step. Advisory: it can be missing, blocked or repeated.' }
+            : { label: step ? `Continued past ${step}` : 'Continued past a form step', description: 'The seller browser reported moving on from this step. Nothing is stored until the form is submitted.' };
+    }
+
+    if (eventType === 'seller_submission_attempted') {
+        return { label: 'Submission attempted', description: 'The seller browser reported pressing submit. An accepted submission is recorded separately by the server.' };
+    }
+
+    if (eventType === 'seller_submission_failed') {
+        const reason = describeSellerFailure(typeof eventData?.error_code === 'string' ? eventData.error_code : null);
+        return { label: reason ? `Submission failed: ${reason}` : 'Submission failed', description: 'The seller browser reported that a submit attempt did not succeed. The seller may have retried since.' };
+    }
+
+    if (eventType === 'seller_suggestions_rendered') {
+        return { label: 'Provider list shown', description: 'The seller browser reported showing a provider list or its empty state.' };
+    }
+
+    if (eventType === 'seller_suggestions_failed') {
+        return { label: 'Provider list failed to load', description: 'The seller browser reported that provider suggestions or a search did not load.' };
     }
 
     if (eventType === 'request_created') {

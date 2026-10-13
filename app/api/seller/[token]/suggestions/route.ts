@@ -1,3 +1,6 @@
+import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
+import { logDiagnostic } from '@/lib/telemetry/diagnostics';
+import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 import { NextResponse } from 'next/server';
 import { getOrganizationById, getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
 import { createEventLog } from '@/lib/neon/queries/event-logs';
@@ -96,6 +99,8 @@ async function getDemoSuggestionsIfApplicable(
     ) as Record<UtilityCategory, ProviderSuggestion[]>;
 }
 
+const recordAuxiliaryEvent = auxiliaryEventWriter(createEventLog);
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ token: string }> }
@@ -119,7 +124,7 @@ export async function GET(
         }
 
         const ip = getClientIp(request);
-        const rateLimitResult = await checkRateLimit(aiRatelimit, `${token}:${ip}`, { requirePersistent: process.env.NODE_ENV === 'production' });
+        const rateLimitResult = await checkRateLimit(aiRatelimit, capabilityRateLimitIdentifier('seller-ai', `${token}:${ip}`), { requirePersistent: process.env.NODE_ENV === 'production' });
         if (isRateLimitUnavailable(rateLimitResult)) {
             return NextResponse.json(
                 { error: 'Temporarily unavailable. Please try again shortly.' },
@@ -182,7 +187,7 @@ export async function GET(
                 categories
             )) ?? (await getAllSuggestions(requestData.property_address, categories, context));
 
-        void createEventLog({
+        await recordAuxiliaryEvent({
             requestId: requestData.id,
             eventType: 'suggestions_fetched',
             eventData: {
@@ -195,14 +200,14 @@ export async function GET(
                     ])
                 ),
             },
-        }).catch(() => undefined);
+        });
 
         return NextResponse.json(
             { suggestions },
             { headers: getRateLimitHeaders(rateLimitResult) }
         );
     } catch (error) {
-        console.error('Error fetching suggestions:', error);
+        logDiagnostic('error', 'seller_suggestions_failed', {}, error);
         return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 });
     }
 }

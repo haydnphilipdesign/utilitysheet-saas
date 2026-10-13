@@ -41,6 +41,20 @@ describe('contact-service', () => {
         isGeminiConfiguredMock.mockReturnValue(true);
     });
 
+    it('returns contact despite telemetry failure without logging provider free text or SQL errors', async () => {
+        const sinks = ['log', 'warn', 'error'].map(level => vi.spyOn(console, level as 'log' | 'warn' | 'error').mockImplementation(() => undefined));
+        process.env.ALLOW_UNVERIFIED_AI_CONTACTS = 'true';
+        const privateText = '987 Sentinel Street SellerSentinel seller@example.test token-sentinel password-sentinel postgres://sentinel';
+        generateJSONWithMetaMock.mockResolvedValue({ data: { customer_service_phone: '1-800-555-1212' }, failure: null, groundingSourceUrls: [], usage: null, failureKind: null });
+        createAiSuggestionRunMock.mockRejectedValueOnce(new Error(privateText));
+        expect(await resolveContact(privateText)).toMatchObject({ customer_service_phone: '1-800-555-1212' });
+        const logged = JSON.stringify(sinks.flatMap(sink => sink.mock.calls));
+        for (const sentinel of ['Sentinel', 'seller@example.test', 'token-sentinel', 'password-sentinel', 'postgres://sentinel']) expect(logged).not.toContain(sentinel);
+        expect(logged).toContain('contact_resolved');
+        expect(logged).toContain('contact_telemetry_failed');
+        sinks.forEach(sink => sink.mockRestore());
+    });
+
     it('returns null in strict mode and does not query AI', async () => {
         process.env.ALLOW_UNVERIFIED_AI_CONTACTS = 'false';
         generateJSONWithMetaMock.mockResolvedValue({

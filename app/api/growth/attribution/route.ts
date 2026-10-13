@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
 import { saveFirstTouchGrowthAttribution } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
+import { normalizeGrowthAttribution } from '@/lib/growth/attribution';
 
 const nullableField = z.string().trim().max(100).nullable();
 const growthAttributionSchema = z.object({
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
 
-    await saveFirstTouchGrowthAttribution(activation.account.id, parsed.data);
+    const attribution = normalizeGrowthAttribution(parsed.data);
+    if (attribution) await saveFirstTouchGrowthAttribution(activation.account.id, attribution);
     return new NextResponse(null, { status: 204 });
 }

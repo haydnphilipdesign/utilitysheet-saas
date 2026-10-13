@@ -159,6 +159,32 @@ describe('seller submission statement', () => {
         expect(await entries()).toEqual([]);
     });
 
+    it('rolls back answers and event evidence on metering failure, then accepts a retry once', async () => {
+        await db.exec(`
+            CREATE OR REPLACE FUNCTION test_fail_metering() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN
+                IF NEW.metered_at IS NOT NULL AND OLD.metered_at IS NULL THEN
+                    RAISE EXCEPTION 'forced metering failure';
+                END IF;
+                RETURN NEW;
+            END $$;
+            CREATE TRIGGER test_fail_metering BEFORE UPDATE ON requests FOR EACH ROW EXECUTE FUNCTION test_fail_metering();
+        `);
+        try {
+            await expect(submitSellerRequest(submission())).rejects.toThrow(/forced metering failure/);
+        } finally {
+            await db.exec('DROP TRIGGER test_fail_metering ON requests');
+        }
+        expect(await requestRow()).toMatchObject({ status: 'in_progress', metered_at: null });
+        expect(await entries()).toEqual([]);
+        expect(await events('seller_submitted')).toBe(0);
+        expect((await submitSellerRequest(submission())).outcome).toBe('ACCEPTED');
+        expect((await requestRow()).metered_at).not.toBeNull();
+        expect(await events('seller_submitted')).toBe(1);
+        expect((await submitSellerRequest(submission())).outcome).toBe('DUPLICATE');
+        expect(await events('seller_submitted')).toBe(1);
+    });
+
     it('refuses a second, different submission once submitted and leaves the sheet alone', async () => {
         await submitSellerRequest(submission());
         // What the loser of two simultaneous submissions sees after waiting for the row lock.

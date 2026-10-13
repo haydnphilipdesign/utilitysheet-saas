@@ -78,6 +78,19 @@ describe('Suggestion Service', () => {
         delete process.env.SUGGESTIONS_MAX_TOTAL_MS;
     });
 
+    it('retains safe fallback reasons without logging locality or SQL error text', async () => {
+        const sinks = ['log', 'warn', 'error'].map(level => vi.spyOn(console, level as 'log' | 'warn' | 'error').mockImplementation(() => undefined));
+        createAiSuggestionRunMock.mockRejectedValueOnce(new Error('987 Sentinel Street SellerSentinel seller@example.test token-sentinel password-sentinel postgres://sentinel'));
+        const result = await getSuggestions('987 Sentinel Street, SellerSentinel, PA 18302', 'internet');
+        expect(result.length).toBeGreaterThan(0);
+        const logged = JSON.stringify(sinks.flatMap(sink => sink.mock.calls));
+        for (const sentinel of ['Sentinel', 'seller@example.test', 'token-sentinel', 'password-sentinel', 'postgres://sentinel']) expect(logged).not.toContain(sentinel);
+        expect(logged).toContain('suggestion_outcome');
+        expect(logged).toContain('ai_unconfigured');
+        expect(logged).toContain('suggestion_telemetry_failed');
+        sinks.forEach(sink => sink.mockRestore());
+    });
+
     it('parses addresses into state/city/zip', () => {
         const parsed = parseAddress('123 Main St, Philadelphia, PA 19103');
         expect(parsed.state).toBe('PA');
@@ -668,6 +681,18 @@ describe('Suggestions Pipeline', () => {
             }));
         });
 
+        it.each([true, false])('keeps omitted grounding metadata unknown in either pass: %s', async missingFirst => {
+            const missing = { ...usage(400, 2), searchQueryCount: null, sourceCount: null };
+            const known = usage(650, 1);
+            generateJSONWithMetaMock
+                .mockResolvedValueOnce({ ...ok(providers), usage: missingFirst ? missing : known, failureKind: null })
+                .mockResolvedValueOnce({ ...ok(providers), usage: missingFirst ? known : missing, failureKind: null });
+            await getSuggestions('123 Main St, Miami, FL 33101', 'internet');
+            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+                usage: expect.objectContaining({ promptTokens: 1050, searchQueryCount: null, sourceCount: null }),
+            }));
+        });
+
         it('keeps the usage of the pass that answered and the kind of the pass that failed', async () => {
             generateJSONWithMetaMock
                 .mockResolvedValueOnce({ ...ok(providers), usage: usage(400, 2), failureKind: null })
@@ -679,7 +704,7 @@ describe('Suggestions Pipeline', () => {
                 source: 'ai_primary',
                 attemptCount: 2,
                 errorKind: 'timeout',
-                usage: expect.objectContaining({ promptTokens: 400, searchQueryCount: 2 }),
+                usage: expect.objectContaining({ promptTokens: 400, searchQueryCount: null, sourceCount: null }),
             }));
         });
 

@@ -120,7 +120,7 @@ export default async function AdminGrowthPage() {
                                 value={activation.firstLiveSubmission}
                                 total={total}
                                 rate={activation.signupToActivationRate}
-                                note="This is the activation rate."
+                                note="Metered first live submission, retained requests only; legacy submitted rows use last activity as an estimate."
                             />
                             <FunnelStep
                                 label="Habitual"
@@ -128,7 +128,7 @@ export default async function AdminGrowthPage() {
                                 total={total}
                                 rate={activation.activationToHabitRate}
                                 href="/admin/users?activation=habitual&role=user"
-                                note="3 or more submitted requests in the last 30 days, as a share of activated accounts."
+                                note="3 or more first-metered live requests in 30 days, including timed legacy submitted estimates, as a share of activated accounts."
                             />
                         </ul>
                     </CardContent>

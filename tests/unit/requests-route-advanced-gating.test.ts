@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
     createEventLogMock: vi.fn(),
     getOrganizationByIdMock: vi.fn(),
     buildStructuredPropertyAddressMock: vi.fn(),
+    sellerEmailMock: vi.fn(),
 }));
 
 vi.mock('server-only', () => ({}));
@@ -41,7 +42,7 @@ vi.mock('@/lib/address/structured-address', () => ({
 }));
 
 vi.mock('@/lib/email/email-service', () => ({
-    sendSellerNotificationEmail: vi.fn(),
+    sendSellerNotificationEmail: mocks.sellerEmailMock,
 }));
 
 vi.mock('@/lib/neon/queries', () => ({
@@ -73,6 +74,23 @@ vi.mock('@/lib/activation/ensure-account-activation', () => ({
 import { POST } from '@/app/api/requests/route';
 
 describe('POST /api/requests advanced gating', () => {
+    it.each(['reject', 'slow'] as const)('keeps one created/sent request and one invitation when observation is %s', async (failure) => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        if (failure === 'reject') mocks.createEventLogMock.mockRejectedValueOnce(new Error('private SQL/address/token sentinel'));
+        else mocks.createEventLogMock.mockImplementationOnce(() => new Promise(() => {}));
+        const response = await POST(new Request('http://localhost/api/requests', {
+            method: 'POST', body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701', sellerEmail: 'seller@example.test' }),
+        }));
+        expect(response.status).toBe(201);
+        expect(await response.json()).toMatchObject({ id: 'new-request', seller_token: 'synthetic-token' });
+        expect(mocks.createRequestMock).toHaveBeenCalledTimes(1);
+        expect(mocks.updateRequestStatusMock).toHaveBeenCalledExactlyOnceWith('new-request', 'sent');
+        expect(mocks.sellerEmailMock).toHaveBeenCalledTimes(1);
+        expect(mocks.createEventLogMock).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(JSON.stringify(warn.mock.calls)).not.toMatch(/private|SQL|address|token|sentinel/);
+        warn.mockRestore();
+    });
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.createRequestMock.mockResolvedValue({ id: 'new-request', seller_token: 'synthetic-token' });
