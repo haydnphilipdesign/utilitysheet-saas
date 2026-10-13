@@ -36,9 +36,13 @@ export function maintenanceExpectedBackAt(now: number = Date.now(), env: Env = p
 }
 
 export function maintenanceRetryAfterSeconds(now: number = Date.now(), env: Env = process.env): number {
+    return retryAfterSecondsFor(maintenanceExpectedBackAt(now, env), now, env);
+}
+
+/** Retry-After for an estimate from either source: the time until it, else the configured or default wait. */
+export function retryAfterSecondsFor(expected: string | null, now: number = Date.now(), env: Env = process.env): number {
     const clamp = (seconds: number) => Math.min(MAX_RETRY_AFTER_SECONDS, Math.max(MIN_RETRY_AFTER_SECONDS, Math.ceil(seconds)));
-    const expected = maintenanceExpectedBackAt(now, env);
-    if (expected) return clamp((Date.parse(expected) - now) / 1000);
+    if (expected && Date.parse(expected) > now) return clamp((Date.parse(expected) - now) / 1000);
     const raw = (env.MAINTENANCE_RETRY_AFTER_SECONDS ?? '').trim();
     const configured = /^\d{1,6}$/.test(raw) ? Number(raw) : DEFAULT_MAINTENANCE_RETRY_AFTER_SECONDS;
     return clamp(configured);

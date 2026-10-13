@@ -63,6 +63,9 @@ const adminActionFilters = [
     'auth_reconciliation_started',
     'auth_reconciliation_finished',
     'triage_updated',
+    'maintenance_enabled',
+    'maintenance_updated',
+    'maintenance_disabled',
 ] as const satisfies readonly AdminAction[];
 
 function isAdminAction(value: string): value is AdminAction {

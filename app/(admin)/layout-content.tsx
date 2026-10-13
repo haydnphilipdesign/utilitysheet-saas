@@ -3,8 +3,9 @@
 import { useEffect, useId, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, FileText, Inbox, LayoutDashboard, Megaphone, Menu, MessageSquare, MessageSquareQuote, Shield, Sparkles, TrendingDown, TrendingUp, Users, X, Zap } from 'lucide-react';
+import { Building2, FileText, Inbox, LayoutDashboard, Megaphone, Menu, MessageSquare, MessageSquareQuote, Shield, Sparkles, TrendingDown, TrendingUp, Users, Wrench, X, Zap } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { AdminMaintenanceIndicator } from '@/components/maintenance/AdminMaintenanceIndicator';
 import { cn } from '@/lib/utils';
 
 // `id` is a slug because it is used to build `aria-labelledby` references, which are
@@ -18,6 +19,7 @@ const adminNavigationSections = [
             { name: 'Issues & Triage', href: '/admin/operations', icon: Zap },
             { name: 'Requests', href: '/admin/requests', icon: Inbox },
             { name: 'Seller Progress', href: '/admin/abandonment', icon: TrendingDown },
+            { name: 'Maintenance', href: '/admin/maintenance', icon: Wrench },
         ],
     },
     {
@@ -166,6 +168,7 @@ export function AdminLayoutContent({ children }: { children: React.ReactNode }) 
                 </aside>
 
                 <main className="min-w-0 flex-1 py-6">
+                    <AdminMaintenanceIndicator />
                     {children}
                 </main>
             </div>

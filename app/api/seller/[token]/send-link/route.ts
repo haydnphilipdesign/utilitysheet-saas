@@ -19,8 +19,8 @@ export async function POST(
     request: Request,
     { params }: { params: Promise<{ token: string }> }
 ) {
-    // Paused for a planned cutover: refuse before the limiter and every side effect.
-    const maintenance = maintenanceResponse('seller_send_link', request);
+    // Paused for maintenance: refuse before the limiter and every side effect.
+    const maintenance = await maintenanceResponse('seller_send_link', request);
     if (maintenance) return maintenance;
 
     try {

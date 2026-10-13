@@ -36,6 +36,9 @@ const actionLabels: Record<string, string> = {
     product_update_created: 'Product Update created',
     product_update_published: 'Product Update published',
     product_update_deleted: 'Product Update deleted',
+    maintenance_enabled: 'Maintenance mode turned on',
+    maintenance_updated: 'Maintenance estimate changed',
+    maintenance_disabled: 'Maintenance mode turned off',
 };
 
 export function getAuditActionLabel(action: string) {
@@ -122,6 +125,12 @@ function buildSummary(action: string, metadata: Record<string, unknown>) {
             return metadata.result === 'dry_run'
                 ? 'Recorded a dry run of the testimonial test email.'
                 : 'Sent a testimonial test email to the Admin inbox.';
+        case 'maintenance_enabled':
+            return 'Paused seller form sending, provider suggestions and PDF downloads for maintenance.';
+        case 'maintenance_updated':
+            return 'Changed the estimated return time shown during maintenance.';
+        case 'maintenance_disabled':
+            return 'Ended maintenance; the paused features are available again.';
         case 'product_update_created':
             return metadata.is_published === true
                 ? `Created and published the Product Update${title ? ` “${title}”` : ''}.`

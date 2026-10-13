@@ -48,3 +48,22 @@ again only when the seller submits again, with the same submission key.
 - Tabs loaded before a maintenance-aware build keep their old wording.
 - A failed call to an affected endpoint now costs one extra status request.
 - The estimate is optional and disappears once it passes.
+
+## Amendment (2026-10-13): Admin switch added at the owner's request
+
+The runtime switch rejected above is now adopted. The reason for rejecting it
+(Redis being cut over, and the cutover needing a hard guarantee) no longer
+applies: the owner released Slice 1 without a pause and wants maintenance mode
+as a general tool operated from Admin.
+
+- State lives in one `maintenance_state` row (`migrations-maintenance-state.sql`), not Redis.
+- `maintenanceResponse()` is now async. It checks `MAINTENANCE_MODE` first (on means on, no database
+  read), then the stored switch through `lib/maintenance/state.ts`, cached for 10 seconds per server
+  instance with a 1.5 second read budget.
+- An unreadable database keeps the last known answer, otherwise off. Failing closed would turn a
+  database blip into a visible outage of five endpoints that need the database anyway.
+- Writes go through `setMaintenanceStateAtomic`: admin check, change and audit entry in one statement,
+  no-op when unchanged. Reason optional, one confirmation to turn on.
+- Considered and not built: pausing areas separately (seller form versus PDFs), a custom message, a
+  scheduled start or automatic end, and an alert when the pause has been on for a long time. Each is
+  possible later; none was needed for an on/off switch.

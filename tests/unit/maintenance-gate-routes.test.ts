@@ -68,6 +68,7 @@ import { POST as sendLink } from '@/app/api/seller/[token]/send-link/route';
 import { POST as observations } from '@/app/api/seller/[token]/observations/route';
 import { GET as packetPdf } from '@/app/api/packet/[token]/pdf/route';
 import { GET as maintenanceStatus } from '@/app/api/maintenance/route';
+import { forgetMaintenanceStateCache } from '@/lib/maintenance/state';
 
 const TOKEN = 'synthetic-capability-sentinel';
 const context = { params: Promise.resolve({ token: TOKEN }) };
@@ -110,9 +111,20 @@ const endpoints: Endpoint[] = [
 
 const limited = { success: false, limit: 5, remaining: 0, reset: 12345, reason: 'limited' as const };
 
+// The Admin switch is read through `sql.query`; absent here unless a test installs it.
+const switchQuery = vi.fn();
+const installSwitch = (row: Record<string, unknown> | 'missing') => {
+    if (row === 'missing') switchQuery.mockRejectedValue(Object.assign(new Error('relation "maintenance_state" does not exist'), { code: '42P01' }));
+    else switchQuery.mockResolvedValue([row]);
+    (deps.sql as unknown as { query: unknown }).query = switchQuery;
+};
+
 beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllEnvs();
+    forgetMaintenanceStateCache();
+    switchQuery.mockReset();
+    delete (deps.sql as unknown as { query?: unknown }).query;
     deps.getRequestBySellerToken.mockResolvedValue({ id: 'r1', account_id: 'a1', property_address: '12 Sentinel Street', status: 'in_progress' });
     deps.checkRateLimit.mockResolvedValue(limited);
 });
@@ -152,6 +164,52 @@ describe.each(endpoints)('$name during maintenance', ({ surface, request, call }
     it.each(['off', 'false', '0', ''])('treats MAINTENANCE_MODE=%j as off', async (value) => {
         vi.stubEnv('MAINTENANCE_MODE', value);
         expect((await call(request())).status).toBe(429);
+    });
+});
+
+describe.each(endpoints)('$name with the Admin switch', ({ surface, request, call }) => {
+    it('refuses when the switch is on, having read only the switch', async () => {
+        installSwitch({ enabled: true, expected_back_at: null, enabled_at: new Date(), updated_at: new Date(), version: 3 });
+        const incoming = request();
+        const response = await call(incoming);
+        expect(response.status).toBe(503);
+        expect(response.headers.get('X-UtilitySheet-Maintenance')).toBe('1');
+        expect(response.headers.get('Retry-After')).toBe('1800');
+        expect(await response.json()).toMatchObject({ code: 'MAINTENANCE', surface, expectedBackAt: null });
+        expect(switchQuery).toHaveBeenCalledTimes(1);
+        expect(String(switchQuery.mock.calls[0][0])).toContain('FROM maintenance_state');
+        for (const [name, mock] of Object.entries(deps)) expect(mock, name).not.toHaveBeenCalled();
+        expect(incoming.bodyUsed).toBe(false);
+    });
+
+    it.each([
+        ['off', { enabled: false, expected_back_at: null, enabled_at: null, updated_at: new Date(), version: 4 }],
+        ['not installed', 'missing' as const],
+    ])('serves as usual when the switch is %s', async (_label, row) => {
+        installSwitch(row);
+        expect((await call(request())).status).toBe(429);
+        expect(deps.checkRateLimit).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('Admin switch details', () => {
+    it('reports its estimate and reads the database once for many requests', async () => {
+        vi.useFakeTimers({ now: Date.parse('2026-10-20T01:00:00Z'), toFake: ['Date'] });
+        installSwitch({ enabled: true, expected_back_at: '2026-10-20T01:30:00Z', enabled_at: '2026-10-20T00:55:00Z', updated_at: '2026-10-20T00:55:00Z', version: 1 });
+        for (const endpoint of endpoints) {
+            const response = await endpoint.call(endpoint.request());
+            expect(response.headers.get('Retry-After')).toBe('1800');
+            expect((await response.json()).expectedBackAt).toBe('2026-10-20T01:30:00.000Z');
+        }
+        expect(await (await maintenanceStatus()).json()).toEqual({ maintenance: true, expectedBackAt: '2026-10-20T01:30:00.000Z' });
+        expect(switchQuery).toHaveBeenCalledTimes(1);
+    });
+
+    it('is overridden by the hosting setting without a database read', async () => {
+        vi.stubEnv('MAINTENANCE_MODE', 'on');
+        installSwitch({ enabled: false, expected_back_at: null, enabled_at: null, updated_at: new Date(), version: 1 });
+        expect((await endpoints[0].call(endpoints[0].request())).status).toBe(503);
+        expect(switchQuery).not.toHaveBeenCalled();
     });
 });
 

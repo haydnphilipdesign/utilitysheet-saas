@@ -17,6 +17,8 @@
 
 ## Navigation
 
+Maintenance (/admin/maintenance) sits in the Operations group; see "Maintenance" below.
+
 Admin uses a left sidebar grouped as Operations, Customers, Growth & Content, and Security. `Growth`
 sits in Growth & Content alongside Requested Questions, Customer Outreach, and Updates. Below the `lg`
 breakpoint the same sidebar becomes a slide-over opened from the header. Routes are unchanged; several nav
@@ -337,6 +339,36 @@ Limits that are deliberate:
 
 
 Slice 7 monitoring coverage: collector timestamps show the last retained PDF, billing, email and AI operational observation, AI execution record, seller browser diagnostic and tracked reminder operation. They provide no denominator or collection-rate claim. Failed reads render unavailable rather than zero. Monitor AI read failure or observation-write failure marks its run partial; empty AI windows do not establish recovery. Alert provider acceptance is counted separately from a failed alert-state write (later duplicate possible). Its current start is excluded from its own alert evaluation so previous partial/failed/stuck evidence remains visible. No external probe, destination or responder is verified by this local implementation.
+
+## Maintenance
+
+`/admin/maintenance` turns maintenance mode on and off. Decision:
+`.ai/decisions/2026-10-13-maintenance-gate.md`. Strict paused-cutover procedure, if ever wanted:
+`docs/maintenance-cutover-runbook.md`.
+
+- **What it pauses**: sending a seller form, provider suggestions and lookup, the seller's "email me
+  this link", and sheet PDF downloads. Each answers a marked 503 before its rate limiter and any side
+  effect. Everything else keeps working, including viewing completed sheets, the dashboard, request
+  creation, reminders, billing, webhooks and scheduled jobs.
+- **What people see**: a "paused for maintenance" screen on new seller and reusable-link visits, a
+  notice inside an already-open form (answers stay in the seller's browser and are never resent for
+  them), a pause notice on PDF downloads, a banner in the customer dashboard, and a banner on every
+  Admin page so the pause is not left on by accident.
+- **Estimate**: optional, chosen as minutes from now. It is shown only while still in the future.
+  Nothing reopens by itself.
+- **Speed**: a change reaches the whole site within about 10 seconds (each server instance caches the
+  switch that long). No deployment is needed.
+- **Storage**: one row in `maintenance_state` (`migrations-maintenance-state.sql`). If that table is
+  missing the switch reads as off and the page says it is not installed.
+- **Write rules**: Admin only, respects `ADMIN_WRITES_DISABLED`, one confirmation to turn on, none to
+  turn off, reason optional (it changes no customer record and sends no email). Each change writes
+  `maintenance_enabled`, `maintenance_updated` or `maintenance_disabled` to the audit log in the same
+  statement; a repeat of the current state writes nothing.
+- **Hosting override**: `MAINTENANCE_MODE` set in hosting forces the pause on for that deployment and
+  cannot be ended from this page. It needs a redeploy to change, and is the fallback if Admin writes
+  are disabled or the database is unreachable.
+- **Limit**: if the database cannot be read, the last known answer is kept for that server instance,
+  otherwise the switch reads as off. The paused endpoints need the database themselves.
 
 ## Account Entitlement Overrides
 

@@ -266,7 +266,7 @@ describe('Operations page', () => {
     it('shows email handoff and PDF evidence as its own section, and a pending migration as not installed', async () => {
         const quiet = {
             generatedAt: now, incidents: ok({ incidents: [], firstObservationAt: now, lastObservationAt: now, truncated: false }),
-            jobs: ok([]), reminders: ok(emptyReminders), followUp: ok(emptyFollowUp),
+            jobs: ok([]), reminders: ok(emptyReminders), followUp: ok(emptyFollowUp), coverage: ok([]),
         };
         mocks.snapshot.mockResolvedValue(quiet);
         const pending = await page();

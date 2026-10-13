@@ -16,8 +16,8 @@ export async function GET(
     request: Request,
     { params }: { params: Promise<{ token: string }> }
 ) {
-    // Paused for a planned cutover: refuse before the limiter and every side effect.
-    const maintenance = maintenanceResponse('packet_pdf', request);
+    // Paused for maintenance: refuse before the limiter and every side effect.
+    const maintenance = await maintenanceResponse('packet_pdf', request);
     if (maintenance) return maintenance;
 
     try {

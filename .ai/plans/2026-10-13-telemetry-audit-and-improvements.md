@@ -1,7 +1,7 @@
 # UtilitySheet telemetry audit and improvement plan
 
 - Date: 2026-10-13. Owner: Codex (audit, Slices 1–4); Claude Code (Slice 5). Baseline: main `7d6a2af`.
-- Status: **Audit and Slices 1–5 completed and validated locally**, authorized 2026-10-13. Slices 6–9 remain proposed. No required local work remains for Slices 1–5.
+- Status: **Audit and Slices 1–7 completed and released on 2026-10-13** with owner authorization (Slices 1–5 first, then 6 and 7 with `migrations-handoff-evidence.sql` applied; see `.ai/CURRENT.md` and `2026-10-13-maintenance-mode.md`, "Phase 2"). The slice records below describe the work as completed locally and predate the release. Slices 8–9 remain proposed.
 - Deliverables: source-backed `docs/audits/2026-10-13-telemetry-audit.md`, prioritized implementation slices and final `.ai/CURRENT.md` handoff.
 - Scope: request creation, seller completion, packet delivery, activation; errors/performance/dependencies; AI quality/usage/fallback; billing/email/PDF/jobs; privacy and telemetry failure isolation.
 - Constraints: latest authorization was Slice 5 local implementation/validation, preserving completed uncommitted Slices 1–4. No live telemetry, production settings/data, model calls, commits, pushes or deploys. Preserve unrelated files and previous investigation plan.

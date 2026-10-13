@@ -1200,3 +1200,20 @@ CREATE INDEX IF NOT EXISTS idx_pdf_render_observations_request_created
     ON pdf_render_observations(request_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_pdf_render_observations_created
     ON pdf_render_observations(created_at DESC);
+
+-- Maintenance switch controlled from Admin > Maintenance. See migrations-maintenance-state.sql.
+CREATE TABLE IF NOT EXISTS maintenance_state (
+    -- Always TRUE: the primary key plus the check allow exactly one row.
+    id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id),
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Optional estimate shown to people while it is still in the future.
+    expected_back_at TIMESTAMPTZ,
+    -- When the current pause began. NULL while off.
+    enabled_at TIMESTAMPTZ,
+    version INT NOT NULL DEFAULT 0 CHECK (version >= 0),
+    updated_by UUID REFERENCES accounts(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (enabled OR (expected_back_at IS NULL AND enabled_at IS NULL))
+);
+
+INSERT INTO maintenance_state (id) VALUES (TRUE) ON CONFLICT (id) DO NOTHING;

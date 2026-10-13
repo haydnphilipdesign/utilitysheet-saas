@@ -96,6 +96,20 @@ export const adminProductUpdateCreateSchema = z.object({
     reason: adminOptionalReasonSchema,
 }).strict();
 
+export const MAINTENANCE_ESTIMATE_MINUTES = [15, 30, 45, 60, 120] as const;
+
+export const adminMaintenanceSchema = z.object({
+    enabled: z.boolean(),
+    /** Minutes from now until the estimated return; null shows no estimate. */
+    expectedBackInMinutes: z
+        .number()
+        .int()
+        .refine((value) => (MAINTENANCE_ESTIMATE_MINUTES as readonly number[]).includes(value), 'Choose one of the listed estimates')
+        .nullish()
+        .transform((value) => value ?? null),
+    reason: adminOptionalReasonSchema,
+}).strict();
+
 export const adminConfirmedUpdateSchema = z.object({
     updateId: adminIdSchema,
     reason: adminOptionalReasonSchema,

@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
-import {
-    MAINTENANCE_CODE,
-    MAINTENANCE_HEADER,
-    getMaintenanceStatus,
-    maintenanceRetryAfterSeconds,
-} from '@/lib/maintenance/config';
+import { MAINTENANCE_CODE, MAINTENANCE_HEADER, retryAfterSecondsFor } from '@/lib/maintenance/config';
+import { resolveMaintenanceStatus } from '@/lib/maintenance/state';
 
-/** The endpoints paused together for a limiter counter-key cutover. */
+/** The endpoints paused together by maintenance mode. */
 export type MaintenanceSurface =
     | 'seller_submission'
     | 'seller_suggestions'
@@ -57,16 +53,16 @@ p{font-size:.95rem;line-height:1.5;color:#475569;margin:0}
  * The refusal for a paused endpoint, or null during ordinary operation.
  *
  * Call it first in the handler: before parameters, lookups, the rate limiter,
- * the request body and every side effect. During a counter-key cutover the
- * limiter itself must receive no traffic.
+ * the request body and every side effect. The only thing read is the switch
+ * itself: the environment setting, then the Admin switch (cached briefly).
  */
-export function maintenanceResponse(surface: MaintenanceSurface, request?: Request): NextResponse | null {
+export async function maintenanceResponse(surface: MaintenanceSurface, request?: Request): Promise<NextResponse | null> {
     const now = Date.now();
-    const status = getMaintenanceStatus(now);
+    const status = await resolveMaintenanceStatus(now);
     if (!status.maintenance) return null;
 
     const headers = {
-        'Retry-After': String(maintenanceRetryAfterSeconds(now)),
+        'Retry-After': String(retryAfterSecondsFor(status.expectedBackAt, now)),
         'Cache-Control': 'no-store',
         [MAINTENANCE_HEADER]: '1',
     };

@@ -106,8 +106,8 @@ export async function GET(
     request: Request,
     { params }: { params: Promise<{ token: string }> }
 ) {
-    // Paused for a planned cutover: refuse before the limiter and every side effect.
-    const maintenance = maintenanceResponse('seller_suggestions', request);
+    // Paused for maintenance: refuse before the limiter and every side effect.
+    const maintenance = await maintenanceResponse('seller_suggestions', request);
     if (maintenance) return maintenance;
 
     try {

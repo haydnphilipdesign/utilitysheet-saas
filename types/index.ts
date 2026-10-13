@@ -186,7 +186,10 @@ export type AdminAction =
     | 'auth_reconciliation_finished'
     | 'request_reminder_attempted'
     | 'request_reminder_resolved'
-    | 'triage_updated';
+    | 'triage_updated'
+    | 'maintenance_enabled'
+    | 'maintenance_updated'
+    | 'maintenance_disabled';
 
 // Entities
 export interface Account {

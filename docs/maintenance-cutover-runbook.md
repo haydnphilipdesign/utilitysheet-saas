@@ -29,6 +29,13 @@ at the time.
 
 ## What the application provides
 
+**Day to day, use the switch in Admin > Maintenance.** It needs no deployment
+and takes effect within about 10 seconds (see `ADMIN.md`, "Maintenance"). The
+hosting settings in the table below are the override and fallback: when
+`MAINTENANCE_MODE` is on it forces the pause for that deployment and the Admin
+switch cannot end it. A strict cutover should use the hosting setting, because
+the Admin switch reaches server instances a few seconds apart and only exists
+in deployments that contain it.
 | Control | Meaning |
 | --- | --- |
 | `MAINTENANCE_MODE` | Unset, empty, `off`, `false`, `0` or `no`: normal operation. **Any other value turns the pause on**, so a typo during a cutover pauses instead of opening. Use `on`. |
