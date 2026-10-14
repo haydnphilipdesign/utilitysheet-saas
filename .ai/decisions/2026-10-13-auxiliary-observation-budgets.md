@@ -53,3 +53,19 @@ latency allowance, not a measured production persistence guarantee.
   not proof a job is stuck. Late results cannot mutate the returned null handle.
 - Collection policies and historical data are unchanged. No deployment/config,
   schema, dependency or production data action is authorized by this decision.
+
+## Amendment 2026-10-14: job runs get a 10 s budget
+
+After the 2026-10-13 release, production `job_runs` showed the ops monitor
+recording about 5 of roughly 57 runs overnight, while its alert emails proved
+the other runs executed. The start insert is the invocation's first query and
+pays the database wake-up (pre-release monitor runs took 850-1,300 ms), so the
+500 ms deadline aborted it, the run had no handle, and the monitor raised
+`job_overdue:ops_monitor` against itself, alternating with "Recovered" whenever
+a run landed on a warm database.
+
+Job start/finish now pass `JOB_RUN_WRITE_BUDGET_MS` (10 s) to `writeAuxiliary`.
+The row is the cron heartbeat, not an incidental observation, and no user waits
+on a cron response. Everything else in this decision is unchanged: one attempt,
+abort-coupled deadline, fallback handle, no retry. The 500 ms default still
+applies to every request-path observation.

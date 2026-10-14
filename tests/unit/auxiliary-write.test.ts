@@ -10,7 +10,7 @@ vi.mock('@/lib/neon/db', async () => {
 
 import { createEventLog } from '@/lib/neon/queries/event-logs';
 import { createAiSuggestionRun, markAiSuggestionSelection, type CreateAiSuggestionRunInput } from '@/lib/neon/queries/ai-telemetry';
-import { recordOperationalEvent, recordOperationalSuccess, startJobRun, finishJobRun } from '@/lib/ops/events';
+import { JOB_RUN_WRITE_BUDGET_MS, recordOperationalEvent, recordOperationalSuccess, startJobRun, finishJobRun } from '@/lib/ops/events';
 import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
 import { AUXILIARY_WRITE_BUDGET_MS, writeAuxiliary } from '@/lib/telemetry/auxiliary-write';
 
@@ -42,8 +42,8 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-async function expire<T>(pending: Promise<T>): Promise<T> {
-    await vi.advanceTimersByTimeAsync(AUXILIARY_WRITE_BUDGET_MS);
+async function expire<T>(pending: Promise<T>, budgetMs = AUXILIARY_WRITE_BUDGET_MS): Promise<T> {
+    await vi.advanceTimersByTimeAsync(budgetMs);
     return pending;
 }
 function abortingFetch() {
@@ -132,7 +132,7 @@ describe('bounded auxiliary persistence through installed Neon', () => {
             : kind === 'success' ? recordOperationalSuccess(input)
             : kind === 'start' ? startJobRun('ops_monitor')
             : finishJobRun({ id: '00000000-0000-4000-8000-000000000001', jobName: 'ops_monitor', startedAtMs: Date.now() }, 'success');
-        const result = await expire<unknown>(pending);
+        const result = await expire<unknown>(pending, kind === 'start' || kind === 'finish' ? JOB_RUN_WRITE_BUDGET_MS : AUXILIARY_WRITE_BUDGET_MS);
         expect(result).toEqual(kind === 'start' ? { id: null, jobName: 'ops_monitor', startedAtMs: expect.any(Number) }
             : kind === 'finish' ? undefined : false);
         expect(signalAt().aborted).toBe(true);
@@ -143,12 +143,32 @@ describe('bounded auxiliary persistence through installed Neon', () => {
     it('does not change a timed-out job handle when a sink later returns an id', async () => {
         let resolveLate!: (response: Response) => void;
         fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => { resolveLate = resolve; }));
-        const handle = await expire(startJobRun('ops_monitor'));
+        const handle = await expire(startJobRun('ops_monitor'), JOB_RUN_WRITE_BUDGET_MS);
         resolveLate(response('00000000-0000-4000-8000-000000000001'));
         await vi.advanceTimersByTimeAsync(1);
         expect(handle.id).toBeNull();
         await finishJobRun(handle, 'success');
         expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('records a job heartbeat that is slower than the observation budget (database wake-up)', async () => {
+        const slow = (id?: string) => fetchMock.mockImplementationOnce(async () => {
+            await new Promise(resolve => setTimeout(resolve, 1_200));
+            return response(id);
+        });
+        slow('00000000-0000-4000-8000-000000000001');
+        const pending = startJobRun('ops_monitor');
+        await vi.advanceTimersByTimeAsync(1_200);
+        const handle = await pending;
+        expect(handle.id).toBe('00000000-0000-4000-8000-000000000001');
+
+        slow();
+        const finishing = finishJobRun(handle, 'success');
+        await vi.advanceTimersByTimeAsync(1_200);
+        await finishing;
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(signalAt(1).aborted).toBe(false);
+        expect(console.warn).not.toHaveBeenCalled();
     });
 
     it('isolates a synchronous writer throw and an unavailable console sink', async () => {

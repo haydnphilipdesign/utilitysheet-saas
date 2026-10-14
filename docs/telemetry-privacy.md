@@ -178,7 +178,11 @@ observations, AI run/items and selection observations, operational events/sample
 successes and job start/finish observations. `createEventLog` remains a strict
 writer; callers opt in through `auxiliaryEventWriter`.
 
-Each operation gets one awaited attempt with a 500 ms deadline. The installed
+Each operation gets one awaited attempt with a 500 ms deadline, except job
+start/finish, which get 10 s (`JOB_RUN_WRITE_BUDGET_MS`): the job_runs row is the
+cron heartbeat, no user waits on it, and the start insert pays the database
+wake-up. At 500 ms most monitor runs went unrecorded and the monitor reported
+itself overdue (2026-10-13 release). The installed
 Neon HTTP driver receives an AbortController signal through query fetch options.
 A deadline guard also bounds local waiting if a sink ignores abort; it is
 coupled to real fetch cancellation, not just a race. Detached suggestion writes

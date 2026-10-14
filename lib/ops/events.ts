@@ -164,6 +164,14 @@ function countsOnly(summary: Record<string, unknown>): Record<string, number> {
     return counts;
 }
 
+/**
+ * The job_runs row is the job's heartbeat, and no user waits on a cron. The
+ * start insert is usually the invocation's first query, so it pays the database
+ * wake-up (about 1 s after idle); the 500 ms observation budget dropped most runs
+ * and made the monitor report itself overdue.
+ */
+export const JOB_RUN_WRITE_BUDGET_MS = 10_000;
+
 export async function startJobRun(jobName: JobName, db?: StatementExecutor): Promise<JobRunHandle> {
     const handle: JobRunHandle = { id: null, jobName, startedAtMs: Date.now() };
     return writeAuxiliary('job_start', async (signal) => {
@@ -173,7 +181,7 @@ export async function startJobRun(jobName: JobName, db?: StatementExecutor): Pro
         }, { signal });
         signal.throwIfAborted();
         return { ...handle, id: rows[0] ? String(rows[0].id) : null };
-    }, handle);
+    }, handle, JOB_RUN_WRITE_BUDGET_MS);
 }
 
 export async function finishJobRun(
@@ -192,7 +200,7 @@ export async function finishJobRun(
             `,
             params: [handle.id, status, Math.max(0, Date.now() - handle.startedAtMs), JSON.stringify(countsOnly(summary))],
         }, { signal });
-    }, undefined);
+    }, undefined, JOB_RUN_WRITE_BUDGET_MS);
 }
 
 // ---------------------------------------------------------------------------

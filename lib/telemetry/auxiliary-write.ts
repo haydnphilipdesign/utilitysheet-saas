@@ -18,6 +18,8 @@ export async function writeAuxiliary<T>(
     observation: AuxiliaryObservation,
     write: (signal: AbortSignal) => Promise<T>,
     fallback: T,
+    /** Only for writes no user waits on, such as scheduled job heartbeats. */
+    budgetMs = AUXILIARY_WRITE_BUDGET_MS,
 ): Promise<T> {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -26,7 +28,7 @@ export async function writeAuxiliary<T>(
             timer = setTimeout(() => {
                 controller.abort();
                 reject(new Error('Auxiliary write deadline'));
-            }, AUXILIARY_WRITE_BUDGET_MS);
+            }, budgetMs);
         });
         return await Promise.race([Promise.resolve().then(() => write(controller.signal)), deadline]);
     } catch (error) {
