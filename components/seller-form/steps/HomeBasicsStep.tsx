@@ -63,13 +63,13 @@ function OptionalDisclosure({ id, icon: Icon, title, summary, actionLabel, openL
                 data-testid={`${testId}-toggle`}
                 className={`w-full min-h-11 flex items-center gap-3 p-3 sm:p-4 text-left rounded-xl transition-colors hover:bg-muted/40 ${wizardFocusRing}`}
             >
-                <Icon className="h-4 w-4 shrink-0 text-[color:var(--brand-accent)]" />
+                <Icon className="h-4 w-4 shrink-0 text-[color:var(--brand-accent-text)]" />
                 <span className="min-w-0 flex-1">
                     <span className="block font-medium text-sm sm:text-base text-foreground">{title}</span>
                     <span className="block text-xs text-muted-foreground mt-0.5">{summary}</span>
                 </span>
                 {/* Phones show the chevron alone so the summary keeps the row's width. */}
-                <span className="flex items-center gap-1 shrink-0 text-sm font-medium text-[color:var(--brand-accent)]">
+                <span className="flex items-center gap-1 shrink-0 text-sm font-medium text-[color:var(--brand-accent-text)]">
                     <span className="hidden sm:inline">{open ? openLabel : actionLabel}</span>
                     <ChevronDown aria-hidden="true" className={`h-5 w-5 sm:h-4 sm:w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
                 </span>
@@ -203,7 +203,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             className="space-y-6 sm:space-y-8"
         >
             <div className="text-center space-y-1 sm:space-y-2">
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Home Basics</h3>
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground">Home Basics</h2>
                 <p className="text-sm sm:text-base text-muted-foreground">Let&apos;s start with the essentials.</p>
             </div>
 
@@ -211,7 +211,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {collectHoaQuestions && (
                 <div className="space-y-3 sm:space-y-4">
                     <div>
-                        <p id="basics-hoa-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                        <p id="basics-hoa-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent-text)]">
                             <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             {HOA_GATE_PROMPT}
                         </p>
@@ -226,7 +226,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                 aria-pressed={state.has_hoa === opt.id}
                                 data-testid={`has-hoa-${opt.id}`}
                                 className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-center transition-all active:scale-95 ${wizardFocusRing} ${state.has_hoa === opt.id
-                                    ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
+                                    ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent-text)] shadow-lg'
                                     : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                     }`}
                             >
@@ -238,7 +238,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             )}
 
             {clearedChoices.length > 0 && (
-                <p role="status" className="text-sm text-[color:var(--brand-accent)]">
+                <p role="status" className="text-sm text-[color:var(--brand-accent-text)]">
                     Since this home is not part of an association, please update your {describeChoices(clearedChoices)} selection{clearedChoices.length > 1 ? 's' : ''}.
                 </p>
             )}
@@ -246,13 +246,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {/* Water Source */}
             <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between gap-2">
-                    <p id="basics-water-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                    <p id="basics-water-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent-text)]">
                         <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Water Source
                     </p>
                     <RequiredTag />
                 </div>
-                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`} role="group" aria-labelledby="basics-water-label">
+                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`} role="group" aria-labelledby="basics-water-label">
                     {waterOptions.map((opt) => (
                         <button
                             key={opt.id}
@@ -260,13 +260,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             onClick={() => updateState({ water_source: opt.id })}
                             aria-pressed={state.water_source === opt.id}
                             className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.water_source === opt.id
-                                ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
+                                ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent-text)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
                             <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
                             {opt.hint && (
-                                <span className="block text-[10px] sm:text-xs opacity-70 mt-0.5">{opt.hint}</span>
+                                <span className="block text-[11px] sm:text-xs mt-0.5">{opt.hint}</span>
                             )}
                         </button>
                     ))}
@@ -276,13 +276,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {/* Sewer Type */}
             <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between gap-2">
-                    <p id="basics-sewer-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                    <p id="basics-sewer-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent-text)]">
                         <Waves className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Sewer Type
                     </p>
                     <RequiredTag />
                 </div>
-                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`} role="group" aria-labelledby="basics-sewer-label">
+                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`} role="group" aria-labelledby="basics-sewer-label">
                     {sewerOptions.map((opt) => (
                         <button
                             key={opt.id}
@@ -290,13 +290,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             onClick={() => updateState({ sewer_type: opt.id })}
                             aria-pressed={state.sewer_type === opt.id}
                             className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.sewer_type === opt.id
-                                ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
+                                ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent-text)] shadow-lg'
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
                             <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
                             {opt.hint && (
-                                <span className="block text-[10px] sm:text-xs opacity-70 mt-0.5">{opt.hint}</span>
+                                <span className="block text-[11px] sm:text-xs mt-0.5">{opt.hint}</span>
                             )}
                         </button>
                     ))}
@@ -306,7 +306,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {/* Heating Fuels */}
             <div className="space-y-3 sm:space-y-4">
                 <div>
-                    <p id="basics-fuels-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                    <p id="basics-fuels-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent-text)]">
                         <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Fuel Sources
                     </p>
@@ -345,7 +345,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                 }}
                                 aria-pressed={isSelected}
                                 className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${isSelected
-                                    ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
+                                    ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent-text)] shadow-lg'
                                     : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                     }`}
                             >
@@ -364,7 +364,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     className="space-y-3 sm:space-y-4"
                 >
                     <div>
-                        <p id="basics-primary-heat-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                        <p id="basics-primary-heat-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent-text)]">
                             <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Which is the primary heat source?
                         </p>
@@ -381,7 +381,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     onClick={() => updateState({ primary_heating_type: fuelId })}
                                     aria-pressed={state.primary_heating_type === fuelId}
                                     className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all active:scale-95 ${wizardFocusRing} ${state.primary_heating_type === fuelId
-                                        ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
+                                        ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent-text)] shadow-lg'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
                                 >
@@ -404,13 +404,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
             {/* Optional Utilities */}
             {availableOptionalUtilities.length > 0 && (
                 <div className="space-y-3 sm:space-y-4">
-                    <p id="basics-optional-utilities-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                    <p id="basics-optional-utilities-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent-text)]">
                         <span className="inline-flex -space-x-1">
                             {availableOptionalUtilities.slice(0, 3).map((u) => {
                                 const Icon = u.icon;
                                 return (
                                     <span key={u.id} className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
-                                        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent)]" />
+                                        <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent-text)]" />
                                     </span>
                                 );
                             })}
@@ -436,7 +436,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     }}
                                     aria-pressed={isSelected}
                                     className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${wizardFocusRing} ${isSelected
-                                        ? 'bg-[var(--brand-accent-softer)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
+                                        ? 'bg-[var(--brand-accent-softer)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent-text)] shadow-lg'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
                                 >
@@ -446,7 +446,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     </div>
                                     {/* Checkmark indicator */}
                                     <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all ${isSelected
-                                        ? 'bg-[color:var(--brand-accent)] text-white'
+                                        ? 'bg-[color:var(--brand-accent-fill)] text-[color:var(--brand-accent-contrast)]'
                                         : 'bg-muted/60 border border-border text-muted-foreground/50'
                                         }`}>
                                         <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
@@ -512,7 +512,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                                         aria-pressed={isSelected}
                                                         data-testid={`hoa-dues-frequency-${opt.id}`}
                                                         className={`py-2.5 px-2 rounded-lg border text-center text-sm font-medium transition-all active:scale-95 ${wizardFocusRing} ${isSelected
-                                                            ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)]'
+                                                            ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent-text)]'
                                                             : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                                             }`}
                                                     >
@@ -559,7 +559,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                     onClick={() => toggleAdvancedModuleGroup(group.moduleKeys)}
                                     aria-pressed={isSelected}
                                     className={`p-3 sm:p-4 rounded-lg sm:rounded-xl border text-left transition-all relative active:scale-95 ${wizardFocusRing} ${isSelected
-                                        ? 'bg-[var(--brand-accent-softer)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)] shadow-lg'
+                                        ? 'bg-[var(--brand-accent-softer)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent-text)] shadow-lg'
                                         : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                         }`}
                                     data-testid={`advanced-group-${group.id}`}
@@ -572,7 +572,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                         </div>
                                     </div>
                                     <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all ${isSelected
-                                        ? 'bg-[color:var(--brand-accent)] text-white'
+                                        ? 'bg-[color:var(--brand-accent-fill)] text-[color:var(--brand-accent-contrast)]'
                                         : 'bg-muted/60 border border-border text-muted-foreground/50'
                                         }`}>
                                         <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3" />

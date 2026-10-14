@@ -2,14 +2,25 @@
  * Shared class fragments for the seller wizard so buttons, chips, and inputs
  * keep identical interaction states (hover, focus-visible, active) across
  * every step. All colors flow through the brand accent CSS variables set by
- * SellerLayout, so agent branding applies everywhere automatically.
+ * SellerLayout (lib/branding/deliverable.ts), so agent branding applies
+ * everywhere automatically. Text, icons and focus rings use the
+ * contrast-checked `--brand-accent-text`; solid buttons use
+ * `--brand-accent-fill` with `--brand-accent-contrast` text.
  */
 
+/** On the element that carries the brand variables: picks the light or dark accent ink. */
+export const wizardBrandScope =
+    '[--brand-accent-text:var(--brand-accent-ink)] dark:[--brand-accent-text:var(--brand-accent-ink-dark)]';
+
 export const wizardFocusRing =
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent-text)] focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+
+/** Solid brand fill with a text color that meets contrast on it. */
+export const wizardAccentFill =
+    'bg-[color:var(--brand-accent-fill)] text-[color:var(--brand-accent-contrast)]';
 
 export const wizardPrimaryButton =
-    `bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white rounded-xl font-medium transition-colors active:scale-[0.98] ${wizardFocusRing}`;
+    `${wizardAccentFill} hover:bg-[color:var(--brand-accent-strong)] rounded-xl font-medium transition-colors active:scale-[0.98] ${wizardFocusRing}`;
 
 export const wizardSecondaryButton =
     `bg-muted/40 border border-border text-foreground hover:bg-muted rounded-xl font-medium transition-colors active:scale-[0.98] ${wizardFocusRing}`;

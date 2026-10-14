@@ -1280,8 +1280,8 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     >
                         <div className="relative">
                             <div className="absolute inset-0 bg-[var(--brand-accent-softer)] blur-3xl rounded-full" />
-                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[color:var(--brand-accent)] flex items-center justify-center shadow-xl relative z-10">
-                                <Loader2 className="h-9 w-9 sm:h-11 sm:w-11 text-white animate-spin" />
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[color:var(--brand-accent-fill)] flex items-center justify-center shadow-xl relative z-10">
+                                <Loader2 className="h-9 w-9 sm:h-11 sm:w-11 text-[color:var(--brand-accent-contrast)] animate-spin" />
                             </div>
                         </div>
                         <div className="space-y-2 max-w-sm">

@@ -51,7 +51,7 @@ function renderWizard(options: {
     );
 }
 
-const heading = (name: string | RegExp) => screen.getByRole('heading', { name, level: 3 });
+const heading = (name: string | RegExp) => screen.getByRole('heading', { name, level: 2 });
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 
 /** Welcome, Home Basics with public water, then electric and water answered. */

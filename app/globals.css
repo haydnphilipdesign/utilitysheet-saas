@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
+/* Short viewports: landscape phones and heavily zoomed laptop windows. */
+@custom-variant short (@media (max-height: 500px));
 
 @theme inline {
   --color-background: var(--background);

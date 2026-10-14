@@ -56,7 +56,7 @@ function renderWizard(options: {
     );
 }
 
-const heading = (name: string | RegExp) => screen.getByRole('heading', { name, level: 3 });
+const heading = (name: string | RegExp) => screen.getByRole('heading', { name, level: 2 });
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 const continueButton = () => screen.getByRole('button', { name: /^continue$/i });
 const pressed = (name: string | RegExp) => screen.getByRole('button', { name }).getAttribute('aria-pressed');
@@ -348,7 +348,7 @@ describe('seller form: required basics, trash always asked, same as internet', (
             saveDraft({ currentStep: 4, utilityIndex: 0, state: oldState() });
             renderWizard({ categories: ['electric', 'trash'] });
 
-            expect(await screen.findByRole('heading', { name: /Trash/, level: 3 })).toBeInTheDocument();
+            expect(await screen.findByRole('heading', { name: /Trash/, level: 2 })).toBeInTheDocument();
             expect(screen.queryByTestId('seller-utility-current-trash')).not.toBeInTheDocument();
             click('No trash service at this home');
             expect(heading('Review and Submit')).toBeInTheDocument();
@@ -367,7 +367,7 @@ describe('seller form: required basics, trash always asked, same as internet', (
             });
             renderWizard({ categories: ['electric', 'trash', 'internet'] });
 
-            expect(await screen.findByRole('heading', { name: /Trash/, level: 3 })).toBeInTheDocument();
+            expect(await screen.findByRole('heading', { name: /Trash/, level: 2 })).toBeInTheDocument();
             fireEvent.click(screen.getByTestId('seller-utility-skip-trash'));
             click(/^continue$/i);
             expect(heading('Internet Provider')).toBeInTheDocument();
@@ -383,7 +383,7 @@ describe('seller form: required basics, trash always asked, same as internet', (
             });
             renderWizard({ categories: ['electric', 'trash'] });
 
-            expect(await screen.findByRole('heading', { name: 'Review and Submit', level: 3 })).toBeInTheDocument();
+            expect(await screen.findByRole('heading', { name: 'Review and Submit', level: 2 })).toBeInTheDocument();
             expect(screen.getByText('Hauler Co')).toBeInTheDocument();
         });
 
@@ -396,7 +396,7 @@ describe('seller form: required basics, trash always asked, same as internet', (
             });
             renderWizard({ categories: ['electric', 'trash'] });
 
-            expect(await screen.findByRole('heading', { name: /Trash/, level: 3 })).toBeInTheDocument();
+            expect(await screen.findByRole('heading', { name: /Trash/, level: 2 })).toBeInTheDocument();
             expect(screen.queryByText('Hauler Co')).not.toBeInTheDocument();
         });
 
@@ -404,7 +404,7 @@ describe('seller form: required basics, trash always asked, same as internet', (
             saveDraft({ currentStep: 1, state: oldState({ water_source: 'well' }) });
             renderWizard({ categories: ['electric', 'trash'] });
 
-            expect(await screen.findByRole('heading', { name: 'Home Basics', level: 3 })).toBeInTheDocument();
+            expect(await screen.findByRole('heading', { name: 'Home Basics', level: 2 })).toBeInTheDocument();
             expect(pressed('Private Well')).toBe('true');
             expect(continueButton()).toBeEnabled();
         });

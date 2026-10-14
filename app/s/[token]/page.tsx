@@ -177,6 +177,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 progress={0}
                 address={requestData.property_address}
                 stepName="Paused"
+                showProgress={false}
                 completedCount={0}
                 totalCount={0}
                 brandProfile={brandProfile}
@@ -205,6 +206,7 @@ export default function SellerFormPage({ params }: { params: Promise<{ token: st
                 progress={100}
                 address={requestData.property_address}
                 stepName="Submitted"
+                showProgress={false}
                 completedCount={0}
                 totalCount={0}
                 brandProfile={brandProfile}

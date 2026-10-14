@@ -129,7 +129,7 @@ export function ReviewStep({
             className="space-y-6 sm:space-y-8"
         >
             <div className="space-y-2">
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground">Review and Submit</h3>
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground">Review and Submit</h2>
                 <p className="text-sm sm:text-base text-muted-foreground">Please review your information below.</p>
             </div>
 
@@ -147,12 +147,12 @@ export function ReviewStep({
                 {/* Home Basics Summary */}
                 <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
                     <div className="flex items-center justify-between border-b border-border pb-2">
-                        <h4 className="font-semibold text-foreground text-sm sm:text-base">Home Basics</h4>
+                        <h3 className="font-semibold text-foreground text-sm sm:text-base">Home Basics</h3>
                         <button
                             type="button"
                             onClick={onEditBasics}
                             aria-label="Edit Home Basics"
-                            className={`inline-flex min-h-11 items-center gap-1 text-xs text-[color:var(--brand-accent)] hover:opacity-80 transition-opacity rounded-md px-2 -mr-2 ${wizardFocusRing}`}
+                            className={`inline-flex min-h-11 items-center gap-1 text-xs text-[color:var(--brand-accent-text)] hover:opacity-80 transition-opacity rounded-md px-2 -mr-2 ${wizardFocusRing}`}
                         >
                             <Pencil className="h-3 w-3" aria-hidden="true" />
                             Edit
@@ -223,7 +223,7 @@ export function ReviewStep({
                 {/* Utilities Summary */}
                 <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
                     <div className="flex items-center justify-between border-b border-border pb-2">
-                        <h4 className="font-semibold text-foreground text-sm sm:text-base">Utility Providers</h4>
+                        <h3 className="font-semibold text-foreground text-sm sm:text-base">Utility Providers</h3>
                     </div>
                     <div className="space-y-3 sm:space-y-4">
                         {visibleUtilities.map((cat, index) => {
@@ -258,7 +258,7 @@ export function ReviewStep({
                                         <div className="flex items-center gap-1 shrink-0">
                                             {(utilState?.entry_mode !== null || noTrashService) && (
                                                 <div className="p-1 rounded-full bg-[var(--brand-accent-soft)]">
-                                                    <Check className="h-3 w-3 sm:h-4 sm:w-4 text-[color:var(--brand-accent)]" />
+                                                    <Check className="h-3 w-3 sm:h-4 sm:w-4 text-[color:var(--brand-accent-text)]" />
                                                 </div>
                                             )}
                                             {onEditUtility && (
@@ -307,7 +307,7 @@ export function ReviewStep({
                 {packetMode === 'advanced' && advancedModules.length > 0 && (
                     <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
                         <div className="flex items-center justify-between border-b border-border pb-2">
-                            <h4 className="font-semibold text-foreground text-sm sm:text-base">Additional Home Details</h4>
+                            <h3 className="font-semibold text-foreground text-sm sm:text-base">Additional Home Details</h3>
                         </div>
                         <div className="space-y-3">
                             {advancedModules.map((moduleKey) => {
@@ -325,7 +325,7 @@ export function ReviewStep({
                                                 <button
                                                     type="button"
                                                     onClick={() => onEditAdvancedModule(moduleKey)}
-                                                    className={`inline-flex min-h-11 items-center gap-1 rounded-md px-2 -mr-2 text-xs text-[color:var(--brand-accent)] hover:bg-muted hover:opacity-80 transition-colors ${wizardFocusRing}`}
+                                                    className={`inline-flex min-h-11 items-center gap-1 rounded-md px-2 -mr-2 text-xs text-[color:var(--brand-accent-text)] hover:bg-muted hover:opacity-80 transition-colors ${wizardFocusRing}`}
                                                     aria-label={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
                                                     title={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
                                                 >
@@ -371,7 +371,7 @@ export function ReviewStep({
                                 type="button"
                                 onClick={onRetry}
                                 disabled={submitting}
-                                className={`inline-flex items-center gap-1.5 mt-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-700 dark:text-red-100 px-3 py-1.5 text-sm font-medium transition-colors ${wizardFocusRing}`}
+                                className={`inline-flex items-center gap-1.5 mt-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-800 dark:text-red-100 min-h-11 px-3 py-1.5 text-sm font-medium transition-colors ${wizardFocusRing}`}
                                 data-testid="review-submit-retry"
                             >
                                 Retry
@@ -394,7 +394,7 @@ export function ReviewStep({
                     type="button"
                     onClick={onSubmit}
                     disabled={submitting}
-                    className={`flex-[2] py-3 sm:py-4 text-center rounded-xl font-bold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base shadow-lg ${wizardFocusRing}`}
+                    className={`flex-[2] py-3 sm:py-4 text-center rounded-xl font-bold bg-[color:var(--brand-accent-fill)] hover:bg-[color:var(--brand-accent-strong)] text-[color:var(--brand-accent-contrast)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base shadow-lg ${wizardFocusRing}`}
                 >
                     {submitting ? (
                         <>

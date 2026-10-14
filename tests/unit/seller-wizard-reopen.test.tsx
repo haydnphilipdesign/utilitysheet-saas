@@ -63,7 +63,7 @@ function renderWizard(options: { editVersion?: number; prefill?: SellerPrefill; 
     );
 }
 
-const heading = (name: string | RegExp) => screen.getByRole('heading', { name, level: 3 });
+const heading = (name: string | RegExp) => screen.getByRole('heading', { name, level: 2 });
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 const readDraft = () => JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
 const settle = () => new Promise((resolve) => setTimeout(resolve, 400));
@@ -207,7 +207,7 @@ describe('SellerWizard editing sessions', () => {
         first.unmount();
 
         renderWizard({ editVersion: 1, prefill: storedSheet });
-        expect(await screen.findByRole('heading', { name: 'Review and Submit', level: 3 })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: 'Review and Submit', level: 2 })).toBeInTheDocument();
         await waitFor(() => expect(screen.queryByText('City Water Authority')).not.toBeInTheDocument());
         expect(screen.getByText('Corrected Power Co')).toBeInTheDocument();
     });

@@ -52,7 +52,7 @@ test.describe('Seller wizard: revisiting answers', () => {
         await page.getByRole('button', { name: 'Public Water' }).click();
         await page.getByRole('button', { name: 'Septic System' }).click();
         await page.getByRole('button', { name: 'Continue', exact: true }).click();
-        await expect(page.locator('header').getByText('2 of 6')).toBeVisible();
+        await expect(page.locator('header').getByText('2 of 6', { exact: true })).toBeVisible();
 
         // Electric and its single-button meter step.
         await page.getByRole('button', { name: 'PPL Electric Utilities' }).click();
@@ -71,7 +71,7 @@ test.describe('Seller wizard: revisiting answers', () => {
         await page.getByRole('button', { name: 'Easton Suburban Water Authority' }).click();
 
         // Irrigation: details entered, then the answer changes to No.
-        await expect(page.getByRole('heading', { name: 'Irrigation & Watering', level: 3 })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Irrigation & Watering', level: 2 })).toBeVisible();
         await page.getByPlaceholder('Name of company or person').fill('GreenSprout Irrigation');
         await page.getByTestId('irrigation-day-mon').click();
         await page.locator('select').first().selectOption('no');

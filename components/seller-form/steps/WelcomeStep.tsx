@@ -28,7 +28,7 @@ export function WelcomeStep({ sellerIntro, address, onNext, isTestDrive = false,
             className="flex flex-col items-center justify-center flex-1 text-center space-y-6 sm:space-y-8 px-2"
         >
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--brand-accent-soft)] flex items-center justify-center ring-1 ring-border backdrop-blur-md">
-                <Home className="h-8 w-8 sm:h-10 sm:w-10 text-[color:var(--brand-accent)]" />
+                <Home className="h-8 w-8 sm:h-10 sm:w-10 text-[color:var(--brand-accent-text)]" />
             </div>
 
             {isTestDrive ? (
@@ -45,12 +45,12 @@ export function WelcomeStep({ sellerIntro, address, onNext, isTestDrive = false,
                     <ul className="space-y-2 text-left text-xs sm:text-sm text-muted-foreground">
                         {TEST_DRIVE_POINTS.map((point) => (
                             <li key={point} className="flex items-start gap-2">
-                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand-accent)]" aria-hidden="true" />
+                                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--brand-accent-text)]" aria-hidden="true" />
                                 <span>{point}</span>
                             </li>
                         ))}
                     </ul>
-                    <p className="text-xs text-muted-foreground/80 inline-flex items-center gap-1.5 justify-center">
+                    <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5 justify-center">
                         <Save className="h-3 w-3" aria-hidden="true" />
                         Progress saves automatically in this browser.
                     </p>
@@ -73,7 +73,7 @@ export function WelcomeStep({ sellerIntro, address, onNext, isTestDrive = false,
                         A few short steps. We&apos;ll ask which services the home uses, then you can confirm the providers.
                     </p>
                     {savesProgress ? (
-                        <p className="text-xs text-muted-foreground/80 inline-flex items-center gap-1.5 justify-center">
+                        <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5 justify-center">
                             <Save className="h-3 w-3" />
                             Your progress saves automatically in this browser, so you can close the tab and come back later.
                         </p>
@@ -85,7 +85,7 @@ export function WelcomeStep({ sellerIntro, address, onNext, isTestDrive = false,
                 type="button"
                 onClick={onNext}
                 data-testid="seller-welcome-continue"
-                className={`group relative inline-flex items-center justify-center px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-white transition-all duration-200 bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] border border-[color:var(--brand-accent-border)] rounded-xl shadow-lg active:scale-95 ${wizardFocusRing}`}
+                className={`group relative inline-flex items-center justify-center px-8 sm:px-10 py-3.5 sm:py-4 text-sm sm:text-base font-semibold text-[color:var(--brand-accent-contrast)] transition-all duration-200 bg-[color:var(--brand-accent-fill)] hover:bg-[color:var(--brand-accent-strong)] border border-[color:var(--brand-accent-border)] rounded-xl shadow-lg active:scale-95 ${wizardFocusRing}`}
             >
                 <span className="mr-2">{isTestDrive ? 'Start the test' : 'Get Started'}</span>
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

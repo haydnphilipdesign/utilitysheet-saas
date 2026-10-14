@@ -29,8 +29,8 @@ export function SellerStatusNotice({ kind, address, brandProfile }: SellerStatus
         >
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--brand-accent-soft)] flex items-center justify-center ring-1 ring-border">
                 {kind === 'submitted'
-                    ? <CheckCircle2 className="h-9 w-9 sm:h-11 sm:w-11 text-[color:var(--brand-accent)]" aria-hidden="true" />
-                    : <RefreshCw className="h-9 w-9 sm:h-11 sm:w-11 text-[color:var(--brand-accent)]" aria-hidden="true" />}
+                    ? <CheckCircle2 className="h-9 w-9 sm:h-11 sm:w-11 text-[color:var(--brand-accent-text)]" aria-hidden="true" />
+                    : <RefreshCw className="h-9 w-9 sm:h-11 sm:w-11 text-[color:var(--brand-accent-text)]" aria-hidden="true" />}
             </div>
 
             <div className="space-y-3 max-w-md w-full">

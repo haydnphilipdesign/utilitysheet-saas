@@ -409,7 +409,7 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
                                 {brandProfile.contact_email && (
                                     <a
                                         href={`mailto:${brandProfile.contact_email}`}
-                                        className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
+                                        className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent-text)] transition-colors"
                                     >
                                         <Mail className="h-3.5 w-3.5" />
                                         {brandProfile.contact_email}
@@ -418,7 +418,7 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
                                 {brandProfile.contact_phone && (
                                     <a
                                         href={`tel:${brandProfile.contact_phone.replace(/[^0-9+]/g, '')}`}
-                                        className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
+                                        className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent-text)] transition-colors"
                                     >
                                         <Phone className="h-3.5 w-3.5" />
                                         {brandProfile.contact_phone}
@@ -604,7 +604,7 @@ export function IntakeLinkScreen({ apiPath }: { apiPath: string }) {
 
                         <div className="mt-6 flex items-center justify-end">
                             <Button
-                                className="bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white"
+                                className="bg-[color:var(--brand-accent-fill)] hover:bg-[color:var(--brand-accent-strong)] text-[color:var(--brand-accent-contrast)]"
                                 onClick={handleStart}
                                 disabled={!canStart}
                                 data-testid="intake-continue"

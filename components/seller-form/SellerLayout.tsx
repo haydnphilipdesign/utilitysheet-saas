@@ -1,10 +1,11 @@
 'use client';
 
-import { ReactNode, CSSProperties, useEffect, useRef, useState } from 'react';
+import { ReactNode, CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Mail, Phone, Globe, Check, Send, Loader2 } from 'lucide-react';
+import { Mail, Phone, Globe, Check, Send, Loader2, MapPin } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
-import { buildBrandAccentStyle, resolveBrandColor } from '@/lib/branding/deliverable';
+import { buildBrandAccentStyle } from '@/lib/branding/deliverable';
+import { wizardBrandScope } from './wizard-ui';
 import { detectMaintenance } from '@/lib/maintenance/client';
 
 interface BrandProfile {
@@ -30,9 +31,18 @@ interface SellerLayoutProps {
     sellerToken?: string;
     showSaveLink?: boolean;
     isTestDrive?: boolean;
+    /** False on screens that are not a step of the form (paused, already submitted). */
+    showProgress?: boolean;
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Success green that keeps 4.5:1 on the light and dark page backgrounds.
+const SUCCESS_TEXT = 'text-emerald-700 dark:text-emerald-400';
+// Before the first measurement; the layout effect replaces it before paint.
+const FALLBACK_HEADER_HEIGHT = 96;
+// The header measures before paint so the content padding never jumps. The
+// server render (reusable intake link) has nothing to measure.
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 const SAVE_LINK_PAUSED_MESSAGE = 'Emailing this link is paused for a short planned update, so nothing was sent. This page’s web address is your link: bookmark or copy it to come back later.';
 
 function SaveLinkAffordance({ token, stepName }: { token: string; stepName: string }) {
@@ -79,7 +89,7 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
 
     if (done) {
         return (
-            <span className="inline-flex items-center gap-1 text-emerald-500">
+            <span className={`inline-flex items-center gap-1 ${SUCCESS_TEXT}`}>
                 <Check className="h-3.5 w-3.5" />
                 Sent! Check your inbox.
             </span>
@@ -92,7 +102,7 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
                 type="button"
                 onClick={() => setOpen(true)}
                 data-testid="seller-save-link-open"
-                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors underline-offset-2 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent-text)] transition-colors underline-offset-2 hover:underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent-text)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
                 <Mail className="h-3.5 w-3.5" />
                 Email me this link to come back later
@@ -119,7 +129,7 @@ function SaveLinkAffordance({ token, stepName }: { token: string; stepName: stri
                     type="button"
                     onClick={handleSend}
                     disabled={submitting}
-                    className="inline-flex items-center gap-1 rounded-md bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white text-sm font-medium px-3 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    className="inline-flex items-center gap-1 rounded-md bg-[color:var(--brand-accent-fill)] hover:bg-[color:var(--brand-accent-strong)] text-[color:var(--brand-accent-contrast)] text-sm font-medium px-3 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent-text)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     data-testid="seller-save-link-send"
                 >
                     {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -151,6 +161,7 @@ export function SellerLayout(props: SellerLayoutProps) {
         sellerToken,
         showSaveLink,
         isTestDrive,
+        showProgress = true,
     } = props;
     const headerRef = useRef<HTMLElement | null>(null);
     const [headerHeight, setHeaderHeight] = useState<number | null>(null);
@@ -163,7 +174,7 @@ export function SellerLayout(props: SellerLayoutProps) {
         }
     }, [stepName]);
 
-    useEffect(() => {
+    useIsomorphicLayoutEffect(() => {
         const headerEl = headerRef.current;
         if (!headerEl) return;
 
@@ -190,75 +201,85 @@ export function SellerLayout(props: SellerLayoutProps) {
     // Honor the agent's brand color across the whole deliverable (safe fallback
     // to the product default). The same resolved color drives the header, the
     // progress bar, and every step CTA/selection/checkmark via CSS variables.
-    const safePrimaryColor = resolveBrandColor(brandProfile?.primary_color);
     const accentStyle = buildBrandAccentStyle(brandProfile?.primary_color);
-    const fallbackHeaderHeight = 144;
-    const mainTopPadding = (headerHeight ?? fallbackHeaderHeight) + 16;
+    const mainTopPadding = (headerHeight ?? FALLBACK_HEADER_HEIGHT) + 16;
+    const roundedProgress = Math.round(progress);
+    const stepCount = stepNumber != null && stepTotal != null && stepNumber > 0 && stepNumber <= stepTotal
+        ? `${stepNumber} of ${stepTotal}`
+        : null;
 
     return (
-        <div className="min-h-screen bg-background text-foreground selection:bg-primary/30" style={accentStyle as CSSProperties}>
+        <div className={`min-h-screen bg-background text-foreground selection:bg-primary/30 ${wizardBrandScope}`} style={accentStyle as CSSProperties}>
             {/* Background Gradients */}
             <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-slate-900/10 rounded-full blur-[128px]" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 rounded-full blur-[128px]" />
             </div>
 
-            {/* Header */}
-            <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/50 backdrop-blur-xl">
-                <div className="max-w-2xl mx-auto px-4 py-3 sm:py-4">
-                    {/* Top row: Brand + Property */}
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                            {brandProfile?.logo_url ? (
-                                <img
-                                    src={brandProfile.logo_url}
-                                    alt={brandProfile.name || 'Organization'}
-                                    className="h-8 sm:h-10 w-auto max-w-[100px] sm:max-w-[120px] object-contain shrink-0"
-                                />
-                            ) : brandProfile?.name ? (
-                                <div
-                                    className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-lg flex items-center justify-center text-white font-bold text-xs sm:text-sm shrink-0"
-                                    style={{ backgroundColor: safePrimaryColor }}
-                                >
-                                    {brandProfile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                                </div>
-                            ) : (
-                                <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-lg shadow-slate-500/20 shrink-0">
-                                    <img src="/logo-sm.png" alt="UtilitySheet Logo" className="h-3 w-3 sm:h-4 sm:w-4" />
-                                </div>
-                            )}
-                            <div className="min-w-0">
-                                <h1 className="font-bold text-xs sm:text-sm text-foreground truncate">
-                                    {brandProfile?.name || 'UtilitySheet'}
-                                </h1>
-                                <p className="text-xs text-muted-foreground truncate">
-                                    {brandProfile?.name ? 'Utility information request' : 'Utility information'}
-                                </p>
+            {/*
+              Sized by the screen, never by scrolling, so it does not jump.
+              Phones show the property under the brand name; short screens
+              (landscape phones, zoomed windows) use one row with the progress
+              bar along the bottom edge.
+            */}
+            <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/95 backdrop-blur-xl">
+                <div className="relative max-w-2xl mx-auto px-4 py-2.5 sm:py-3 short:py-1.5">
+                    {/* Short screens reserve the right edge for the step count below. */}
+                    <div className={`flex items-center gap-3 short:h-9 ${showProgress ? 'short:pr-28' : ''}`}>
+                        {brandProfile?.logo_url ? (
+                            // The brand name is shown beside the logo, so the image is decorative.
+                            <img
+                                src={brandProfile.logo_url}
+                                alt=""
+                                className="h-8 sm:h-10 short:h-7 w-auto max-w-[88px] sm:max-w-[120px] object-contain shrink-0"
+                            />
+                        ) : brandProfile?.name ? (
+                            <div
+                                aria-hidden="true"
+                                className="h-8 w-8 sm:h-10 sm:w-10 short:h-7 short:w-7 rounded-lg sm:rounded-xl shadow-sm flex items-center justify-center bg-[color:var(--brand-accent-fill)] text-[color:var(--brand-accent-contrast)] font-bold text-xs sm:text-sm shrink-0"
+                            >
+                                {brandProfile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                             </div>
+                        ) : (
+                            <div className="h-8 w-8 sm:h-10 sm:w-10 short:h-7 short:w-7 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-700 shadow-sm flex items-center justify-center shrink-0">
+                                <img src="/logo-sm.png" alt="" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                            <h1 className="font-bold text-sm text-foreground truncate leading-5">
+                                {brandProfile?.name || 'UtilitySheet'}
+                            </h1>
+                            {address ? (
+                                <p className="sm:hidden flex items-center gap-1 text-xs leading-4 text-muted-foreground" title={address} data-testid="seller-header-address">
+                                    <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                    <span className="sr-only">Property: </span>
+                                    <span className="truncate">{address}</span>
+                                </p>
+                            ) : null}
+                            <p className={`${address ? 'hidden sm:block' : ''} short:hidden text-xs leading-4 text-muted-foreground truncate`}>
+                                {brandProfile?.name ? 'Utility information request' : 'Utility information'}
+                            </p>
                         </div>
                         {address && (
-                            <div className="text-right hidden sm:block shrink-0">
-                                <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Property</p>
-                                <p className="text-sm text-foreground font-medium truncate max-w-[180px]">{address}</p>
+                            <div className="hidden sm:block min-w-0 max-w-[55%] text-right">
+                                <p className="short:hidden text-[11px] leading-4 text-muted-foreground uppercase tracking-widest font-medium">Property</p>
+                                <p className="text-sm leading-5 text-foreground font-medium truncate" title={address} data-testid="seller-header-address-wide">
+                                    <span className="sr-only">Property: </span>
+                                    {address}
+                                </p>
                             </div>
                         )}
                     </div>
 
-                    {/* Mobile address display */}
-                    {address && (
-                        <div className="sm:hidden mb-3 px-3 py-2 bg-muted/50 rounded-lg border border-border">
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Property</p>
-                            <p className="text-xs text-foreground font-medium truncate">{address}</p>
-                        </div>
-                    )}
-
                     {isTestDrive ? (
                         <div
                             data-testid="seller-test-drive-banner"
-                            className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-xs text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100"
+                            className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1 text-xs text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100"
                         >
                             <p className="min-w-0">
-                                <strong>Test mode.</strong> You are seeing what your seller sees. Use made-up answers.
+                                <strong>Test mode.</strong>{' '}
+                                <span className="hidden sm:inline">You are seeing what your seller sees. </span>
+                                Use made-up answers.
                             </p>
                             <Link
                                 href="/dashboard"
@@ -270,39 +291,52 @@ export function SellerLayout(props: SellerLayoutProps) {
                         </div>
                     ) : null}
 
-                    {/* Progress Bar */}
-                    <div className="space-y-1.5 sm:space-y-2">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground gap-2">
-                            <span className="font-medium truncate">{stepName || 'Progress'}</span>
-                            <span className="flex items-center gap-2 shrink-0">
-                                {autosaveFlash && (
-                                    <span className="inline-flex items-center gap-1 text-emerald-500 transition-opacity">
-                                        <Check className="h-3 w-3" />
-                                        <span className="hidden sm:inline">Saved</span>
-                                    </span>
-                                )}
-                                {stepNumber != null && stepTotal != null && stepNumber > 0 && stepNumber <= stepTotal && (
-                                    <span className="text-muted-foreground/80">{stepNumber} of {stepTotal}</span>
-                                )}
-                                <span>{Math.round(progress)}%</span>
-                            </span>
-                        </div>
-                        <div className="h-1.5 sm:h-1 bg-muted rounded-full overflow-hidden">
+                    {showProgress && (
+                        <div className="mt-2 sm:mt-3 short:contents">
+                            {/* Short screens: the count moves up beside the brand row and the step name is left to the page heading. */}
+                            <div aria-hidden="true" className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground short:absolute short:right-4 short:top-1.5 short:mb-0 short:h-9">
+                                <span className="font-medium truncate short:hidden">{stepName || 'Progress'}</span>
+                                <span className="flex items-center gap-2 shrink-0 tabular-nums">
+                                    {autosaveFlash && (
+                                        <span className={`inline-flex items-center gap-1 ${SUCCESS_TEXT} transition-opacity`}>
+                                            <Check className="h-3 w-3" />
+                                            <span className="hidden sm:inline short:hidden">Saved</span>
+                                        </span>
+                                    )}
+                                    {stepCount && <span>{stepCount}</span>}
+                                    <span>{roundedProgress}%</span>
+                                </span>
+                            </div>
                             <div
-                                className="h-full transition-all duration-500 ease-out"
-                                style={{
-                                    width: `${progress}%`,
-                                    background: 'linear-gradient(to right, var(--brand-accent), var(--brand-accent-strong))',
-                                }}
-                            />
+                                role="progressbar"
+                                aria-label="Form progress"
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-valuenow={roundedProgress}
+                                aria-valuetext={[stepName, stepCount && `step ${stepCount}`, `${roundedProgress}% complete`].filter(Boolean).join(', ')}
+                                className="h-1.5 sm:h-1 bg-muted rounded-full overflow-hidden short:absolute short:inset-x-0 short:bottom-0 short:h-0.5 short:rounded-none"
+                            >
+                                <div
+                                    className="h-full transition-all duration-500 ease-out motion-reduce:transition-none"
+                                    style={{
+                                        width: `${progress}%`,
+                                        background: 'linear-gradient(to right, var(--brand-accent), var(--brand-accent-strong))',
+                                    }}
+                                />
+                            </div>
                         </div>
-                    </div>
+                    )}
+                    {/* Announces each new step; screen readers do not read it on load. */}
+                    <p className="sr-only" aria-live="polite" data-testid="seller-step-announcement">
+                        {stepName ? [stepName, stepCount && `step ${stepCount}`].filter(Boolean).join(', ') : ''}
+                    </p>
                 </div>
             </header>
 
-            {/* Main Content Area - adjusted padding for mobile */}
+            {/* Main Content Area - top padding follows the measured header. Steps slide in
+                from the side; clipping keeps that from widening the page for a moment. */}
             <main
-                className="relative z-10 pb-6 px-4 min-h-screen flex flex-col max-w-2xl mx-auto"
+                className="relative z-10 pb-6 px-4 min-h-screen flex flex-col max-w-2xl mx-auto overflow-x-clip"
                 style={{ paddingTop: `${mainTopPadding}px` }}
             >
                 {children}
@@ -330,7 +364,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                     step: stepName || 'unknown',
                                     location: isTestDrive ? 'test_drive_seller_flow' : 'seller_flow',
                                 })}
-                                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
+                                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent-text)] transition-colors"
                             >
                                 <Mail className="h-3.5 w-3.5" />
                                 {brandProfile.contact_email}
@@ -344,7 +378,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                     step: stepName || 'unknown',
                                     location: isTestDrive ? 'test_drive_seller_flow' : 'seller_flow',
                                 })}
-                                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
+                                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent-text)] transition-colors"
                             >
                                 <Phone className="h-3.5 w-3.5" />
                                 {brandProfile.contact_phone}
@@ -360,7 +394,7 @@ export function SellerLayout(props: SellerLayoutProps) {
                                     step: stepName || 'unknown',
                                     location: isTestDrive ? 'test_drive_seller_flow' : 'seller_flow',
                                 })}
-                                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)] transition-colors"
+                                className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent-text)] transition-colors"
                             >
                                 <Globe className="h-3.5 w-3.5" />
                                 Website

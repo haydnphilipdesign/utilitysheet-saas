@@ -54,6 +54,7 @@ import type {
 import type { SavedSellerForm, SellerFormsResponse } from './types';
 import { linkSuffixError, suggestLinkSuffix } from '@/lib/seller-forms/links';
 import { buildBrandAccentStyle } from '@/lib/branding/deliverable';
+import { wizardBrandScope } from '@/components/seller-form/wizard-ui';
 import {
     SELLER_HEADING_MAX,
     SELLER_INTRO_MAX,
@@ -439,7 +440,7 @@ export function FormEditor({ id }: { id: string }) {
                             <p className="text-sm font-medium">What sellers see first</p>
                             <div
                                 data-testid="seller-intro-preview"
-                                className="rounded-2xl border border-border bg-card/50 p-4 sm:p-6"
+                                className={`rounded-2xl border border-border bg-card/50 p-4 sm:p-6 ${wizardBrandScope}`}
                                 style={buildBrandAccentStyle(selectedBrand?.primary_color) as CSSProperties}
                             >
                                 <IntakeIntro

@@ -488,7 +488,7 @@ export function UtilityStep({
                     type="button"
                     onClick={handleBackPress}
                     aria-label={mode === 'meter' || mode === 'search' || mode === 'trash_details' ? 'Back to providers' : 'Back'}
-                    className={`p-2 -ml-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors active:scale-95 ${wizardFocusRing}`}
+                    className={`-ml-3 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors active:scale-95 ${wizardFocusRing}`}
                 >
                     <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
@@ -497,7 +497,7 @@ export function UtilityStep({
                         <CategoryIcon className={`h-5 w-5 sm:h-6 sm:w-6 ${iconColorClass}`} />
                     </div>
                     <div className="min-w-0">
-                        <h3 className="text-lg sm:text-xl font-bold text-foreground">{categoryLabel} Provider</h3>
+                        <h2 className="text-lg sm:text-xl font-bold text-foreground">{categoryLabel} Provider</h2>
                         <p className="text-muted-foreground text-xs sm:text-sm">{providerPrompt}</p>
                     </div>
                 </div>
@@ -544,7 +544,7 @@ export function UtilityStep({
                             <span className="font-medium text-foreground text-sm sm:text-base break-words min-w-0">
                                 Same as Internet: {internetProviderName}
                             </span>
-                            <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
+                            <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[color:var(--brand-accent-text)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
                         </button>
                     )}
                     {loadingSuggestions ? (
@@ -553,7 +553,7 @@ export function UtilityStep({
                                 <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground animate-spin" />
                             </div>
                             <div>
-                                <h4 className="text-base sm:text-lg font-medium text-foreground">Finding providers...</h4>
+                                <h3 className="text-base sm:text-lg font-medium text-foreground">Finding providers...</h3>
                                 <p className="text-muted-foreground text-xs sm:text-sm mt-1">Loading suggestions for your area.</p>
                             </div>
                             <div className="grid grid-cols-1 gap-2 sm:gap-3">
@@ -600,7 +600,7 @@ export function UtilityStep({
                                                 )}
                                             </div>
                                         </div>
-                                        <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
+                                        <Check className="h-4 w-4 sm:h-5 sm:w-5 text-[color:var(--brand-accent-text)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
                                     </button>
                                 ))}
                             </div>
@@ -629,12 +629,12 @@ export function UtilityStep({
                     ) : (
                         <div className="bg-muted/50 border border-border rounded-xl sm:rounded-2xl p-6 sm:p-8 text-center space-y-4 sm:space-y-6">
                             <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-[var(--brand-accent-soft)] flex items-center justify-center">
-                                <Search className="h-6 w-6 sm:h-8 sm:w-8 text-[color:var(--brand-accent)]" />
+                                <Search className="h-6 w-6 sm:h-8 sm:w-8 text-[color:var(--brand-accent-text)]" />
                             </div>
                             <div>
-                                <h4 className="text-base sm:text-lg font-medium text-foreground">
+                                <h3 className="text-base sm:text-lg font-medium text-foreground">
                                     {suggestionsPaused ? 'Provider suggestions are paused' : 'Help us find your provider'}
-                                </h4>
+                                </h3>
                                 <p className="text-muted-foreground text-xs sm:text-sm mt-1" data-testid={suggestionsPaused ? 'seller-suggestions-paused' : undefined}>
                                     {suggestionsPaused
                                         ? 'We’re doing a short planned update, so we can’t suggest providers right now. You can type your provider’s name, or choose I’m not sure.'
@@ -720,7 +720,7 @@ export function UtilityStep({
                                         className={`w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border hover:border-ring rounded-xl text-left transition-all group active:scale-[0.98] ${wizardFocusRing}`}
                                     >
                                         <span className="font-medium text-foreground transition-colors text-sm sm:text-base truncate">{suggestion.display_name}</span>
-                                        <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
+                                        <Check className="h-4 w-4 text-[color:var(--brand-accent-text)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
                                     </button>
                                 ))}
                             </>
@@ -748,7 +748,7 @@ export function UtilityStep({
                                         className={`w-full flex items-center justify-between p-3 sm:p-4 bg-muted/40 hover:bg-muted border border-border hover:border-ring rounded-xl text-left transition-all group active:scale-[0.98] ${wizardFocusRing}`}
                                     >
                                         <span className="font-medium text-foreground transition-colors text-sm sm:text-base truncate">{result.display_name}</span>
-                                        <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
+                                        <Check className="h-4 w-4 text-[color:var(--brand-accent-text)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
                                     </button>
                                 ))}
                             </>
@@ -776,7 +776,7 @@ export function UtilityStep({
                                                 </span>
                                             )}
                                         </div>
-                                        <Check className="h-4 w-4 text-[color:var(--brand-accent)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
+                                        <Check className="h-4 w-4 text-[color:var(--brand-accent-text)] opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0 ml-2" />
                                     </button>
                                 ))}
                             </>
@@ -825,7 +825,7 @@ export function UtilityStep({
                     <button
                         type="button"
                         onClick={() => setMode('view')}
-                        className={`w-full py-2.5 sm:py-3 text-xs sm:text-sm ${wizardGhostButton}`}
+                        className={`w-full min-h-11 py-2.5 sm:py-3 text-xs sm:text-sm ${wizardGhostButton}`}
                     >
                         Cancel Search
                     </button>
@@ -875,7 +875,7 @@ export function UtilityStep({
                     <button
                         type="button"
                         onClick={() => setMode('view')}
-                        className={`w-full py-2.5 sm:py-3 text-xs sm:text-sm ${wizardGhostButton}`}
+                        className={`w-full min-h-11 py-2.5 sm:py-3 text-xs sm:text-sm ${wizardGhostButton}`}
                     >
                         Change provider
                     </button>
@@ -924,8 +924,8 @@ export function UtilityStep({
                                         type="button"
                                         aria-pressed={isSelected}
                                         onClick={() => updateTrashExtra({ has_recycling: option.value })}
-                                        className={`px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all active:scale-[0.97] ${wizardFocusRing} ${isSelected
-                                            ? 'bg-[color:var(--brand-accent)] text-white border-[color:var(--brand-accent)]'
+                                        className={`min-h-11 px-3 py-2 rounded-lg border text-xs sm:text-sm font-medium transition-all active:scale-[0.97] ${wizardFocusRing} ${isSelected
+                                            ? 'bg-[color:var(--brand-accent-fill)] text-[color:var(--brand-accent-contrast)] border-[color:var(--brand-accent-fill)]'
                                             : 'bg-muted/50 border-border text-muted-foreground hover:border-ring hover:text-foreground'
                                             }`}
                                         data-testid={`seller-trash-recycling-${option.value}`}
@@ -962,7 +962,7 @@ export function UtilityStep({
                     <button
                         type="button"
                         onClick={() => setMode('view')}
-                        className={`w-full py-2.5 sm:py-3 text-xs sm:text-sm ${wizardGhostButton}`}
+                        className={`w-full min-h-11 py-2.5 sm:py-3 text-xs sm:text-sm ${wizardGhostButton}`}
                     >
                         Change provider
                     </button>

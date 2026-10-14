@@ -37,15 +37,15 @@ interface PickupDaySelectorProps {
 }
 
 const CHIP_BASE =
-    'flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs sm:text-sm font-medium transition-all select-none cursor-pointer active:scale-[0.97]';
+    'flex min-h-11 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs sm:text-sm font-medium transition-all select-none cursor-pointer active:scale-[0.97]';
 const CHIP_SELECTED =
-    'bg-[color:var(--brand-accent)] text-white border-[color:var(--brand-accent)]';
+    'bg-[color:var(--brand-accent-fill)] text-[color:var(--brand-accent-contrast)] border-[color:var(--brand-accent-fill)]';
 const CHIP_UNSELECTED =
     'bg-muted/50 border-border text-muted-foreground hover:border-ring hover:text-foreground';
 const CHIP_FOCUS =
-    'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[color:var(--brand-accent)] has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background';
+    'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[color:var(--brand-accent-text)] has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background';
 const BUTTON_FOCUS =
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-accent-text)] focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 
 /**
  * Shared pickup-day control for trash and recycling. Weekdays render as

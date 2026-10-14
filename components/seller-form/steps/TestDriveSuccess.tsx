@@ -16,7 +16,7 @@ type LoadState =
     | { kind: 'error' };
 
 const secondaryAction = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card/60 px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted ${wizardFocusRing}`;
-const primaryAction = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--brand-accent-border)] bg-[color:var(--brand-accent)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[color:var(--brand-accent-strong)] ${wizardFocusRing}`;
+const primaryAction = `inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--brand-accent-border)] bg-[color:var(--brand-accent-fill)] px-4 text-sm font-semibold text-[color:var(--brand-accent-contrast)] transition-colors hover:bg-[color:var(--brand-accent-strong)] ${wizardFocusRing}`;
 
 async function loadTestDriveState(): Promise<LoadState> {
     try {

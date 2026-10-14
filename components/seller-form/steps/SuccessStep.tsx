@@ -169,13 +169,13 @@ export function SuccessStep({ isDemo = false, isTestDrive = false, demoData, bra
                         <p className="text-xs font-medium text-foreground">Questions? Contact {brandProfile?.name || 'your real estate team'}:</p>
                         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
                             {brandProfile?.contact_email && (
-                                <a href={`mailto:${brandProfile.contact_email}`} className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)]">
+                                <a href={`mailto:${brandProfile.contact_email}`} className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent-text)]">
                                     <Mail className="h-3.5 w-3.5" />
                                     {brandProfile.contact_email}
                                 </a>
                             )}
                             {brandProfile?.contact_phone && (
-                                <a href={`tel:${brandProfile.contact_phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent)]">
+                                <a href={`tel:${brandProfile.contact_phone.replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-1 text-foreground hover:text-[color:var(--brand-accent-text)]">
                                     <Phone className="h-3.5 w-3.5" />
                                     {brandProfile.contact_phone}
                                 </a>

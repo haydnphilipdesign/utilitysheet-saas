@@ -22,7 +22,7 @@ export function IntakeIntro({ brandName, heading, intro, headingAs: Heading = 'h
     return (
         <div className="flex items-start gap-3">
             <div className="mt-0.5 rounded-xl bg-[var(--brand-accent-soft)] p-2">
-                <ShieldCheck className="h-5 w-5 text-[color:var(--brand-accent)]" />
+                <ShieldCheck className="h-5 w-5 text-[color:var(--brand-accent-text)]" />
             </div>
             <div className="min-w-0 space-y-1">
                 <Heading className="text-xl font-semibold text-foreground break-words">
@@ -31,7 +31,7 @@ export function IntakeIntro({ brandName, heading, intro, headingAs: Heading = 'h
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
                     {intro?.trim() || defaultSellerIntro(brandName)}
                 </p>
-                <p className="inline-flex items-center gap-1.5 pt-1 text-xs text-muted-foreground/80">
+                <p className="inline-flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
                     <Save className="h-3 w-3" aria-hidden="true" />
                     {SELLER_PROGRESS_NOTE}
                 </p>

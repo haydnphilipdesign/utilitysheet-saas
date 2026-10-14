@@ -53,7 +53,7 @@ function Section({
 }) {
     return (
         <div className="rounded-xl border border-border bg-card/50 p-4 sm:p-5 space-y-3">
-            <h4 className="text-sm sm:text-base font-semibold text-foreground">{title}</h4>
+            <h3 className="text-sm sm:text-base font-semibold text-foreground">{title}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>
         </div>
     );
@@ -96,7 +96,7 @@ function Field({
                     value={value || ''}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
-                    className="h-11 sm:h-10 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground placeholder:text-muted-foreground"
+                    className="h-11 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground placeholder:text-muted-foreground"
                 />
             )}
             {helperText && <p className="text-xs text-muted-foreground">{helperText}</p>}
@@ -251,7 +251,7 @@ export function AdvancedDetailsStep({
                                     has_irrigation_system: e.target.value as 'yes' | 'no' | 'not_sure',
                                 },
                             })}
-                            className="h-11 sm:h-10 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground"
+                            className="h-11 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground"
                         >
                             <option value="not_sure">Not sure</option>
                             <option value="yes">Yes</option>
@@ -314,7 +314,7 @@ export function AdvancedDetailsStep({
                                         onClick={() => toggleWateringDay(day.value)}
                                         className={`min-h-11 min-w-11 rounded-md border px-3 text-xs font-medium transition-colors ${wizardFocusRing} ${
                                             isSelected
-                                                ? 'border-[color:var(--brand-accent-border)] bg-[var(--brand-accent-soft)] text-[color:var(--brand-accent)]'
+                                                ? 'border-[color:var(--brand-accent-border)] bg-[var(--brand-accent-soft)] text-[color:var(--brand-accent-text)]'
                                                 : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
                                         }`}
                                     >
@@ -336,7 +336,7 @@ export function AdvancedDetailsStep({
                                     irrigation_season_start_month: e.target.value || null,
                                 },
                             })}
-                            className="h-11 sm:h-10 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground"
+                            className="h-11 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground"
                         >
                             <option value="">Not sure</option>
                             {MONTH_OPTIONS.map((month) => (
@@ -357,7 +357,7 @@ export function AdvancedDetailsStep({
                                     irrigation_season_end_month: e.target.value || null,
                                 },
                             })}
-                            className="h-11 sm:h-10 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground"
+                            className="h-11 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground"
                         >
                             <option value="">Not sure</option>
                             {MONTH_OPTIONS.map((month) => (
@@ -595,7 +595,7 @@ export function AdvancedDetailsStep({
                 {!isReviewEdit && moduleCount > 1 && (
                     <p className="text-xs text-muted-foreground uppercase tracking-wide">Optional section {moduleIndex + 1} of {moduleCount}</p>
                 )}
-                <h3 className="text-xl sm:text-2xl font-bold text-foreground">{moduleTitle}</h3>
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground">{moduleTitle}</h2>
                 <p className="text-sm text-muted-foreground">
                     {isReviewEdit
                         ? `Editing ${moduleTitle.toLowerCase()}. Update anything you need.`
@@ -619,7 +619,7 @@ export function AdvancedDetailsStep({
                     <button
                         type="button"
                         onClick={onNext}
-                        className={`flex-[2] py-3 rounded-xl font-semibold bg-[color:var(--brand-accent)] hover:bg-[color:var(--brand-accent-strong)] text-white transition-colors ${wizardFocusRing}`}
+                        className={`flex-[2] py-3 rounded-xl font-semibold bg-[color:var(--brand-accent-fill)] hover:bg-[color:var(--brand-accent-strong)] text-[color:var(--brand-accent-contrast)] transition-colors ${wizardFocusRing}`}
                         data-testid="advanced-continue"
                     >
                         {isReviewEdit ? 'Save & Return to Review' : 'Continue'}
