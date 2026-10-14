@@ -1,7 +1,7 @@
 # Telemetry Slice 9: retention and collection simplification
 
 - Date: 2026-10-14. Agent: Claude Code. Worktree `.worktrees/slice-9`, branch `telemetry-slice-9` (from main `ce7b93d`). Will merge into main later on the owner's instruction.
-- Status: **Approved by the owner on 2026-10-14 ("yes to all"): windows 1 to 10 as recommended (including the optional coarse device/browser add-on in 4), approvals A to F. Implementation completed and validated locally (see Execution record); uncommitted in the worktree.** G (production mode switches, merge, push, deploy) still needs separate go-ahead; commits too. No migration was needed. Parent plan: `2026-10-13-telemetry-audit-and-improvements.md`, "Slice 9". Slice 8 (AI lineage) is out of scope and comes later.
+- Status: **Approved by the owner on 2026-10-14 ("yes to all"): windows 1 to 10 as recommended (including the optional coarse device/browser add-on in 4), approvals A to F. Implementation completed and validated locally (see Execution record). Owner then authorized G (commit, merge, push/deploy, production preview then enforce; historical cleanup switch not included): committed `df77738`, merged with main `02a5281`.** No migration was needed. Parent plan: `2026-10-13-telemetry-audit-and-improvements.md`, "Slice 9". Slice 8 (AI lineage) is out of scope and comes later.
 - Constraints from the owner: no live database writes, deletes, migrations, production setting changes, commits, pushes or deploys without explicit go-ahead. A pruning or cleanup job ships disabled with a preview mode. Indexes or rollups only after EXPLAIN on synthetic data. Validate with Node 20 (`.ai/CURRENT.md` setup). Read-only live queries only with prior approval.
 
 ## 1. Verified starting state
