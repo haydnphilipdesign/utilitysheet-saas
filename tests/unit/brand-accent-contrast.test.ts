@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { brandAccentTextColors, buildBrandAccentStyle, contrastRatio, DEFAULT_BRAND_COLOR } from '@/lib/branding/deliverable';
+import { brandAccentTextColors, buildBrandAccentStyle, contrastRatio, DEFAULT_BRAND_COLOR, DEFAULT_BRAND_SECONDARY_COLOR } from '@/lib/branding/deliverable';
 
 // Seller form surfaces (app/globals.css): light page and dark page.
 const LIGHT_PAGE = '#f9f9f7';
 const DARK_PAGE = '#09090b';
-const BRANDS = ['#10b981', '#facc15', '#1e3a8a', '#3b82f6', '#ef4444', '#f97316', '#06b6d4', '#ffffff', '#000000', '#f9a8d4', '#777'];
+const BRANDS = [DEFAULT_BRAND_COLOR, '#10b981', '#facc15', '#1e3a8a', '#3b82f6', '#ef4444', '#f97316', '#06b6d4', '#ffffff', '#000000', '#f9a8d4', '#777'];
 
 describe('seller form brand accent contrast', () => {
     it.each(BRANDS)('meets WCAG AA for text on fills and pages: %s', (brand) => {
@@ -23,10 +23,22 @@ describe('seller form brand accent contrast', () => {
         expect(navy.inkDark).not.toBe('#1e3a8a');
     });
 
-    it('deepens the default emerald for white button text and keeps very light brands with dark text', () => {
-        const emerald = brandAccentTextColors(DEFAULT_BRAND_COLOR);
+    it('uses the app slate-blue as the default, which needs no adjustment on light surfaces', () => {
+        // app/globals.css light --primary, oklch(0.45 0.1 250). Emerald is for success states.
+        expect(DEFAULT_BRAND_COLOR).toBe('#23588a');
+        expect(DEFAULT_BRAND_SECONDARY_COLOR).toBe('#0b4072');
+        const slate = brandAccentTextColors(DEFAULT_BRAND_COLOR);
+        expect(slate.fill).toBe(DEFAULT_BRAND_COLOR);
+        expect(slate.contrast).toBe('#ffffff');
+        expect(slate.ink).toBe(DEFAULT_BRAND_COLOR);
+        expect(slate.inkDark).not.toBe(DEFAULT_BRAND_COLOR);
+        expect(buildBrandAccentStyle(null)['--brand-accent']).toBe(DEFAULT_BRAND_COLOR);
+    });
+
+    it('deepens emerald (the pre-2026-10-14 default many profiles store) for white button text and keeps very light brands with dark text', () => {
+        const emerald = brandAccentTextColors('#10b981');
         expect(emerald.contrast).toBe('#ffffff');
-        expect(emerald.fill).not.toBe(DEFAULT_BRAND_COLOR);
+        expect(emerald.fill).not.toBe('#10b981');
         const yellow = brandAccentTextColors('#facc15');
         expect(yellow.fill).toBe('#facc15');
         expect(yellow.contrast).toBe('#111827');

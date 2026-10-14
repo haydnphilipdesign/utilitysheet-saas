@@ -12,12 +12,13 @@ import { Label } from '@/components/ui/label';
 import UtilitySheetPdfPreview from '@/components/branding/UtilitySheetPdfPreview';
 import { trackEvent } from '@/lib/analytics/events';
 import { cn } from '@/lib/utils';
+import { DEFAULT_BRAND_COLOR } from '@/lib/branding/deliverable';
 import type { Account, BrandProfile, Organization, PacketMode } from '@/types';
 import { TestDriveCard } from '@/components/test-drive/TestDriveCard';
 
 const BRAND_COLORS = [
+    { name: 'Slate blue', value: DEFAULT_BRAND_COLOR },
     { name: 'Emerald', value: '#10b981' },
-    { name: 'Blue', value: '#2563eb' },
     { name: 'Amber', value: '#d97706' },
     { name: 'Slate', value: '#475569' },
 ];
@@ -52,7 +53,7 @@ export default function OnboardingPage() {
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [brandProfileId, setBrandProfileId] = useState<string | null>(null);
     const [brandName, setBrandName] = useState('');
-    const [primaryColor, setPrimaryColor] = useState('#10b981');
+    const [primaryColor, setPrimaryColor] = useState(DEFAULT_BRAND_COLOR);
     const [contactName, setContactName] = useState('');
     const [contactEmail, setContactEmail] = useState('');
     const [contactPhone, setContactPhone] = useState('');
@@ -98,7 +99,7 @@ export default function OnboardingPage() {
                 setOrganization(nextOrganization);
                 setBrandProfileId(defaultProfile?.id || null);
                 setBrandName(defaultProfile?.name || nextOrganization?.name || nextAccount?.full_name || 'My Workspace');
-                setPrimaryColor(defaultProfile?.primary_color || '#10b981');
+                setPrimaryColor(defaultProfile?.primary_color || DEFAULT_BRAND_COLOR);
                 setContactName(defaultProfile?.contact_name || nextAccount?.full_name || '');
                 setContactEmail(defaultProfile?.contact_email || nextAccount?.email || '');
                 setContactPhone(defaultProfile?.contact_phone || nextAccount?.phone || '');

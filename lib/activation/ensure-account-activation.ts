@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { BrandProfile, Organization } from '@/types';
+import { DEFAULT_BRAND_COLOR, DEFAULT_BRAND_SECONDARY_COLOR } from '@/lib/branding/deliverable';
 import {
     createBrandProfile,
     createOrganization,
@@ -128,8 +129,8 @@ export async function ensureAccountActivation(user: AuthUserLike): Promise<Ensur
             accountId: account.id,
             organizationId: activeOrganization?.id,
             name: activeOrganization?.name || deriveWorkspaceName(user),
-            primaryColor: '#10b981',
-            secondaryColor: '#059669',
+            primaryColor: DEFAULT_BRAND_COLOR,
+            secondaryColor: DEFAULT_BRAND_SECONDARY_COLOR,
             contactName: account.full_name || user.displayName || undefined,
             contactEmail: account.email || user.primaryEmail || undefined,
             contactPhone: account.phone || undefined,

@@ -14,11 +14,20 @@ import type { PacketMode } from '@/types';
  */
 
 /**
- * Product-level default brand color. Every brand profile is created with this
+ * Product-level default brand color: the app's slate-blue `--primary`
+ * (app/globals.css, light theme). Every brand profile is created with this
  * value (see lib/neon/queries/brand-profiles.ts), so it is also the safe
- * fallback when a brand has no usable color.
+ * fallback when a brand has no usable color. Emerald is reserved for success
+ * states. Profiles created before 2026-10-14 store the old `#10b981` default
+ * explicitly and keep it.
  */
-export const DEFAULT_BRAND_COLOR = '#10b981';
+export const DEFAULT_BRAND_COLOR = '#23588a';
+
+/**
+ * Default secondary color (branded email header gradient and button): the
+ * primary darkened the same way onboarding derives one.
+ */
+export const DEFAULT_BRAND_SECONDARY_COLOR = '#0b4072';
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/;
 

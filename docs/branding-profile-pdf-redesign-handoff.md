@@ -43,7 +43,7 @@ The production PDF relationship is intentionally simple: both PDF modes consume 
 | --- | --- | --- | --- | --- |
 | `name` | Header and running header | Header and running header | Seller form, email branding | Required; max 60. Also supplies fallback initials. |
 | `logo_url` | Header logo | Header logo | Seller form, email branding, preview | PDF accepts safe HTTP(S) only. If absent/invalid/unavailable, initials are used or the image fails without blocking generation. |
-| `primary_color` | Main accent | Main accent | Seller wizard, preview, email branding | Must be 3- or 6-digit hex. Falls back to `#10b981`. |
+| `primary_color` | Main accent | Main accent | Seller wizard, preview, email branding | Must be 3- or 6-digit hex. Falls back to `#23588a` (slate blue, `DEFAULT_BRAND_COLOR`; `#10b981` before 2026-10-14). |
 | `secondary_color` | Not used | Not used | Branded emails | Exposing it beside Primary Color can imply PDF behavior that does not exist. |
 | `contact_name` | Brand header | Brand header | Seller form and emails | Max 60. |
 | `contact_phone` | Brand header | Brand header | Seller form and emails | Max 30. |
@@ -62,8 +62,8 @@ The production PDF relationship is intentionally simple: both PDF modes consume 
 
 The editor initializes new profiles with:
 
-- primary color `#10b981`;
-- secondary color `#059669`;
+- primary color `#23588a` (slate blue; emerald `#10b981` before 2026-10-14, which existing profiles keep);
+- secondary color `#0b4072` (`#059669` before 2026-10-14);
 - powered-by visible;
 - generation date visible;
 - default Buyer Next Steps;

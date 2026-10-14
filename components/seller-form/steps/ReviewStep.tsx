@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Pencil, Loader2, ArrowRight, Zap, Droplets, Flame, Fuel, FlameKindling, Trash2, Wifi, Tv, Waves, AlertTriangle } from 'lucide-react';
@@ -9,8 +10,9 @@ import { AdvancedModuleKey, AdvancedPacketData, TrashUtilityExtra, UtilityCatego
 import { ADVANCED_MODULE_LABELS, getAdvancedAnswerRows } from '@/lib/packet/modules';
 import { UTILITY_CATEGORIES } from '@/lib/constants';
 import { HOA_GATE_LABEL, getHasHoaLabel, getHoaDetailRows } from '@/lib/packet/hoa';
-import { NO_TRASH_SERVICE_LABEL, getFuelSourceLabel, getSewerTypeLabel, getWaterSourceLabel } from '@/lib/packet/seller-questions';
+import { NO_TRASH_SERVICE_LABEL, getFuelSourceLabel, getSewerTypeFormLabel, getWaterSourceFormLabel } from '@/lib/packet/seller-questions';
 import { wizardFocusRing, wizardTextInput } from '../wizard-ui';
+import { usePinnedActions, wizardPinnedActions } from '../pinned-actions';
 
 // Category-specific icons (same as UtilityStep)
 const categoryIcons: Record<UtilityCategory, { icon: LucideIcon; color: string }> = {
@@ -73,6 +75,17 @@ export function ReviewStep({
     ) as Record<UtilityCategory, string>;
 
     const hoaDetailRows = getHoaDetailRows(state);
+    const pinnedActions = usePinnedActions();
+
+    // Submit can be pressed from anywhere on the page once it is pinned, and
+    // Review is remounted after the sending screen, so a submit error or notice
+    // is brought into view. On arrival from another step, SellerLayout's
+    // step-change scroll reset runs after this and keeps the page at the top.
+    const feedbackRef = useRef<HTMLDivElement | null>(null);
+    const hasFeedback = Boolean(submitError) || Boolean(notice);
+    useEffect(() => {
+        if (hasFeedback) feedbackRef.current?.scrollIntoView?.({ block: 'nearest' });
+    }, [hasFeedback, submitError]);
 
     const formatPickupDay = (value: string | null | undefined): string => {
         if (!value) return 'Not sure';
@@ -143,7 +156,8 @@ export function ReviewStep({
                 </p>
             )}
 
-            <div className="space-y-4 sm:space-y-6">
+            {/* Desktop: Home Basics beside Utility Providers; additional details span both. */}
+            <div className="space-y-4 sm:space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
                 {/* Home Basics Summary */}
                 <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
                     <div className="flex items-center justify-between border-b border-border pb-2">
@@ -152,7 +166,7 @@ export function ReviewStep({
                             type="button"
                             onClick={onEditBasics}
                             aria-label="Edit Home Basics"
-                            className={`inline-flex min-h-11 items-center gap-1 text-xs text-[color:var(--brand-accent-text)] hover:opacity-80 transition-opacity rounded-md px-2 -mr-2 ${wizardFocusRing}`}
+                            className={`inline-flex min-h-11 items-center gap-1 text-xs lg:text-sm text-[color:var(--brand-accent-text)] hover:opacity-80 transition-opacity rounded-md px-2 -mr-2 ${wizardFocusRing}`}
                         >
                             <Pencil className="h-3 w-3" aria-hidden="true" />
                             Edit
@@ -163,7 +177,7 @@ export function ReviewStep({
                             <p className="text-muted-foreground mb-0.5 sm:mb-1 text-xs sm:text-sm">Water</p>
                             <p className="text-foreground text-sm sm:text-base">
                                 {state.water_source
-                                    ? getWaterSourceLabel(state.water_source)
+                                    ? getWaterSourceFormLabel(state.water_source)
                                     : <span className="text-muted-foreground italic text-xs sm:text-sm">Not answered</span>}
                             </p>
                         </div>
@@ -171,7 +185,7 @@ export function ReviewStep({
                             <p className="text-muted-foreground mb-0.5 sm:mb-1 text-xs sm:text-sm">Sewer</p>
                             <p className="text-foreground text-sm sm:text-base">
                                 {state.sewer_type
-                                    ? getSewerTypeLabel(state.sewer_type)
+                                    ? getSewerTypeFormLabel(state.sewer_type)
                                     : <span className="text-muted-foreground italic text-xs sm:text-sm">Not answered</span>}
                             </p>
                         </div>
@@ -180,7 +194,7 @@ export function ReviewStep({
                             <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-2">
                                 {state.fuels_present.length > 0 ? (
                                     state.fuels_present.map(f => (
-                                        <span key={f} className="px-2 py-0.5 sm:py-1 rounded bg-muted text-foreground text-xs">
+                                        <span key={f} className="px-2 py-0.5 sm:py-1 rounded bg-muted text-foreground text-xs lg:text-sm">
                                             {getFuelSourceLabel(f)}
                                         </span>
                                     ))
@@ -190,7 +204,7 @@ export function ReviewStep({
                             </div>
                             {state.primary_heating_type && (
                                 <div>
-                                    <p className="text-muted-foreground mb-0.5 text-xs">Primary Heat</p>
+                                    <p className="text-muted-foreground mb-0.5 text-xs lg:text-sm">Primary Heat</p>
                                     <span className="text-foreground text-sm font-medium">
                                         {getFuelSourceLabel(state.primary_heating_type)}
                                     </span>
@@ -223,7 +237,8 @@ export function ReviewStep({
                 {/* Utilities Summary */}
                 <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
                     <div className="flex items-center justify-between border-b border-border pb-2">
-                        <h3 className="font-semibold text-foreground text-sm sm:text-base">Utility Providers</h3>
+                        {/* As tall as the Edit button beside Home Basics, so the side-by-side headings line up. */}
+                        <h3 className="font-semibold text-foreground text-sm sm:text-base lg:min-h-11 lg:flex lg:items-center">Utility Providers</h3>
                     </div>
                     <div className="space-y-3 sm:space-y-4">
                         {visibleUtilities.map((cat, index) => {
@@ -292,7 +307,7 @@ export function ReviewStep({
                                         </div>
                                     )}
                                     {trashScheduleLines.length > 0 && (
-                                        <div className="mt-3 pl-10 sm:pl-12 space-y-1 text-xs text-muted-foreground">
+                                        <div className="mt-3 pl-10 sm:pl-12 space-y-1 text-xs lg:text-sm text-muted-foreground">
                                             {trashScheduleLines.map((line) => (
                                                 <p key={`${cat}-${line}`}>{line}</p>
                                             ))}
@@ -305,7 +320,7 @@ export function ReviewStep({
                 </div>
 
                 {packetMode === 'advanced' && advancedModules.length > 0 && (
-                    <div className="bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
+                    <div className="lg:col-span-2 bg-card border border-border rounded-xl sm:rounded-2xl p-4 sm:p-6 space-y-3 sm:space-y-4">
                         <div className="flex items-center justify-between border-b border-border pb-2">
                             <h3 className="font-semibold text-foreground text-sm sm:text-base">Additional Home Details</h3>
                         </div>
@@ -325,7 +340,7 @@ export function ReviewStep({
                                                 <button
                                                     type="button"
                                                     onClick={() => onEditAdvancedModule(moduleKey)}
-                                                    className={`inline-flex min-h-11 items-center gap-1 rounded-md px-2 -mr-2 text-xs text-[color:var(--brand-accent-text)] hover:bg-muted hover:opacity-80 transition-colors ${wizardFocusRing}`}
+                                                    className={`inline-flex min-h-11 items-center gap-1 rounded-md px-2 -mr-2 text-xs lg:text-sm text-[color:var(--brand-accent-text)] hover:bg-muted hover:opacity-80 transition-colors ${wizardFocusRing}`}
                                                     aria-label={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
                                                     title={`Edit ${ADVANCED_MODULE_LABELS[moduleKey]}`}
                                                 >
@@ -335,7 +350,7 @@ export function ReviewStep({
                                             )}
                                         </div>
                                         {rowItems.length === 0 ? (
-                                            <p className="text-xs text-muted-foreground italic">No details provided</p>
+                                            <p className="text-xs lg:text-sm text-muted-foreground italic">No details provided</p>
                                         ) : (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {rowItems.map((row) => (
@@ -354,6 +369,7 @@ export function ReviewStep({
                 )}
             </div>
 
+            <div ref={feedbackRef} className="space-y-6 sm:space-y-8 empty:hidden">
             {notice}
 
             {submitError && (
@@ -380,8 +396,9 @@ export function ReviewStep({
                     </div>
                 </div>
             )}
+            </div>
 
-            <div className="pt-2 sm:pt-4 flex gap-2 sm:gap-3">
+            <div {...pinnedActions} className={`pt-2 sm:pt-4 flex gap-2 sm:gap-3 lg:ml-auto lg:max-w-xl ${wizardPinnedActions}`} data-testid="review-actions">
                 <button
                     type="button"
                     onClick={onBack}

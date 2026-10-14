@@ -5,7 +5,9 @@ import {
     WATER_SOURCE_OPTIONS,
     getHeatingTypeLabel,
     getHomeBasicsRows,
+    getSewerTypeFormLabel,
     getSewerTypeLabel,
+    getWaterSourceFormLabel,
     getWaterSourceLabel,
 } from '@/lib/packet/seller-questions';
 
@@ -28,8 +30,18 @@ describe('Home Basics display labels', () => {
         for (const options of [WATER_SOURCE_OPTIONS, SEWER_TYPE_OPTIONS]) {
             const hoa = options.find((option) => option.id === 'hoa');
             expect(hoa?.label).toMatch(/fee/i);
+            expect(hoa?.formLabel).toMatch(/paid by/i);
             expect(hoa?.hint).toBeTruthy();
         }
+    });
+
+    it('uses the short "Paid by HOA" on the seller form only; the packet keeps the full label', () => {
+        expect(getWaterSourceFormLabel('hoa')).toBe('Paid by HOA');
+        expect(getSewerTypeFormLabel('hoa')).toBe('Paid by HOA');
+        expect(getWaterSourceFormLabel('well')).toBe('Private Well');
+        expect(getSewerTypeFormLabel('public')).toBe('Public Sewer');
+        expect(getHomeBasicsRows({ water_source: 'hoa', sewer_type: 'hoa' }).map((row) => row.value))
+            .toEqual(['Included in HOA / Condo Fee', 'Included in HOA / Condo Fee']);
     });
 
     it('never renders a raw Home Basics enum value into the packet PDF', () => {

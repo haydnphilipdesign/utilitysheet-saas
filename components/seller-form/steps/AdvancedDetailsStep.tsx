@@ -6,6 +6,7 @@ import type { AdvancedModuleExclusions, AdvancedModuleKey, AdvancedPacketData } 
 import { ADVANCED_MODULE_LABELS, getAdvancedModuleVisibleFieldKeys } from '@/lib/packet/modules';
 import { trackEvent } from '@/lib/analytics/events';
 import { wizardFocusRing } from '../wizard-ui';
+import { usePinnedActions, wizardPinnedActions } from '../pinned-actions';
 
 interface AdvancedDetailsStepProps {
     moduleKey: AdvancedModuleKey;
@@ -80,7 +81,7 @@ function Field({
 }) {
     return (
         <label className={`space-y-1 ${multiline ? 'sm:col-span-2' : ''}`}>
-            <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
+            <span className="text-xs lg:text-sm text-muted-foreground uppercase tracking-wide">{label}</span>
             {multiline ? (
                 <textarea
                     value={value || ''}
@@ -99,7 +100,7 @@ function Field({
                     className="h-11 w-full rounded-md border border-input bg-background/60 px-3 text-base sm:text-sm text-foreground placeholder:text-muted-foreground"
                 />
             )}
-            {helperText && <p className="text-xs text-muted-foreground">{helperText}</p>}
+            {helperText && <p className="text-xs lg:text-sm text-muted-foreground">{helperText}</p>}
         </label>
     );
 }
@@ -145,6 +146,7 @@ export function AdvancedDetailsStep({
         });
     };
 
+    const pinnedActions = usePinnedActions();
     const irrigationHasSystem = advanced.irrigation_seasonal_controls?.has_irrigation_system;
     const hideIrrigationDetails = moduleKey === 'irrigation_seasonal_controls' && irrigationHasSystem === 'no';
 
@@ -242,7 +244,7 @@ export function AdvancedDetailsStep({
             return (
                 <>
                     {renderIfVisible('has_irrigation_system', <label className="space-y-1">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Has Irrigation System</span>
+                        <span className="text-xs lg:text-sm text-muted-foreground uppercase tracking-wide">Has Irrigation System</span>
                         <select
                             value={advanced.irrigation_seasonal_controls?.has_irrigation_system || 'not_sure'}
                             onChange={(e) => updateAdvanced({
@@ -283,7 +285,7 @@ export function AdvancedDetailsStep({
                         })}
                     />)}
                     {!hideIrrigationDetails && renderIfVisible('watering_days', <div className="space-y-2 sm:col-span-2" role="group" aria-labelledby="irrigation-watering-days-label">
-                        <span id="irrigation-watering-days-label" className="text-xs text-muted-foreground uppercase tracking-wide">Watering Days</span>
+                        <span id="irrigation-watering-days-label" className="text-xs lg:text-sm text-muted-foreground uppercase tracking-wide">Watering Days</span>
                         <div className="flex flex-wrap gap-1.5 pb-1">
                             {[
                                 { id: 'every_day' as const, label: 'Every day' },
@@ -296,7 +298,7 @@ export function AdvancedDetailsStep({
                                     key={preset.id}
                                     type="button"
                                     onClick={() => setQuickWateringDays(preset.id)}
-                                    className={`min-h-11 rounded-full border border-border bg-muted/30 px-3 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors ${wizardFocusRing}`}
+                                    className={`min-h-11 rounded-full border border-border bg-muted/30 px-3 text-xs lg:text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors ${wizardFocusRing}`}
                                 >
                                     {preset.label}
                                 </button>
@@ -312,7 +314,7 @@ export function AdvancedDetailsStep({
                                         data-testid={`irrigation-day-${day.value}`}
                                         aria-pressed={isSelected}
                                         onClick={() => toggleWateringDay(day.value)}
-                                        className={`min-h-11 min-w-11 rounded-md border px-3 text-xs font-medium transition-colors ${wizardFocusRing} ${
+                                        className={`min-h-11 min-w-11 rounded-md border px-3 text-xs lg:text-sm font-medium transition-colors ${wizardFocusRing} ${
                                             isSelected
                                                 ? 'border-[color:var(--brand-accent-border)] bg-[var(--brand-accent-soft)] text-[color:var(--brand-accent-text)]'
                                                 : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -323,10 +325,10 @@ export function AdvancedDetailsStep({
                                 );
                             })}
                         </div>
-                        <p className="text-xs text-muted-foreground">Select any regular watering days, if known.</p>
+                        <p className="text-xs lg:text-sm text-muted-foreground">Select any regular watering days, if known.</p>
                     </div>)}
                     {!hideIrrigationDetails && renderIfVisible('irrigation_season_start_month', <label className="space-y-1">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Season Start Month</span>
+                        <span className="text-xs lg:text-sm text-muted-foreground uppercase tracking-wide">Season Start Month</span>
                         <select
                             data-testid="irrigation-season-start-month"
                             value={advanced.irrigation_seasonal_controls?.irrigation_season_start_month || ''}
@@ -347,7 +349,7 @@ export function AdvancedDetailsStep({
                         </select>
                     </label>)}
                     {!hideIrrigationDetails && renderIfVisible('irrigation_season_end_month', <label className="space-y-1">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">Season End Month</span>
+                        <span className="text-xs lg:text-sm text-muted-foreground uppercase tracking-wide">Season End Month</span>
                         <select
                             data-testid="irrigation-season-end-month"
                             value={advanced.irrigation_seasonal_controls?.irrigation_season_end_month || ''}
@@ -593,7 +595,7 @@ export function AdvancedDetailsStep({
         >
             <div className="space-y-1">
                 {!isReviewEdit && moduleCount > 1 && (
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Optional section {moduleIndex + 1} of {moduleCount}</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground uppercase tracking-wide">Optional section {moduleIndex + 1} of {moduleCount}</p>
                 )}
                 <h2 className="text-xl sm:text-2xl font-bold text-foreground">{moduleTitle}</h2>
                 <p className="text-sm text-muted-foreground">
@@ -607,7 +609,7 @@ export function AdvancedDetailsStep({
                 {renderModuleFields()}
             </Section>
 
-            <div className="flex flex-col gap-2 sm:gap-3 pt-1">
+            <div {...pinnedActions} className={`flex flex-col gap-1 sm:gap-3 pt-1 ${wizardPinnedActions}`} data-testid="advanced-actions">
                 <div className="flex gap-2 sm:gap-3">
                     <button
                         type="button"

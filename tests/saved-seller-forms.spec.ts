@@ -633,7 +633,7 @@ test('HOA-first preview filters billing choices and explains conflicting answers
     expect((await yes.boundingBox())!.y).toBeLessThan((await water.boundingBox())!.y);
     await yes.click();
     await expect(dialog.getByTestId('hoa-details')).toBeVisible();
-    const choices = dialog.getByRole('button', { name: /Included in HOA/ });
+    const choices = dialog.getByRole('button', { name: /^Paid by HOA/ });
     await choices.nth(0).click();
     await choices.nth(1).click();
     await dialog.getByTestId('has-hoa-no').click();

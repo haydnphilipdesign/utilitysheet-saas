@@ -504,7 +504,7 @@ export function UtilityStep({
             </div>
 
             {providerHelper && mode === 'view' && (
-                <p className="text-xs text-muted-foreground -mt-2 sm:-mt-4">{providerHelper}</p>
+                <p className="text-xs lg:text-sm text-muted-foreground -mt-2 sm:-mt-4">{providerHelper}</p>
             )}
 
             {mode === 'view' && hasAnswer && (
@@ -528,7 +528,7 @@ export function UtilityStep({
                     >
                         Keep this answer
                     </button>
-                    <p className="text-xs text-muted-foreground">Or choose a different answer below.</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground">Or choose a different answer below.</p>
                 </div>
             )}
 
@@ -594,7 +594,7 @@ export function UtilityStep({
                                                     {suggestion.display_name}
                                                 </span>
                                                 {suggestion.rationale_short && (
-                                                    <span className="text-xs text-muted-foreground mt-0.5 block line-clamp-2">
+                                                    <span className="text-xs lg:text-sm text-muted-foreground mt-0.5 block line-clamp-2">
                                                         {suggestion.rationale_short}
                                                     </span>
                                                 )}
@@ -622,7 +622,7 @@ export function UtilityStep({
                                     I&apos;m not sure
                                 </button>
                             </div>
-                            <p className="text-xs text-muted-foreground text-center">
+                            <p className="text-xs lg:text-sm text-muted-foreground text-center">
                                 Picking &quot;I&apos;m not sure&quot; is fine. We&apos;ll flag it so it can be filled in later.
                             </p>
                         </div>
@@ -771,7 +771,7 @@ export function UtilityStep({
                                                 {suggestion.display_name}
                                             </span>
                                             {suggestion.rationale_short && (
-                                                <span className="text-xs text-muted-foreground mt-0.5 block truncate">
+                                                <span className="text-xs lg:text-sm text-muted-foreground mt-0.5 block truncate">
                                                     {suggestion.rationale_short}
                                                 </span>
                                             )}
@@ -857,7 +857,7 @@ export function UtilityStep({
                             className={`py-2.5 px-3 text-base sm:text-sm rounded-lg ${wizardTextInput}`}
                             data-testid="seller-electric-meter-number"
                         />
-                        <p className="text-[11px] sm:text-xs text-muted-foreground mt-1.5">
+                        <p className="text-[11px] sm:text-xs lg:text-sm text-muted-foreground mt-1.5">
                             If you have it, we&apos;ll include it on the sheet for the buyer. Leave it blank if you don&apos;t.
                         </p>
                     </div>
@@ -896,7 +896,7 @@ export function UtilityStep({
                     <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
                         <div>
                             <p className="text-xs sm:text-sm font-medium text-foreground">Which days is trash picked up?</p>
-                            <p className="text-xs text-muted-foreground mt-1">Pick all that apply. &quot;Not sure&quot; is fine.</p>
+                            <p className="text-xs lg:text-sm text-muted-foreground mt-1">Pick all that apply. &quot;Not sure&quot; is fine.</p>
                         </div>
                         <PickupDaySelector
                             idPrefix="seller-trash-pickup"
@@ -909,7 +909,7 @@ export function UtilityStep({
                     <div className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4 space-y-3">
                         <div>
                             <p className="text-xs sm:text-sm font-medium text-foreground">Is there recycling pickup at this home?</p>
-                            <p className="text-xs text-muted-foreground mt-1">Optional. This helps the buyer plan ahead.</p>
+                            <p className="text-xs lg:text-sm text-muted-foreground mt-1">Optional. This helps the buyer plan ahead.</p>
                         </div>
                         <div className="flex flex-wrap gap-1.5 sm:gap-2">
                             {[

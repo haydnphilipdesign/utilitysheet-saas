@@ -50,7 +50,7 @@ export function WelcomeStep({ sellerIntro, address, onNext, isTestDrive = false,
                             </li>
                         ))}
                     </ul>
-                    <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5 justify-center">
+                    <p className="text-xs lg:text-sm text-muted-foreground inline-flex items-center gap-1.5 justify-center">
                         <Save className="h-3 w-3" aria-hidden="true" />
                         Progress saves automatically in this browser.
                     </p>
@@ -73,7 +73,7 @@ export function WelcomeStep({ sellerIntro, address, onNext, isTestDrive = false,
                         A few short steps. We&apos;ll ask which services the home uses, then you can confirm the providers.
                     </p>
                     {savesProgress ? (
-                        <p className="text-xs text-muted-foreground inline-flex items-center gap-1.5 justify-center">
+                        <p className="text-xs lg:text-sm text-muted-foreground inline-flex items-center gap-1.5 justify-center">
                             <Save className="h-3 w-3" />
                             Your progress saves automatically in this browser, so you can close the tab and come back later.
                         </p>

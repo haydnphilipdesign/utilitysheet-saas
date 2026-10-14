@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DEFAULT_BRAND_COLOR, DEFAULT_BRAND_SECONDARY_COLOR } from '@/lib/branding/deliverable';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -57,8 +58,8 @@ interface BrandProfileFormProps {
 
 const defaultFormData: BrandProfileFormData = {
     name: '',
-    primary_color: '#10b981',
-    secondary_color: '#059669',
+    primary_color: DEFAULT_BRAND_COLOR,
+    secondary_color: DEFAULT_BRAND_SECONDARY_COLOR,
     contact_name: '',
     contact_phone: '',
     contact_email: '',
@@ -446,7 +447,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                                 type="color"
                                                 id="primaryColor"
                                                 aria-label="Pick primary color"
-                                                value={HEX_COLOR_PATTERN.test(formData.primary_color) ? formData.primary_color : '#10b981'}
+                                                value={HEX_COLOR_PATTERN.test(formData.primary_color) ? formData.primary_color : DEFAULT_BRAND_COLOR}
                                                 onChange={(e) => updateField('primary_color', e.target.value)}
                                                 className="w-10 h-10 rounded-lg cursor-pointer border-0 shrink-0"
                                             />
@@ -459,7 +460,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                             />
                                         </div>
                                         {primaryColorInvalid ? (
-                                            <p className="text-xs text-destructive" role="alert">Enter a hex color like #10B981.</p>
+                                            <p className="text-xs text-destructive" role="alert">Enter a hex color like #23588A.</p>
                                         ) : (
                                             <p className="text-xs text-muted-foreground">
                                                 The accent color on the seller form and the utility sheet.
@@ -874,7 +875,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                                 type="color"
                                                 id="secondaryColor"
                                                 aria-label="Pick email accent color"
-                                                value={HEX_COLOR_PATTERN.test(formData.secondary_color) ? formData.secondary_color : '#059669'}
+                                                value={HEX_COLOR_PATTERN.test(formData.secondary_color) ? formData.secondary_color : DEFAULT_BRAND_SECONDARY_COLOR}
                                                 onChange={(e) => updateField('secondary_color', e.target.value)}
                                                 className="w-10 h-10 rounded-lg cursor-pointer border-0 shrink-0"
                                             />
@@ -887,7 +888,7 @@ export default function BrandProfileForm({ initialData, onSubmit, isEditing = fa
                                             />
                                         </div>
                                         {secondaryColorInvalid && (
-                                            <p className="text-xs text-destructive" role="alert">Enter a hex color like #059669.</p>
+                                            <p className="text-xs text-destructive" role="alert">Enter a hex color like #0B4072.</p>
                                         )}
                                     </div>
                                 </CardContent>

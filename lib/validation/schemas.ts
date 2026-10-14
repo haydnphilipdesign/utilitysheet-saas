@@ -138,7 +138,7 @@ const advancedModuleEnum = z.enum([
 const nullToUndefined = (val: unknown) => (val === null ? undefined : val);
 
 const hexColorSchema = z.string().trim().regex(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/, {
-    message: 'Must be a valid hex color (e.g. #10b981)',
+    message: 'Must be a valid hex color (e.g. #23588a)',
 });
 
 const optionalLimitedString = (maxLength: number) =>

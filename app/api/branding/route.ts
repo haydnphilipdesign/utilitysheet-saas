@@ -5,6 +5,7 @@ import { brandProfileCreateBodySchema } from '@/lib/validation/schemas';
 import { normalizeMessageTemplates } from '@/lib/message-templates';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
+import { DEFAULT_BRAND_COLOR, DEFAULT_BRAND_SECONDARY_COLOR } from '@/lib/branding/deliverable';
 
 // GET /api/branding - Get all brand profiles
 export async function GET() {
@@ -37,8 +38,8 @@ export async function GET() {
                 accountId,
                 organizationId: organizationId || undefined,
                 name: organization?.name || account.company_name || account.full_name || 'My Workspace',
-                primaryColor: '#10b981',
-                secondaryColor: '#059669',
+                primaryColor: DEFAULT_BRAND_COLOR,
+                secondaryColor: DEFAULT_BRAND_SECONDARY_COLOR,
                 contactName: account.full_name || undefined,
                 contactEmail: account.email || undefined,
                 contactPhone: account.phone || undefined,

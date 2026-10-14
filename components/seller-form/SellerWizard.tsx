@@ -83,8 +83,8 @@ function unansweredBasics(state: WizardState): RequiredBasicsField[] {
 }
 
 /**
- * An explicit No to the HOA question clears an "Included in HOA / Condo Fee"
- * choice. The cleared question is unanswered and therefore required again;
+ * An explicit No to the HOA question clears a "Paid by HOA" (stored `hoa`)
+ * water or sewer choice. The cleared question is unanswered and therefore required again;
  * the list only remembers why, and drops a field once it is answered.
  */
 function reconcileHoaUtilityChoices(state: WizardState, enabled: boolean): WizardState {
@@ -1169,6 +1169,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             sellerToken={isDemo ? undefined : token}
             showSaveLink={!isDemo && !isTestDrive && !terminalNotice && currentStep > Step.WELCOME && currentStep < Step.SUCCESS}
             isTestDrive={isTestDrive}
+            wide={currentStep === Step.REVIEW && !terminalNotice}
         >
             {terminalNotice && (
                 <SellerStatusNotice

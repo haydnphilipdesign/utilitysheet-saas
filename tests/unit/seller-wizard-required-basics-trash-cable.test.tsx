@@ -141,7 +141,7 @@ describe('seller form: required basics, trash always asked, same as internet', (
         it('explain a choice cleared by an HOA No, and only that one', () => {
             renderWizard({ hoa: true });
             click(/get started/i);
-            fireEvent.click(screen.getAllByRole('button', { name: /included in hoa/i })[0]);
+            fireEvent.click(screen.getAllByRole('button', { name: /^paid by hoa/i })[0]);
             fireEvent.click(screen.getByTestId('has-hoa-no'));
 
             // Water was cleared by the No; sewer was simply never answered.

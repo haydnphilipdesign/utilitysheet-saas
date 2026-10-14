@@ -33,6 +33,8 @@ interface SellerLayoutProps {
     isTestDrive?: boolean;
     /** False on screens that are not a step of the form (paused, already submitted). */
     showProgress?: boolean;
+    /** A wider column on large screens (Review); the header widens with it to stay aligned. */
+    wide?: boolean;
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -162,6 +164,7 @@ export function SellerLayout(props: SellerLayoutProps) {
         showSaveLink,
         isTestDrive,
         showProgress = true,
+        wide = false,
     } = props;
     const headerRef = useRef<HTMLElement | null>(null);
     const [headerHeight, setHeaderHeight] = useState<number | null>(null);
@@ -204,12 +207,17 @@ export function SellerLayout(props: SellerLayoutProps) {
     const accentStyle = buildBrandAccentStyle(brandProfile?.primary_color);
     const mainTopPadding = (headerHeight ?? FALLBACK_HEADER_HEIGHT) + 16;
     const roundedProgress = Math.round(progress);
+    // The header and content share one column. Its large-screen width is a
+    // custom property on the root rather than a class swapped per step: WebKit
+    // was seen keeping the old width when a step change added the class.
+    const columnWidth = 'max-w-2xl lg:max-w-[var(--seller-column)]';
+    const rootStyle = { ...accentStyle, '--seller-column': wide ? '64rem' : '42rem' } as CSSProperties;
     const stepCount = stepNumber != null && stepTotal != null && stepNumber > 0 && stepNumber <= stepTotal
         ? `${stepNumber} of ${stepTotal}`
         : null;
 
     return (
-        <div className={`min-h-screen bg-background text-foreground selection:bg-primary/30 ${wizardBrandScope}`} style={accentStyle as CSSProperties}>
+        <div className={`min-h-screen bg-background text-foreground selection:bg-primary/30 ${wizardBrandScope}`} style={rootStyle}>
             {/* Background Gradients */}
             <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-slate-900/10 rounded-full blur-[128px]" />
@@ -223,7 +231,7 @@ export function SellerLayout(props: SellerLayoutProps) {
               bar along the bottom edge.
             */}
             <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/95 backdrop-blur-xl">
-                <div className="relative max-w-2xl mx-auto px-4 py-2.5 sm:py-3 short:py-1.5">
+                <div className={`relative ${columnWidth} mx-auto px-4 py-2.5 sm:py-3 short:py-1.5`}>
                     {/* Short screens reserve the right edge for the step count below. */}
                     <div className={`flex items-center gap-3 short:h-9 ${showProgress ? 'short:pr-28' : ''}`}>
                         {brandProfile?.logo_url ? (
@@ -274,17 +282,15 @@ export function SellerLayout(props: SellerLayoutProps) {
                     {isTestDrive ? (
                         <div
                             data-testid="seller-test-drive-banner"
-                            className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1 text-xs text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100"
+                            className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1 text-xs text-blue-950 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100"
                         >
                             <p className="min-w-0">
-                                <strong>Test mode.</strong>{' '}
-                                <span className="hidden sm:inline">You are seeing what your seller sees. </span>
-                                Use made-up answers.
+                                <strong>Test mode:</strong> use made-up answers.
                             </p>
                             <Link
                                 href="/dashboard"
                                 onClick={() => trackEvent('test_drive_dashboard_returned', { source: 'seller_banner' })}
-                                className="inline-flex min-h-9 shrink-0 items-center rounded-md px-2 font-semibold underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                                className="inline-flex min-h-9 shrink-0 items-center rounded-md px-1.5 font-semibold underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
                             >
                                 Exit test
                             </Link>
@@ -336,7 +342,7 @@ export function SellerLayout(props: SellerLayoutProps) {
             {/* Main Content Area - top padding follows the measured header. Steps slide in
                 from the side; clipping keeps that from widening the page for a moment. */}
             <main
-                className="relative z-10 pb-6 px-4 min-h-screen flex flex-col max-w-2xl mx-auto overflow-x-clip"
+                className={`relative z-10 pb-6 px-4 min-h-screen flex flex-col ${columnWidth} mx-auto overflow-x-clip`}
                 style={{ paddingTop: `${mainTopPadding}px` }}
             >
                 {children}

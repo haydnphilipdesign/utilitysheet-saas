@@ -22,6 +22,7 @@ import {
     HOA_TEXT_FIELDS,
 } from '@/lib/packet/hoa';
 import { wizardFocusRing, wizardPrimaryButton, wizardTextInput } from '../wizard-ui';
+import { usePinnedActions, wizardPinnedActions } from '../pinned-actions';
 
 interface HomeBasicsStepProps {
     state: WizardState;
@@ -66,7 +67,7 @@ function OptionalDisclosure({ id, icon: Icon, title, summary, actionLabel, openL
                 <Icon className="h-4 w-4 shrink-0 text-[color:var(--brand-accent-text)]" />
                 <span className="min-w-0 flex-1">
                     <span className="block font-medium text-sm sm:text-base text-foreground">{title}</span>
-                    <span className="block text-xs text-muted-foreground mt-0.5">{summary}</span>
+                    <span className="block text-xs lg:text-sm text-muted-foreground mt-0.5">{summary}</span>
                 </span>
                 {/* Phones show the chevron alone so the summary keeps the row's width. */}
                 <span className="flex items-center gap-1 shrink-0 text-sm font-medium text-[color:var(--brand-accent-text)]">
@@ -194,6 +195,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
         return `${includedAdvancedGroupCount} of ${total} included, one short page each`;
     })();
     const showOptionalDivider = availableOptionalUtilities.length > 0 || showAdvancedModuleSelector || showHoaDetails;
+    const pinnedActions = usePinnedActions();
 
     return (
         <motion.div
@@ -215,7 +217,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             {HOA_GATE_PROMPT}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Homeowners, condo, and townhome associations all count.</p>
+                        <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 sm:mt-1">Homeowners, condo, and townhome associations all count.</p>
                     </div>
                     <div className="grid grid-cols-3 gap-2 sm:gap-3" role="group" aria-labelledby="basics-hoa-label">
                         {HAS_HOA_OPTIONS.map((opt) => (
@@ -252,7 +254,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     </p>
                     <RequiredTag />
                 </div>
-                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`} role="group" aria-labelledby="basics-water-label">
+                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`} role="group" aria-labelledby="basics-water-label">
                     {waterOptions.map((opt) => (
                         <button
                             key={opt.id}
@@ -264,7 +266,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
-                            <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
+                            <span className="block font-medium text-sm sm:text-base">{opt.formLabel ?? opt.label}</span>
                             {opt.hint && (
                                 <span className="block text-[11px] sm:text-xs mt-0.5">{opt.hint}</span>
                             )}
@@ -282,7 +284,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     </p>
                     <RequiredTag />
                 </div>
-                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`} role="group" aria-labelledby="basics-sewer-label">
+                <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`} role="group" aria-labelledby="basics-sewer-label">
                     {sewerOptions.map((opt) => (
                         <button
                             key={opt.id}
@@ -294,7 +296,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                 : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
                                 }`}
                         >
-                            <span className="block font-medium text-sm sm:text-base">{opt.label}</span>
+                            <span className="block font-medium text-sm sm:text-base">{opt.formLabel ?? opt.label}</span>
                             {opt.hint && (
                                 <span className="block text-[11px] sm:text-xs mt-0.5">{opt.hint}</span>
                             )}
@@ -310,7 +312,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Fuel Sources
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Select all that apply to your home.</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 sm:mt-1">Select all that apply to your home.</p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3" role="group" aria-labelledby="basics-fuels-label">
                     {FUEL_SOURCE_OPTIONS.map((fuel) => {
@@ -368,7 +370,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Which is the primary heat source?
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">Shown as the home&apos;s heating type on the finished sheet.</p>
+                        <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 sm:mt-1">Shown as the home&apos;s heating type on the finished sheet.</p>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3" role="group" aria-labelledby="basics-primary-heat-label">
                         {state.fuels_present.map((fuelId) => {
@@ -417,7 +419,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                         </span>
                         Do you have these utilities?
                     </p>
-                    <p className="text-xs text-muted-foreground -mt-1 sm:-mt-2">
+                    <p className="text-xs lg:text-sm text-muted-foreground -mt-1 sm:-mt-2">
                         Choose any that apply. We&apos;ll only ask about utilities you have.
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3" role="group" aria-labelledby="basics-optional-utilities-label">
@@ -472,7 +474,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     onToggle={() => setHoaDetailsOpen((open) => !open)}
                     testId="hoa-details"
                 >
-                    <p className="text-xs text-muted-foreground">Fill in what you know. You can skip anything you don&apos;t have handy.</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground">Fill in what you know. You can skip anything you don&apos;t have handy.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {HOA_TEXT_FIELDS.map((field) => (
                             <Fragment key={field.key}>
@@ -493,7 +495,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                         className={`py-2.5 px-3 text-base sm:text-sm rounded-lg ${wizardTextInput}`}
                                     />
                                     {field.helper && (
-                                        <p id={`hoa-${field.key}-helper`} className="text-xs text-muted-foreground">{field.helper}</p>
+                                        <p id={`hoa-${field.key}-helper`} className="text-xs lg:text-sm text-muted-foreground">{field.helper}</p>
                                     )}
                                 </div>
                                 {field.key === 'hoa_dues_amount' && (
@@ -541,7 +543,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     onToggle={() => setHandoffChooserOpen((open) => !open)}
                     testId="basics-handoff"
                 >
-                    <p id="basics-handoff-label" className="text-xs text-muted-foreground">
+                    <p id="basics-handoff-label" className="text-xs lg:text-sm text-muted-foreground">
                         These help the next owner take over smoothly. Tap a section to include or skip it. You can skip any field later.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3" role="group" aria-labelledby="basics-handoff-label">
@@ -568,7 +570,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                                         <Icon className="h-4 w-4 shrink-0 mt-0.5" />
                                         <div className="min-w-0">
                                             <p className="font-medium text-sm sm:text-base">{group.label}</p>
-                                            <p className="text-xs opacity-90 mt-0.5">{group.helper}</p>
+                                            <p className="text-xs lg:text-sm opacity-90 mt-0.5">{group.helper}</p>
                                         </div>
                                     </div>
                                     <div className={`absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center transition-all ${isSelected
@@ -584,7 +586,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 </OptionalDisclosure>
             )}
 
-            <div className="pt-4 sm:pt-6">
+            <div {...pinnedActions} className={`pt-4 sm:pt-6 ${wizardPinnedActions}`} data-testid="basics-actions">
                 <button
                     type="button"
                     onClick={onNext}
@@ -595,7 +597,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                     Continue
                 </button>
                 {missingChoices.length > 0 && (
-                    <p id="basics-continue-blocked" className="mt-2 text-center text-xs text-muted-foreground">
+                    <p id="basics-continue-blocked" className="mt-2 text-center text-xs lg:text-sm text-muted-foreground">
                         Choose a {describeChoices(missingChoices)} option above to continue.
                     </p>
                 )}

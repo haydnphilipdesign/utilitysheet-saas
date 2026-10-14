@@ -39,7 +39,10 @@ import type {
 
 export interface SellerChoiceOption<TValue extends string = string> {
     id: TValue;
+    /** Printed on the packet and PDF. */
     label: string;
+    /** Shorter wording on the seller form's tiles and Review, when it differs. */
+    formLabel?: string;
     hint?: string;
 }
 
@@ -48,19 +51,20 @@ export interface SellerChoiceOption<TValue extends string = string> {
  * an HOA?". Sellers read a bare "HOA / Condo" as the second question, and
  * answering it that way skips the provider prompt in SellerWizard, so the
  * provider is silently missing from the packet. The label states the billing
- * meaning outright.
+ * meaning outright: "Paid by HOA" on the seller form, where the hint sits
+ * beside it, and the longer "Included in HOA / Condo Fee" on the packet.
  */
 export const WATER_SOURCE_OPTIONS: SellerChoiceOption<WaterSource>[] = [
     { id: 'city', label: 'Public Water', hint: "We'll ask the provider name next" },
     { id: 'well', label: 'Private Well' },
-    { id: 'hoa', label: 'Included in HOA / Condo Fee', hint: 'The association pays this bill' },
+    { id: 'hoa', label: 'Included in HOA / Condo Fee', formLabel: 'Paid by HOA', hint: 'The association pays this bill' },
     { id: 'not_sure', label: 'Not Sure' },
 ];
 
 export const SEWER_TYPE_OPTIONS: SellerChoiceOption<SewerType>[] = [
     { id: 'public', label: 'Public Sewer', hint: "We'll ask the authority next" },
     { id: 'septic', label: 'Septic System' },
-    { id: 'hoa', label: 'Included in HOA / Condo Fee', hint: 'The association pays this bill' },
+    { id: 'hoa', label: 'Included in HOA / Condo Fee', formLabel: 'Paid by HOA', hint: 'The association pays this bill' },
     { id: 'not_sure', label: 'Not Sure' },
 ];
 
@@ -100,6 +104,15 @@ export function getWaterSourceLabel(value: string): string {
 
 export function getSewerTypeLabel(value: string): string {
     return findChoiceLabel(SEWER_TYPE_OPTIONS, value);
+}
+
+/** The seller form's wording for a stored water answer (tiles and Review). */
+export function getWaterSourceFormLabel(value: string): string {
+    return WATER_SOURCE_OPTIONS.find((option) => option.id === value)?.formLabel || getWaterSourceLabel(value);
+}
+
+export function getSewerTypeFormLabel(value: string): string {
+    return SEWER_TYPE_OPTIONS.find((option) => option.id === value)?.formLabel || getSewerTypeLabel(value);
 }
 
 export function getHeatingTypeLabel(value: string): string {

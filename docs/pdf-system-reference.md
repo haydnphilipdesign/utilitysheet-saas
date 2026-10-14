@@ -90,7 +90,7 @@ The current shared hybrid design deliberately combines Simple's compact clarity 
 - Card border: light Zinc (`#e4e4e7`)
 - Card radius: generally `8px`
 - Section background: subtle neutral (`#f9fafb`)
-- Accent: Branding Profile `primary_color`, with `#10b981` fallback
+- Accent: Branding Profile `primary_color`, with `DEFAULT_BRAND_COLOR` (`#23588a`, the app's slate-blue primary) as fallback. Before 2026-10-14 the fallback and new-profile default was emerald `#10b981`; profiles created then store it explicitly and keep it.
 - Accent uses: section-heading left bars, initials tile, map pin, provider phone, welcome-message edge, and numbered Buyer Next Steps
 - Logo height: `36px`, width automatic
 - Fallback initials: first letters of the first two words; for example, `Multimedium Team` becomes `MT`

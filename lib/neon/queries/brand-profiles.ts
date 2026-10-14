@@ -2,6 +2,7 @@
  * Brand profile-related database queries
  */
 import { sql } from '@/lib/neon/db';
+import { DEFAULT_BRAND_COLOR, DEFAULT_BRAND_SECONDARY_COLOR } from '@/lib/branding/deliverable';
 import type { BrandProfile, MessageTemplates } from '@/types';
 
 /**
@@ -233,8 +234,8 @@ export async function createBrandProfile(data: {
             ${data.organizationId || null},
             ${data.name},
             ${data.logoUrl || null},
-            ${data.primaryColor || '#10b981'},
-            ${data.secondaryColor || '#059669'},
+            ${data.primaryColor || DEFAULT_BRAND_COLOR},
+            ${data.secondaryColor || DEFAULT_BRAND_SECONDARY_COLOR},
             ${data.contactName || null},
             ${data.contactPhone || null},
             ${data.contactEmail || null},

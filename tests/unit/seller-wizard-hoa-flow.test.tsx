@@ -117,23 +117,23 @@ describe('SellerWizard HOA question', () => {
         fireEvent.click(screen.getByTestId('has-hoa-yes'));
         const fuel = screen.getByText('Fuel Sources');
         expect(fuel.compareDocumentPosition(screen.getByTestId('hoa-details')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
-        expect(screen.getAllByRole('button', { name: /included in hoa/i })[0]).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getAllByRole('button', { name: /^paid by hoa/i })).toHaveLength(2);
+        expect(screen.getAllByRole('button', { name: /^paid by hoa/i })[0]).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('filters only for No and restores choices for Not Sure or Yes', () => {
         renderWizard();
         openHomeBasics();
-        expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
+        expect(screen.getAllByRole('button', { name: /^paid by hoa/i })).toHaveLength(2);
         fireEvent.click(screen.getByTestId('has-hoa-no'));
-        expect(screen.queryByRole('button', { name: /included in hoa/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^paid by hoa/i })).not.toBeInTheDocument();
         // Nothing was cleared, so there is nothing to explain.
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
         answerBasics();
         expect(screen.getByRole('button', { name: /^continue$/i })).toBeEnabled();
         for (const answer of ['not_sure', 'yes']) {
             fireEvent.click(screen.getByTestId(`has-hoa-${answer}`));
-            expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
+            expect(screen.getAllByRole('button', { name: /^paid by hoa/i })).toHaveLength(2);
         }
     });
 
@@ -141,7 +141,7 @@ describe('SellerWizard HOA question', () => {
         renderWizard();
         openHomeBasics();
         fireEvent.click(screen.getByTestId('has-hoa-yes'));
-        screen.getAllByRole('button', { name: /included in hoa/i }).forEach(button => fireEvent.click(button));
+        screen.getAllByRole('button', { name: /^paid by hoa/i }).forEach(button => fireEvent.click(button));
         fireEvent.click(screen.getByTestId('has-hoa-no'));
         expect(screen.getByRole('status')).toHaveTextContent('water and sewer selections');
         expect(screen.getByRole('button', { name: /^continue$/i })).toBeDisabled();
@@ -160,7 +160,7 @@ describe('SellerWizard HOA question', () => {
     it('asks for providers after a conflicting HOA answer is replaced with public utilities', () => {
         renderWizard(undefined, true, ['electric', 'water', 'sewer']);
         openHomeBasics();
-        screen.getAllByRole('button', { name: /included in hoa/i }).forEach(button => fireEvent.click(button));
+        screen.getAllByRole('button', { name: /^paid by hoa/i }).forEach(button => fireEvent.click(button));
         fireEvent.click(screen.getByTestId('has-hoa-no'));
         fireEvent.click(screen.getByRole('button', { name: /Public Water/ }));
         fireEvent.click(screen.getByRole('button', { name: /Public Sewer/ }));
@@ -175,7 +175,7 @@ describe('SellerWizard HOA question', () => {
         renderWizard();
         openHomeBasics();
         fireEvent.click(screen.getByRole('button', { name: /Public Water/ }));
-        fireEvent.click(screen.getAllByRole('button', { name: /included in hoa/i })[1]);
+        fireEvent.click(screen.getAllByRole('button', { name: /^paid by hoa/i })[1]);
         fireEvent.click(screen.getByTestId('has-hoa-no'));
         expect(screen.getByRole('button', { name: /Public Water/ })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('status')).toHaveTextContent('sewer selection');
@@ -204,8 +204,8 @@ describe('SellerWizard HOA question', () => {
             v: 2, currentStep: 1, state: { has_hoa: 'no', water_source: 'hoa', sewer_type: 'septic' },
         }));
         renderWizard(undefined, false);
-        expect(screen.getAllByRole('button', { name: /included in hoa/i })).toHaveLength(2);
-        expect(screen.getAllByRole('button', { name: /included in hoa/i })[0]).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getAllByRole('button', { name: /^paid by hoa/i })).toHaveLength(2);
+        expect(screen.getAllByRole('button', { name: /^paid by hoa/i })[0]).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: /^continue$/i })).toBeEnabled();
     });
 
@@ -297,11 +297,13 @@ describe('SellerWizard HOA question', () => {
         renderWizard();
         openHomeBasics();
 
-        fireEvent.click(screen.getAllByRole('button', { name: /included in hoa \/ condo fee/i })[0]);
+        fireEvent.click(screen.getAllByRole('button', { name: /^paid by hoa/i })[0]);
         fireEvent.click(screen.getByRole('button', { name: 'Septic System' }));
         continueToReview();
 
-        expect(screen.getByText('Included in HOA / Condo Fee')).toBeInTheDocument();
+        // The seller form's short label; the packet and PDF keep "Included in HOA / Condo Fee".
+        expect(screen.getByText('Paid by HOA')).toBeInTheDocument();
+        expect(screen.queryByText('Included in HOA / Condo Fee')).not.toBeInTheDocument();
         expect(screen.queryByText('HOA / Condo')).not.toBeInTheDocument();
     });
 

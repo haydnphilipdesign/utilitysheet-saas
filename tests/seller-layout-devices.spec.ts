@@ -56,7 +56,7 @@ test.afterAll(async () => {
     if (server) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 });
 
-async function routeSeller(context: BrowserContext, primaryColor: string, unexpected: string[]) {
+async function routeSeller(context: BrowserContext, primaryColor: string | null, unexpected: string[]) {
     await context.route('**/*', async route => {
         const request = route.request();
         const url = new URL(request.url());
@@ -167,7 +167,11 @@ for (const screenSize of SCREENS) {
 }
 
 for (const brand of [
-    { name: 'default emerald', color: '#10b981', dark: false },
+    // No stored color: the product default (the app's slate-blue primary).
+    { name: 'product default', color: null, dark: false },
+    { name: 'product default in dark mode', color: null, dark: true },
+    // Emerald was the default before 2026-10-14 and many profiles still store it.
+    { name: 'emerald', color: '#10b981', dark: false },
     { name: 'light yellow', color: '#facc15', dark: false },
     { name: 'navy in dark mode', color: '#1e3a8a', dark: true },
 ]) {

@@ -1,5 +1,6 @@
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { getResend } from '@/lib/resend';
+import { DEFAULT_BRAND_COLOR, DEFAULT_BRAND_SECONDARY_COLOR } from '@/lib/branding/deliverable';
 import type { BrandProfile } from '@/types';
 import { DEFAULT_MESSAGE_TEMPLATES, escapeHtml, firstNameFromFullName, plainTextToHtml, renderTemplate } from '@/lib/message-templates';
 import { createPacketPdfAttachmentForRequest } from '@/lib/pdf/packet-attachment';
@@ -315,8 +316,8 @@ export async function sendSellerNotificationEmail({
         : null;
 
     const brandName = brandProfile?.name || 'UtilitySheet';
-    const primaryColor = safeHexColor(brandProfile?.primary_color, '#10b981');
-    const secondaryColor = safeHexColor(brandProfile?.secondary_color, '#059669');
+    const primaryColor = safeHexColor(brandProfile?.primary_color, DEFAULT_BRAND_COLOR);
+    const secondaryColor = safeHexColor(brandProfile?.secondary_color, DEFAULT_BRAND_SECONDARY_COLOR);
     const brandLogoUrl = safeExternalUrl(brandProfile?.logo_url);
 
     const effectiveAgentName = agentName || brandProfile?.contact_name || 'Your real estate team';
@@ -469,8 +470,8 @@ export function buildSellerReminderEmail({
         : null;
 
     const brandName = brandProfile?.name || 'UtilitySheet';
-    const primaryColor = safeHexColor(brandProfile?.primary_color, '#10b981');
-    const secondaryColor = safeHexColor(brandProfile?.secondary_color, '#059669');
+    const primaryColor = safeHexColor(brandProfile?.primary_color, DEFAULT_BRAND_COLOR);
+    const secondaryColor = safeHexColor(brandProfile?.secondary_color, DEFAULT_BRAND_SECONDARY_COLOR);
     const brandLogoUrl = safeExternalUrl(brandProfile?.logo_url);
 
     const effectiveAgentName = agentName || brandProfile?.contact_name || 'Your real estate team';

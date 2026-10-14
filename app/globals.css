@@ -3,6 +3,8 @@
 @custom-variant dark (&:is(.dark *));
 /* Short viewports: landscape phones and heavily zoomed laptop windows. */
 @custom-variant short (@media (max-height: 500px));
+/* Phone-width screens that are not short: where the seller form pins its main action. */
+@custom-variant pinbar (@media (width < 40rem) and (height > 500px));
 
 @theme inline {
   --color-background: var(--background);

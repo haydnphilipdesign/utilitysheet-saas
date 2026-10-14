@@ -6,6 +6,7 @@ import { normalizeMessageTemplates } from '@/lib/message-templates';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { reminderRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
 import { sendSellerNotificationEmail, sendSellerReminderEmail } from '@/lib/email/email-service';
+import { DEFAULT_BRAND_COLOR, DEFAULT_BRAND_SECONDARY_COLOR } from '@/lib/branding/deliverable';
 
 export const runtime = 'nodejs';
 
@@ -74,8 +75,8 @@ export async function POST(request: Request) {
         const brandProfile = {
             name: branding.name || 'Your Brand',
             logo_url: branding.logo_url ?? null,
-            primary_color: branding.primary_color || '#10b981',
-            secondary_color: branding.secondary_color || '#059669',
+            primary_color: branding.primary_color || DEFAULT_BRAND_COLOR,
+            secondary_color: branding.secondary_color || DEFAULT_BRAND_SECONDARY_COLOR,
             contact_name: branding.contact_name ?? null,
             contact_email: branding.contact_email ?? null,
             contact_phone: branding.contact_phone ?? null,
