@@ -7,7 +7,6 @@
 // Types
 export type {
     SendSellerNotificationEmailParams,
-    GenerateEmailHtmlParams,
     SendFeedbackEmailParams,
     SendTCCompletionNotificationEmailParams,
     GenerateTCCompletionHtmlParams,

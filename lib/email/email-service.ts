@@ -180,6 +180,23 @@ function renderBulletproofButton(params: {
     `.trim();
 }
 
+const LEADING_GREETING_PATTERN = /^(hi|hello|hey|dear|greetings|good (morning|afternoon|evening))\b/i;
+
+/**
+ * Message templates usually open with their own greeting ("Hi{{...}},"). Use
+ * that line in the greeting slot, verbatim, instead of adding a second one;
+ * templates without a greeting keep the fallback.
+ */
+function splitLeadingGreeting(bodyText: string, fallbackGreeting: string): { greeting: string; bodyText: string } {
+    const normalized = bodyText.replaceAll('\r\n', '\n').replace(/^\n+/, '');
+    const [firstBlock, ...rest] = normalized.split(/\n{2,}/);
+    const candidate = firstBlock?.trim() ?? '';
+    if (rest.length > 0 && !candidate.includes('\n') && candidate.length <= 60 && LEADING_GREETING_PATTERN.test(candidate)) {
+        return { greeting: candidate, bodyText: rest.join('\n\n') };
+    }
+    return { greeting: fallbackGreeting, bodyText };
+}
+
 function generateSellerRequestEmailHtml(params: {
     brandName: string;
     brandLogoUrl: string | null;
@@ -204,7 +221,8 @@ function generateSellerRequestEmailHtml(params: {
     const safeBrandLogoUrl = params.brandLogoUrl ? escapeHtml(params.brandLogoUrl) : null;
     const safeTitle = escapeHtml(params.title);
     const safeBadgeText = escapeHtml(params.badgeText);
-    const safeGreeting = escapeHtml(params.greeting);
+    const message = splitLeadingGreeting(params.bodyText, params.greeting);
+    const safeGreeting = escapeHtml(message.greeting);
     const safePropertyAddress = escapeHtml(params.propertyAddress);
     const safeClosingDate = params.formattedClosingDate ? escapeHtml(params.formattedClosingDate) : null;
     const safeCtaUrl = escapeHtml(params.ctaUrl);
@@ -268,7 +286,7 @@ function generateSellerRequestEmailHtml(params: {
                                 ${safeClosingDate ? `<p style="margin: 8px 0 0; color: #6b7280; font-size: 13px;"><strong>Closing:</strong> ${safeClosingDate}</p>` : ''}
                             </div>
 
-                            ${plainTextToHtml(params.bodyText)}
+                            ${plainTextToHtml(message.bodyText)}
 
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 8px;">
                                 <tr>
@@ -1491,7 +1509,7 @@ function generateContactResolutionAlertHtml({
                                         ${renderBulletproofButton({
         href: dashboardUrl,
         label: 'Review the sheet',
-        backgroundColor: '#d97706',
+        backgroundColor: '#b45309',
         borderRadius: 8,
         fontWeight: 600,
         paddingX: 32,

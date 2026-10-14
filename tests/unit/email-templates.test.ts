@@ -215,6 +215,45 @@ describe('Email Templates', () => {
         });
     });
 
+    describe('seller email greeting', () => {
+        const build = (sellerName?: string, body?: string) => buildSellerReminderEmail({
+            sellerEmail: 'seller@example.com',
+            sellerName,
+            propertyAddress: '12 Sample Lane',
+            sellerToken: 'synthetic',
+            brandProfile: body
+                ? ({ name: 'Riverbend', message_templates: { seller_reminder: { email: { body } } } } as BrandProfileInput)
+                : undefined,
+        }).html;
+        const count = (html: string, text: string) => html.split(text).length - 1;
+
+        it('greets once with the default template, above the property card', () => {
+            const html = build('Pat Seller');
+            expect(count(html, 'Hi Pat,')).toBe(1);
+            expect(html.indexOf('Hi Pat,')).toBeLessThan(html.indexOf('12 Sample Lane</p>'));
+            expect(html).toContain('Quick reminder: when you have a moment');
+        });
+
+        it('greets once without a seller name', () => {
+            const html = build();
+            expect(count(html, '>Hi,</p>')).toBe(1);
+            expect(html).not.toContain('Hello,');
+        });
+
+        it('keeps a custom greeting verbatim instead of adding one', () => {
+            const html = build('Pat Seller', 'Dear Mr. Seller,\n\nPlease finish the form for {{property_address}}.');
+            expect(count(html, 'Dear Mr. Seller,')).toBe(1);
+            expect(html).not.toContain('Hi Pat,');
+            expect(html).toContain('Please finish the form for 12 Sample Lane.');
+        });
+
+        it('adds the greeting when a custom template has none', () => {
+            const html = build('Pat Seller', 'Hi there is a short form for {{property_address}} today, it takes two minutes to finish.\n\nThanks!');
+            expect(count(html, 'Hi Pat,')).toBe(1);
+            expect(html).toContain('Hi there is a short form for 12 Sample Lane today');
+        });
+    });
+
     describe('header gradient fallbacks', () => {
         it('contact resolution alert falls back to the darker amber', () => {
             const html = generateContactResolutionAlertHtml({
@@ -224,6 +263,9 @@ describe('Email Templates', () => {
             });
 
             expect(html).toContain('<td bgcolor="#d97706" style="background-color: #d97706; background-image: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);');
+            // The 16px button label needs 4.5:1, so the button uses amber-700.
+            expect(html).toContain('fillcolor="#b45309"');
+            expect(html).toContain('bgcolor="#b45309"');
         });
 
         it('branded seller emails fall back to the brand primary color', () => {

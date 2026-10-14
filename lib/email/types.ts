@@ -15,14 +15,6 @@ export interface SendSellerNotificationEmailParams {
     publicToken: string;
 }
 
-export interface GenerateEmailHtmlParams {
-    sellerName?: string;
-    propertyAddress: string;
-    formattedClosingDate: string | null;
-    agentName?: string;
-    sellerFormUrl: string;
-}
-
 export interface SendFeedbackEmailParams {
     userEmail: string | null;
     message: string;
