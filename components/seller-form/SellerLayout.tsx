@@ -156,6 +156,14 @@ export function SellerLayout(props: SellerLayoutProps) {
     const [headerHeight, setHeaderHeight] = useState<number | null>(null);
 
     useEffect(() => {
+        // A long step's scroll position can hide the next step behind the fixed
+        // header. Field edits keep their position; only step navigation resets it.
+        if (window.scrollX !== 0 || window.scrollY !== 0) {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }
+    }, [stepName]);
+
+    useEffect(() => {
         const headerEl = headerRef.current;
         if (!headerEl) return;
 
