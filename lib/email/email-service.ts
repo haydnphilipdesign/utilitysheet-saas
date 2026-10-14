@@ -103,6 +103,23 @@ function buildLicenseLine(licenseNumber?: string | null, licenseState?: string |
     return null;
 }
 
+/**
+ * Accent for UtilitySheet's own product emails (completion, referral credit,
+ * weekly summary, activation reminder): the app's slate-blue primary, same as
+ * the default brand color. Emerald is reserved for success states. White text
+ * on either color passes 4.5:1. Branded seller emails use the Branding Profile.
+ */
+const PRODUCT_EMAIL_ACCENT = DEFAULT_BRAND_COLOR;
+const PRODUCT_EMAIL_ACCENT_DARK = DEFAULT_BRAND_SECONDARY_COLOR;
+/** 10% of the accent on white, for neutral (non-success) badges. */
+const PRODUCT_EMAIL_ACCENT_TINT = '#e9eef3';
+/**
+ * Header background. The solid color comes first so clients that drop
+ * gradients (Outlook desktop) still render the accent; pair it with a
+ * bgcolor attribute on the cell.
+ */
+const PRODUCT_EMAIL_HEADER_BACKGROUND = `background-color: ${PRODUCT_EMAIL_ACCENT}; background-image: linear-gradient(135deg, ${PRODUCT_EMAIL_ACCENT} 0%, ${PRODUCT_EMAIL_ACCENT_DARK} 100%);`;
+
 function renderBulletproofButton(params: {
     href: string;
     label: string;
@@ -811,211 +828,6 @@ export async function sendOrganizationInviteAcceptedEmail(
     }
 }
 
-interface GenerateEmailHtmlParams {
-    sellerName?: string;
-    propertyAddress: string;
-    formattedClosingDate: string | null;
-    agentName?: string;
-    sellerFormUrl: string;
-}
-
-function generateSellerNotificationHtml({
-    sellerName,
-    propertyAddress,
-    formattedClosingDate,
-    agentName,
-    sellerFormUrl,
-}: GenerateEmailHtmlParams): string {
-    const greeting = sellerName ? `Hi ${sellerName},` : 'Hello,';
-    const agentMention = agentName ? ` from ${agentName}` : '';
-
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Utility Information Request</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
-        <tr>
-            <td style="padding: 40px 20px;">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                    <!-- Header -->
-                    <tr>
-                        <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 40px; text-align: center;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">UtilitySheet</h1>
-                        </td>
-                    </tr>
-                    
-                    <!-- Content -->
-                    <tr>
-                        <td style="padding: 40px;">
-                            <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                ${greeting}
-                            </p>
-                            
-                            <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                You've received a request${agentMention} to provide utility information for the following property:
-                            </p>
-                            
-                            <!-- Property Card -->
-                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid #10b981;">
-                                <p style="margin: 0; color: #111827; font-size: 18px; font-weight: 600;">
-                                    ${propertyAddress}
-                                </p>
-                                ${formattedClosingDate ? `
-                                <p style="margin: 8px 0 0; color: #6b7280; font-size: 14px;">
-                                    <strong>Closing Date:</strong> ${formattedClosingDate}
-                                </p>
-                                ` : ''}
-                            </div>
-                            
-                            <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                Please click the button below to provide information about the utility providers for this property.
-                            </p>
-                            
-                            <!-- CTA Button -->
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                                <tr>
-                                    <td style="text-align: center;">
-                                        ${renderBulletproofButton({
-        href: sellerFormUrl,
-        label: 'Provide Utility Information',
-        backgroundColor: '#059669',
-        borderRadius: 8,
-        fontWeight: 600,
-        paddingX: 32,
-        paddingY: 14,
-        minWidth: 240,
-    })}
-                                    </td>
-                                </tr>
-                            </table>
-                            
-                            <p style="margin: 32px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                                If the button doesn't work, copy and paste this link into your browser:<br>
-                                <a href="${sellerFormUrl}" style="color: #10b981; word-break: break-all;">${sellerFormUrl}</a>
-                            </p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Footer -->
-                    <tr>
-                        <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
-                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                                This email was sent by UtilitySheet. If you received this in error, you can safely ignore it.
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
-    `.trim();
-}
-
-function generateSellerReminderHtml({
-    sellerName,
-    propertyAddress,
-    formattedClosingDate,
-    agentName,
-    sellerFormUrl,
-}: GenerateEmailHtmlParams): string {
-    const greeting = sellerName ? `Hi ${sellerName},` : 'Hello,';
-    const agentMention = agentName ? ` from ${agentName}` : '';
-
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reminder: Utility Information Request</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f5;">
-        <tr>
-            <td style="padding: 40px 20px;">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-                    <!-- Header -->
-                    <tr>
-                        <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 40px; text-align: center;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">UtilitySheet Reminder</h1>
-                        </td>
-                    </tr>
-                    
-                    <!-- Content -->
-                    <tr>
-                        <td style="padding: 40px;">
-                            <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                ${greeting}
-                            </p>
-                            
-                            <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                Just a friendly reminder to complete the utility information request${agentMention} for the following property:
-                            </p>
-                            
-                            <!-- Property Card -->
-                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid #10b981;">
-                                <p style="margin: 0; color: #111827; font-size: 18px; font-weight: 600;">
-                                    ${propertyAddress}
-                                </p>
-                                ${formattedClosingDate ? `
-                                <p style="margin: 8px 0 0; color: #6b7280; font-size: 14px;">
-                                    <strong>Closing Date:</strong> ${formattedClosingDate}
-                                </p>
-                                ` : ''}
-                            </div>
-                            
-                            <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
-                                This information will help the buyers ensure all utilities are properly transferred and helps make for a smooth closing.
-                            </p>
-                            
-                            <!-- CTA Button -->
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                                <tr>
-                                    <td style="text-align: center;">
-                                        ${renderBulletproofButton({
-        href: sellerFormUrl,
-        label: 'Complete Utility Info',
-        backgroundColor: '#059669',
-        borderRadius: 8,
-        fontWeight: 600,
-        paddingX: 32,
-        paddingY: 14,
-        minWidth: 240,
-    })}
-                                    </td>
-                                </tr>
-                            </table>
-                            
-                            <p style="margin: 32px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                                If you've already completed this, please disregard this message.
-                            </p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Footer -->
-                    <tr>
-                        <td style="background-color: #f9fafb; padding: 24px 40px; text-align: center; border-top: 1px solid #e5e7eb;">
-                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                                This email was sent by UtilitySheet.
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
-    `.trim();
-}
-
 interface SendFeedbackEmailParams {
     userEmail: string | null;
     message: string;
@@ -1295,7 +1107,7 @@ function generateTCCompletionNotificationHtml({
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                     <!-- Header -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 40px; text-align: center;">
+                        <td bgcolor="${PRODUCT_EMAIL_ACCENT}" style="${PRODUCT_EMAIL_HEADER_BACKGROUND} padding: 32px 40px; text-align: center;">
                             <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">UtilitySheet</h1>
                         </td>
                     </tr>
@@ -1322,7 +1134,7 @@ function generateTCCompletionNotificationHtml({
                             </p>
                             
                             <!-- Property Card -->
-                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid #10b981;">
+                            <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid ${PRODUCT_EMAIL_ACCENT};">
                                 <p style="margin: 0; color: #111827; font-size: 18px; font-weight: 600;">
                                     ${propertyAddress}
                                 </p>
@@ -1341,7 +1153,7 @@ function generateTCCompletionNotificationHtml({
                                         ${renderBulletproofButton({
         href: dashboardUrl,
         label: isTestDrive ? 'Review test sheet' : 'Review Submitted Sheet',
-        backgroundColor: '#059669',
+        backgroundColor: PRODUCT_EMAIL_ACCENT,
         borderRadius: 8,
         fontWeight: 600,
         paddingX: 32,
@@ -1354,7 +1166,7 @@ function generateTCCompletionNotificationHtml({
                             
                             <p style="margin: 32px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
                                 If the button doesn't work, copy and paste this link into your browser:<br>
-                                <a href="${dashboardUrl}" style="color: #10b981; word-break: break-all;">${dashboardUrl}</a>
+                                <a href="${dashboardUrl}" style="color: ${PRODUCT_EMAIL_ACCENT}; word-break: break-all;">${dashboardUrl}</a>
                             </p>${referralProgramHtml}
                         </td>
                     </tr>
@@ -1467,7 +1279,7 @@ function generateReferralCreditEarnedHtml({
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                     <!-- Header -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 40px; text-align: center;">
+                        <td bgcolor="${PRODUCT_EMAIL_ACCENT}" style="${PRODUCT_EMAIL_HEADER_BACKGROUND} padding: 32px 40px; text-align: center;">
                             <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">UtilitySheet</h1>
                         </td>
                     </tr>
@@ -1503,7 +1315,7 @@ function generateReferralCreditEarnedHtml({
                                         ${renderBulletproofButton({
         href: referralSettingsUrl,
         label: 'See your referral credits',
-        backgroundColor: '#059669',
+        backgroundColor: PRODUCT_EMAIL_ACCENT,
         borderRadius: 8,
         fontWeight: 600,
         paddingX: 32,
@@ -1795,7 +1607,7 @@ function generateWeeklySummaryHtml({
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                     <!-- Header -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 40px; text-align: center;">
+                        <td bgcolor="${PRODUCT_EMAIL_ACCENT}" style="${PRODUCT_EMAIL_HEADER_BACKGROUND} padding: 32px 40px; text-align: center;">
                             <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Weekly Summary</h1>
                             <p style="margin: 8px 0 0; color: rgba(255,255,255,0.8); font-size: 14px;">Your UtilitySheet activity this week</p>
                         </td>
@@ -1851,7 +1663,7 @@ function generateWeeklySummaryHtml({
                                         ${renderBulletproofButton({
         href: dashboardUrl,
         label: 'Go to Dashboard',
-        backgroundColor: '#059669',
+        backgroundColor: PRODUCT_EMAIL_ACCENT,
         borderRadius: 8,
         fontWeight: 600,
         paddingX: 32,
@@ -1919,13 +1731,13 @@ function generateActivationReminderHtml(params: {
             <td style="padding: 40px 20px;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                     <tr>
-                        <td style="background: linear-gradient(135deg, #0f766e 0%, #065f46 100%); padding: 28px 32px; text-align: center;">
+                        <td bgcolor="${PRODUCT_EMAIL_ACCENT}" style="${PRODUCT_EMAIL_HEADER_BACKGROUND} padding: 28px 32px; text-align: center;">
                             <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">UtilitySheet</h1>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 24px 32px 0; text-align: center;">
-                            <div style="display: inline-block; background-color: #ecfdf5; color: #065f46; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;">
+                            <div style="display: inline-block; background-color: ${PRODUCT_EMAIL_ACCENT_TINT}; color: ${PRODUCT_EMAIL_ACCENT}; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;">
                                 ${escapeHtml(badgeText)}
                             </div>
                         </td>
@@ -1935,9 +1747,9 @@ function generateActivationReminderHtml(params: {
                             <p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">${escapeHtml(greeting)}</p>
                             <p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">${escapeHtml(intro)}</p>
 
-                            <div style="background-color: #f9fafb; border-radius: 10px; padding: 18px; margin: 20px 0; border-left: 4px solid #0f766e;">
+                            <div style="background-color: #f9fafb; border-radius: 10px; padding: 18px; margin: 20px 0; border-left: 4px solid ${PRODUCT_EMAIL_ACCENT};">
                                 <p style="margin: 0 0 8px; color: #111827; font-size: 14px; font-weight: 700;">Your reusable seller link</p>
-                                <p style="margin: 0; color: #065f46; font-size: 14px; line-height: 1.6; word-break: break-all;">${escapeHtml(params.sellerLinkUrl)}</p>
+                                <p style="margin: 0; color: ${PRODUCT_EMAIL_ACCENT}; font-size: 14px; line-height: 1.6; word-break: break-all;">${escapeHtml(params.sellerLinkUrl)}</p>
                             </div>
 
                             <p style="margin: 0 0 20px; color: #374151; font-size: 15px; line-height: 1.6;">
@@ -1950,7 +1762,7 @@ function generateActivationReminderHtml(params: {
                                         ${renderBulletproofButton({
         href: escapeHtml(params.setupUrl),
         label: 'Open My Seller Link',
-        backgroundColor: '#0f766e',
+        backgroundColor: PRODUCT_EMAIL_ACCENT,
         borderRadius: 10,
         fontWeight: 700,
         paddingX: 28,
@@ -1963,7 +1775,7 @@ function generateActivationReminderHtml(params: {
 
                             <p style="margin: 20px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
                                 Want to skip setup? Go straight to your dashboard:<br>
-                                <a href="${escapeHtml(params.dashboardUrl)}" style="color: #0f766e; word-break: break-all;">${escapeHtml(params.dashboardUrl)}</a>
+                                <a href="${escapeHtml(params.dashboardUrl)}" style="color: ${PRODUCT_EMAIL_ACCENT}; word-break: break-all;">${escapeHtml(params.dashboardUrl)}</a>
                             </p>
                         </td>
                     </tr>
@@ -2108,9 +1920,8 @@ export async function sendAccountClosedEmail({
 // Testing Exports (for unit tests only)
 // =============================================================================
 export const __testing = {
-    generateSellerNotificationHtml,
-    generateSellerReminderHtml,
     generateTCCompletionNotificationHtml,
+    generateReferralCreditEarnedHtml,
     generateContactResolutionAlertHtml,
     generateWeeklySummaryHtml,
     generateActivationReminderHtml,

@@ -32,6 +32,23 @@ describe('activation reminder email', () => {
         expect(html).toContain('Your reusable seller link is ready');
     });
 
+    it('uses the slate-blue product accent instead of teal or emerald', () => {
+        for (const stage of ['after_15m', 'after_1d'] as const) {
+            const html = __testing.generateActivationReminderHtml({
+                stage,
+                setupUrl: 'https://utilitysheet.com/onboarding',
+                dashboardUrl: 'https://utilitysheet.com/dashboard',
+                sellerLinkUrl: 'https://utilitysheet.com/i/jane-link',
+            });
+
+            expect(html).toContain('<td bgcolor="#23588a" style="background-color: #23588a; background-image: linear-gradient(135deg, #23588a 0%, #0b4072 100%);');
+            expect(html).toContain('fillcolor="#23588a"');
+            expect(html).toContain('border-left: 4px solid #23588a;');
+            expect(html).toContain('background-color: #e9eef3; color: #23588a;');
+            expect(html).not.toMatch(/#10b981|#059669|#0f766e|#065f46|#ecfdf5/i);
+        }
+    });
+
     it('sends the day-1 reminder through resend', async () => {
         const result = await sendActivationReminderEmail({
             toEmail: 'jane@example.com',

@@ -2,108 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { __testing } from '@/lib/email/email-service';
 
 const {
-    generateSellerNotificationHtml,
-    generateSellerReminderHtml,
     generateTCCompletionNotificationHtml,
+    generateReferralCreditEarnedHtml,
     generateContactResolutionAlertHtml,
     generateWeeklySummaryHtml,
 } = __testing;
 
 describe('Email Templates', () => {
-    describe('generateSellerNotificationHtml', () => {
-        it('generates valid HTML with all fields', () => {
-            const html = generateSellerNotificationHtml({
-                sellerName: 'John Doe',
-                propertyAddress: '123 Main St, Philadelphia, PA 19103',
-                formattedClosingDate: 'Friday, January 15, 2026',
-                agentName: 'Jane Agent',
-                sellerFormUrl: 'https://utilitysheet.com/s/abc123',
-            });
-
-            expect(html).toContain('Hi John Doe,');
-            expect(html).toContain('123 Main St, Philadelphia, PA 19103');
-            expect(html).toContain('Friday, January 15, 2026');
-            expect(html).toContain('Jane Agent');
-            expect(html).toContain('https://utilitysheet.com/s/abc123');
-            expect(html).toContain('Utility Information Request');
-        });
-
-        it('handles missing seller name', () => {
-            const html = generateSellerNotificationHtml({
-                propertyAddress: '123 Main St',
-                formattedClosingDate: null,
-                sellerFormUrl: 'https://example.com',
-            });
-
-            expect(html).toContain('Hello,');
-            expect(html).not.toContain('undefined');
-        });
-
-        it('handles missing closing date', () => {
-            const html = generateSellerNotificationHtml({
-                sellerName: 'John',
-                propertyAddress: '123 Main St',
-                formattedClosingDate: null,
-                sellerFormUrl: 'https://example.com',
-            });
-
-            expect(html).not.toContain('Closing Date:');
-            expect(html).not.toContain('undefined');
-            expect(html).not.toContain('null');
-        });
-
-        it('handles missing agent name', () => {
-            const html = generateSellerNotificationHtml({
-                sellerName: 'John',
-                propertyAddress: '123 Main St',
-                formattedClosingDate: null,
-                sellerFormUrl: 'https://example.com',
-            });
-
-            expect(html).toContain('You\'ve received a request to provide');
-            expect(html).not.toContain('from undefined');
-        });
-
-        it('contains required structure elements', () => {
-            const html = generateSellerNotificationHtml({
-                propertyAddress: '123 Main St',
-                formattedClosingDate: null,
-                sellerFormUrl: 'https://example.com',
-            });
-
-            expect(html).toContain('<!DOCTYPE html>');
-            expect(html).toContain('<html>');
-            expect(html).toContain('</html>');
-            expect(html).toContain('UtilitySheet');
-            expect(html).toContain('Provide Utility Information');
-        });
-    });
-
-    describe('generateSellerReminderHtml', () => {
-        it('generates reminder-specific content', () => {
-            const html = generateSellerReminderHtml({
-                sellerName: 'John',
-                propertyAddress: '123 Main St',
-                formattedClosingDate: null,
-                sellerFormUrl: 'https://example.com',
-            });
-
-            expect(html).toContain('Reminder');
-            expect(html).toContain('friendly reminder');
-            expect(html).toContain('Complete Utility Info');
-        });
-
-        it('contains discard message for completed users', () => {
-            const html = generateSellerReminderHtml({
-                propertyAddress: '123 Main St',
-                formattedClosingDate: null,
-                sellerFormUrl: 'https://example.com',
-            });
-
-            expect(html).toContain('already completed this');
-        });
-    });
-
     describe('generateTCCompletionNotificationHtml', () => {
         it('generates completion notification with all fields', () => {
             const html = generateTCCompletionNotificationHtml({
@@ -240,29 +145,81 @@ describe('Email Templates', () => {
         });
     });
 
+    describe('product email colors', () => {
+        const slateBlue = '#23588a';
+        const slateBlueDark = '#0b4072';
+        const emerald = /#10b981|#059669/gi;
+        const stats = { totalRequests: 3, submitted: 1, sent: 1, inProgress: 1, needsAttention: 0 };
+        const products = [
+            {
+                name: 'tcCompletion',
+                html: () => generateTCCompletionNotificationHtml({ propertyAddress: 'Test', dashboardUrl: 'https://test.com' }),
+                buttonLabel: 'Review Submitted Sheet',
+            },
+            {
+                name: 'referralCreditEarned',
+                html: () => generateReferralCreditEarnedHtml({ creditStatus: 'applied', referralSettingsUrl: 'https://test.com' }),
+                buttonLabel: 'See your referral credits',
+            },
+            {
+                name: 'weeklySummary',
+                html: () => generateWeeklySummaryHtml({ stats, dashboardUrl: 'https://test.com' }),
+                buttonLabel: 'Go to Dashboard',
+            },
+        ];
+
+        for (const product of products) {
+            it(`${product.name}: uses the slate-blue header with a solid fallback`, () => {
+                const html = product.html();
+                expect(html).toContain(`<td bgcolor="${slateBlue}" style="background-color: ${slateBlue}; background-image: linear-gradient(135deg, ${slateBlue} 0%, ${slateBlueDark} 100%);`);
+                expect(html).not.toContain('background: linear-gradient');
+            });
+
+            it(`${product.name}: uses a slate-blue button with white text`, () => {
+                const html = product.html();
+                const button = html.slice(html.indexOf('<!--[if mso]>'), html.lastIndexOf(product.buttonLabel));
+                expect(button).toContain(`fillcolor="${slateBlue}"`);
+                expect(button).toContain(`bgcolor="${slateBlue}"`);
+                expect(button).toContain('color: #ffffff');
+            });
+        }
+
+        it('tcCompletion and referralCreditEarned contain no emerald accents', () => {
+            expect(products[0].html().match(emerald)).toBeNull();
+            expect(products[1].html().match(emerald)).toBeNull();
+        });
+
+        it('tcCompletion uses slate blue for the property card border and fallback link', () => {
+            const html = products[0].html();
+            expect(html).toContain(`border-left: 4px solid ${slateBlue};`);
+            expect(html).toContain(`style="color: ${slateBlue}; word-break: break-all;">https://test.com</a>`);
+        });
+
+        it('keeps green only for success indicators', () => {
+            // Completion and referral-credit badges are success states.
+            expect(products[0].html()).toContain('background-color: #d1fae5; color: #065f46;');
+            expect(products[1].html()).toContain('background-color: #d1fae5; color: #065f46;');
+            // The weekly summary's completed count is the only emerald left.
+            const weekly = products[2].html();
+            expect(weekly.match(emerald)).toEqual(['#10b981']);
+            expect(weekly).toContain(`color: #10b981; font-size: 28px; font-weight: 700;">${stats.submitted}</p>`);
+        });
+    });
+
     describe('Common template validation', () => {
         const templates = [
-            {
-                name: 'sellerNotification',
-                generator: () => generateSellerNotificationHtml({
-                    propertyAddress: 'Test',
-                    formattedClosingDate: null,
-                    sellerFormUrl: 'https://test.com',
-                }),
-            },
-            {
-                name: 'sellerReminder',
-                generator: () => generateSellerReminderHtml({
-                    propertyAddress: 'Test',
-                    formattedClosingDate: null,
-                    sellerFormUrl: 'https://test.com',
-                }),
-            },
             {
                 name: 'tcCompletion',
                 generator: () => generateTCCompletionNotificationHtml({
                     propertyAddress: 'Test',
                     dashboardUrl: 'https://test.com',
+                }),
+            },
+            {
+                name: 'referralCreditEarned',
+                generator: () => generateReferralCreditEarnedHtml({
+                    creditStatus: 'applied',
+                    referralSettingsUrl: 'https://test.com/settings',
                 }),
             },
             {
