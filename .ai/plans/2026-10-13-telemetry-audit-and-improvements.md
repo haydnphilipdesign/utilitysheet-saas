@@ -1,10 +1,10 @@
 # UtilitySheet telemetry audit and improvement plan
 
 - Date: 2026-10-13. Owner: Codex (audit, Slices 1–4); Claude Code (Slice 5). Baseline: main `7d6a2af`.
-- Status: **Audit and Slices 1–7 completed and released on 2026-10-13** with owner authorization (Slices 1–5 first, then 6 and 7 with `migrations-handoff-evidence.sql` applied; see `.ai/CURRENT.md` and `2026-10-13-maintenance-mode.md`, "Phase 2"). The slice records below describe the work as completed locally and predate the release. Slices 8–9 remain proposed.
+- Status: **Audit and Slices 1-7 released on 2026-10-13; Slice 9 released on 2026-10-14**, with owner authorization. Slice 8 planning completed in isolated `.worktrees/slice-8`, branch `telemetry-slice-8`, from main `44391b3`; A-E approved for local integration/implementation, unstarted. Detail: `2026-10-14-telemetry-slice-8-lineage.md`. Older local-only execution records below predate release; Slice 9 release evidence is in its plan and main handoff.
 - Deliverables: source-backed `docs/audits/2026-10-13-telemetry-audit.md`, prioritized implementation slices and final `.ai/CURRENT.md` handoff.
 - Scope: request creation, seller completion, packet delivery, activation; errors/performance/dependencies; AI quality/usage/fallback; billing/email/PDF/jobs; privacy and telemetry failure isolation.
-- Constraints: latest authorization was Slice 5 local implementation/validation, preserving completed uncommitted Slices 1–4. No live telemetry, production settings/data, model calls, commits, pushes or deploys. Preserve unrelated files and previous investigation plan.
+- Current authorization (2026-10-14): Slice 8 planning only in its isolated worktree. No implementation until owner answers; no live queries/actions, migration execution, production settings/data, model/provider calls, emails, commits, pushes or deploys. Preserve concurrent Claude seller UX on main; main receives only an additive CURRENT pointer. Prior release authorizations do not carry forward.
 
 ## Audit workflow
 
@@ -202,6 +202,8 @@ The audit-time collection findings below describe the original baseline. Slice 1
 
 ## Slice 8 — AI exposure/quality/cost lineage (P2; larger, after Slice 5)
 
+**Local implementation status (2026-10-14): completed and validated; uncommitted.** See `2026-10-14-telemetry-slice-8-lineage.md` and decision `../decisions/2026-10-14-ai-exposure-lineage.md`. UX 68fbf38 incorporated first by fast-forward. Atomic generations, request-scoped exposures, immutable choices, validated advisory rendering, transport/usage/cost coverage, origin caches, retention and mixed-version Admin/eval readers are implemented locally. Additive migration authored, not run live. R12 remains separate. No live queries/actions, model calls, commits, pushes or deployment.
+
 **Problem/benefit:** correlate displayed and selected list items to prompt/model/cache origin, with honest call/usage evidence.
 
 **Files:** Gemini client, suggestion/contact services and cache result contracts, seller API/UtilityStep/wizard payloads/validation, AI query modules, Admin Telemetry and eval core; focused additive migration/schema and tests/docs.
@@ -214,7 +216,7 @@ The audit-time collection findings below describe the original baseline. Slice 1
 
 ## Slice 9 — Retention and collection simplification (P2; separate policy approval)
 
-**Status (2026-10-14): owner approved all decisions; implemented and validated locally, uncommitted in worktree `.worktrees/slice-9` (branch `telemetry-slice-9`).** Plan, inventory, EXPLAIN results and execution record: `2026-10-14-telemetry-slice-9-retention.md`. Decision: `../decisions/2026-10-14-telemetry-retention.md`. Production stays off until the owner switches to preview. Slice 8 remains proposed and comes after.
+**Status correction (2026-10-14): Slice 9 is released with owner authorization.** See the release record in `2026-10-14-telemetry-slice-9-retention.md` and main CURRENT: preview verified, then enforce configured and redeployed; historical cleanup remains separately gated. This session did not query production. Decision: `../decisions/2026-10-14-telemetry-retention.md`. Slice 8 local implementation is now complete under its separate approved decision; release remains unauthorized.
 
 **Problem/benefit:** limit unnecessary copies and growth without losing required billing/audit evidence.
 

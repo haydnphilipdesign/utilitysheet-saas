@@ -1,5 +1,5 @@
 /**
- * Seller diagnostic observation contract (schema version 1), shared by the
+ * Seller diagnostic observation contract (schema versions 1 and 2), shared by the
  * browser helper, the public observation route and the Admin reader.
  *
  * Every field is a finite enum, a bounded integer or a random identifier.
@@ -7,7 +7,7 @@
  * and capability tokens never belong here. Browser evidence is advisory: it
  * can be lost, blocked or forged by anyone holding the seller link.
  */
-export const SELLER_OBSERVATION_SCHEMA_VERSION = 1;
+export const SELLER_OBSERVATION_SCHEMA_VERSION = 2;
 
 export const SELLER_OBSERVATION_EVENT_TYPES = [
     'seller_step_viewed', 'seller_step_completed',

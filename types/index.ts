@@ -505,6 +505,7 @@ export interface ProviderCanonical {
 
 // Provider Suggestion API
 export interface ProviderSuggestion {
+    ai_lineage?: import('@/lib/telemetry/ai-lineage').ItemLineage;
     display_name: string;
     canonical_id?: string;
     confidence: number;

@@ -1,5 +1,7 @@
 'use client';
 
+import { exposureSummarySchema, type ExposureSummary, type ItemLineage } from '@/lib/telemetry/ai-lineage';
+
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -147,6 +149,7 @@ function getVisibleUtilities(
 }
 
 export interface UtilityWizardState {
+    ai_lineage?: ItemLineage;
     entry_mode: 'suggested_confirmed' | 'search_selected' | 'free_text' | 'unknown' | null;
     display_name: string | null;
     raw_text: string | null;
@@ -275,6 +278,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
         }
     }, [token]);
     const autosaveFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [suggestionExposures, setSuggestionExposures] = useState<Partial<Record<UtilityCategory,ExposureSummary>>>({});
     const [suggestionsByCategory, setSuggestionsByCategory] = useState<Record<UtilityCategory, ProviderSuggestion[]>>(initialSuggestions);
     const [loadingSuggestions, setLoadingSuggestions] = useState<Partial<Record<UtilityCategory, boolean>>>({});
     // Categories whose suggestion request failed: the step still shows its empty state.
@@ -603,6 +607,14 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                     endMaintenance();
                 }
 
+                if (res.ok && data.exposures && typeof data.exposures === 'object') {
+                    const collected: Partial<Record<UtilityCategory,ExposureSummary>> = {};
+                    categoriesToFetch.forEach(category => {
+                        const parsed = exposureSummarySchema.safeParse(data.exposures[category]);
+                        if (parsed.success) collected[category] = parsed.data;
+                    });
+                    setSuggestionExposures(prev => ({ ...prev, ...collected }));
+                }
                 const fetched = (res.ok ? data.suggestions : {}) as Partial<Record<UtilityCategory, ProviderSuggestion[]>>;
                 setSuggestionsByCategory((prev) => {
                     const next = { ...prev };
@@ -930,7 +942,13 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
             ...(cat === 'trash' && updates.entry_mode ? { no_trash_service: false } : {}),
             utilities: {
                 ...prev.utilities,
-                [cat]: { ...prev.utilities[cat], ...updates },
+                [cat]: { ...prev.utilities[cat], ...updates,
+                    ai_lineage: Object.prototype.hasOwnProperty.call(updates,'ai_lineage') ? updates.ai_lineage : (
+                        (updates.entry_mode !== undefined && !['suggested_confirmed','search_selected'].includes(updates.entry_mode ?? '')) ||
+                        (updates.display_name !== undefined && updates.display_name !== prev.utilities[cat]?.display_name) ||
+                        (updates.canonical_id !== undefined && updates.canonical_id !== prev.utilities[cat]?.canonical_id)
+                        ? undefined : prev.utilities[cat]?.ai_lineage),
+                },
             },
         }));
     };
@@ -1212,6 +1230,7 @@ export function SellerWizard({ initialRequestData, initialSuggestions, token, br
                             categoryLabel={utilityLabels[visibleUtilities[utilityIndex]]}
                             state={state}
                             updateState={updateUtilityState}
+                            suggestionExposure={suggestionExposures[visibleUtilities[utilityIndex]]}
                         suggestions={suggestionsByCategory[visibleUtilities[utilityIndex]] || []}
                         loadingSuggestions={!!loadingSuggestions[visibleUtilities[utilityIndex]] && !Object.prototype.hasOwnProperty.call(suggestionsByCategory, visibleUtilities[utilityIndex])}
                         token={token}

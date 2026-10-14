@@ -7,8 +7,9 @@ vi.mock('@/lib/ai/gemini-client', () => ({
     isGeminiConfigured: vi.fn(),
 }));
 
-vi.mock('@/lib/neon/queries/ai-telemetry', () => ({
-    createAiSuggestionRun: vi.fn(async () => 'run_1'),
+vi.mock('@/lib/neon/queries/ai-telemetry', async importOriginal => ({
+    ...await importOriginal<typeof import('@/lib/neon/queries/ai-telemetry')>(),
+    persistAiGeneration: vi.fn(async (input: { id?: string }) => ({ runId: input.id ?? null, exposureId: null })),
 }));
 
 vi.mock('@/lib/cache', () => ({
@@ -19,7 +20,7 @@ vi.mock('@/lib/cache', () => ({
 import { generateJSONWithMeta, isGeminiConfigured } from '@/lib/ai/gemini-client';
 import { PROVIDER_CONTACT_RESPONSE_SCHEMA } from '@/lib/ai/response-schemas';
 import { getFromCache, setInCache } from '@/lib/cache';
-import { createAiSuggestionRun } from '@/lib/neon/queries/ai-telemetry';
+import { persistAiGeneration } from '@/lib/neon/queries/ai-telemetry';
 import {
     hasValidContact,
     resolveContact,
@@ -30,7 +31,7 @@ const generateJSONWithMetaMock = vi.mocked(generateJSONWithMeta);
 const isGeminiConfiguredMock = vi.mocked(isGeminiConfigured);
 const getFromCacheMock = vi.mocked(getFromCache);
 const setInCacheMock = vi.mocked(setInCache);
-const createAiSuggestionRunMock = vi.mocked(createAiSuggestionRun);
+const persistAiGenerationMock = vi.mocked(persistAiGeneration);
 
 describe('contact-service', () => {
     beforeEach(() => {
@@ -46,12 +47,12 @@ describe('contact-service', () => {
         process.env.ALLOW_UNVERIFIED_AI_CONTACTS = 'true';
         const privateText = '987 Sentinel Street SellerSentinel seller@example.test token-sentinel password-sentinel postgres://sentinel';
         generateJSONWithMetaMock.mockResolvedValue({ data: { customer_service_phone: '1-800-555-1212' }, failure: null, groundingSourceUrls: [], usage: null, failureKind: null });
-        createAiSuggestionRunMock.mockRejectedValueOnce(new Error(privateText));
+        persistAiGenerationMock.mockRejectedValueOnce(new Error(privateText));
         expect(await resolveContact(privateText)).toMatchObject({ customer_service_phone: '1-800-555-1212' });
         const logged = JSON.stringify(sinks.flatMap(sink => sink.mock.calls));
         for (const sentinel of ['Sentinel', 'seller@example.test', 'token-sentinel', 'password-sentinel', 'postgres://sentinel']) expect(logged).not.toContain(sentinel);
         expect(logged).toContain('contact_resolved');
-        expect(logged).toContain('contact_telemetry_failed');
+        expect(logged).toContain('auxiliary_write_failed');
         sinks.forEach(sink => sink.mockRestore());
     });
 
@@ -95,7 +96,7 @@ describe('contact-service', () => {
 
         expect(generateJSONWithMetaMock).toHaveBeenCalledWith(
             expect.any(String),
-            { responseJsonSchema: PROVIDER_CONTACT_RESPONSE_SCHEMA }
+            { responseJsonSchema: PROVIDER_CONTACT_RESPONSE_SCHEMA, passRole: 'contact' }
         );
         expect(result).toEqual({
             customer_service_phone: '1-800-555-1212',
@@ -131,14 +132,14 @@ describe('contact-service', () => {
         });
 
         expect(getFromCacheMock).toHaveBeenCalledWith(
-            expect.stringContaining('contact:v3:gemini-test:structured-json-v2:ai:sewer:pa:17050:mechanicsburg:')
+            expect.stringContaining('contact:v4:gemini-test:structured-json-v2:ai:sewer:pa:17050:mechanicsburg:')
         );
         expect(generateJSONWithMetaMock).toHaveBeenCalledWith(
             expect.stringMatching(/Utility Category: sewer[\s\S]*Mechanicsburg/),
-            { responseJsonSchema: PROVIDER_CONTACT_RESPONSE_SCHEMA }
+            { responseJsonSchema: PROVIDER_CONTACT_RESPONSE_SCHEMA, passRole: 'contact' }
         );
         expect(setInCacheMock).toHaveBeenCalledWith(
-            expect.stringContaining('contact:v3:gemini-test:structured-json-v2:ai:sewer:pa:17050:mechanicsburg:'),
+            expect.stringContaining('contact:v4:gemini-test:structured-json-v2:ai:sewer:pa:17050:mechanicsburg:'),
             expect.anything(),
             expect.any(Number)
         );
@@ -185,7 +186,7 @@ describe('contact-service', () => {
 
         expect(setInCacheMock).toHaveBeenCalledWith(
             expect.any(String),
-            { v: null },
+            expect.objectContaining({ v: 1, contact: null }),
             5 * 60
         );
     });
@@ -222,7 +223,7 @@ describe('contact-service', () => {
         });
         expect(getFromCacheMock).not.toHaveBeenCalled();
         expect(setInCacheMock).not.toHaveBeenCalled();
-        expect(createAiSuggestionRunMock).not.toHaveBeenCalled();
+        expect(persistAiGenerationMock).not.toHaveBeenCalled();
     });
 
     it('records a found contact with its usage and no provider name', async () => {
@@ -242,8 +243,8 @@ describe('contact-service', () => {
             organizationId: 'org_1',
         });
 
-        expect(createAiSuggestionRunMock).toHaveBeenCalledTimes(1);
-        const run = createAiSuggestionRunMock.mock.calls[0][0];
+        expect(persistAiGenerationMock).toHaveBeenCalledTimes(1);
+        const run = persistAiGenerationMock.mock.calls[0][0];
         expect(run).toMatchObject({
             feature: 'provider_contact',
             category: 'water',
@@ -283,7 +284,7 @@ describe('contact-service', () => {
 
         await resolveContact('Unknown Utility', { category: 'gas' });
 
-        expect(createAiSuggestionRunMock.mock.calls[0][0]).toMatchObject({
+        expect(persistAiGenerationMock.mock.calls[0][0]).toMatchObject({
             feature: 'provider_contact', status: 'success', reasonCode: 'ai_empty', suggestionCount: 0, usage: null,
         });
     });
@@ -299,24 +300,24 @@ describe('contact-service', () => {
 
         await resolveContact('Slow Utility', { category: 'gas' });
 
-        expect(createAiSuggestionRunMock.mock.calls[0][0]).toMatchObject({
+        expect(persistAiGenerationMock.mock.calls[0][0]).toMatchObject({
             status: 'error', reasonCode: 'ai_provider_error', errorKind: 'timeout', suggestionCount: 0,
         });
     });
 
-    it('records a cached contact as a cache hit with no model call', async () => {
-        getFromCacheMock.mockResolvedValue({ v: { customer_service_phone: '1-800-555-1212' } });
-
-        await resolveContact('Example Utility', { category: 'electric' });
-
-        expect(generateJSONWithMetaMock).not.toHaveBeenCalled();
-        expect(createAiSuggestionRunMock.mock.calls[0][0]).toMatchObject({
-            source: 'cache', cacheHit: true, attemptCount: 0, latencyMs: 0, suggestionCount: 1, usage: null, thinkingLevel: null,
-        });
-    });
+    it('preserves cached contact origin without another generation or model call', async () => {
+        generateJSONWithMetaMock.mockResolvedValue({ data: { customer_service_phone: '1-800-555-1212' }, failure: null,
+            groundingSourceUrls: [], usage: null, failureKind: null });
+        await resolveContact('Cache Utility');
+        const envelope = setInCacheMock.mock.lastCall![1];
+        getFromCacheMock.mockResolvedValueOnce(envelope);
+        await expect(resolveContact('Cache Utility')).resolves.toMatchObject({ customer_service_phone: '1-800-555-1212' });
+        expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
+        expect(persistAiGenerationMock).toHaveBeenCalledTimes(1);
+    });;
 
     it('still returns the contact when telemetry cannot be written', async () => {
-        createAiSuggestionRunMock.mockRejectedValueOnce(new Error('column "prompt_tokens" does not exist'));
+        persistAiGenerationMock.mockRejectedValueOnce(new Error('column "prompt_tokens" does not exist'));
         vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         generateJSONWithMetaMock.mockResolvedValue({
             data: { customer_service_phone: '1-800-555-1212' },

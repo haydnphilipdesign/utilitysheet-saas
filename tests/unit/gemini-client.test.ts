@@ -99,7 +99,7 @@ describe('gemini-client grounding config', () => {
                 tools: [{ googleSearch: {} }],
             }),
         }));
-        expect(result).toEqual({
+        expect(result).toMatchObject({
             data: { name: 'Duke Energy' },
             failure: null,
             groundingSourceUrls: ['https://example.com/source'],
@@ -411,11 +411,11 @@ describe('gemini-client retry behavior', () => {
         await vi.runAllTimersAsync();
         const result = await promise;
 
-        expect(result).toEqual({
+        expect(result).toMatchObject({
             data: null,
             failure: 'provider_error',
             groundingSourceUrls: [],
-            usage: null,
+            usage: { promptTokens: null, outputTokens: null, thinkingTokens: null, toolPromptTokens: null, searchQueryCount: null, sourceCount: null },
             failureKind: 'empty_response',
         });
         expect(generateContentMock).toHaveBeenCalledTimes(3);
@@ -501,7 +501,7 @@ describe('gemini-client timeouts', () => {
         const promise = generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: schema });
 
         expect(await settledAfter(promise, 9_999)).toBe('pending');
-        expect(await settledAfter(promise, 1)).toEqual(providerError('timeout'));
+        expect(await settledAfter(promise, 1)).toMatchObject(providerError('timeout'));
         expect(generateContentMock).toHaveBeenCalledTimes(1);
 
         const signal = generateContentMock.mock.calls[0][0].config.abortSignal as AbortSignal;
@@ -518,7 +518,7 @@ describe('gemini-client timeouts', () => {
         const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
         const promise = generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: schema });
 
-        expect(await settledAfter(promise, 3_000)).toEqual(providerError('timeout'));
+        expect(await settledAfter(promise, 3_000)).toMatchObject(providerError('timeout'));
     });
 
     it('cuts a call short when the caller deadline comes before the per-call timeout', async () => {
@@ -531,7 +531,7 @@ describe('gemini-client timeouts', () => {
         });
 
         expect(await settledAfter(promise, 3_999)).toBe('pending');
-        expect(await settledAfter(promise, 1)).toEqual(providerError('timeout'));
+        expect(await settledAfter(promise, 1)).toMatchObject(providerError('timeout'));
     });
 
     it('does not start a retry that the deadline leaves no room for', async () => {
@@ -543,7 +543,7 @@ describe('gemini-client timeouts', () => {
             deadlineAt: Date.now() + 5_000,
         });
 
-        expect(await settledAfter(promise, 5_000)).toEqual(providerError('api_error'));
+        expect(await settledAfter(promise, 5_000)).toMatchObject(providerError('api_error'));
         expect(generateContentMock).toHaveBeenCalledTimes(1);
     });
 
@@ -553,7 +553,7 @@ describe('gemini-client timeouts', () => {
         const { generateJSONWithMeta } = await import('@/lib/ai/gemini-client');
         const promise = generateJSONWithMeta<{ name: string }>('prompt', { responseJsonSchema: schema });
 
-        expect(await settledAfter(promise, 20_000)).toEqual(providerError('api_error'));
+        expect(await settledAfter(promise, 20_000)).toMatchObject(providerError('api_error'));
         expect(generateContentMock).toHaveBeenCalledTimes(2);
     });
 
@@ -564,7 +564,7 @@ describe('gemini-client timeouts', () => {
             deadlineAt: Date.now() - 1,
         });
 
-        expect(result).toEqual(providerError('deadline'));
+        expect(result).toMatchObject(providerError('deadline'));
         expect(generateContentMock).not.toHaveBeenCalled();
     });
 });

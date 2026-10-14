@@ -39,7 +39,7 @@ type RetentionClassDefinition = {
     key: string;
     label: string;
     group: RetentionGroup;
-    table: 'event_logs' | 'ai_generation_runs' | 'notification_observations' | 'pdf_render_observations' | 'operational_events' | 'job_runs';
+    table: 'ai_result_exposures' | 'ai_selection_observations' | 'event_logs' | 'ai_generation_runs' | 'notification_observations' | 'pdf_render_observations' | 'operational_events' | 'job_runs';
     timestamp: 'created_at' | 'occurred_at' | 'started_at';
     kind: 'delete' | 'scrub';
     /** null: any age (historical cleanup). */
@@ -54,7 +54,7 @@ type RetentionClassDefinition = {
 const sqlList = (values: readonly string[]) => values.map((value) => `'${value}'`).join(', ');
 
 export const RETENTION_CLASS_KEYS = [
-    'sellerDiagnostics', 'endpointObservations', 'eventIpUserAgent', 'aiRuns',
+    'sellerDiagnostics', 'endpointObservations', 'eventIpUserAgent', 'aiRuns', 'aiExposures', 'aiChoices',
     'notificationEvidence', 'pdfEvidence', 'operationalEvents', 'jobRuns',
     'historicalIntakeAddresses', 'historicalSuggestionNames',
 ] as const;
@@ -82,6 +82,14 @@ export function getRetentionClasses(opsRetentionDays = getOpsRetentionDays()): (
             // Items go with their run (ON DELETE CASCADE).
             key: 'aiRuns', label: 'AI runs and their suggestion items', group: 'telemetry',
             table: 'ai_generation_runs', timestamp: 'created_at', kind: 'delete', windowDays: 365, minDays: 7,
+        },
+        {
+            key: 'aiExposures', label: 'AI consumer exposures', group: 'telemetry',
+            table: 'ai_result_exposures', timestamp: 'created_at', kind: 'delete', windowDays: 365, minDays: 7,
+        },
+        {
+            key: 'aiChoices', label: 'Immutable accepted AI choices', group: 'telemetry',
+            table: 'ai_selection_observations', timestamp: 'created_at', kind: 'delete', windowDays: 365, minDays: 7,
         },
         {
             // Never below 30 days, so late delivery callbacks still find their row.

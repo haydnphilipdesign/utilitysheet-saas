@@ -1,3 +1,4 @@
+import { mergeTransport } from '../../lib/telemetry/ai-lineage';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -197,18 +198,21 @@ async function main(): Promise<void> {
         }
         const locality = config.locality ? { county: item.county, municipality: item.municipality } : undefined;
         let result = await getSuggestionsFresh(address, item.category, locality);
+        const firstOutcome = result.outcome;
         if (result.outcome.errorKind === 'circuit_open') {
             console.warn(`  ${item.id}: circuit breaker open, waiting ${CIRCUIT_WAIT_MS / 1000} s and trying once more.`);
             await sleep(CIRCUIT_WAIT_MS);
             result = await getSuggestionsFresh(address, item.category, locality);
         }
         return scoreCase(item, {
+            transport: firstOutcome === result.outcome ? result.outcome.transport : mergeTransport(
+                [firstOutcome.transport, result.outcome.transport].filter((s): s is NonNullable<typeof s> => s != null)),
             suggestions: result.suggestions,
             source: result.outcome.source,
             upstreamReasonCode: result.outcome.upstreamReasonCode,
             errorKind: result.outcome.errorKind ?? null,
-            attemptCount: result.outcome.attemptCount,
-            latencyMs: result.outcome.latencyMs,
+            attemptCount: result.outcome.attemptCount + (firstOutcome === result.outcome ? 0 : firstOutcome.attemptCount),
+            latencyMs: result.outcome.latencyMs + (firstOutcome === result.outcome ? 0 : firstOutcome.latencyMs),
             usage: result.outcome.usage ?? null,
         }, config.model);
     };

@@ -1,3 +1,7 @@
+import { randomUUID } from 'crypto';
+import { z } from 'zod';
+import { emptyTransport, originMetadataSchema, type OriginMetadata, type TransportSummary } from '@/lib/telemetry/ai-lineage';
+import { exposeGeneration, type GenerationHandle } from '@/lib/neon/queries/ai-lineage';
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { createHash } from 'crypto';
 import { buildLocationContext, parseAddressWithConfidence } from '@/lib/address/location-parser';
@@ -13,17 +17,23 @@ import {
     PROVIDER_CONTACT_RESPONSE_SCHEMA,
 } from '@/lib/ai/response-schemas';
 import { getFromCache, setInCache } from '@/lib/cache';
-import { createAiSuggestionRun } from '@/lib/neon/queries/ai-telemetry';
+import type { CreateAiSuggestionRunInput } from '@/lib/neon/queries/ai-telemetry';
 import { ProviderContact, UtilityCategory } from '@/types';
 
 const POSITIVE_CACHE_TTL_SECONDS = 90 * 24 * 60 * 60;
 const NEGATIVE_CACHE_TTL_SECONDS = 5 * 60;
-const CONTACT_CACHE_VERSION = 'v3';
+const CONTACT_CACHE_VERSION = 'v4';
 const CONTACT_PROMPT_VERSION = 'provider-contact-v1';
 
-type CachedContact = { v: ProviderContact | null };
+const cachedContactSchema = z.object({ v: z.literal(1), contact: z.object({
+    customer_service_phone: z.string().max(200).optional(), start_stop_service_url: z.string().max(2000).optional(),
+    main_website: z.string().max(2000).optional(), hours: z.string().max(500).optional(),
+}).strict().nullable(), origin: originMetadataSchema, runId: z.string().uuid().nullable() }).strict();
+type CachedContact = z.infer<typeof cachedContactSchema>;
 
 export interface ContactLookupContext {
+    editVersion?: number;
+    mode?: 'live' | 'test';
     category?: UtilityCategory;
     address?: string | null;
     /** Only used to link the telemetry row; never part of the prompt or cache key. */
@@ -148,6 +158,7 @@ function sanitizeContact(result: ProviderContact): ProviderContact {
 }
 
 interface ContactLookup extends ContactResolutionDiagnostic {
+    transport?: TransportSummary;
     usage: GeminiUsage | null;
     errorKind: GeminiFailureKind | null;
     /** Model calls made: 0 when AI is not configured. */
@@ -164,6 +175,7 @@ async function lookUpContact(
             failure: 'provider_error',
             groundingSourceUrls: [],
             usage: null,
+            transport: emptyTransport('unconfigured'),
             errorKind: 'unconfigured',
             attemptCount: 0,
         };
@@ -172,6 +184,7 @@ async function lookUpContact(
     const prompt = buildContactPrompt(providerName, context);
     const result = await generateJSONWithMeta<ProviderContact>(prompt, {
         responseJsonSchema: PROVIDER_CONTACT_RESPONSE_SCHEMA,
+        passRole: 'contact',
     });
     const usage = result.usage ?? null;
 
@@ -180,6 +193,7 @@ async function lookUpContact(
             contact: null,
             failure: result.failure,
             groundingSourceUrls: result.groundingSourceUrls,
+            transport: result.transport,
             usage,
             errorKind: result.failure === 'provider_error' ? result.failureKind ?? 'api_error' : null,
             attemptCount: 1,
@@ -190,8 +204,9 @@ async function lookUpContact(
         contact: sanitizeContact(result.data),
         failure: null,
         groundingSourceUrls: result.groundingSourceUrls,
+        transport: result.transport,
         usage,
-        errorKind: null,
+        errorKind: result.failureKind ?? null,
         attemptCount: 1,
     };
 }
@@ -212,98 +227,55 @@ export async function resolveContactFresh(
  * One telemetry row per contact lookup. The provider name is not stored; a
  * failed write never affects the lookup.
  */
-async function persistContactTelemetry(params: {
-    context?: ContactLookupContext;
-    contact: ProviderContact | null;
-    lookup: ContactLookup | null;
-    latencyMs: number;
-}): Promise<void> {
-    try {
-        const { context, lookup } = params;
-        const parsed = context?.address ? parseAddressWithConfidence(context.address) : null;
-        const reasonCode = !lookup
-            ? null
-            : lookup.failure === 'parse_error'
-                ? 'ai_parse_error'
-                : lookup.failure === 'provider_error'
-                    ? lookup.errorKind === 'unconfigured' ? 'ai_unconfigured' : 'ai_provider_error'
-                    : hasValidContact(params.contact) ? null : 'ai_empty';
-
-        await createAiSuggestionRun({
-            requestId: context?.requestId,
-            accountId: context?.accountId,
-            organizationId: context?.organizationId ?? null,
-            feature: 'provider_contact',
-            category: context?.category ?? null,
-            provider: 'gemini',
-            model: getGeminiModelName(),
-            promptVersion: CONTACT_PROMPT_VERSION,
-            servedPipeline: null,
-            source: lookup ? 'ai_primary' : 'cache',
-            status: lookup?.failure === 'parse_error'
-                ? 'parse_error'
-                : lookup?.failure === 'provider_error' ? 'error' : 'success',
-            reasonCode,
-            upstreamReasonCode: null,
-            latencyMs: params.latencyMs,
-            attemptCount: lookup?.attemptCount ?? 0,
-            localityState: parsed?.state || null,
-            localityZip3: parsed?.zip ? parsed.zip.slice(0, 3) : null,
-            localityCity: parsed?.city || null,
-            // 1 when a usable phone or start/stop link was found.
-            suggestionCount: hasValidContact(params.contact) ? 1 : 0,
-            cacheHit: !lookup,
-            usage: lookup?.usage ?? null,
-            thinkingLevel: lookup && lookup.attemptCount > 0 ? getGeminiThinkingLevelName() : null,
-            errorKind: lookup?.errorKind ?? null,
-            suggestions: [],
-        });
-    } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-            logDiagnostic('warn', 'contact_telemetry_failed', {}, error);
-        }
-    }
+function contactHandle(lookup: ContactLookup | null, context: ContactLookupContext | undefined, startedAt: number): GenerationHandle {
+    const parsed = context?.address ? parseAddressWithConfidence(context.address) : null;
+    const disabled = lookup === null;
+    const reason = disabled ? null : lookup.failure === 'parse_error' ? 'ai_parse_error'
+        : lookup.failure === 'provider_error' ? lookup.errorKind === 'unconfigured' ? 'ai_unconfigured' : 'ai_provider_error'
+        : hasValidContact(lookup.contact) ? null : 'ai_empty';
+    const origin: OriginMetadata = { v: 1, lineageVersion: 2, source: disabled ? 'disabled' : 'ai_primary',
+        status: lookup?.failure === 'parse_error' ? 'parse_error' : lookup?.failure === 'provider_error' ? 'error' : 'success',
+        reason, upstreamReason: null, listKind: 'no_list', model: getGeminiModelName(), promptVersion: CONTACT_PROMPT_VERSION,
+        requestFormat: AI_REQUEST_FORMAT_VERSION, thinkingLevel: lookup?.attemptCount ? getGeminiThinkingLevelName() : null,
+        producedAt: new Date().toISOString() };
+    const input: CreateAiSuggestionRunInput = {
+        id: randomUUID(), cacheHit: false, lineageVersion: 2, transport: disabled ? emptyTransport('disabled') : lookup.transport,
+        requestId: context?.requestId, accountId: context?.accountId, organizationId: context?.organizationId ?? null,
+        feature: 'provider_contact', category: context?.category ?? null, provider: 'gemini', model: origin.model,
+        promptVersion: CONTACT_PROMPT_VERSION, servedPipeline: null, source: origin.source, status: origin.status,
+        reasonCode: reason, upstreamReasonCode: null, latencyMs: Date.now()-startedAt, attemptCount: lookup?.attemptCount ?? 0,
+        localityState: parsed?.state ?? null, localityZip3: parsed?.zip?.slice(0,3) ?? null, localityCity: parsed?.city ?? null,
+        suggestionCount: hasValidContact(lookup?.contact ?? null) ? 1 : 0, suggestions: [], usage: lookup?.usage ?? null,
+        thinkingLevel: origin.thinkingLevel, errorKind: lookup?.errorKind ?? null,
+    };
+    return { input, origin, runId: null, itemIds: [] };
 }
-
-/**
- * Resolve contact information for a provider
- * Uses Gemini AI only when ALLOW_UNVERIFIED_AI_CONTACTS=true
- */
-export async function resolveContact(
-    providerNameOrId: string,
-    context?: ContactLookupContext
-): Promise<ProviderContact | null> {
+async function exposeContact(handle: GenerationHandle, context: ContactLookupContext | undefined, delivery: 'fresh' | 'cache', startedAt: number) {
+    return exposeGeneration(handle, context?.requestId ? { requestId: context.requestId, editVersion: context.editVersion ?? 0,
+        mode: context.mode ?? 'live', feature: 'provider_contact', category: context.category ?? null } : undefined, delivery, startedAt);
+}
+/** Functional contact policy is unchanged; cache retains positive/negative producing metadata. */
+export async function resolveContact(providerNameOrId: string, context?: ContactLookupContext): Promise<ProviderContact | null> {
+    const startedAt = Date.now();
     if (!shouldAllowUnverifiedAiContacts()) {
+        await exposeContact(contactHandle(null,context,startedAt),context,'fresh',startedAt);
         return null;
     }
-
-    const cacheKey = toCacheKey(providerNameOrId, context);
-
-    // Check cache (Redis with in-memory fallback)
-    const cached = await getFromCache<CachedContact>(cacheKey);
-    if (cached) {
-        await persistContactTelemetry({ context, contact: cached.v, lookup: null, latencyMs: 0 });
-        return cached.v;
+    const cacheKey = toCacheKey(providerNameOrId,context);
+    const cached = cachedContactSchema.safeParse(await getFromCache<CachedContact>(cacheKey));
+    if (cached.success) {
+        const handle: GenerationHandle = { input: { suggestions: [] } as unknown as CreateAiSuggestionRunInput,
+            origin: cached.data.origin, runId: cached.data.runId, itemIds: [] };
+        await exposeContact(handle,context,'cache',startedAt);
+        return cached.data.contact;
     }
-
-    // Try AI first
-    const startedAt = Date.now();
-    const lookup = await lookUpContact(providerNameOrId, context);
-    const contact = lookup.contact;
-    await persistContactTelemetry({ context, contact, lookup, latencyMs: Date.now() - startedAt });
-
-    if (contact) {
-        logDiagnostic('log', 'contact_resolved', { category: context?.category });
-    }
-
-    // Cache result (including null) to avoid repeated lookups
-    await setInCache(
-        cacheKey,
-        { v: contact },
-        contact ? POSITIVE_CACHE_TTL_SECONDS : NEGATIVE_CACHE_TTL_SECONDS
-    );
-
-    return contact;
+    const lookup = await lookUpContact(providerNameOrId,context);
+    const handle = contactHandle(lookup,context,startedAt);
+    await exposeContact(handle,context,'fresh',startedAt);
+    if (lookup.contact) logDiagnostic('log','contact_resolved',{ category: context?.category });
+    await setInCache(cacheKey,{ v: 1, contact: lookup.contact, origin: handle.origin, runId: handle.runId } satisfies CachedContact,
+        lookup.contact ? POSITIVE_CACHE_TTL_SECONDS : NEGATIVE_CACHE_TTL_SECONDS);
+    return lookup.contact;
 }
 
 /**

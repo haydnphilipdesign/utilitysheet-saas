@@ -6,8 +6,10 @@ vi.mock('@/lib/neon/queries', () => ({
     getRequestByToken: vi.fn(),
 }));
 
+const searchMocks = vi.hoisted(() => ({ searchProviders: vi.fn() }));
 vi.mock('@/lib/providers/suggestion-service', () => ({
-    searchProviders: vi.fn(),
+    searchProviders: searchMocks.searchProviders,
+    searchProvidersResult: async (...args: unknown[]) => ({ results: await searchMocks.searchProviders(...args) }),
 }));
 
 vi.mock('@/lib/neon/queries/event-logs', () => ({ createEventLog: vi.fn(async () => undefined) }));
@@ -141,7 +143,7 @@ describe('GET /api/seller/[token]/suggestions/search', () => {
             {
                 requestId: 'r1',
                 accountId: 'acct-1',
-                organizationId: 'org-1',
+                organizationId: 'org-1', editVersion: 0, mode: 'live',
             }
         );
         expect(await res.json()).toEqual([{ display_name: 'Duke Energy', confidence: 0.9 }]);

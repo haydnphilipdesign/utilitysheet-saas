@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+import { transportCoverage, transportSummarySchema, originMetadataSchema, type TransportSummary, type ExposureContext, type OriginMetadata } from '@/lib/telemetry/ai-lineage';
 import { writeAuxiliary } from '@/lib/telemetry/auxiliary-write';
 import { DatabaseUnavailableError } from '@/lib/neon/statements';
 import { sql } from '@/lib/neon/db';
@@ -43,6 +45,10 @@ export interface CreateAiSuggestionRunInput {
     /** First model-call failure of the run (timeout, rate_limited, ...). */
     errorKind?: string | null;
     suggestions: ProviderSuggestion[];
+    lineageVersion?: 2;
+    transport?: TransportSummary | null;
+    id?: string;
+    itemIds?: string[];
 }
 
 export interface MarkAiSuggestionSelectionInput {
@@ -90,168 +96,69 @@ function toStatus(input: CreateAiSuggestionRunInput): AiTelemetryStatus {
 }
 
 export function createAiSuggestionRun(input: CreateAiSuggestionRunInput): Promise<string | null> {
-    return writeAuxiliary('ai_run', signal => persistAiSuggestionRun(input, signal), null);
+    return writeAuxiliary('ai_run', async signal => (await persistAiGeneration(input, signal)).runId, null);
 }
 
-async function persistAiSuggestionRun(input: CreateAiSuggestionRunInput, signal: AbortSignal): Promise<string | null> {
+export interface FirstExposure {
+    id: string; context: ExposureContext; origin: OriginMetadata; durationMs: number;
+}
+/** One statement owns generation, every item and the first authorized consumer. */
+export async function persistAiGeneration(input: CreateAiSuggestionRunInput, signal: AbortSignal, exposure?: FirstExposure): Promise<{ runId: string | null; exposureId: string | null }> {
     if (!sql) throw new DatabaseUnavailableError();
-
-    const status = toStatus(input);
-    const runRows = await sql.query(`
-        INSERT INTO ai_generation_runs (
-            request_id,
-            account_id,
-            organization_id,
-            feature,
-            category,
-            provider,
-            model,
-            prompt_version,
-            served_pipeline,
-            source,
-            status,
-            reason_code,
-            upstream_reason_code,
-            latency_ms,
-            attempt_count,
-            locality_state,
-            locality_zip3,
-            locality_city,
-            suggestion_count,
-            cache_hit,
-            prompt_tokens,
-            output_tokens,
-            thinking_tokens,
-            tool_prompt_tokens,
-            search_query_count,
-            source_count,
-            thinking_level,
-            error_kind
-        ) VALUES (
-            $1,
-            $2,
-            $3,
-            $4,
-            $5,
-            $6,
-            $7,
-            $8,
-            $9,
-            $10,
-            $11,
-            $12,
-            $13,
-            $14,
-            $15,
-            $16,
-            $17,
-            $18,
-            $19,
-            $20,
-            $21,
-            $22,
-            $23,
-            $24,
-            $25,
-            $26,
-            $27,
-            $28
-        )
-        RETURNING id
-    `, [
-        input.requestId || null,
-        input.accountId || null,
-        input.organizationId || null,
-        input.feature,
-        input.category,
-        input.provider,
-        input.model,
-        input.promptVersion,
-        input.servedPipeline,
-        input.source,
-        status,
-        input.reasonCode,
-        input.upstreamReasonCode,
-        input.latencyMs,
-        input.attemptCount,
-        input.localityState,
-        input.localityZip3,
-        input.localityCity,
-        input.suggestionCount,
-        Boolean(input.cacheHit),
-        clampCount(input.usage?.promptTokens),
-        clampCount(input.usage?.outputTokens),
-        clampCount(input.usage?.thinkingTokens),
-        clampCount(input.usage?.toolPromptTokens),
-        clampCount(input.usage?.searchQueryCount),
-        clampCount(input.usage?.sourceCount),
-        input.thinkingLevel ? input.thinkingLevel.slice(0, 40) : null,
-        input.errorKind ? input.errorKind.slice(0, 40) : null
-    ], { fetchOptions: { signal } });
-
     signal.throwIfAborted();
-    const runId = (runRows[0] as { id?: string } | undefined)?.id || null;
-    if (!runId || input.suggestions.length === 0) {
-        return runId;
-    }
-
-    const itemRows = input.suggestions.map((suggestion, index) => ({
-        rank: index + 1,
+    const transport = input.transport ? transportSummarySchema.parse(input.transport) : null;
+    const items = input.suggestions.map((suggestion, index) => ({
+        id: input.itemIds?.[index] ?? randomUUID(), rank: index + 1,
         display_name: String(suggestion.display_name || '').trim(),
         normalized_name: normalizeSuggestionName(suggestion.display_name),
-        canonical_id: suggestion.canonical_id || null,
-        confidence: clampConfidence(suggestion.confidence),
-        source: input.source,
-        contact_present: Boolean(suggestion.contact_phone || suggestion.contact_website),
-    })).filter((item) => item.display_name && item.normalized_name);
-
-    if (itemRows.length === 0) {
-        return runId;
-    }
-
-    await sql.query(`
-        INSERT INTO ai_suggestion_items (
-            run_id,
-            request_id,
-            category,
-            rank,
-            display_name,
-            normalized_name,
-            canonical_id,
-            confidence,
-            source,
-            contact_present
-        )
-        SELECT
-            $1::uuid,
-            $2::uuid,
-            $3,
-            items.rank,
-            items.display_name,
-            items.normalized_name,
-            items.canonical_id,
-            items.confidence,
-            items.source,
-            items.contact_present
-        FROM jsonb_to_recordset($4::jsonb) AS items(
-            rank int,
-            display_name text,
-            normalized_name text,
-            canonical_id text,
-            confidence numeric,
-            source text,
-            contact_present boolean
-        )
-    `, [
-        runId,
-        input.requestId || null,
-        input.category,
-        JSON.stringify(itemRows)
+        canonical_id: suggestion.canonical_id || null, confidence: clampConfidence(suggestion.confidence),
+        source: input.source, contact_present: Boolean(suggestion.contact_phone || suggestion.contact_website),
+    }));
+    const first = exposure ? { id: exposure.id, ...exposure.context,
+        origin: originMetadataSchema.parse(exposure.origin), durationMs: clampCount(exposure.durationMs) ?? 0 } : null;
+    const rows = await sql.query(`
+        WITH run AS (
+            INSERT INTO ai_generation_runs (
+                request_id, account_id, organization_id, feature, category, provider, model, prompt_version,
+                served_pipeline, source, status, reason_code, upstream_reason_code, latency_ms, attempt_count,
+                locality_state, locality_zip3, locality_city, suggestion_count, cache_hit,
+                prompt_tokens, output_tokens, thinking_tokens, tool_prompt_tokens, search_query_count, source_count,
+                thinking_level, error_kind, id, lineage_version, transport_summary, transport_attempt_count,
+                usage_coverage, grounding_requested, summary_truncated
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+                $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31::jsonb,$32,$33::jsonb,$34,$35)
+            RETURNING id
+        ), items AS (
+            INSERT INTO ai_suggestion_items (id,run_id,request_id,category,rank,display_name,normalized_name,canonical_id,confidence,source,contact_present)
+            SELECT i.id,run.id,$1::uuid,$5,i.rank,i.display_name,i.normalized_name,i.canonical_id,i.confidence,i.source,i.contact_present
+            FROM run CROSS JOIN jsonb_to_recordset($36::jsonb) AS i(id uuid,rank int,display_name text,normalized_name text,canonical_id text,confidence numeric,source text,contact_present boolean)
+            RETURNING id
+        ), exposure AS (
+            INSERT INTO ai_result_exposures (id,request_id,edit_version,mode,feature,category,run_id,delivery_kind,lookup_state,service_duration_ms,origin_metadata,served_item_ids)
+            SELECT x.id,x."requestId",x."editVersion",x.mode,x.feature,x.category,run.id,'fresh',
+                COALESCE($31::jsonb->>'skipped','collected'), x."durationMs",x.origin,ARRAY(SELECT id FROM items)
+            FROM run CROSS JOIN jsonb_to_record($37::jsonb) AS x(id uuid,"requestId" uuid,"editVersion" int,mode text,feature text,category text,"durationMs" int,origin jsonb)
+            JOIN requests r ON r.id=x."requestId" AND r.seller_edit_version=x."editVersion"
+            WHERE x.id IS NOT NULL
+            RETURNING id
+        ) SELECT run.id, (SELECT id FROM exposure) AS exposure_id FROM run
+    `, [input.requestId || null, input.accountId || null, input.organizationId || null,
+        input.feature, input.category, input.provider, input.model, input.promptVersion,
+        input.servedPipeline, input.source, toStatus(input), input.reasonCode, input.upstreamReasonCode,
+        input.latencyMs, input.attemptCount, input.localityState, input.localityZip3, input.localityCity,
+        input.feature === 'provider_contact' ? input.suggestionCount : items.length, Boolean(input.cacheHit),
+        ...[input.usage?.promptTokens,input.usage?.outputTokens,input.usage?.thinkingTokens,input.usage?.toolPromptTokens,input.usage?.searchQueryCount,input.usage?.sourceCount].map(clampCount),
+        input.thinkingLevel?.slice(0,40) ?? null, input.errorKind?.slice(0,40) ?? null,
+        input.id ?? randomUUID(), input.lineageVersion ?? null, transport ? JSON.stringify(transport) : null,
+        transport?.attempts.length ?? null, transport ? JSON.stringify(transportCoverage(transport)) : null,
+        transport?.groundingRequested ?? null, transport?.truncated ?? null, JSON.stringify(items), first ? JSON.stringify(first) : null
     ], { fetchOptions: { signal } });
-
-    return runId;
+    signal.throwIfAborted();
+    const row = rows[0] as { id?: string; exposure_id?: string } | undefined;
+    return { runId: row?.id ?? null, exposureId: row?.exposure_id ?? null };
 }
 
+/** Historical name-based writer only. New seller paths use immutable exact lineage. */
 export function markAiSuggestionSelection(input: MarkAiSuggestionSelectionInput): Promise<void> {
     return writeAuxiliary('ai_selection', signal => persistAiSuggestionSelection(input, signal), undefined);
 }

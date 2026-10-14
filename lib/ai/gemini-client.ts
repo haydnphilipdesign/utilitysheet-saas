@@ -1,3 +1,4 @@
+import { emptyTransport, transportCoverage, type TransportSummary, type TransportAttempt } from '@/lib/telemetry/ai-lineage';
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { GoogleGenAI } from '@google/genai';
 import type { GenerateContentConfig, GenerateContentResponse, ThinkingLevel, Tool } from '@google/genai';
@@ -77,6 +78,7 @@ export interface GeminiUsage {
 }
 
 export interface JSONGenerationResult<T> {
+    transport?: TransportSummary;
     data: T | null;
     failure: JSONFailureReason | null;
     groundingSourceUrls: string[];
@@ -88,6 +90,8 @@ export interface JSONGenerationOptions {
     responseJsonSchema: unknown;
     /** Epoch milliseconds after which no attempt may still be running. */
     deadlineAt?: number;
+    passIndex?: number;
+    passRole?: TransportAttempt['role'];
 }
 
 class GeminiTimeoutError extends Error {
@@ -98,7 +102,7 @@ class GeminiTimeoutError extends Error {
 }
 
 class GeminiEmptyResponseError extends Error {
-    constructor() {
+    constructor(readonly usage: GeminiUsage, readonly coverage: { candidates: number; queryCandidates: number; sourceCandidates: number }) {
         super('Gemini returned no candidate text');
         this.name = 'GeminiEmptyResponseError';
     }
@@ -326,11 +330,15 @@ async function withTimeout<T>(
 async function withRetry<T>(
     fn: (signal: AbortSignal) => Promise<T>,
     deadlineAt?: number,
-    retries: number = MAX_RETRIES
+    retries: number = MAX_RETRIES,
+    summary?: TransportSummary,
+    options?: JSONGenerationOptions,
+    metadata?: (value: T) => { usage: GeminiUsage; candidates: number; queryCandidates: number; sourceCandidates: number }
 ): Promise<RetryResult<T>> {
     // Check circuit breaker first
     if (!isCircuitClosed()) {
         console.warn('[Gemini] Circuit breaker is OPEN, skipping AI call');
+        if (summary) summary.skipped = 'circuit_open';
         return failed('circuit_open');
     }
 
@@ -341,14 +349,29 @@ async function withRetry<T>(
         const remainingMs = deadline - Date.now();
         if (remainingMs < MIN_ATTEMPT_MS) {
             console.warn('[Gemini] Deadline reached, skipping AI call');
+            if (summary) summary.skipped = 'deadline';
             return failed('deadline');
         }
 
+        const startedAt = Date.now();
         try {
             const result = await withTimeout(fn, Math.min(callTimeoutMs, remainingMs));
+            const meta = metadata?.(result);
+            if (summary) summary.attempts.push({ pass: options?.passIndex ?? 0, role: options?.passRole ?? 'primary',
+                index: attempt + 1, elapsedMs: Math.min(2_000_000_000, Date.now()-startedAt), outcome: 'answered', failure: null,
+                usage: meta?.usage ?? null, candidates: meta?.candidates ?? null, queryCandidates: meta?.queryCandidates ?? null, sourceCandidates: meta?.sourceCandidates ?? null });
             recordSuccess();
             return { ok: true, value: result };
         } catch (error) {
+            const failure: TransportAttempt['failure'] = error instanceof GeminiTimeoutError ? 'timeout'
+                : error instanceof GeminiEmptyResponseError ? 'empty_response'
+                : extractGeminiErrorMetadata(error).status === 429 ? 'rate_limited' : 'api_error';
+            if (summary) summary.attempts.push({ pass: options?.passIndex ?? 0, role: options?.passRole ?? 'primary',
+                index: attempt + 1, elapsedMs: Math.min(2_000_000_000, Date.now()-startedAt), outcome: error instanceof GeminiEmptyResponseError ? 'answered' : 'failed', failure,
+                usage: error instanceof GeminiEmptyResponseError ? error.usage : null,
+                candidates: error instanceof GeminiEmptyResponseError ? error.coverage.candidates : null,
+                queryCandidates: error instanceof GeminiEmptyResponseError ? error.coverage.queryCandidates : null,
+                sourceCandidates: error instanceof GeminiEmptyResponseError ? error.coverage.sourceCandidates : null });
             if (error instanceof GeminiTimeoutError) {
                 logDiagnostic('error', 'gemini_timeout', { attempt: attempt + 1 }, error);
                 recordFailure();
@@ -487,10 +510,12 @@ export async function generateJSONWithMeta<T>(
     prompt: string,
     options: JSONGenerationOptions
 ): Promise<JSONGenerationResult<T>> {
+    const transport = emptyTransport(null, isSearchGroundingEnabled());
     const requestConfig = getGeminiModel(true, options.responseJsonSchema);
     if (!requestConfig || !genAI) {
         console.log('[Gemini] Not configured, skipping AI generation');
         return {
+            transport: { ...transport, skipped: 'unconfigured' },
             data: null,
             failure: 'provider_error',
             groundingSourceUrls: [],
@@ -505,25 +530,35 @@ export async function generateJSONWithMeta<T>(
             config: { ...requestConfig.config, abortSignal: signal },
             contents: prompt,
         });
+        const groundingSourceUrls = getGroundingSourceUrls(response);
+        const usage = getUsage(response, groundingSourceUrls.length);
+        const coverage = { candidates: Math.min(100,response.candidates?.length ?? 0),
+            queryCandidates: Math.min(100,response.candidates?.filter(c => Array.isArray(c.groundingMetadata?.webSearchQueries)).length ?? 0),
+            sourceCandidates: Math.min(100,response.candidates?.filter(c => Array.isArray(c.groundingMetadata?.groundingChunks)).length ?? 0) };
         const text = response.text?.trim();
         if (!response.candidates?.length || !text) {
-            throw new GeminiEmptyResponseError();
+            throw new GeminiEmptyResponseError(usage, coverage);
         }
 
-        const groundingSourceUrls = getGroundingSourceUrls(response);
         return {
+            ...coverage,
             text,
             groundingSourceUrls,
-            usage: getUsage(response, groundingSourceUrls.length),
+            usage,
         };
-    }, options.deadlineAt);
+    }, options.deadlineAt, MAX_RETRIES, transport, options, value => value);
+    const coverage = transportCoverage(transport);
+    const reportedUsage = Object.fromEntries(Object.entries(coverage).map(([key, metric]) =>
+        [key, (key === 'searchQueryCount' || key === 'sourceCount') && metric.coverage !== 'complete' ? null : metric.sum])) as unknown as GeminiUsage;
+    const hasUsage = transport.attempts.some(item => item.usage !== null);
 
     if (!attempt.ok) {
         return {
             data: null,
             failure: 'provider_error',
             groundingSourceUrls: [],
-            usage: null,
+            transport,
+            usage: hasUsage ? reportedUsage : null,
             failureKind: attempt.kind,
         };
     }
@@ -541,8 +576,9 @@ export async function generateJSONWithMeta<T>(
             data: JSON.parse(jsonStr) as T,
             failure: null,
             groundingSourceUrls: responseData.groundingSourceUrls,
-            usage: responseData.usage,
-            failureKind: null,
+            transport,
+            usage: reportedUsage,
+            failureKind: transport.attempts.find(item => item.failure)?.failure ?? null,
         };
     } catch (error) {
         logDiagnostic('error', 'gemini_parse_failed', {}, error);
@@ -550,8 +586,9 @@ export async function generateJSONWithMeta<T>(
             data: null,
             failure: 'parse_error',
             groundingSourceUrls: responseData.groundingSourceUrls,
-            usage: responseData.usage,
-            failureKind: null,
+            transport,
+            usage: reportedUsage,
+            failureKind: transport.attempts.find(item => item.failure)?.failure ?? null,
         };
     }
 }

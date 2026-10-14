@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const isGeminiConfiguredMock = vi.hoisted(() => vi.fn());
 const generateJSONWithMetaMock = vi.hoisted(() => vi.fn());
 const getProviderMemoryCandidatesMock = vi.hoisted(() => vi.fn());
-const createAiSuggestionRunMock = vi.hoisted(() => vi.fn(async () => 'run_1'));
+const persistAiGenerationMock = vi.hoisted(() => vi.fn(async (input: { id?: string }) => ({ runId: input.id ?? null, exposureId: null })));
 const getFromCacheMock = vi.hoisted(() => vi.fn());
 const setInCacheMock = vi.hoisted(() => vi.fn());
 const cacheState = vi.hoisted(() => ({ store: new Map<string, unknown>() }));
@@ -19,8 +19,9 @@ vi.mock('@/lib/neon/queries/provider-memory', () => ({
     getProviderMemoryCandidates: getProviderMemoryCandidatesMock,
 }));
 
-vi.mock('@/lib/neon/queries/ai-telemetry', () => ({
-    createAiSuggestionRun: createAiSuggestionRunMock,
+vi.mock('@/lib/neon/queries/ai-telemetry', async importOriginal => ({
+    ...await importOriginal<typeof import('@/lib/neon/queries/ai-telemetry')>(),
+    persistAiGeneration: persistAiGenerationMock,
 }));
 
 vi.mock('@/lib/cache', () => ({
@@ -80,14 +81,14 @@ describe('Suggestion Service', () => {
 
     it('retains safe fallback reasons without logging locality or SQL error text', async () => {
         const sinks = ['log', 'warn', 'error'].map(level => vi.spyOn(console, level as 'log' | 'warn' | 'error').mockImplementation(() => undefined));
-        createAiSuggestionRunMock.mockRejectedValueOnce(new Error('987 Sentinel Street SellerSentinel seller@example.test token-sentinel password-sentinel postgres://sentinel'));
+        persistAiGenerationMock.mockRejectedValueOnce(new Error('987 Sentinel Street SellerSentinel seller@example.test token-sentinel password-sentinel postgres://sentinel'));
         const result = await getSuggestions('987 Sentinel Street, SellerSentinel, PA 18302', 'internet');
         expect(result.length).toBeGreaterThan(0);
         const logged = JSON.stringify(sinks.flatMap(sink => sink.mock.calls));
         for (const sentinel of ['Sentinel', 'seller@example.test', 'token-sentinel', 'password-sentinel', 'postgres://sentinel']) expect(logged).not.toContain(sentinel);
         expect(logged).toContain('suggestion_outcome');
         expect(logged).toContain('ai_unconfigured');
-        expect(logged).toContain('suggestion_telemetry_failed');
+        expect(logged).toContain('auxiliary_write_failed');
         sinks.forEach(sink => sink.mockRestore());
     });
 
@@ -196,7 +197,7 @@ describe('Suggestions Pipeline', () => {
         expect(trash.map((item) => item.display_name)).not.toContain('Municipal Sanitation');
         expect(setInCacheMock).toHaveBeenCalledWith(
             expect.any(String),
-            expect.any(Array),
+            expect.objectContaining({ v: 1, suggestions: expect.any(Array) }),
             5 * 60
         );
     });
@@ -235,13 +236,13 @@ describe('Suggestions Pipeline', () => {
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
         expect(generateJSONWithMetaMock).toHaveBeenCalledWith(
             expect.any(String),
-            { responseJsonSchema: PROVIDER_SUGGESTION_RESPONSE_SCHEMA, deadlineAt: expect.any(Number) }
+            expect.objectContaining({ responseJsonSchema: PROVIDER_SUGGESTION_RESPONSE_SCHEMA, deadlineAt: expect.any(Number) })
         );
         expect(result.length).toBeGreaterThanOrEqual(2);
         expect(result[0].display_name).toMatch(/Florida Power/i);
         expect(setInCacheMock).toHaveBeenCalledWith(
             expect.any(String),
-            expect.any(Array),
+            expect.objectContaining({ v: 1, suggestions: expect.any(Array) }),
             30 * 24 * 60 * 60
         );
     });
@@ -254,7 +255,7 @@ describe('Suggestions Pipeline', () => {
         const result = await getSuggestions('13 Nemesia Ct W, Homosassa, FL 34446', 'water');
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(2);
         expect(result).toEqual([]);
-        expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+        expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(
             expect.objectContaining({
                 status: 'error',
                 reasonCode: 'fallback_used',
@@ -389,7 +390,7 @@ describe('Suggestions Pipeline', () => {
 
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
         expect(result.map((item) => item.display_name)).toEqual(['Silver Spring Township Authority']);
-        expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+        expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(
             expect.objectContaining({
                 feature: 'provider_search',
                 source: 'ai_primary',
@@ -398,7 +399,7 @@ describe('Suggestions Pipeline', () => {
                 promptVersion: 'provider-search-v2',
             })
         );
-        expect(setInCacheMock).toHaveBeenCalledWith(expect.any(String), expect.any(Array), 7 * 24 * 60 * 60);
+        expect(setInCacheMock).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ v: 1, suggestions: expect.any(Array) }), 7 * 24 * 60 * 60);
     });
 
     it('does not run a second search pass when the model finds nothing', async () => {
@@ -408,7 +409,7 @@ describe('Suggestions Pipeline', () => {
 
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
         expect(result).toEqual([]);
-        expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+        expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(
             expect.objectContaining({
                 source: 'fallback',
                 reasonCode: 'fallback_used',
@@ -426,7 +427,7 @@ describe('Suggestions Pipeline', () => {
         await searchProviders('silver spring', 'sewer', '29 Clover Lane, Mechanicsburg, PA 17050');
 
         expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
-        expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+        expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(
             expect.objectContaining({ source: 'fallback', upstreamReasonCode: 'quality_gate_failed' })
         );
     });
@@ -621,7 +622,7 @@ describe('Suggestions Pipeline', () => {
 
             expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
             expect(result[0].display_name).toMatch(/Florida Power/i);
-            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+            expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(
                 expect.objectContaining({ source: 'ai_primary', status: 'success', attemptCount: 1 })
             );
         });
@@ -633,7 +634,7 @@ describe('Suggestions Pipeline', () => {
 
             expect(generateJSONWithMetaMock).toHaveBeenCalledTimes(1);
             expect(result).toEqual([]);
-            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(
+            expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(
                 expect.objectContaining({
                     status: 'error',
                     reasonCode: 'fallback_used',
@@ -665,7 +666,7 @@ describe('Suggestions Pipeline', () => {
 
             await getSuggestions('123 Main St, Miami, FL 33101', 'internet');
 
-            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(expect.objectContaining({
                 source: 'ai_verify',
                 attemptCount: 2,
                 thinkingLevel: 'low',
@@ -688,7 +689,7 @@ describe('Suggestions Pipeline', () => {
                 .mockResolvedValueOnce({ ...ok(providers), usage: missingFirst ? missing : known, failureKind: null })
                 .mockResolvedValueOnce({ ...ok(providers), usage: missingFirst ? known : missing, failureKind: null });
             await getSuggestions('123 Main St, Miami, FL 33101', 'internet');
-            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(expect.objectContaining({
                 usage: expect.objectContaining({ promptTokens: 1050, searchQueryCount: null, sourceCount: null }),
             }));
         });
@@ -700,7 +701,7 @@ describe('Suggestions Pipeline', () => {
 
             await getSuggestions('123 Main St, Miami, FL 33101', 'internet');
 
-            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(expect.objectContaining({
                 source: 'ai_primary',
                 attemptCount: 2,
                 errorKind: 'timeout',
@@ -713,7 +714,7 @@ describe('Suggestions Pipeline', () => {
 
             await searchProviders('florida power', 'electric', '123 Main St, Miami, FL 33101');
 
-            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(expect.objectContaining({
                 feature: 'provider_search',
                 thinkingLevel: 'low',
                 usage: expect.objectContaining({ promptTokens: 300, searchQueryCount: 1, sourceCount: 3 }),
@@ -725,8 +726,8 @@ describe('Suggestions Pipeline', () => {
             await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
             await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
 
-            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
-                source: 'cache', cacheHit: true, usage: null, thinkingLevel: null, errorKind: null,
+            expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(expect.objectContaining({
+                source: 'ai_primary', cacheHit: false, usage: expect.any(Object), thinkingLevel: 'low', errorKind: null,
             }));
         });
 
@@ -736,7 +737,7 @@ describe('Suggestions Pipeline', () => {
             await getSuggestions('123 Main St, Miami, FL 33101', 'electric');
 
             expect(generateJSONWithMetaMock).not.toHaveBeenCalled();
-            expect(createAiSuggestionRunMock).toHaveBeenLastCalledWith(expect.objectContaining({
+            expect(persistAiGenerationMock.mock.lastCall?.[0]).toEqual(expect.objectContaining({
                 source: 'fallback', attemptCount: 0, usage: null, thinkingLevel: null, errorKind: 'unconfigured',
             }));
         });
@@ -759,7 +760,7 @@ describe('Suggestions Pipeline', () => {
         expect(result.suggestions[0].display_name).toBe('Duke Energy');
         expect(getFromCacheMock).not.toHaveBeenCalled();
         expect(setInCacheMock).not.toHaveBeenCalled();
-        expect(createAiSuggestionRunMock).not.toHaveBeenCalled();
+        expect(persistAiGenerationMock).not.toHaveBeenCalled();
     });
 
     it('runs fresh suggestions without cache, provider memory or telemetry', async () => {
@@ -778,6 +779,6 @@ describe('Suggestions Pipeline', () => {
         expect(getFromCacheMock).not.toHaveBeenCalled();
         expect(setInCacheMock).not.toHaveBeenCalled();
         expect(getProviderMemoryCandidatesMock).not.toHaveBeenCalled();
-        expect(createAiSuggestionRunMock).not.toHaveBeenCalled();
+        expect(persistAiGenerationMock).not.toHaveBeenCalled();
     });
 });

@@ -26,7 +26,7 @@ vi.mock('@/lib/rate-limit', () => ({
 }));
 vi.mock('@/lib/providers/contact-service', () => ({ hasValidContact: vi.fn(() => true), resolveContact: vi.fn() }));
 vi.mock('@/lib/email/email-service', () => ({ sendTCCompletionNotificationEmail: vi.fn(), sendContactResolutionAlertEmail: vi.fn() }));
-vi.mock('@/lib/neon/queries/ai-telemetry', () => ({ markAiSuggestionSelection: vi.fn() }));
+vi.mock('@/lib/neon/queries/ai-lineage', () => ({ recordAcceptedChoices: vi.fn(async () => undefined), recordContactSkips: vi.fn(async () => undefined) }));
 vi.mock('@/lib/referrals/award-referral-credit', () => ({ scheduleReferralCreditAward: vi.fn() }));
 import { GET, POST } from '@/app/api/seller/[token]/route';
 

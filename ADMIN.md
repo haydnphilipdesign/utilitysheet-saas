@@ -94,6 +94,29 @@ Growth activation, acquisition and referral conversion now use retained non-demo
 
 Seller Progress uses retained, non-demo user-owned requests consistently. Its last seller evidence is an allowlist of open/suggestion/search/self-link endpoint events in the current creation/reopen cycle, separate from operator/technical timestamps. Unknown observations have their own count and stay out of age buckets. Suggestion fetches are generated/served evidence, not completed browser steps. The page also shows the last step each seller's browser reported viewing, and the last reported submit problem, from the Slice 5 diagnostic observations: each request counts once at its last reported step in its current editing session, and the card states how many in-progress requests have any report. A request without a report is unknown, not stuck; reports are advisory, can be blocked or lost, and exist only for activity after this version is deployed. Fields and limits: `docs/telemetry-privacy.md`. Categories are deduplicated per request; the detail table is capped at 200, totals are uncapped. Queries authorize before reading; failed reads render unavailable, not zero. Legacy overview request freshness still uses mutable request activity and is a different measure.
 
+### AI lineage v2
+
+Slice 8 adds an aggregate panel separating producing generations, server-served
+consumers by fresh/shared/cache delivery, distinct retained browser exposure/item
+acknowledgments and immutable accepted choices. First submission and reopen are
+separate cohorts. Cache origins retain source/model/prompt and common/no-list
+outcomes. Legacy current-entry proxies remain separately labelled, without
+inferred backfill. Missing migration and unavailable reads differ from empty/zero.
+Authorization, customer/demo/deletion filters and aggregate-only DTOs remain.
+
+Render evidence is advisory committed DOM, not attention, accuracy or causation.
+Linked selections without a retained item acknowledgment are shown separately;
+lost acknowledgments are unknown. Browser evidence expires after 90 days; server
+exposures/choices independently after 365 days, cascading on request deletion.
+
+SDK attempt counts include recovered failures. Each usage metric shows its
+reported/started attempts, available lower-bound sum and complete generation
+count. Estimates use existing prices and 2026-10-12-standard-list-v1; incomplete
+usage, truncation or unknown prices keeps total unknown. Reported query arrays
+are not billed searches. Disabled/reached-skip contact coverage does not inflate
+model-call or failure denominators. Migration execution requires separate owner
+authorization; local implementation implies no hosted change.
+
 ### Product usage reports
 
 The same page adds these database-backed reports, without new collection or migrations:

@@ -1,3 +1,6 @@
+import { tokenCostUsd, SEARCH_QUERY_PRICE_USD } from '../../lib/telemetry/ai-cost';
+export { tokenCostUsd, MODEL_PRICES, SEARCH_QUERY_PRICE_USD } from '../../lib/telemetry/ai-cost';
+import { AI_PRICE_VERSION, transportCoverage, transportSummarySchema, type TransportSummary } from '../../lib/telemetry/ai-lineage';
 import { canonicalProviderKey } from '@/lib/providers/canonicalize';
 import type { UtilityCategory } from '@/types';
 
@@ -345,6 +348,7 @@ export interface EvalUsage {
 
 /** What one pipeline run returned for a case. */
 export interface CaseRun {
+    transport?: TransportSummary | null;
     suggestions: Array<{
         display_name: string;
         confidence?: number;
@@ -360,6 +364,11 @@ export interface CaseRun {
 }
 
 export interface CaseScore {
+    transport_summary?: TransportSummary | null;
+    price_version?: string;
+    transport_attempts?: number | null;
+    recovered_failures?: number | null;
+    usage_coverage?: ReturnType<typeof transportCoverage> | null;
     case_id: string;
     kind: CaseKind;
     origin: CaseOrigin | '';
@@ -404,31 +413,6 @@ export interface ModelPrice {
     output: number;
 }
 
-/** Standard-tier list prices read on 2026-10-12 (audit report, section 4.2). */
-export const MODEL_PRICES: Record<string, ModelPrice> = {
-    'gemini-3.1-flash-lite': { input: 0.25, output: 1.5 },
-    'gemini-3.5-flash-lite': { input: 0.3, output: 2.5 },
-    'gemini-3.6-flash': { input: 0.75, output: 3.75 },
-    'gemini-3.8-flash': { input: 0.75, output: 3.75 },
-    'gemini-3.1-pro-preview': { input: 2, output: 12 },
-};
-
-/** List price of one Google Search query beyond the free monthly allowance. */
-export const SEARCH_QUERY_PRICE_USD = 14 / 1000;
-
-/**
- * Token cost of a run at list price, or null when the model has no known price
- * or reported no usage. Tokens of search results fed back to the model
- * (`toolPromptTokens`) are left out: Google's pages do not say they are billed.
- */
-export function tokenCostUsd(usage: EvalUsage | null, model: string): number | null {
-    const price = MODEL_PRICES[model];
-    if (!price || !usage || (usage.promptTokens === null && usage.outputTokens === null)) return null;
-    const input = usage.promptTokens ?? 0;
-    const output = (usage.outputTokens ?? 0) + (usage.thinkingTokens ?? 0);
-    return (input * price.input + output * price.output) / 1_000_000;
-}
-
 export function scoreCase(item: EvalCase, run: CaseRun, model: string): CaseScore {
     const matches = run.suggestions.map((suggestion) => matchProviderName(suggestion.display_name, item.accepted));
     const firstIndex = matches.findIndex((match) => match !== null);
@@ -469,6 +453,10 @@ export function scoreCase(item: EvalCase, run: CaseRun, model: string): CaseScor
         search_queries: run.usage?.searchQueryCount ?? null,
         sources: run.usage?.sourceCount ?? null,
         token_cost_usd: tokenCostUsd(run.usage, model),
+        transport_summary: run.transport ?? null, price_version: AI_PRICE_VERSION,
+        transport_attempts: run.transport?.attempts.length ?? null,
+        recovered_failures: run.transport ? run.transport.attempts.filter(a => a.failure !== null).length : null,
+        usage_coverage: run.transport ? transportCoverage(transportSummarySchema.parse(run.transport)) : null,
         accepted_names: item.accepted.join(' | '),
         returned_names: run.suggestions.map((suggestion) => suggestion.display_name).join(' | '),
     };
@@ -492,6 +480,9 @@ function sumOrNull(values: Array<number | null>): number | null {
 }
 
 export interface EvalSummary {
+    price_version?: string;
+    transport_attempts?: number | null;
+    recovered_failures?: number | null;
     cases: number;
     top1: number;
     top1_exact: number;
@@ -541,9 +532,15 @@ export function summarize(scores: CaseScore[]): EvalSummary {
         ? searches * SEARCH_QUERY_PRICE_USD : null;
     const completeTokens = scores.length > 0 && scores.every(score => score.token_cost_usd !== null
         && score.prompt_tokens !== null && score.output_tokens !== null && score.thinking_tokens !== null);
-    const totalCost = completeTokens && tokenCost !== null && searchCost !== null ? tokenCost + searchCost : null;
+    const completeTransport = scores.length > 0 && scores.every(score => score.usage_coverage &&
+        ['promptTokens','outputTokens','thinkingTokens','toolPromptTokens','searchQueryCount'].every(metric =>
+            score.usage_coverage![metric]?.coverage === 'complete'));
+    const totalCost = completeTokens && completeTransport && tokenCost !== null && searchCost !== null ? tokenCost + searchCost : null;
 
     return {
+        price_version: scores.every(score => score.price_version === AI_PRICE_VERSION) ? AI_PRICE_VERSION : 'legacy_unknown',
+        transport_attempts: sumOrNull(scores.map(score => score.transport_attempts ?? null)),
+        recovered_failures: sumOrNull(scores.map(score => score.recovered_failures ?? null)),
         cases: scores.length,
         top1: scores.filter((score) => score.top1 !== null).length,
         top1_exact: scores.filter((score) => score.top1 === 'exact').length,
@@ -618,7 +615,7 @@ export function toCsv(scores: CaseScore[]): string {
     const columns = Object.keys(scores[0]) as Array<keyof CaseScore>;
     const lines = [columns.join(',')];
     for (const score of scores) {
-        lines.push(columns.map((column) => csvCell(score[column])).join(','));
+        lines.push(columns.map((column) => csvCell(typeof score[column] === 'object' && score[column] !== null ? JSON.stringify(score[column]) : score[column])).join(','));
     }
     return `${lines.join('\r\n')}\r\n`;
 }
@@ -669,6 +666,7 @@ export function renderComparison(results: Array<Pick<EvalResultFile, 'config' | 
         ['Output tokens', (r) => count(r.summary.output_tokens)],
         ['Thinking tokens', (r) => count(r.summary.thinking_tokens)],
         ['Search-result tokens', (r) => count(r.summary.tool_prompt_tokens)],
+        ['Price schedule (estimates only)', (r) => r.summary.price_version === AI_PRICE_VERSION ? AI_PRICE_VERSION : 'Legacy / unknown'],
         ['Token-only lower-bound estimate', (r) => usd(r.summary.token_cost_usd)],
         ['Cases with search metadata', (r) => r.summary.cases_with_search_metadata == null ? 'unknown (legacy)' : share(r.summary.cases_with_search_metadata, r.summary.cases)],
         ['Reported total cost estimate', (r) => usd(r.summary.total_cost_usd ?? null)],

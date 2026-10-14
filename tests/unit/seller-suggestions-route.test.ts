@@ -7,8 +7,10 @@ vi.mock('@/lib/neon/queries', () => ({
     getOrganizationById: vi.fn(),
 }));
 
+const suggestionMocks = vi.hoisted(() => ({ getAllSuggestions: vi.fn() }));
 vi.mock('@/lib/providers/suggestion-service', () => ({
-    getAllSuggestions: vi.fn(),
+    getAllSuggestions: suggestionMocks.getAllSuggestions,
+    getAllSuggestionResults: async (...args: unknown[]) => ({ suggestions: await suggestionMocks.getAllSuggestions(...args), exposures: {} }),
 }));
 
 vi.mock('@/lib/neon/queries/event-logs', () => ({
@@ -59,7 +61,7 @@ describe('GET /api/seller/[token]/suggestions', () => {
         else vi.mocked(createEventLog).mockImplementationOnce(() => new Promise(() => {}));
         const response = await GET(new Request('http://localhost/api/seller/seller-token/suggestions?categories=electric'), { params: Promise.resolve({ token: 'seller-token' }) });
         expect(response.status).toBe(200);
-        expect(await response.json()).toEqual({ suggestions: result });
+        expect(await response.json()).toEqual({ suggestions: result, exposures: {} });
         expect(getAllSuggestions).toHaveBeenCalledTimes(1);
         expect(createEventLog).toHaveBeenCalledTimes(1);
         expect(warn).toHaveBeenCalledTimes(1);
@@ -138,7 +140,7 @@ describe('GET /api/seller/[token]/suggestions', () => {
             {
                 requestId: 'r1',
                 accountId: 'acct-1',
-                organizationId: 'org-1',
+                organizationId: 'org-1', editVersion: 0, mode: 'live',
             }
         );
         // Counts only: provider names stay in the AI telemetry rows, not in the event.
@@ -211,7 +213,7 @@ describe('GET /api/seller/[token]/suggestions', () => {
             {
                 requestId: 'real-request',
                 accountId: 'real-account',
-                organizationId: 'real-org',
+                organizationId: 'real-org', editVersion: 0, mode: 'live',
             }
         );
     });

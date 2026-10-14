@@ -1,3 +1,6 @@
+import { randomUUID } from 'crypto';
+import { emptyTransport, mergeTransport, originMetadataSchema, type OriginMetadata, type TransportSummary, type ExposureSummary } from '@/lib/telemetry/ai-lineage';
+import { exposeGeneration, type GenerationHandle } from '@/lib/neon/queries/ai-lineage';
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { z } from 'zod';
 import { ProviderSuggestion, UtilityCategory } from '@/types';
@@ -21,7 +24,7 @@ import { resolveParsedLocation } from '@/lib/address/location-verifier';
 import { createHash } from 'crypto';
 import { getProviderMemoryCandidates, type ProviderMemoryCandidate } from '@/lib/neon/queries/provider-memory';
 import {
-    createAiSuggestionRun,
+    type CreateAiSuggestionRunInput,
     type AiRunUsage,
     type AiTelemetryFeature,
     type AiTelemetryStatus,
@@ -44,8 +47,8 @@ const PROVIDER_MEMORY_CACHE_TTL_SECONDS = 6 * 60 * 60;
 // v8: keyed by state + full ZIP + city instead of the ZIP prefix, so one
 // town's providers are no longer served to another town.
 // v9: suggestion prompts and gate accept a single provider (provider-suggestions-v2).
-const SUGGESTION_CACHE_VERSION = 'v9';
-const SEARCH_CACHE_VERSION = 'v8';
+const SUGGESTION_CACHE_VERSION = 'v10';
+const SEARCH_CACHE_VERSION = 'v9';
 const PROVIDER_MEMORY_CACHE_VERSION = 'v1';
 const SUGGESTION_PROMPT_VERSION = 'provider-suggestions-v2';
 const SEARCH_PROMPT_VERSION = 'provider-search-v2';
@@ -77,12 +80,15 @@ export type SuggestionReasonCode =
 export type SuggestionSource = 'ai_primary' | 'ai_verify' | 'ai_recovery' | 'history_blend' | 'fallback' | 'cache';
 
 export interface SuggestionContext {
+    editVersion?: number;
+    mode?: 'live' | 'test';
     requestId?: string;
     accountId?: string;
     organizationId?: string | null;
 }
 
 export interface SuggestionOutcome {
+    transport?: TransportSummary | null;
     category: UtilityCategory;
     source: SuggestionSource;
     reasonCode: SuggestionReasonCode | null;
@@ -131,6 +137,7 @@ interface PipelineResult {
 export type ProviderSearchDiagnostic = PipelineResult;
 
 interface AiPassResult {
+    transport?: TransportSummary;
     suggestions: ProviderSuggestion[];
     reasonCode: SuggestionReasonCode | null;
     usage: GeminiUsage | null;
@@ -139,6 +146,7 @@ interface AiPassResult {
 
 /** Usage and first failure of the AI passes of one lookup. */
 interface PassTally {
+    transports?: TransportSummary[];
     usage: AiRunUsage | null;
     errorKind: GeminiFailureKind | null;
     groundingIncomplete?: boolean;
@@ -151,6 +159,7 @@ function addCount(total: number | null, next: number | null): number | null {
 
 function tallyPass(tally: PassTally, pass: AiPassResult): void {
     tally.errorKind = tally.errorKind ?? pass.errorKind;
+    if (pass.transport) (tally.transports ??= []).push(pass.transport);
     if (!pass.usage) {
         tally.groundingIncomplete = true;
         if (tally.usage) {
@@ -180,8 +189,8 @@ interface SearchPipelineParams {
     context?: SuggestionContext;
 }
 
-const inFlightSuggestionRequests = new Map<string, Promise<ProviderSuggestion[]>>();
-const inFlightSearchRequests = new Map<string, Promise<ProviderSuggestion[]>>();
+const inFlightSuggestionRequests = new Map<string, Promise<GenerationHandle>>();
+const inFlightSearchRequests = new Map<string, Promise<GenerationHandle>>();
 
 /**
  * Parse address to extract state, city, and zip code
@@ -640,6 +649,8 @@ function buildOutcome(params: {
     tally?: PassTally;
 }): SuggestionOutcome {
     return {
+        transport: params.tally?.transports?.length ? mergeTransport(params.tally.transports)
+            : params.tally?.errorKind === 'unconfigured' ? emptyTransport('unconfigured') : null,
         category: params.category,
         source: params.source,
         reasonCode: params.reasonCode,
@@ -687,70 +698,6 @@ function getTelemetryStatus(outcome: SuggestionOutcome): AiTelemetryStatus {
         return 'quality_rejected';
     }
     return 'success';
-}
-
-async function persistSuggestionTelemetry(params: {
-    feature: AiTelemetryFeature;
-    context?: SuggestionContext;
-    outcome: SuggestionOutcome;
-    suggestions: ProviderSuggestion[];
-    promptVersion: string;
-    cacheHit?: boolean;
-}): Promise<void> {
-    try {
-        await createAiSuggestionRun({
-            requestId: params.context?.requestId,
-            accountId: params.context?.accountId,
-            organizationId: params.context?.organizationId ?? null,
-            feature: params.feature,
-            category: params.outcome.category,
-            provider: 'gemini',
-            model: getGeminiModelName(),
-            promptVersion: params.promptVersion,
-            servedPipeline: params.outcome.servedPipeline,
-            source: params.outcome.source,
-            status: getTelemetryStatus(params.outcome),
-            reasonCode: params.outcome.reasonCode,
-            upstreamReasonCode: params.outcome.upstreamReasonCode,
-            latencyMs: params.outcome.latencyMs,
-            attemptCount: params.outcome.attemptCount,
-            localityState: params.outcome.localityState,
-            localityZip3: params.outcome.localityZip3,
-            localityCity: params.outcome.localityCity,
-            suggestionCount: params.outcome.suggestionCount,
-            cacheHit: Boolean(params.cacheHit),
-            usage: params.outcome.usage ?? null,
-            thinkingLevel: params.outcome.attemptCount > 0 ? getGeminiThinkingLevelName() : null,
-            errorKind: params.outcome.errorKind ?? null,
-            suggestions: params.suggestions,
-        });
-    } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-            logDiagnostic('warn', 'suggestion_telemetry_failed', {}, error);
-        }
-    }
-}
-
-function buildCachedOutcome(params: {
-    category: UtilityCategory;
-    suggestions: ProviderSuggestion[];
-    location: ParsedLocation | undefined;
-}): SuggestionOutcome {
-    return {
-        category: params.category,
-        source: 'cache',
-        reasonCode: null,
-        upstreamReasonCode: null,
-        attemptCount: 0,
-        latencyMs: 0,
-        suggestionCount: params.suggestions.length,
-        localityState: params.location?.state || null,
-        localityZip3: params.location?.zip ? params.location.zip.slice(0, 3) : null,
-        localityCity: params.location?.city || null,
-        servedPipeline: 'new',
-        usage: null,
-        errorKind: null,
-    };
 }
 
 // ============================================================================
@@ -1058,7 +1005,9 @@ async function runAiPass(
     prompt: string,
     category: UtilityCategory,
     maxItems: number,
-    deadlineAt: number
+    deadlineAt: number,
+    passIndex = 0,
+    passRole: 'primary' | 'verify' | 'recovery' | 'search' = 'primary'
 ): Promise<AiPassResult> {
     if (!isGeminiConfigured()) {
         return {
@@ -1071,13 +1020,14 @@ async function runAiPass(
 
     const response = await generateJSONWithMeta<unknown>(prompt, {
         responseJsonSchema: PROVIDER_SUGGESTION_RESPONSE_SCHEMA,
-        deadlineAt,
+        deadlineAt, passIndex, passRole,
     });
     const usage = response.usage ?? null;
     if (response.failure === 'provider_error') {
         return {
             suggestions: [],
             reasonCode: 'ai_provider_error',
+            transport: response.transport,
             usage,
             errorKind: response.failureKind ?? 'api_error',
         };
@@ -1086,8 +1036,9 @@ async function runAiPass(
         return {
             suggestions: [],
             reasonCode: 'ai_parse_error',
+            transport: response.transport,
             usage,
-            errorKind: null,
+            errorKind: response.failureKind ?? null,
         };
     }
 
@@ -1096,16 +1047,18 @@ async function runAiPass(
         return {
             suggestions: [],
             reasonCode: 'ai_empty',
+            transport: response.transport,
             usage,
-            errorKind: null,
+            errorKind: response.failureKind ?? null,
         };
     }
 
     return {
         suggestions: normalizeAndRankSuggestions(parsed, category, maxItems),
         reasonCode: null,
+        transport: response.transport,
         usage,
-        errorKind: null,
+        errorKind: response.failureKind ?? null,
     };
 }
 
@@ -1272,7 +1225,7 @@ async function runTwoPassSuggestionPipeline(
             buildSuggestionVerificationPrompt(parsed, category, primaryPass.suggestions),
             category,
             5,
-            deadlineAt
+            deadlineAt, attempts, 'verify'
         );
         tallyPass(tally, verifyPass);
         attempts++;
@@ -1294,7 +1247,7 @@ async function runTwoPassSuggestionPipeline(
     }
 
     if (!chosenSource && isRecoveryPassEnabled() && hasBudgetRemaining(startedAt, maxPipelineMs, deadlineAt)) {
-        const recoveryPass = await runAiPass(buildSuggestionRecoveryPrompt(parsed, category), category, 5, deadlineAt);
+        const recoveryPass = await runAiPass(buildSuggestionRecoveryPrompt(parsed, category), category, 5, deadlineAt, attempts, 'recovery');
         tallyPass(tally, recoveryPass);
         attempts++;
         upstreamReason = mergeUpstreamReason(upstreamReason, recoveryPass.reasonCode);
@@ -1377,7 +1330,7 @@ async function runSinglePassSearchPipeline(params: SearchPipelineParams): Promis
         buildSearchPrompt(params.query, params.category, params.resolvedAddress),
         params.category,
         8,
-        deadlineAt
+        deadlineAt, 0, 'search'
     );
     const tally: PassTally = { usage: null, errorKind: null };
     tallyPass(tally, pass);
@@ -1437,26 +1390,12 @@ async function runSuggestionPipeline(
 ): Promise<PipelineResult> {
     const result = await runTwoPassSuggestionPipeline(address, category, context);
     logSuggestionOutcome(result.outcome);
-    await persistSuggestionTelemetry({
-        feature: 'provider_suggestions',
-        context,
-        outcome: result.outcome,
-        suggestions: result.suggestions,
-        promptVersion: SUGGESTION_PROMPT_VERSION,
-    });
     return result;
 }
 
 async function runSearchPipeline(params: SearchPipelineParams): Promise<PipelineResult> {
     const result = await runSinglePassSearchPipeline(params);
     logSuggestionOutcome(result.outcome);
-    await persistSuggestionTelemetry({
-        feature: 'provider_search',
-        context: params.context,
-        outcome: result.outcome,
-        suggestions: result.suggestions,
-        promptVersion: SEARCH_PROMPT_VERSION,
-    });
     return result;
 }
 
@@ -1468,142 +1407,97 @@ async function runSearchPipeline(params: SearchPipelineParams): Promise<Pipeline
  * Get provider suggestions based on address and category
  * Uses Gemini AI with fallback to curated provider list
  */
-export async function getSuggestions(
-    address: string,
-    category: UtilityCategory,
-    context?: SuggestionContext
-): Promise<ProviderSuggestion[]> {
-    const baseKey = getCacheKey(address, category, context);
-    const cacheKey = getPipelineCacheKey(baseKey);
+const cacheEnvelopeSchema = z.object({
+    v: z.literal(1), suggestions: z.array(suggestionSchema.extend({ is_common: z.boolean().optional() })).max(50),
+    origin: originMetadataSchema, runId: z.string().uuid().nullable(), itemIds: z.array(z.string().uuid()).max(50),
+}).strict().refine(value => value.itemIds.length === value.suggestions.length);
+type CacheEnvelope = z.infer<typeof cacheEnvelopeSchema>;
+export type ProviderResult = { results: ProviderSuggestion[]; exposure?: ExposureSummary };
 
-    const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
-    if (cached) {
-        const parsed = await resolveParsedLocation(address);
-        await persistSuggestionTelemetry({
-            feature: 'provider_suggestions',
-            context,
-            outcome: buildCachedOutcome({ category, suggestions: cached, location: parsed }),
-            suggestions: cached,
-            promptVersion: SUGGESTION_PROMPT_VERSION,
-            cacheHit: true,
-        });
-        return cached;
-    }
+function generationHandle(result: PipelineResult, feature: AiTelemetryFeature, promptVersion: string, context?: SuggestionContext): GenerationHandle {
+    const outcome = result.outcome;
+    const suggestions = dedupeProviderSuggestions(result.suggestions).slice(0,50);
+    const id = randomUUID();
+    const itemIds = suggestions.map(() => randomUUID());
+    const origin: OriginMetadata = {
+        v: 1, source: outcome.source === 'cache' ? 'fallback' : outcome.source,
+        status: getTelemetryStatus(outcome), reason: outcome.reasonCode, upstreamReason: outcome.upstreamReasonCode,
+        listKind: !suggestions.length ? 'no_list' : suggestions.every(item => item.is_common) ? 'common' : 'ai',
+        model: getGeminiModelName(), promptVersion, requestFormat: AI_REQUEST_FORMAT_VERSION,
+        thinkingLevel: outcome.attemptCount ? getGeminiThinkingLevelName() : null,
+        producedAt: new Date().toISOString(), lineageVersion: 2,
+    };
+    const input: CreateAiSuggestionRunInput = {
+        id, itemIds, lineageVersion: 2, transport: outcome.transport,
+        requestId: context?.requestId, accountId: context?.accountId, organizationId: context?.organizationId ?? null,
+        feature, category: outcome.category, provider: 'gemini', model: origin.model, promptVersion,
+        servedPipeline: outcome.servedPipeline, source: origin.source, status: origin.status,
+        reasonCode: outcome.reasonCode, upstreamReasonCode: outcome.upstreamReasonCode,
+        latencyMs: outcome.latencyMs, attemptCount: outcome.attemptCount,
+        localityState: outcome.localityState, localityZip3: outcome.localityZip3, localityCity: outcome.localityCity,
+        suggestionCount: suggestions.length, cacheHit: false, usage: outcome.usage,
+        thinkingLevel: origin.thinkingLevel, errorKind: outcome.errorKind, suggestions,
+    };
+    return { input, origin, runId: null, itemIds };
+}
 
-    const inFlight = inFlightSuggestionRequests.get(cacheKey);
-    if (inFlight) {
-        return inFlight;
-    }
-
-    const requestPromise = (async () => {
-        const result = await runSuggestionPipeline(address, category, context);
-        const suggestions = result.suggestions;
-
-        await setInCache(
-            cacheKey,
-            suggestions,
-            result.outcome.source === 'fallback'
-                ? FALLBACK_CACHE_TTL_SECONDS
-                : CACHE_TTL_SECONDS
-        );
-        return suggestions;
-    })();
-
-    inFlightSuggestionRequests.set(cacheKey, requestPromise);
+async function consumeResult(cacheKey: string, map: Map<string,Promise<GenerationHandle>>, category: UtilityCategory,
+    feature: AiTelemetryFeature, context: SuggestionContext | undefined, produce: () => Promise<GenerationHandle>, ttl: number): Promise<ProviderResult> {
+    const startedAt = Date.now();
+    const cached = cacheEnvelopeSchema.safeParse(await getFromCache<CacheEnvelope>(cacheKey));
+    const cachedHandle: GenerationHandle | null = cached.success ? {
+        origin: cached.data.origin, runId: cached.data.runId, itemIds: cached.data.itemIds,
+        input: { suggestions: cached.data.suggestions } as CreateAiSuggestionRunInput,
+    } : null;
+    let pending = map.get(cacheKey);
+    const owner = !cachedHandle && !pending;
+    if (owner) { pending = produce(); map.set(cacheKey,pending); }
     try {
-        return await requestPromise;
-    } finally {
-        inFlightSuggestionRequests.delete(cacheKey);
-    }
+        const handle = cachedHandle ?? await pending!;
+        const delivery = cachedHandle ? 'cache' : owner ? 'fresh' : 'shared';
+        const exposure = await exposeGeneration(handle, context?.requestId ? {
+            requestId: context.requestId, editVersion: context.editVersion ?? 0, mode: context.mode ?? 'live', feature, category,
+        } : undefined, delivery, startedAt);
+        const results = handle.input.suggestions.map((item,index) => ({ ...item,
+            ...(exposure?.run_id && exposure.itemIds.includes(handle.itemIds[index]) ? { ai_lineage: { exposure_id: exposure.exposure_id, run_id: exposure.run_id, item_id: handle.itemIds[index] } } : {}),
+        }));
+        if (owner) await setInCache(cacheKey, { v: 1, suggestions: handle.input.suggestions,
+            origin: handle.origin, runId: handle.runId, itemIds: handle.itemIds } satisfies CacheEnvelope,
+            handle.origin.source === 'fallback' ? FALLBACK_CACHE_TTL_SECONDS : ttl);
+        return { results, ...(exposure ? { exposure: { exposure_id: exposure.exposure_id, run_id: exposure.run_id } } : {}) };
+    } finally { if (owner && map.get(cacheKey) === pending) map.delete(cacheKey); }
 }
 
-/**
- * Get all suggestions for all categories at once (for prefetching)
- */
-export async function getAllSuggestions(
-    address: string,
-    categories: UtilityCategory[],
-    context?: SuggestionContext
-): Promise<Record<UtilityCategory, ProviderSuggestion[]>> {
-    const results = await Promise.all(
-        categories.map(async (category) => ({
-            category,
-            suggestions: await getSuggestions(address, category, context),
-        }))
-    );
-
-    return results.reduce(
-        (acc, { category, suggestions }) => {
-            acc[category] = suggestions;
-            return acc;
-        },
-        {} as Record<UtilityCategory, ProviderSuggestion[]>
-    );
+export async function getSuggestionsResult(address: string, category: UtilityCategory, context?: SuggestionContext): Promise<ProviderResult> {
+    const cacheKey = getPipelineCacheKey(getCacheKey(address,category,context));
+    return consumeResult(cacheKey,inFlightSuggestionRequests,category,'provider_suggestions',context,
+        async () => generationHandle(await runSuggestionPipeline(address,category,context),'provider_suggestions',SUGGESTION_PROMPT_VERSION,context), CACHE_TTL_SECONDS);
 }
-
-/**
- * Search providers by name (for autocomplete) using Gemini AI
- * Accepts optional address for location-aware results
- */
-export async function searchProviders(
-    query: string,
-    category?: UtilityCategory,
-    address?: string,
-    context?: SuggestionContext
-): Promise<ProviderSuggestion[]> {
+export async function getSuggestions(address: string, category: UtilityCategory, context?: SuggestionContext): Promise<ProviderSuggestion[]> {
+    return (await getSuggestionsResult(address,category,context)).results;
+}
+export async function getAllSuggestions(address: string, categories: UtilityCategory[], context?: SuggestionContext): Promise<Record<UtilityCategory,ProviderSuggestion[]>> {
+    const entries = await Promise.all(categories.map(async category => [category,await getSuggestions(address,category,context)] as const));
+    return Object.fromEntries(entries) as Record<UtilityCategory,ProviderSuggestion[]>;
+}
+export async function getAllSuggestionResults(address: string, categories: UtilityCategory[], context?: SuggestionContext) {
+    const entries = await Promise.all(categories.map(async category => [category,await getSuggestionsResult(address,category,context)] as const));
+    return { suggestions: Object.fromEntries(entries.map(([category,result]) => [category,result.results])),
+        exposures: Object.fromEntries(entries.filter(([,result]) => result.exposure).map(([category,result]) => [category,result.exposure])) };
+}
+export async function searchProvidersResult(query: string, category?: UtilityCategory, address?: string, context?: SuggestionContext): Promise<ProviderResult> {
     const trimmedQuery = query.trim();
-    if (trimmedQuery.length < 2) {
-        return [];
-    }
-
-    const resolvedCategory = category || 'electric';
-    const baseKey = getSearchCacheKey(trimmedQuery, resolvedCategory, address, context);
-    const cacheKey = getPipelineCacheKey(baseKey);
-    const cached = await getFromCache<ProviderSuggestion[]>(cacheKey);
-    if (cached) {
-        const parsed = address ? await resolveParsedLocation(address) : undefined;
-        await persistSuggestionTelemetry({
-            feature: 'provider_search',
-            context,
-            outcome: buildCachedOutcome({ category: resolvedCategory, suggestions: cached, location: parsed }),
-            suggestions: cached,
-            promptVersion: SEARCH_PROMPT_VERSION,
-            cacheHit: true,
-        });
-        return cached;
-    }
-
-    const inFlight = inFlightSearchRequests.get(cacheKey);
-    if (inFlight) {
-        return inFlight;
-    }
-
-    const requestPromise = (async () => {
+    if (trimmedQuery.length < 2) return { results: [] };
+    const resolvedCategory = category ?? 'electric';
+    const cacheKey = getPipelineCacheKey(getSearchCacheKey(trimmedQuery,resolvedCategory,address,context));
+    return consumeResult(cacheKey,inFlightSearchRequests,resolvedCategory,'provider_search',context,async () => {
         const resolvedAddress = address ? await resolveParsedLocation(address) : undefined;
-        const result = await runSearchPipeline({
-            query: trimmedQuery,
-            category: resolvedCategory,
-            resolvedAddress,
-            context,
-        });
-        const suggestions = result.suggestions;
-
-        await setInCache(
-            cacheKey,
-            suggestions,
-            result.outcome.source === 'fallback'
-                ? FALLBACK_CACHE_TTL_SECONDS
-                : SEARCH_CACHE_TTL_SECONDS
-        );
-        return suggestions;
-    })();
-
-    inFlightSearchRequests.set(cacheKey, requestPromise);
-    try {
-        return await requestPromise;
-    } finally {
-        inFlightSearchRequests.delete(cacheKey);
-    }
+        return generationHandle(await runSearchPipeline({ query: trimmedQuery, category: resolvedCategory, resolvedAddress, context }),
+            'provider_search',SEARCH_PROMPT_VERSION,context);
+    },SEARCH_CACHE_TTL_SECONDS);
+}
+export async function searchProviders(query: string, category?: UtilityCategory, address?: string, context?: SuggestionContext): Promise<ProviderSuggestion[]> {
+    return (await searchProvidersResult(query,category,address,context)).results;
 }
 
 /**
