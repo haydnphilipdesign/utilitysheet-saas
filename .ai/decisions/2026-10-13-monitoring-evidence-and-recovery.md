@@ -7,3 +7,15 @@
 - Notification uncertainty: provider acceptance increments accepted/sent even if alert-state persistence fails. That failure is separately counted and marks the run partial; another evaluation may repeat the notification. Existing episode state stays unchanged until a successful state write. No generalized retry or stronger delivery guarantee is introduced.
 - Alternatives: treating missing reads as zero and a newly started monitor as healthy would hide monitoring failures; applying the daily threshold to the monitor would delay detection by roughly a day. An external service is not selected or configured here.
 - Consequences: database-stored heartbeat and DB/email alerting cannot detect/notify through total DB/site failure. Independent readiness/heartbeat monitoring, destination/responder confirmation, test alert and pruning remain unverified owner-approved external work. Retention can remove the prior baseline, returning it to unknown.
+
+## Amendment 2026-10-14: monitor grace raised to 20 minutes
+
+The monitor's overdue window is now 15-minute interval plus 20-minute grace (35
+minutes). With 30 minutes, one missed run left a gap of almost exactly 30
+minutes, so cron timing jitter decided whether it alerted; on 2026-10-14 a gap
+of 30 minutes 1 second sent "Needs attention" and the next run sent
+"Recovered". Because the monitor reports on itself, a single-miss alert can
+only arrive after it is already running again, so it is never actionable. Now
+one missed run stays quiet and two in a row (about 45 minutes) alert. Cost:
+detection of a stalled monitor is about 5 minutes later. A fully stopped
+monitor still cannot alert; that remains external heartbeat work.

@@ -372,7 +372,7 @@ describe('Operations page', () => {
         ]) });
         const first = await page();
         expect(screen.getByText('Operations monitor')).toBeInTheDocument();
-        expect(screen.getByText(/every 15 minutes.*overdue after 30 minutes/i)).toBeInTheDocument();
+        expect(screen.getByText(/every 15 minutes.*overdue after 35 minutes/i)).toBeInTheDocument();
         expect(screen.getByText('Finished with some failures')).toBeInTheDocument();
         expect(screen.getByText(/never observed in retained records; coverage unknown/i)).toBeInTheDocument();
         expect(screen.getByText(/last recorded outcome partial/i)).toBeInTheDocument();

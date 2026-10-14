@@ -333,7 +333,7 @@ Limits that are deliberate:
   Other email has none. Completion and invitation evidence is best effort and starts at release.
 - A PDF failure is tied to a request once the packet link or id has resolved to one. A failure
   before that has no request.
-- All four jobs scheduled in `vercel.json` are monitored. Daily overdue uses the shared override (default 26 hours); the monitor uses 15-minute interval + 15-minute grace. Running beyond 15 minutes is labelled missing finish/stuck. Never observed stays unknown. Latest recorded outcome and partial coverage remain explicit. The weekly summary is unscheduled and
+- All four jobs scheduled in `vercel.json` are monitored. Daily overdue uses the shared override (default 26 hours); the monitor uses 15-minute interval + 20-minute grace (one missed run stays quiet; two in a row alert). Running beyond 15 minutes is labelled missing finish/stuck. Never observed stays unknown. Latest recorded outcome and partial coverage remain explicit. The weekly summary is unscheduled and
   is never reported overdue.
 - Alerts, the delivery webhook and retention pruning require owner activation (runbook section 5.5). The monitor source schedule already exists; hosted execution and external uptime/heartbeat checks remain unverified.
 

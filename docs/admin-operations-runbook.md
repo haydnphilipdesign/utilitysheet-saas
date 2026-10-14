@@ -88,7 +88,7 @@ Never: edit billing fields in the database by hand, or grant access to make a co
 1. **Issues & Triage, Scheduled jobs** shows source schedule, last start/outcome, duration and last success for the three daily jobs and the 15-minute Operations monitor heartbeat.
    - **No runs observed yet**: monitoring has not seen it run. Coverage is unknown; it stays unknown until a run is actually recorded. Check hosted scheduling rather than inferring an overdue run from absence.
    - **Finished with some failures**: it ran but some items failed. Signup reconciliation and account closure retry will try those again next run. For the monitor this includes unavailable AI reads, failed observation writes or unsuccessful alert/state writes.
-   - **Overdue without success**: the daily-job `OPS_ALERT_JOB_OVERDUE_HOURS` threshold (default 26, bounded 1-336) has passed since last success, or since first retained start if no success exists. The monitor instead uses its own 15-minute interval plus 15-minute grace (30 minutes total). Admin and alerts share these rules; never observed stays unknown.
+   - **Overdue without success**: the daily-job `OPS_ALERT_JOB_OVERDUE_HOURS` threshold (default 26, bounded 1-336) has passed since last success, or since first retained start if no success exists. The monitor instead uses its own 15-minute interval plus 20-minute grace (35 minutes total), so one missed run stays quiet and two missed runs in a row alert. Admin and alerts share these rules; never observed stays unknown.
    - **Running (finish not recorded yet)**: start recorded within the 15-minute running grace. **Running too long (finish not recorded)** takes precedence after that grace, even if success is also overdue. A lost finish write can look stuck; verify hosting logs before treating it as proof execution is still running. Last recorded outcome remains visible when the main label is overdue.
 2. Open Vercel, Cron Jobs, and check the run and its logs.
 3. Signup reconciliation can be run by hand from **Admin, Users** (Sync verified signups). It needs a reason and is audited.
@@ -224,7 +224,7 @@ Until this is done, delivery shows as "not confirmed" everywhere. That is accura
 2. In Vercel set `OPS_ALERT_EMAIL=<address>` and `OPS_ALERTS_ENABLED=true`, then redeploy.
 3. Alerts are only evaluated when step c is done.
 
-Default thresholds: three unexpected PDF failures in 15 minutes; any unrecovered billing webhook failure; any bounce, complaint or send failure in 24 hours; a scheduled job failed, finished partial, exceeded its 15-minute running grace, or has no success within its overdue window (daily default 26 hours; monitor 30 minutes); half or more of at least 10 fresh AI runs of one feature ending badly in 24 hours. One message per condition when it starts, one when completed evidence clears it. Unavailable evidence, an in-progress job and an empty AI window do not establish recovery. An accepted notification whose state write failed is reported separately; the next run can repeat it. These are starting points, not validated benchmarks; override with the `OPS_ALERT_*` variables in `.env.example`.
+Default thresholds: three unexpected PDF failures in 15 minutes; any unrecovered billing webhook failure; any bounce, complaint or send failure in 24 hours; a scheduled job failed, finished partial, exceeded its 15-minute running grace, or has no success within its overdue window (daily default 26 hours; monitor 35 minutes); half or more of at least 10 fresh AI runs of one feature ending badly in 24 hours. One message per condition when it starts, one when completed evidence clears it. Unavailable evidence, an in-progress job and an empty AI window do not establish recovery. An accepted notification whose state write failed is reported separately; the next run can repeat it. These are starting points, not validated benchmarks; override with the `OPS_ALERT_*` variables in `.env.example`.
 
 **c. Schedule the monitor route.** Done 2026-10-05 on owner request: `vercel.json` runs `/api/cron/ops-monitor` every 15 minutes (Vercel Pro). The entry is shown here for reference.
 
@@ -283,7 +283,7 @@ All are optional and default to off. `.env.example` is ignored by git in this re
 | `OPS_ALERT_EMAIL` | unset | Destination for alerts. |
 | `OPS_ALERT_PDF_FAILURE_THRESHOLD` | `3` | Unexpected PDF failures in the window that start an alert. |
 | `OPS_ALERT_PDF_WINDOW_MINUTES` | `15` | Window for the PDF threshold. |
-| `OPS_ALERT_JOB_OVERDUE_HOURS` | `26` | Shared daily overdue classification and alert text, bounded 1-336 hours. Does not override the monitor's 30-minute window. |
+| `OPS_ALERT_JOB_OVERDUE_HOURS` | `26` | Shared daily overdue classification and alert text, bounded 1-336 hours. Does not override the monitor's 35-minute window. |
 | `OPS_ALERT_AI_SHARE_PCT` | `50` | Share of fresh AI runs of one feature ending badly that starts an AI service issue and alert. |
 | `OPS_ALERT_AI_MIN_RUNS` | `10` | Fresh runs needed in the window before the share is judged. |
 | `OPS_ALERT_AI_WINDOW_HOURS` | `24` | Window for the AI share (1 to 168). |

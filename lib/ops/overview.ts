@@ -166,7 +166,8 @@ export const JOB_SCHEDULES: Record<ScheduledJobName, { schedule: string; interva
     activation_reconcile: { schedule: 'Daily at 12:00 UTC', intervalMinutes: 1440, graceMinutes: 120, maxRunningMinutes: 15 },
     activation_reengagement: { schedule: 'Daily at 12:30 UTC', intervalMinutes: 1440, graceMinutes: 120, maxRunningMinutes: 15 },
     account_closure_retry: { schedule: 'Daily at 13:00 UTC', intervalMinutes: 1440, graceMinutes: 120, maxRunningMinutes: 15 },
-    ops_monitor: { schedule: 'Every 15 minutes', intervalMinutes: 15, graceMinutes: 15, maxRunningMinutes: 15 },
+    // 20-minute grace: one missed run (a ~30-minute gap) stays quiet; two in a row (~45 minutes) alert.
+    ops_monitor: { schedule: 'Every 15 minutes', intervalMinutes: 15, graceMinutes: 20, maxRunningMinutes: 15 },
 };
 
 export function jobOverdueMinutes(jobName: ScheduledJobName, dailyOverdueHours = JOB_OVERDUE_HOURS): number {

@@ -598,14 +598,22 @@ describe('Slice 7 heartbeat and coverage', () => {
 
     it('uses fixed-clock monitor boundaries independently of the daily override', () => {
         expect(classifyJob(job({ firstObservedAt: null, lastStartedAt: null, lastSuccessAt: null, lastStatus: null }), now, 1)).toBe('not_observed');
-        expect(classifyJob(job({ lastSuccessAt: minutesAgo(30) }), now, 1)).toBe('ok');
-        expect(classifyJob(job({ lastSuccessAt: minutesAgo(30.01) }), now, 336)).toBe('overdue');
+        expect(classifyJob(job({ lastSuccessAt: minutesAgo(35) }), now, 1)).toBe('ok');
+        expect(classifyJob(job({ lastSuccessAt: minutesAgo(35.01) }), now, 336)).toBe('overdue');
         expect(classifyJob(job({ firstObservedAt: minutesAgo(5), lastSuccessAt: null, lastStatus: 'partial' }), now)).toBe('partial');
         expect(classifyJob(job({ firstObservedAt: minutesAgo(5), lastSuccessAt: null, lastStatus: 'failed' }), now)).toBe('failed');
         expect(classifyJob(job({ firstObservedAt: minutesAgo(5), lastSuccessAt: null, lastStatus: null }), now)).toBe('within_grace');
         expect(classifyJob(job({ lastStatus: 'running', lastStartedAt: minutesAgo(15) }), now)).toBe('running');
         expect(classifyJob(job({ lastStatus: 'running', lastStartedAt: minutesAgo(15.01) }), now)).toBe('stuck');
-        expect(classifyJob(job({ lastStatus: 'running', lastStartedAt: minutesAgo(1), lastSuccessAt: minutesAgo(31) }), now)).toBe('overdue');
+        expect(classifyJob(job({ lastStatus: 'running', lastStartedAt: minutesAgo(1), lastSuccessAt: minutesAgo(36) }), now)).toBe('overdue');
+    });
+
+    it('stays quiet after one missed monitor run and flags two in a row, whatever the cron jitter', () => {
+        // One missed run: the previous success is one cycle back, a few seconds either side of 30 minutes.
+        expect(classifyJob(job({ lastStartedAt: minutesAgo(30.02), lastSuccessAt: minutesAgo(30.02) }), now)).toBe('ok');
+        expect(classifyJob(job({ lastStartedAt: minutesAgo(30.5), lastSuccessAt: minutesAgo(30.5) }), now)).toBe('ok');
+        // Two missed runs: about 45 minutes since the last success.
+        expect(classifyJob(job({ lastStartedAt: minutesAgo(44.9), lastSuccessAt: minutesAgo(44.9) }), now)).toBe('overdue');
     });
 
     it('reads retained heartbeat evidence and excludes the current monitor run', async () => {
@@ -659,7 +667,7 @@ describe('Slice 7 alert uncertainty', () => {
         const firing = evaluateAlertConditions({ ...quiet, jobs: [job] }, config);
         expect(firing.filter(item => item.firing).map(item => item.key)).toEqual(['job_partial:ops_monitor']);
         expect(evaluateAlertConditions({ ...quiet, jobs: [{ ...job, health: 'overdue' }] }, config))
-            .toContainEqual(expect.objectContaining({ key: 'job_overdue:ops_monitor', firing: true, summary: expect.stringContaining('30 minutes') }));
+            .toContainEqual(expect.objectContaining({ key: 'job_overdue:ops_monitor', firing: true, summary: expect.stringContaining('35 minutes') }));
         expect(evaluateAlertConditions({ ...quiet, jobs: [{ ...job, health: 'stuck', lastStatus: 'running' }] }, config))
             .toContainEqual(expect.objectContaining({ key: 'job_stuck:ops_monitor', firing: true }));
         const states = new Map([['job_partial:ops_monitor', { status: 'firing' as const }]]);

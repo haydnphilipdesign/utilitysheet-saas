@@ -87,7 +87,7 @@ test('shows monitor and collector uncertainty across browser sizes without exter
     await expect(page.getByText(/do not establish a collection rate/)).toBeVisible();
     await page.goto(origin + '/partial');
     await expect(page.getByText('Finished with some failures', { exact: true })).toBeVisible();
-    await expect(page.getByText(/Every 15 minutes.*overdue after 30 minutes/)).toBeVisible();
+    await expect(page.getByText(/Every 15 minutes.*overdue after 35 minutes/)).toBeVisible();
     await page.goto(origin + '/stuck');
     await expect(page.getByText('Running too long (finish not recorded)', { exact: true })).toBeVisible();
     await page.goto(origin + '/unavailable');
