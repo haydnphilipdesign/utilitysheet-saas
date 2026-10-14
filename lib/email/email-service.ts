@@ -114,11 +114,15 @@ const PRODUCT_EMAIL_ACCENT_DARK = DEFAULT_BRAND_SECONDARY_COLOR;
 /** 10% of the accent on white, for neutral (non-success) badges. */
 const PRODUCT_EMAIL_ACCENT_TINT = '#e9eef3';
 /**
- * Header background. The solid color comes first so clients that drop
- * gradients (Outlook desktop) still render the accent; pair it with a
- * bgcolor attribute on the cell.
+ * Email header background. The solid color comes first so clients that drop
+ * gradients (Outlook desktop) still render one; pair it with a bgcolor
+ * attribute on the cell. Callers pass sanitized hex colors only.
  */
-const PRODUCT_EMAIL_HEADER_BACKGROUND = `background-color: ${PRODUCT_EMAIL_ACCENT}; background-image: linear-gradient(135deg, ${PRODUCT_EMAIL_ACCENT} 0%, ${PRODUCT_EMAIL_ACCENT_DARK} 100%);`;
+function emailHeaderBackground(from: string, to: string, solid: string = from): string {
+    return `background-color: ${solid}; background-image: linear-gradient(135deg, ${from} 0%, ${to} 100%);`;
+}
+
+const PRODUCT_EMAIL_HEADER_BACKGROUND = emailHeaderBackground(PRODUCT_EMAIL_ACCENT, PRODUCT_EMAIL_ACCENT_DARK);
 
 function renderBulletproofButton(params: {
     href: string;
@@ -163,7 +167,7 @@ function renderBulletproofButton(params: {
                                         </v:roundrect>
                                         <![endif]-->
                                         <!--[if !mso]><!-- -->
-                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                                        <table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
                                             <tr>
                                                 <td bgcolor="${params.backgroundColor}" style="background-color: ${params.backgroundColor}; border-radius: ${borderRadius}px; text-align: center;">
                                                     <a href="${params.href}" style="display: inline-block; padding: ${paddingY}px ${paddingX}px; border-radius: ${borderRadius}px; color: #ffffff !important; text-decoration: none; font-size: ${fontSize}px; font-weight: ${fontWeight}; line-height: ${lineHeight}px; font-family: Arial, sans-serif; background-color: ${params.backgroundColor}; mso-line-height-rule: exactly;">
@@ -244,7 +248,7 @@ function generateSellerRequestEmailHtml(params: {
             <td style="padding: 40px 20px;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                     <tr>
-                        <td style="background: linear-gradient(135deg, ${params.primaryColor} 0%, ${params.secondaryColor} 100%); padding: 28px 32px; text-align: center;">
+                        <td bgcolor="${params.primaryColor}" style="${emailHeaderBackground(params.primaryColor, params.secondaryColor)} padding: 28px 32px; text-align: center;">
                             ${headerLogoHtml}
                         </td>
                     </tr>
@@ -647,7 +651,7 @@ export function buildOrganizationInviteEmail({
             <td style="padding: 40px 20px;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                     <tr>
-                        <td style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%); padding: 28px 40px; text-align: center;">
+                        <td bgcolor="#0f172a" style="${emailHeaderBackground('#0f172a', '#334155')} padding: 28px 40px; text-align: center;">
                             <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700;">UtilitySheet</h1>
                         </td>
                     </tr>
@@ -764,7 +768,7 @@ export function buildOrganizationInviteAcceptedEmail({
             <td style="padding: 40px 20px;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                     <tr>
-                        <td style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%); padding: 28px 40px; text-align: center;">
+                        <td bgcolor="#0f172a" style="${emailHeaderBackground('#0f172a', '#334155')} padding: 28px 40px; text-align: center;">
                             <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700;">UtilitySheet</h1>
                         </td>
                     </tr>
@@ -1441,7 +1445,7 @@ function generateContactResolutionAlertHtml({
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
                     <!-- Header -->
                     <tr>
-                        <td style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 32px 40px; text-align: center;">
+                        <td bgcolor="#d97706" style="${emailHeaderBackground('#f59e0b', '#d97706', '#d97706')} padding: 32px 40px; text-align: center;">
                             <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">UtilitySheet Alert</h1>
                         </td>
                     </tr>
@@ -1636,7 +1640,7 @@ function generateWeeklySummaryHtml({
                                         <p style="margin: 4px 0 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Total</p>
                                     </td>
                                     <td style="padding: 16px; background-color: #f9fafb; text-align: center; border-right: 1px solid #e5e7eb;">
-                                        <p style="margin: 0; color: #10b981; font-size: 28px; font-weight: 700;">${stats.submitted}</p>
+                                        <p style="margin: 0; color: #047857; font-size: 28px; font-weight: 700;">${stats.submitted}</p>
                                         <p style="margin: 4px 0 0; color: #6b7280; font-size: 12px; text-transform: uppercase;">Completed</p>
                                     </td>
                                     <td style="padding: 16px; background-color: #f9fafb; border-radius: 0 8px 8px 0; text-align: center;">

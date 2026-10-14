@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { __testing } from '@/lib/email/email-service';
+import { __testing, buildSellerReminderEmail } from '@/lib/email/email-service';
+
+type BrandProfileInput = Parameters<typeof buildSellerReminderEmail>[0]['brandProfile'];
 
 const {
     generateTCCompletionNotificationHtml,
@@ -199,10 +201,45 @@ describe('Email Templates', () => {
             // Completion and referral-credit badges are success states.
             expect(products[0].html()).toContain('background-color: #d1fae5; color: #065f46;');
             expect(products[1].html()).toContain('background-color: #d1fae5; color: #065f46;');
-            // The weekly summary's completed count is the only emerald left.
+            // The weekly summary's completed count stays green, in emerald-700
+            // so the number passes 3:1 on its light cell.
             const weekly = products[2].html();
-            expect(weekly.match(emerald)).toEqual(['#10b981']);
-            expect(weekly).toContain(`color: #10b981; font-size: 28px; font-weight: 700;">${stats.submitted}</p>`);
+            expect(weekly.match(emerald)).toBeNull();
+            expect(weekly).toContain(`color: #047857; font-size: 28px; font-weight: 700;">${stats.submitted}</p>`);
+        });
+
+        it('centers the non-Outlook button table', () => {
+            for (const product of products) {
+                expect(product.html()).toContain('<table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">');
+            }
+        });
+    });
+
+    describe('header gradient fallbacks', () => {
+        it('contact resolution alert falls back to the darker amber', () => {
+            const html = generateContactResolutionAlertHtml({
+                propertyAddress: 'Test',
+                unresolvedEntries: [{ category: 'electric' }],
+                dashboardUrl: 'https://test.com',
+            });
+
+            expect(html).toContain('<td bgcolor="#d97706" style="background-color: #d97706; background-image: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);');
+        });
+
+        it('branded seller emails fall back to the brand primary color', () => {
+            const brandProfile = { name: 'Riverbend', primary_color: '#7c3aed', secondary_color: '#4c1d95' } as BrandProfileInput;
+            const { html } = buildSellerReminderEmail({ sellerEmail: 'seller@example.com', propertyAddress: 'Test', sellerToken: 'synthetic', brandProfile });
+
+            expect(html).toContain('<td bgcolor="#7c3aed" style="background-color: #7c3aed; background-image: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%);');
+        });
+
+        it('branded seller emails never put an unsafe brand color in the header', () => {
+            const brandProfile = { name: 'Riverbend', primary_color: '"><script>x</script>', secondary_color: 'red' } as BrandProfileInput;
+            const { html } = buildSellerReminderEmail({ sellerEmail: 'seller@example.com', propertyAddress: 'Test', sellerToken: 'synthetic', brandProfile });
+
+            expect(html).not.toContain('<script>x</script>');
+            expect(html).toContain('<td bgcolor="#23588a" style="background-color: #23588a; background-image: linear-gradient(135deg, #23588a 0%, #0b4072 100%);');
+            expect(html).not.toContain('background: linear-gradient');
         });
     });
 

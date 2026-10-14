@@ -41,6 +41,18 @@ describe('invitation accepted email', () => {
 
 const inviteUrl = 'https://app.example.com/invite/synthetic-token';
 
+describe('invitation email headers', () => {
+    it('keep the dark slate header with a solid fallback', () => {
+        const invite = buildOrganizationInviteEmail({ toEmail: 'casey@example.com', organizationName: 'Riverbend', inviteUrl });
+        const accepted = buildOrganizationInviteAcceptedEmail({ toEmail: 'pat@example.com', organizationName: 'Riverbend', memberEmail: 'casey@example.com' });
+
+        for (const { html } of [invite, accepted]) {
+            expect(html).toContain('<td bgcolor="#0f172a" style="background-color: #0f172a; background-image: linear-gradient(135deg, #0f172a 0%, #334155 100%);');
+            expect(html).not.toContain('background: linear-gradient');
+        }
+    });
+});
+
 describe('workspace invitation email', () => {
     it('says who invited the reader, which address to use and how long the link works', () => {
         const { subject, html } = buildOrganizationInviteEmail({
