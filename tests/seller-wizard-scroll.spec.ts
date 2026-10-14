@@ -108,6 +108,7 @@ test('new steps start below the fixed header after forward and back navigation',
     await page.getByRole('button', { name: /^Public Water/ }).click();
     await page.getByRole('button', { name: /^Public Sewer/ }).click();
     // Editing a choice on the same step should preserve the reader's position.
+    await page.getByTestId('basics-handoff-toggle').click();
     await page.getByTestId('advanced-group-mailbox_access').click();
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     await page.getByRole('button', { name: 'Continue', exact: true }).click();

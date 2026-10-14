@@ -51,6 +51,13 @@ function openHomeBasics() {
     fireEvent.click(screen.getByRole('button', { name: /get started/i }));
 }
 
+/** Association details sit behind a summary row after a Yes. */
+function openHoaDetails() {
+    const toggle = screen.getByTestId('hoa-details-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+}
+
 /** Water and sewer are required; these two answers add no provider steps. */
 function answerBasics() {
     fireEvent.click(screen.getByRole('button', { name: 'Private Well' }));
@@ -95,6 +102,8 @@ describe('SellerWizard HOA question', () => {
 
         fireEvent.click(screen.getByTestId('has-hoa-yes'));
         expect(screen.getByTestId('hoa-details')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Association Name')).not.toBeInTheDocument();
+        openHoaDetails();
         expect(screen.getByLabelText('Association Name')).toBeInTheDocument();
 
         fireEvent.click(screen.getByTestId('has-hoa-not_sure'));
@@ -221,6 +230,7 @@ describe('SellerWizard HOA question', () => {
         openHomeBasics();
 
         fireEvent.click(screen.getByTestId('has-hoa-yes'));
+        openHoaDetails();
         fireEvent.change(screen.getByLabelText('Association Name'), { target: { value: 'Lakeview Commons HOA' } });
         fireEvent.change(screen.getByLabelText('Contact Email'), { target: { value: 'office@lakeview.example' } });
         fireEvent.change(screen.getByLabelText('Dues'), { target: { value: '$240' } });
@@ -247,6 +257,7 @@ describe('SellerWizard HOA question', () => {
         renderWizard();
         openHomeBasics();
         fireEvent.click(screen.getByTestId('has-hoa-yes'));
+        openHoaDetails();
 
         expect(screen.getByLabelText('Payments & Documents')).toHaveAccessibleDescription(/passwords or account numbers/i);
     });
@@ -332,6 +343,69 @@ describe('SellerWizard HOA question', () => {
 
         expect(screen.getByText('Is this home part of an HOA or condo association?')).toBeInTheDocument();
         fireEvent.click(screen.getByTestId('has-hoa-yes'));
+        openHoaDetails();
         expect(screen.getByLabelText('Association Name')).toHaveValue('');
+    });
+
+    it('keeps association details when the summary row is closed and reopened', () => {
+        renderWizard();
+        openHomeBasics();
+        fireEvent.click(screen.getByTestId('has-hoa-yes'));
+        expect(screen.getByTestId('hoa-details-toggle')).toHaveTextContent('Name, contact, dues, and where to pay');
+
+        openHoaDetails();
+        const toggle = screen.getByTestId('hoa-details-toggle');
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(toggle).toHaveAttribute('aria-controls', 'hoa-details-panel');
+        fireEvent.change(screen.getByLabelText('Association Name'), { target: { value: 'Lakeview Commons HOA' } });
+        fireEvent.click(screen.getByTestId('hoa-dues-frequency-monthly'));
+
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(toggle).not.toHaveAttribute('aria-controls');
+        expect(screen.queryByLabelText('Association Name')).not.toBeInTheDocument();
+        expect(toggle).toHaveTextContent('2 of 8 added');
+
+        fireEvent.click(toggle);
+        expect(screen.getByLabelText('Association Name')).toHaveValue('Lakeview Commons HOA');
+        expect(screen.getByTestId('hoa-dues-frequency-monthly')).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('opens association details restored from a draft', () => {
+        localStorage.setItem('us_seller_draft:seller-wizard-hoa-test-token', JSON.stringify({
+            v: 2,
+            currentStep: 1,
+            utilityIndex: 0,
+            state: {
+                water_source: 'city',
+                sewer_type: 'public',
+                heating_type: 'not_sure',
+                fuels_present: [],
+                primary_heating_type: null,
+                trash_handled_by: 'not_sure',
+                optional_utilities: [],
+                packet_mode: 'simple',
+                advanced_modules: [],
+                advanced_module_exclusions: {},
+                advanced: {},
+                utilities: {},
+                has_hoa: 'yes',
+                hoa_dues_amount: '$240',
+            },
+        }));
+
+        renderWizard();
+
+        expect(screen.getByTestId('hoa-details-toggle')).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByLabelText('Dues')).toHaveValue('$240');
+    });
+
+    it('marks water and sewer as required without renaming their groups', () => {
+        renderWizard();
+        openHomeBasics();
+
+        expect(screen.getAllByText('Required')).toHaveLength(2);
+        expect(screen.getByRole('group', { name: 'Water Source' })).toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'Sewer Type' })).toBeInTheDocument();
     });
 });

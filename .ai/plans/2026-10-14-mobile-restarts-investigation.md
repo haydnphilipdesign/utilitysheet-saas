@@ -1,6 +1,6 @@
 # Investigate duplicate starts and mobile seller friction
 
-- Date: 2026-10-14. Agent: Codex. Branch: main. Status: Completed locally. No required investigation, implementation or validation work remains.
+- Date: 2026-10-14. Agent: Codex. Branch: main. Status: Completed; fix pushed as `02a5281` with owner authorization. No required investigation, implementation, validation or push work remains.
 - Scope: find other retained same-account/workspace/address starts; distinguish unfinished-first restarts from later completed repeats, compare seller device families and observed progress/errors, reproduce any plausible mobile UI failure locally, and fix a verified issue within scope if found. No production writes, migrations, sends, commits, push or deployment.
 - Verified baseline: intake resume uses form/address browser cookies; drafts are browser-local; opening marks In Progress. Recent browser step/error observations were released October 13 and are best effort. Earlier duplicate investigation found an iPhone Safari Home Basics start followed by a successful Mac Chrome start on the same form.
 - Hypotheses: device switching/browser-local resume; mobile Home Basics layout or validation friction; suggestion loading/errors; unrelated people completing the same property; repeated owner-created requests.
@@ -39,7 +39,8 @@
 
 ## Owner-authorized release (2026-10-14)
 
-- Owner explicitly requested committing/pushing the completed fix to main, then a copy-ready prompt for a separate Home Basics usability chat. Release in progress; no Home Basics redesign is included.
+- Owner explicitly requested committing/pushing the completed fix to main, then a copy-ready prompt for a separate Home Basics usability chat. Completed: `02a5281` committed and pushed to origin/main; no Home Basics redesign is included.
 - Startup verified main at `ce7b93d`, origin/main synchronized, code/test changes identical to the validated fix, index empty. Preserve the unrelated starter document and Claude's unstaged monitoring/retention handoff updates; stage only this investigation's CURRENT sections, plans and three implementation/test files.
 - Existing validation remains applicable: no implementation changes since the successful 101-test focused suite, three-browser regression, eight mobile recovery tests, four synthetic journeys, TypeScript/lint/security/diff checks. No additional application tests needed for unchanged code.
-- Final commit/push confirmation is recorded in CURRENT after release. No database, settings or manual deployment action authorized or performed in this release.
+- `git push origin main` succeeded (`ce7b93d..02a5281`); local and remote-tracking main match. No required release work remains. Hosted deployment/CI status is separate from push confirmation. No database, settings or manual deployment action performed. This post-push confirmation is a local handoff update, not an extra deployment-triggering push.
+- Immediate GitHub status check: Vercel pending ("Vercel is deploying your app"); no GitHub Actions runs returned for this commit. Do not claim hosted success yet. Optional next check: deployment status for `02a5281`.

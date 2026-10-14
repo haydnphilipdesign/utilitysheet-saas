@@ -1,8 +1,9 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
+import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { Building2, Droplets, Flame, Waves, Wifi, Tv, Check, Flower2, ShieldCheck, Wrench, KeyRound } from 'lucide-react';
+import { Building2, Droplets, Flame, Waves, Wifi, Tv, Check, ChevronDown, Flower2, ShieldCheck, Wrench, KeyRound, ListChecks } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { WizardState } from '../SellerWizard';
 import type { AdvancedModuleKey, UtilityCategory } from '@/types';
@@ -17,6 +18,7 @@ import {
     HAS_HOA_OPTIONS,
     HOA_DUES_FREQUENCY_OPTIONS,
     HOA_GATE_PROMPT,
+    HOA_SECTION_TITLE,
     HOA_TEXT_FIELDS,
 } from '@/lib/packet/hoa';
 import { wizardFocusRing, wizardPrimaryButton, wizardTextInput } from '../wizard-ui';
@@ -29,6 +31,64 @@ interface HomeBasicsStepProps {
     /** Off when the requesting account turned the HOA questions off in Settings. */
     collectHoaQuestions?: boolean;
     onNext: () => void;
+}
+
+interface OptionalDisclosureProps {
+    id: string;
+    icon: LucideIcon;
+    title: string;
+    summary: string;
+    actionLabel: string;
+    openLabel?: string;
+    open: boolean;
+    onToggle: () => void;
+    testId: string;
+    children: ReactNode;
+}
+
+/**
+ * Optional content as one summary row that opens in place, so the required
+ * questions and Continue stay close together on a phone. Closing never clears
+ * an answer: the answers live in wizard state, not in these inputs.
+ */
+function OptionalDisclosure({ id, icon: Icon, title, summary, actionLabel, openLabel = 'Hide', open, onToggle, testId, children }: OptionalDisclosureProps) {
+    const panelId = `${id}-panel`;
+    return (
+        <div className="rounded-xl border border-border bg-card/50" data-testid={testId}>
+            <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={open}
+                aria-controls={open ? panelId : undefined}
+                data-testid={`${testId}-toggle`}
+                className={`w-full min-h-11 flex items-center gap-3 p-3 sm:p-4 text-left rounded-xl transition-colors hover:bg-muted/40 ${wizardFocusRing}`}
+            >
+                <Icon className="h-4 w-4 shrink-0 text-[color:var(--brand-accent)]" />
+                <span className="min-w-0 flex-1">
+                    <span className="block font-medium text-sm sm:text-base text-foreground">{title}</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">{summary}</span>
+                </span>
+                {/* Phones show the chevron alone so the summary keeps the row's width. */}
+                <span className="flex items-center gap-1 shrink-0 text-sm font-medium text-[color:var(--brand-accent)]">
+                    <span className="hidden sm:inline">{open ? openLabel : actionLabel}</span>
+                    <ChevronDown aria-hidden="true" className={`h-5 w-5 sm:h-4 sm:w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+                </span>
+            </button>
+            {open && (
+                <div id={panelId} className="px-3 pb-3 sm:px-4 sm:pb-4 space-y-3">
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function RequiredTag() {
+    return (
+        <span className="shrink-0 text-[10px] sm:text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Required
+        </span>
+    );
 }
 
 export function HomeBasicsStep({ state, updateState, requestedUtilityCategories, configuredAdvancedModules, collectHoaQuestions = true, onNext }: HomeBasicsStepProps) {
@@ -102,6 +162,39 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
         updateState({ advanced_modules: nextModules });
     };
 
+    const showHoaDetails = collectHoaQuestions && state.has_hoa === 'yes';
+    const hoaDetailCount = HOA_TEXT_FIELDS.length + 1;
+    const hoaDetailsAdded = HOA_TEXT_FIELDS.filter((field) => (state[field.key] || '').trim()).length
+        + (state.hoa_dues_frequency ? 1 : 0);
+    // Details already on file (draft, reopened sheet, Review edit) start open.
+    // A draft can also arrive after this step mounts, so a newly present value
+    // opens the panel; the seller's own Hide is kept until then.
+    const [hoaDetailsOpen, setHoaDetailsOpen] = useState(hoaDetailsAdded > 0);
+    const [hadHoaDetails, setHadHoaDetails] = useState(hoaDetailsAdded > 0);
+    if ((hoaDetailsAdded > 0) !== hadHoaDetails) {
+        setHadHoaDetails(hoaDetailsAdded > 0);
+        if (hoaDetailsAdded > 0) setHoaDetailsOpen(true);
+    }
+
+    const availableAdvancedGroups = advancedGroups.filter((group) =>
+        group.moduleKeys.some((moduleKey) => configuredAdvancedModuleSet.has(moduleKey))
+    );
+    const includedAdvancedGroupCount = availableAdvancedGroups.filter((group) =>
+        group.moduleKeys
+            .filter((moduleKey) => configuredAdvancedModuleSet.has(moduleKey))
+            .every((moduleKey) => enabledAdvancedModuleSet.has(moduleKey))
+    ).length;
+    const [handoffChooserOpen, setHandoffChooserOpen] = useState(false);
+    const handoffSummary = (() => {
+        const total = availableAdvancedGroups.length;
+        if (includedAdvancedGroupCount === 0) return 'None included';
+        if (includedAdvancedGroupCount === total) {
+            return total === 1 ? 'Included, adds one short page' : `All ${total} included, one short page each`;
+        }
+        return `${includedAdvancedGroupCount} of ${total} included, one short page each`;
+    })();
+    const showOptionalDivider = availableOptionalUtilities.length > 0 || showAdvancedModuleSelector || showHoaDetails;
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -152,10 +245,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             {/* Water Source */}
             <div className="space-y-3 sm:space-y-4">
-                <p id="basics-water-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
-                    <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Water Source
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                    <p id="basics-water-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                        <Droplets className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Water Source
+                    </p>
+                    <RequiredTag />
+                </div>
                 <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`} role="group" aria-labelledby="basics-water-label">
                     {waterOptions.map((opt) => (
                         <button
@@ -179,10 +275,13 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
 
             {/* Sewer Type */}
             <div className="space-y-3 sm:space-y-4">
-                <p id="basics-sewer-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
-                    <Waves className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Sewer Type
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                    <p id="basics-sewer-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
+                        <Waves className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        Sewer Type
+                    </p>
+                    <RequiredTag />
+                </div>
                 <div className={`grid gap-2 sm:gap-3 ${hideHoaBilling ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`} role="group" aria-labelledby="basics-sewer-label">
                     {sewerOptions.map((opt) => (
                         <button
@@ -294,73 +393,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 </motion.div>
             )}
 
-                {/* Association details - only after a Yes */}
-                {collectHoaQuestions && state.has_hoa === 'yes' && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="rounded-xl border border-border bg-card/50 p-3 sm:p-4 space-y-3"
-                        data-testid="hoa-details"
-                    >
-                        <h4 className="font-medium text-sm sm:text-base">HOA / Condo Association Details</h4>
-                        <p className="text-xs text-muted-foreground">Fill in what you know. You can skip anything you don&apos;t have handy.</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {HOA_TEXT_FIELDS.map((field) => (
-                                <Fragment key={field.key}>
-                                    <div className={`space-y-1 ${field.key === 'hoa_portal_or_payment' ? 'sm:col-span-2' : ''}`}>
-                                        <label htmlFor={`hoa-${field.key}`} className="block text-xs sm:text-sm font-medium text-muted-foreground">
-                                            {field.label}
-                                        </label>
-                                        <input
-                                            id={`hoa-${field.key}`}
-                                            type={field.inputType}
-                                            inputMode={field.inputType}
-                                            autoComplete="off"
-                                            value={state[field.key] || ''}
-                                            maxLength={field.maxLength}
-                                            onChange={(e) => updateState({ [field.key]: e.target.value })}
-                                            placeholder={field.example}
-                                            aria-describedby={field.helper ? `hoa-${field.key}-helper` : undefined}
-                                            className={`py-2.5 px-3 text-base sm:text-sm rounded-lg ${wizardTextInput}`}
-                                        />
-                                        {field.helper && (
-                                            <p id={`hoa-${field.key}-helper`} className="text-xs text-muted-foreground">{field.helper}</p>
-                                        )}
-                                    </div>
-                                    {field.key === 'hoa_dues_amount' && (
-                                        <div className="space-y-1">
-                                            <p id="hoa-dues-frequency-label" className="block text-xs sm:text-sm font-medium text-muted-foreground">
-                                                How Often
-                                            </p>
-                                            <div className="grid grid-cols-3 gap-2" role="group" aria-labelledby="hoa-dues-frequency-label">
-                                                {HOA_DUES_FREQUENCY_OPTIONS.map((opt) => {
-                                                    const isSelected = state.hoa_dues_frequency === opt.id;
-                                                    return (
-                                                        <button
-                                                            key={opt.id}
-                                                            type="button"
-                                                            onClick={() => updateState({ hoa_dues_frequency: isSelected ? null : opt.id })}
-                                                            aria-pressed={isSelected}
-                                                            data-testid={`hoa-dues-frequency-${opt.id}`}
-                                                            className={`py-2.5 px-2 rounded-lg border text-center text-sm font-medium transition-all active:scale-95 ${wizardFocusRing} ${isSelected
-                                                                ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)]'
-                                                                : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
-                                                                }`}
-                                                        >
-                                                            {opt.label}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                </Fragment>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-
-            {(availableOptionalUtilities.length > 0 || showAdvancedModuleSelector) && (
+            {showOptionalDivider && (
                 <div className="pt-2 flex items-center gap-3">
                     <div className="h-px flex-1 bg-border" />
                     <span className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground font-medium">Optional</span>
@@ -425,24 +458,91 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                 </div>
             )}
 
+            {/* Association details - only after a Yes */}
+            {showHoaDetails && (
+                <OptionalDisclosure
+                    id="hoa-details"
+                    icon={Building2}
+                    title={HOA_SECTION_TITLE}
+                    summary={hoaDetailsAdded > 0
+                        ? `${hoaDetailsAdded} of ${hoaDetailCount} added`
+                        : 'Name, contact, dues, and where to pay'}
+                    actionLabel={hoaDetailsAdded > 0 ? 'Edit' : 'Add details'}
+                    open={hoaDetailsOpen}
+                    onToggle={() => setHoaDetailsOpen((open) => !open)}
+                    testId="hoa-details"
+                >
+                    <p className="text-xs text-muted-foreground">Fill in what you know. You can skip anything you don&apos;t have handy.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {HOA_TEXT_FIELDS.map((field) => (
+                            <Fragment key={field.key}>
+                                <div className={`space-y-1 ${field.key === 'hoa_portal_or_payment' ? 'sm:col-span-2' : ''}`}>
+                                    <label htmlFor={`hoa-${field.key}`} className="block text-xs sm:text-sm font-medium text-muted-foreground">
+                                        {field.label}
+                                    </label>
+                                    <input
+                                        id={`hoa-${field.key}`}
+                                        type={field.inputType}
+                                        inputMode={field.inputType}
+                                        autoComplete="off"
+                                        value={state[field.key] || ''}
+                                        maxLength={field.maxLength}
+                                        onChange={(e) => updateState({ [field.key]: e.target.value })}
+                                        placeholder={field.example}
+                                        aria-describedby={field.helper ? `hoa-${field.key}-helper` : undefined}
+                                        className={`py-2.5 px-3 text-base sm:text-sm rounded-lg ${wizardTextInput}`}
+                                    />
+                                    {field.helper && (
+                                        <p id={`hoa-${field.key}-helper`} className="text-xs text-muted-foreground">{field.helper}</p>
+                                    )}
+                                </div>
+                                {field.key === 'hoa_dues_amount' && (
+                                    <div className="space-y-1">
+                                        <p id="hoa-dues-frequency-label" className="block text-xs sm:text-sm font-medium text-muted-foreground">
+                                            How Often
+                                        </p>
+                                        <div className="grid grid-cols-3 gap-2" role="group" aria-labelledby="hoa-dues-frequency-label">
+                                            {HOA_DUES_FREQUENCY_OPTIONS.map((opt) => {
+                                                const isSelected = state.hoa_dues_frequency === opt.id;
+                                                return (
+                                                    <button
+                                                        key={opt.id}
+                                                        type="button"
+                                                        onClick={() => updateState({ hoa_dues_frequency: isSelected ? null : opt.id })}
+                                                        aria-pressed={isSelected}
+                                                        data-testid={`hoa-dues-frequency-${opt.id}`}
+                                                        className={`py-2.5 px-2 rounded-lg border text-center text-sm font-medium transition-all active:scale-95 ${wizardFocusRing} ${isSelected
+                                                            ? 'bg-[var(--brand-accent-soft)] border-[color:var(--brand-accent-border)] text-[color:var(--brand-accent)]'
+                                                            : 'bg-muted/40 border-border text-muted-foreground hover:border-ring hover:bg-muted'
+                                                            }`}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </Fragment>
+                        ))}
+                    </div>
+                </OptionalDisclosure>
+            )}
+
             {showAdvancedModuleSelector && (
-                <div className="space-y-3 sm:space-y-4">
-                    <p id="basics-handoff-label" className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[color:var(--brand-accent)]">
-                        <span className="inline-flex -space-x-1">
-                            <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
-                                <Flower2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent)]" />
-                            </span>
-                            <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
-                                <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent)]" />
-                            </span>
-                            <span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-muted/60 border border-border">
-                                <Wrench className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[color:var(--brand-accent)]" />
-                            </span>
-                        </span>
-                        Optional handoff details
-                    </p>
-                    <p className="text-xs text-muted-foreground -mt-1 sm:-mt-2">
-                        These help the next owner take over smoothly. Each section you pick adds one short page. You can skip any field later.
+                <OptionalDisclosure
+                    id="basics-handoff"
+                    icon={ListChecks}
+                    title="Optional handoff details"
+                    summary={handoffSummary}
+                    actionLabel="Change"
+                    openLabel="Done"
+                    open={handoffChooserOpen}
+                    onToggle={() => setHandoffChooserOpen((open) => !open)}
+                    testId="basics-handoff"
+                >
+                    <p id="basics-handoff-label" className="text-xs text-muted-foreground">
+                        These help the next owner take over smoothly. Tap a section to include or skip it. You can skip any field later.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3" role="group" aria-labelledby="basics-handoff-label">
                         {advancedGroups.map((group) => {
@@ -481,7 +581,7 @@ export function HomeBasicsStep({ state, updateState, requestedUtilityCategories,
                             );
                         })}
                     </div>
-                </div>
+                </OptionalDisclosure>
             )}
 
             <div className="pt-4 sm:pt-6">

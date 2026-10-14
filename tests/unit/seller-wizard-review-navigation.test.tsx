@@ -200,6 +200,7 @@ describe('SellerWizard revisiting answers', () => {
         click(/public water/i);
         click(/septic system/i);
         // Opt out of Mailbox & Home Access on the first pass.
+        fireEvent.click(screen.getByTestId('basics-handoff-toggle'));
         fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
         click(/^continue$/i);
         click(/ppl electric/i);
@@ -209,6 +210,7 @@ describe('SellerWizard revisiting answers', () => {
         expect(heading('Review and Submit')).toBeInTheDocument();
 
         click('Edit Home Basics');
+        fireEvent.click(screen.getByTestId('basics-handoff-toggle'));
         fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
         click(/^continue$/i);
 
@@ -223,6 +225,7 @@ describe('SellerWizard revisiting answers', () => {
         click(/get started/i);
         click(/public water/i);
         click(/septic system/i);
+        fireEvent.click(screen.getByTestId('basics-handoff-toggle'));
         fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
         click(/^continue$/i);
         click(/ppl electric/i);
@@ -231,6 +234,7 @@ describe('SellerWizard revisiting answers', () => {
 
         click('Edit Home Basics');
         click(/internet/i);
+        fireEvent.click(screen.getByTestId('basics-handoff-toggle'));
         fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
         click(/^continue$/i);
 

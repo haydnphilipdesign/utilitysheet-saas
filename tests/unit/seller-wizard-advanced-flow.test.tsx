@@ -138,9 +138,17 @@ describe('SellerWizard advanced module step flow', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /get started/i }));
 
+        // Every configured section starts included, behind one summary row.
+        const chooser = screen.getByTestId('basics-handoff-toggle');
+        expect(chooser).toHaveAttribute('aria-expanded', 'false');
+        expect(chooser).toHaveTextContent('All 4 included, one short page each');
+        expect(screen.queryByTestId('advanced-group-outdoor_irrigation')).not.toBeInTheDocument();
+        fireEvent.click(chooser);
+
         fireEvent.click(screen.getByTestId('advanced-group-outdoor_irrigation'));
         fireEvent.click(screen.getByTestId('advanced-group-smart_home_security'));
         fireEvent.click(screen.getByTestId('advanced-group-mailbox_access'));
+        expect(chooser).toHaveTextContent('1 of 4 included, one short page each');
 
         answerBasics();
         fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));

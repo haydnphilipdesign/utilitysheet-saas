@@ -130,6 +130,9 @@ test.describe('Seller wizard full journey', () => {
 
         await page.getByTestId('has-hoa-yes').click();
         await expect(page.getByTestId('hoa-details')).toBeVisible();
+        // Optional details sit behind one summary row so Continue stays close.
+        await expect(page.getByLabel('Association Name')).toHaveCount(0);
+        await page.getByTestId('hoa-details-toggle').click();
         await page.getByLabel('Association Name').fill('Lakeview Commons HOA');
         await page.getByLabel('Management Company').fill('Crest Property Management');
         await page.getByLabel('Contact Phone').fill('(555) 204-8890');

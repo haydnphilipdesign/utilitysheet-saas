@@ -230,6 +230,22 @@ describe('SellerWizard editing sessions', () => {
         expect(screen.getByRole('button', { name: /^continue$/i })).toBeDisabled();
     });
 
+    it('opens association details that a draft restores after Home Basics is already showing', () => {
+        // The reopened request opens on Home Basics (no sewer answer), then the
+        // current session's draft arrives with association details in it.
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+            v: 2,
+            editVersion: 1,
+            currentStep: 1,
+            state: { has_hoa: 'yes', hoa_name: 'Lakeview Commons HOA', sewer_type: null },
+        }));
+        renderWizard({ editVersion: 1, hoa: { has_hoa: 'yes' }, prefill: { ...storedSheet, sewer_type: null } });
+
+        expect(heading('Home Basics')).toBeInTheDocument();
+        expect(screen.getByTestId('hoa-details-toggle')).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByLabelText('Association Name')).toHaveValue('Lakeview Commons HOA');
+    });
+
     it('shows the already-submitted notice and keeps no draft when the server refuses a stale tab', async () => {
         fetchMock.mockImplementation(async () => new Response(JSON.stringify({ code: 'ALREADY_SUBMITTED' }), { status: 409 }));
         renderWizard();
