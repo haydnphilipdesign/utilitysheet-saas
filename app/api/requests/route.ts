@@ -1,4 +1,5 @@
 import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
+import { coarseClientFamily } from '@/lib/telemetry/seller-observations';
 import { NextResponse } from 'next/server';
 import { getIntakeBrandProfile, getUsableSellerForm, getRequests, workspaceHasOtherRequestOwners, createRequest, getDashboardStats, getBrandProfile, getDefaultBrandProfile, updateRequestStatus, createEventLog } from '@/lib/neon/queries';
 import { stackServerApp } from '@/lib/stack/server';
@@ -248,6 +249,8 @@ export async function POST(request: Request) {
                 packet_mode: packetMode,
                 advanced_modules: advancedModules,
                 advanced_module_exclusions: advancedModuleExclusions,
+                // Coarse labels outlive the raw header, which retention clears after 30 days.
+                ...coarseClientFamily(userAgent),
             },
             ipAddress,
             userAgent,

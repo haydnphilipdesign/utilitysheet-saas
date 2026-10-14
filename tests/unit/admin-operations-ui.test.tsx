@@ -36,6 +36,7 @@ vi.mock('@/lib/ops/overview', async (original) => ({
     getOperationsSnapshot: mocks.snapshot,
 }));
 vi.mock('@/lib/neon/queries/handoff-evidence', () => ({ loadHandoffEvidenceSummary: mocks.handoffEvidence }));
+vi.mock('@/lib/telemetry/retention', () => ({ loadRetentionStatus: async () => ({ status: 'ok', data: { mode: 'off', plan: [], lastRun: null } }) }));
 vi.mock('@/lib/ops/triage', async (original) => ({
     ...(await original<typeof import('@/lib/ops/triage')>()),
     getTriageRecords: mocks.triageRecords,

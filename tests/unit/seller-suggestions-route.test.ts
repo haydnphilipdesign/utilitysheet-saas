@@ -141,6 +141,12 @@ describe('GET /api/seller/[token]/suggestions', () => {
                 organizationId: 'org-1',
             }
         );
+        // Counts only: provider names stay in the AI telemetry rows, not in the event.
+        expect(vi.mocked(createEventLog).mock.calls.at(-1)?.[0]).toMatchObject({
+            eventType: 'suggestions_fetched',
+            eventData: { category_count: 1, categories: ['electric'], result_counts: { electric: 1 } },
+        });
+        expect(JSON.stringify(vi.mocked(createEventLog).mock.calls)).not.toContain('Duke Energy');
     });
 
     it('returns deterministic fake providers for the UtilitySheet demo workspace', async () => {

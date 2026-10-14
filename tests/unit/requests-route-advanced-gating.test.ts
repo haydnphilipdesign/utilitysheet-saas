@@ -103,6 +103,18 @@ describe('POST /api/requests advanced gating', () => {
         expect(JSON.stringify(warn.mock.calls)).not.toMatch(/private|SQL|address|token|sentinel/);
         warn.mockRestore();
     });
+    it('adds coarse device and browser labels to the creation event', async () => {
+        await POST(new Request('http://localhost/api/requests', {
+            method: 'POST',
+            headers: { 'user-agent': 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1' },
+            body: JSON.stringify({ propertyAddress: '123 Main St, Austin, TX 78701' }),
+        }));
+        expect(mocks.createEventLogMock.mock.calls.at(-1)?.[0]).toMatchObject({
+            eventType: 'request_created',
+            eventData: { actor: 'agent', device: 'tablet', browser: 'safari' },
+        });
+    });
+
     describe('invitation handoff evidence', () => {
         const REQUEST_ID = '00000000-0000-4000-8000-0000000000d1';
         const create = (body: Record<string, unknown> = {}) => POST(new Request('http://localhost/api/requests', {

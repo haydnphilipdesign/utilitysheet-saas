@@ -133,6 +133,7 @@ describe('POST /api/intake/[slug]/start', () => {
     it('retains the address and resume cookie in business output with only flags/configuration in event data', async () => {
         const response = await nestedStart(new Request('http://localhost/api/intake/token-sentinel/forms/name-sentinel/start', {
             method: 'POST', body: JSON.stringify({ propertyAddress: '987 Sentinel Street, Austin, tx 78701' }),
+            headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1' },
         }), nestedParams('token-sentinel', 'name-sentinel'));
         expect(response.status).toBe(200);
         expect(response.headers.get('set-cookie')).toContain('HttpOnly');
@@ -141,6 +142,8 @@ describe('POST /api/intake/[slug]/start', () => {
         expect(vi.mocked(createEventLog).mock.calls[0][0].eventData).toEqual({
             actor: 'seller', source: 'intake_link', address_was_canonicalized: true, street_has_number: true,
             utility_categories: expect.any(Array), packet_mode: 'simple', advanced_modules: [], advanced_module_exclusions: {},
+            // Coarse labels only; the raw header stays in its own column, cleared by retention after 30 days.
+            device: 'mobile', browser: 'safari',
         });
         expect(JSON.stringify(vi.mocked(createEventLog).mock.calls)).not.toMatch(/Sentinel Street|token-sentinel|name-sentinel|seller-token-1/);
     });

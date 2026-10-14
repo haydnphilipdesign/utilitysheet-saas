@@ -192,7 +192,7 @@ export function DashboardLayoutContent({
                                     data-testid="dashboard-shell-new-request"
                                     className="text-sm h-9 px-3"
                                     onClick={() =>
-                                        trackEvent('new_request_started', {
+                                        trackEvent('new_request_cta_clicked', {
                                             source: 'dashboard_shell_desktop_button',
                                             location: 'dashboard_shell',
                                         })
@@ -207,7 +207,7 @@ export function DashboardLayoutContent({
                                     aria-label="New Request"
                                     data-testid="dashboard-shell-new-request-icon"
                                     onClick={() =>
-                                        trackEvent('new_request_started', {
+                                        trackEvent('new_request_cta_clicked', {
                                             source: 'dashboard_shell_tablet_button',
                                             location: 'dashboard_shell',
                                         })
@@ -333,7 +333,7 @@ export function DashboardLayoutContent({
                             <Link
                                 href="/dashboard/requests/new"
                                 onClick={() => {
-                                    trackEvent('new_request_started', {
+                                    trackEvent('new_request_cta_clicked', {
                                         source: 'dashboard_shell_mobile_menu',
                                         location: 'dashboard_shell',
                                     });

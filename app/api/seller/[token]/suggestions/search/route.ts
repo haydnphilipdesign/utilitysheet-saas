@@ -93,7 +93,6 @@ export async function GET(
                 category,
                 query_length: query.length,
                 result_count: results.length,
-                top_results: results.slice(0, 5).map((item) => item.display_name),
             },
         });
 

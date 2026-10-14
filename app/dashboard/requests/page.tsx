@@ -273,7 +273,7 @@ export default function RequestsPage() {
                         data-testid="requests-new-request"
                         className={buttonVariants()}
                         onClick={() =>
-                            trackEvent('new_request_started', {
+                            trackEvent('new_request_cta_clicked', {
                                 source: 'requests_header_button',
                                 location: 'requests_page',
                             })

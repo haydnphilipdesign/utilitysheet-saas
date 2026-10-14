@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
     recordSuccess: vi.fn(),
     startJobRun: vi.fn(),
     finishJobRun: vi.fn(),
-    prune: vi.fn(),
+    retention: vi.fn(),
     createPdf: vi.fn(),
     checkRateLimit: vi.fn(),
     constructEvent: vi.fn(),
@@ -33,10 +33,10 @@ vi.mock('@/lib/ops/events', () => ({
     recordOperationalSuccess: mocks.recordSuccess,
     startJobRun: mocks.startJobRun,
     finishJobRun: mocks.finishJobRun,
-    pruneOperationalObservations: mocks.prune,
     getOpsRetentionDays: () => 90,
     errorNameOf: (error: unknown) => (error instanceof Error ? error.name : 'Error'),
 }));
+vi.mock('@/lib/telemetry/retention', () => ({ runScheduledRetention: mocks.retention }));
 vi.mock('@/lib/pdf/packet-attachment', () => ({ createPacketPdfAttachmentForPublicToken: mocks.createPdf }));
 vi.mock('@/lib/packet/packet-data', () => ({ PACKET_LOCKED_MESSAGE: 'locked' }));
 vi.mock('@/lib/rate-limit', () => ({
@@ -120,6 +120,7 @@ beforeEach(() => {
     vi.stubEnv('RESEND_WEBHOOK_SECRET', 'whsec_resend');
     vi.stubEnv('CRON_SECRET', 'cron-secret');
     vi.stubEnv('OPS_RETENTION_PRUNE_ENABLED', '');
+    mocks.retention.mockResolvedValue(null);
     mocks.checkRateLimit.mockResolvedValue({ success: true });
     mocks.recordEvent.mockResolvedValue(true);
     mocks.recordSuccess.mockResolvedValue(true);
@@ -351,7 +352,7 @@ describe('scheduled jobs', () => {
         expect((await cron(reconcileCron, 'wrong')).status).toBe(401);
     });
 
-    it('monitor route requires the cron secret and neither sends nor prunes unless enabled', async () => {
+    it('monitor route requires the cron secret and reports retention only when it ran', async () => {
         expect((await cron(monitorGet, 'wrong')).status).toBe(401);
         expect(mocks.runAlerts).not.toHaveBeenCalled();
 
@@ -360,14 +361,33 @@ describe('scheduled jobs', () => {
         const response = await cron(monitorGet);
         expect(await response.json()).toEqual({
             alertsEnabled: false, conditionsFiring: ['pdf_failures'], notificationsPlanned: [{ key: 'pdf_failures', kind: 'firing' }],
-            sent: 0, failed: 0, stateWriteFailed: 0, pruned: null, monitoringStatus: 'success', aiCoverage: 'ok',
+            sent: 0, failed: 0, stateWriteFailed: 0, retention: null, monitoringStatus: 'success', aiCoverage: 'ok',
         });
-        expect(mocks.prune).not.toHaveBeenCalled();
+        expect(mocks.retention).toHaveBeenCalledTimes(1);
+        expect(mocks.finishJobRun).toHaveBeenLastCalledWith(expect.anything(), 'success', expect.objectContaining({ retentionRan: 0, retentionFailed: 0 }));
 
-        vi.stubEnv('OPS_RETENTION_PRUNE_ENABLED', 'true');
-        mocks.prune.mockResolvedValue({ events: 4, jobRuns: 1 });
-        expect((await (await cron(monitorGet)).json()).pruned).toEqual({ events: 4, jobRuns: 1 });
-        expect(mocks.prune).toHaveBeenCalledWith(expect.objectContaining({ retentionDays: 90 }));
+        mocks.retention.mockResolvedValue({ status: 'not_due', mode: 'enforce' });
+        expect(await (await cron(monitorGet)).json()).toMatchObject({ retention: { status: 'not_due' }, monitoringStatus: 'success' });
+
+        mocks.retention.mockResolvedValue({
+            status: 'ran', mode: 'enforce', failed: 0,
+            classes: [{ key: 'jobRuns', label: 'Scheduled job runs', kind: 'delete', action: 'enforce', windowDays: 90, affected: 4, oldest: null, failed: false }],
+        });
+        expect((await (await cron(monitorGet)).json()).retention).toEqual({
+            status: 'ran', mode: 'enforce', classes: [{ key: 'jobRuns', action: 'enforce', affected: 4, failed: false }],
+        });
+        expect(mocks.finishJobRun).toHaveBeenLastCalledWith(expect.anything(), 'success', expect.objectContaining({ retentionRan: 1, retentionFailed: 0 }));
+    });
+
+    it('monitor marks a failed retention run partial and still evaluates alerts', async () => {
+        mocks.getJobStatuses.mockResolvedValue([]);
+        mocks.runAlerts.mockResolvedValue({ enabled: true, conditionsFiring: [], planned: [], sent: 0, failed: 0, stateWriteFailed: 0 });
+        mocks.retention.mockResolvedValue({ status: 'failed', mode: 'enforce', classes: [], failed: 1 });
+        const response = await cron(monitorGet);
+        expect(response.status).toBe(200);
+        expect(await response.json()).toMatchObject({ monitoringStatus: 'partial', retention: { status: 'failed' } });
+        expect(mocks.runAlerts).toHaveBeenCalled();
+        expect(mocks.finishJobRun).toHaveBeenLastCalledWith(expect.anything(), 'partial', expect.objectContaining({ retentionFailed: 1 }));
     });
 
     it('monitor route reports a pending migration instead of an empty result', async () => {
@@ -389,7 +409,6 @@ describe('scheduled jobs', () => {
             expect(mocks.getJobStatuses).toHaveBeenCalledWith(expect.anything(), new Date('2026-10-13T12:00:00Z'), undefined, 'run-1');
             expect(mocks.runAlerts).toHaveBeenCalledWith(expect.objectContaining({ aiHealth: null }));
             expect(mocks.finishJobRun).toHaveBeenLastCalledWith(expect.anything(), 'partial', expect.objectContaining({ aiUnavailable: 1 }));
-            expect(mocks.prune).not.toHaveBeenCalled();
         } finally { vi.useRealTimers(); }
     });
 

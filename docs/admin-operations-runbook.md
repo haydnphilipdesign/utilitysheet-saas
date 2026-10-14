@@ -230,9 +230,14 @@ Default thresholds: three unexpected PDF failures in 15 minutes; any unrecovered
 
 The source schedule is already configured; do not add a duplicate or change it for Slice 7. Hosted scheduling is unverified. The route uses the existing `CRON_SECRET`. With alerts disabled it evaluates conditions and records AI health/heartbeat evidence but sends nothing. Its own currently running row is excluded from alert evaluation so the previous outcome is not masked; the read-only Admin heartbeat includes it.
 
-**d. Retention pruning.** Deletes old observations.
+**d. Retention.** Deletes or clears old telemetry. Rules and what is never touched: `docs/telemetry-privacy.md`, "Retention".
 
-Set `OPS_RETENTION_PRUNE_ENABLED=true` (and optionally `OPS_EVENT_RETENTION_DAYS`, default 90). It runs inside the monitor route, so it also needs step c. It deletes only `operational_events` and `job_runs` rows older than the window. It never touches audit logs or reminder operations.
+1. Set `TELEMETRY_RETENTION_MODE=preview` in Vercel (Production) and redeploy. Nothing is changed.
+2. After the next daily run, open Admin > Operations > Retention and read the "would delete" and "would clear" counts.
+3. When they look right, set `TELEMETRY_RETENTION_MODE=enforce` and redeploy. Each rule then changes at most 2,000 rows a day, oldest first.
+4. The one-time historical cleanups stay in preview until `TELEMETRY_RETENTION_HISTORICAL_CLEANUP=true` is also set.
+
+It runs from the monitor route (step c), at most once in 23 hours, and records a `telemetry_retention` job run. `OPS_RETENTION_PRUNE_ENABLED=true` on its own still enforces only the operational incident and job-run rules (window `OPS_EVENT_RETENTION_DAYS`, default 90). A retention failure marks the monitor run partial and never stops alerts. Deleted rows can only come back through a database point-in-time restore, within its window.
 
 **e. External uptime probe.** Needed for database and site outages; not provisioned.
 
@@ -270,7 +275,7 @@ To do it safely:
 | AI suggestions, search and contact lookups | A service issue when half or more of at least 10 fresh runs of a feature end badly in 24 hours (suggestions on the generic list; search or contact calls failing) | Up to 15 minutes after the tenth run, and only while the monitor job runs | A slow decline below the threshold; wrong but plausible answers; an outage at very low traffic until 10 runs accumulate | Admin Telemetry (outcomes, usage, acceptance); Google AI Studio and Cloud billing |
 | Database and site | Nothing in-app beyond "this page loaded" | n/a | Cannot detect its own outage | External probe, Neon and Vercel status |
 
-Observations are kept for 90 days by default once pruning is enabled. Audit logs follow their own policy and are never pruned with them.
+Retention windows once enforced: operational incidents and job runs 90 days (configurable), seller diagnostics 90 days, endpoint observations and email/PDF evidence 180 days, AI runs 365 days, IP address and browser header 30 days (cleared, row kept). Lifecycle events, reminders, audit logs, billing and outreach records are never removed by it.
 
 ## 7. Environment variables added by this work
 
@@ -288,7 +293,9 @@ All are optional and default to off. `.env.example` is ignored by git in this re
 | `OPS_ALERT_AI_MIN_RUNS` | `10` | Fresh runs needed in the window before the share is judged. |
 | `OPS_ALERT_AI_WINDOW_HOURS` | `24` | Window for the AI share (1 to 168). |
 | `OPS_EVENT_RETENTION_DAYS` | `90` | Retention for operational observations (7 to 365). |
-| `OPS_RETENTION_PRUNE_ENABLED` | `false` | Must be `true` for the monitor route to delete expired observations. |
+| `OPS_RETENTION_PRUNE_ENABLED` | `false` | `true` enforces the operational incident and job-run rules even while `TELEMETRY_RETENTION_MODE` is off. |
+| `TELEMETRY_RETENTION_MODE` | `off` | `preview` counts what each retention rule would affect; `enforce` deletes or clears. Any other value is off. |
+| `TELEMETRY_RETENTION_HISTORICAL_CLEANUP` | `false` | With `enforce`, also applies the one-time historical cleanups. Otherwise they are previewed. |
 
 Existing variables this work relies on, unchanged: `CRON_SECRET` (monitor route), `ADMIN_WRITES_DISABLED`, `STRIPE_SECRET_KEY` (only its prefix, to choose the Stripe dashboard link mode), `RESEND_API_KEY`, `NEXT_PUBLIC_APP_URL` (link in alert text).
 
@@ -313,7 +320,7 @@ Reading it:
 - **Nothing listed.** Unknown, not "nothing sent". Recording is best effort and starts at release.
 - New issues: "Invitation email to a seller was not sent", and bounce, spam-complaint and undelivered issues for completion and invitation email (these need the webhook). Seller test sends never raise them.
 
-Rollback: the tables are unused by older code; leave them in place. They are deleted with their request and have no time-based pruning yet.
+Rollback: the tables are unused by older code; leave them in place. They are deleted with their request, and after 180 days once retention is enforced (5.5d).
 
 
 ## Slice 7 external verification — unverified (2026-10-13)

@@ -198,11 +198,9 @@ export async function GET(
             eventData: {
                 category_count: categories.length,
                 categories,
-                top_results_by_category: Object.fromEntries(
-                    Object.entries(suggestions).map(([key, value]) => [
-                        key,
-                        value.slice(0, 3).map((item) => item.display_name),
-                    ])
+                // Counts only: provider names already live in the AI telemetry rows.
+                result_counts: Object.fromEntries(
+                    Object.entries(suggestions).map(([key, value]) => [key, value.length])
                 ),
             },
         });

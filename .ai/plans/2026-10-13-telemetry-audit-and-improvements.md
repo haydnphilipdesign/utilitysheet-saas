@@ -214,6 +214,8 @@ The audit-time collection findings below describe the original baseline. Slice 1
 
 ## Slice 9 — Retention and collection simplification (P2; separate policy approval)
 
+**Status (2026-10-14): owner approved all decisions; implemented and validated locally, uncommitted in worktree `.worktrees/slice-9` (branch `telemetry-slice-9`).** Plan, inventory, EXPLAIN results and execution record: `2026-10-14-telemetry-slice-9-retention.md`. Decision: `../decisions/2026-10-14-telemetry-retention.md`. Production stays off until the owner switches to preview. Slice 8 remains proposed and comes after.
+
 **Problem/benefit:** limit unnecessary copies and growth without losing required billing/audit evidence.
 
 **Files:** current ops pruning, AI/event/growth query/schema modules, account-closure/export boundaries, collector/UI callers, docs/tests. Durable policy decision belongs in `.ai/decisions/` only when adopted.

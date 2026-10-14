@@ -1,4 +1,5 @@
 import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
+import { coarseClientFamily } from '@/lib/telemetry/seller-observations';
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 /**
  * Public reusable-link handlers shared by the flat (`/form/base`, earlier `/i/base`) and nested
@@ -282,6 +283,7 @@ export async function intakeStartResponse(request: Request, target: IntakeTarget
                 packet_mode: packetMode,
                 advanced_modules: advancedModules,
                 advanced_module_exclusions: advancedModuleExclusions,
+                ...coarseClientFamily(userAgent),
             },
             ipAddress: ipAddress === 'unknown' ? null : ipAddress,
             userAgent,

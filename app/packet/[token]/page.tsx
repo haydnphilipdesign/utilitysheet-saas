@@ -222,9 +222,6 @@ export default function PacketPage({ params }: { params: Promise<{ token: string
         try {
             await generatePacketPdf(resolvedParams.token);
             if (data.mode === 'advanced') {
-                trackEvent('advanced_packet_generated', {
-                    location: 'packet_header',
-                });
                 trackEvent('advanced_packet_downloaded', {
                     location: 'packet_header',
                 });

@@ -126,6 +126,8 @@ AI telemetry intentionally does not store:
 
 Provider names generated/served for sellers are stored because they are the object being evaluated. Location is limited to state, ZIP3, and city. Contact lookups store no provider name, phone number or link, only whether one was found. Usage is stored as counts; search queries and source addresses are not stored.
 
+Retention: once enforced, runs older than 365 days are deleted with their items, including runs whose request was already deleted (they otherwise survive deletion and account closure). Prompt, model and cost comparisons therefore reach back at most a year. Rules and switches: [telemetry-privacy.md](telemetry-privacy.md), "Retention". Suggestion events in `event_logs` no longer copy provider names; these rows are the only place they are kept.
+
 ## Reduced `seller_submitted` Event Logging
 
 The long-lived `event_logs` row for `seller_submitted` now stores a redacted summary instead of the full submitted form payload.

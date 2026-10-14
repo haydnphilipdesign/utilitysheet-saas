@@ -2,13 +2,13 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AdminPageHeader } from '@/components/admin/primitives';
 import { HandoffEvidenceCard } from '@/components/admin/HandoffEvidence';
+import { RetentionCard } from '@/components/admin/RetentionCard';
 import { TriageControls, type TriageView } from '@/components/admin/TriageControls';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireAdmin } from '@/lib/admin';
 import { formatAdminDate } from '@/lib/admin/date-format';
 import { getAlertConfig } from '@/lib/ops/alerts';
-import { getOpsRetentionDays } from '@/lib/ops/events';
 import {
     FOLLOW_UP_INACTIVE_DAYS,
     FOLLOW_UP_PAGE_SIZE,
@@ -28,6 +28,7 @@ import {
 import { effectiveTriageState, getTriageRecords, type TriageRecord } from '@/lib/ops/triage';
 import { isMissingRelationError } from '@/lib/neon/statements';
 import { loadHandoffEvidenceSummary } from '@/lib/neon/queries/handoff-evidence';
+import { loadRetentionStatus } from '@/lib/telemetry/retention';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,9 +169,10 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
     const showHandled = params.show === 'all';
 
     const now = new Date();
-    const [snapshot, handoffEvidence] = await Promise.all([
+    const [snapshot, handoffEvidence, retention] = await Promise.all([
         getOperationsSnapshot({ now, followUpPage }),
         loadHandoffEvidenceSummary(),
+        loadRetentionStatus(),
     ]);
 
     const incidents = snapshot.incidents.status === 'ok' ? snapshot.incidents.data.incidents : [];
@@ -436,6 +438,8 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
                     </CardContent>
                 </Card>
 
+                <RetentionCard state={retention} />
+
                 <Card className="border-border/70 bg-card shadow-sm xl:col-span-2">
                     <CardHeader>
                         <CardTitle className="text-base">What this page can and cannot tell you</CardTitle>
@@ -447,7 +451,7 @@ export default async function OperationsPage({ searchParams }: { searchParams: O
                             ['Delivery webhook', process.env.RESEND_WEBHOOK_SECRET ? 'Signing secret is configured. Registration with the provider is verified outside this app.' : 'Not configured. Delivery, bounce and complaint evidence is not being received.'],
                             ['Alerts', alertConfig.enabled ? 'Enabled with a destination configured. They only run when the monitor job is scheduled.' : 'Disabled. Nothing is sent; this page is the only place problems appear.'],
                             ['AI suggestions', `Reported above when ${alertConfig.ai.sharePct}% or more of at least ${alertConfig.ai.minRuns} fresh runs in ${alertConfig.ai.windowHours} hours end badly; checked by the monitor job. Outcomes, usage and acceptance are on the Telemetry page.`],
-                            ['Retention', `Observations are kept for ${getOpsRetentionDays()} days${process.env.OPS_RETENTION_PRUNE_ENABLED === 'true' ? '' : ' once pruning is enabled (it is currently off)'}. Audit logs are never pruned with them.`],
+                            ['Retention', 'See the Retention card. When a rule has removed old records, older history shows as unknown, not as no activity.'],
                         ] as const).map(([label, text]) => (
                             <div key={label}>
                                 <div className="font-medium text-foreground">{label}</div>

@@ -1,4 +1,5 @@
 import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
+import { coarseClientFamily } from '@/lib/telemetry/seller-observations';
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 import { maintenanceResponse } from '@/lib/maintenance/server';
@@ -350,7 +351,7 @@ export async function GET(
         await recordAuxiliaryEvent({
             requestId: requestData.id,
             eventType: 'seller_opened',
-            eventData: { actor: 'seller' },
+            eventData: { actor: 'seller', ...coarseClientFamily(userAgent) },
             ipAddress,
             userAgent,
         });
@@ -702,6 +703,7 @@ export async function POST(
                     advanced_module_exclusions: configuredAdvancedModuleExclusions,
                 }),
                 edit_version: editVersion,
+                ...coarseClientFamily(userAgent),
             },
             ipAddress,
             userAgent,

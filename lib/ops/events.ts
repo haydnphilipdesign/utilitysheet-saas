@@ -153,7 +153,8 @@ export async function recordOperationalSuccess(input: Omit<OperationalEventInput
 /** Jobs with a schedule in vercel.json. Anything else is never reported overdue. */
 export const SCHEDULED_JOBS = ['activation_reconcile', 'activation_reengagement', 'account_closure_retry', 'ops_monitor'] as const;
 export type ScheduledJobName = (typeof SCHEDULED_JOBS)[number];
-export type JobName = ScheduledJobName;
+/** `telemetry_retention` runs from the monitor at most daily and is not part of the heartbeat. */
+export type JobName = ScheduledJobName | 'telemetry_retention';
 export type JobRunHandle = { id: string | null; jobName: JobName; startedAtMs: number };
 
 function countsOnly(summary: Record<string, unknown>): Record<string, number> {
@@ -215,25 +216,4 @@ export function getOpsRetentionDays(value = process.env.OPS_EVENT_RETENTION_DAYS
     return Math.min(365, Math.max(7, parsed));
 }
 
-/**
- * Deletes transient observations older than the retention window. Audit logs
- * and reminder operations are deliberately out of scope.
- */
-export async function pruneOperationalObservations(input: { retentionDays: number; db?: StatementExecutor }): Promise<{
-    events: number;
-    jobRuns: number;
-}> {
-    const db = input.db ?? getStatementExecutor();
-    const days = Math.min(365, Math.max(7, Math.trunc(input.retentionDays)));
-    const [events, jobRuns] = await db.transaction([
-        {
-            text: `DELETE FROM operational_events WHERE occurred_at < NOW() - make_interval(days => $1::int) RETURNING id`,
-            params: [days],
-        },
-        {
-            text: `DELETE FROM job_runs WHERE started_at < NOW() - make_interval(days => $1::int) RETURNING id`,
-            params: [days],
-        },
-    ]);
-    return { events: events.length, jobRuns: jobRuns.length };
-}
+// Deletion itself lives in lib/telemetry/retention.ts (operationalEvents and jobRuns classes).

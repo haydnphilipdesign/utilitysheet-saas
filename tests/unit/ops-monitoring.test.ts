@@ -20,12 +20,12 @@ import { applyEmailDeliveryEvent, deliveryStatusForEventType } from '@/lib/ops/e
 import {
     finishJobRun,
     getOpsRetentionDays,
-    pruneOperationalObservations,
     recordOperationalEvent,
     recordOperationalSuccess,
     sanitizeOperationalMetadata,
     startJobRun,
 } from '@/lib/ops/events';
+import { resolveRetentionPlan, runRetention } from '@/lib/telemetry/retention';
 import {
     classifyJob,
     describeCollection,
@@ -492,7 +492,11 @@ describe('retention', () => {
             UPDATE reminder_operations SET created_at = NOW() - INTERVAL '400 days';
             INSERT INTO admin_audit_logs (admin_id, action, created_at) VALUES ('${ADMIN}', 'role_changed', NOW() - INTERVAL '400 days');
         `);
-        expect(await pruneOperationalObservations({ db: exec, retentionDays: 90 })).toEqual({ events: 1, jobRuns: 1 });
+        const results = await runRetention({ db: exec, items: resolveRetentionPlan({ OPS_RETENTION_PRUNE_ENABLED: 'true', OPS_EVENT_RETENTION_DAYS: '90' }).items });
+        expect(results.map(({ key, action, affected }) => ({ key, action, affected }))).toEqual([
+            { key: 'operationalEvents', action: 'enforce', affected: 1 },
+            { key: 'jobRuns', action: 'enforce', affected: 1 },
+        ]);
         expect(await count('SELECT COUNT(*)::int AS n FROM operational_events')).toBe(1);
         expect(await count('SELECT COUNT(*)::int AS n FROM admin_audit_logs')).toBe(1);
         expect(await count('SELECT COUNT(*)::int AS n FROM reminder_operations')).toBe(1);

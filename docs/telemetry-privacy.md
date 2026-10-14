@@ -279,8 +279,9 @@ The `empty_reason` separates a failed suggestion load (`load_failed`) from a
 loaded empty list (`no_suggestions`) and a search without matches
 (`no_results`), which the screen itself shows the same way.
 
-No schema, dependency, retention, deployment or production change. Rows are
-removed with their request. The account export lists event types and times
+No schema, dependency, deployment or production change. Rows are
+removed with their request, and after 90 days once retention is enforced
+(see "Retention"). The account export lists event types and times
 only, so these types appear there without payloads. Durable rationale:
 [seller diagnostic observations](../.ai/decisions/2026-10-13-seller-diagnostic-observations.md).
 
@@ -313,8 +314,60 @@ Rules:
   failure logs one redacted `auxiliary_write_failed` marker with
   `observation: handoff_evidence` and changes no send, download or submission.
 - 200 notification rows and 300 PDF rows per request; past that nothing more
-  is stored for the request. Rows are deleted with the request. There is no
-  time-based pruning yet (Slice 9).
+  is stored for the request. Rows are deleted with the request, and after
+  180 days by retention once it is enforced (see "Retention" below).
 - Accepted means the provider took the message. Delivered is the provider's
   report. Neither proves a person read it. A missing record is unknown.
 - Seller reminders are unchanged and stay in `reminder_operations`.
+
+## Retention (Slice 9)
+
+Old telemetry is removed by rule from `lib/telemetry/retention.ts`. It is off
+unless configured, and nothing is counted or changed while it is off. Policy and
+rationale: [telemetry retention](../.ai/decisions/2026-10-14-telemetry-retention.md).
+
+| Rule | Rows | After |
+| --- | --- | --- |
+| Seller browser diagnostics | the six Slice 5 `seller_*` event types | 90 days, deleted |
+| Endpoint observations | `seller_opened`, `seller_self_send_link`, `suggestions_fetched`, `suggestions_search` | 180 days, deleted |
+| IP address and browser header | `event_logs.ip_address` and `user_agent` on any event | 30 days, cleared; the row stays |
+| AI runs | `ai_generation_runs` and, through the cascade, their items | 365 days, deleted |
+| Email and PDF evidence | `notification_observations`, `pdf_render_observations` | 180 days (never below 30), deleted |
+| Operational incidents and job runs | `operational_events`, `job_runs` | `OPS_EVENT_RETENTION_DAYS` (default 90), deleted |
+| Historical intake addresses (one-time) | `submitted_property_address`, `canonical_property_address`, `slug`, `suffix` keys on old intake `request_created` rows | any age, keys removed |
+| Historical provider names (one-time) | `top_results_by_category`, `top_results` keys on old suggestion rows | any age, keys removed |
+
+Never touched: lifecycle events (`request_created`, `seller_submitted`,
+`submitted_sheet_edited`, reopen, `reminder_sent`, admin changes, test drive)
+and any event type not listed above, `reminder_operations`, `admin_audit_logs`,
+`account_security_events`, billing and `referral_credits`, activation and
+testimonial outreach logs (they are send guards), feedback and question
+requests, growth attribution and referral events. Soft-deleted requests are
+unchanged; their retention is a separate product decision.
+
+Switches: `TELEMETRY_RETENTION_MODE` (`off` by default; `preview` counts only;
+`enforce` changes rows). One-time historical rules stay in preview until
+`TELEMETRY_RETENTION_HISTORICAL_CLEANUP=true` is also set with `enforce`. The
+operational rules keep their own `OPS_RETENTION_PRUNE_ENABLED`. The ops
+monitor calls retention every 15 minutes, but it runs at most once in 23 hours
+and records its own `telemetry_retention` job run with counts per rule. Each
+rule is one statement changing at most 2,000 rows, oldest first, so a backlog
+drains over several days. A row is affected only when strictly older than its
+window; a row without a timestamp is kept. A failing rule is logged with its
+name and error class only, the other rules still run, and the monitor run is
+marked partial. Admin > Operations > Retention shows the configuration and the
+last run.
+
+Collection changes in the same slice: suggestion events no longer copy
+provider names (counts only; the names stay in the AI rows), and request
+creation, opens, return-link sends and submissions add the coarse `device` and
+`browser` labels used by Slice 5, so they survive the 30-day IP/User-Agent
+rule. Browser analytics: dashboard buttons now send `new_request_cta_clicked`
+and `new_request_started` means the new-request page opened; an Advanced PDF
+download sends only `advanced_packet_downloaded`; ten unused event definitions
+were removed. Vercel counts for those names change from the release date.
+
+EXPLAIN on 1 million synthetic `event_logs` rows (about 87 times the
+2026-10-14 volume) showed one sequential scan of 0.25 to 0.7 seconds per
+`event_logs` rule, once a day; no index was added. Deleted rows cannot be
+recovered beyond the database's point-in-time restore window.

@@ -34,6 +34,7 @@ test.beforeAll(async () => {
         '@/lib/ops/triage': 'export async function getTriageRecords() { return new Map(); } export function effectiveTriageState() { return {state:"open",returned:null}; }',
         '@/lib/ops/events': 'export const SCHEDULED_JOBS=["activation_reconcile","activation_reengagement","account_closure_retry","ops_monitor"]; export function getOpsRetentionDays(){return 90;}',
         '@/lib/neon/statements': 'export function getStatementExecutor(){throw new Error("Fixture forbids DB access");} export function isMissingRelationError(){return false;}',
+        '@/lib/telemetry/retention': 'export async function loadRetentionStatus(){return {status:"ok",data:{mode:"off",plan:[],lastRun:null}};}',
         '@/components/admin/TriageControls': 'export function TriageControls(){return null;}',
         'next/link': 'import React from "react"; export default function Link(props){return React.createElement("a",props);}',
     };

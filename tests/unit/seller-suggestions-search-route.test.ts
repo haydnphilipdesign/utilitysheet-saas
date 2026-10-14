@@ -145,5 +145,10 @@ describe('GET /api/seller/[token]/suggestions/search', () => {
             }
         );
         expect(await res.json()).toEqual([{ display_name: 'Duke Energy', confidence: 0.9 }]);
+        expect(vi.mocked(createEventLog).mock.calls.at(-1)?.[0]).toMatchObject({
+            eventType: 'suggestions_search',
+            eventData: { category: 'electric', query_length: 4, result_count: 1 },
+        });
+        expect(JSON.stringify(vi.mocked(createEventLog).mock.calls)).not.toMatch(/Duke Energy|duke/);
     });
 });

@@ -58,18 +58,6 @@ type AnalyticsEventMap = {
   dashboard_first_run_link_viewed: BasePayload & {
     source: string;
   };
-  onboarding_step_viewed: BasePayload & {
-    step: string;
-    step_number: number;
-  };
-  onboarding_step_completed: BasePayload & {
-    step: string;
-    step_number: number;
-    method: "completed" | "skipped";
-  };
-  onboarding_completed: BasePayload & {
-    destination: string;
-  };
   progressive_setup_viewed: BasePayload & {
     source: string;
   };
@@ -88,9 +76,6 @@ type AnalyticsEventMap = {
   seller_link_copied: BasePayload & {
     source: string;
   };
-  seller_form_preview_opened: BasePayload & {
-    source: string;
-  };
   seller_link_sms_copied: BasePayload & {
     source: string;
   };
@@ -106,6 +91,11 @@ type AnalyticsEventMap = {
     source: string;
     destination: string;
   };
+  // A button or menu item that leads to the new-request page (click intent).
+  new_request_cta_clicked: BasePayload & {
+    source: string;
+  };
+  // The new-request page itself opened. Counted once per visit.
   new_request_started: BasePayload & {
     source: string;
   };
@@ -138,7 +128,7 @@ type AnalyticsEventMap = {
     to_mode: "simple" | "advanced";
     reason: string;
   };
-  advanced_packet_generated: BasePayload;
+  // One event per successful Advanced sheet PDF download.
   advanced_packet_downloaded: BasePayload;
   packet_action_clicked: BasePayload & {
     action: "copy_link" | "download_pdf" | "phone_tap" | "website_tap";
@@ -150,18 +140,6 @@ type AnalyticsEventMap = {
   packet_referral_cta_clicked: BasePayload & {
     source: "packet_share_page";
     has_referral_code: boolean;
-  };
-  dashboard_reusable_link_copied: BasePayload & {
-    location: string;
-  };
-  dashboard_reusable_slug_save_attempted: BasePayload & {
-    location: string;
-  };
-  dashboard_reusable_slug_save_succeeded: BasePayload & {
-    location: string;
-  };
-  dashboard_reusable_upgrade_clicked: BasePayload & {
-    location: string;
   };
   intake_address_continue_clicked: BasePayload & {
     location: string;
@@ -207,10 +185,6 @@ type AnalyticsEventMap = {
   };
   seller_submission_retry_clicked: BasePayload & {
     error_kind: "network" | "server" | "rate_limit" | "unknown";
-  };
-  seller_success_pdf_downloaded: BasePayload;
-  seller_success_email_confirmation_requested: BasePayload & {
-    success: boolean;
   };
   test_drive_completed: BasePayload & {
     source: "seller_flow";

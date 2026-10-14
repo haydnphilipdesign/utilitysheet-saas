@@ -1,4 +1,5 @@
 import { auxiliaryEventWriter } from '@/lib/telemetry/auxiliary-events';
+import { coarseClientFamily } from '@/lib/telemetry/seller-observations';
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import { capabilityRateLimitIdentifier } from '@/lib/rate-limit-identifier';
 import { maintenanceResponse } from '@/lib/maintenance/server';
@@ -96,7 +97,7 @@ export async function POST(
         await recordAuxiliaryEvent({
             requestId: requestData.id,
             eventType: 'seller_self_send_link',
-            eventData: { actor: 'seller', channel: 'email' },
+            eventData: { actor: 'seller', channel: 'email', ...coarseClientFamily(userAgent) },
             ipAddress,
             userAgent,
         });

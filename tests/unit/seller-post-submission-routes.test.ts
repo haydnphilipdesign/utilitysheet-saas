@@ -95,6 +95,24 @@ describe('auxiliary seller observations', () => {
         expect(mocks.submit).not.toHaveBeenCalled();
     });
 
+    it('adds coarse device and browser labels to open, return-link and submission evidence', async () => {
+        const headers = { 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36' };
+        mocks.requestByToken.mockResolvedValueOnce({ ...stored, status: 'sent' });
+        await sellerGet(new Request('http://localhost/api/seller/seller-fixture', { headers }), sellerContext);
+        mocks.reminderEmail.mockResolvedValueOnce({ success: true });
+        await sendLink(new Request('http://localhost/api/seller/seller-fixture/send-link', {
+            method: 'POST', headers, body: JSON.stringify({ email: 'seller@example.test' }),
+        }), sellerContext);
+
+        expect(mocks.event.mock.calls.map(([params]) => [params.eventType, params.eventData])).toEqual([
+            ['seller_opened', { actor: 'seller', device: 'desktop', browser: 'chrome' }],
+            ['seller_self_send_link', { actor: 'seller', channel: 'email', device: 'desktop', browser: 'chrome' }],
+        ]);
+
+        await submit(answers);
+        expect(mocks.submit.mock.calls[0][0].eventData).toMatchObject({ actor: 'seller', device: 'unknown', browser: 'unknown' });
+    });
+
     it.each(['reject', 'slow'] as const)('keeps accepted self-link delivery successful without resending when evidence is %s', async (failure) => {
         mocks.reminderEmail.mockResolvedValueOnce({ success: true });
         if (failure === 'reject') mocks.event.mockRejectedValueOnce(new Error('private sentinel'));
