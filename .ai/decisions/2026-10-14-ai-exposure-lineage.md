@@ -1,6 +1,6 @@
 # AI generation, exposure and accepted-choice lineage
 
-- Date: 2026-10-14. Status: owner approved A-E in chat; implemented and validated locally, uncommitted.
+- Date: 2026-10-14. Status: owner approved A-E in chat; implemented/validated, live migration applied/verified and 977d6c9 published on origin/telemetry-slice-8 under later explicit owner authorization.
 - Plan: `../plans/2026-10-14-telemetry-slice-8-lineage.md`.
 - Related policies: `2026-10-13-telemetry-report-definitions.md`, `2026-10-13-seller-diagnostic-observations.md`, `2026-10-13-auxiliary-observation-budgets.md`, `2026-10-14-telemetry-retention.md`.
 
@@ -29,3 +29,13 @@ Owner approval authorizes local integration and implementation with fixtures/moc
 ## Verified local implementation
 
 UX 68fbf38 was fast-forwarded first without a new commit, preserving task documents. One SQL statement owns run/items/first exposure; followers have one 500 ms budget including shared persistence plus their query. Cache namespaces advance actual base v9/v8/v3 to envelope v10/v9/v4. Immutable choices, advisory v1/v2 browser memberships, explicit retention, aggregate Admin lineage/change proxies and versioned estimate coverage are implemented. Validation uses disposable PostgreSQL and intercepted installed SDK/Neon HTTP, with no live actions. Full results and limitations are in the completed plan and CURRENT.
+
+## Later execution authorization
+
+On 2026-10-14 the owner explicitly requested the live migration and commit/push
+of the completed worktree. The additive migration was applied transactionally
+and verified using schema metadata only. Implementation 977d6c9 was committed
+and pushed on telemetry-slice-8, with the remote hash verified. Earlier live/
+publication restrictions are superseded for those completed actions only;
+main merge, deployment, production settings/pruning and real model/email calls
+remain outside this authorization. Final operational evidence is in CURRENT.

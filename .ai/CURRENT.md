@@ -1,15 +1,16 @@
 # Current task: telemetry Slice 8 lineage
 
 - Date: 2026-10-14. Agent: Codex. Branch: `telemetry-slice-8`; worktree:
-  `.worktrees/slice-8`; HEAD: `68fbf38`. No issue/PR.
-- Status: **Local implementation complete; authorized live migration and commit/push in progress.** Plan: `.ai/plans/2026-10-14-telemetry-slice-8-lineage.md` (completed).
+  `.worktrees/slice-8`; implementation commit: `977d6c9` (base UX `68fbf38`). No issue/PR.
+- Status: **Completed: live migration applied/verified; implementation committed and pushed to origin/telemetry-slice-8. No required work remains.** Plan: `.ai/plans/2026-10-14-telemetry-slice-8-lineage.md` (completed).
   Approved decision: `.ai/decisions/2026-10-14-ai-exposure-lineage.md`.
 - A-E/local integration/implementation were owner-approved. Fast-forwarded UX
   `68fbf38` first without creating a commit, preserving all Slice 8 task docs and
   the UX plan/tests. Main source and owner notes were untouched. Main retains its
   pre-existing CURRENT pointer edit and untracked starter-task-lists-and-questions.md.
-- All Slice 8 changes remain unstaged/uncommitted here. No other active Slice 8
-  editor identified; obsolete UX concurrency warnings are removed. This branch
+- All Slice 8 source/test/docs were committed in 977d6c9 and its remote head
+  was verified equal. This final handoff is recorded in a documentation follow-up.
+  No other active Slice 8 editor identified; obsolete UX concurrency warnings are removed. This branch
   has an ignored node_modules junction to main's installed dependencies; no install,
   dependency/env copy or manifest change. Generated test artifacts stay ignored.
 
@@ -84,48 +85,39 @@
   screen readers, hosted checks or real evaluation. These are separate release/
   device checks, not unfinished required local implementation.
 
-## Constraints and next action
-
-No live query/write, production data/settings action, migration execution,
-model/provider/email call, commit, push or deployment occurred or is authorized.
-Missing schema fails soft. Cache rollover may increase fresh calls after release;
-telemetry can be lost/forged and cost/correction measures remain labelled proxies.
-Server records last at most 365 days, browser acks 90 days; no inferred backfill.
-
-**Next concrete action:** review the uncommitted diff and additive migration here.
-Publication/hosted migration/activation and any external verification require
-separate owner authorization. No required local work remains; do not execute the
-migration or publish as an automatic continuation of this completed task.
-
-## Owner-authorized migration/publication (2026-10-14)
+## Owner-authorized migration and publication (2026-10-14)
 
 The owner explicitly requested applying the migration to the live database and
-committing/pushing everything in this Slice 8 worktree. This supersedes the prior
-migration/commit/push restrictions for this action only. Deployment, production
-setting changes, pruning, customer writes and real model/email calls remain out
-of scope. Publishing branch telemetry-slice-8, without merging main or including
-main-only owner notes. Startup verified all 61 changed/new files belong to Slice 8;
-main has only its pre-existing CURRENT pointer and untracked owner notes. Remote
-main currently 44391b3; no remote telemetry-slice-8 branch yet.
+committing/pushing all Slice 8 worktree changes. This superseded the earlier
+migration/commit/push restriction for this operation only.
 
-Next: verify the configured live Neon target against the prior release host
-fingerprint, inspect schema metadata in a read-only transaction, apply only the
-additive migration transactionally with lock/statement deadlines, verify schema
-postconditions without customer-row reads/writes, then commit/push and confirm
-remote branch identity. No deployment action is authorized.
+- Applied migrations-ai-exposure-lineage.sql to the same configured Neon live
+  target used by the prior release (host SHA-256 prefix 79d6a988e446). Seven
+  additive DDL statements committed atomically, with 5-second lock and 45-second
+  per-statement timeouts. Pre/post verification transactions were read-only.
+- Schema postconditions passed: six new nullable generation columns without
+  defaults; exposure/choice tables with 13/10 columns; four valid indexes;
+  2/4 foreign keys with approved request CASCADE/origin SET NULL; unique
+  request/edit/category accepted choices. No customer-row query or write.
+- Raw working-file migration SHA-256:
+  0597dd5936243b4916c3f6f296f3263024b00ed93f4bac0ce7bdccb29810cb4b.
+- Committed all 61 Slice 8 files as 977d6c98dafff5adbabd5756bb9b557fe1df05d0
+  (Add AI generation exposure and accepted-choice lineage), then pushed with
+  upstream origin/telemetry-slice-8. git ls-remote confirmed exact identity.
+  The already committed UX ancestor 68fbf38 is included on this branch.
+- Tracked security scan passed before/after staging; 11 new files directly
+  inspected with zero secret-pattern matches; staged diff check passed. Code
+  is unchanged from the locally validated implementation above.
+- Final migration/publication state is captured in a documentation follow-up
+  commit on the same branch. No main merge, deployment command, production
+  setting change, pruning, real model/provider/email call or unrelated commit.
+  Main-only CURRENT pointer and owner notes remain preserved/uncommitted there.
 
-### Live migration verified
+## Remaining scope and next action
 
-Applied migrations-ai-exposure-lineage.sql to the same configured Neon live
-target as the prior release (host SHA-256 prefix 79d6a988e446). Seven additive DDL
-statements committed atomically with 5-second lock and 45-second per-statement
-timeouts. Read-only schema pre/post transactions verified six nullable generation
-columns with no defaults, 13 exposure columns, 10 choice columns, four valid
-indexes, request CASCADE/origin SET NULL foreign keys (2 exposure / 4 choice) and
-unique request/edit/category choices. All postconditions passed. No customer-row
-query or write, model/email call, pruning, production setting change or deployment.
-Raw working-file migration SHA-256:
-0597dd5936243b4916c3f6f296f3263024b00ed93f4bac0ce7bdccb29810cb4b.
-
-Remaining authorized work: commit and push all Slice 8 source/test/docs to
-origin/telemetry-slice-8, then verify remote identity and record publication.
+**No required work remains for the authorized migration/commit/push request.**
+The additive schema is live and Slice 8 is published on its branch. Optional next
+step is a separately authorized review/merge/release; no main merge or deployment
+was requested or performed. Missing collection remains unknown, caches roll over
+on later activation, server history lasts at most 365 days and browser acks 90;
+reported cost and correction metrics remain labelled proxies, with no backfill.

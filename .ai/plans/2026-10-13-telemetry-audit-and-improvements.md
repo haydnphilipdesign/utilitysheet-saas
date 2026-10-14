@@ -202,7 +202,7 @@ The audit-time collection findings below describe the original baseline. Slice 1
 
 ## Slice 8 — AI exposure/quality/cost lineage (P2; larger, after Slice 5)
 
-**Local implementation status (2026-10-14): completed and validated; uncommitted.** See `2026-10-14-telemetry-slice-8-lineage.md` and decision `../decisions/2026-10-14-ai-exposure-lineage.md`. UX 68fbf38 incorporated first by fast-forward. Atomic generations, request-scoped exposures, immutable choices, validated advisory rendering, transport/usage/cost coverage, origin caches, retention and mixed-version Admin/eval readers are implemented locally. Additive migration authored, not run live. R12 remains separate. No live queries/actions, model calls, commits, pushes or deployment.
+**Status (2026-10-14): completed/validated; live migration applied/verified with owner authorization; 977d6c9 committed and pushed to origin/telemetry-slice-8.** See `2026-10-14-telemetry-slice-8-lineage.md` and decision `../decisions/2026-10-14-ai-exposure-lineage.md`. UX 68fbf38 incorporated first by fast-forward. Atomic generations, request-scoped exposures, immutable choices, validated advisory rendering, transport/usage/cost coverage, origin caches, retention and mixed-version Admin/eval readers are implemented locally. Additive migration applied in one bounded transaction with schema-only verification. R12 remains separate. No main merge, deployment, production settings/pruning, customer-row writes or real model/email calls.
 
 **Problem/benefit:** correlate displayed and selected list items to prompt/model/cache origin, with honest call/usage evidence.
 

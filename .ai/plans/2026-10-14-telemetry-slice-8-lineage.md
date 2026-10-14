@@ -1,7 +1,7 @@
 # Telemetry Slice 8: AI exposure, quality and cost lineage
 
 - Date: 2026-10-14. Agent: Codex. Branch: `telemetry-slice-8`; worktree: `.worktrees/slice-8`; base: main `44391b3`.
-- Status: **Completed locally and validated; uncommitted. No required local work remains.** Approved decision: `../decisions/2026-10-14-ai-exposure-lineage.md`. Final outcome/validation below supersedes the retained planning snapshots.
+- Status: **Completed: locally validated, live migration applied/verified and implementation committed/pushed to origin/telemetry-slice-8 (977d6c9). No required work remains for the authorized scope.** Approved decision: `../decisions/2026-10-14-ai-exposure-lineage.md`. Final outcome/validation below supersedes the retained planning snapshots.
 - Parent: `2026-10-13-telemetry-audit-and-improvements.md`, Slice 8. Slices 1-7 and 9 are released per owner and main handoff; historical local-only status text in the parent is superseded by release records.
 - Integration outcome: fast-forwarded this worktree to committed UX `68fbf38` first, preserving task documents; then implemented server/contracts and browser wiring. No concurrent Slice 8 editor remains. Historical ownership snapshots below explain the integration order.
 - Intended outcome: distinguish generation, delivery, browser-reported rendering and accepted selection, retaining immutable origin and honest transport/usage coverage. Missing collection remains unknown.
@@ -305,7 +305,7 @@ deployment requires separate authorization. No concurrent Slice 8 editor remains
 ## Owner-authorized migration and publication (2026-10-14)
 
 Owner explicitly requested live migration execution and commit/push of all Slice
-8 worktree changes after local completion. Status: in progress. This supersedes
+8 worktree changes after local completion. Status: completed. This supersedes
 prior migration/commit/push restrictions for this operation; no deployment,
 production settings, pruning, customer-row write or real model/email action is
 included. Target is the live Neon database configured in main .env.local,
@@ -322,4 +322,4 @@ passed: 6 nullable new generation columns without defaults, exposure/choice tabl
 and the immutable-choice uniqueness constraint. No customer rows were inspected
 or changed; no production settings/pruning/model/email/deployment action. Raw
 working-file SHA-256 0597dd5936243b4916c3f6f296f3263024b00ed93f4bac0ce7bdccb29810cb4b.
-Branch commit/push remains in progress.
+Committed all 61 Slice 8 files as 977d6c98dafff5adbabd5756bb9b557fe1df05d0 and pushed origin/telemetry-slice-8; exact remote head verified. Final publication handoff is recorded in a documentation follow-up. No required migration/publication work remains. Main-only handoff/owner notes were preserved; no main merge, deployment, production setting change, pruning or model/email action.
