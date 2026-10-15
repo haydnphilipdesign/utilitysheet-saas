@@ -33,9 +33,22 @@ The telemetry-slice-8 commits (2026-10-14):
 - `977d6c9` Add AI generation exposure and accepted-choice lineage
 - `c049efd` Record Slice 8 live migration and branch publication
 
-They are safe on GitHub, so removing the local worktree loses nothing. The
-second commit says a migration ran live. If it did, the database is ahead of
-main, so check that before deciding to drop this code.
+They are safe on GitHub, so removing the local worktree loses nothing.
+
+**The live database is ahead of main.** The branch's own CURRENT.md records
+that the owner authorized it, and that `migrations-ai-exposure-lineage.sql` was
+applied to the live Neon database on 2026-10-14. That migration only adds
+things: columns on `ai_generation_runs` and new tables such as
+`ai_result_exposures`. So production keeps working, but main has neither the
+migration file nor the `schema.sql` changes, and the lineage feature is not live.
+
+Commit `977d6c9` is the full feature: about 40 files across seller routes,
+SellerWizard/UtilityStep, provider services, telemetry, admin telemetry, docs
+and tests. A trial merge (`git merge-tree`, 2026-10-15) found main only 10
+commits ahead of the branch point and just two conflicts: `.ai/CURRENT.md`
+(take main's v3 version) and `tests/telemetry.playwright.config.ts` (a
+two-line change). Merging is feasible; dropping the branch would leave live
+database tables that no code in main describes.
 
 ## Environment
 
@@ -48,7 +61,10 @@ Not applicable (no code change). Findings from `git log main..<branch>`,
 
 ## Next
 
-1. Review the two slice-8 commits (`git log -p main..telemetry-slice-8`) and decide: merge or drop.
+1. Decide on slice-8. Merge it into main (resolve the two conflicts, run the
+   unit and telemetry tests, then push; pushing main deploys), or drop it and
+   add the migration and `schema.sql` changes to main separately so main
+   matches the live database. Review it with `git log -p main..telemetry-slice-8`.
 2. Run `powershell -NoProfile -File .ai/tools/status.ps1`. It prints the exact
    remove commands. `--force` is needed only because of the uncommitted kit files.
 3. Mark this task done.
