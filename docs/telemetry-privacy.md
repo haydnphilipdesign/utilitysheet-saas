@@ -332,6 +332,8 @@ rationale: [telemetry retention](../.ai/decisions/2026-10-14-telemetry-retention
 | Endpoint observations | `seller_opened`, `seller_self_send_link`, `suggestions_fetched`, `suggestions_search` | 180 days, deleted |
 | IP address and browser header | `event_logs.ip_address` and `user_agent` on any event | 30 days, cleared; the row stays |
 | AI runs | `ai_generation_runs` and, through the cascade, their items | 365 days, deleted |
+| AI consumer exposures (Slice 8) | `ai_result_exposures`, independent of origin age | 365 days, deleted; request hard deletion cascades |
+| Accepted AI choices (Slice 8) | `ai_selection_observations`, independent immutable request/edit/category observations | 365 days, deleted; request hard deletion cascades |
 | Email and PDF evidence | `notification_observations`, `pdf_render_observations` | 180 days (never below 30), deleted |
 | Operational incidents and job runs | `operational_events`, `job_runs` | `OPS_EVENT_RETENTION_DAYS` (default 90), deleted |
 | Historical intake addresses (one-time) | `submitted_property_address`, `canonical_property_address`, `slug`, `suffix` keys on old intake `request_created` rows | any age, keys removed |
@@ -371,3 +373,34 @@ EXPLAIN on 1 million synthetic `event_logs` rows (about 87 times the
 2026-10-14 volume) showed one sequential scan of 0.25 to 0.7 seconds per
 `event_logs` rule, once a day; no index was added. Deleted rows cannot be
 recovered beyond the database's point-in-time restore window.
+
+## Slice 8 lineage privacy boundary
+
+Optional random UUID references identify producing runs/items and server-scoped
+consumer exposures. They confer no capability, never appear in URLs or Vercel
+collector payloads, and require seller-token authorization plus request/edit/
+category/feature/item membership checks. Malformed choice IDs cannot reject
+primary answers. Invalid render references are stripped before storage.
+
+V2 rendered events contain an optional exposure ID and at most 50 item UUIDs,
+with the existing finite diagnostic fields. Strict v1 remains accepted. Existing
+8 KB/10-event batch, 150/session, 600/request and 60/60-second limits remain;
+browser batches also split by encoded bytes. Render evidence stays exclusively
+in the 90-day events, never the 365-day exposures. Distinct validated memberships
+are counted; repeated observations do not prove multiple people or attention.
+
+Exposures retain only bounded source/status/reasons, list kind, model/prompt/
+format/thinking metadata, producing time, delivery, duration, lookup state and
+served UUIDs. Shared caches contain no consumer IDs. Immutable accepted choices
+store validated relational references, category/mode/edit version, time and a
+finite linkage outcome, never final free text. Transport summaries retain at
+most nine attempts, finite outcomes/failures, numeric counts/timings and metric
+coverage; no raw prompts/responses, typed queries, grounding URLs, contacts,
+capabilities, identities, IP or raw errors. Business provider names remain only
+functional values and existing suggestion items.
+
+Origin deletion nulls relationships without extending origin retention or
+removing younger request-bound evidence. Request hard deletion/account closure
+cascades the two new tables; soft deletion and Team transfer keep current rules.
+No backfill, live migration/pruning, price refresh, real model evaluation or R12
+contact-trust change is authorized by this implementation.

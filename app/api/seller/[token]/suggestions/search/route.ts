@@ -5,7 +5,7 @@ import { maintenanceResponse } from '@/lib/maintenance/server';
 import { NextResponse } from 'next/server';
 import { getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
 import { createEventLog } from '@/lib/neon/queries/event-logs';
-import { searchProviders } from '@/lib/providers/suggestion-service';
+import { searchProvidersResult } from '@/lib/providers/suggestion-service';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { aiRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
@@ -79,13 +79,18 @@ export async function GET(
         }
 
         const category = categoryRaw as UtilityCategory;
+        if (Array.isArray(requestData.utility_categories) && !requestData.utility_categories.includes(category)) {
+            return NextResponse.json({ error: 'Invalid utility category' }, { status: 400 });
+        }
         const context = {
+            editVersion: Number(requestData.seller_edit_version ?? 0), mode: requestData.is_demo ? 'test' as const : 'live' as const,
             requestId: requestData.id,
             accountId: requestData.account_id,
             organizationId: requestData.organization_id ?? null,
         };
-        const results = await searchProviders(query, category, requestData.property_address, context);
+        const result = await searchProvidersResult(query, category, requestData.property_address, context);
 
+        const { results } = result;
         await recordAuxiliaryEvent({
             requestId: requestData.id,
             eventType: 'suggestions_search',
@@ -96,8 +101,8 @@ export async function GET(
             },
         });
 
-        return NextResponse.json(results, {
-            headers: getRateLimitHeaders(rateLimitResult),
+        return NextResponse.json(searchParams.get('lineage') === '2' ? result : results, {
+            headers: { ...getRateLimitHeaders(rateLimitResult), 'Cache-Control': 'private, no-store' },
         });
     } catch (error) {
         logDiagnostic('error', 'seller_search_failed', {}, error);

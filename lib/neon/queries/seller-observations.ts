@@ -32,6 +32,17 @@ export async function insertSellerObservations(
     if (!sql) throw new DatabaseUnavailableError();
     if (params.rows.length === 0) return 0;
 
+    const hasLineage = params.rows.some(row => row.eventData.exposure_id !== undefined || row.eventData.rendered_item_ids !== undefined);
+    const lineageProjection = hasLineage ? `CASE WHEN f.event_type='seller_suggestions_rendered' AND EXISTS (
+        SELECT 1 FROM ai_result_exposures x JOIN requests r ON r.id=x.request_id
+        WHERE x.id::text=f.event_data->>'exposure_id' AND x.request_id=$1
+            AND x.edit_version=r.seller_edit_version AND x.edit_version=(f.event_data->>'edit_version')::int
+            AND x.category=f.event_data->>'category' AND x.feature IN ('provider_suggestions','provider_search')
+            AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(f.event_data->'rendered_item_ids','[]'::jsonb)) AS reported(id)
+                WHERE NOT EXISTS (SELECT 1 FROM ai_suggestion_items i JOIN ai_generation_runs g ON g.id=i.run_id
+                    WHERE i.id::text=reported.id AND i.id=ANY(x.served_item_ids) AND i.run_id=x.run_id
+                        AND i.category=x.category AND g.category=x.category AND g.feature=x.feature AND g.lineage_version=2))
+    ) THEN f.event_data ELSE f.event_data - ARRAY['exposure_id','rendered_item_ids']::text[] END` : 'f.event_data';
     const result = await sql.query(`
         WITH incoming AS (
             SELECT item->>'event_type' AS event_type,
@@ -55,7 +66,7 @@ export async function insertSellerObservations(
             ORDER BY i.event_id, i.ord
         )
         INSERT INTO event_logs (request_id, event_type, event_data)
-        SELECT $1, f.event_type, f.event_data
+        SELECT $1, f.event_type, ${lineageProjection}
         FROM fresh f CROSS JOIN stored s
         WHERE s.total + (SELECT COUNT(*) FROM fresh) <= $4
         ORDER BY f.ord

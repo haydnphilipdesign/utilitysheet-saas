@@ -1,3 +1,4 @@
+import { readAiLineageReport } from './ai-lineage-report';
 import 'server-only';
 
 import { requireAdmin } from '@/lib/admin';
@@ -20,7 +21,7 @@ export type FormTelemetry = {
     multiFormUsers: number;
 };
 export type EventTelemetry = { event: string; count: number; requests: number };
-export type AiTelemetry = { feature: string; status: string; runs: number; cached: number; model: string | null; promptVersion: string | null; freshLatencyMs: number | null; freshSamples: number; freshP50Ms: number | null; freshP95Ms: number | null };
+export type AiTelemetry = { lineage?: string; feature: string; status: string; runs: number; cached: number; model: string | null; promptVersion: string | null; freshLatencyMs: number | null; freshSamples: number; freshP50Ms: number | null; freshP95Ms: number | null };
 /** Fresh runs only. `measuredRuns` carry any token metadata; each metric has its own reporting count. */
 export type AiUsageTelemetry = {
     feature: string; freshRuns: number; measuredRuns: number; passes: number; searchQueries: number | null; searchMeasuredRuns: number; searchZeroRuns: number;
@@ -136,7 +137,7 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
     if (!sql) return null;
     // Enforce the bound at runtime too, rather than trusting only the TS caller.
     const windowDays = telemetryDays(String(days));
-    const [formRows, eventRows, aiRows, aiUsageRows, aiAcceptanceRows, usage] = await Promise.all([
+    const [formRows, eventRows, aiRows, aiUsageRows, aiAcceptanceRows, usage, aiLineage] = await Promise.all([
         sql`
             WITH customers AS (
                 SELECT id FROM accounts WHERE role = 'user'
@@ -178,7 +179,7 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
             GROUP BY e.event_type ORDER BY count DESC, e.event_type LIMIT 50
         `,
         sql`
-            SELECT g.feature, g.status, g.model, g.prompt_version, COUNT(*) AS runs,
+            SELECT g.feature, g.status, g.model, g.prompt_version, COALESCE(to_jsonb(g)->>'lineage_version','legacy') AS lineage, COUNT(*) AS runs,
                 COUNT(*) FILTER (WHERE g.cache_hit) AS cached,
                 ROUND(AVG(g.latency_ms) FILTER (WHERE g.cache_hit = FALSE AND g.latency_ms >= 0)) AS fresh_latency_ms,
                 COUNT(*) FILTER (WHERE g.cache_hit = FALSE AND g.latency_ms >= 0) AS fresh_samples,
@@ -189,7 +190,7 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
             JOIN accounts a ON a.id = r.account_id AND a.role = 'user'
             WHERE g.created_at >= NOW() - ${windowDays} * INTERVAL '1 day'
                 AND r.deleted_at IS NULL AND COALESCE(r.is_demo, FALSE) = FALSE
-            GROUP BY g.feature, g.status, g.model, g.prompt_version ORDER BY g.feature, g.status, g.model, g.prompt_version
+            GROUP BY g.feature, g.status, g.model, g.prompt_version, to_jsonb(g)->>'lineage_version' ORDER BY g.feature, g.status, g.model, g.prompt_version
         `,
         // Usage covers all recorded fresh runs; these partial totals are not a billing ledger.
         sql`
@@ -206,7 +207,7 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
                 COUNT(*) FILTER (WHERE g.error_kind = 'timeout') AS timeouts,
                 COUNT(*) FILTER (WHERE g.error_kind IS NOT NULL AND g.error_kind <> 'timeout') AS other_failures
             FROM ai_generation_runs g
-            WHERE g.cache_hit = FALSE AND g.created_at >= NOW() - ${windowDays} * INTERVAL '1 day'
+            WHERE g.cache_hit = FALSE AND g.source IS DISTINCT FROM 'disabled' AND g.created_at >= NOW() - ${windowDays} * INTERVAL '1 day'
             GROUP BY g.feature ORDER BY g.feature
         `,
         sql`
@@ -217,7 +218,7 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
             ), served AS (
                 SELECT DISTINCT ON (g.request_id, g.category) g.request_id, g.category, COALESCE(g.source, 'unknown') AS served
                 FROM ai_generation_runs g JOIN live r ON r.id = g.request_id
-                WHERE g.feature = 'provider_suggestions' AND g.created_at <= r.metered_at
+                WHERE g.feature = 'provider_suggestions' AND to_jsonb(g)->>'lineage_version' IS NULL AND g.created_at <= r.metered_at
                 ORDER BY g.request_id, g.category, g.created_at, g.id
             )
             SELECT COALESCE(s.served, 'unrecorded') AS served, COUNT(*) AS entries,
@@ -228,6 +229,7 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
             GROUP BY COALESCE(s.served, 'unrecorded') ORDER BY entries DESC, served
         `,
         getUsageTelemetry(windowDays),
+        readAiLineageReport(windowDays),
     ]);
     const row = formRows[0];
     const forms: FormTelemetry = {
@@ -238,9 +240,9 @@ export async function getAdminTelemetry(days: 7 | 30 | 90) {
         usedForms: Number(row.used_forms), multiFormUsers: Number(row.multi_form_users),
     };
     return {
-        days: windowDays, forms, usage,
+        days: windowDays, forms, usage, aiLineage,
         events: eventRows.map((e) => ({ event: String(e.event), count: Number(e.count), requests: Number(e.requests) })) as EventTelemetry[],
-        ai: aiRows.map((g) => ({ feature: String(g.feature), status: String(g.status), runs: Number(g.runs), cached: Number(g.cached), model: g.model == null ? null : String(g.model), promptVersion: g.prompt_version == null ? null : String(g.prompt_version), freshSamples: Number(g.fresh_samples), freshP50Ms: g.fresh_p50_ms == null ? null : Number(g.fresh_p50_ms), freshP95Ms: g.fresh_p95_ms == null ? null : Number(g.fresh_p95_ms), freshLatencyMs: g.fresh_latency_ms == null ? null : Number(g.fresh_latency_ms) })) as AiTelemetry[],
+        ai: aiRows.map((g) => ({ lineage: g.lineage == null ? 'legacy' : String(g.lineage), feature: String(g.feature), status: String(g.status), runs: Number(g.runs), cached: Number(g.cached), model: g.model == null ? null : String(g.model), promptVersion: g.prompt_version == null ? null : String(g.prompt_version), freshSamples: Number(g.fresh_samples), freshP50Ms: g.fresh_p50_ms == null ? null : Number(g.fresh_p50_ms), freshP95Ms: g.fresh_p95_ms == null ? null : Number(g.fresh_p95_ms), freshLatencyMs: g.fresh_latency_ms == null ? null : Number(g.fresh_latency_ms) })) as AiTelemetry[],
         aiUsage: aiUsageRows.map((g) => ({
             feature: String(g.feature), freshRuns: Number(g.fresh_runs), measuredRuns: Number(g.measured_runs),
             passes: Number(g.passes), searchQueries: g.search_queries == null ? null : Number(g.search_queries), searchMeasuredRuns: Number(g.search_measured_runs), searchZeroRuns: Number(g.search_zero_runs),

@@ -71,3 +71,7 @@ Add `POST /api/seller/[token]/observations` and six `event_logs` event types:
   without payloads. Rows are deleted with their request as before.
 - No retention, schema, dependency, deployment setting or production data
   change is authorized by this decision.
+
+## Approved Slice 8 amendment (2026-10-14)
+
+Owner-approved A-E in `2026-10-14-ai-exposure-lineage.md` extends this policy: v2 optional opaque IDs with strict v1 compatibility, server-validated advisory memberships and immutable accepted choices; distinct generation/consumer/ack/choice denominators and first/reopen cohorts; explicit aiExposures/aiChoices 365-day independent retention rules with request CASCADE and origin SET NULL. Browser acknowledgment remains solely in existing 90-day events. One 500 ms consumer budget includes shared persistence and its exposure, no replay/detached writes. Legacy/expired/unrecorded evidence remains unknown. This authorizes local implementation only, not live execution or release.

@@ -1,5 +1,7 @@
 'use client';
 
+import { itemLineageSchema, exposureSummarySchema, type ExposureSummary } from '@/lib/telemetry/ai-lineage';
+
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -68,6 +70,7 @@ interface UtilityStepProps {
         category: UtilityCategory,
         updates: Partial<WizardState['utilities'][UtilityCategory]>
     ) => void;
+    suggestionExposure?: ExposureSummary;
     suggestions: ProviderSuggestion[];
     loadingSuggestions?: boolean;
     token: string;
@@ -95,6 +98,7 @@ export function UtilityStep({
     categoryLabel,
     state,
     updateState,
+    suggestionExposure,
     suggestions,
     loadingSuggestions = false,
     token,
@@ -113,7 +117,7 @@ export function UtilityStep({
     const [searchQuery, setSearchQuery] = useState('');
     // Server results are kept with the query they answer, and the search in
     // flight with the query it is for, so text typed since shows neither.
-    const [searchOutcome, setSearchOutcome] = useState<{ query: string; results: ProviderSuggestion[]; paused?: boolean } | null>(null);
+    const [searchOutcome, setSearchOutcome] = useState<{ query: string; results: ProviderSuggestion[]; exposure?: ExposureSummary; answered?: boolean; paused?: boolean } | null>(null);
     const [activeSearch, setActiveSearch] = useState<{ query: string; id: number } | null>(null);
     const searchAbortRef = useRef<AbortController | null>(null);
     const autoSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,28 +141,9 @@ export function UtilityStep({
         ? 'Common providers'
         : 'Suggested for your area';
 
-    // Counts and reasons only: which providers were listed is never observed.
     const stepShownAtRef = useRef<number | null>(null);
-    const observedSuggestionsForRef = useRef<UtilityCategory | null>(null);
-    const listedSuggestionCount = Math.min(dedupedSuggestions.length, 3);
-    useEffect(() => {
-        stepShownAtRef.current = Date.now();
-    }, []);
-    useEffect(() => {
-        if (!observer || loadingSuggestions || mode !== 'view') return;
-        if (observedSuggestionsForRef.current === category) return;
-        observedSuggestionsForRef.current = category;
-        observer.observe({
-            type: 'seller_suggestions_rendered',
-            category,
-            source: 'initial',
-            result_count: listedSuggestionCount,
-            ...(listedSuggestionCount === 0
-                ? { empty_reason: suggestionsUnavailable ? 'load_failed' as const : 'no_suggestions' as const }
-                : {}),
-            duration: durationBucket(Date.now() - (stepShownAtRef.current ?? Date.now())),
-        });
-    }, [observer, loadingSuggestions, mode, category, listedSuggestionCount, suggestionsUnavailable]);
+    const observedSubsetsRef = useRef(new Set<string>());
+    useEffect(() => { stepShownAtRef.current = Date.now(); }, []);
 
     const trimmedQuery = searchQuery.trim();
     const canSearch = trimmedQuery.length >= MIN_SEARCH_CHARS;
@@ -176,6 +161,45 @@ export function UtilityStep({
             .filter((item) => !shown.has(canonicalProviderKey(item.display_name)));
     }, [hasSearched, searchOutcome, localMatches]);
 
+    // This effect runs after the current subset has committed to the DOM.
+    useEffect(() => {
+        if (!observer || loadingSuggestions || (mode !== 'view' && mode !== 'search')) return;
+        const report = (items: ProviderSuggestion[], source: 'initial' | 'search', emptyExposure?: ExposureSummary) => {
+            const groups = new Map<string, { exposure?: string; items: string[]; count: number }>();
+            for (const item of items) {
+                const parsed = itemLineageSchema.safeParse(item.ai_lineage);
+                const key = parsed.success ? parsed.data.exposure_id : 'unknown';
+                const group = groups.get(key) ?? { exposure: parsed.success ? parsed.data.exposure_id : undefined, items: [], count: 0 };
+                group.count += 1;
+                if (parsed.success) group.items.push(parsed.data.item_id);
+                groups.set(key,group);
+            }
+            if (!groups.size) groups.set(emptyExposure?.exposure_id ?? 'unknown', { exposure: emptyExposure?.exposure_id, items: [], count: 0 });
+            for (const group of groups.values()) {
+                const key = [category,mode,source,group.exposure ?? 'unknown',group.items.slice().sort().join(','),group.count,
+                    source === 'search' ? searchOutcome?.query ?? '' : '', suggestionsUnavailable].join(':');
+                if (observedSubsetsRef.current.has(key)) continue;
+                observedSubsetsRef.current.add(key);
+                observer.observe({ type: 'seller_suggestions_rendered', category, source,
+                    result_count: Math.min(group.count,SELLER_OBSERVATION_MAX_RESULT_COUNT),
+                    ...(group.exposure && !suggestionsUnavailable ? { exposure_id: group.exposure, rendered_item_ids: group.items } : {}),
+                    ...(group.count === 0 ? { empty_reason: suggestionsUnavailable ? 'load_failed' as const
+                        : source === 'search' ? 'no_results' as const : 'no_suggestions' as const } : {}),
+                    duration: durationBucket(Date.now()-(stepShownAtRef.current ?? Date.now())),
+                });
+            }
+        };
+        if (mode === 'view') report(dedupedSuggestions.slice(0,3),'initial',suggestionExposure);
+        else {
+            const local = canSearch ? localMatches : !isSearching ? dedupedSuggestions : [];
+            if (local.length) report(local,'search',suggestionExposure);
+            if (!isSearching && hasSearched && searchOutcome?.answered && !searchOutcome.paused) {
+                report(searchResults,'search',searchOutcome.exposure);
+            }
+        }
+    }, [observer,loadingSuggestions,mode,category,dedupedSuggestions,suggestionExposure,suggestionsUnavailable,
+        canSearch,localMatches,isSearching,hasSearched,searchOutcome,searchResults]);
+
     const runSearch = useCallback(async (query: string) => {
         if (autoSearchTimerRef.current) {
             clearTimeout(autoSearchTimerRef.current);
@@ -188,17 +212,22 @@ export function UtilityStep({
         setActiveSearch({ query, id });
 
         let results: ProviderSuggestion[] = [];
+        let exposure: ExposureSummary | undefined;
         const searchStartedAt = Date.now();
         let searchFailure: { error_code: ReturnType<typeof errorCodeForStatus>; status?: number } | null = null;
         let pausedNotice: MaintenanceNotice | null = null;
         let answered = false;
         try {
-            const res = await fetch(`/api/seller/${encodeURIComponent(token)}/suggestions/search?query=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}`, {
+            const res = await fetch(`/api/seller/${encodeURIComponent(token)}/suggestions/search?query=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&lineage=2`, {
                 signal: controller.signal,
             });
             if (res.ok) {
                 const body: unknown = await res.json();
-                results = Array.isArray(body) ? body : [];
+                const envelope = body && typeof body === 'object' && !Array.isArray(body)
+                    ? body as { results?: unknown; exposure?: unknown } : null;
+                results = Array.isArray(body) ? body : Array.isArray(envelope?.results) ? envelope.results : [];
+                const parsed = exposureSummarySchema.safeParse(envelope?.exposure);
+                if (parsed.success) exposure = parsed.data;
                 answered = true;
             } else {
                 searchFailure = { error_code: errorCodeForStatus(res.status), status: res.status };
@@ -214,7 +243,7 @@ export function UtilityStep({
         setActiveSearch((current) => (current?.id === id ? null : current));
         // Newer text or another utility has taken over.
         if (controller.signal.aborted) return;
-        setSearchOutcome({ query, results, paused: pausedNotice !== null });
+        setSearchOutcome({ query, results, exposure, answered, paused: pausedNotice !== null });
         if (pausedNotice) onMaintenance?.(pausedNotice);
         else if (answered) onMaintenanceOver?.();
         const duration = durationBucket(Date.now() - searchStartedAt);
@@ -225,15 +254,6 @@ export function UtilityStep({
                 source: 'search',
                 error_code: searchFailure.error_code,
                 ...(searchFailure.status && searchFailure.status >= 400 && searchFailure.status <= 599 ? { status: searchFailure.status } : {}),
-                duration,
-            });
-        } else {
-            observer?.observe({
-                type: 'seller_suggestions_rendered',
-                category,
-                source: 'search',
-                result_count: Math.min(results.length, SELLER_OBSERVATION_MAX_RESULT_COUNT),
-                ...(results.length === 0 ? { empty_reason: 'no_results' as const } : {}),
                 duration,
             });
         }
@@ -351,6 +371,7 @@ export function UtilityStep({
 
     const handleConfirmSuggestion = (suggestion: ProviderSuggestion) => {
         updateState(category, {
+            ai_lineage: itemLineageSchema.safeParse(suggestion.ai_lineage).success ? suggestion.ai_lineage : undefined,
             entry_mode: 'suggested_confirmed',
             display_name: suggestion.display_name,
             raw_text: null,
@@ -364,6 +385,7 @@ export function UtilityStep({
 
     const handleSelectResult = (result: ProviderSuggestion) => {
         updateState(category, {
+            ai_lineage: itemLineageSchema.safeParse(result.ai_lineage).success ? result.ai_lineage : undefined,
             entry_mode: 'search_selected',
             display_name: result.display_name,
             raw_text: result.display_name,

@@ -1,3 +1,4 @@
+import { exposeGeneration, type GenerationHandle } from '@/lib/neon/queries/ai-lineage';
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { neonConfig } from '@neondatabase/serverless';
@@ -93,19 +94,34 @@ describe('bounded auxiliary persistence through installed Neon', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    it('shares one AI deadline across run and item queries', async () => {
-        fetchMock.mockImplementationOnce(async () => {
-            await new Promise(resolve => setTimeout(resolve, 300));
-            return response('00000000-0000-4000-8000-000000000001');
-        });
-        fetchMock.mockImplementationOnce(async (_url, options) => new Promise<Response>((_, reject) => {
-            options!.signal!.addEventListener('abort', () => reject(new Error(PRIVATE)), { once: true });
-        }));
+    it('atomically persists run and items under one abort-coupled deadline', async () => {
+        abortingFetch();
         expect(await expire(createAiSuggestionRun(run))).toBeNull();
-        expect(fetchMock).toHaveBeenCalledTimes(2);
-        expect(signalAt(0)).toBe(signalAt(1));
-        expect(signalAt(1).aborted).toBe(true);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(signalAt().aborted).toBe(true);
+        const body = String(fetchMock.mock.calls[0][1]?.body);
+        expect(body).toContain('INSERT INTO ai_generation_runs');
+        expect(body).toContain('INSERT INTO ai_suggestion_items');
         expectOneSafeMarker('ai_run', 'deadline');
+    });
+
+    it('includes the shared persistence wait and consumer query in one installed-driver budget', async () => {
+        const handle: GenerationHandle = { input: { ...run,id: '00000000-0000-4000-8000-000000000001',lineageVersion: 2 },
+            runId: null,itemIds: [],origin: { v: 1,lineageVersion: 2,source: 'ai_primary',status: 'success',reason: null,
+                upstreamReason: null,listKind: 'ai',model: 'fixture',promptVersion: 'fixture',requestFormat: 'fixture',thinkingLevel: null,producedAt: new Date().toISOString() } };
+        const context = { requestId: '00000000-0000-4000-8000-000000000002',editVersion: 0,mode: 'live' as const,feature: 'provider_suggestions' as const,category: 'electric' };
+        fetchMock.mockImplementationOnce(async () => {
+            await new Promise(resolve => setTimeout(resolve,300)); return response('00000000-0000-4000-8000-000000000001');
+        });
+        fetchMock.mockImplementationOnce(async (_url,options) => new Promise<Response>((_,reject) => {
+            options!.signal!.addEventListener('abort',() => reject(new Error(PRIVATE)),{ once: true });
+        }));
+        const first = exposeGeneration(handle,context,'fresh',Date.now());
+        const follower = exposeGeneration(handle,{ ...context,requestId: '00000000-0000-4000-8000-000000000003' },'shared',Date.now());
+        await vi.advanceTimersByTimeAsync(500);
+        expect(await first).toBeUndefined();expect(await follower).toBeUndefined();
+        expect(fetchMock).toHaveBeenCalledTimes(2);expect(signalAt(1).aborted).toBe(true);
+        expectOneSafeMarker('ai_run','deadline');
     });
 
     it('does not start item persistence after a late run result', async () => {

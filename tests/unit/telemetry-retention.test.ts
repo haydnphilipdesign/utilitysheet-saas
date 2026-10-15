@@ -111,7 +111,7 @@ describe('configuration', () => {
 
         const windows = (env: Record<string, string>) => Object.fromEntries(resolveRetentionPlan(env).items.map((item) => [item.key, item.windowDays]));
         expect(windows({})).toEqual({
-            sellerDiagnostics: 90, endpointObservations: 180, eventIpUserAgent: 30, aiRuns: 365,
+            sellerDiagnostics: 90, endpointObservations: 180, eventIpUserAgent: 30, aiRuns: 365, aiExposures: 365, aiChoices: 365,
             notificationEvidence: 180, pdfEvidence: 180, operationalEvents: 90, jobRuns: 90,
             historicalIntakeAddresses: null, historicalSuggestionNames: null,
         });
@@ -164,7 +164,7 @@ describe('preview and enforce', () => {
 
         expect(results.every((item) => item.action === 'preview' && !item.failed)).toBe(true);
         expect(affected).toEqual({
-            sellerDiagnostics: 1, endpointObservations: 2, eventIpUserAgent: 3, aiRuns: 2,
+            sellerDiagnostics: 1, endpointObservations: 2, eventIpUserAgent: 3, aiRuns: 2, aiExposures: 0, aiChoices: 0,
             notificationEvidence: 1, pdfEvidence: 1, operationalEvents: 1, jobRuns: 1,
             historicalIntakeAddresses: 1, historicalSuggestionNames: 1,
         });

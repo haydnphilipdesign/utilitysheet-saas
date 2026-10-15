@@ -236,14 +236,17 @@ describe('SellerWizard diagnostic observations', () => {
         click(/septic system/i);
         click(/^continue$/i);
         click(/search for another/i);
+        // Let the default loaded subset commit before replacing it with typed text.
+        await waitFor(() => expect(observerMock.observed.filter(event => event.source === 'search')).toHaveLength(1));
 
         for (const query of ['zzsentinelone', 'zzsentineltwo', 'zzsentinelthree']) {
             fireEvent.change(screen.getByTestId('seller-provider-search-input'), { target: { value: query } });
             fireEvent.click(screen.getByTestId('seller-provider-search-run'));
             await waitFor(() => expect(screen.queryByTestId('seller-provider-search-run')).not.toBeInTheDocument());
         }
-        await waitFor(() => expect(observerMock.observed.filter((event) => event.source === 'search')).toHaveLength(3));
+        await waitFor(() => expect(observerMock.observed.filter((event) => event.source === 'search')).toHaveLength(4));
         expect(observerMock.observed.filter((event) => event.source === 'search')).toEqual([
+            { type: 'seller_suggestions_rendered', category: 'electric', source: 'search', result_count: 2, duration: expect.any(String) },
             { type: 'seller_suggestions_rendered', category: 'electric', source: 'search', result_count: 2, duration: expect.any(String) },
             { type: 'seller_suggestions_rendered', category: 'electric', source: 'search', result_count: 0, empty_reason: 'no_results', duration: expect.any(String) },
             { type: 'seller_suggestions_failed', category: 'electric', source: 'search', error_code: 'rate_limited', status: 429, duration: expect.any(String) },

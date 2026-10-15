@@ -59,7 +59,7 @@ export async function loadAiHealth(db: StatementExecutor, config: AiHealthConfig
                        OR (feature <> 'provider_suggestions' AND status IN ('error', 'parse_error'))
                 )::int AS degraded
             FROM ai_generation_runs
-            WHERE cache_hit = FALSE
+            WHERE cache_hit = FALSE AND source IS DISTINCT FROM 'disabled'
               AND feature = ANY($1::text[])
               AND created_at > NOW() - make_interval(hours => $2::int)
             GROUP BY feature

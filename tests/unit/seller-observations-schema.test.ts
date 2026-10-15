@@ -43,7 +43,7 @@ describe('seller observation payload contract', () => {
         }
         expect(sellerObservationBodySchema.safeParse(body([])).success).toBe(false);
         expect(sellerObservationBodySchema.safeParse(body(Array.from({ length: 11 }, () => viewed))).success).toBe(false);
-        expect(sellerObservationBodySchema.safeParse({ ...body([viewed]), v: 2 }).success).toBe(false);
+        expect(sellerObservationBodySchema.safeParse({ ...body([viewed]), v: 3 }).success).toBe(false);
         expect(sellerObservationBodySchema.safeParse({ ...body([viewed]), session: 'short' }).success).toBe(false);
     });
 });

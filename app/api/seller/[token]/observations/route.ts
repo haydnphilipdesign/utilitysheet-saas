@@ -10,7 +10,6 @@ import { writeAuxiliary } from '@/lib/telemetry/auxiliary-write';
 import { logDiagnostic } from '@/lib/telemetry/diagnostics';
 import {
     SELLER_OBSERVATION_MAX_BODY_BYTES,
-    SELLER_OBSERVATION_SCHEMA_VERSION,
     coarseClientFamily,
 } from '@/lib/telemetry/seller-observations';
 
@@ -94,7 +93,7 @@ export async function POST(
                 eventType: type,
                 eventId: id,
                 eventData: {
-                    v: SELLER_OBSERVATION_SCHEMA_VERSION,
+                    v: parsed.data.v,
                     actor: 'seller_browser',
                     mode: record.is_demo === true ? 'test' : 'live',
                     session_id: parsed.data.session,

@@ -17,7 +17,8 @@ import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { sellerSubmissionBodySchema } from '@/lib/validation/schemas';
 import { getClientIpOrNull } from '@/lib/network/client-ip';
 import { invalidRequestBodyResponse } from '@/lib/security/api-response';
-import { markAiSuggestionSelection } from '@/lib/neon/queries/ai-telemetry';
+import { recordAcceptedChoices, recordContactSkips, type AcceptedChoice } from '@/lib/neon/queries/ai-lineage';
+import type { ItemLineage } from '@/lib/telemetry/ai-lineage';
 import { buildSellerSubmittedEventSummary } from '@/lib/telemetry/seller-submission';
 import { scheduleReferralCreditAward } from '@/lib/referrals/award-referral-credit';
 import { errorNameOf, recordOperationalEvent, recordOperationalSuccess } from '@/lib/ops/events';
@@ -73,6 +74,7 @@ type SellerUtilityExtra = {
 };
 
 type SellerUtilityEntryInput = {
+    ai_lineage?: ItemLineage;
     entry_mode: string | null;
     display_name?: string | null;
     raw_text?: string | null;
@@ -596,7 +598,7 @@ export async function POST(
         // statement below.
         const entryRows: SellerSubmissionEntryRow[] = [];
         const contactResolutionTargets: ContactResolutionTarget[] = [];
-        const suggestionSelections: Parameters<typeof markAiSuggestionSelection>[0][] = [];
+        const suggestionSelections: AcceptedChoice[] = [];
 
         for (const [category, entry] of Object.entries(parsedBody.data.utilities || {})) {
             if (!requestedCategories.has(category)) {
@@ -651,14 +653,13 @@ export async function POST(
                     extra: finalExtra,
                 });
 
-                if (!isTestDriveSubmission && (finalEntryMode === 'suggested_confirmed' || finalEntryMode === 'search_selected')) {
+                if (!isTestDriveSubmission) {
                     suggestionSelections.push({
-                        requestId: requestData.id,
+                        lineage: e.ai_lineage,
                         category: typedCategory,
                         selectedName: e.display_name || finalRawText || null,
-                        finalEntryMode,
+                        entryMode: finalEntryMode as AcceptedChoice['entryMode'],
                         canonicalId: finalCanonicalId,
-                        confidenceScore: finalConfidenceScore,
                     });
                 }
 
@@ -733,15 +734,14 @@ export async function POST(
         // longer affect what was stored or the seller's response.
         const accessLocked = Boolean((persisted.request as SellerRequestRecord | null)?.is_locked) && !isPaid;
 
-        for (const selection of suggestionSelections) {
-            await markAiSuggestionSelection(selection).catch((selectionError) => {
-                logDiagnostic('error', 'seller_selection_telemetry_failed', {}, selectionError);
-            });
-        }
+        await recordAcceptedChoices(requestData.id, editVersion, suggestionSelections).catch(error => {
+            logDiagnostic('error','seller_selection_telemetry_failed',{},error);
+        });
 
         // Attempt contact resolution for missing contact info
         const unresolvedEntries: { category: string; displayName?: string }[] = [];
         const seenContactTargets = new Set<string>();
+        const contactSkips: { category: UtilityCategory; reason: 'historical_contact' | 'submitted_contact' }[] = [];
 
         if (!accessLocked && !isUtilitySheetDemoSubmission && !isTestDriveSubmission) {
             for (const target of contactResolutionTargets) {
@@ -754,7 +754,9 @@ export async function POST(
 
                 // On a resubmission after a reopen the contact came from the
                 // stored sheet, possibly corrected by the coordinator. Keep it.
-                if (editVersion > 0 && target.hadSubmittedContact) continue;
+                if (editVersion > 0 && target.hadSubmittedContact) {
+                    contactSkips.push({ category: target.category,reason: 'submitted_contact' }); continue;
+                }
 
                 const historicalMatch = await findHistoricalContactMatch({
                     requestId: requestData.id,
@@ -765,6 +767,7 @@ export async function POST(
                 });
 
                 if (historicalMatch && hasAnyContact(historicalMatch.phone, historicalMatch.url)) {
+                    contactSkips.push({ category: target.category,reason: 'historical_contact' });
                     await sql`
                         UPDATE utility_entries
                         SET
@@ -779,10 +782,12 @@ export async function POST(
 
                 // Preserve any contact the submitter explicitly provided.
                 if (target.hadSubmittedContact) {
+                    contactSkips.push({ category: target.category,reason: 'submitted_contact' });
                     continue;
                 }
 
                 const contact = await resolveContact(target.providerName, {
+                    editVersion, mode: 'live',
                     category: target.category,
                     address: requestData.property_address,
                     requestId: requestData.id,
@@ -810,6 +815,10 @@ export async function POST(
                 }
             }
         }
+
+        await recordContactSkips(requestData.id,editVersion,contactSkips).catch(error => {
+            logDiagnostic('warn','contact_telemetry_failed',{},error);
+        });
 
         if (!isTestDriveSubmission) {
             scheduleReferralCreditAward(requestData.account_id);

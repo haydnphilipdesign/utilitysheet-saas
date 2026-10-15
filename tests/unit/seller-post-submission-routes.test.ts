@@ -43,7 +43,7 @@ vi.mock('@/lib/email/email-service', () => ({
     sendContactResolutionAlertEmail: mocks.alertEmail,
     sendSellerReminderEmail: mocks.reminderEmail,
 }));
-vi.mock('@/lib/neon/queries/ai-telemetry', () => ({ markAiSuggestionSelection: mocks.suggestion }));
+vi.mock('@/lib/neon/queries/ai-lineage', () => ({ recordAcceptedChoices: mocks.suggestion, recordContactSkips: vi.fn(async () => undefined) }));
 vi.mock('@/lib/referrals/award-referral-credit', () => ({ scheduleReferralCreditAward: mocks.referral }));
 vi.mock('@/lib/stack/server', () => ({ stackServerApp: { getUser: mocks.getUser } }));
 vi.mock('@/lib/auth/organization-access', () => ({
@@ -191,6 +191,23 @@ describe('seller submission route', () => {
         expect(mocks.completionEmail).toHaveBeenCalledTimes(1);
         expect(mocks.referral).toHaveBeenCalledWith('owner-account');
         expect(mocks.suggestion).toHaveBeenCalledTimes(1);
+    });
+
+    it('discards malformed advisory IDs before validation and records accepted categories in one call', async () => {
+        const response = await submit({ ...answers,utilities: { ...answers.utilities,
+            electric: { ...answers.utilities.electric,ai_lineage: { exposure_id: 'not-a-uuid',item_id: 'private',run_id: 'private' } } } });
+        expect(response.status).toBe(200);
+        expect(mocks.suggestion).toHaveBeenCalledTimes(1);
+        const [requestId,editVersion,choices] = mocks.suggestion.mock.calls[0];
+        expect(requestId).toBe('request-1');expect(editVersion).toBe(0);
+        expect(choices.map((choice: { category: string }) => choice.category)).toEqual(['electric','water']);
+        expect(choices[0].lineage).toBeUndefined();
+        expect(JSON.stringify(mocks.submit.mock.calls[0][0].entries)).not.toContain('not-a-uuid');
+    });
+    it('preserves an accepted submission and downstream effects when the choice observer rejects', async () => {
+        mocks.suggestion.mockRejectedValueOnce(new Error('private-telemetry-sentinel'));
+        expect((await submit(answers)).status).toBe(200);
+        expect(mocks.submit).toHaveBeenCalledTimes(1);expect(mocks.completionEmail).toHaveBeenCalledTimes(1);
     });
 
     it('ignores crafted fields: address, ownership, metering, lock and status cannot be supplied', async () => {

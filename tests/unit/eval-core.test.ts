@@ -1,3 +1,4 @@
+import { emptyTransport, AI_PRICE_VERSION } from '@/lib/telemetry/ai-lineage';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -203,8 +204,8 @@ describe('evaluation scoring', () => {
             search_cost_usd: null, total_cost_usd: null, cost_per_top3_usd: null });
         expect(summarize([known, unknown]).token_cost_usd).toBeGreaterThan(0);
         const zero = { ...known, search_queries: 0 };
-        expect(summarize([zero])).toMatchObject({ search_cost_usd: 0, total_cost_usd: known.token_cost_usd,
-            cost_per_top3_usd: known.token_cost_usd });
+        expect(summarize([zero])).toMatchObject({ search_cost_usd: 0, total_cost_usd: null,
+            cost_per_top3_usd: null });
         expect(summarize([{ ...known, token_cost_usd: null }]).total_cost_usd).toBeNull();
         expect(summarize([]).total_cost_usd).toBeNull();
     });
@@ -325,4 +326,22 @@ describe('evaluation scoring', () => {
         expect(maxPassesPerCase({ passes: 'one', recovery: true })).toBe(2);
         expect(maxPassesPerCase({ passes: 'one', recovery: false })).toBe(1);
     });
+});
+
+it('versions new estimates and keeps legacy, recovered partial usage and unknown model totals unknown', () => {
+    const base = run(['PPL Electric Utilities']);
+    const success = { pass: 0 as const,role: 'primary' as const,index: 1,elapsedMs: 10,outcome: 'answered' as const,failure: null,
+        usage: base.usage,candidates: 1,queryCandidates: 1,sourceCandidates: 1 };
+    const fresh = { ...base,transport: { ...emptyTransport(null,true),attempts: [success] } };
+    const complete = scoreCase(evalCase(),fresh,'gemini-3.1-flash-lite');
+    expect(complete.price_version).toBe(AI_PRICE_VERSION);expect(summarize([complete]).total_cost_usd).not.toBeNull();
+    const partial = scoreCase(evalCase(),{ ...fresh,transport: { ...fresh.transport,attempts: [
+        { ...success,outcome: 'failed',failure: 'rate_limited',usage: null,candidates: null,queryCandidates: null,sourceCandidates: null },
+        { ...success,index: 2 },
+    ] } },'gemini-3.1-flash-lite');
+    expect(partial.recovered_failures).toBe(1);expect(partial.transport_attempts).toBe(2);
+    expect(summarize([partial]).total_cost_usd).toBeNull();expect(partial.token_cost_usd).not.toBeNull();
+    expect(summarize([scoreCase(evalCase(),base,'gemini-3.1-flash-lite')]).total_cost_usd).toBeNull();
+    expect(summarize([scoreCase(evalCase(),fresh,'unknown-model')]).total_cost_usd).toBeNull();
+    expect(toCsv([complete])).toContain(AI_PRICE_VERSION);
 });

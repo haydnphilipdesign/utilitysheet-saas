@@ -1,3 +1,4 @@
+import { optionalItemLineageSchema } from '@/lib/telemetry/ai-lineage';
 import { z } from 'zod';
 import type { UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
@@ -296,6 +297,7 @@ const httpUrlSchemaFlexible = z.preprocess(
 );
 
 const utilityWizardStateSchema = z.object({
+    ai_lineage: optionalItemLineageSchema,
     entry_mode: z.preprocess(nullToUndefined, providerEntryModeEnum.nullable().default(null)),
     display_name: z.preprocess(nullToUndefined, z.string().trim().max(200).nullable().default(null)),
     raw_text: z.preprocess(nullToUndefined, z.string().trim().max(500).nullable().default(null)),
@@ -664,6 +666,8 @@ export const sellerObservationEventSchema = z.discriminatedUnion('type', [
     }).strict(),
     z.object({
         type: z.literal('seller_suggestions_rendered'),
+        exposure_id: z.string().uuid().optional(),
+        rendered_item_ids: z.array(z.string().uuid()).max(50).optional(),
         ...sellerObservationBase,
         category: utilityCategoryEnum,
         source: z.enum(SELLER_SUGGESTION_SOURCES),
@@ -682,10 +686,15 @@ export const sellerObservationEventSchema = z.discriminatedUnion('type', [
 export type SellerObservationEvent = z.infer<typeof sellerObservationEventSchema>;
 
 export const sellerObservationBodySchema = z.object({
-    v: z.literal(SELLER_OBSERVATION_SCHEMA_VERSION),
+    v: z.union([z.literal(1), z.literal(SELLER_OBSERVATION_SCHEMA_VERSION)]),
     session: z.string().regex(SELLER_OBSERVATION_ID_PATTERN),
     edit_version: z.number().int().min(0).max(1_000_000),
     events: z.array(sellerObservationEventSchema).min(1).max(SELLER_OBSERVATION_MAX_BATCH),
-}).strict();
+}).strict().superRefine((body,ctx) => {
+    if (body.v === 1 && body.events.some(event => event.type === 'seller_suggestions_rendered' &&
+        (event.exposure_id !== undefined || event.rendered_item_ids !== undefined))) {
+        ctx.addIssue({ code: 'custom', message: 'Lineage requires version 2' });
+    }
+});
 
 export * from './admin-schemas';

@@ -56,7 +56,7 @@ describe('AI telemetry query helpers', () => {
         });
 
         expect(runId).toBe('run_1');
-        expect(mocks.sql).toHaveBeenCalledTimes(2);
+        expect(mocks.sql).toHaveBeenCalledTimes(1);
 
         const serializedCalls = mocks.sql.mock.calls.map((call) => JSON.stringify(call));
         expect(serializedCalls.join('\n')).not.toContain('You are an expert');

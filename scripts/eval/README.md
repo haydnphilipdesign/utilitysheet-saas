@@ -73,12 +73,18 @@ identifying words of one are all in the other ("partial"). Partial is a proxy.
 
 - "Ended on the generic list": the seller would have seen the national list.
 - "Extra names per one-provider case": for electric, gas, water and sewer.
-- Token cost uses list prices in `eval-core.ts`; search cost is shown at list
+- Token cost uses existing versioned list prices in `lib/telemetry/ai-cost.ts`; search cost is shown at list
   price as if the free allowance were used up.
 - Usage of a model call that failed or timed out is not reported by Google, so
   token and search totals are a floor.
 
-Not measured yet: latency per pass, and the share of sources from the
+New runs retain bounded per-pass SDK attempt timings, recovered failures and
+per-metric usage completeness with price version 2026-10-12-standard-list-v1.
+Legacy files remain unknown for full-run estimates. CSV/comparison accepts
+missing optional fields; matching rules are unchanged. Both outcomes of the
+existing circuit-open retry are retained, with no additional call added.
+
+Not measured yet: the share of sources from the
 provider's own or a government site (the pipeline keeps a source count only).
 
 A change ships only if it does not lower the top-answer and top-3 rates and

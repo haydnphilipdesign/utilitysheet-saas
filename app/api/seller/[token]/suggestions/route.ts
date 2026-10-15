@@ -5,7 +5,7 @@ import { maintenanceResponse } from '@/lib/maintenance/server';
 import { NextResponse } from 'next/server';
 import { getOrganizationById, getRequestBySellerToken, getRequestByToken } from '@/lib/neon/queries';
 import { createEventLog } from '@/lib/neon/queries/event-logs';
-import { getAllSuggestions } from '@/lib/providers/suggestion-service';
+import { getAllSuggestionResults } from '@/lib/providers/suggestion-service';
 import type { ProviderSuggestion, UtilityCategory } from '@/types';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import { aiRatelimit, checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable } from '@/lib/rate-limit';
@@ -181,16 +181,20 @@ export async function GET(
         }
 
         const context = {
+            editVersion: Number(requestData.seller_edit_version ?? 0), mode: requestData.is_demo ? 'test' as const : 'live' as const,
             requestId: requestData.id,
             accountId: requestData.account_id,
             organizationId: requestData.organization_id ?? null,
         };
-        const suggestions =
+        const demoSuggestions =
             (await getDemoSuggestionsIfApplicable(
                 requestData.organization_id,
                 requestData.property_address,
                 categories
-            )) ?? (await getAllSuggestions(requestData.property_address, categories, context));
+            ));
+        const result = demoSuggestions ? { suggestions: demoSuggestions, exposures: {} }
+            : await getAllSuggestionResults(requestData.property_address, categories, context);
+        const { suggestions, exposures } = result;
 
         await recordAuxiliaryEvent({
             requestId: requestData.id,
@@ -206,8 +210,8 @@ export async function GET(
         });
 
         return NextResponse.json(
-            { suggestions },
-            { headers: getRateLimitHeaders(rateLimitResult) }
+            { suggestions, exposures },
+            { headers: { ...getRateLimitHeaders(rateLimitResult), 'Cache-Control': 'private, no-store' } }
         );
     } catch (error) {
         logDiagnostic('error', 'seller_suggestions_failed', {}, error);

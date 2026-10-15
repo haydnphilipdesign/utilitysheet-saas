@@ -203,3 +203,20 @@ describe('seller observer', () => {
         expect(sessionStorage.length).toBe(0);
     });
 });
+
+it('splits ten full lineage events by UTF-8 bytes and preserves all event identities', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response('{}',{ status: 202 }));
+    vi.stubGlobal('fetch',fetchMock);
+    const observer = createSellerObserver({ token: 'synthetic-byte-test-token',editVersion: 0,enabled: true });
+    for (let i=0;i<10;i++) observer.observe({ type: 'seller_suggestions_rendered',category: 'electric',source: 'initial',result_count: 50,
+        exposure_id: crypto.randomUUID(),rendered_item_ids: Array.from({ length: 50 },() => crypto.randomUUID()) });
+    await vi.advanceTimersByTimeAsync(10000);
+    const bodies = fetchMock.mock.calls.map(([,options]) => String((options as RequestInit).body));
+    expect(bodies.length).toBeGreaterThan(1);
+    expect(bodies.every(body => new TextEncoder().encode(body).length<=8192)).toBe(true);
+    const events = bodies.flatMap(body => JSON.parse(body).events);
+    expect(events).toHaveLength(10); expect(new Set(events.map(e => e.id)).size).toBe(10);
+    expect(bodies.every(body => sellerObservationBodySchema.safeParse(JSON.parse(body)).success)).toBe(true);
+    vi.useRealTimers(); vi.unstubAllGlobals();
+});

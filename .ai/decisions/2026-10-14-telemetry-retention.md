@@ -32,3 +32,7 @@ Only `operational_events` and `job_runs` had a time rule (90 days, off unless fl
 - The operational prune runs daily and batched instead of every 15 minutes.
 - Vercel analytics: dashboard buttons send `new_request_cta_clicked`, `new_request_started` means the page opened, an Advanced PDF download sends only `advanced_packet_downloaded`; counts change from the release date.
 - Adding a rule, changing a window or making a new table removable requires changing `lib/telemetry/retention.ts`, its tests and `docs/telemetry-privacy.md` together.
+
+## Approved Slice 8 amendment (2026-10-14)
+
+Owner-approved A-E in `2026-10-14-ai-exposure-lineage.md` extends this policy: v2 optional opaque IDs with strict v1 compatibility, server-validated advisory memberships and immutable accepted choices; distinct generation/consumer/ack/choice denominators and first/reopen cohorts; explicit aiExposures/aiChoices 365-day independent retention rules with request CASCADE and origin SET NULL. Browser acknowledgment remains solely in existing 90-day events. One 500 ms consumer budget includes shared persistence and its exposure, no replay/detached writes. Legacy/expired/unrecorded evidence remains unknown. This authorizes local implementation only, not live execution or release.

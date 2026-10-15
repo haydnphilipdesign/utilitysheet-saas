@@ -1,5 +1,6 @@
 import {
     SELLER_OBSERVATION_MAX_BATCH,
+    SELLER_OBSERVATION_MAX_BODY_BYTES,
     SELLER_OBSERVATION_MAX_PER_SESSION,
     SELLER_OBSERVATION_SCHEMA_VERSION,
 } from '@/lib/telemetry/seller-observations';
@@ -114,19 +115,22 @@ export function createSellerObserver(options: { token: string; editVersion: numb
             // Wait for the reconnect instead of spending a try while offline.
             if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
 
+            const encode = (items: QueuedEvent[]) => JSON.stringify({
+                v: SELLER_OBSERVATION_SCHEMA_VERSION, session: loadSession().id,
+                edit_version: options.editVersion, events: items.map(item => item.event),
+            });
             const batch = queue.slice(0, SELLER_OBSERVATION_MAX_BATCH);
+            while (batch.length > 1 && new TextEncoder().encode(encode(batch)).byteLength > SELLER_OBSERVATION_MAX_BODY_BYTES) batch.pop();
+            if (new TextEncoder().encode(encode(batch)).byteLength > SELLER_OBSERVATION_MAX_BODY_BYTES) {
+                queue = queue.slice(1); schedule(); return;
+            }
             queue = queue.slice(batch.length);
             sending = true;
             try {
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        v: SELLER_OBSERVATION_SCHEMA_VERSION,
-                        session: loadSession().id,
-                        edit_version: options.editVersion,
-                        events: batch.map((item) => item.event),
-                    }),
+                    body: encode(batch),
                     keepalive: true,
                     credentials: 'omit',
                 });

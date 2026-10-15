@@ -42,3 +42,7 @@ or metering write changes. Browser acknowledgments, immutable exposure/call
 lineage, complete billing reconciliation and monitoring coverage are separately
 scoped work. Current semantics are maintained in `ADMIN.md`, AI telemetry docs
 and the operations runbook. No production changes or external calls authorized.
+
+## Approved Slice 8 amendment (2026-10-14)
+
+Owner-approved A-E in `2026-10-14-ai-exposure-lineage.md` extends this policy: v2 optional opaque IDs with strict v1 compatibility, server-validated advisory memberships and immutable accepted choices; distinct generation/consumer/ack/choice denominators and first/reopen cohorts; explicit aiExposures/aiChoices 365-day independent retention rules with request CASCADE and origin SET NULL. Browser acknowledgment remains solely in existing 90-day events. One 500 ms consumer budget includes shared persistence and its exposure, no replay/detached writes. Legacy/expired/unrecorded evidence remains unknown. This authorizes local implementation only, not live execution or release.

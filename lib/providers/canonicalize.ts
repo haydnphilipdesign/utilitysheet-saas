@@ -180,6 +180,8 @@ function preferDisplay(a: ProviderSuggestion, b: ProviderSuggestion): ProviderSu
 function mergeSuggestions(existing: ProviderSuggestion, incoming: ProviderSuggestion): ProviderSuggestion {
     const keeper = preferDisplay(existing, incoming);
     const other = keeper === existing ? incoming : existing;
+    // A collected identity belongs to one whole item. Never combine another item's canonical identity or contact with it.
+    if (existing.ai_lineage || incoming.ai_lineage) return keeper;
 
     return {
         ...keeper,

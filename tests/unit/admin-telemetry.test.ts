@@ -91,8 +91,8 @@ describe('admin telemetry against PostgreSQL', () => {
             { event: 'seller_opened', count: 1, requests: 1 },
         ]);
         expect(result?.ai).toEqual([
-            { feature: 'provider_search', status: 'success', runs: 2, cached: 1, freshLatencyMs: 120, freshSamples: 1, freshP50Ms: 120, freshP95Ms: 120, model: null, promptVersion: null },
-            { feature: 'provider_suggestions', status: 'fallback', runs: 1, cached: 1, freshLatencyMs: null, freshSamples: 0, freshP50Ms: null, freshP95Ms: null, model: null, promptVersion: null },
+            { lineage: 'legacy', feature: 'provider_search', status: 'success', runs: 2, cached: 1, freshLatencyMs: 120, freshSamples: 1, freshP50Ms: 120, freshP95Ms: 120, model: null, promptVersion: null },
+            { lineage: 'legacy', feature: 'provider_suggestions', status: 'fallback', runs: 1, cached: 1, freshLatencyMs: null, freshSamples: 0, freshP50Ms: null, freshP95Ms: null, model: null, promptVersion: null },
         ]);
     });
     it('changes only the request cohort when an older request enters the window', async () => {

@@ -72,7 +72,7 @@ describe('AI usage telemetry storage', () => {
         }]);
     });
 
-    it('returns a telemetry fallback with one marker when item failure leaves a partial run', async () => {
+    it('returns a telemetry fallback with one marker when item failure rolls back the entire run', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         await db.exec(`
             CREATE OR REPLACE FUNCTION test_fail_ai_item() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -86,7 +86,7 @@ describe('AI usage telemetry storage', () => {
         } finally {
             await db.exec('DROP TRIGGER test_fail_ai_item ON ai_suggestion_items');
         }
-        expect(await queryRows(db, 'SELECT id FROM ai_generation_runs')).toHaveLength(1);
+        expect(await queryRows(db, 'SELECT id FROM ai_generation_runs')).toHaveLength(0);
         expect(await queryRows(db, 'SELECT id FROM ai_suggestion_items')).toEqual([]);
         expect(warn).toHaveBeenCalledTimes(1);
         expect(JSON.stringify(warn.mock.calls)).not.toContain('private SQL sentinel');
@@ -166,7 +166,7 @@ describe('migrations-ai-usage-telemetry.sql', () => {
         await fresh.exec(migration);
         await fresh.exec(migration);
 
-        expect(await columns(fresh)).toEqual(await columns(db));
+        expect(await columns(fresh)).toEqual((await columns(db)).filter(column => !/^(lineage_version|transport_summary|transport_attempt_count|usage_coverage|grounding_requested|summary_truncated):/.test(column)));
         expect(await existingRow(fresh)).toEqual(before);
         expect(await queryRows(fresh, `SELECT ${USAGE_COLUMNS} FROM ai_generation_runs`)).toEqual([{
             prompt_tokens: null, output_tokens: null, thinking_tokens: null, tool_prompt_tokens: null,
@@ -188,7 +188,7 @@ describe('migrations-ai-usage-telemetry.sql', () => {
     it('applies where operational monitoring is not installed', async () => {
         const fresh = await deployedDatabase(false);
         await fresh.exec(migration);
-        expect(await columns(fresh)).toEqual(await columns(db));
+        expect(await columns(fresh)).toEqual((await columns(db)).filter(column => !/^(lineage_version|transport_summary|transport_attempt_count|usage_coverage|grounding_requested|summary_truncated):/.test(column)));
         await fresh.close();
     });
 });

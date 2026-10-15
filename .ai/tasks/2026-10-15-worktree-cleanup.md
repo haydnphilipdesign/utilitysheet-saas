@@ -61,10 +61,10 @@ Not applicable (no code change). Findings from `git log main..<branch>`,
 
 ## Next
 
-1. Decide on slice-8. Merge it into main (resolve the two conflicts, run the
-   unit and telemetry tests, then push; pushing main deploys), or drop it and
-   add the migration and `schema.sql` changes to main separately so main
-   matches the live database. Review it with `git log -p main..telemetry-slice-8`.
+1. Slice-8: merged on branch `merge/telemetry-slice-8` and tested; waiting for
+   the user to review and push. See
+   [the merge task](2026-10-15-merge-telemetry-slice-8.md). After the push,
+   remove both `.worktrees/slice-8` and `.worktrees/merge-slice-8`.
 2. Run `powershell -NoProfile -File .ai/tools/status.ps1`. It prints the exact
    remove commands. `--force` is needed only because of the uncommitted kit files.
 3. Mark this task done.
