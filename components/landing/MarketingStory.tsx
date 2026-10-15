@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useInView } from "framer-motion";
-import { ArrowUpRight, Check, FileText, PencilLine, Send } from "lucide-react";
+import { ArrowUpRight, Check } from "lucide-react";
 import { trackEvent } from "@/lib/analytics/events";
 
 export function MarketingWorkflow() {
@@ -37,37 +37,6 @@ export function MarketingWorkflow() {
             Give every property the same simple process. No blank forms to
             format or scattered answers to piece together.
           </p>
-        </div>
-        <div className="workflow-grid">
-          {[
-            {
-              number: "01",
-              icon: Send,
-              title: "Send your seller link",
-              copy: "Copy your reusable link into an email, text, or checklist you already use. Use it again for the next property.",
-            },
-            {
-              number: "02",
-              icon: PencilLine,
-              title: "Let the seller fill in the details",
-              copy: "Sellers enter the address and confirm their providers on their phone. Suggestions help them get started. No login needed.",
-            },
-            {
-              number: "03",
-              icon: FileText,
-              title: "Review. Download. Hand off.",
-              copy: "Get a completion notification, review the finished sheet, and share the web link or PDF with the people who need it.",
-            },
-          ].map(({ number, icon: Icon, title, copy }) => (
-            <article key={number}>
-              <div className="workflow-step-top">
-                <span>{number}</span>
-                <Icon size={22} />
-              </div>
-              <h3>{title}</h3>
-              <p>{copy}</p>
-            </article>
-          ))}
         </div>
         <div className="workflow-moments">
           <div>

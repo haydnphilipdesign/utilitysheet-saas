@@ -8,14 +8,12 @@ import { Menu, X } from "lucide-react";
 import { trackEvent } from "@/lib/analytics/events";
 
 const navigation = [
-  ["Home", "/"],
-  ["Features", "/features"],
   ["How It Works", "/how-it-works"],
+  ["Features", "/features"],
   ["Pricing", "/pricing"],
-  ["FAQ", "/faq"],
-  ["Demo", "/demo"],
-  ["About", "/about"],
 ];
+
+const mobileNavigation = [...navigation, ["FAQ", "/faq"], ["Demo", "/demo"], ["About", "/about"]];
 
 export function MarketingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -59,13 +57,13 @@ export function MarketingHeader() {
 
   return (
     <header className="fixed top-0 z-50 w-full border-b border-border/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+      <div className="marketing-container marketing-header-row flex items-center justify-between gap-3">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2"
           aria-label="UtilitySheet home"
         >
-          <span className="rounded-lg bg-slate-600 p-1.5">
+          <span className="marketing-logo-tile rounded-md bg-slate-600 p-1.5">
             <Image
               src="/logo-sm.png"
               alt=""
@@ -74,8 +72,7 @@ export function MarketingHeader() {
               className="h-5 w-5"
             />
           </span>
-          <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
-          <span className="text-norma-muted ml-1.5 text-xs">by Norma</span>
+          <span className="marketing-wordmark text-xl font-bold tracking-tight">UtilitySheet</span>
         </Link>
         <nav
           aria-label="Main navigation"
@@ -153,7 +150,7 @@ export function MarketingHeader() {
           aria-label="Mobile navigation"
           className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-background p-4 shadow-lg md:hidden"
         >
-          {navigation.map(([label, href]) => (
+          {mobileNavigation.map(([label, href]) => (
             <Link
               key={href}
               href={href}

@@ -14,14 +14,13 @@ const MarketingHeader = dynamic(
         ssr: false,
         loading: () => (
             <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+                <div className="marketing-container marketing-header-row flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Link href="/" className="flex items-center gap-2">
                             <div className="rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 p-1.5 shadow-lg shadow-slate-500/20">
                                 <Image src="/logo-sm.png" alt="UtilitySheet logo" width={20} height={20} className="h-5 w-5" />
                             </div>
-                            <span className="text-xl font-bold tracking-tight">UtilitySheet</span>
-                            <span className="ml-1.5 text-xs font-normal text-norma-muted">by Norma</span>
+                            <span className="marketing-wordmark text-xl font-bold tracking-tight">UtilitySheet</span>
                         </Link>
                     </div>
                 </div>
