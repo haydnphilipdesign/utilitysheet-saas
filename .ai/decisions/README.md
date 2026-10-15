@@ -52,3 +52,10 @@ Proposed
 
 ## Related Files, Plans, Issues, or Pull Requests
 ````
+
+## Coordination v2 ownership
+
+Link the relevant individual task record for detailed handoff/evidence; CURRENT
+is a short dashboard. Keep this record's status honest without copying its full
+contents into the dashboard. Approved/Accepted reflects real authorization
+already obtained; it does not create a new approval prompt.

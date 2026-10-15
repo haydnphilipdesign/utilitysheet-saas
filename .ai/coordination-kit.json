@@ -1,0 +1,11 @@
+{
+  "name": "shared-agent-coordination-kit",
+  "version": "3.0.0",
+  "mode": "project",
+  "hashes": {
+    ".ai/WORKFLOW.md": "937e81e855402c52d9a3f81bd7a0035dacec853a026cf6ca7725ee32a1019b88",
+    ".ai/README.md": "75568ba0db1c60ee0f851c2d719dd616e8dd9031a21cee03a93e366615cd6f68",
+    ".ai/tasks/README.md": "c1ce524ce41a8a336ccc264f60735a851150f9a4d36169ecdaf7e6d4855f259f",
+    ".ai/tools/status.ps1": "9b3bbeb82f873f76573242bac29fe9e0322b94d39b51581bf48db4f23d7b835e"
+  }
+}
