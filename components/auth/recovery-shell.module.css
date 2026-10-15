@@ -1,0 +1,66 @@
+/* Capture app colors before Stack's nested scopes define their HSL variables. */
+.content {
+    --recovery-background: var(--background);
+    --recovery-foreground: var(--foreground);
+    --recovery-primary: var(--primary);
+    --recovery-primary-foreground: var(--primary-foreground);
+    --recovery-input: var(--input);
+    --recovery-ring: var(--ring);
+}
+
+.content :global(.stack-scope) {
+    font-family: inherit;
+}
+
+.content > :global(.stack-scope) {
+    width: 100%;
+    max-width: none;
+}
+
+.content :global(.stack-scope) h2,
+.content :global(.stack-scope) h3 {
+    color: var(--recovery-foreground);
+    font-size: 1.5rem;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.content :global(.stack-scope) label {
+    color: var(--recovery-foreground);
+    font-size: 0.875rem;
+}
+
+.content :global(.stack-scope) input {
+    height: 2.75rem;
+    border-color: var(--recovery-input);
+    border-radius: 0.625rem;
+    background: color-mix(in oklab, var(--recovery-background) 50%, transparent);
+    color: var(--recovery-foreground);
+    font-size: 1rem;
+}
+
+.content :global(.stack-scope) input:focus-visible {
+    outline: 2px solid var(--recovery-ring);
+    outline-offset: 2px;
+}
+
+.content :global(.stack-scope) button[type='submit'] {
+    min-height: 2.75rem;
+    border-radius: 0.625rem;
+    background: var(--recovery-primary);
+    color: var(--recovery-primary-foreground);
+    font-size: 1rem;
+}
+
+.content :global(.stack-scope) button[type='submit']:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--recovery-primary) 90%, transparent);
+}
+
+.content :global(.stack-scope) a {
+    color: var(--recovery-primary);
+}
+
+.content :global(.stack-scope) a:hover,
+.content :global(.stack-scope) a:focus-visible {
+    text-decoration: underline;
+}
