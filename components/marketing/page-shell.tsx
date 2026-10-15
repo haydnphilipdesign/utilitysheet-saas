@@ -76,15 +76,10 @@ export function MarketingSection({
   children: ReactNode;
 }) {
   return (
-    <section
-      id={id}
-      className="marketing-inner-section px-5 py-14 sm:px-6 sm:py-18 lg:px-10"
-    >
-      <div className="mx-auto max-w-6xl">
+    <section id={id} className="marketing-inner-section py-14 sm:py-20">
+      <div className="marketing-container">
         <div className="max-w-3xl">
-          <h2 className="text-3xl tracking-tight text-foreground sm:text-4xl text-balance">
-            {title}
-          </h2>
+          <h2 className="marketing-inner-title text-balance">{title}</h2>
           {description && (
             <p className="mt-4 text-base leading-8 text-muted-foreground sm:text-lg">
               {description}
@@ -111,10 +106,10 @@ export function MarketingCtaBand({
         <p>{description}</p>
         <div className="marketing-actions">
           <Link href="/auth/signup" className="marketing-button">
-            Start Free <ArrowRight size={17} />
+            Start free <ArrowRight size={17} aria-hidden="true" />
           </Link>
           <Link href="/demo" className="marketing-text-link">
-            Try the Demo <ArrowUpRight size={17} />
+            Try the demo <ArrowUpRight size={17} aria-hidden="true" />
           </Link>
         </div>
       </div>

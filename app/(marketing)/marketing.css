@@ -1223,7 +1223,7 @@
   gap: 36px;
   counter-reset: steps;
 }
-.workflow-timeline li {
+.workflow-timeline ol > li {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1232,7 +1232,7 @@
   border-radius: 8px;
   padding: 30px 25px 26px;
 }
-.workflow-timeline li + li::before {
+.workflow-timeline ol > li + li::before {
   content: "";
   position: absolute;
   top: 115px;
@@ -1259,14 +1259,16 @@
   position: relative;
   margin: 8px 0 28px;
 }
-.timeline-preview img {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 16/9;
-  object-fit: cover;
-  border-radius: 6px;
+.timeline-stage {
+  display: grid;
+  align-items: center;
+  height: 290px;
+  padding: 22px 20px 30px;
   border: 1px solid #c2d3cf;
-  box-shadow: 0 10px 22px #123e5612;
+  border-radius: 6px;
+  background:
+    radial-gradient(circle at 0 100%, #cce7e1 0 64px, transparent 65px),
+    #f8f6f0;
 }
 .timeline-preview > span {
   position: absolute;
@@ -1286,7 +1288,7 @@
   line-height: 1.18;
   margin-bottom: 15px;
 }
-.workflow-timeline li > p {
+.workflow-timeline ol > li > p {
   font-size: 14px;
   line-height: 1.8;
   color: #31546a;
@@ -1359,10 +1361,10 @@
   .workflow-timeline ol {
     gap: 24px;
   }
-  .workflow-timeline li {
+  .workflow-timeline ol > li {
     padding-inline: 20px;
   }
-  .workflow-timeline li + li::before {
+  .workflow-timeline ol > li + li::before {
     width: 24px;
     left: -25px;
   }
@@ -1575,10 +1577,10 @@
     grid-template-columns: 1fr;
     gap: 46px;
   }
-  .workflow-timeline li {
+  .workflow-timeline ol > li {
     padding: 30px 23px 26px;
   }
-  .workflow-timeline li + li::before {
+  .workflow-timeline ol > li + li::before {
     top: -47px;
     left: 44px;
     width: 0;
@@ -1588,6 +1590,9 @@
   }
   .timeline-preview {
     margin-bottom: 30px;
+  }
+  .timeline-stage {
+    height: auto;
   }
   .marketing-site .workflow-timeline h2 {
     font-size: 26px;
@@ -1608,5 +1613,165 @@
     margin-left: 0;
     width: 100%;
     font-size: 13px;
+  }
+}
+
+/* Shared inner sections: same container, heading scale and card shape as the
+   redesigned pages, so older routes using MarketingSection line up too. */
+.marketing-site .marketing-inner-title {
+  font-size: clamp(30px, 3vw, 40px);
+  color: #0a2c40;
+}
+.marketing-inner-section {
+  border-top: 1px solid #e4e5de;
+  border-bottom: 0;
+}
+.marketing-note-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.marketing-note-grid li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 22px;
+  border: 1px solid #d3dedd;
+  border-radius: 8px;
+  background: #fffefb;
+  color: #31546a;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.marketing-note-grid li > span {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: #cce7e1;
+  color: #176173;
+}
+.marketing-note-grid strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #0a2c40;
+  font-weight: 650;
+}
+@media (max-width: 767px) {
+  .marketing-note-grid {
+    grid-template-columns: 1fr;
+  }
+  .marketing-note-grid li {
+    padding: 16px 18px;
+    font-size: 14px;
+  }
+}
+@media (min-width: 768px) and (max-width: 1100px) {
+  .workflow-timeline ol {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 46px;
+  }
+  .workflow-timeline ol > li {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    column-gap: 32px;
+    align-items: start;
+    padding: 34px 28px 28px;
+  }
+  .workflow-timeline ol > li > .timeline-preview {
+    grid-row: 1 / span 3;
+    margin: 0;
+  }
+  .workflow-timeline ol > li > h2 {
+    margin-top: 6px;
+  }
+  .workflow-timeline ol > li + li::before {
+    top: -47px;
+    left: 44px;
+    width: 0;
+    height: 46px;
+    border-top: 0;
+    border-left: 2px solid #7aa99b;
+  }
+}
+
+/* Homepage pricing and FAQ, matched to the Pricing and FAQ pages. */
+.home-section-heading {
+  max-width: 760px;
+  margin: 0 auto 48px;
+  text-align: center;
+}
+.home-section-heading .marketing-eyebrow {
+  justify-content: center;
+  color: #176173;
+  margin-bottom: 18px;
+}
+.home-section-heading h2 {
+  font-size: clamp(35px, 3.7vw, 49px);
+}
+.home-section-heading > p:last-child {
+  max-width: 560px;
+  margin: 18px auto 0;
+  color: #31546a;
+  font-size: 17px;
+  line-height: 1.7;
+}
+.home-section-link {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+.home-section-link a {
+  color: #176173;
+}
+.home-pricing {
+  background: #fffefb;
+}
+.home-plan {
+  border: 1px solid #d3dedd;
+  border-radius: 8px;
+  background: #f8f6f0;
+}
+.home-plan.is-popular {
+  border-color: #7ba99e;
+  background: #eaf6f1;
+}
+.marketing-site .home-plan h3 {
+  color: #123e56;
+}
+.home-plan-badge {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #176173;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.home-plan > a {
+  min-height: 48px;
+}
+.home-faq-list {
+  max-width: 860px;
+  margin-inline: auto;
+}
+@media (max-width: 767px) {
+  .home-section-heading {
+    margin-bottom: 32px;
+  }
+  .home-section-heading h2 {
+    font-size: clamp(31px, 8vw, 40px);
+  }
+  .home-section-heading > p:last-child {
+    font-size: 15px;
   }
 }

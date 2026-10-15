@@ -1,15 +1,26 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Link2, ClipboardCheck, Send } from "lucide-react";
+import type { ReactNode } from "react";
 
-const steps = [
+import {
+  MockSellerLink,
+  MockSheet,
+  MockSuggestions,
+} from "@/components/marketing/product-mockups";
+
+const steps: {
+  icon: typeof Link2;
+  title: string;
+  description: string;
+  preview: ReactNode;
+  detail: string;
+}[] = [
   {
     icon: Link2,
     title: "Share your seller link",
     description:
       "Copy your reusable link from the dashboard. Add it to a listing email, text it to a seller, or include it in your closing checklist.",
-    image: "/landing/demo-seller-link-dashboard.jpg",
-    alt: "Dashboard with a reusable seller link ready to copy",
+    preview: <MockSellerLink />,
     detail: "One link, ready for your next property.",
   },
   {
@@ -17,8 +28,7 @@ const steps = [
     title: "Let the seller fill in the details",
     description:
       "Sellers enter the address and follow a guided form. They can confirm suggested providers, search, or enter their own details. No account or app needed.",
-    image: "/landing/demo-provider-confirmation.jpg",
-    alt: "Guided seller form for confirming utility information",
+    preview: <MockSuggestions />,
     detail: "A simple form that works on their phone.",
   },
   {
@@ -26,8 +36,7 @@ const steps = [
     title: "Review it. Then hand it off.",
     description:
       "Get a clean web sheet and downloadable PDF. Review the details, then share with the buyer or your team. Pro and Teams let you correct submitted sheets.",
-    image: "/landing/demo-dashboard-saved.jpg",
-    alt: "Submitted sheets ready to review, share, and download as a PDF",
+    preview: <MockSheet rows={3} />,
     detail: "Buyer-ready information, all in one place.",
   },
 ];
@@ -40,20 +49,14 @@ export function WorkflowTimeline() {
       >
         <ol>
           {steps.map(
-            ({ icon: Icon, title, description, image, alt, detail }, index) => (
+            ({ icon: Icon, title, description, preview, detail }, index) => (
               <li key={title}>
                 <span className="timeline-number">
                   <span className="sr-only">Step </span>
                   {index + 1}
                 </span>
                 <div className="timeline-preview">
-                  <Image
-                    src={image}
-                    alt={alt}
-                    width={1600}
-                    height={900}
-                    sizes="(max-width: 767px) 90vw, 30vw"
-                  />
+                  <div className="timeline-stage">{preview}</div>
                   <span>
                     <Icon size={23} aria-hidden="true" />
                   </span>

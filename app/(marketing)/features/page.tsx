@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import './features.css';
 
-import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingSection } from '@/components/marketing/page-shell';
+import { FeaturesShowcase } from '@/components/marketing/features-showcase';
+import { MarketingHelpStrip } from '@/components/marketing/marketing-subpage';
+import { MarketingCtaBand } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { featureHighlights } from '@/lib/marketing-content';
 import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
 
@@ -36,90 +37,12 @@ export default function FeaturesPage() {
         ]}
       />
 
-      <MarketingPageHero showActions
-        eyebrow="Product"
-        title="Every detail, from seller to handoff."
-        description="Collect the details once. Keep the file organized. Give buyers a utility sheet that is clear, useful, and ready to share."
-      >
-        <MarketingBreadcrumbs
-          items={[
-            { label: 'Home', href: '/' },
-            { label: 'Features', href: '/features' },
-          ]}
-        />
-      </MarketingPageHero>
-
-      <MarketingSection
-        title="What UtilitySheet helps your team do"
-        description="Each feature is designed around the actual work of moving a listing from seller intake to buyer-ready handoff."
-      >
-        <div className="grid gap-6 md:grid-cols-2">
-          {featureHighlights.map((feature) => (
-            <article key={feature.title} className="rounded-3xl border border-border bg-card/40 p-6">
-              <h3 className="text-2xl font-semibold text-foreground">{feature.title}</h3>
-              <p className="mt-3 leading-7 text-muted-foreground">{feature.description}</p>
-            </article>
-          ))}
-        </div>
-      </MarketingSection>
-
-      <MarketingSection
-        title="Why these features matter in a transaction"
-        description="The value is not just collecting utility data. It is reducing delay, cleaning up the handoff, and helping your team look more organized."
-      >
-        <div className="grid gap-6 md:grid-cols-3">
-          {[
-            {
-              title: 'Less follow-up',
-              copy: 'Address-based suggestions and a guided seller experience reduce the usual round of “who is your provider?” follow-up messages.',
-            },
-            {
-              title: 'More consistent files',
-              copy: 'Every transaction gets the same structure, whether you need a simple utility sheet or a fuller closing-prep packet, and paid workspaces can clean up submitted details without restarting the seller.',
-            },
-            {
-              title: 'More professional delivery',
-              copy: 'UtilitySheet gives your team a clear web view and PDF instead of a stitched-together note or screenshot collection.',
-            },
-          ].map((item) => (
-            <article key={item.title} className="rounded-3xl border border-border bg-card/20 p-6">
-              <h3 className="text-xl font-semibold text-foreground">{item.title}</h3>
-              <p className="mt-3 leading-7 text-muted-foreground">{item.copy}</p>
-            </article>
-          ))}
-        </div>
-      </MarketingSection>
-
-      <MarketingSection title="Keep exploring" description="See the workflow, compare plans, or find the fit for your team.">
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            {
-              href: '/how-it-works',
-              title: 'How UtilitySheet works',
-              copy: 'See the full path from reusable seller link to utility sheet PDF.',
-            },
-            {
-              href: '/pricing',
-              title: 'Pricing',
-              copy: 'Compare Free, Pro, and Teams plans.',
-            },
-            {
-              href: '/utility-sheet-for-transaction-coordinators',
-              title: 'For transaction coordinators',
-              copy: 'Learn how the workflow fits a TC process.',
-            },
-          ].map((link) => (
-            <Link key={link.href} href={link.href} className="rounded-3xl border border-border bg-card/20 p-6 transition-colors hover:bg-card/40">
-              <h3 className="text-lg font-semibold text-foreground">{link.title}</h3>
-              <p className="mt-2 text-muted-foreground">{link.copy}</p>
-            </Link>
-          ))}
-        </div>
-      </MarketingSection>
+      <FeaturesShowcase />
+      <MarketingHelpStrip links={['how-it-works', 'demo', 'faq']} />
 
       <MarketingCtaBand
-        title="See the features inside a real workflow"
-        description="Try the guided seller form, then put your free link to work on a real file."
+        title="See it on your next file."
+        description="Start free with three submitted sheets a month, or try the seller experience first. No credit card required."
       />
     </div>
   );

@@ -43,7 +43,7 @@ export default function MarketingLayout({
             </main>
 
             <footer className="border-t border-border bg-background py-12">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="marketing-container">
                     <div className="grid grid-cols-2 gap-8 md:grid-cols-6 lg:grid-cols-6">
                         <div className="col-span-2 lg:col-span-2">
                             <Link href="/" className="flex items-center gap-2">

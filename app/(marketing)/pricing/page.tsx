@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Check } from "lucide-react";
 
 import { PricingComparison } from "@/components/marketing/pricing-comparison";
 import {
@@ -57,60 +57,37 @@ export default function PricingPage() {
       />
 
       <PricingComparison />
-      <MarketingHelpStrip />
+      <MarketingHelpStrip links={["features", "demo", "faq"]} />
 
       <MarketingSection
         title="Common reasons teams upgrade"
         description="Most upgrades happen when UtilitySheet becomes part of the regular listing-to-closing process."
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <ul className="marketing-note-grid">
           {[
-            "You want every seller utility form and PDF to reflect your own branding instead of UtilitySheet branding.",
-            "You want Property Handoff Packet mode so the finished packet includes home systems, access details, and service providers, not just utilities.",
-            "You want up to ten saved seller forms for different workflows in each workspace.",
-            "You need every seller submission unlocked, with no monthly limit, because the workflow is now part of every transaction.",
-            "You need to correct submitted sheets inside the dashboard instead of sending the seller back through the public form.",
-            "You need teammates inside the same workspace with shared Branding Profiles, shared visibility, and shared editing access.",
-          ].map((item) => (
-            <div
-              key={item}
-              className="rounded-2xl border border-border bg-card/20 p-5 text-muted-foreground"
-            >
-              {item}
-            </div>
+            ["Your brand, not ours.", "Every seller form and PDF reflects your own branding instead of UtilitySheet branding."],
+            ["A fuller handoff.", "Property Handoff Packet mode adds home systems, access details, and service providers, not just utilities."],
+            ["A form for each kind of file.", "Up to ten saved seller forms for listings, closings, condos, or anything else you handle differently."],
+            ["No monthly limit.", "Every seller submission unlocks, because the workflow is now part of every transaction."],
+            ["Corrections in the dashboard.", "Fix a submitted sheet yourself instead of sending the seller back through the public form."],
+            ["The whole team in one place.", "Teammates share a workspace, Branding Profiles, request visibility, and editing access."],
+          ].map(([title, copy]) => (
+            <li key={title}>
+              <span>
+                <Check size={13} aria-hidden="true" />
+              </span>
+              <p>
+                <strong>{title}</strong>
+                {copy}
+              </p>
+            </li>
           ))}
-        </div>
-      </MarketingSection>
-
-      <MarketingSection
-        title="Related pages"
-        description="If you are still comparing options, these pages give more context."
-      >
-        <div className="flex flex-wrap gap-4 text-sm font-semibold">
-          <Link
-            href="/features"
-            className="rounded-full border border-border px-4 py-2 hover:bg-muted"
-          >
-            Explore features
-          </Link>
-          <Link
-            href="/how-it-works"
-            className="rounded-full border border-border px-4 py-2 hover:bg-muted"
-          >
-            See the workflow
-          </Link>
-          <Link
-            href="/faq"
-            className="rounded-full border border-border px-4 py-2 hover:bg-muted"
-          >
-            Read the FAQ
-          </Link>
-        </div>
+        </ul>
       </MarketingSection>
 
       <MarketingCtaBand
-        title="Start on the free plan and upgrade when the workflow sticks"
-        description="That is the easiest way to see if UtilitySheet saves your team the time and back-and-forth it is meant to save before you add paid editing, branding, or team features."
+        title="Start free. Upgrade when it sticks."
+        description="See how much back-and-forth UtilitySheet saves on your next few files, then add branding, editing, or your team."
       />
     </div>
   );

@@ -1,13 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { useInView } from 'framer-motion';
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from '@/components/ui/accordion';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import { faqItems } from '@/lib/marketing-content';
 
@@ -24,26 +20,35 @@ export function FaqSection() {
         });
     }, [isInView]);
 
+    // Every answer stays rendered: the homepage FAQPage schema lists all of them.
     return (
-        <section ref={sectionRef} id="faq" className="scroll-mt-24 py-16 sm:py-24 bg-background px-4 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-3xl">
-                <h2 className="text-2xl sm:text-3xl font-bold text-foreground text-center mb-4">Frequently Asked Questions</h2>
-                <p className="text-center text-muted-foreground mb-8 sm:mb-12">
-                    Answers about seller utility forms, utility sheet PDFs, pricing, and how UtilitySheet fits a real estate closing workflow.
-                </p>
+        <section ref={sectionRef} id="faq" className="home-faq marketing-section scroll-mt-24">
+            <div className="marketing-container">
+                <div className="home-section-heading">
+                    <p className="marketing-eyebrow">FAQ</p>
+                    <h2 className="text-balance">Questions, <em>answered.</em></h2>
+                    <p>
+                        Seller forms, utility sheet PDFs, pricing, and how UtilitySheet fits a real estate closing workflow.
+                    </p>
+                </div>
 
-                <Accordion className="w-full">
-                    {faqItems.map((faq, i) => (
-                        <AccordionItem key={i} value={`item-${i}`} className="border-border">
-                            <AccordionTrigger className="text-base sm:text-lg text-foreground hover:text-slate-600 transition-colors text-left py-3 sm:py-4">
+                <div className="faq-accordions home-faq-list">
+                    {faqItems.map((faq) => (
+                        <details key={faq.question} className="faq-item">
+                            <summary>
                                 {faq.question}
-                            </AccordionTrigger>
-                            <AccordionContent className="text-muted-foreground text-sm sm:text-base leading-relaxed">
-                                {faq.answer}
-                            </AccordionContent>
-                        </AccordionItem>
+                                <ChevronDown size={18} aria-hidden="true" />
+                            </summary>
+                            <p>{faq.answer}</p>
+                        </details>
                     ))}
-                </Accordion>
+                </div>
+
+                <p className="home-section-link">
+                    <Link href="/faq" className="marketing-text-link">
+                        Search every answer <ArrowRight size={16} aria-hidden="true" />
+                    </Link>
+                </p>
             </div>
         </section>
     );

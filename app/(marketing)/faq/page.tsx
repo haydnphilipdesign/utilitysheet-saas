@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { MarketingFaqList } from "@/components/marketing/faq-list";
 import {
   MarketingHelpStrip,
   MarketingSubpageHero,
 } from "@/components/marketing/marketing-subpage";
-import {
-  MarketingCtaBand,
-  MarketingSection,
-} from "@/components/marketing/page-shell";
+import { MarketingCtaBand } from "@/components/marketing/page-shell";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { faqItems } from "@/lib/marketing-content";
 import { createPageMetadata } from "@/lib/seo/site";
@@ -54,47 +50,11 @@ export default function FaqPage() {
       />
 
       <MarketingFaqList />
-      <MarketingHelpStrip />
-
-      <MarketingSection
-        title="Not sure where to go next?"
-        description="These pages answer the most common follow-up questions."
-      >
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            {
-              href: "/features",
-              title: "Features",
-              copy: "See what the product does in more detail.",
-            },
-            {
-              href: "/pricing",
-              title: "Pricing",
-              copy: "Compare Free, Pro, and Teams.",
-            },
-            {
-              href: "/how-it-works",
-              title: "How It Works",
-              copy: "Walk through the utility handoff workflow step by step.",
-            },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-3xl border border-border bg-card/20 p-6 hover:bg-card/40"
-            >
-              <h3 className="text-lg font-semibold text-foreground">
-                {item.title}
-              </h3>
-              <p className="mt-2 text-muted-foreground">{item.copy}</p>
-            </Link>
-          ))}
-        </div>
-      </MarketingSection>
+      <MarketingHelpStrip links={["how-it-works", "features", "pricing"]} />
 
       <MarketingCtaBand
-        title="Ready to answer these questions with a live demo?"
-        description="Start free or run the interactive demo and see how UtilitySheet fits your workflow."
+        title="Still deciding? See it on a real file."
+        description="Start free, or run the interactive demo first and see how UtilitySheet fits your workflow."
       />
     </div>
   );

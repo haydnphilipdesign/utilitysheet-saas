@@ -4,8 +4,10 @@ import {
   CircleHelp,
   FileCheck2,
   Heart,
+  LayoutGrid,
   Link2,
   ShieldCheck,
+  Tag,
   Zap,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -91,35 +93,58 @@ export function MarketingSubpageHero({
   );
 }
 
-export function MarketingHelpStrip() {
+const helpLinks = {
+  "how-it-works": {
+    icon: Link2,
+    title: "One link. Every property.",
+    copy: "Set up your seller form once, then reuse it on your next file.",
+    href: "/how-it-works",
+    label: "See how it works",
+  },
+  demo: {
+    icon: FileCheck2,
+    title: "Start with a real walkthrough",
+    copy: "Explore the seller form and finished sheet in the interactive demo.",
+    href: "/demo",
+    label: "Try the demo",
+  },
+  faq: {
+    icon: CircleHelp,
+    title: "A few more questions?",
+    copy: "Get the details on seller forms, plan limits, and PDF delivery.",
+    href: "/faq",
+    label: "Browse the FAQ",
+  },
+  features: {
+    icon: LayoutGrid,
+    title: "See everything it does",
+    copy: "Seller links, provider suggestions, branding, editing, and Teams.",
+    href: "/features",
+    label: "Explore features",
+  },
+  pricing: {
+    icon: Tag,
+    title: "Find the right plan",
+    copy: "Start free, then compare Pro and Teams when the workflow sticks.",
+    href: "/pricing",
+    label: "Compare plans",
+  },
+} as const;
+
+export type MarketingHelpLink = keyof typeof helpLinks;
+
+// Pages pass the three destinations that make sense next; never their own route.
+export function MarketingHelpStrip({
+  links = ["how-it-works", "demo", "faq"],
+}: {
+  links?: MarketingHelpLink[];
+}) {
   return (
     <section
       className="marketing-container subpage-help"
       aria-label="More ways to get started"
     >
-      {[
-        {
-          icon: Link2,
-          title: "One link. Every property.",
-          copy: "Set up your seller form once, then reuse it on your next file.",
-          href: "/how-it-works",
-          label: "See how it works",
-        },
-        {
-          icon: FileCheck2,
-          title: "Start with a real walkthrough",
-          copy: "Explore the seller form and finished sheet in the interactive demo.",
-          href: "/demo",
-          label: "Try the demo",
-        },
-        {
-          icon: CircleHelp,
-          title: "A few more questions?",
-          copy: "Get the details on seller forms, plan limits, and PDF delivery.",
-          href: "/faq",
-          label: "Browse the FAQ",
-        },
-      ].map(({ icon: Icon, title, copy, href, label }) => (
+      {links.map((key) => helpLinks[key]).map(({ icon: Icon, title, copy, href, label }) => (
         <div key={title}>
           <span className="subpage-icon">
             <Icon size={23} aria-hidden="true" />
