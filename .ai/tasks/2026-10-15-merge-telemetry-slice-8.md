@@ -1,7 +1,7 @@
 ---
-status: ready
+status: done
 owner: claude-code
-updated: 2026-10-15 18:30
+updated: 2026-10-15 18:35
 scope: .
 ---
 # Merge telemetry-slice-8 into main
@@ -57,7 +57,6 @@ replace production), full `npm run test:e2e`, and any hosted or live checks.
 
 ## Next
 
-The user reviews the merge, then from the main checkout runs
-`git merge --ff-only merge/telemetry-slice-8` and `git push origin main`
-(pushing main deploys). Afterwards, remove `.worktrees/merge-slice-8` and
-`.worktrees/slice-8`, and mark this task done.
+Done. Pushed to origin/main as `9ab7423` on 2026-10-15; the Vercel production
+deployment reported success at 18:33. Remaining cleanup (removing the two
+worktrees) is tracked in [the worktree cleanup task](2026-10-15-worktree-cleanup.md).
