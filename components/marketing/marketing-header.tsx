@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useUser } from "@stackframe/stack";
 import { Menu, X } from "lucide-react";
 import { trackEvent } from "@/lib/analytics/events";
@@ -11,11 +12,17 @@ const navigation = [
   ["How It Works", "/how-it-works"],
   ["Features", "/features"],
   ["Pricing", "/pricing"],
+  ["FAQ", "/faq"],
 ];
 
-const mobileNavigation = [...navigation, ["FAQ", "/faq"], ["Demo", "/demo"], ["About", "/about"]];
+const mobileNavigation = [
+  ...navigation,
+  ["Demo", "/demo"],
+  ["About", "/about"],
+];
 
 export function MarketingHeader() {
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const hasTrackedPrimaryViewRef = useRef(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -72,7 +79,9 @@ export function MarketingHeader() {
               className="h-5 w-5"
             />
           </span>
-          <span className="marketing-wordmark text-xl font-bold tracking-tight">UtilitySheet</span>
+          <span className="marketing-wordmark text-xl font-bold tracking-tight">
+            UtilitySheet
+          </span>
         </Link>
         <nav
           aria-label="Main navigation"
@@ -82,6 +91,7 @@ export function MarketingHeader() {
             <Link
               key={href}
               href={href}
+              aria-current={pathname === href ? "page" : undefined}
               className={`${label === "About" ? "hidden lg:block " : ""}py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground`}
             >
               {label}
@@ -155,6 +165,7 @@ export function MarketingHeader() {
               key={href}
               href={href}
               onClick={() => setMobileMenuOpen(false)}
+              aria-current={pathname === href ? "page" : undefined}
               className="block rounded-md px-4 py-3 text-sm hover:bg-muted"
             >
               {label}
