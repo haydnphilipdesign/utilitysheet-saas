@@ -16,6 +16,7 @@ const marketingRoutes: { path: string; lastModified: string }[] = [
   { path: '/seller-utility-information-form', lastModified: '2026-10-08' },
   { path: '/real-estate-closing-utility-checklist', lastModified: '2026-10-08' },
   { path: '/tc-utility-handoff-kit', lastModified: '2026-10-08' },
+  { path: '/utility-sheet-template', lastModified: '2026-10-20' },
   { path: '/from-a-closing', lastModified: '2026-10-06' },
   { path: '/demo', lastModified: '2026-10-08' },
   { path: '/about', lastModified: '2026-10-06' },

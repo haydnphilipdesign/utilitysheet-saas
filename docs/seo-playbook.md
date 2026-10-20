@@ -90,6 +90,7 @@ two days. Requesting doesn't guarantee indexing; it moves the URL up the queue.
 | 8 | `https://www.utilitysheet.com/utility-sheet-for-real-estate-agents` | Second audience. |
 | 9 | `https://www.utilitysheet.com/how-it-works` | Supporting page. |
 | 10 | `https://www.utilitysheet.com/faq` | Supporting page. |
+| 11 | `https://www.utilitysheet.com/utility-sheet-template` | Free printable template; request it as soon as it's live. |
 
 Leave `/about`, `/demo`, `/from-a-closing`, and the legal pages to the
 sitemap. They will be crawled without help.
@@ -158,7 +159,7 @@ Every Monday:
 These are **hypotheses**. There is no keyword data yet. After 4–8 weeks,
 Search Console's Queries report will show which ones are real. Pick 3 to start.
 
-### A. Free printable utility sheet template (recommended first)
+### A. Free printable utility sheet template (built: `/utility-sheet-template`)
 - **Intent:** "utility information sheet template", "utility list for home
   buyers", "seller utility form pdf". TCs and agents who want a form *now*.
 - **URL:** `/utility-sheet-template`

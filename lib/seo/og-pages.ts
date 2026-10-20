@@ -62,6 +62,11 @@ export const ogPages = {
     eyebrow: 'Free TC resource',
     title: 'The TC Utility Handoff Kit',
   },
+  'utility-sheet-template': {
+    path: '/utility-sheet-template',
+    eyebrow: 'Free printable template',
+    title: 'Free utility sheet template for real estate closings',
+  },
   'from-a-closing': {
     path: '/from-a-closing',
     eyebrow: 'For closing professionals',
