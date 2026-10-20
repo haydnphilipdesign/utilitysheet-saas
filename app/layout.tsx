@@ -29,9 +29,8 @@ export const metadata: Metadata = {
   creator: siteConfig.creator,
   publisher: siteConfig.publisher,
   category: 'Real estate software',
-  alternates: {
-    canonical: '/',
-  },
+  // No canonical or og:url here: indexable pages set their own through
+  // createPageMetadata, and noindex pages must not point at the home page.
   manifest: '/manifest.webmanifest',
   icons: {
     icon: '/favicon.ico',
@@ -54,7 +53,6 @@ export const metadata: Metadata = {
     type: 'website',
     locale: siteConfig.locale,
     siteName: siteConfig.name,
-    url: "/",
     images: [
       {
         url: '/opengraph-image',
