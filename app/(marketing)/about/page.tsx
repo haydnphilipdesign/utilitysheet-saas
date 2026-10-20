@@ -10,7 +10,7 @@ import {
 import { createPageMetadata } from "@/lib/seo/site";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "About UtilitySheet",
+  title: "About: Built From a Real TC Workflow",
   description:
     "Learn how UtilitySheet was built from real transaction coordination workflows to make seller utility collection faster, cleaner, and easier to share.",
   path: "/about",

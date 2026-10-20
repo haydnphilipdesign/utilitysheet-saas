@@ -18,7 +18,7 @@ import { breadcrumbSchema } from '@/lib/seo/schema';
 export const metadata: Metadata = createPageMetadata({
     title: 'Free TC Utility Handoff Kit',
     description:
-        'Copy seller utility email templates for listing intake, closing prep, and buyer-side requests through the listing agent, plus a text message and closing utility checklist for transaction coordinators.',
+        'Free copy-and-paste emails, a seller text, and a checklist for collecting seller utility details at listing intake, closing prep, or from the buyer side.',
     path: '/tc-utility-handoff-kit',
     keywords: [
         'transaction coordinator templates',
@@ -194,7 +194,7 @@ export default function TcUtilityHandoffKitPage() {
             >
                 <Link
                     href={signupHref}
-                    className={cn(buttonVariants({ size: 'lg' }), 'bg-emerald-600 text-white hover:bg-emerald-500')}
+                    className={cn(buttonVariants({ size: 'lg' }), 'bg-emerald-700 text-white hover:bg-emerald-600')}
                 >
                     Create your seller link
                     <ArrowRight aria-hidden="true" />

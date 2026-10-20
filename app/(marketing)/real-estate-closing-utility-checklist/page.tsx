@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingSection } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { createPageMetadata } from '@/lib/seo/site';
-import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
+import { breadcrumbSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Real Estate Closing Utility Checklist',
@@ -37,11 +37,6 @@ export default function RealEstateClosingUtilityChecklistPage() {
             { name: 'Home', path: '/' },
             { name: 'Real Estate Closing Utility Checklist', path: '/real-estate-closing-utility-checklist' },
           ]),
-          softwareApplicationSchema({
-            path: '/real-estate-closing-utility-checklist',
-            description:
-              'UtilitySheet supports a cleaner real estate closing utility checklist by helping teams collect, organize, and share seller utility information.',
-          }),
         ]}
       />
 

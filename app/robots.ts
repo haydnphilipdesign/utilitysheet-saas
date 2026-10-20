@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 
+import { crawlBlockedPrefixes } from '@/lib/seo/private-routes';
 import { absoluteUrl } from '@/lib/seo/site';
 
 export default function robots(): MetadataRoute.Robots {
@@ -8,22 +9,9 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: [
-          '/api/',
-          '/auth/',
-          '/dashboard/',
-          '/admin/',
-          '/onboarding/',
-          '/handler/',
-          '/invite/',
-          '/packet/',
-          '/s/',
-          '/i/',
-          '/form/',
-        ],
+        disallow: [...crawlBlockedPrefixes],
       },
     ],
     sitemap: absoluteUrl('/sitemap.xml'),
-    host: absoluteUrl('/'),
   };
 }

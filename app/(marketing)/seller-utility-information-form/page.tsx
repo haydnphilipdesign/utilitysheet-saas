@@ -5,12 +5,12 @@ import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingSec
 import { JsonLd } from '@/components/seo/JsonLd';
 import { workflowSteps } from '@/lib/marketing-content';
 import { createPageMetadata } from '@/lib/seo/site';
-import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
+import { breadcrumbSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Seller Utility Information Form With a Reusable Link',
+  title: 'Seller Utility Information Form',
   description:
-    'UtilitySheet provides a guided seller utility information form through one reusable link, helping teams collect utility details, generate a polished utility sheet PDF, and correct submitted sheets on paid plans.',
+    'A guided utility form sellers finish on their phone, no account needed. One reusable link returns a clean utility sheet and PDF for the buyer.',
   path: '/seller-utility-information-form',
   keywords: [
     'seller utility information form',
@@ -28,11 +28,6 @@ export default function SellerUtilityInformationFormPage() {
             { name: 'Home', path: '/' },
             { name: 'Seller Utility Information Form', path: '/seller-utility-information-form' },
           ]),
-          softwareApplicationSchema({
-            path: '/seller-utility-information-form',
-            description:
-              'A guided seller utility information form for real estate teams that need cleaner utility handoff data, ready-to-share PDFs, and dashboard-side corrections on paid plans.',
-          }),
         ]}
       />
 

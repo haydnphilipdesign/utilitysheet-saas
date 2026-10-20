@@ -10,12 +10,12 @@ import {
 import { JsonLd } from "@/components/seo/JsonLd";
 
 import { createPageMetadata } from "@/lib/seo/site";
-import { breadcrumbSchema, softwareApplicationSchema } from "@/lib/seo/schema";
+import { breadcrumbSchema } from "@/lib/seo/schema";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "How UtilitySheet Works After Signup",
+  title: "How It Works: Seller Link to Utility Sheet",
   description:
-    "See how UtilitySheet works after signup: copy your reusable seller link, collect utility details, review the finished utility sheet PDF, and update submitted sheets on paid plans.",
+    "Copy your seller link, send it to the seller, and get back a buyer-ready utility sheet and PDF. See where it fits at listing intake and closing prep.",
   path: "/how-it-works",
   keywords: [
     "how utility sheet works",
@@ -33,11 +33,6 @@ export default function HowItWorksPage() {
             { name: "Home", path: "/" },
             { name: "How It Works", path: "/how-it-works" },
           ]),
-          softwareApplicationSchema({
-            path: "/how-it-works",
-            description:
-              "A step-by-step workflow for collecting seller utility information, delivering a utility sheet, and managing corrections after submission on paid plans.",
-          }),
         ]}
       />
 

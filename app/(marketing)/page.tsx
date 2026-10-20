@@ -10,19 +10,18 @@ import { FaqSection } from '@/components/landing/FaqSection';
 import { StickyCTA } from '@/components/landing/StickyCTA';
 import { FinalCtaSection } from '@/components/landing/FinalCtaSection';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { faqItems } from '@/lib/marketing-content';
 import { createPageMetadata } from '@/lib/seo/site';
 import {
-    faqPageSchema,
     organizationSchema,
     softwareApplicationSchema,
     websiteSchema,
 } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-    title: 'Seller Utility Handoff Software for Real Estate Closings',
+    title: 'UtilitySheet: Seller Utility Sheets for Real Estate Closings',
+    absoluteTitle: true,
     description:
-        'UtilitySheet helps transaction coordinators and real estate teams send one reusable seller link at listing intake or before closing, collect seller utility details, and produce a clean buyer-ready utility sheet.',
+        'Send sellers one reusable link to collect their electric, water, gas, and internet providers, then share a clean utility sheet and PDF with the buyer.',
     path: '/',
 });
 
@@ -36,12 +35,7 @@ export default function LandingPage() {
                 data={[
                     organizationSchema(),
                     websiteSchema(),
-                    softwareApplicationSchema({
-                        path: '/',
-                        description:
-                            'Seller utility handoff software for transaction coordinators and real estate teams built around one reusable seller link, guided utility intake, clean web and PDF output, and dashboard-side updates after submission on paid plans.',
-                    }),
-                    faqPageSchema(faqItems),
+                    softwareApplicationSchema(),
                 ]}
             />
             <StickyCTA />

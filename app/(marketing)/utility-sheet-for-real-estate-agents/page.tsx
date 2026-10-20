@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingSection } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { createPageMetadata } from '@/lib/seo/site';
-import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
+import { breadcrumbSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Utility Sheet Workflow for Real Estate Agents',
@@ -27,11 +27,6 @@ export default function UtilitySheetForRealEstateAgentsPage() {
             { name: 'Home', path: '/' },
             { name: 'Utility Sheet for Real Estate Agents', path: '/utility-sheet-for-real-estate-agents' },
           ]),
-          softwareApplicationSchema({
-            path: '/utility-sheet-for-real-estate-agents',
-            description:
-              'UtilitySheet helps real estate agents collect seller utility information and deliver a better utility handoff before closing.',
-          }),
         ]}
       />
 

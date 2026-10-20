@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 
 import { siteKeywords } from '@/lib/marketing-content';
+import { ogImagePathFor } from '@/lib/seo/og-pages';
 
-const fallbackUrl = 'https://utilitysheet.com';
+// Production serves www; the apex domain redirects to it.
+const fallbackUrl = 'https://www.utilitysheet.com';
 
 export const siteConfig = {
   name: 'UtilitySheet',
@@ -50,6 +52,8 @@ export const noIndexRobots: NonNullable<Metadata['robots']> = {
 
 type PageMetadataInput = {
   title: string;
+  /** Skip the " | UtilitySheet" template, for titles that already name the brand. */
+  absoluteTitle?: boolean;
   description: string;
   path: string;
   keywords?: readonly string[];
@@ -59,14 +63,16 @@ type PageMetadataInput = {
 
 export function createPageMetadata({
   title,
+  absoluteTitle = false,
   description,
   path,
   keywords,
-  imagePath = '/opengraph-image',
+  imagePath,
   noIndex = false,
 }: PageMetadataInput): Metadata {
+  const image = imagePath ?? ogImagePathFor(path);
   return {
-    title,
+    title: absoluteTitle ? { absolute: title } : title,
     description,
     keywords: keywords ? [...keywords] : undefined,
     alternates: {
@@ -81,10 +87,10 @@ export function createPageMetadata({
       url: path,
       images: [
         {
-          url: imagePath,
+          url: image,
           width: 1200,
           height: 630,
-          alt: `${title} | ${siteConfig.name}`,
+          alt: absoluteTitle ? title : `${title} | ${siteConfig.name}`,
         },
       ],
     },
@@ -92,7 +98,7 @@ export function createPageMetadata({
       card: 'summary_large_image',
       title,
       description,
-      images: [imagePath],
+      images: [image],
     },
     robots: noIndex ? noIndexRobots : undefined,
   };

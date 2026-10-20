@@ -1,5 +1,7 @@
 import type { NextConfig } from 'next';
 
+import { noIndexHeaderSources } from './lib/seo/private-routes';
+
 const isProduction = process.env.NODE_ENV === 'production';
 
 const securityHeaders = [
@@ -52,6 +54,10 @@ const nextConfig: NextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
+      ...noIndexHeaderSources.map((source) => ({
+        source,
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      })),
     ];
   },
   async redirects() {

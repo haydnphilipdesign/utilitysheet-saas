@@ -5,7 +5,7 @@ import { requestTimelineEventLabel } from '@/lib/admin/seller-progress';
 interface EventLog {
     id: string;
     event_type: string;
-    event_data: any;
+    event_data: unknown;
     ip_address: string | null;
     created_at: string;
 }

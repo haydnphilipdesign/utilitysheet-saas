@@ -58,8 +58,8 @@ function subscribeToDashboardStripDismissal(onStoreChange: () => void) {
 
 function statusClasses(status: string) {
     return status === 'Live'
-        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
-        : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
+        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+        : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300';
 }
 
 export function NormaSuitePanel({ variant }: NormaSuitePanelProps) {
@@ -163,13 +163,13 @@ export function NormaSuitePanel({ variant }: NormaSuitePanelProps) {
                             </div>
                             <div className="mt-4">
                                 {isCurrent ? (
-                                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-300">You&apos;re here</span>
+                                    <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">You&apos;re here</span>
                                 ) : (
                                     <a
                                         href={buildSuiteUrl(product.href, `utilitysheet_footer_${product.id}`)}
                                         className="text-sm font-semibold text-foreground underline decoration-border underline-offset-4 transition hover:text-emerald-600"
                                     >
-                                        Learn more
+                                        Learn more<span className="sr-only"> about {product.name}</span>
                                     </a>
                                 )}
                             </div>

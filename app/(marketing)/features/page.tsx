@@ -6,12 +6,12 @@ import { MarketingHelpStrip } from '@/components/marketing/marketing-subpage';
 import { MarketingCtaBand } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { createPageMetadata } from '@/lib/seo/site';
-import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
+import { breadcrumbSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'UtilitySheet Features for Seller Utility Handoffs',
+  title: 'Features: Seller Links, Utility Sheets & PDFs',
   description:
-    'Explore UtilitySheet features for reusable seller links, saved seller forms, guided utility and HOA intake, ready-to-review utility sheet PDFs, submitted-sheet editing, and branded handoffs.',
+    'Reusable seller links, a phone-friendly utility form, provider suggestions, and a clean web sheet and PDF. Add branding, editing, and teams as you grow.',
   path: '/features',
   keywords: [
     'utility sheet features',
@@ -29,11 +29,6 @@ export default function FeaturesPage() {
             { name: 'Home', path: '/' },
             { name: 'Features', path: '/features' },
           ]),
-          softwareApplicationSchema({
-            path: '/features',
-            description:
-              'UtilitySheet features for transaction coordinators and real estate agents who need a better seller utility information workflow.',
-          }),
         ]}
       />
 
