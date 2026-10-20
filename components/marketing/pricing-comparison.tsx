@@ -142,7 +142,7 @@ export function PricingComparison() {
         </tbody>
         <tfoot>
           <tr>
-            <td>Ready for your next file?</td>
+            <td />
             {plans.map((plan, index) => (
               <td
                 key={plan.name}

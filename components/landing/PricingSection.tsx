@@ -51,7 +51,7 @@ const tiers = [
   {
     ...pricingTiers[2],
     price: "$7",
-    period: "/seat/mo",
+    period: "/seat/month",
     description: "For a shared workflow. 3-seat minimum ($21/month).",
     cta: "Start Teams",
     popular: false,

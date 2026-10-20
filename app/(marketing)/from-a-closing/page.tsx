@@ -138,7 +138,7 @@ export default async function FromAClosingPage({
                 <ul className="marketing-note-grid">
                     {[
                         'Sellers need no account, no app, and no research. "Not sure" is always allowed.',
-                        'Sellers can complete the guided form on their phone without an account.',
+                        'When available, provider suggestions from the property address help sellers pick the right companies.',
                         'The finished sheet arrives as a web view and PDF, ready to forward.',
                         'The free plan covers 3 submitted sheets per month, with no credit card required.',
                     ].map((item) => (

@@ -430,6 +430,12 @@
   border-radius: 10px;
   background: #ffffff0d;
 }
+.ft-team-art figcaption {
+  margin-top: 12px;
+  text-align: center;
+  color: #bbcdc6;
+  font-size: 11px;
+}
 .ft-team-stage .mock-panel {
   max-width: 400px;
   margin-inline: auto;

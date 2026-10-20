@@ -67,12 +67,10 @@ export default function UtilitySheetForRealEstateAgentsPage() {
 
       <MarketingPointsSection
         title="What agents usually care about most"
-        description="These are the parts of the workflow that tend to matter most when an agent is evaluating whether a tool is worth adopting."
         points={[
           { copy: 'Sellers can complete the form without a login or app install.' },
           { copy: 'The finished utility sheet is easy to share with buyers and support staff.' },
           { copy: 'Pro and Teams can correct submitted sheets in the dashboard when small details change before closing.' },
-          { copy: 'The workflow helps the transaction feel more organized and less reactive.' },
           { copy: 'Paid plans let you brand the output so the experience feels like part of your business.' },
         ]}
       />
