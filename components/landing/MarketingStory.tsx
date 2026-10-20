@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useInView } from "framer-motion";
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { trackEvent } from "@/lib/analytics/events";
 
 export function MarketingWorkflow() {
@@ -70,7 +70,7 @@ export function MarketingWorkflow() {
             ))}
           </ul>
           <Link href="/tc-utility-handoff-kit" className="marketing-text-link">
-            Copy an email for each <ArrowUpRight size={17} />
+            Copy an email for each <ArrowRight size={17} />
           </Link>
         </div>
         <div className="workflow-video">
@@ -86,7 +86,7 @@ export function MarketingWorkflow() {
               sheet.
             </p>
             <Link href="/demo" className="marketing-text-link">
-              Try it yourself <ArrowUpRight size={17} />
+              Try it yourself <ArrowRight size={17} />
             </Link>
           </div>
           <video
@@ -146,7 +146,7 @@ export function MarketingCapabilities() {
             collect a fuller property handoff as your workflow grows.
           </p>
           <Link href="/features" className="marketing-text-link">
-            Explore all features <ArrowUpRight size={17} />
+            Explore all features <ArrowRight size={17} />
           </Link>
         </div>
         <div className="capability-list">
@@ -207,13 +207,13 @@ export function MarketingAudience() {
           <strong>moving a file from listing to closing.</strong>
         </p>
         <Link href="/utility-sheet-for-transaction-coordinators">
-          Transaction coordinators <ArrowUpRight size={19} />
+          Transaction coordinators <ArrowRight size={19} />
         </Link>
         <Link href="/utility-sheet-for-real-estate-agents">
-          Real estate agents <ArrowUpRight size={19} />
+          Real estate agents <ArrowRight size={19} />
         </Link>
         <Link href="/tc-utility-handoff-kit">
-          <Check size={17} /> Free handoff templates <ArrowUpRight size={19} />
+          <Check size={17} /> Free handoff templates <ArrowRight size={19} />
         </Link>
       </div>
     </section>

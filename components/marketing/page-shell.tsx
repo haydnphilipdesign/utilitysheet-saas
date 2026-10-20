@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 type BreadcrumbItem = { label: string; href: string };
 
@@ -56,7 +56,7 @@ export function MarketingPageHero({
                 Start free <ArrowRight size={17} />
               </Link>
               <Link href="/demo" className="marketing-text-link">
-                Try the demo <ArrowUpRight size={17} />
+                Try the demo <ArrowRight size={17} />
               </Link>
             </div>
           )}
@@ -209,7 +209,7 @@ export function MarketingCtaBand({
             Start free <ArrowRight size={17} aria-hidden="true" />
           </Link>
           <Link href="/demo" className="marketing-text-link">
-            Try the demo <ArrowUpRight size={17} aria-hidden="true" />
+            Try the demo <ArrowRight size={17} aria-hidden="true" />
           </Link>
         </div>
       </div>

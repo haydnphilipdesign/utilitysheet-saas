@@ -19,7 +19,7 @@ const marketingRoutes: { path: string; lastModified: string }[] = [
   { path: '/utility-sheet-template', lastModified: '2026-10-20' },
   { path: '/from-a-closing', lastModified: '2026-10-20' },
   { path: '/demo', lastModified: '2026-10-20' },
-  { path: '/about', lastModified: '2026-10-06' },
+  { path: '/about', lastModified: '2026-10-20' },
   { path: '/privacy', lastModified: '2026-10-06' },
   { path: '/terms', lastModified: '2026-10-06' },
   { path: '/cookie-policy', lastModified: '2026-10-06' },
