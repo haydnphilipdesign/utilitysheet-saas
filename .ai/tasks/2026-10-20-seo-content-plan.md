@@ -1,7 +1,7 @@
 ---
-status: ready
+status: done
 owner: claude
-updated: 2026-10-20 22:30
+updated: 2026-10-20 22:45
 scope: app/(marketing)/guides, app/(marketing)/from-a-closing (one sentence), app/(marketing)/real-estate-closing-utility-checklist (one sentence), components/marketing/faq-list.tsx (category map only), components/landing/SocialProofBar.tsx (export only), app/(marketing)/utility-sheet-template, app/(marketing)/utility-sheet-for-transaction-coordinators, components/landing/ForTcsSection.tsx, app/sitemap.ts, lib/seo/og-pages.ts, app/(marketing)/layout.tsx (footer links only), lib/marketing-content.ts (FAQ entries only), docs/seo-playbook.md, tests/unit/seo-*
 ---
 # SEO content plan (playbook section 6, items B–E and billing FAQ)
@@ -105,4 +105,8 @@ overflow.
 
 ## Next
 
-All section 6 items are built and pushed on `claude/exciting-mayer-5vb4nw`. Next: owner merges the branch, then requests indexing for the new guide URLs (playbook rows 12–13). Optional follow-ups: fillable PDF / sample filled-in sheet (item A), linking the buyer guide from the agents page or the public packet page.
+Done. Merged into `main` on 2026-10-20 at the owner's request. Owner to
+request indexing for the two guide URLs (playbook rows 12–13) after deploy,
+and to confirm the Stripe portal cancels at period end. Optional follow-ups
+(fillable PDF template, labeled sample filled-in sheet, buyer guide link from
+the agents page) are handed to a new session.
