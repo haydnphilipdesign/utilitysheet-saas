@@ -5,6 +5,8 @@ const PUBLIC_PATHS = new Set([
     '/auth/signup', '/auth/login', '/from-a-closing', '/tc-utility-handoff-kit',
     '/real-estate-closing-utility-checklist', '/seller-utility-information-form',
     '/utility-sheet-for-transaction-coordinators', '/utility-sheet-for-real-estate-agents',
+    '/utility-sheet-template', '/guides/set-up-utilities-when-buying-a-house',
+    '/guides/transfer-utilities-when-selling-a-house',
 ]);
 
 export function telemetryPath(raw: string): string {

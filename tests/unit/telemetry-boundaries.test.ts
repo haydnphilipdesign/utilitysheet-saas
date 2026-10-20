@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { beforeAnalyticsSend, beforeSpeedInsightsSend } from '@/lib/analytics/collector-policy';
 import { telemetryPath } from '@/lib/analytics/route-policy';
@@ -34,6 +36,16 @@ describe('collector boundaries', () => {
         ['/%2573/synthetic-secret', '/other'],
         ['/pricing?password=secret', '/pricing'],
     ])('canonicalizes %s', (path, expected) => expect(telemetryPath(path)).toBe(expected));
+
+    it('keeps every static marketing page as its own label', () => {
+        const root = path.join(process.cwd(), 'app', '(marketing)');
+        const routes = fs.readdirSync(root, { recursive: true, encoding: 'utf8' })
+            .filter((file) => path.basename(file) === 'page.tsx' && !file.includes('['))
+            .map((file) => '/' + path.dirname(file).split(path.sep).join('/'))
+            .map((route) => (route === '/.' ? '/' : route));
+        expect(routes.length).toBeGreaterThan(0);
+        for (const route of routes) expect(telemetryPath(route)).toBe(route);
+    });
 
     it.each(['pageview', 'event'] as const)('reconstructs safe %s fields, retaining coarse custom-event URLs', (type) => {
         const result = beforeAnalyticsSend({
