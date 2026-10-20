@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
     refresh: vi.fn(),
@@ -264,6 +264,15 @@ describe('Operations page', () => {
     const now = '2026-10-13T12:00:00Z';
     const page = async (params: Record<string, string> = {}) => render(await OperationsPage({ searchParams: Promise.resolve(params) }));
 
+    // The page judges collection freshness against the wall clock, so pin it to the fixtures' `now`.
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(now));
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
     it('shows email handoff and PDF evidence as its own section, and a pending migration as not installed', async () => {
         const quiet = {
             generatedAt: now, incidents: ok({ incidents: [], firstObservationAt: now, lastObservationAt: now, truncated: false }),
@@ -316,8 +325,15 @@ describe('Operations page', () => {
         first.unmount();
 
         mocks.snapshot.mockResolvedValue({ ...base, incidents: ok({ incidents: [], firstObservationAt: now, lastObservationAt: now, truncated: false }) });
-        await page();
+        const quiet = await page();
         expect(screen.getByText(/no open service issues/i)).toBeInTheDocument();
+        quiet.unmount();
+
+        const old = '2026-10-10T12:00:00Z';
+        mocks.snapshot.mockResolvedValue({ ...base, incidents: ok({ incidents: [], firstObservationAt: old, lastObservationAt: old, truncated: false }) });
+        await page();
+        expect(screen.getByText(/either nothing has happened since, or collection has stopped/i)).toBeInTheDocument();
+        expect(screen.queryByText(/no open service issues/i)).not.toBeInTheDocument();
     });
 
     it('shows service issues apart from follow-up, with recovery stated separately from triage', async () => {
