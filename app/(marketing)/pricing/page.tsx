@@ -36,11 +36,7 @@ export default function PricingPage() {
             { name: "Home", path: "/" },
             { name: "Pricing", path: "/pricing" },
           ]),
-          softwareApplicationSchema({
-            path: "/pricing",
-            description:
-              "UtilitySheet pricing for real estate teams that need seller utility forms, submitted-sheet editing on paid plans, utility sheet PDFs, and branded packet workflows.",
-          }),
+          softwareApplicationSchema(),
         ]}
       />
 

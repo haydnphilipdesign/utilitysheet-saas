@@ -32,36 +32,71 @@ export function websiteSchema() {
   };
 }
 
-export function softwareApplicationSchema(options?: {
-  path?: string;
-  name?: string;
-  description?: string;
-}) {
+const softwareId = () => `${absoluteUrl('/')}#software`;
+
+// Machine-readable terms for each plan in pricingTiers. A unit test checks
+// these against the displayed price strings so the two cannot drift apart.
+export const planOfferTerms = {
+  Free: { price: 0, unitText: undefined, minSeats: undefined },
+  Pro: { price: 9, unitText: 'per month', minSeats: undefined },
+  Teams: { price: 7, unitText: 'per seat per month', minSeats: 3 },
+} as const satisfies Record<(typeof pricingTiers)[number]['name'], unknown>;
+
+/**
+ * The one SoftwareApplication entity for the site. Pages that render it share
+ * the same @id, so search engines see a single product, not one per page.
+ * There is deliberately no aggregateRating or review: only add those from
+ * real, verifiable review data.
+ */
+export function softwareApplicationSchema() {
   return {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    '@id': `${absoluteUrl(options?.path || '/')}#software`,
-    name: options?.name || siteConfig.name,
+    '@id': softwareId(),
+    name: siteConfig.name,
     applicationCategory: siteConfig.applicationCategory,
     operatingSystem: 'Web',
-    url: absoluteUrl(options?.path || '/'),
-    description: options?.description || siteConfig.description,
+    url: absoluteUrl('/'),
+    description: siteConfig.description,
     featureList: featureHighlights.map((feature) => feature.title),
-    offers: pricingTiers.map((tier) => ({
-      '@type': 'Offer',
-      name: tier.name,
-      url: absoluteUrl(tier.href),
-      price:
-        tier.price === 'Free'
-          ? '0'
-          : tier.price.startsWith('$')
-            ? tier.price.replace(/[^0-9.]/g, '')
-            : undefined,
-      priceCurrency: tier.price === 'Free' || tier.price.startsWith('$') ? 'USD' : undefined,
-      description: tier.description,
-    })),
-    provider: {
+    offers: pricingTiers.map((tier) => {
+      const terms = planOfferTerms[tier.name];
+      return {
+        '@type': 'Offer',
+        name: tier.name,
+        url: absoluteUrl('/pricing'),
+        price: terms.price,
+        priceCurrency: 'USD',
+        description: tier.description,
+        ...(terms.unitText
+          ? {
+            priceSpecification: {
+              '@type': 'UnitPriceSpecification',
+              price: terms.price,
+              priceCurrency: 'USD',
+              unitText: terms.unitText,
+              billingDuration: 'P1M',
+            },
+          }
+          : {}),
+        ...(terms.minSeats
+          ? {
+            eligibleQuantity: {
+              '@type': 'QuantitativeValue',
+              minValue: terms.minSeats,
+              unitText: 'seats',
+            },
+          }
+          : {}),
+      };
+    }),
+    publisher: {
       '@id': `${absoluteUrl('/')}#organization`,
+    },
+    creator: {
+      '@type': 'Organization',
+      name: 'Multimedium',
+      url: 'https://www.multimedium.dev',
     },
   };
 }

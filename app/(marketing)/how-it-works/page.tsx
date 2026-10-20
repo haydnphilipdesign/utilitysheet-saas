@@ -10,7 +10,7 @@ import {
 import { JsonLd } from "@/components/seo/JsonLd";
 
 import { createPageMetadata } from "@/lib/seo/site";
-import { breadcrumbSchema, softwareApplicationSchema } from "@/lib/seo/schema";
+import { breadcrumbSchema } from "@/lib/seo/schema";
 
 export const metadata: Metadata = createPageMetadata({
   title: "How UtilitySheet Works After Signup",
@@ -33,11 +33,6 @@ export default function HowItWorksPage() {
             { name: "Home", path: "/" },
             { name: "How It Works", path: "/how-it-works" },
           ]),
-          softwareApplicationSchema({
-            path: "/how-it-works",
-            description:
-              "A step-by-step workflow for collecting seller utility information, delivering a utility sheet, and managing corrections after submission on paid plans.",
-          }),
         ]}
       />
 

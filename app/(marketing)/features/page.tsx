@@ -6,7 +6,7 @@ import { MarketingHelpStrip } from '@/components/marketing/marketing-subpage';
 import { MarketingCtaBand } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { createPageMetadata } from '@/lib/seo/site';
-import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
+import { breadcrumbSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'UtilitySheet Features for Seller Utility Handoffs',
@@ -29,11 +29,6 @@ export default function FeaturesPage() {
             { name: 'Home', path: '/' },
             { name: 'Features', path: '/features' },
           ]),
-          softwareApplicationSchema({
-            path: '/features',
-            description:
-              'UtilitySheet features for transaction coordinators and real estate agents who need a better seller utility information workflow.',
-          }),
         ]}
       />
 

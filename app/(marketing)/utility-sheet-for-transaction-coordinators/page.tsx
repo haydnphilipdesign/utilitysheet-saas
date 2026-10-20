@@ -5,7 +5,7 @@ import { ForTcsSection } from '@/components/landing/ForTcsSection';
 import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingSection } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { createPageMetadata } from '@/lib/seo/site';
-import { breadcrumbSchema, softwareApplicationSchema } from '@/lib/seo/schema';
+import { breadcrumbSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Utility Collection for Transaction Coordinators',
@@ -28,11 +28,6 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
             { name: 'Home', path: '/' },
             { name: 'Utility Sheet for Transaction Coordinators', path: '/utility-sheet-for-transaction-coordinators' },
           ]),
-          softwareApplicationSchema({
-            path: '/utility-sheet-for-transaction-coordinators',
-            description:
-              'Seller utility handoff software for transaction coordinators who want a repeatable utility collection workflow.',
-          }),
         ]}
       />
 
