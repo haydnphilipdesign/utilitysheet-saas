@@ -73,8 +73,6 @@ export default function SellerUtilityInformationFormPage() {
       </MarketingSection>
 
       <MarketingRelatedLinks
-        title="Related pages"
-        description="These pages help if you are evaluating the workflow for a specific role or process."
         links={[
           { href: '/utility-sheet-for-transaction-coordinators', label: 'For transaction coordinators' },
           { href: '/utility-sheet-for-real-estate-agents', label: 'For real estate agents' },

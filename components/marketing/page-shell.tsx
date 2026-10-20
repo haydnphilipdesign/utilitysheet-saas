@@ -163,11 +163,11 @@ export function MarketingStepRow({
 // Internal links to neighboring pages, laid out like the home page's
 // audience strip instead of a row of pill buttons.
 export function MarketingRelatedLinks({
-  title,
+  title = "Keep reading",
   description,
   links,
 }: {
-  title: string;
+  title?: string;
   description?: string;
   links: readonly { href: string; label: string }[];
 }) {

@@ -94,8 +94,6 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
       </MarketingSection>
 
       <MarketingRelatedLinks
-        title="Related pages"
-        description="These pages are useful if you are comparing plans or sharing UtilitySheet with an agent or team lead."
         links={[
           { href: '/pricing', label: 'View pricing' },
           { href: '/how-it-works', label: 'See the workflow' },

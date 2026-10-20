@@ -46,7 +46,6 @@ export default function FaqPage() {
           </>
         }
         description="From your first seller link to the finished PDF. Find the details on forms, plans, and everything in between."
-        variant="faq"
       />
 
       <MarketingFaqList />

@@ -798,15 +798,13 @@
   background: #cce7e1;
   color: #123e56;
 }
-.marketing-site .subpage-benefits h2,
-.marketing-site .subpage-help h2 {
+.marketing-site .subpage-benefits h2 {
   font-family: inherit;
   font-size: 15px;
   letter-spacing: -0.025em;
   line-height: 1.4;
 }
-.subpage-benefits p,
-.subpage-help p {
+.subpage-benefits p {
   color: #31546a;
   font-size: 13px;
   line-height: 1.6;
@@ -1025,33 +1023,6 @@
 .comparison-mobile {
   display: none;
 }
-.subpage-help {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  padding-block: 38px 46px;
-  gap: 32px;
-}
-.subpage-help > div {
-  display: flex;
-  gap: 20px;
-}
-.subpage-help > div + div {
-  border-left: 1px solid #a7bdc6;
-  padding-left: 30px;
-}
-.subpage-help a {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  color: #176173;
-  font-size: 13px;
-  font-weight: 650;
-}
-.subpage-help a:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
 .faq-groups {
   display: grid;
   gap: 48px;
@@ -1259,15 +1230,6 @@
   .comparison-price {
     font-size: 34px;
   }
-  .subpage-help {
-    gap: 22px;
-  }
-  .subpage-help > div {
-    gap: 12px;
-  }
-  .subpage-help > div + div {
-    padding-left: 20px;
-  }
   .workflow-timeline ol {
     gap: 24px;
   }
@@ -1308,10 +1270,6 @@
   }
   .subpage-description {
     max-width: 570px;
-  }
-  .subpage-help .subpage-icon {
-    width: 36px;
-    height: 36px;
   }
   .workflow-start {
     flex-wrap: wrap;
@@ -1388,25 +1346,6 @@
   }
   .comparison-footnote {
     text-align: left;
-  }
-  .subpage-help {
-    grid-template-columns: 1fr;
-    gap: 23px;
-    padding-block: 32px;
-  }
-  .subpage-help > div,
-  .subpage-help > div + div {
-    border: 0;
-    padding: 0;
-    gap: 18px;
-  }
-  .subpage-help > div + div {
-    border-top: 1px solid #cbd9d9;
-    padding-top: 22px;
-  }
-  .subpage-help .subpage-icon {
-    width: 45px;
-    height: 45px;
   }
   .faq-groups {
     gap: 36px;

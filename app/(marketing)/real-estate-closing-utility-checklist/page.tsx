@@ -83,8 +83,6 @@ export default function RealEstateClosingUtilityChecklistPage() {
       />
 
       <MarketingRelatedLinks
-        title="Related pages"
-        description="These pages dig deeper into the people and workflows behind the checklist."
         links={[
           { href: '/seller-utility-information-form', label: 'Seller utility information form' },
           { href: '/utility-sheet-for-transaction-coordinators', label: 'For transaction coordinators' },

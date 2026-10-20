@@ -78,8 +78,6 @@ export default function UtilitySheetForRealEstateAgentsPage() {
       />
 
       <MarketingRelatedLinks
-        title="Related pages"
-        description="If your team uses coordinators or assistants, these pages add more context."
         links={[
           { href: '/utility-sheet-for-transaction-coordinators', label: 'For transaction coordinators' },
           { href: '/seller-utility-information-form', label: 'Seller utility information form' },
