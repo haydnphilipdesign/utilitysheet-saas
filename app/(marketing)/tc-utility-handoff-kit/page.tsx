@@ -1,17 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, Mail, MessageSquareText } from 'lucide-react';
+import { ArrowRight, Check, Mail, MessageSquareText } from 'lucide-react';
 
+import { MarketingHeroArt } from '@/components/marketing/hero-art';
 import {
     MarketingBreadcrumbs,
     MarketingPageHero,
     MarketingSection,
 } from '@/components/marketing/page-shell';
+import { MockGuidedForm, MockSellerLink } from '@/components/marketing/product-mockups';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { buttonVariants } from '@/components/ui/button';
 import { CopyTemplateButton } from '@/components/marketing/copy-template-button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema } from '@/lib/seo/schema';
 
@@ -108,6 +107,7 @@ export default function TcUtilityHandoffKitPage() {
             />
 
             <MarketingPageHero
+                art={<MarketingHeroArt primary={<MockSellerLink />} secondary={<MockGuidedForm />} />}
                 eyebrow="Free TC resource"
                 title="The TC Utility Handoff Kit"
                 description="Copy emails for listing intake, closing prep, and buyer-side requests, plus a text message and checklist for a cleaner seller utility handoff. Use the templates with any workflow or replace the form step with one reusable UtilitySheet link."
@@ -124,29 +124,25 @@ export default function TcUtilityHandoffKitPage() {
                 title="Email templates for each stage"
                 description="Save the one that matches your side and timing in the email workflow you already use. Replace the bracketed fields before sending."
             >
-                <div className="grid gap-6 lg:grid-cols-3">
+                <div className="kit-templates">
                     {emailTemplates.map((template) => (
-                        <Card key={template.id} className="border-border bg-card/40">
-                            <CardHeader className="space-y-3">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-3">
-                                        <Mail className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                                        <h3 className="font-semibold text-foreground">{template.title}</h3>
-                                    </div>
-                                    <CopyTemplateButton
-                                        label={`${template.title} email`}
-                                        text={`Subject: ${template.subject}\n\n${template.body}`}
-                                    />
-                                </div>
-                                <p className="text-sm leading-6 text-muted-foreground">{template.when}</p>
-                            </CardHeader>
-                            <CardContent className="space-y-3 text-sm leading-7 text-muted-foreground">
-                                <p>
-                                    <span className="font-medium text-foreground">Subject:</span> {template.subject}
-                                </p>
-                                <p className="whitespace-pre-line border-t border-border pt-3">{template.body}</p>
-                            </CardContent>
-                        </Card>
+                        <article key={template.id} className="kit-card">
+                            <div className="kit-card-head">
+                                <h3>
+                                    <Mail size={18} aria-hidden="true" />
+                                    {template.title}
+                                </h3>
+                                <CopyTemplateButton
+                                    label={`${template.title} email`}
+                                    text={`Subject: ${template.subject}\n\n${template.body}`}
+                                />
+                            </div>
+                            <p className="kit-card-when">{template.when}</p>
+                            <p className="kit-card-subject">
+                                <span>Subject:</span> {template.subject}
+                            </p>
+                            <p className="kit-card-body">{template.body}</p>
+                        </article>
                     ))}
                 </div>
             </MarketingSection>
@@ -155,34 +151,30 @@ export default function TcUtilityHandoffKitPage() {
                 title="Seller text template"
                 description="Use this shorter version when text is the normal communication channel."
             >
-                <Card className="max-w-3xl border-border bg-card/40">
-                    <CardHeader className="flex-row items-center gap-3">
-                        <MessageSquareText className="h-5 w-5 text-emerald-600" aria-hidden="true" />
-                        <p className="font-semibold text-foreground">Copy-and-paste text</p>
-                    </CardHeader>
-                    <CardContent className="leading-7 text-muted-foreground">
+                <div className="kit-card kit-card-text">
+                    <p className="kit-card-title">
+                        <MessageSquareText size={18} aria-hidden="true" />
+                        Copy-and-paste text
+                    </p>
+                    <p className="kit-card-body">
                         Hi [Seller First Name], when you have a moment, please complete this short utility
                         form for [Property Address]: [UTILITY FORM LINK]. It works from your phone, and “Not
                         sure” is completely fine if you do not know an answer. Thank you! [TC Name]
-                    </CardContent>
-                </Card>
+                    </p>
+                </div>
             </MarketingSection>
 
             <MarketingSection
                 title="TC utility handoff checklist"
                 description="Drop these steps into the workflow your team already follows, on either side of the transaction."
             >
-                <ol className="grid gap-3 md:grid-cols-2">
+                <ol className="marketing-note-grid">
                     {checklist.map((item) => (
-                        <li
-                            key={item}
-                            className="flex gap-3 rounded-2xl border border-border bg-card/20 p-5"
-                        >
-                            <CheckCircle2
-                                className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"
-                                aria-hidden="true"
-                            />
-                            <span className="leading-7 text-muted-foreground">{item}</span>
+                        <li key={item}>
+                            <span>
+                                <Check size={13} aria-hidden="true" />
+                            </span>
+                            <p>{item}</p>
                         </li>
                     ))}
                 </ol>
@@ -192,12 +184,9 @@ export default function TcUtilityHandoffKitPage() {
                 title="Want the automated version?"
                 description="UtilitySheet replaces the blank form and cleanup with a reusable seller link, guided questions, tracking, and a clean web sheet plus PDF."
             >
-                <Link
-                    href={signupHref}
-                    className={cn(buttonVariants({ size: 'lg' }), 'bg-emerald-700 text-white hover:bg-emerald-600')}
-                >
+                <Link href={signupHref} className="marketing-button">
                     Create your seller link
-                    <ArrowRight aria-hidden="true" />
+                    <ArrowRight size={17} aria-hidden="true" />
                 </Link>
             </MarketingSection>
         </div>
