@@ -763,7 +763,7 @@
   z-index: 1;
   display: grid;
   gap: 24px;
-  padding-right: 72px;
+  padding-right: 164px;
 }
 .subpage-benefits li {
   display: flex;
@@ -794,14 +794,17 @@
   line-height: 1.6;
   margin-top: 4px;
 }
+/* Decorative corner shapes. They sit inside the container (never clipped by
+   the viewport) and only show where the benefits column leaves room. */
 .subpage-geometry {
   position: absolute;
-  right: -148px;
-  top: -28px;
-  width: 216px;
+  right: 0;
+  top: 50%;
+  width: 132px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   opacity: 0.85;
+  transform: translateY(-50%);
 }
 .subpage-geometry i {
   aspect-ratio: 1;
@@ -832,6 +835,14 @@
     transparent 10px 15px
   );
   border-radius: 0 100% 100% 0;
+}
+@media (max-width: 1279px) {
+  .subpage-benefits {
+    padding-right: 0;
+  }
+  .subpage-geometry {
+    display: none;
+  }
 }
 .pricing-comparison {
   padding-top: 12px;
@@ -1329,13 +1340,6 @@
     gap: 35px;
     grid-template-columns: 1.6fr 1fr;
   }
-  .subpage-benefits {
-    padding-right: 0;
-  }
-  .subpage-geometry {
-    opacity: 0.25;
-    right: -180px;
-  }
   .subpage-benefits li {
     gap: 14px;
   }
@@ -1393,10 +1397,6 @@
   .subpage-benefits p {
     font-size: 12px;
   }
-  .subpage-geometry {
-    right: -30px;
-    opacity: 0.2;
-  }
   .subpage-hero-copy {
     max-width: 690px;
   }
@@ -1451,12 +1451,6 @@
   }
   .subpage-benefits p {
     font-size: 12px;
-  }
-  .subpage-geometry {
-    width: 150px;
-    top: -15px;
-    right: -50px;
-    opacity: 0.12;
   }
   .comparison-table {
     display: none;
