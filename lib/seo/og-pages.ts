@@ -40,7 +40,7 @@ export const ogPages = {
   'transaction-coordinators': {
     path: '/utility-sheet-for-transaction-coordinators',
     eyebrow: 'For transaction coordinators',
-    title: 'One less loose end on every file.',
+    title: 'Seller utility details on every file, without the follow-up texts',
   },
   'real-estate-agents': {
     path: '/utility-sheet-for-real-estate-agents',
@@ -66,6 +66,16 @@ export const ogPages = {
     path: '/utility-sheet-template',
     eyebrow: 'Free printable template',
     title: 'Free utility sheet template for real estate closings',
+  },
+  'transfer-utilities-when-selling-a-house': {
+    path: '/guides/transfer-utilities-when-selling-a-house',
+    eyebrow: 'Seller guide',
+    title: 'How to transfer utilities when you sell your house',
+  },
+  'set-up-utilities-when-buying-a-house': {
+    path: '/guides/set-up-utilities-when-buying-a-house',
+    eyebrow: 'Buyer guide',
+    title: 'How to set up utilities when you buy a house',
   },
   'from-a-closing': {
     path: '/from-a-closing',

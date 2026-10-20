@@ -92,6 +92,8 @@ two days. Requesting doesn't guarantee indexing; it moves the URL up the queue.
 | 9 | `https://www.utilitysheet.com/how-it-works` | Supporting page. |
 | 10 | `https://www.utilitysheet.com/faq` | Supporting page. |
 | 11 | `https://www.utilitysheet.com/utility-sheet-template` | Free printable template; request it as soon as it's live. |
+| 12 | `https://www.utilitysheet.com/guides/transfer-utilities-when-selling-a-house` | Seller guide; request it as soon as it's live. |
+| 13 | `https://www.utilitysheet.com/guides/set-up-utilities-when-buying-a-house` | Buyer guide; request it as soon as it's live. |
 
 Leave `/about`, `/demo`, `/from-a-closing`, and the legal pages to the
 sitemap. They will be crawled without help.
@@ -158,8 +160,8 @@ Every Monday:
 ## 6. Content plan
 
 These are **hypotheses**. There is no keyword data yet. After 4–8 weeks,
-Search Console's Queries report will show which ones are real. A is built;
-B–E and the billing FAQ are still open.
+Search Console's Queries report will show which ones are real. A–E and the billing FAQ are
+built.
 
 ### A. Free printable utility sheet template (built: `/utility-sheet-template`)
 - **Intent:** "utility information sheet template", "utility list for home
@@ -179,7 +181,7 @@ B–E and the billing FAQ are still open.
   and `/real-estate-closing-utility-checklist` (process steps). Cross-link all
   three.
 
-### B. Seller guide: transferring utilities when you sell your house
+### B. Seller guide: transferring utilities when you sell your house (built: `/guides/transfer-utilities-when-selling-a-house`)
 - **Intent:** "how to transfer utilities when selling a house", "when to shut
   off utilities when selling". Home sellers; agents share it with clients.
 - **URL:** `/guides/transfer-utilities-when-selling-a-house`
@@ -192,7 +194,7 @@ B–E and the billing FAQ are still open.
   guide plus a UtilitySheet link"), and for sellers, "Ask your agent if they
   use UtilitySheet". Lower direct conversion, but earns shares and links.
 
-### C. Page for TCs: the utility step in your transaction workflow
+### C. Page for TCs: the utility step in your transaction workflow (built: rewrote `/utility-sheet-for-transaction-coordinators`)
 - **Intent:** "transaction coordinator checklist utilities", "TC workflow
   utilities". Deepen the existing
   `/utility-sheet-for-transaction-coordinators` rather than adding a
@@ -204,19 +206,19 @@ B–E and the billing FAQ are still open.
 - **Path to signup:** "Create your seller link", plus the kit for those not
   ready.
 
-### D. What is a utility sheet in real estate? (short explainer)
+### D. What is a utility sheet in real estate? (built: a section of `/utility-sheet-template`)
 - **Intent:** definitional searches for "utility sheet real estate". Can also
   be a section of A if you want fewer pages.
 - **Outline:** definition → who prepares it and when → what's on it →
   example image → links to A and the product.
 
-### E. Buyer guide: setting up utilities after closing (later)
+### E. Buyer guide: setting up utilities after closing (built: `/guides/set-up-utilities-when-buying-a-house`)
 - **Intent:** "set up utilities new house checklist". Buyers aren't your
   customers, but agents send it after closing. Pairs with `/from-a-closing`.
 
-Also worth doing: the FAQ has only **one** billing question. Add the billing
-questions people actually ask (cancelling, downgrading, what happens to sheets)
-once the answers are confirmed in code.
+Also done: the FAQ's Plans & billing group now covers cancelling, what
+happens on cancel, what happens to sheets on Free, switching Pro to Teams,
+and failed payments, with answers checked against the billing code.
 
 ---
 

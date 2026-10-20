@@ -143,6 +143,16 @@ export default async function FromAClosingPage({
                         </Card>
                     ))}
                 </div>
+                <p className="mt-6 leading-7 text-muted-foreground">
+                    Passing the sheet to your buyer? Send them the{' '}
+                    <Link
+                        href="/guides/set-up-utilities-when-buying-a-house"
+                        className="font-semibold text-foreground underline underline-offset-4"
+                    >
+                        guide to setting up utilities when buying a house
+                    </Link>
+                    .
+                </p>
             </MarketingSection>
 
             <MarketingSection

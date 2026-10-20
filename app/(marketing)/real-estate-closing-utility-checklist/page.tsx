@@ -69,6 +69,14 @@ export default function RealEstateClosingUtilityChecklistPage() {
             </li>
           ))}
         </ol>
+        <p className="mt-6 leading-7 text-muted-foreground">
+          Sellers have their own side of this: stop dates, final bills, and keeping service on for the walkthrough.
+          Send them the{' '}
+          <Link href="/guides/transfer-utilities-when-selling-a-house" className="font-semibold text-foreground underline underline-offset-4">
+            seller guide to transferring utilities
+          </Link>
+          .
+        </p>
       </MarketingSection>
 
       <MarketingSection

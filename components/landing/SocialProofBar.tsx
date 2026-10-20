@@ -1,4 +1,4 @@
-const customerTestimonials = [
+export const customerTestimonials = [
   {
     quote:
       "Before UtilitySheet, we sent blank forms to homeowners through Dotloop or DocuSign, and they rarely came back completed. Now we send one seller link from a templated email, get notified when it is complete, download the finished sheet, and we are done.",

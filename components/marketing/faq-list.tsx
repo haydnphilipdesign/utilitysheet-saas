@@ -35,6 +35,11 @@ const categoryByQuestion: Record<string, Category> = {
   "Can I edit a submitted sheet?": "Sheets & PDFs",
   "How do provider suggestions work?": "Seller forms",
   "What happens if I hit the free plan limit?": "Plans & billing",
+  "How do I cancel my plan?": "Plans & billing",
+  "What happens when I cancel?": "Plans & billing",
+  "What happens to my sheets if I go back to Free?": "Plans & billing",
+  "Can I switch from Pro to Teams?": "Plans & billing",
+  "What if a payment fails?": "Plans & billing",
   "How long does it take to get started?": "Getting started",
   "What happens after I sign up?": "Getting started",
 };

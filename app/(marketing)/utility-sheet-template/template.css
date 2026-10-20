@@ -135,6 +135,7 @@
 /* Sections */
 .ust-section {
   padding-block: 64px;
+  scroll-margin-top: 72px;
 }
 .ust-section-alt {
   background: #fffefb;
@@ -161,11 +162,31 @@
   padding: 18px 0;
   border-top: 1px solid #cbd9d9;
 }
+.ust-basics > div {
+  padding: 18px 0;
+  border-top: 1px solid #cbd9d9;
+}
+.ust-basics > div:first-child {
+  padding-top: 4px;
+  border-top: 0;
+}
+@media (max-width: 959px) {
+  .ust-basics > div:first-child {
+    padding-top: 18px;
+    border-top: 1px solid #cbd9d9;
+  }
+}
+.ust-definition-note {
+  margin-top: 18px;
+  line-height: 1.7;
+}
+.ust-basics dt,
 .ust-sections dt,
 .ust-faq dt {
   font-weight: 600;
   color: #0a2c40;
 }
+.ust-basics dd,
 .ust-sections dd,
 .ust-faq dd {
   margin-top: 6px;
