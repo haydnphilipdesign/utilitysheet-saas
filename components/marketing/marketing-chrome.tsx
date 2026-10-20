@@ -58,7 +58,7 @@ export function MarketingFooter() {
                         </div>
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-foreground">Product</h3>
+                        <h2 className="text-sm font-semibold text-foreground">Product</h2>
                         <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                             <li><Link href="/features" className="hover:text-foreground transition-colors">Features</Link></li>
                             <li><Link href="/how-it-works" className="hover:text-foreground transition-colors">How It Works</Link></li>
@@ -68,7 +68,7 @@ export function MarketingFooter() {
                         </ul>
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-foreground">Use Cases</h3>
+                        <h2 className="text-sm font-semibold text-foreground">Use Cases</h2>
                         <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                             <li><Link href="/utility-sheet-for-transaction-coordinators" className="hover:text-foreground transition-colors">For Transaction Coordinators</Link></li>
                             <li><Link href="/utility-sheet-for-real-estate-agents" className="hover:text-foreground transition-colors">For Real Estate Agents</Link></li>
@@ -78,7 +78,7 @@ export function MarketingFooter() {
                         </ul>
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-foreground">Company</h3>
+                        <h2 className="text-sm font-semibold text-foreground">Company</h2>
                         <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                             <li><Link href="/about" className="hover:text-foreground transition-colors">About</Link></li>
                             <li><Link href="/auth/signup" className="hover:text-foreground transition-colors">Start Free</Link></li>
@@ -86,7 +86,7 @@ export function MarketingFooter() {
                         </ul>
                     </div>
                     <div>
-                        <h3 className="text-sm font-semibold text-foreground">Legal</h3>
+                        <h2 className="text-sm font-semibold text-foreground">Legal</h2>
                         <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                             <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
                             <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link></li>

@@ -345,6 +345,14 @@
 .marketing-site footer {
   background: #efefe9;
 }
+/* Footer column titles are h2s (so pages with only an h1, like /demo, keep a
+   valid heading order) but keep their small label styling. */
+.marketing-site footer h2 {
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: normal;
+  line-height: 1.43;
+}
 .marketing-site header {
   background: #f8f6f0f5;
 }
