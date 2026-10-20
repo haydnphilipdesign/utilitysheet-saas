@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import robots from '@/app/robots';
+import sitemap from '@/app/sitemap';
 import { capabilityLinkPrefixes, crawlBlockedPrefixes, noIndexHeaderSources } from '@/lib/seo/private-routes';
 
 function disallowed(): string[] {
@@ -28,6 +29,23 @@ describe('noindex header sources', () => {
     it('covers every blocked and capability-link prefix, including the bare path', () => {
         for (const prefix of [...crawlBlockedPrefixes, ...capabilityLinkPrefixes]) {
             expect(noIndexHeaderSources).toContain(`${prefix}/:path*`);
+        }
+    });
+});
+
+describe('sitemap.xml', () => {
+    it('lists unique public URLs with real dates and no private routes', () => {
+        const entries = sitemap();
+        const paths = entries.map((entry) => new URL(entry.url).pathname);
+
+        expect(new Set(paths).size).toBe(paths.length);
+        for (const path of paths) {
+            for (const prefix of [...crawlBlockedPrefixes, ...capabilityLinkPrefixes]) {
+                expect(path === prefix || path.startsWith(`${prefix}/`)).toBe(false);
+            }
+        }
+        for (const entry of entries) {
+            expect(String(entry.lastModified)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
         }
     });
 });

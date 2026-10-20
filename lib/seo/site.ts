@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 
 import { siteKeywords } from '@/lib/marketing-content';
 
-const fallbackUrl = 'https://utilitysheet.com';
+// Production serves www; the apex domain redirects to it.
+const fallbackUrl = 'https://www.utilitysheet.com';
 
 export const siteConfig = {
   name: 'UtilitySheet',
