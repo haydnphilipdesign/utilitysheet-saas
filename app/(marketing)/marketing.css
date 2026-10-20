@@ -1736,6 +1736,13 @@
   font-size: 15px;
   line-height: 1.75;
 }
+.marketing-section-note {
+  max-width: 760px;
+  margin-top: 32px;
+  color: #4b6471;
+  font-size: 15px;
+  line-height: 1.75;
+}
 .marketing-related {
   padding-block: 36px;
 }

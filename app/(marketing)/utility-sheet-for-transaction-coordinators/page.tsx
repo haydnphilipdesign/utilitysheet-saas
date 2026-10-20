@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 
-import { ForTcsSection } from '@/components/landing/ForTcsSection';
 import { MarketingHeroArt } from '@/components/marketing/hero-art';
-import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingPointsSection, MarketingRelatedLinks } from '@/components/marketing/page-shell';
+import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingPointsSection, MarketingRelatedLinks, MarketingSection, MarketingStepRow } from '@/components/marketing/page-shell';
 import { MockCompletionEmail, MockSellerLink } from '@/components/marketing/product-mockups';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { createPageMetadata } from '@/lib/seo/site';
@@ -19,6 +18,21 @@ export const metadata: Metadata = createPageMetadata({
     'seller utility info for tc',
   ],
 });
+
+const tcProcess = [
+  {
+    title: 'Add it once',
+    copy: 'Add your seller link to your email signature, listing email template, or text template once.',
+  },
+  {
+    title: 'Send it when a file opens',
+    copy: 'When a new file opens, text or email the seller your link. They enter the property address, confirm suggested providers when available, or type their own answers.',
+  },
+  {
+    title: 'Review, then share',
+    copy: 'Your completion email can include the finished PDF automatically. On Pro and Teams, if anything needs cleanup after submission, update the live sheet in the dashboard before you share the web link or PDF forward.',
+  },
+] as const;
 
 export default function UtilitySheetForTransactionCoordinatorsPage() {
   return (
@@ -63,10 +77,21 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
             title: 'Better buyer handoff quality',
             copy: 'The finished utility sheet looks polished enough to share with buyers, agents, and support teams, and on Pro and Teams you can clean up submitted details before it goes out.',
           },
+          {
+            title: 'Collect only the details the file needs',
+            copy: 'Keep standard utility sheets fast and switch the HOA question on or off on any plan. On Pro and Teams, add transition details like lawn care, security, mailbox, and access notes when the file needs more context, and save a form for each kind of file.',
+          },
         ]}
       />
 
-      <ForTcsSection />
+      <MarketingSection title="The TC process" description="Drop the link into the messages you already send.">
+        <MarketingStepRow steps={tcProcess} />
+        <p className="marketing-section-note">
+          Paste your reusable link into email, text, Dotloop, Skyslope, Brokermint, or your TC checklist. Open
+          UtilitySheet when you need to review a submission, fix a typo, update provider details, manage branding,
+          or adjust settings.
+        </p>
+      </MarketingSection>
 
       <MarketingRelatedLinks
         title="Related pages"
