@@ -132,7 +132,7 @@ export function MarketingCapabilities() {
           <h2>
             A thoughtful finish
             <br />
-            for <em>every file.</em>
+            for every file.
           </h2>
           <p className="capability-intro">
             Start with utilities. Add your branding, make a correction, or

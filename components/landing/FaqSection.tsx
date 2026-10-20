@@ -26,7 +26,7 @@ export function FaqSection() {
             <div className="marketing-container">
                 <div className="home-section-heading">
                     <p className="marketing-eyebrow">FAQ</p>
-                    <h2 className="text-balance">Questions, <em>answered.</em></h2>
+                    <h2 className="text-balance">Questions, answered.</h2>
                     <p>
                         Seller forms, utility sheet PDFs, pricing, and how UtilitySheet fits a real estate closing workflow.
                     </p>
