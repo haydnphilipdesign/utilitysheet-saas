@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { NormaSuitePanel } from '@/components/norma-suite-panel';
+import { ArrowUpRight } from 'lucide-react';
+import { buildSuiteUrl, suiteLinks } from '@/lib/norma-suite';
 
 // Header and footer shared by the marketing pages and /demo. Render them
 // inside an element with the `marketing-site` class so the marketing tokens
@@ -94,17 +95,16 @@ export function MarketingFooter() {
                         </ul>
                     </div>
                 </div>
-                <NormaSuitePanel variant="footer" />
                 <div className="mt-12 border-t border-border pt-8 flex flex-col items-center gap-4 text-sm text-muted-foreground">
-                    <p className="text-xs text-norma-muted">
-                        Part of the Norma ecosystem &middot;{' '}
+                    <p className="text-xs">
                         <a
-                            href="https://normatc.com"
+                            href={buildSuiteUrl(suiteLinks.productsHub, 'utilitysheet_footer')}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="hover:text-foreground underline-offset-4 hover:underline transition-colors"
+                            className="inline-flex min-h-6 items-center gap-1 hover:text-foreground underline-offset-4 hover:underline transition-colors"
                         >
-                            normatc.com
+                            Part of the Norma Suite
+                            <ArrowUpRight size={13} aria-hidden="true" />
                         </a>
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full">

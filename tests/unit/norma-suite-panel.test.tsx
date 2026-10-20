@@ -10,7 +10,7 @@ beforeEach(() => {
 
 describe('NormaSuitePanel', () => {
     it('lets users dismiss the dashboard strip persistently', async () => {
-        render(<NormaSuitePanel variant="strip" />);
+        render(<NormaSuitePanel />);
 
         expect(await screen.findByText('Part of Norma')).toBeInTheDocument();
 
@@ -25,18 +25,10 @@ describe('NormaSuitePanel', () => {
     it('keeps the dashboard strip hidden after it has been dismissed', async () => {
         localStorage.setItem('utilitysheet:norma-suite-strip-dismissed', 'true');
 
-        render(<NormaSuitePanel variant="strip" />);
+        render(<NormaSuitePanel />);
 
         await waitFor(() => {
             expect(screen.queryByText('Part of Norma')).not.toBeInTheDocument();
         });
-    });
-
-    it('does not hide the marketing footer when the dashboard strip was dismissed', () => {
-        localStorage.setItem('utilitysheet:norma-suite-strip-dismissed', 'true');
-
-        render(<NormaSuitePanel variant="footer" />);
-
-        expect(screen.getByText('Explore the rest of the suite')).toBeInTheDocument();
     });
 });
