@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { siteKeywords } from '@/lib/marketing-content';
+import { ogImagePathFor } from '@/lib/seo/og-pages';
 
 // Production serves www; the apex domain redirects to it.
 const fallbackUrl = 'https://www.utilitysheet.com';
@@ -63,9 +64,10 @@ export function createPageMetadata({
   description,
   path,
   keywords,
-  imagePath = '/opengraph-image',
+  imagePath,
   noIndex = false,
 }: PageMetadataInput): Metadata {
+  const image = imagePath ?? ogImagePathFor(path);
   return {
     title,
     description,
@@ -82,7 +84,7 @@ export function createPageMetadata({
       url: path,
       images: [
         {
-          url: imagePath,
+          url: image,
           width: 1200,
           height: 630,
           alt: `${title} | ${siteConfig.name}`,
@@ -93,7 +95,7 @@ export function createPageMetadata({
       card: 'summary_large_image',
       title,
       description,
-      images: [imagePath],
+      images: [image],
     },
     robots: noIndex ? noIndexRobots : undefined,
   };

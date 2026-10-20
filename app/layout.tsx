@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     images: [
       {
-        url: '/opengraph-image',
+        url: '/og/home',
         width: 1200,
         height: 630,
         alt: 'UtilitySheet utility sheet software for transaction coordinators and agents',
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: defaultTitle,
     description: defaultDescription,
-    images: ['/opengraph-image'],
+    images: ['/og/home'],
   },
 };
 
