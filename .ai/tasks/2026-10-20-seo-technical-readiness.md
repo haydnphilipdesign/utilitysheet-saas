@@ -1,7 +1,7 @@
 ---
-status: active
+status: ready
 owner: claude
-updated: 2026-10-20 19:10
+updated: 2026-10-20 20:00
 scope: app/robots.ts, app/sitemap.ts, app/og, app/auth, app/layout.tsx, lib/seo, next.config.ts, app/(marketing), components/norma-suite-panel.tsx, components/landing/ForTcsSection.tsx, docs/seo-playbook.md, docs/marketing-design-review.md
 ---
 # SEO technical readiness
@@ -36,9 +36,18 @@ Done on branch `claude/gracious-cerf-nfkdld`:
 - Pre-existing lint error in `components/admin/EventLogTable.tsx` fixed
   (`any` -> `unknown`).
 
-Waiting on the user:
-- Approval of the title/description drafts (shown in chat, not committed).
-- Which content-plan pages and design-review items to tackle next.
+- Approved title/description copy applied (`absoluteTitle` option on
+  `createPageMetadata` for the home page).
+- Content plan item A: `/utility-sheet-template` page plus a build-time
+  printable PDF at `/templates/utility-info-sheet.pdf`
+  (`lib/templates/utility-sheet-template.ts`, `app/templates/[file]/route.ts`;
+  the route uses a `[file]` segment because `*.pdf` is gitignored). Approved
+  by the user.
+- User changed the apex redirect to 308 in Vercel; verified live.
+
+Handed off to separate sessions (task cards): marketing design review
+(`docs/marketing-design-review.md`), remaining content plan items B–E, and
+the pre-existing admin Operations test failure.
 
 Deferred by user: moving Stack Auth off marketing pages (JS weight is the
 remaining LCP/TBT cost on the home page).
@@ -68,5 +77,7 @@ NEXT_PUBLIC_APP_URL=https://www.utilitysheet.com. No hosted services touched.
 
 ## Next
 
-After deploy: fetch live /robots.txt, /sitemap.xml, an /og image, and a
-private route's headers; then apply approved title/description copy.
+User merges the branch. After deploy: fetch live /robots.txt, /sitemap.xml,
+/og/home, /templates/utility-info-sheet.pdf, and a private route's headers;
+then the user submits the sitemap and requests indexing per
+`docs/seo-playbook.md`.
