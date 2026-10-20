@@ -1,7 +1,7 @@
 ---
 status: active
 owner: claude
-updated: 2026-10-20 19:45
+updated: 2026-10-20 20:20
 scope: app/(marketing)/guides, app/(marketing)/utility-sheet-template, app/(marketing)/utility-sheet-for-transaction-coordinators, components/landing/ForTcsSection.tsx, app/sitemap.ts, lib/seo/og-pages.ts, app/(marketing)/layout.tsx (footer links only), lib/marketing-content.ts (FAQ entries only), docs/seo-playbook.md, tests/unit/seo-*
 ---
 # SEO content plan (playbook section 6, items B–E and billing FAQ)
@@ -27,11 +27,16 @@ Owner decisions (2026-10-20):
   `/guides/transfer-utilities-when-selling-a-house` (`page.tsx` + scoped
   `guide.css`, `stg-` prefix). Wired into sitemap, `og-pages.ts`, footer
   ("Seller Utilities Guide" under Use Cases), template page and checklist
-  page cross-links, and the playbook indexing table. Committed locally;
-  NOT pushed until the owner approves the screenshots. Post-approval copy
+  page cross-links, and the playbook indexing table. Screenshots
+  approved and pushed. Post-approval copy
   tweak: "one less question…" became "It also saves your agent a follow-up
   call." (design-review pattern). Uses shared `MarketingCtaBand` unchanged.
-- C, D, E, billing FAQ: not started.
+- D: copy approved. Built as a "What is a utility sheet?" section right
+  after the hero of `/utility-sheet-template` (`basics` list + `ust-basics`
+  styles); removed the overlapping "Who should fill it out?" FAQ; added the
+  keyword; playbook marks D built. Committed locally, not pushed until the
+  owner approves the screenshots.
+- C, E, billing FAQ: not started.
 
 ## Environment
 
@@ -50,6 +55,10 @@ B (2026-10-20):
   performance 86.
 - Playwright screenshots at 1440px and iPhone 13: no horizontal overflow.
 
+D (2026-10-20): lint 0 errors (19 pre-existing warnings); tsc pass; build
+pass; `npm test -- --run tests/unit/seo- tests/unit/utility-sheet-template`:
+4 files, 13 tests pass; screenshots at 1440px and iPhone 13, no overflow.
+
 ## Next
 
-Owner reviews B screenshots; on approval push, then start D (template page section).
+Owner reviews D screenshots; on approval push, then draft C (TC page content + redesign).

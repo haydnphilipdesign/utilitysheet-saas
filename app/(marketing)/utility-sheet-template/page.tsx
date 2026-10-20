@@ -21,6 +21,7 @@ export const metadata: Metadata = createPageMetadata({
     'utility information sheet for buyers',
     'seller utility information form pdf',
     'utility list for home buyers',
+    'what is a utility sheet in real estate',
   ],
 });
 
@@ -59,14 +60,25 @@ const comparison = [
   { row: 'Cost', paper: 'Free', link: 'Free for 3 submitted sheets a month' },
 ];
 
+const basics = [
+  {
+    title: 'Who fills it in',
+    body: 'The seller, since they pay the bills today. A listing agent or transaction coordinator usually sends the request and reviews the answers.',
+  },
+  {
+    title: 'When',
+    body: 'Often at listing or once the home is under contract, so it’s ready well before closing. A quick check before closing catches any provider changes.',
+  },
+  {
+    title: 'Where it goes',
+    body: 'Into the transaction file, then to the buyer or the buyer’s agent, usually around closing.',
+  },
+];
+
 const faqs = [
   {
     question: 'Is the template really free?',
     answer: 'Yes. Download it, print it, and share it with sellers, your team, or other agents. No signup or email needed.',
-  },
-  {
-    question: 'Who should fill it out?',
-    answer: 'The seller, since they know who provides service today. A listing agent or TC can also fill it in with the seller over the phone.',
   },
   {
     question: 'Can I put my logo on it?',
@@ -151,6 +163,34 @@ export default function UtilitySheetTemplatePage() {
             />
           </div>
           <SheetPreview />
+        </div>
+      </section>
+
+      <section className="marketing-inner-section ust-section ust-section-alt">
+        <div className="marketing-container ust-two-col">
+          <div>
+            <h2 className="marketing-inner-title">What is a utility sheet?</h2>
+            <p className="ust-intro">
+              A utility sheet is a one-page list of the companies that provide service to a home: electric, gas,
+              water, sewer, trash, internet, and any fuel delivery. In a home sale, the seller fills it in so the
+              buyer knows who to call to start service after closing.
+            </p>
+            <p className="ust-intro">
+              You may also hear it called a utility information sheet, a utility list, or a seller utility form.
+            </p>
+            <p className="ust-note ust-definition-note">
+              This template is the paper version. UtilitySheet collects the same details through a link and gives
+              you back a finished sheet and PDF. <a href="#send-as-link">See how it compares</a>.
+            </p>
+          </div>
+          <dl className="ust-basics">
+            {basics.map((item) => (
+              <div key={item.title}>
+                <dt>{item.title}</dt>
+                <dd>{item.body}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 

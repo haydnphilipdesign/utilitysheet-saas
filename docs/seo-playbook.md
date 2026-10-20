@@ -159,8 +159,8 @@ Every Monday:
 ## 6. Content plan
 
 These are **hypotheses**. There is no keyword data yet. After 4–8 weeks,
-Search Console's Queries report will show which ones are real. A and B are
-built; C–E and the billing FAQ are still open.
+Search Console's Queries report will show which ones are real. A, B, and D are
+built; C, E, and the billing FAQ are still open.
 
 ### A. Free printable utility sheet template (built: `/utility-sheet-template`)
 - **Intent:** "utility information sheet template", "utility list for home
@@ -205,7 +205,7 @@ built; C–E and the billing FAQ are still open.
 - **Path to signup:** "Create your seller link", plus the kit for those not
   ready.
 
-### D. What is a utility sheet in real estate? (short explainer)
+### D. What is a utility sheet in real estate? (built: a section of `/utility-sheet-template`)
 - **Intent:** definitional searches for "utility sheet real estate". Can also
   be a section of A if you want fewer pages.
 - **Outline:** definition → who prepares it and when → what's on it →
