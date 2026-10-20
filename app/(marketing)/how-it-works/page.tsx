@@ -44,8 +44,8 @@ export default function HowItWorksPage() {
           <em>Three simple steps.</em>
         </h1>
         <p>
-          A little less chasing. A much better handoff. Collect the details
-          once, then give buyers the information they need to settle in.
+          Collect the details once, then give buyers the information they
+          need to settle in.
         </p>
       </section>
 

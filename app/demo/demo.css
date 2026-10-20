@@ -1,0 +1,130 @@
+/* /demo address step. Scoped with the demo- prefix; colors follow
+   app/(marketing)/marketing.css. */
+
+.demo-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 56px 20px 72px;
+  border-top: 1px solid #b8d2d2;
+}
+.demo-entry-inner {
+  width: 100%;
+  max-width: 480px;
+}
+.demo-entry-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 24px;
+  border-radius: 8px;
+  background: #123e56;
+  color: #fff;
+}
+.demo-entry h1 {
+  font-size: clamp(32px, 3.4vw, 42px);
+  text-align: center;
+  color: #0a2c40;
+}
+.demo-entry-lead {
+  margin: 16px auto 32px;
+  max-width: 420px;
+  text-align: center;
+  color: #31546a;
+  font-size: 16px;
+  line-height: 1.65;
+}
+.demo-entry-card {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid #cbd9d9;
+  border-radius: 8px;
+  background: #fffefb;
+}
+.demo-entry-note {
+  padding: 12px 16px;
+  border: 1px solid #b9d8cf;
+  border-radius: 6px;
+  background: #eaf6f1;
+  color: #31546a;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.demo-entry label {
+  display: block;
+  margin-bottom: 8px;
+  color: #123e56;
+  font-size: 13px;
+  font-weight: 650;
+}
+.demo-entry input {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 1px solid #b9cbca;
+  border-radius: 6px;
+  background: #fff;
+  color: #0a2c40;
+  font-size: 16px;
+}
+.demo-entry input::placeholder {
+  color: #637a86;
+}
+.demo-entry input:focus-visible {
+  outline: 2px solid #176173;
+  outline-offset: 2px;
+}
+.demo-entry-sample {
+  min-height: 32px;
+  margin-top: 4px;
+  color: #4b6471;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.demo-entry-sample:hover {
+  color: #0a2c40;
+}
+.demo-entry-error {
+  margin-top: 6px;
+  color: #b3261e;
+  font-size: 13px;
+}
+.demo-entry .marketing-button {
+  width: 100%;
+}
+.demo-entry .marketing-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+.demo-entry-privacy {
+  text-align: center;
+  color: #526d7b;
+  font-size: 12px;
+}
+.demo-entry-alt {
+  margin-top: 24px;
+  text-align: center;
+}
+.demo-entry-alt a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #123e56;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+@media (max-width: 767px) {
+  .demo-entry {
+    padding-block: 36px 56px;
+  }
+  .demo-entry-card {
+    padding: 20px;
+  }
+}

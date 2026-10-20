@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   MarketingPageHero,
   MarketingSection,
@@ -114,7 +114,7 @@ export default function AboutPage() {
           ))}
         </div>
         <Link href="/how-it-works" className="marketing-text-link mt-7">
-          See how it works <ArrowUpRight size={17} />
+          See how it works <ArrowRight size={17} />
         </Link>
       </MarketingSection>
       <MarketingCtaBand

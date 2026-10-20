@@ -9,7 +9,7 @@ import { Menu, X } from "lucide-react";
 import { trackEvent } from "@/lib/analytics/events";
 
 const navigation = [
-  ["How It Works", "/how-it-works"],
+  ["How it works", "/how-it-works"],
   ["Features", "/features"],
   ["Pricing", "/pricing"],
   ["FAQ", "/faq"],
@@ -112,7 +112,7 @@ export function MarketingHeader() {
                 href="/auth/login"
                 className="hidden py-3 text-xs text-muted-foreground hover:text-foreground sm:block"
               >
-                Sign In
+                Sign in
               </Link>
               <Link
                 href="/auth/signup"
@@ -178,7 +178,7 @@ export function MarketingHeader() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="block px-4 py-3 text-sm"
               >
-                Sign In
+                Sign in
               </Link>
               <Link
                 href="/auth/signup"

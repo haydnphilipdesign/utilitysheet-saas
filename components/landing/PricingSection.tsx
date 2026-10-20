@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useInView } from "framer-motion";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Minus } from "lucide-react";
 
 import Link from "next/link";
 import { trackEvent } from "@/lib/analytics/events";
@@ -25,8 +25,9 @@ const tiers = [
       "Clean PDF and share link",
       "Completion email notifications",
       "PDF can attach to completion emails",
-      "UtilitySheet branding on shared links",
     ],
+    // Shown with a minus, not a check: these are limits, not features.
+    limits: ["UtilitySheet branding on shared links"],
   },
   {
     ...pricingTiers[1],
@@ -50,7 +51,7 @@ const tiers = [
   {
     ...pricingTiers[2],
     price: "$7",
-    period: "/seat/mo",
+    period: "/seat/month",
     description: "For a shared workflow. 3-seat minimum ($21/month).",
     cta: "Start Teams",
     popular: false,
@@ -150,6 +151,18 @@ export function PricingSection() {
                     </span>
                   </li>
                 ))}
+                {"limits" in tier &&
+                  tier.limits?.map((limit) => (
+                    <li key={limit} className="flex items-start gap-3">
+                      <span className="comparison-minus mt-0.5 w-5 flex-shrink-0 justify-center">
+                        <Minus size={16} aria-hidden="true" />
+                      </span>
+                      <span className="text-sm leading-6 text-muted-foreground">
+                        <span className="sr-only">Limit: </span>
+                        {limit}
+                      </span>
+                    </li>
+                  ))}
               </ul>
 
               <Link

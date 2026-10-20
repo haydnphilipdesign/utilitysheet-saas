@@ -26,11 +26,7 @@ export function FinalCtaSection() {
     <section ref={sectionRef} className="marketing-final marketing-section">
       <div className="marketing-container">
         <p className="marketing-eyebrow">READY FOR YOUR NEXT CLOSING</p>
-        <h2>
-          One less thing to chase.
-          <br />
-          <em>One better way to hand it off.</em>
-        </h2>
+        <h2>Send your first seller link today.</h2>
         <p>
           Create your free seller link and try it on your next file. Three
           submitted sheets per month, free. No credit card required.

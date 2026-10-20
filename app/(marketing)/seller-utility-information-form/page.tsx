@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
-import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingSection } from '@/components/marketing/page-shell';
+import { MarketingHeroArt } from '@/components/marketing/hero-art';
+import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingPointsSection, MarketingRelatedLinks, MarketingSection, MarketingStepRow } from '@/components/marketing/page-shell';
+import { MockGuidedForm, MockSuggestions } from '@/components/marketing/product-mockups';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { workflowSteps } from '@/lib/marketing-content';
 import { createPageMetadata } from '@/lib/seo/site';
@@ -31,7 +32,9 @@ export default function SellerUtilityInformationFormPage() {
         ]}
       />
 
-      <MarketingPageHero showActions
+      <MarketingPageHero
+        showActions
+        art={<MarketingHeroArt primary={<MockGuidedForm />} secondary={<MockSuggestions />} />}
         eyebrow="Seller form"
         title="The utility form sellers can finish on their phone."
         description="Many real estate teams still collect utility details through loose checklists, emails, or text chains. UtilitySheet turns that into a guided seller form and gives your team a cleaner utility sheet at the end."
@@ -44,58 +47,38 @@ export default function SellerUtilityInformationFormPage() {
         />
       </MarketingPageHero>
 
-      <MarketingSection
+      <MarketingPointsSection
         title="Why this works better than a plain checklist"
         description="The seller experience is simple on purpose, but the structure behind it gives your team more consistent data."
-      >
-        <div className="grid gap-6 md:grid-cols-3">
-          {[
-            {
-              title: 'Guided completion',
-              copy: 'The seller follows one flow instead of guessing which details your team still needs. You choose the utilities and whether to ask about an HOA or condo association.',
-            },
-            {
-              title: 'Cleaner provider details',
-              copy: 'Address-based suggestions help sellers confirm the right utilities instead of leaving vague answers.',
-            },
-            {
-              title: 'Better final output',
-              copy: 'The submitted information becomes a utility sheet you can actually hand off to buyers or support staff, and on Pro and Teams you can refine it later in your dashboard.',
-            },
-          ].map((item) => (
-            <article key={item.title} className="rounded-3xl border border-border bg-card/30 p-6">
-              <h3 className="text-2xl font-semibold text-foreground">{item.title}</h3>
-              <p className="mt-3 leading-7 text-muted-foreground">{item.copy}</p>
-            </article>
-          ))}
-        </div>
-      </MarketingSection>
+        points={[
+          {
+            title: 'Guided completion',
+            copy: 'The seller follows one flow instead of guessing which details your team still needs. You choose the utilities and whether to ask about an HOA or condo association.',
+          },
+          {
+            title: 'Cleaner provider details',
+            copy: 'Address-based suggestions help sellers confirm the right utilities instead of leaving vague answers.',
+          },
+          {
+            title: 'Better final output',
+            copy: 'The submitted information becomes a utility sheet you can actually hand off to buyers or support staff, and on Pro and Teams you can refine it later in your dashboard.',
+          },
+        ]}
+      />
 
       <MarketingSection title="What the seller utility form flow looks like">
-        <div className="grid gap-6 md:grid-cols-3">
-          {workflowSteps.map((step) => (
-            <article key={step.number} className="rounded-3xl border border-border bg-card/20 p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-600">{step.number}</p>
-              <h3 className="mt-3 text-2xl font-semibold text-foreground">{step.title}</h3>
-              <p className="mt-3 leading-7 text-muted-foreground">{step.description}</p>
-            </article>
-          ))}
-        </div>
+        <MarketingStepRow
+          steps={workflowSteps.map((step) => ({ title: step.title, copy: step.description }))}
+        />
       </MarketingSection>
 
-      <MarketingSection title="Related pages" description="These pages help if you are evaluating the workflow for a specific role or process.">
-        <div className="flex flex-wrap gap-4 text-sm font-semibold">
-          <Link href="/utility-sheet-for-transaction-coordinators" className="rounded-full border border-border px-4 py-2 hover:bg-muted">
-            For transaction coordinators
-          </Link>
-          <Link href="/utility-sheet-for-real-estate-agents" className="rounded-full border border-border px-4 py-2 hover:bg-muted">
-            For real estate agents
-          </Link>
-          <Link href="/real-estate-closing-utility-checklist" className="rounded-full border border-border px-4 py-2 hover:bg-muted">
-            Closing utility checklist
-          </Link>
-        </div>
-      </MarketingSection>
+      <MarketingRelatedLinks
+        links={[
+          { href: '/utility-sheet-for-transaction-coordinators', label: 'For transaction coordinators' },
+          { href: '/utility-sheet-for-real-estate-agents', label: 'For real estate agents' },
+          { href: '/real-estate-closing-utility-checklist', label: 'Closing utility checklist' },
+        ]}
+      />
 
       <MarketingCtaBand
         title="Replace the messy seller utility checklist"

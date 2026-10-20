@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useInView } from "framer-motion";
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { trackEvent } from "@/lib/analytics/events";
 
 export function MarketingWorkflow() {
@@ -70,23 +70,16 @@ export function MarketingWorkflow() {
             ))}
           </ul>
           <Link href="/tc-utility-handoff-kit" className="marketing-text-link">
-            Copy an email for each <ArrowUpRight size={17} />
+            Copy an email for each <ArrowRight size={17} />
           </Link>
         </div>
         <div className="workflow-video">
           <div>
             <p className="marketing-eyebrow">SEE THE REAL WORKFLOW</p>
-            <h3>
-              A minute here.
-              <br />
-              One less thing on your list.
-            </h3>
-            <p>
-              Watch the 66-second walkthrough, from seller link to finished
-              sheet.
-            </p>
+            <h3>From seller link to finished sheet.</h3>
+            <p>A 66-second walkthrough of the real product.</p>
             <Link href="/demo" className="marketing-text-link">
-              Try it yourself <ArrowUpRight size={17} />
+              Try it yourself <ArrowRight size={17} />
             </Link>
           </div>
           <video
@@ -139,14 +132,14 @@ export function MarketingCapabilities() {
           <h2>
             A thoughtful finish
             <br />
-            for <em>every file.</em>
+            for every file.
           </h2>
           <p className="capability-intro">
             Start with utilities. Add your branding, make a correction, or
             collect a fuller property handoff as your workflow grows.
           </p>
           <Link href="/features" className="marketing-text-link">
-            Explore all features <ArrowUpRight size={17} />
+            Explore all features <ArrowRight size={17} />
           </Link>
         </div>
         <div className="capability-list">
@@ -207,13 +200,13 @@ export function MarketingAudience() {
           <strong>moving a file from listing to closing.</strong>
         </p>
         <Link href="/utility-sheet-for-transaction-coordinators">
-          Transaction coordinators <ArrowUpRight size={19} />
+          Transaction coordinators <ArrowRight size={19} />
         </Link>
         <Link href="/utility-sheet-for-real-estate-agents">
-          Real estate agents <ArrowUpRight size={19} />
+          Real estate agents <ArrowRight size={19} />
         </Link>
         <Link href="/tc-utility-handoff-kit">
-          <Check size={17} /> Free handoff templates <ArrowUpRight size={19} />
+          <Check size={17} /> Free handoff templates <ArrowRight size={19} />
         </Link>
       </div>
     </section>

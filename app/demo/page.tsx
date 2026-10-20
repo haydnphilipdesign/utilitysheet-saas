@@ -7,6 +7,7 @@ import { SellerWizard } from '@/components/seller-form/SellerWizard';
 import { WizardLoader } from '@/components/ui/wizard-loader';
 import type { UtilityCategory, ProviderSuggestion } from '@/types';
 import Link from 'next/link';
+import { MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { trackEvent } from '@/lib/analytics/events';
 
 // UtilitySheet branding for demo
@@ -123,105 +124,100 @@ export default function DemoPage() {
         );
     }
 
-    // Address input step
+    // Address input step. The marketing header and footer frame this step
+    // only; the wizard above runs full screen like the real seller form.
     return (
-        <div className="min-h-[calc(100vh-4rem)] flex flex-col">
-
-            {/* Main Content */}
-            <main className="flex-1 flex items-center justify-center p-4">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="max-w-md w-full"
-                >
-                    <div className="text-center mb-8">
-                        <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center shadow-xl">
-                            <MapPin className="h-8 w-8 text-white" />
+        <div className="marketing-site flex min-h-screen flex-col bg-background text-foreground">
+            <MarketingHeader />
+            <main className="flex flex-1 flex-col">
+                <div className="demo-entry">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="demo-entry-inner"
+                    >
+                        <div className="demo-entry-icon">
+                            <MapPin className="h-7 w-7" aria-hidden="true" />
                         </div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
-                            Try the Seller Experience
-                        </h1>
-                        <p className="text-muted-foreground text-sm sm:text-base">
+                        <h1>Try the seller experience</h1>
+                        <p className="demo-entry-lead">
                             Enter an address to see suggested providers. Sellers can confirm, search, or type with no login required.
                         </p>
-                    </div>
 
-                    <div className="bg-card/50 border border-border rounded-2xl p-6 space-y-4">
-                        <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-900">
-                            This demo shows the core guided flow. On Pro and Teams you can also collect a Property Handoff Packet and edit submitted sheets later from the dashboard.
-                        </div>
+                        <div className="demo-entry-card">
+                            <p className="demo-entry-note">
+                                This demo shows the core guided flow. On Pro and Teams you can also collect a Property Handoff Packet and edit submitted sheets later from the dashboard.
+                            </p>
 
-                        <div>
-                            <label htmlFor="address" className="block text-sm font-medium text-muted-foreground mb-2">
-                                Property Address
-                            </label>
-                            <input
-                                id="address"
-                                type="text"
-                                value={address}
-                                onChange={(e) => {
-                                    setAddress(e.target.value);
-                                    setError(null);
-                                }}
-                                onKeyDown={(e) => e.key === 'Enter' && handleStartDemo()}
-                                placeholder="123 Sample Street, City, state, zip"
-                                className="w-full px-4 py-3 bg-background/50 border border-input rounded-xl text-base sm:text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all"
-                            />
-                            <div className="mt-2 flex items-center justify-between">
+                            <div>
+                                <label htmlFor="address">Property address</label>
+                                <input
+                                    id="address"
+                                    type="text"
+                                    value={address}
+                                    onChange={(e) => {
+                                        setAddress(e.target.value);
+                                        setError(null);
+                                    }}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleStartDemo()}
+                                    placeholder="123 Sample Street, City, state, zip"
+                                />
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setAddress('123 Sample Street, City, state, zip');
                                         setError(null);
                                     }}
-                                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                                    className="demo-entry-sample"
                                 >
                                     Use a sample address
                                 </button>
+                                {error && (
+                                    <motion.p
+                                        initial={{ opacity: 0, y: -5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="demo-entry-error"
+                                        role="alert"
+                                    >
+                                        {error}
+                                    </motion.p>
+                                )}
                             </div>
-                            {error && (
-                                <motion.p
-                                    initial={{ opacity: 0, y: -5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="mt-2 text-sm text-red-400"
-                                >
-                                    {error}
-                                </motion.p>
-                            )}
+
+                            <button
+                                type="button"
+                                onClick={handleStartDemo}
+                                disabled={loading || !address.trim()}
+                                className="marketing-button"
+                            >
+                                Start the demo
+                                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                            </button>
+
+                            <p className="demo-entry-privacy">
+                                Your address is only used to generate suggestions.
+                            </p>
                         </div>
 
-                        <button
-                            onClick={handleStartDemo}
-                            disabled={loading || !address.trim()}
-                            className="w-full py-3.5 px-6 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 disabled:from-slate-700 disabled:to-slate-800 disabled:cursor-not-allowed text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-slate-500/20"
-                        >
-                            Start Demo
-                            <ArrowRight className="h-5 w-5" />
-                        </button>
-
-                        <p className="text-xs text-muted-foreground text-center">
-                            Your address is only used to generate suggestions.
+                        <p className="demo-entry-alt">
+                            <Link
+                                href="/auth/signup"
+                                onClick={() =>
+                                    trackEvent('landing_primary_cta_clicked', {
+                                        cta_id: 'primary_demo_start_free',
+                                        destination: '/auth/signup',
+                                        location: 'demo',
+                                        page: 'demo',
+                                    })
+                                }
+                            >
+                                Start free instead
+                            </Link>
                         </p>
-                    </div>
-
-                    <div className="mt-6 text-center">
-                        <Link
-                            href="/auth/signup"
-                            className="inline-flex items-center text-sm font-semibold text-slate-700 hover:text-slate-900 underline underline-offset-2"
-                            onClick={() =>
-                                trackEvent('landing_primary_cta_clicked', {
-                                    cta_id: 'primary_demo_start_free',
-                                    destination: '/auth/signup',
-                                    location: 'demo',
-                                    page: 'demo',
-                                })
-                            }
-                        >
-                            Start Free instead
-                        </Link>
-                    </div>
-                </motion.div>
+                    </motion.div>
+                </div>
             </main>
+            <MarketingFooter />
         </div>
     );
 }

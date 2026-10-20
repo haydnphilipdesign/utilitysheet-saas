@@ -88,7 +88,7 @@ function PlanLink({ index }: { index: number }) {
         })
       }
     >
-      {index === 0 ? "Start free" : `Choose ${plan.name}`}
+      {index === 0 ? "Start free" : `Start ${plan.name}`}
       <ArrowRight size={15} aria-hidden="true" />
     </Link>
   );
@@ -142,7 +142,7 @@ export function PricingComparison() {
         </tbody>
         <tfoot>
           <tr>
-            <td>Ready for your next file?</td>
+            <td />
             {plans.map((plan, index) => (
               <td
                 key={plan.name}

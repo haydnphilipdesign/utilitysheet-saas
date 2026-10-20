@@ -229,9 +229,12 @@ export function FeaturesShowcase() {
               Compare plans <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
-          <div className="ft-team-stage">
-            <MockTeam />
-          </div>
+          <figure className="ft-team-art">
+            <div className="ft-team-stage">
+              <MockTeam />
+            </div>
+            <figcaption>Illustrative preview with sample team members.</figcaption>
+          </figure>
         </div>
       </section>
     </>

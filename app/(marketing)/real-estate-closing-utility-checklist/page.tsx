@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingSection } from '@/components/marketing/page-shell';
+import { MarketingHeroArt } from '@/components/marketing/hero-art';
+import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingPointsSection, MarketingRelatedLinks } from '@/components/marketing/page-shell';
+import { MockFormSettings, MockSheet } from '@/components/marketing/product-mockups';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema } from '@/lib/seo/schema';
@@ -40,7 +42,9 @@ export default function RealEstateClosingUtilityChecklistPage() {
         ]}
       />
 
-      <MarketingPageHero showActions
+      <MarketingPageHero
+        showActions
+        art={<MarketingHeroArt primary={<MockFormSettings />} secondary={<MockSheet />} />}
         eyebrow="Checklist"
         title="Your closing utility checklist, sorted."
         description="Closing utility prep sounds simple until someone has to chase the seller, confirm providers, clean up the information, and hand it off to buyers. This checklist shows the core steps, and UtilitySheet helps your team run them in a more repeatable way."
@@ -53,23 +57,13 @@ export default function RealEstateClosingUtilityChecklistPage() {
         />
       </MarketingPageHero>
 
-      <MarketingSection
+      <MarketingPointsSection
+        ordered
         title="The checklist"
         description="You can use these steps inside your own transaction process whether you work solo or as part of a team."
+        points={checklist.map((copy) => ({ copy }))}
       >
-        <ol className="grid gap-4">
-          {checklist.map((item, index) => (
-            <li key={item} className="rounded-3xl border border-border bg-card/30 p-6">
-              <div className="flex gap-4">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-600/10 text-sm font-semibold text-slate-700">
-                  {index + 1}
-                </span>
-                <p className="leading-7 text-muted-foreground">{item}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <p className="mt-6 leading-7 text-muted-foreground">
+        <p className="marketing-section-note">
           Sellers have their own side of this: stop dates, final bills, and keeping service on for the walkthrough.
           Send them the{' '}
           <Link href="/guides/transfer-utilities-when-selling-a-house" className="font-semibold text-foreground underline underline-offset-4">
@@ -77,48 +71,34 @@ export default function RealEstateClosingUtilityChecklistPage() {
           </Link>
           .
         </p>
-      </MarketingSection>
+      </MarketingPointsSection>
 
-      <MarketingSection
+      <MarketingPointsSection
         title="How UtilitySheet supports this checklist"
         description="The checklist becomes easier to execute when the collection step is standardized."
-      >
-        <div className="grid gap-6 md:grid-cols-3">
-          {[
-            {
-              title: 'One reusable request link',
-              copy: 'Instead of rebuilding a utility collection email every time, you send the same guided link.',
-            },
-            {
-              title: 'Cleaner data from sellers',
-              copy: 'Provider suggestions and structured prompts reduce the vague answers that slow closings down.',
-            },
-            {
-              title: 'Finished output at the end',
-              copy: 'The end result is not just a completed form. It is a utility sheet your team can actually share, and on Pro and Teams you can revise it after the seller submits.',
-            },
-          ].map((item) => (
-            <article key={item.title} className="rounded-3xl border border-border bg-card/20 p-6">
-              <h3 className="text-2xl font-semibold text-foreground">{item.title}</h3>
-              <p className="mt-3 leading-7 text-muted-foreground">{item.copy}</p>
-            </article>
-          ))}
-        </div>
-      </MarketingSection>
+        points={[
+          {
+            title: 'One reusable request link',
+            copy: 'Instead of rebuilding a utility collection email every time, you send the same guided link.',
+          },
+          {
+            title: 'Cleaner data from sellers',
+            copy: 'Provider suggestions and structured prompts reduce the vague answers that slow closings down.',
+          },
+          {
+            title: 'Finished output at the end',
+            copy: 'The end result is not just a completed form. It is a utility sheet your team can actually share, and on Pro and Teams you can revise it after the seller submits.',
+          },
+        ]}
+      />
 
-      <MarketingSection title="Related pages" description="These pages dig deeper into the people and workflows behind the checklist.">
-        <div className="flex flex-wrap gap-4 text-sm font-semibold">
-          <Link href="/seller-utility-information-form" className="rounded-full border border-border px-4 py-2 hover:bg-muted">
-            Seller utility information form
-          </Link>
-          <Link href="/utility-sheet-for-transaction-coordinators" className="rounded-full border border-border px-4 py-2 hover:bg-muted">
-            For transaction coordinators
-          </Link>
-          <Link href="/how-it-works" className="rounded-full border border-border px-4 py-2 hover:bg-muted">
-            How it works
-          </Link>
-        </div>
-      </MarketingSection>
+      <MarketingRelatedLinks
+        links={[
+          { href: '/seller-utility-information-form', label: 'Seller utility information form' },
+          { href: '/utility-sheet-for-transaction-coordinators', label: 'For transaction coordinators' },
+          { href: '/how-it-works', label: 'How it works' },
+        ]}
+      />
 
       <MarketingCtaBand
         title="Turn your closing utility checklist into a repeatable workflow"

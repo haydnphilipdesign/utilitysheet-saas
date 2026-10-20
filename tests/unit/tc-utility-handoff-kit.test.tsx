@@ -9,7 +9,7 @@ describe('TC Utility Handoff Kit page', () => {
 
         expect(screen.getByRole('heading', { name: /tc utility handoff kit/i })).toBeInTheDocument();
         expect(screen.getByText(/never request account numbers/i)).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /create your seller link/i })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: /create your free seller link/i })).toHaveAttribute(
             'href',
             '/auth/signup?utm_source=handoff-kit&utm_medium=resource&utm_campaign=90-day-tc-growth&utm_content=kit-cta'
         );
@@ -26,7 +26,7 @@ describe('TC Utility Handoff Kit page', () => {
         expect(screen.getByText(/while we get your listing started/i)).toBeInTheDocument();
         expect(screen.getByText(/as we prepare for closing/i)).toBeInTheDocument();
 
-        const buyerCard = screen.getByRole('heading', { name: 'Buyer side, via listing agent' }).closest('[data-slot="card"]');
+        const buyerCard = screen.getByRole('heading', { name: 'Buyer side, via listing agent' }).closest('article');
         expect(buyerCard).not.toBeNull();
         const buyerBody = within(buyerCard as HTMLElement).getByText(/forward this short form to your seller/i);
         expect(buyerBody).toHaveTextContent('Hi [Listing Agent First Name],');

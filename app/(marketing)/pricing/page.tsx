@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Check } from "lucide-react";
+import { Check, CreditCard, FileCheck2, Undo2 } from "lucide-react";
 
 import { PricingComparison } from "@/components/marketing/pricing-comparison";
 import {
@@ -50,6 +50,23 @@ export default function PricingPage() {
           </>
         }
         description="Choose the plan that fits your workflow. Every plan includes guided seller forms, provider suggestions, and a clean buyer handoff."
+        facts={[
+          {
+            icon: FileCheck2,
+            title: "3 free sheets a month",
+            copy: "A sheet counts only when a seller submits it.",
+          },
+          {
+            icon: CreditCard,
+            title: "No credit card to start",
+            copy: "Create your seller link and send it today.",
+          },
+          {
+            icon: Undo2,
+            title: "Cancel anytime",
+            copy: "Cancel a paid plan from your billing settings.",
+          },
+        ]}
       />
 
       <PricingComparison />
@@ -82,7 +99,7 @@ export default function PricingPage() {
       </MarketingSection>
 
       <MarketingCtaBand
-        title="Start free. Upgrade when it sticks."
+        title="Try it on your next few files."
         description="See how much back-and-forth UtilitySheet saves on your next few files, then add branding, editing, or your team."
       />
     </div>
