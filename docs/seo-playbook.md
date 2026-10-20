@@ -92,6 +92,7 @@ two days. Requesting doesn't guarantee indexing; it moves the URL up the queue.
 | 9 | `https://www.utilitysheet.com/how-it-works` | Supporting page. |
 | 10 | `https://www.utilitysheet.com/faq` | Supporting page. |
 | 11 | `https://www.utilitysheet.com/utility-sheet-template` | Free printable template; request it as soon as it's live. |
+| 12 | `https://www.utilitysheet.com/guides/transfer-utilities-when-selling-a-house` | Seller guide; request it as soon as it's live. |
 
 Leave `/about`, `/demo`, `/from-a-closing`, and the legal pages to the
 sitemap. They will be crawled without help.
@@ -158,8 +159,8 @@ Every Monday:
 ## 6. Content plan
 
 These are **hypotheses**. There is no keyword data yet. After 4–8 weeks,
-Search Console's Queries report will show which ones are real. A is built;
-B–E and the billing FAQ are still open.
+Search Console's Queries report will show which ones are real. A and B are
+built; C–E and the billing FAQ are still open.
 
 ### A. Free printable utility sheet template (built: `/utility-sheet-template`)
 - **Intent:** "utility information sheet template", "utility list for home
@@ -179,7 +180,7 @@ B–E and the billing FAQ are still open.
   and `/real-estate-closing-utility-checklist` (process steps). Cross-link all
   three.
 
-### B. Seller guide: transferring utilities when you sell your house
+### B. Seller guide: transferring utilities when you sell your house (built: `/guides/transfer-utilities-when-selling-a-house`)
 - **Intent:** "how to transfer utilities when selling a house", "when to shut
   off utilities when selling". Home sellers; agents share it with clients.
 - **URL:** `/guides/transfer-utilities-when-selling-a-house`

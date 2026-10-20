@@ -67,6 +67,11 @@ export const ogPages = {
     eyebrow: 'Free printable template',
     title: 'Free utility sheet template for real estate closings',
   },
+  'transfer-utilities-when-selling-a-house': {
+    path: '/guides/transfer-utilities-when-selling-a-house',
+    eyebrow: 'Seller guide',
+    title: 'How to transfer utilities when you sell your house',
+  },
   'from-a-closing': {
     path: '/from-a-closing',
     eyebrow: 'For closing professionals',

@@ -192,7 +192,9 @@ export default function UtilitySheetTemplatePage() {
             <p className="ust-note">
               Need the emails to send with it? The free{' '}
               <Link href="/tc-utility-handoff-kit">TC Utility Handoff Kit</Link> has copy-and-paste
-              templates for listing intake, closing prep, and buyer-side requests.
+              templates for listing intake, closing prep, and buyer-side requests. For sellers, the{' '}
+              <Link href="/guides/transfer-utilities-when-selling-a-house">guide to transferring utilities when
+              selling</Link> covers stop dates, final bills, and the final walkthrough.
             </p>
           </div>
           <div className="ust-callout">
