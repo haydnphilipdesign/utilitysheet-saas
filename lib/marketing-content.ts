@@ -79,6 +79,31 @@ export const faqItems = [
       'The free plan includes three submitted sheets per month. A request only counts when the seller submits it, so you can always create and send requests, and one the seller never answers does not count. Submissions past the limit are still saved. They are locked until you upgrade, then unlock automatically. Editing submitted sheets is part of Pro and Teams.',
   },
   {
+    question: 'How do I cancel my plan?',
+    answer:
+      'Go to Settings, open the Billing tab, and choose Manage subscription. It opens Stripe, our payment provider, where you can cancel, update your card, and download invoices. On Teams, a workspace admin cancels from Manage Teams billing.',
+  },
+  {
+    question: 'What happens when I cancel?',
+    answer:
+      'Your plan stays active until the end of the period you’ve already paid for, and the Billing tab shows the date it ends. To change your mind before then, renew it from Manage subscription. After that date, your account moves to the Free plan.',
+  },
+  {
+    question: 'What happens to my sheets if I go back to Free?',
+    answer:
+      'Nothing is deleted. Sheets submitted while you were on Pro or Teams stay in your dashboard, and their web links and PDFs keep working. From then on, the Free plan applies: three submitted sheets a month, counting any submitted earlier that month, and no editing of submitted sheets. Paid extras, like custom buyer next steps and hiding the “Powered by utilitysheet.com” line, switch back to the Free defaults. PDFs you already emailed stay as they were sent.',
+  },
+  {
+    question: 'Can I switch from Pro to Teams?',
+    answer:
+      'Yes. Start Teams from the Billing tab and your Pro plan becomes a Teams plan, so you won’t pay for two. Stripe adds the difference from Pro for the rest of the billing period to your next invoice. Teams is $7 per seat a month, with a 3-seat minimum.',
+  },
+  {
+    question: 'What if a payment fails?',
+    answer:
+      'Stripe tries your card again. Until a payment goes through, your account works like the Free plan. Update your card in Manage subscription, and your plan comes back once the payment succeeds.',
+  },
+  {
     question: 'How long does it take to get started?',
     answer:
       'After signup, your reusable seller link is the first thing you see in the dashboard. You can copy it right away, add it to a template, share it with a seller, and come back later to adjust branding, sheet type, or other settings.',

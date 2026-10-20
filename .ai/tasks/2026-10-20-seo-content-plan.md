@@ -1,8 +1,8 @@
 ---
-status: active
+status: ready
 owner: claude
-updated: 2026-10-20 21:50
-scope: app/(marketing)/guides, app/(marketing)/utility-sheet-template, app/(marketing)/utility-sheet-for-transaction-coordinators, components/landing/ForTcsSection.tsx, app/sitemap.ts, lib/seo/og-pages.ts, app/(marketing)/layout.tsx (footer links only), lib/marketing-content.ts (FAQ entries only), docs/seo-playbook.md, tests/unit/seo-*
+updated: 2026-10-20 22:30
+scope: app/(marketing)/guides, app/(marketing)/from-a-closing (one sentence), app/(marketing)/real-estate-closing-utility-checklist (one sentence), components/marketing/faq-list.tsx (category map only), components/landing/SocialProofBar.tsx (export only), app/(marketing)/utility-sheet-template, app/(marketing)/utility-sheet-for-transaction-coordinators, components/landing/ForTcsSection.tsx, app/sitemap.ts, lib/seo/og-pages.ts, app/(marketing)/layout.tsx (footer links only), lib/marketing-content.ts (FAQ entries only), docs/seo-playbook.md, tests/unit/seo-*
 ---
 # SEO content plan (playbook section 6, items B–E and billing FAQ)
 
@@ -50,9 +50,18 @@ Owner decisions (2026-10-20):
   into sitemap, `og-pages.ts`, footer ("Buyer Utilities Guide"), a sentence
   in the seller guide and on `/from-a-closing`, the playbook (row 13, E
   built). Template page section got `id="what-is-a-utility-sheet"` and
-  `.ust-section` a scroll margin for the anchor. Committed locally, not
-  pushed until the owner approves the screenshots.
-- Billing FAQ: not started.
+  `.ust-section` a scroll margin for the anchor. Screenshots approved and
+  pushed.
+- Billing FAQ: copy approved; owner authorized pushing without a screenshot
+  review. Five questions added to `faqItems` in `lib/marketing-content.ts`
+  (cancel, what happens on cancel, sheets on Free, Pro → Teams, failed
+  payment) and mapped to "Plans & billing" in `faq-list.tsx`; `/faq`
+  FAQPage JSON-LD now lists 20 questions; sitemap `/faq` date bumped;
+  playbook updated. Assumption the owner approved without confirming: the
+  Stripe customer portal lets Pro customers cancel, ending at period end
+  (the code supports a scheduled end date; the portal setting lives in
+  Stripe). If the portal cancels immediately, reword "What happens when I
+  cancel?".
 
 ## Environment
 
@@ -89,6 +98,11 @@ pass; `npm test -- --run tests/unit/seo- tests/unit/utility-sheet-template`:
 no overflow; Lighthouse (local, mobile) on the buyer guide: accessibility
 100, SEO 100, performance 87.
 
+Billing FAQ (2026-10-20): lint 0 errors (19 pre-existing warnings); tsc
+pass; build pass; SEO/template/FAQ-related unit tests: 5 files, 15 tests
+pass; `/faq` Plans & billing shows 6 answers at 1440px and iPhone 13, no
+overflow.
+
 ## Next
 
-Owner reviews E screenshots; on approval push, then verify billing behavior in code and draft the billing FAQ entries.
+All section 6 items are built and pushed on `claude/exciting-mayer-5vb4nw`. Next: owner merges the branch, then requests indexing for the new guide URLs (playbook rows 12–13). Optional follow-ups: fillable PDF / sample filled-in sheet (item A), linking the buyer guide from the agents page or the public packet page.

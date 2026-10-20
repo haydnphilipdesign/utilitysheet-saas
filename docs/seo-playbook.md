@@ -160,8 +160,8 @@ Every Monday:
 ## 6. Content plan
 
 These are **hypotheses**. There is no keyword data yet. After 4–8 weeks,
-Search Console's Queries report will show which ones are real. A–E are built;
-the billing FAQ is still open.
+Search Console's Queries report will show which ones are real. A–E and the billing FAQ are
+built.
 
 ### A. Free printable utility sheet template (built: `/utility-sheet-template`)
 - **Intent:** "utility information sheet template", "utility list for home
@@ -216,9 +216,9 @@ the billing FAQ is still open.
 - **Intent:** "set up utilities new house checklist". Buyers aren't your
   customers, but agents send it after closing. Pairs with `/from-a-closing`.
 
-Also worth doing: the FAQ has only **one** billing question. Add the billing
-questions people actually ask (cancelling, downgrading, what happens to sheets)
-once the answers are confirmed in code.
+Also done: the FAQ's Plans & billing group now covers cancelling, what
+happens on cancel, what happens to sheets on Free, switching Pro to Teams,
+and failed payments, with answers checked against the billing code.
 
 ---
 
