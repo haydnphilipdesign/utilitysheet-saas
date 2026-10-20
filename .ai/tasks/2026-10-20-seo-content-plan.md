@@ -1,7 +1,7 @@
 ---
 status: active
 owner: claude
-updated: 2026-10-20 20:20
+updated: 2026-10-20 21:10
 scope: app/(marketing)/guides, app/(marketing)/utility-sheet-template, app/(marketing)/utility-sheet-for-transaction-coordinators, components/landing/ForTcsSection.tsx, app/sitemap.ts, lib/seo/og-pages.ts, app/(marketing)/layout.tsx (footer links only), lib/marketing-content.ts (FAQ entries only), docs/seo-playbook.md, tests/unit/seo-*
 ---
 # SEO content plan (playbook section 6, items B–E and billing FAQ)
@@ -34,9 +34,17 @@ Owner decisions (2026-10-20):
 - D: copy approved. Built as a "What is a utility sheet?" section right
   after the hero of `/utility-sheet-template` (`basics` list + `ust-basics`
   styles); removed the overlapping "Who should fill it out?" FAQ; added the
-  keyword; playbook marks D built. Committed locally, not pushed until the
-  owner approves the screenshots.
-- C, E, billing FAQ: not started.
+  keyword; playbook marks D built. Screenshots approved and pushed.
+- C: copy approved. Rewrote `app/(marketing)/utility-sheet-for-transaction-coordinators/page.tsx`
+  with a scoped `tc.css` (`tcp-` prefix): Features-style hero with an
+  illustrative requests preview, stages with kit emails, checklist-task
+  section, "What you get back", the real testimonials (reusing shared
+  `.marketing-testimonials` styles; `customerTestimonials` is now exported
+  from `components/landing/SocialProofBar.tsx`), TC FAQ, shared CTA band.
+  Deleted `components/landing/ForTcsSection.tsx` (only user). OG title and
+  sitemap date updated; playbook marks C built. Committed locally, not
+  pushed until the owner approves the screenshots.
+- E, billing FAQ: not started.
 
 ## Environment
 
@@ -59,6 +67,14 @@ D (2026-10-20): lint 0 errors (19 pre-existing warnings); tsc pass; build
 pass; `npm test -- --run tests/unit/seo- tests/unit/utility-sheet-template`:
 4 files, 13 tests pass; screenshots at 1440px and iPhone 13, no overflow.
 
+C (2026-10-20): lint 0 errors (19 pre-existing warnings); tsc pass; build
+pass; Lighthouse (local, mobile) accessibility 100, SEO 100, performance 85;
+screenshots at 1440px and iPhone 13, no overflow. Full `npm test -- --run`:
+257 files pass; the 2 known failures (`seller-form-base-links-storage`,
+`admin-operations-ui`) plus `handoff-evidence-storage` "applies the
+migration idempotently", which passes when run alone (slow test under full
+suite load; unrelated to these changes).
+
 ## Next
 
-Owner reviews D screenshots; on approval push, then draft C (TC page content + redesign).
+Owner reviews C screenshots; on approval push, then draft E (buyer guide) or the billing FAQ, whichever the owner picks.

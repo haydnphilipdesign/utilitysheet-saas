@@ -11,7 +11,7 @@ const marketingRoutes: { path: string; lastModified: string }[] = [
   { path: '/how-it-works', lastModified: '2026-10-15' },
   { path: '/pricing', lastModified: '2026-10-15' },
   { path: '/faq', lastModified: '2026-10-15' },
-  { path: '/utility-sheet-for-transaction-coordinators', lastModified: '2026-10-08' },
+  { path: '/utility-sheet-for-transaction-coordinators', lastModified: '2026-10-20' },
   { path: '/utility-sheet-for-real-estate-agents', lastModified: '2026-10-06' },
   { path: '/seller-utility-information-form', lastModified: '2026-10-08' },
   { path: '/real-estate-closing-utility-checklist', lastModified: '2026-10-08' },

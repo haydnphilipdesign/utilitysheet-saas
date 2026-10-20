@@ -159,8 +159,8 @@ Every Monday:
 ## 6. Content plan
 
 These are **hypotheses**. There is no keyword data yet. After 4–8 weeks,
-Search Console's Queries report will show which ones are real. A, B, and D are
-built; C, E, and the billing FAQ are still open.
+Search Console's Queries report will show which ones are real. A–D are built;
+E and the billing FAQ are still open.
 
 ### A. Free printable utility sheet template (built: `/utility-sheet-template`)
 - **Intent:** "utility information sheet template", "utility list for home
@@ -193,7 +193,7 @@ built; C, E, and the billing FAQ are still open.
   guide plus a UtilitySheet link"), and for sellers, "Ask your agent if they
   use UtilitySheet". Lower direct conversion, but earns shares and links.
 
-### C. Page for TCs: the utility step in your transaction workflow
+### C. Page for TCs: the utility step in your transaction workflow (built: rewrote `/utility-sheet-for-transaction-coordinators`)
 - **Intent:** "transaction coordinator checklist utilities", "TC workflow
   utilities". Deepen the existing
   `/utility-sheet-for-transaction-coordinators` rather than adding a

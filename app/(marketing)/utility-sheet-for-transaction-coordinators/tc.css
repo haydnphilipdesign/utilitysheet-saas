@@ -1,0 +1,457 @@
+/* /utility-sheet-for-transaction-coordinators. Scoped with the tcp- prefix;
+   tokens, headings, buttons and testimonials come from marketing.css. */
+
+/* Hero */
+.tcp-hero {
+  overflow: hidden;
+  background: #f8f6f0;
+  border-bottom: 1px solid #cbd9d9;
+}
+.tcp-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 56px;
+  align-items: center;
+  padding-block: 56px 48px;
+}
+.tcp-hero .marketing-eyebrow,
+.tcp-section .marketing-eyebrow {
+  text-transform: uppercase;
+}
+.tcp-hero .marketing-eyebrow {
+  color: #176173;
+  margin-bottom: 22px;
+}
+.tcp-hero h1 {
+  font-size: clamp(40px, 4.2vw, 58px);
+  margin-bottom: 24px;
+}
+.tcp-lead {
+  max-width: 540px;
+  margin-bottom: 30px;
+  color: #31546a;
+  font-size: 18px;
+  line-height: 1.65;
+}
+.tcp-hero .marketing-actions {
+  gap: 14px;
+}
+.tcp-fineprint {
+  margin: 18px 0 28px;
+  color: #526d7b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Hero preview: decorative sample data. */
+.tcp-hero-art {
+  min-width: 0;
+}
+.tcp-hero-art figcaption {
+  text-align: center;
+  color: #586f79;
+  font-size: 11px;
+}
+.tcp-stage {
+  position: relative;
+  padding: 40px 48px 64px 0;
+  margin-bottom: 8px;
+}
+.tcp-geometry {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 220px;
+}
+.tcp-geometry i {
+  aspect-ratio: 1;
+}
+.tcp-geometry i:nth-child(1) {
+  background: #cce7e1;
+  border-radius: 100% 0 0;
+}
+.tcp-geometry i:nth-child(2) {
+  background: #93c7c0;
+  border-radius: 0 0 100%;
+}
+.tcp-panel {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border: 1px solid #b9cbca;
+  border-radius: 10px;
+  background: #fffefb;
+  box-shadow: 0 30px 60px -30px #123e5659;
+  color: #0a2c40;
+  font-size: 12px;
+}
+.tcp-panel-bar {
+  padding: 11px 16px;
+  background: #123e56;
+  color: #d9e7e4;
+  font-size: 11px;
+  font-weight: 600;
+}
+.tcp-requests li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid #e3ebe7;
+}
+.tcp-requests li:first-child {
+  border-top: 0;
+}
+.tcp-request-copy {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.tcp-request-copy b {
+  font-weight: 650;
+}
+.tcp-request-copy small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #526d7b;
+  font-size: 11px;
+}
+.tcp-status {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 650;
+}
+.tcp-status-done {
+  background: #dcefe9;
+  color: #1d6457;
+}
+.tcp-status-progress {
+  background: #fbefd9;
+  color: #7a4e0f;
+}
+.tcp-status-sent {
+  background: #e8eef2;
+  color: #31546a;
+}
+.tcp-mock-button {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 5px;
+  background: #123e56;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 650;
+}
+.tcp-float {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 210px;
+  padding: 12px 14px;
+  border: 1px solid #c9d8d6;
+  border-radius: 8px;
+  background: #fffefb;
+  box-shadow: 0 14px 30px -18px #123e5640;
+  color: #0a2c40;
+  font-size: 12px;
+}
+.tcp-float-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #cce7e1;
+  color: #176173;
+}
+
+/* Sections */
+.tcp-section {
+  scroll-margin-top: 80px;
+}
+.tcp-stages-section {
+  background: #fffefb;
+}
+.tcp-section-alt {
+  background: #f8f6f0;
+  border-block: 1px solid #cbd9d9;
+}
+.tcp-section .marketing-eyebrow {
+  color: #176173;
+  margin-bottom: 16px;
+}
+.tcp-h2,
+.tcp-prose h2 {
+  font-size: clamp(32px, 3.4vw, 44px);
+}
+.tcp-stages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 44px;
+}
+.tcp-stages li {
+  display: flex;
+  flex-direction: column;
+  padding: 26px;
+  border: 1px solid #cbd9d9;
+  border-radius: 10px;
+  background: #fff;
+}
+.tcp-stage-label {
+  display: flex;
+  gap: 10px;
+  color: #526c61;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.tcp-stage-label span {
+  color: #176173;
+}
+.tcp-stages h3 {
+  margin: 14px 0 10px;
+  font-size: 21px;
+  font-weight: 650;
+  color: #0a2c40;
+}
+.tcp-stages li > p:not(.tcp-stage-label):not(.tcp-kit-email) {
+  flex: 1;
+  line-height: 1.7;
+  color: #4c626b;
+}
+.tcp-kit-email {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e5de;
+  color: #176173;
+  font-size: 13px;
+  font-weight: 600;
+}
+.tcp-note {
+  margin-top: 28px;
+  color: #4c626b;
+  line-height: 1.7;
+}
+.tcp-section a:not(.marketing-button):not(.marketing-text-link) {
+  color: #176173;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tcp-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 64px;
+  align-items: center;
+}
+.tcp-prose p {
+  margin-top: 18px;
+  max-width: 40rem;
+  font-size: 17px;
+  line-height: 1.75;
+  color: #4c626b;
+}
+.tcp-tasks {
+  margin: 0;
+}
+.tcp-tasks ul {
+  overflow: hidden;
+  border: 1px solid #c9d8d6;
+  border-radius: 8px;
+  background: #fffefb;
+  box-shadow: 0 14px 30px -18px #123e5640;
+  color: #0a2c40;
+  font-size: 14px;
+}
+.tcp-tasks li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-top: 1px solid #e3ebe7;
+}
+.tcp-tasks li:first-child {
+  border-top: 0;
+}
+.tcp-tasks li.is-done {
+  color: #526d7b;
+  text-decoration: line-through;
+}
+.tcp-tasks li.is-highlight {
+  background: #eef6f3;
+  box-shadow: inset 3px 0 0 #176173;
+}
+.tcp-tasks .tcp-request-copy small {
+  font-size: 12px;
+}
+.tcp-box {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #176173;
+  border-radius: 4px;
+}
+.is-done .tcp-box {
+  background: #176173;
+  color: #fff;
+}
+.tcp-tasks figcaption {
+  margin-top: 12px;
+  text-align: center;
+  color: #586f79;
+  font-size: 11px;
+}
+
+/* What you get back */
+.tcp-returns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 48px;
+  margin-top: 32px;
+}
+.tcp-returns li {
+  display: flex;
+  gap: 14px;
+  padding: 18px 0;
+  border-top: 1px solid #cbd9d9;
+}
+.tcp-returns p {
+  line-height: 1.7;
+  color: #4c626b;
+}
+.tcp-returns b {
+  font-weight: 600;
+  color: #0a2c40;
+}
+.tcp-plan {
+  color: #176173;
+  font-weight: 600;
+}
+.tcp-check {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: #cce7e1;
+  color: #176173;
+}
+.tcp-compare {
+  margin-top: 20px;
+  color: #123e56;
+}
+
+.tcp-faq {
+  display: grid;
+  gap: 24px;
+  margin-top: 28px;
+  max-width: 48rem;
+}
+.tcp-faq dt {
+  font-weight: 600;
+  color: #0a2c40;
+}
+.tcp-faq dd {
+  margin-top: 6px;
+  line-height: 1.7;
+  color: #4c626b;
+}
+
+@media (max-width: 1100px) {
+  .tcp-hero-grid {
+    gap: 32px;
+  }
+}
+@media (max-width: 900px) {
+  .tcp-hero-grid,
+  .tcp-two-col {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .tcp-hero-art {
+    max-width: 560px;
+  }
+  .tcp-stages {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 767px) {
+  .tcp-hero-grid {
+    padding-block: 32px 28px;
+  }
+  .tcp-hero h1 {
+    font-size: clamp(34px, 9vw, 48px);
+    margin-bottom: 18px;
+  }
+  .tcp-lead {
+    font-size: 16px;
+    margin-bottom: 24px;
+  }
+  .tcp-stages {
+    margin-top: 28px;
+    gap: 16px;
+  }
+  .tcp-stages li {
+    padding: 22px;
+  }
+  .tcp-returns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tcp-section .section-heading-row > p {
+    margin-top: 16px;
+  }
+}
+@media (max-width: 560px) {
+  /* The floating card joins the flow so nothing hangs off a narrow screen. */
+  .tcp-stage {
+    display: grid;
+    gap: 12px;
+    padding: 24px 0 16px;
+  }
+  .tcp-geometry {
+    width: 150px;
+    right: -30px;
+    opacity: 0.5;
+  }
+  .tcp-float {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    justify-self: end;
+    min-width: 0;
+  }
+  .tcp-requests li {
+    flex-wrap: wrap;
+    padding: 12px 14px;
+  }
+  .tcp-requests .tcp-mock-button {
+    margin-left: auto;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tcp-hero-copy,
+  .tcp-hero-art {
+    animation: marketing-enter 0.55s ease-out both;
+  }
+  .tcp-hero-art {
+    animation-delay: 0.1s;
+  }
+}

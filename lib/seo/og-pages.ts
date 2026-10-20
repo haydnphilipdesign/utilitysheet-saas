@@ -40,7 +40,7 @@ export const ogPages = {
   'transaction-coordinators': {
     path: '/utility-sheet-for-transaction-coordinators',
     eyebrow: 'For transaction coordinators',
-    title: 'One less loose end on every file.',
+    title: 'Seller utility details on every file, without the follow-up texts',
   },
   'real-estate-agents': {
     path: '/utility-sheet-for-real-estate-agents',
