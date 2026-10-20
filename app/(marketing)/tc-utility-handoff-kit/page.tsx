@@ -194,7 +194,7 @@ export default function TcUtilityHandoffKitPage() {
             >
                 <Link
                     href={signupHref}
-                    className={cn(buttonVariants({ size: 'lg' }), 'bg-emerald-600 text-white hover:bg-emerald-500')}
+                    className={cn(buttonVariants({ size: 'lg' }), 'bg-emerald-700 text-white hover:bg-emerald-600')}
                 >
                     Create your seller link
                     <ArrowRight aria-hidden="true" />

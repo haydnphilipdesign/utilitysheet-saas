@@ -90,7 +90,7 @@ export function ForTcsSection() {
                     {/* What You Get Card */}
                     <Card className="border-border bg-card/40">
                         <CardHeader className="pb-4">
-                            <h4 className="text-xl font-bold text-foreground">What you get</h4>
+                            <h3 className="text-xl font-bold text-foreground">What you get</h3>
                             <p className="text-muted-foreground">A repeatable seller utility handoff for every file.</p>
                         </CardHeader>
                         <CardContent className="space-y-5">
@@ -144,7 +144,7 @@ export function ForTcsSection() {
                     >
                         <Card className="border-border bg-card/20 h-full">
                             <CardHeader className="pb-4">
-                                <h4 className="text-xl font-bold text-foreground">The TC process</h4>
+                                <h3 className="text-xl font-bold text-foreground">The TC process</h3>
                                 <p className="text-muted-foreground">Drop the link into the messages you already send.</p>
                             </CardHeader>
                             <CardContent className="space-y-4">
