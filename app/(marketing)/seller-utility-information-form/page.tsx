@@ -8,9 +8,9 @@ import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Seller Utility Information Form With a Reusable Link',
+  title: 'Seller Utility Information Form',
   description:
-    'UtilitySheet provides a guided seller utility information form through one reusable link, helping teams collect utility details, generate a polished utility sheet PDF, and correct submitted sheets on paid plans.',
+    'A guided utility form sellers finish on their phone, no account needed. One reusable link returns a clean utility sheet and PDF for the buyer.',
   path: '/seller-utility-information-form',
   keywords: [
     'seller utility information form',

@@ -13,9 +13,9 @@ import { createPageMetadata } from "@/lib/seo/site";
 import { breadcrumbSchema } from "@/lib/seo/schema";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "How UtilitySheet Works After Signup",
+  title: "How It Works: Seller Link to Utility Sheet",
   description:
-    "See how UtilitySheet works after signup: copy your reusable seller link, collect utility details, review the finished utility sheet PDF, and update submitted sheets on paid plans.",
+    "Copy your seller link, send it to the seller, and get back a buyer-ready utility sheet and PDF. See where it fits at listing intake and closing prep.",
   path: "/how-it-works",
   keywords: [
     "how utility sheet works",

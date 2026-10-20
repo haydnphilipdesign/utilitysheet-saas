@@ -16,9 +16,9 @@ import { createPageMetadata } from "@/lib/seo/site";
 import { breadcrumbSchema, softwareApplicationSchema } from "@/lib/seo/schema";
 
 export const metadata: Metadata = createPageMetadata({
-  title: "UtilitySheet Pricing for Seller Utility Link Workflows",
+  title: "Pricing: Free, Pro, and Teams Plans",
   description:
-    "View UtilitySheet pricing for Free, Pro, and Teams. Compare saved seller forms, free submitted sheets, submitted-sheet editing, branded utility sheet output, Property Handoff Packet mode, and team workflows.",
+    "Start free with 3 submitted sheets a month. Pro is $9/month with unlimited sheets and branding. Teams is $7 per seat per month, 3-seat minimum.",
   path: "/pricing",
   keywords: [
     "utility sheet pricing",

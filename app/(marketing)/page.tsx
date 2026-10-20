@@ -18,9 +18,10 @@ import {
 } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-    title: 'Seller Utility Handoff Software for Real Estate Closings',
+    title: 'UtilitySheet: Seller Utility Sheets for Real Estate Closings',
+    absoluteTitle: true,
     description:
-        'UtilitySheet helps transaction coordinators and real estate teams send one reusable seller link at listing intake or before closing, collect seller utility details, and produce a clean buyer-ready utility sheet.',
+        'Send sellers one reusable link to collect their electric, water, gas, and internet providers, then share a clean utility sheet and PDF with the buyer.',
     path: '/',
 });
 

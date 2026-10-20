@@ -8,9 +8,9 @@ import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema } from '@/lib/seo/schema';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Utility Collection for Transaction Coordinators',
+  title: 'Utility Sheets for Transaction Coordinators',
   description:
-    'UtilitySheet helps transaction coordinators send one reusable seller link, reduce utility follow-up, and deliver buyer-ready utility sheet PDFs for every file.',
+    'Send one reusable seller link, stop chasing utility details, and hand off a clean utility sheet and PDF on every file. Free for 3 sheets a month.',
   path: '/utility-sheet-for-transaction-coordinators',
   keywords: [
     'utility sheet for transaction coordinators',

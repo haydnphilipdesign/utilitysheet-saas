@@ -52,6 +52,8 @@ export const noIndexRobots: NonNullable<Metadata['robots']> = {
 
 type PageMetadataInput = {
   title: string;
+  /** Skip the " | UtilitySheet" template, for titles that already name the brand. */
+  absoluteTitle?: boolean;
   description: string;
   path: string;
   keywords?: readonly string[];
@@ -61,6 +63,7 @@ type PageMetadataInput = {
 
 export function createPageMetadata({
   title,
+  absoluteTitle = false,
   description,
   path,
   keywords,
@@ -69,7 +72,7 @@ export function createPageMetadata({
 }: PageMetadataInput): Metadata {
   const image = imagePath ?? ogImagePathFor(path);
   return {
-    title,
+    title: absoluteTitle ? { absolute: title } : title,
     description,
     keywords: keywords ? [...keywords] : undefined,
     alternates: {
@@ -87,7 +90,7 @@ export function createPageMetadata({
           url: image,
           width: 1200,
           height: 630,
-          alt: `${title} | ${siteConfig.name}`,
+          alt: absoluteTitle ? title : `${title} | ${siteConfig.name}`,
         },
       ],
     },
