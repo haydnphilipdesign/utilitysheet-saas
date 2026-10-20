@@ -126,6 +126,17 @@
 }
 .section-heading-row > p {
   max-width: 310px;
+}
+/* Home "From who's your provider?" row: the supporting line reads with the
+   headline instead of floating alone at the far right. */
+.marketing-workflow .section-heading-row {
+  display: block;
+}
+.marketing-workflow .section-heading-row > p {
+  max-width: 520px;
+  margin-top: 22px;
+}
+.section-heading-row > p {
   font-size: 15px;
   line-height: 1.8;
   color: #63706b;
@@ -667,8 +678,7 @@
 .handoff-workflow-grid li { display: flex; align-items: flex-start; gap: 28px; padding-right: 35px; }
 .handoff-workflow-grid li + li { border-left: 1px solid #a7bdc6; padding-left: 46px; }
 .handoff-step-number { display: grid; place-items: center; flex-shrink: 0; width: 47px; height: 47px; border-radius: 50%; background: #bcded8; color: #123e56; font-size: 24px; font-weight: 700; }
-.handoff-workflow-grid svg { color: #123e56; margin-bottom: 15px; }
-.marketing-site .handoff-workflow-grid h2 { font-size: 17px; font-weight: 700; line-height: 1.35; letter-spacing: -0.025em; margin-bottom: 10px; }
+.marketing-site .handoff-workflow-grid h2 { font-size: 17px; font-weight: 700; line-height: 1.35; letter-spacing: -0.025em; margin: 10px 0; }
 .handoff-workflow-grid p { color: #31546a; font-size: 14px; line-height: 1.65; }
 .marketing-site .marketing-testimonials { background: #12384c; }
 .marketing-site .marketing-final { background: #e6eeea; }
@@ -709,10 +719,8 @@
   .handoff-workflow { padding-block: 28px; }
   .handoff-workflow-grid { grid-template-columns: 1fr; gap: 25px; }
   .handoff-workflow-grid li, .handoff-workflow-grid li + li { border: 0; padding: 0; gap: 21px; }
-  .handoff-workflow-grid li > div { display: grid; grid-template-columns: 25px 1fr; column-gap: 12px; }
-  .handoff-workflow-grid svg { width: 22px; height: 22px; margin: 0; }
   .marketing-site .handoff-workflow-grid h2 { font-size: 16px; margin-bottom: 7px; }
-  .handoff-workflow-grid p { grid-column: 2; font-size: 13px; max-width: 400px; }
+  .handoff-workflow-grid p { font-size: 13px; max-width: 400px; }
 }
 
 @media (max-width: 360px) {
@@ -1036,118 +1044,22 @@
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.faq-explorer {
-  padding-bottom: 10px;
-}
-.faq-search {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid #bacdce;
-  border-radius: 7px;
-  background: white;
-  max-width: 730px;
-  padding: 4px 15px;
-  margin-top: -18px;
-  margin-bottom: 30px;
-}
-.faq-search:focus-within {
-  outline: 2px solid #176173;
-  outline-offset: 3px;
-}
-.faq-search input {
-  width: 100%;
-  min-width: 0;
-  min-height: 48px;
-  background: transparent;
-  color: #123e56;
-  font-size: 14px;
-  outline: none;
-}
-.faq-search input::placeholder {
-  color: #637a86;
-}
-.faq-search button {
+.faq-groups {
   display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 4px;
+  gap: 48px;
+  padding-block: 8px 56px;
 }
-.faq-search kbd {
-  white-space: nowrap;
-  background: #eef2f2;
-  border-radius: 4px;
-  font-size: 10px;
-  padding: 6px;
-  color: #526975;
-}
-.faq-layout {
+.faq-group {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   gap: 32px;
   align-items: start;
 }
-.faq-categories {
-  display: grid;
-  gap: 6px;
-  background: #fffefa;
-  border: 1px solid #e2e7e1;
-  padding: 12px;
-  border-radius: 7px;
-}
-.faq-categories button {
-  display: flex;
-  align-items: center;
-  text-align: left;
-  gap: 12px;
-  padding: 12px;
-  min-height: 48px;
-  border-left: 3px solid transparent;
-  border-radius: 3px;
-  font-size: 13px;
-}
-.faq-categories button:hover {
-  background: #eef4ef;
-}
-.faq-categories button[aria-pressed="true"] {
-  background: #e0f0ea;
-  border-left-color: #176173;
-  font-weight: 650;
-}
-.faq-categories small {
-  margin-left: auto;
-  background: #eaf0ed;
-  border-radius: 12px;
-  min-width: 25px;
-  text-align: center;
-  padding: 2px 4px;
-}
-.faq-results-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
-  font-size: 12px;
-}
-.faq-results-bar > p {
-  font-weight: 650;
-}
-.faq-results-bar label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #526975;
-}
-.faq-results-bar select {
-  min-height: 42px;
-  padding: 8px;
-  background: #fffefa;
-  border: 1px solid #cbd9d9;
-  border-radius: 5px;
+.marketing-site .faq-group h2 {
+  padding-top: 14px;
   color: #123e56;
+  font-size: 22px;
+  letter-spacing: -0.03em;
 }
 .faq-accordions {
   display: grid;
@@ -1192,22 +1104,6 @@
 }
 .faq-item summary:focus-visible {
   outline-offset: -4px;
-}
-.faq-empty {
-  display: grid;
-  justify-items: center;
-  text-align: center;
-  border: 1px dashed #a7bdc6;
-  border-radius: 7px;
-  padding: 42px 20px;
-  gap: 16px;
-}
-.faq-empty h2 {
-  font-size: 24px;
-}
-.faq-empty p {
-  color: #526975;
-  font-size: 14px;
 }
 .workflow-page-hero {
   text-align: center;
@@ -1405,17 +1301,6 @@
   .subpage-description {
     max-width: 570px;
   }
-  .faq-layout {
-    grid-template-columns: 210px minmax(0, 1fr);
-    gap: 20px;
-  }
-  .faq-categories {
-    padding: 7px;
-  }
-  .faq-categories button {
-    padding-inline: 7px;
-    gap: 8px;
-  }
   .subpage-help .subpage-icon {
     width: 36px;
     height: 36px;
@@ -1515,43 +1400,17 @@
     width: 45px;
     height: 45px;
   }
-  .faq-search {
-    margin-top: 0;
-    padding-inline: 12px;
-    gap: 10px;
+  .faq-groups {
+    gap: 36px;
+    padding-bottom: 40px;
   }
-  .faq-search input {
-    font-size: 16px;
-  }
-  .faq-search kbd {
-    display: none;
-  }
-  .faq-layout {
+  .faq-group {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 14px;
   }
-  .faq-categories {
-    display: flex;
-    flex-wrap: wrap;
-    padding: 8px;
-    gap: 3px;
-  }
-  .faq-categories button {
-    padding: 8px;
-    font-size: 12px;
-    gap: 7px;
-  }
-  .faq-categories button > svg {
-    display: none;
-  }
-  .faq-results-bar {
-    gap: 8px;
-  }
-  .faq-results-bar label {
-    gap: 6px;
-  }
-  .faq-results-bar select {
-    max-width: 145px;
+  .marketing-site .faq-group h2 {
+    padding-top: 0;
+    font-size: 20px;
   }
   .faq-item summary {
     padding: 16px;

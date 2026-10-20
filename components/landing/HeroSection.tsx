@@ -2,15 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, FileText, Link2, Smartphone } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useInView } from "framer-motion";
 import { trackEvent } from "@/lib/analytics/events";
 
 const steps = [
-  { icon: Link2, title: "Share a reusable link", copy: "Send your seller link in the emails, texts, and checklists you already use." },
-  { icon: Smartphone, title: "Seller completes the guided form", copy: "They add their utility details with helpful provider suggestions. No account needed." },
-  { icon: FileText, title: "Review and share the handoff", copy: "Get an organized utility sheet, ready to share as a web link or PDF." },
+  { title: "Share a reusable link", copy: "Send your seller link in the emails, texts, and checklists you already use." },
+  { title: "Seller completes the guided form", copy: "They add their utility details with helpful provider suggestions. No account needed." },
+  { title: "Review and share the handoff", copy: "Get an organized utility sheet, ready to share as a web link or PDF." },
 ];
 
 export function HeroSection() {
@@ -44,10 +44,10 @@ export function HeroSection() {
       </div>
       <div className="handoff-workflow" aria-label="How UtilitySheet works">
         <ol className="marketing-container handoff-workflow-grid">
-          {steps.map(({ icon: Icon, title, copy }, index) => (
+          {steps.map(({ title, copy }, index) => (
             <li key={title}>
               <span className="handoff-step-number">{index + 1}</span>
-              <div><Icon size={29} strokeWidth={1.8} aria-hidden="true" /><h2>{title}</h2><p>{copy}</p></div>
+              <div><h2>{title}</h2><p>{copy}</p></div>
             </li>
           ))}
         </ol>

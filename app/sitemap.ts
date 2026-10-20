@@ -6,7 +6,7 @@ import { absoluteUrl } from '@/lib/seo/site';
 // engines only trust lastmod when it is accurate, so bump a date when you
 // change that page's copy or layout, not on every deploy.
 const marketingRoutes: { path: string; lastModified: string }[] = [
-  { path: '/', lastModified: '2026-10-15' },
+  { path: '/', lastModified: '2026-10-20' },
   { path: '/features', lastModified: '2026-10-15' },
   { path: '/how-it-works', lastModified: '2026-10-15' },
   { path: '/pricing', lastModified: '2026-10-20' },
