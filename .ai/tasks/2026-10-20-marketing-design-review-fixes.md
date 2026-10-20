@@ -1,7 +1,7 @@
 ---
-status: blocked
+status: ready
 owner: claude
-updated: 2026-10-20 19:45
+updated: 2026-10-20 21:30
 scope: app/(marketing), app/demo, components/marketing, components/landing, components/norma-suite-panel.tsx, lib/seo/og-pages.ts, app/sitemap.ts, docs/marketing-design-review.md
 ---
 # Marketing design review fixes
@@ -43,23 +43,22 @@ Committed on this branch (no wording changes in any of them):
   its H2; home steps strip drops icons.
 - e630f68 footer column titles h2 (fixes /demo heading order).
 
-Waiting on the owner (drafts D1-D13 on the review page,
-https://claude.ai/artifact/3Y8mNEgKtZ6Fzhjk2QFFUC): D1 Norma naming (item 4),
-D2 demo labels, D3 CTA vocabulary (10), D4 arrows (9), D5 ForTcsSection
-replacement (3), D6 hero trios (6), D7 "Keep reading" row (7, 14), D8
-headlines (5), D9 pricing details (11b/c), D10 from-a-closing (12), D11 agents
-filler (13), D12 home H1 (17), D13 teams caption (18).
-
-Notes for whoever applies the drafts:
-- H1 changes (D2 casing only, D8 FAQ, D12 option B) need `lib/seo/og-pages.ts`
-  and `app/sitemap.ts` updates.
-- `tests/unit/norma-suite-panel.test.tsx` pins "Part of Norma" and "Explore the
-  rest of the suite"; `tests/unit/from-a-closing-page.test.tsx` pins "Create
-  your free seller link"; `tests/marketing-mobile.spec.ts` pins "Start Free
-  instead" (case-insensitive) and the home H1.
-- ForTcsSection (`components/landing/ForTcsSection.tsx`) is still rendered on
-  the TC page until D5 is approved; it is the last user of framer-motion
-  whileInView on companion pages.
+Owner approved all drafts D1-D13 (D1 option A, D12 option A = keep the home
+H1). Applied:
+- 21798a2 D1 footer: one "Part of the Norma Suite ↗" link; NormaSuitePanel
+  footer variant removed (the dashboard strip is kept, takes no props, and is
+  not rendered anywhere in the app today).
+- 5aae9a8 D2/D3 labels and sentence case (legal page names unchanged).
+- c38ad64 D4 arrows. 032dece D5 TC page (ForTcsSection deleted).
+- eaa80ce D6/D7 pricing facts, FAQ trio removed, one "Keep reading" row.
+- 3f02f1a D8 headlines (FAQ H1 + og-pages updated). 236ba26 home limited to
+  two two-tone headlines.
+- 58d7554 D9/D10/D11/D13. 2d4b416 Kit test updated for new markup/label.
+- Deviation flagged to owner: D5 reused ForTcsSection copy that implied
+  Packet details, multiple saved forms, and post-submission editing on every
+  plan; "On Pro and Teams" qualifiers were added.
+- Features page still has several two-tone headings; not in the drafts, left
+  as designed.
 
 ## Environment
 
@@ -69,22 +68,22 @@ Stack/DB env vars (no hosted services). Screenshots via Playwright using
 
 ## Validation
 
-Run at e630f68 (Node 22 locally; CI uses Node 20):
-- `npm run lint`: 0 errors, 19 pre-existing warnings.
-- `npm exec tsc -- --noEmit`: pass.
-- `npm run build`: pass (run before each commit).
-- `npm test -- --run tests/unit/from-a-closing-page.test.tsx
-  tests/unit/norma-suite-panel.test.tsx tests/unit/seo
-  tests/unit/marketing-teams-claims.test.ts`: all pass. Full suite not rerun.
-- Lighthouse 12.6.1 mobile, production build: accessibility/SEO 100/100 on /,
-  /pricing, /faq, /demo, TC, agents, seller form, checklist, kit, template.
-  /from-a-closing 100/92: dynamic route, Next 16 streams the meta description
-  after </head> for browsers (Bingbot gets it in head). Pre-existing; fix would
-  be site-wide `htmlLimitedBots` in next.config, left for the owner.
-- Before/after full-page screenshots (1440px, iPhone 13) for 11 pages on the
-  review page.
+Run at 236ba26 (Node 22 locally; CI uses Node 20):
+- `npm run lint`: 0 errors, 19 pre-existing warnings. `tsc --noEmit`: pass.
+  `npm run build`: pass before every commit.
+- `npm test -- --run`: 2239 passed, 26 skipped, 2 failed: the known
+  `admin-operations-ui` and `seller-form-base-links-storage` failures from
+  main. (`tc-utility-handoff-kit` failed after 3c3e740 and 5aae9a8; fixed in
+  2d4b416.)
+- Lighthouse 12.6.1 mobile on the production build: accessibility/SEO 100/100
+  on 13 pages (/, features, how-it-works, pricing, faq, about, demo, TC,
+  agents, seller form, checklist, kit, template). /from-a-closing 100/92:
+  pre-existing streamed metadata on a dynamic route (suggested as a separate
+  task).
+- Before/after full-page screenshots (1440px, iPhone 13) for 14 pages:
+  https://claude.ai/artifact/3Y8mNEgKtZ6Fzhjk2QFFUC
 
 ## Next
 
-Apply the owner's answers to D1-D13 as small commits (lint + build each),
-re-shoot the affected pages, and update the review page.
+Owner review of the branch; merge to main when happy. Playwright e2e was not
+run in this session.

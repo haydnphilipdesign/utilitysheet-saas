@@ -5,6 +5,30 @@ Reviewed 2026-10-20 from full-page screenshots of every public page at
 anything that looks sloppy, templated, inconsistent, or off-brand. Nothing in
 this list has been changed yet unless marked **Fixed**.
 
+## Status (2026-10-20)
+
+**Fixed:** all 18 items, on branch `claude/upbeat-meitner-yco28c`. Wording changes
+were approved by the owner as drafts D1-D13 before they were committed.
+
+| Item | Fix | Commit |
+| --- | --- | --- |
+| 1 | Hero shapes stay inside the container; shown from 1280px up | 6d7a8ba |
+| 2 | Demo uses the marketing header, footer, card, and button; sentence-case labels | bbdd8c8, 5aae9a8 |
+| 3 | Companion pages on the redesigned hero and sections; ForTcsSection removed | 3c3e740, 032dece |
+| 4 | Footer panel replaced by one "Part of the Norma Suite" link | 21798a2 |
+| 5 | "One less…" kept only in the TC H1; other slogans rewritten; home limited to two two-tone headlines | 3f02f1a, 236ba26 |
+| 6 | Pricing hero shows concrete facts; FAQ hero trio removed | eaa80ce |
+| 7, 14 | One "Keep reading" link row replaces the help strip and "Related pages" | eaa80ce |
+| 8 | FAQ is a plain grouped list | 46d3fcf |
+| 9 | Internal links use →; ↗ only on the external Norma link | c38ad64 |
+| 10 | "Start free" / "Create your free seller link" / "Start Pro", sentence case | 5aae9a8 |
+| 11 | Free limit shown with a minus; "/seat/month"; stray table label removed | 46d3fcf, 58d7554 |
+| 12 | Duplicate line replaced; primary/outline buttons | 3c3e740, 58d7554 |
+| 13 | Filler point and intro removed; list layout (no orphan) | 3c3e740, 58d7554 |
+| 15, 16 | Home paragraph under its headline; steps without duplicate icons | 46d3fcf |
+| 17 | Owner kept the home H1 (copy decision) | — |
+| 18 | Teams mockup captioned as an illustrative preview | 58d7554 |
+
 Severity: **High** = visibly broken or clearly off-brand. **Medium** =
 templated or "AI-slop" patterns that lower trust. **Low** = polish.
 
