@@ -36,7 +36,7 @@ export function MarketingPageHero({
 }: {
   eyebrow: string;
   title: string;
-  description: string;
+  description: ReactNode;
   children?: ReactNode;
   showActions?: boolean;
 }) {

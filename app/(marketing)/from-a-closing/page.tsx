@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, CheckCircle2, FileText, Link2, Smartphone } from 'lucide-react';
+import { Suspense } from 'react';
+import { CheckCircle2, FileText, Link2, Smartphone } from 'lucide-react';
 
 import {
     MarketingBreadcrumbs,
@@ -13,11 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { createPageMetadata } from '@/lib/seo/site';
 import { breadcrumbSchema } from '@/lib/seo/schema';
-import {
-    getAccountById,
-    getDefaultBrandProfile,
-    getIntakeLinkBySlug,
-} from '@/lib/neon/queries';
+import { GenericSenderIntro, ReferralSignupCta, SenderIntro, SignupCta } from './referral';
 
 export const metadata: Metadata = createPageMetadata({
     title: 'You Received a UtilitySheet',
@@ -30,8 +27,6 @@ export const metadata: Metadata = createPageMetadata({
         'transaction coordinator utility link',
     ],
 });
-
-const REFERRAL_CODE_PATTERN = /^[a-z0-9-]{1,60}$/;
 
 const workflowSteps = [
     {
@@ -54,52 +49,11 @@ const workflowSteps = [
     },
 ] as const;
 
-async function getSenderBrandName(referralCode: string | null): Promise<string | null> {
-    if (!referralCode || !REFERRAL_CODE_PATTERN.test(referralCode)) return null;
-
-    try {
-        const intakeLink = await getIntakeLinkBySlug(referralCode);
-        if (!intakeLink || !intakeLink.is_active) return null;
-
-        const account = await getAccountById(intakeLink.account_id);
-        if (!account || account.role === 'banned') return null;
-
-        const brandProfile = await getDefaultBrandProfile(
-            account.id,
-            intakeLink.organization_id ?? undefined
-        );
-        return brandProfile?.name || null;
-    } catch (error) {
-        console.error('Failed to resolve sender brand for /from-a-closing:', error);
-        return null;
-    }
-}
-
-function firstParam(value: string | string[] | undefined): string | null {
-    if (Array.isArray(value)) return value[0] ?? null;
-    return value ?? null;
-}
-
-export default async function FromAClosingPage({
-    searchParams,
-}: {
-    searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-    const params = await searchParams;
-    const referralCode = firstParam(params.ref);
-    const senderBrandName = await getSenderBrandName(referralCode);
-
-    const signupParams = new URLSearchParams({
-        utm_source: firstParam(params.utm_source) || 'utilitysheet_packet',
-        utm_medium: firstParam(params.utm_medium) || 'product_referral',
-        utm_campaign: firstParam(params.utm_campaign) || 'transaction_exposure',
-        utm_content: 'from-a-closing',
-    });
-    if (referralCode && REFERRAL_CODE_PATTERN.test(referralCode)) {
-        signupParams.set('ref', referralCode);
-    }
-    const signupHref = `/auth/signup?${signupParams.toString()}`;
-
+// Static on purpose: a dynamic route streams its metadata into <body>, which
+// costs the page its Lighthouse meta-description audit. The referral parts
+// (sender brand, signup attribution) are client islands that read the query
+// string after load; see ./referral.tsx.
+export default function FromAClosingPage() {
     return (
         <div className="bg-background">
             <JsonLd
@@ -113,9 +67,9 @@ export default async function FromAClosingPage({
                 eyebrow="For closing professionals"
                 title="You just received a UtilitySheet"
                 description={
-                    senderBrandName
-                        ? `${senderBrandName} collected this utility sheet automatically with UtilitySheet instead of chasing the seller through texts, emails, and blank forms. If you coordinate closings too, you can use the same workflow on your next file.`
-                        : 'The utility sheet you were sent was collected automatically with UtilitySheet instead of texts, emails, and blank forms. If you coordinate closings too, you can use the same workflow on your next file.'
+                    <Suspense fallback={<GenericSenderIntro />}>
+                        <SenderIntro />
+                    </Suspense>
                 }
             >
                 <MarketingBreadcrumbs
@@ -175,10 +129,9 @@ export default async function FromAClosingPage({
                 description="Create your reusable seller link in about a minute, or try the seller flow first with a sample property."
             >
                 <div className="flex flex-wrap items-center gap-4">
-                    <Link href={signupHref} className={cn(buttonVariants({ size: 'lg' }))}>
-                        Create your free seller link
-                        <ArrowRight aria-hidden="true" />
-                    </Link>
+                    <Suspense fallback={<SignupCta />}>
+                        <ReferralSignupCta />
+                    </Suspense>
                     <Link
                         href="/demo"
                         className={cn(buttonVariants({ size: 'lg', variant: 'outline' }))}

@@ -1,54 +1,58 @@
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { getIntakeLinkBySlugMock, getAccountByIdMock, getDefaultBrandProfileMock } = vi.hoisted(() => ({
-    getIntakeLinkBySlugMock: vi.fn(),
-    getAccountByIdMock: vi.fn(),
-    getDefaultBrandProfileMock: vi.fn(),
-}));
+const navigation = vi.hoisted(() => ({ searchParams: new URLSearchParams() }));
 
-vi.mock('@/lib/neon/queries', () => ({
-    getIntakeLinkBySlug: getIntakeLinkBySlugMock,
-    getAccountById: getAccountByIdMock,
-    getDefaultBrandProfile: getDefaultBrandProfileMock,
+vi.mock('next/navigation', () => ({
+    useSearchParams: () => navigation.searchParams,
 }));
 
 import FromAClosingPage from '@/app/(marketing)/from-a-closing/page';
 
-function makeSearchParams(params: Record<string, string>) {
-    return Promise.resolve(params as Record<string, string | string[] | undefined>);
+const fetchMock = vi.fn();
+
+function visit(params: Record<string, string> = {}) {
+    navigation.searchParams = new URLSearchParams(params);
+    render(<FromAClosingPage />);
+}
+
+function brandResponse(brandName: string | null) {
+    return Promise.resolve(new Response(JSON.stringify({ brandName }), { status: 200 }));
 }
 
 beforeEach(() => {
-    vi.clearAllMocks();
-    getIntakeLinkBySlugMock.mockResolvedValue(null);
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(() => brandResponse(null));
+    vi.stubGlobal('fetch', fetchMock);
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
 });
 
 describe('/from-a-closing recipient landing page', () => {
     it('shows the sender brand as social proof when the referral code resolves', async () => {
-        getIntakeLinkBySlugMock.mockResolvedValue({ account_id: 'acct_1', is_active: true, slug: 'tc-team' });
-        getAccountByIdMock.mockResolvedValue({ id: 'acct_1', role: 'user', active_organization_id: null });
-        getDefaultBrandProfileMock.mockResolvedValue({ name: 'Precision Leverage Solutions' });
+        fetchMock.mockImplementation(() => brandResponse('Precision Leverage Solutions'));
 
-        render(await FromAClosingPage({ searchParams: makeSearchParams({ ref: 'tc-team' }) }));
+        visit({ ref: 'tc-team' });
 
         expect(screen.getByRole('heading', { name: /you just received a utilitysheet/i })).toBeInTheDocument();
-        expect(screen.getByText(/precision leverage solutions collected this utility sheet/i)).toBeInTheDocument();
+        expect(
+            await screen.findByText(/precision leverage solutions collected this utility sheet/i)
+        ).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/api/growth/sender-brand?ref=tc-team',
+            expect.objectContaining({ signal: expect.any(AbortSignal) })
+        );
     });
 
-    it('preserves referral attribution through to the signup CTA', async () => {
-        getIntakeLinkBySlugMock.mockResolvedValue({ account_id: 'acct_1', is_active: true, slug: 'tc-team' });
-        getAccountByIdMock.mockResolvedValue({ id: 'acct_1', role: 'user', active_organization_id: null });
-        getDefaultBrandProfileMock.mockResolvedValue({ name: 'Precision Leverage Solutions' });
-
-        render(await FromAClosingPage({
-            searchParams: makeSearchParams({
-                ref: 'tc-team',
-                utm_source: 'utilitysheet_packet',
-                utm_medium: 'product_referral',
-                utm_campaign: 'transaction_exposure',
-            }),
-        }));
+    it('preserves referral attribution through to the signup CTA', () => {
+        visit({
+            ref: 'tc-team',
+            utm_source: 'utilitysheet_packet',
+            utm_medium: 'product_referral',
+            utm_campaign: 'transaction_exposure',
+        });
 
         expect(screen.getByRole('link', { name: /create your free seller link/i })).toHaveAttribute(
             'href',
@@ -56,10 +60,10 @@ describe('/from-a-closing recipient landing page', () => {
         );
     });
 
-    it('renders generically for direct visits and unsafe referral codes', async () => {
-        render(await FromAClosingPage({ searchParams: makeSearchParams({ ref: '../unsafe' }) }));
+    it('renders generically for direct visits and unsafe referral codes', () => {
+        visit({ ref: '../unsafe' });
 
-        expect(getIntakeLinkBySlugMock).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
         expect(screen.getByText(/the utility sheet you were sent was collected automatically/i)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /create your free seller link/i })).toHaveAttribute(
             'href',
@@ -68,12 +72,19 @@ describe('/from-a-closing recipient landing page', () => {
         expect(screen.getByRole('link', { name: /try the seller flow/i })).toHaveAttribute('href', '/demo');
     });
 
-    it('falls back to generic copy when the intake link is inactive', async () => {
-        getIntakeLinkBySlugMock.mockResolvedValue({ account_id: 'acct_1', is_active: false, slug: 'tc-team' });
+    it('keeps the generic copy when the referral code does not resolve', async () => {
+        visit({ ref: 'tc-team' });
 
-        render(await FromAClosingPage({ searchParams: makeSearchParams({ ref: 'tc-team' }) }));
-
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
         expect(screen.getByText(/the utility sheet you were sent was collected automatically/i)).toBeInTheDocument();
-        expect(getDefaultBrandProfileMock).not.toHaveBeenCalled();
+    });
+
+    it('keeps the generic copy when the lookup fails', async () => {
+        fetchMock.mockImplementation(() => Promise.reject(new Error('offline')));
+
+        visit({ ref: 'tc-team' });
+
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+        expect(screen.getByText(/the utility sheet you were sent was collected automatically/i)).toBeInTheDocument();
     });
 });

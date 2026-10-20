@@ -190,6 +190,24 @@ export const growthReferralEventRatelimit: RateLimitPolicy = {
 };
 
 /**
+ * Rate limiter for the anonymous /from-a-closing sender-brand lookup
+ * Limit: 30 requests per minute per identifier (typically IP)
+ */
+export const growthSenderBrandRatelimit: RateLimitPolicy = {
+    limiter: redis
+        ? new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(30, "60 s"),
+            analytics: true,
+            prefix: "ratelimit:growth-sender-brand",
+        })
+        : null,
+    limit: 30,
+    windowMs: 60 * 1000,
+    prefix: 'ratelimit:growth-sender-brand',
+};
+
+/**
  * Rate limiter for authenticated question-gap submissions
  * Limit: 10 requests per hour per account
  */

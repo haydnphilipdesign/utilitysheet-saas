@@ -11,6 +11,8 @@ Existing seller-form/application/schema/test edits are preserved. Telemetry Slic
 
 Imported (needs-verification) task records are not ownership claims; verify their
 historical status and original authorization before resuming.
+Marketing pages stay static; referral personalization uses client islands: [decision](decisions/2026-10-20-static-from-a-closing-referral-islands.md).
+
 Coordination v2 rollout: [task record](tasks/coordination-v2-rollout.md).
 
 Original handoff: [preserved history](history/pre-v2-CURRENT.md). Read it before resuming older work.
