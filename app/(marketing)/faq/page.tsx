@@ -38,13 +38,7 @@ export default function FaqPage() {
 
       <MarketingSubpageHero
         eyebrow="FAQ"
-        title={
-          <>
-            Got questions?
-            <br />
-            We&apos;ve got answers.
-          </>
-        }
+        title="Answers about seller forms, sheets, and plans."
         description="From your first seller link to the finished PDF. Find the details on forms, plans, and everything in between."
       />
 

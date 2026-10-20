@@ -29,7 +29,7 @@ export function HeroSection() {
         <div className="hero-copy">
           <p className="marketing-eyebrow">SELLER UTILITY DETAILS <ArrowRight size={16} aria-hidden="true" /> BUYER HANDOFF</p>
           <h1 id="hero-title">The utility handoff,<br />finally organized</h1>
-          <p className="hero-description">Reusable seller links, guided forms, and polished buyer handoffs make collecting and sharing utility information one less thing to chase.</p>
+          <p className="hero-description">Reusable seller links, guided forms, and polished buyer handoffs for collecting and sharing utility information.</p>
           <p className="hero-audience">For transaction coordinators &amp; real estate agents.</p>
           <div className="marketing-actions">
             <Link href="/auth/signup" className="marketing-button" data-testid="hero-signup-cta" onClick={() => trackEvent("landing_primary_cta_clicked", { cta_id: "primary_hero_start_free", destination: "/auth/signup", location: "hero" })}>Start free</Link>

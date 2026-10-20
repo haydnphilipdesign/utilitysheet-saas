@@ -24,10 +24,7 @@ export function SocialProofBar() {
     <section className="marketing-testimonials marketing-section">
       <div className="marketing-container">
         <p className="marketing-eyebrow">FROM THE PEOPLE DOING THE WORK</p>
-        <h2>
-          A little less chasing.
-          <br />A lot more peace of mind.
-        </h2>
+        <h2>In their own words.</h2>
         <div className="testimonial-grid">
           {customerTestimonials.map(({ quote, name, role }) => (
             <figure key={name}>

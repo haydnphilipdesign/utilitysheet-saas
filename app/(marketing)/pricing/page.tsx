@@ -99,7 +99,7 @@ export default function PricingPage() {
       </MarketingSection>
 
       <MarketingCtaBand
-        title="Start free. Upgrade when it sticks."
+        title="Try it on your next few files."
         description="See how much back-and-forth UtilitySheet saves on your next few files, then add branding, editing, or your team."
       />
     </div>

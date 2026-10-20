@@ -102,7 +102,7 @@ export default function UtilitySheetForTransactionCoordinatorsPage() {
       />
 
       <MarketingCtaBand
-        title="Make utility collection one less thing to babysit"
+        title="Add UtilitySheet to your next file"
         description="Start free and test UtilitySheet on a real file. If it belongs in your monthly TC workflow, Pro adds branded output, post-submission editing, and use on every transaction."
       />
     </div>

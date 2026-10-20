@@ -76,15 +76,8 @@ export function MarketingWorkflow() {
         <div className="workflow-video">
           <div>
             <p className="marketing-eyebrow">SEE THE REAL WORKFLOW</p>
-            <h3>
-              A minute here.
-              <br />
-              One less thing on your list.
-            </h3>
-            <p>
-              Watch the 66-second walkthrough, from seller link to finished
-              sheet.
-            </p>
+            <h3>From seller link to finished sheet.</h3>
+            <p>A 66-second walkthrough of the real product.</p>
             <Link href="/demo" className="marketing-text-link">
               Try it yourself <ArrowRight size={17} />
             </Link>

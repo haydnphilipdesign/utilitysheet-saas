@@ -25,7 +25,7 @@ export const ogPages = {
   faq: {
     path: '/faq',
     eyebrow: 'FAQ',
-    title: 'Got questions? We’ve got answers.',
+    title: 'Answers about seller forms, sheets, and plans.',
   },
   about: {
     path: '/about',
