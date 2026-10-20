@@ -84,7 +84,7 @@ export function WorkflowTimeline() {
           </p>
         </div>
         <Link href="/auth/signup" className="marketing-button">
-          Get your seller link <ArrowRight size={17} aria-hidden="true" />
+          Create your free seller link <ArrowRight size={17} aria-hidden="true" />
         </Link>
       </section>
     </>

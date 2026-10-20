@@ -139,7 +139,7 @@ export default function DemoPage() {
                         <div className="demo-entry-icon">
                             <MapPin className="h-7 w-7" aria-hidden="true" />
                         </div>
-                        <h1>Try the Seller Experience</h1>
+                        <h1>Try the seller experience</h1>
                         <p className="demo-entry-lead">
                             Enter an address to see suggested providers. Sellers can confirm, search, or type with no login required.
                         </p>
@@ -150,7 +150,7 @@ export default function DemoPage() {
                             </p>
 
                             <div>
-                                <label htmlFor="address">Property Address</label>
+                                <label htmlFor="address">Property address</label>
                                 <input
                                     id="address"
                                     type="text"
@@ -190,7 +190,7 @@ export default function DemoPage() {
                                 disabled={loading || !address.trim()}
                                 className="marketing-button"
                             >
-                                Start Demo
+                                Start the demo
                                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
                             </button>
 
@@ -211,7 +211,7 @@ export default function DemoPage() {
                                     })
                                 }
                             >
-                                Start Free instead
+                                Start free instead
                             </Link>
                         </p>
                     </motion.div>

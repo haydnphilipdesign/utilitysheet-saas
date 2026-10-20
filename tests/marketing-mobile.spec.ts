@@ -45,7 +45,7 @@ test('iPad-like layout keeps nav and CTA readable', async ({ page }) => {
   const header = page.locator('header').first();
   await expect(header.getByRole('link', { name: 'UtilitySheet home', exact: true })).toBeVisible();
   await expect(header.getByRole('link', { name: 'Features' })).toBeVisible();
-  await expect(header.getByRole('link', { name: 'How It Works' })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'How it works' })).toBeVisible();
   await expect(header.getByRole('link', { name: 'Pricing' })).toBeVisible();
   await expect(page.getByTestId('marketing-header-signup-cta')).toBeVisible();
 });
@@ -59,7 +59,7 @@ test('About and Demo top sections communicate value with signup path', async ({ 
 
   await page.goto('/demo');
   await expect(page.getByText(/edit submitted sheets later from the dashboard/i)).toBeVisible();
-  await expect(page.getByRole('link', { name: /Start Free instead/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Start free instead/i })).toBeVisible();
 });
 
 test('Landing primary and final CTAs remain reachable', async ({ page }) => {

@@ -62,28 +62,28 @@ export function MarketingFooter() {
                         <h2 className="text-sm font-semibold text-foreground">Product</h2>
                         <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                             <li><Link href="/features" className="hover:text-foreground transition-colors">Features</Link></li>
-                            <li><Link href="/how-it-works" className="hover:text-foreground transition-colors">How It Works</Link></li>
+                            <li><Link href="/how-it-works" className="hover:text-foreground transition-colors">How it works</Link></li>
                             <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
                             <li><Link href="/faq" className="hover:text-foreground transition-colors">FAQ</Link></li>
-                            <li><Link href="/demo" className="hover:text-foreground transition-colors">Interactive Demo</Link></li>
+                            <li><Link href="/demo" className="hover:text-foreground transition-colors">Interactive demo</Link></li>
                         </ul>
                     </div>
                     <div>
-                        <h2 className="text-sm font-semibold text-foreground">Use Cases</h2>
+                        <h2 className="text-sm font-semibold text-foreground">Use cases</h2>
                         <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                            <li><Link href="/utility-sheet-for-transaction-coordinators" className="hover:text-foreground transition-colors">For Transaction Coordinators</Link></li>
-                            <li><Link href="/utility-sheet-for-real-estate-agents" className="hover:text-foreground transition-colors">For Real Estate Agents</Link></li>
-                            <li><Link href="/seller-utility-information-form" className="hover:text-foreground transition-colors">Seller Utility Information Form</Link></li>
-                            <li><Link href="/real-estate-closing-utility-checklist" className="hover:text-foreground transition-colors">Closing Utility Checklist</Link></li>
-                            <li><Link href="/utility-sheet-template" className="hover:text-foreground transition-colors">Utility Sheet Template</Link></li>
+                            <li><Link href="/utility-sheet-for-transaction-coordinators" className="hover:text-foreground transition-colors">For transaction coordinators</Link></li>
+                            <li><Link href="/utility-sheet-for-real-estate-agents" className="hover:text-foreground transition-colors">For real estate agents</Link></li>
+                            <li><Link href="/seller-utility-information-form" className="hover:text-foreground transition-colors">Seller utility information form</Link></li>
+                            <li><Link href="/real-estate-closing-utility-checklist" className="hover:text-foreground transition-colors">Closing utility checklist</Link></li>
+                            <li><Link href="/utility-sheet-template" className="hover:text-foreground transition-colors">Utility sheet template</Link></li>
                         </ul>
                     </div>
                     <div>
                         <h2 className="text-sm font-semibold text-foreground">Company</h2>
                         <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                             <li><Link href="/about" className="hover:text-foreground transition-colors">About</Link></li>
-                            <li><Link href="/auth/signup" className="hover:text-foreground transition-colors">Start Free</Link></li>
-                            <li><Link href="/auth/login" className="hover:text-foreground transition-colors">Sign In</Link></li>
+                            <li><Link href="/auth/signup" className="hover:text-foreground transition-colors">Start free</Link></li>
+                            <li><Link href="/auth/login" className="hover:text-foreground transition-colors">Sign in</Link></li>
                         </ul>
                     </div>
                     <div>
