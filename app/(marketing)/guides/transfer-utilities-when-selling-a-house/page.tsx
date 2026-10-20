@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import './guide.css';
+import '../guide.css';
 
 import { MarketingBreadcrumbs, MarketingCtaBand } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
@@ -180,18 +180,18 @@ export default function TransferUtilitiesWhenSellingPage() {
         ]}
       />
 
-      <section className="marketing-inner-hero stg-hero">
-        <div className="marketing-container stg-hero-grid">
+      <section className="marketing-inner-hero guide-hero">
+        <div className="marketing-container guide-hero-grid">
           <div>
             <p className="marketing-eyebrow">Seller guide</p>
             <h1 className="text-balance">How to transfer utilities when you sell your house</h1>
-            <p className="stg-lead">
+            <p className="guide-lead">
               Selling a home usually means stopping service in your name around closing day and leaving the
               buyer what they need to start their own. Here’s what to do and when, from a few weeks out to
               after the keys change hands.
             </p>
-            <p className="stg-meta">Updated October 2026</p>
-            <p className="stg-hedge">
+            <p className="guide-meta">Updated October 2026</p>
+            <p className="guide-hedge">
               Rules and lead times vary by provider and region. Your agent, your closing company, and each
               provider have the final word for your home.
             </p>
@@ -202,8 +202,8 @@ export default function TransferUtilitiesWhenSellingPage() {
               ]}
             />
           </div>
-          <nav className="stg-toc" aria-labelledby="stg-toc-title">
-            <p id="stg-toc-title" className="stg-toc-title">
+          <nav className="guide-toc" aria-labelledby="guide-toc-title">
+            <p id="guide-toc-title" className="guide-toc-title">
               On this page
             </p>
             <ol>
@@ -217,9 +217,9 @@ export default function TransferUtilitiesWhenSellingPage() {
         </div>
       </section>
 
-      <section className="marketing-inner-section stg-section">
-        <div className="marketing-container stg-two-col">
-          <div className="stg-summary">
+      <section className="marketing-inner-section guide-section">
+        <div className="marketing-container guide-two-col">
+          <div className="guide-summary">
             <h2 className="marketing-inner-title">The short version</h2>
             <ul>
               <li>List every utility and service at the home, with each provider’s name and phone number.</li>
@@ -231,8 +231,8 @@ export default function TransferUtilitiesWhenSellingPage() {
               <li>Leave the buyer a list of providers, without your account numbers.</li>
             </ul>
           </div>
-          <aside className="stg-aside" aria-labelledby="stg-transfer-title">
-            <h3 id="stg-transfer-title">About the word “transfer”</h3>
+          <aside className="guide-aside" aria-labelledby="guide-transfer-title">
+            <h3 id="guide-transfer-title">About the word “transfer”</h3>
             <p>
               Most of the time you don’t hand your account to the buyer. You stop service in your name, and
               the buyer starts service in theirs. Providers often call this a transfer, and some let you move
@@ -242,10 +242,10 @@ export default function TransferUtilitiesWhenSellingPage() {
         </div>
       </section>
 
-      <section id="when-to-do-what" className="marketing-inner-section stg-section stg-section-alt">
+      <section id="when-to-do-what" className="marketing-inner-section guide-section guide-section-alt">
         <div className="marketing-container">
           <h2 className="marketing-inner-title">When to do what</h2>
-          <ol className="stg-timeline">
+          <ol className="guide-timeline">
             {timeline.map((stage) => (
               <li key={stage.stage}>
                 <h3>{stage.stage}</h3>
@@ -260,13 +260,13 @@ export default function TransferUtilitiesWhenSellingPage() {
         </div>
       </section>
 
-      <section id="what-to-ask" className="marketing-inner-section stg-section">
+      <section id="what-to-ask" className="marketing-inner-section guide-section">
         <div className="marketing-container">
           <h2 className="marketing-inner-title">What to ask each provider</h2>
-          <p className="stg-intro">
+          <p className="guide-intro">
             Every provider handles this a little differently. These questions cover what usually matters.
           </p>
-          <table className="stg-table">
+          <table className="guide-table">
             <thead>
               <tr>
                 <th scope="col">Utility</th>
@@ -285,9 +285,9 @@ export default function TransferUtilitiesWhenSellingPage() {
         </div>
       </section>
 
-      <section id="final-walkthrough" className="marketing-inner-section stg-section stg-section-alt">
+      <section id="final-walkthrough" className="marketing-inner-section guide-section guide-section-alt">
         <div className="marketing-container">
-          <div className="stg-prose">
+          <div className="guide-prose">
             <h2 className="marketing-inner-title">Keep service on through the final walkthrough</h2>
             <p>
               Most buyers walk through the home shortly before closing to check that it’s in the condition
@@ -307,10 +307,10 @@ export default function TransferUtilitiesWhenSellingPage() {
         </div>
       </section>
 
-      <section id="equipment-and-hoa" className="marketing-inner-section stg-section">
+      <section id="equipment-and-hoa" className="marketing-inner-section guide-section">
         <div className="marketing-container">
           <h2 className="marketing-inner-title">Equipment, fuel, bins, and the HOA</h2>
-          <dl className="stg-extras">
+          <dl className="guide-extras">
             {extras.map((item) => (
               <div key={item.title}>
                 <dt>{item.title}</dt>
@@ -321,26 +321,30 @@ export default function TransferUtilitiesWhenSellingPage() {
         </div>
       </section>
 
-      <section id="buyer-utility-sheet" className="marketing-inner-section stg-section stg-section-alt">
-        <div className="marketing-container stg-two-col">
-          <div className="stg-prose">
+      <section id="buyer-utility-sheet" className="marketing-inner-section guide-section guide-section-alt">
+        <div className="marketing-container guide-two-col">
+          <div className="guide-prose">
             <h2 className="marketing-inner-title">Leave the buyer a utility sheet</h2>
             <p>
               A one-page list of who provides each service saves the next owner a week of guessing and calling
               the wrong company. It also saves your agent a follow-up call.
             </p>
-            <p>The buyer opens new accounts in their own name, so they don’t need yours.</p>
+            <p>
+              The buyer opens new accounts in their own name, so they don’t need yours. If you’re buying your
+              next home, the <Link href="/guides/set-up-utilities-when-buying-a-house">buyer guide</Link>{' '}
+              covers the other side.
+            </p>
             <div className="marketing-actions mt-6">
               <Link href="/utility-sheet-template" className="marketing-button">
                 Get the free template <ArrowRight size={17} aria-hidden="true" />
               </Link>
             </div>
-            <p className="stg-small">
+            <p className="guide-small">
               If your agent or transaction coordinator uses UtilitySheet, they may send you a link instead.
               You fill it in on your phone, without an account, and they receive the finished sheet.
             </p>
           </div>
-          <div className="stg-lists">
+          <div className="guide-lists">
             <div>
               <h3>Include</h3>
               <ul>
@@ -349,7 +353,7 @@ export default function TransferUtilitiesWhenSellingPage() {
                 <li>The HOA or condo association name and contact, if there is one</li>
               </ul>
             </div>
-            <div className="stg-leave-off">
+            <div className="guide-leave-off">
               <h3>Leave off</h3>
               <ul>
                 <li>Account numbers</li>
@@ -361,10 +365,10 @@ export default function TransferUtilitiesWhenSellingPage() {
         </div>
       </section>
 
-      <section id="checklist" className="marketing-inner-section stg-section">
+      <section id="checklist" className="marketing-inner-section guide-section">
         <div className="marketing-container">
           <h2 className="marketing-inner-title">Seller utility checklist</h2>
-          <ul className="stg-checklist">
+          <ul className="guide-checklist">
             {checklist.map((item) => (
               <li key={item}>{item}</li>
             ))}
@@ -372,10 +376,10 @@ export default function TransferUtilitiesWhenSellingPage() {
         </div>
       </section>
 
-      <section id="questions" className="marketing-inner-section stg-section stg-section-alt">
+      <section id="questions" className="marketing-inner-section guide-section guide-section-alt">
         <div className="marketing-container">
           <h2 className="marketing-inner-title">Questions</h2>
-          <dl className="stg-faq">
+          <dl className="guide-faq">
             {faqs.map((faq) => (
               <div key={faq.question}>
                 <dt>{faq.question}</dt>

@@ -72,6 +72,11 @@ export const ogPages = {
     eyebrow: 'Seller guide',
     title: 'How to transfer utilities when you sell your house',
   },
+  'set-up-utilities-when-buying-a-house': {
+    path: '/guides/set-up-utilities-when-buying-a-house',
+    eyebrow: 'Buyer guide',
+    title: 'How to set up utilities when you buy a house',
+  },
   'from-a-closing': {
     path: '/from-a-closing',
     eyebrow: 'For closing professionals',

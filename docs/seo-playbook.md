@@ -93,6 +93,7 @@ two days. Requesting doesn't guarantee indexing; it moves the URL up the queue.
 | 10 | `https://www.utilitysheet.com/faq` | Supporting page. |
 | 11 | `https://www.utilitysheet.com/utility-sheet-template` | Free printable template; request it as soon as it's live. |
 | 12 | `https://www.utilitysheet.com/guides/transfer-utilities-when-selling-a-house` | Seller guide; request it as soon as it's live. |
+| 13 | `https://www.utilitysheet.com/guides/set-up-utilities-when-buying-a-house` | Buyer guide; request it as soon as it's live. |
 
 Leave `/about`, `/demo`, `/from-a-closing`, and the legal pages to the
 sitemap. They will be crawled without help.
@@ -159,8 +160,8 @@ Every Monday:
 ## 6. Content plan
 
 These are **hypotheses**. There is no keyword data yet. After 4–8 weeks,
-Search Console's Queries report will show which ones are real. A–D are built;
-E and the billing FAQ are still open.
+Search Console's Queries report will show which ones are real. A–E are built;
+the billing FAQ is still open.
 
 ### A. Free printable utility sheet template (built: `/utility-sheet-template`)
 - **Intent:** "utility information sheet template", "utility list for home
@@ -211,7 +212,7 @@ E and the billing FAQ are still open.
 - **Outline:** definition → who prepares it and when → what's on it →
   example image → links to A and the product.
 
-### E. Buyer guide: setting up utilities after closing (later)
+### E. Buyer guide: setting up utilities after closing (built: `/guides/set-up-utilities-when-buying-a-house`)
 - **Intent:** "set up utilities new house checklist". Buyers aren't your
   customers, but agents send it after closing. Pairs with `/from-a-closing`.
 

@@ -85,6 +85,7 @@ export default function MarketingLayout({
                                 <li><Link href="/real-estate-closing-utility-checklist" className="hover:text-foreground transition-colors">Closing Utility Checklist</Link></li>
                                 <li><Link href="/utility-sheet-template" className="hover:text-foreground transition-colors">Utility Sheet Template</Link></li>
                                 <li><Link href="/guides/transfer-utilities-when-selling-a-house" className="hover:text-foreground transition-colors">Seller Utilities Guide</Link></li>
+                                <li><Link href="/guides/set-up-utilities-when-buying-a-house" className="hover:text-foreground transition-colors">Buyer Utilities Guide</Link></li>
                             </ul>
                         </div>
                         <div>

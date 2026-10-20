@@ -1,7 +1,7 @@
 ---
 status: active
 owner: claude
-updated: 2026-10-20 21:10
+updated: 2026-10-20 21:50
 scope: app/(marketing)/guides, app/(marketing)/utility-sheet-template, app/(marketing)/utility-sheet-for-transaction-coordinators, components/landing/ForTcsSection.tsx, app/sitemap.ts, lib/seo/og-pages.ts, app/(marketing)/layout.tsx (footer links only), lib/marketing-content.ts (FAQ entries only), docs/seo-playbook.md, tests/unit/seo-*
 ---
 # SEO content plan (playbook section 6, items B–E and billing FAQ)
@@ -42,9 +42,17 @@ Owner decisions (2026-10-20):
   `.marketing-testimonials` styles; `customerTestimonials` is now exported
   from `components/landing/SocialProofBar.tsx`), TC FAQ, shared CTA band.
   Deleted `components/landing/ForTcsSection.tsx` (only user). OG title and
-  sitemap date updated; playbook marks C built. Committed locally, not
+  sitemap date updated; playbook marks C built. Screenshots approved and
+  pushed.
+- E: copy approved. Built at `/guides/set-up-utilities-when-buying-a-house`.
+  The seller guide's stylesheet moved to `app/(marketing)/guides/guide.css`
+  (prefix renamed `stg-` → `guide-`) and is shared by both guides. Wired
+  into sitemap, `og-pages.ts`, footer ("Buyer Utilities Guide"), a sentence
+  in the seller guide and on `/from-a-closing`, the playbook (row 13, E
+  built). Template page section got `id="what-is-a-utility-sheet"` and
+  `.ust-section` a scroll margin for the anchor. Committed locally, not
   pushed until the owner approves the screenshots.
-- E, billing FAQ: not started.
+- Billing FAQ: not started.
 
 ## Environment
 
@@ -75,6 +83,12 @@ screenshots at 1440px and iPhone 13, no overflow. Full `npm test -- --run`:
 migration idempotently", which passes when run alone (slow test under full
 suite load; unrelated to these changes).
 
+E (2026-10-20): lint 0 errors (19 pre-existing warnings); tsc pass; build
+pass; `npm test -- --run tests/unit/seo- tests/unit/utility-sheet-template`:
+4 files, 13 tests pass; screenshots of both guides at 1440px and iPhone 13,
+no overflow; Lighthouse (local, mobile) on the buyer guide: accessibility
+100, SEO 100, performance 87.
+
 ## Next
 
-Owner reviews C screenshots; on approval push, then draft E (buyer guide) or the billing FAQ, whichever the owner picks.
+Owner reviews E screenshots; on approval push, then verify billing behavior in code and draft the billing FAQ entries.

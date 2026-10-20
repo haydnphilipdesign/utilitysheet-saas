@@ -166,7 +166,7 @@ export default function UtilitySheetTemplatePage() {
         </div>
       </section>
 
-      <section className="marketing-inner-section ust-section ust-section-alt">
+      <section id="what-is-a-utility-sheet" className="marketing-inner-section ust-section ust-section-alt">
         <div className="marketing-container ust-two-col">
           <div>
             <h2 className="marketing-inner-title">What is a utility sheet?</h2>
