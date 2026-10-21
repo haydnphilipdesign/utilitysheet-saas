@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useUser } from "@stackframe/stack";
 import { Menu, X } from "lucide-react";
 import { trackEvent } from "@/lib/analytics/events";
+import { useStackSessionHint } from "@/lib/stack/session-hint";
 
 const navigation = [
   ["How it works", "/how-it-works"],
@@ -26,7 +26,7 @@ export function MarketingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const hasTrackedPrimaryViewRef = useRef(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const user = useUser();
+  const signedIn = useStackSessionHint();
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -41,14 +41,15 @@ export function MarketingHeader() {
   }, [mobileMenuOpen]);
 
   useEffect(() => {
-    if (user || hasTrackedPrimaryViewRef.current) return;
+    // Wait for the cookie check so signed-in visitors are not counted.
+    if (signedIn !== false || hasTrackedPrimaryViewRef.current) return;
     trackEvent("landing_primary_cta_viewed", {
       cta_id: "primary_header_start_free",
       page: "landing",
       location: "marketing_header",
     });
     hasTrackedPrimaryViewRef.current = true;
-  }, [user]);
+  }, [signedIn]);
 
   function trackSignup(
     location: "marketing_header" | "marketing_mobile_menu",
@@ -99,7 +100,7 @@ export function MarketingHeader() {
           ))}
         </nav>
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-          {user ? (
+          {signedIn ? (
             <Link
               href="/dashboard"
               className="marketing-button !min-h-10 !px-4"
@@ -171,7 +172,7 @@ export function MarketingHeader() {
               {label}
             </Link>
           ))}
-          {!user && (
+          {!signedIn && (
             <div className="mt-3 border-t border-border pt-3">
               <Link
                 href="/auth/login"

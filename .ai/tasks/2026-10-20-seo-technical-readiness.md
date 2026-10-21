@@ -51,6 +51,7 @@ the pre-existing admin Operations test failure.
 
 Deferred by user: moving Stack Auth off marketing pages (JS weight is the
 remaining LCP/TBT cost on the home page).
+Picked up 2026-10-21 in [marketing-without-stack](2026-10-21-marketing-without-stack.md).
 
 ## Environment
 

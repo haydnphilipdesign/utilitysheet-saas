@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { ArrowUpRight } from 'lucide-react';
 import { buildSuiteUrl, suiteLinks } from '@/lib/norma-suite';
@@ -10,27 +9,9 @@ import { buildSuiteUrl, suiteLinks } from '@/lib/norma-suite';
 // inside an element with the `marketing-site` class so the marketing tokens
 // and header rules in app/(marketing)/marketing.css apply.
 
-// Dynamically import the header to avoid SSR issues with useUser
-export const MarketingHeader = dynamic(
-    () => import('@/components/marketing/marketing-header').then(mod => mod.MarketingHeader),
-    {
-        ssr: false,
-        loading: () => (
-            <header className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
-                <div className="marketing-container marketing-header-row flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Link href="/" className="flex items-center gap-2">
-                            <div className="rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 p-1.5 shadow-lg shadow-slate-500/20">
-                                <Image src="/logo-sm.png" alt="UtilitySheet logo" width={20} height={20} className="h-5 w-5" />
-                            </div>
-                            <span className="marketing-wordmark text-xl font-bold tracking-tight">UtilitySheet</span>
-                        </Link>
-                    </div>
-                </div>
-            </header>
-        )
-    }
-);
+// Rendered on the server (no Stack Auth on marketing pages), so the nav links
+// are in the static HTML. Signed-in state is a cookie hint applied after load.
+export { MarketingHeader } from '@/components/marketing/marketing-header';
 
 export function MarketingFooter() {
     return (

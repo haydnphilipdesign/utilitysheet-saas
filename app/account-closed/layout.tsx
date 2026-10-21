@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { StackAuthProvider } from '@/components/providers/stack-auth-provider';
 import { noIndexMetadata } from '@/lib/seo/site';
 
 export const metadata = {
@@ -8,5 +9,5 @@ export const metadata = {
 };
 
 export default function AccountClosedLayout({ children }: { children: ReactNode }) {
-    return children;
+    return <StackAuthProvider>{children}</StackAuthProvider>;
 }

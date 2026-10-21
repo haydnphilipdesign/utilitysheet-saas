@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 
-import { AuthenticatedRedirect } from '@/components/landing/AuthenticatedRedirect';
 import { MarketingWorkflow, MarketingCapabilities, MarketingAudience } from '@/components/landing/MarketingStory';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { SocialProofBar } from '@/components/landing/SocialProofBar';
@@ -28,9 +26,6 @@ export const metadata: Metadata = createPageMetadata({
 export default function LandingPage() {
     return (
         <div className="relative overflow-hidden bg-background min-h-screen">
-            <Suspense fallback={null}>
-                <AuthenticatedRedirect />
-            </Suspense>
             <JsonLd
                 data={[
                     organizationSchema(),
