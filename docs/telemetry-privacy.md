@@ -75,6 +75,13 @@ are removed. Invalid URLs, embedded credentials and unsupported origins are
 dropped. Allowed origins are utilitysheet.com, www.utilitysheet.com and local
 loopback hosts; deployment/preview origins are intentionally not collected.
 
+Analytics 2.0.1 uses the React integration with explicit `route` and `path`
+props derived from Next.js `usePathname` through the finite route policy.
+This enables route reporting and client navigation tracking without passing raw
+paths to the SDK queue. Route metadata is separate from the documented URL-only
+`beforeSend` contract, so the hook remains unchanged. An unavailable pathname
+suppresses pageviews until the router is ready.
+
 The shared finite route policy retains known public paths. Seller, packet,
 intake/form and invitation URLs become static labels; auth handlers, admin and
 dashboard routes collapse to static families. Unknown or malformed paths become

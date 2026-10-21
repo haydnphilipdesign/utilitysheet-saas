@@ -10,7 +10,7 @@ test.beforeAll(async () => {
         entryPoints: ['tests/fixtures/telemetry-harness.tsx'], bundle: true, write: false,
         platform: 'browser', format: 'iife', jsx: 'automatic',
         define: { 'process.env.NODE_ENV': '"production"' },
-        alias: { '@': process.cwd(), 'next/navigation.js': path.resolve('tests/fixtures/telemetry-navigation.ts') },
+        alias: { '@': process.cwd(), 'next/navigation': path.resolve('tests/fixtures/telemetry-navigation.ts'), 'next/navigation.js': path.resolve('tests/fixtures/telemetry-navigation.ts') },
     });
     server = createServer((req, res) => {
         if (req.url === '/bundle.js') {
@@ -41,9 +41,10 @@ const collectorScript = (kind: 'analytics' | 'speed') => `(() => {
     window[name] = (action, data) => {
         if (action === 'beforeSend') hook = data;
         if (action === 'event') emit('event', {name: data.name, data: data.data});
+        if (action === 'pageview') emit('pageview', {route: data.route, path: data.path});
     };
     queue.forEach(args => window[name](...args));
-    emit(${JSON.stringify(kind === 'analytics' ? 'pageview' : 'vital')});
+    if (name === 'si') emit('vital');
 })();`;
 
 test('intercepts safe pageview, custom event, vital and attribution on a capability URL', async ({ page, context }) => {
@@ -80,10 +81,22 @@ test('intercepts safe pageview, custom event, vital and attribution on a capabil
     expect(beacons.map(event => event.type).sort()).toEqual(['event', 'pageview', 'vital']);
     for (const beacon of beacons) expect(beacon.url).toBe(`${origin}/s/[token]`);
     expect(beacons.find(event => event.type === 'vital')?.route).toBe('/s/[token]');
+    expect(beacons.find(event => event.type === 'pageview')).toMatchObject({ route: '/s/[token]', path: '/s/[token]' });
     expect(beacons.find(event => event.type === 'event')).toMatchObject({ name: 'seller_step_viewed', data: { step: 'basics', packet_mode: 'simple' } });
     expect(attributions[0]).toMatchObject({ source: 'facebook', campaign: null, landingPath: '/s/[token]' });
     const captured = JSON.stringify({ beacons, attributions });
     for (const sentinel of ['synthetic-secret', 'synthetic-password', '123 Sentinel Street', 'private-account', 'synthetic-private-referrer']) expect(captured).not.toContain(sentinel);
     expect(unexpected).toEqual([]);
     expect(errors).toEqual([]);
+
+    // A second private URL in the same safe route family still counts a visit.
+    await page.evaluate(() => {
+        history.pushState({}, '', '/s/second-private-token');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect.poll(() => beacons.filter(event => event.type === 'pageview').length).toBe(2);
+    expect(beacons.filter(event => event.type === 'pageview')[1]).toMatchObject({
+        url: `${origin}/s/[token]`, route: '/s/[token]', path: '/s/[token]',
+    });
+    expect(JSON.stringify(beacons)).not.toContain('second-private-token');
 });
