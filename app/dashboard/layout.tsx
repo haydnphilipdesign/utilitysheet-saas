@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { stackServerApp } from '@/lib/stack/server';
+import { StackAuthProvider } from '@/components/providers/stack-auth-provider';
 import { noIndexMetadata } from '@/lib/seo/site';
 import { DashboardLayoutContent } from './layout-content';
 import { ensureAccountActivation } from '@/lib/activation/ensure-account-activation';
@@ -37,8 +38,10 @@ export default async function DashboardLayout({
     }
 
     return (
-        <Suspense fallback={<DashboardLoadingFallback />}>
-            <DashboardLayoutContent>{children}</DashboardLayoutContent>
-        </Suspense>
+        <StackAuthProvider>
+            <Suspense fallback={<DashboardLoadingFallback />}>
+                <DashboardLayoutContent>{children}</DashboardLayoutContent>
+            </Suspense>
+        </StackAuthProvider>
     );
 }

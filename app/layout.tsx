@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { Figtree } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { TelemetryCollectors } from '@/components/providers/telemetry-collectors';
-import { StackAuthProvider } from '@/components/providers/stack-auth-provider';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { GrowthAttributionCapture } from '@/components/growth/growth-attribution-capture';
 import { getSiteUrl, siteConfig } from '@/lib/seo/site';
@@ -91,10 +90,8 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <StackAuthProvider>
-            <GrowthAttributionCapture />
-            {children}
-          </StackAuthProvider>
+          <GrowthAttributionCapture />
+          {children}
           <Toaster
             position="bottom-center"
           />

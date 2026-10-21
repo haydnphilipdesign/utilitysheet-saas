@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin, AdminAuthorizationError } from '@/lib/admin';
+import { StackAuthProvider } from '@/components/providers/stack-auth-provider';
 import { noIndexMetadata } from '@/lib/seo/site';
 import { AdminLayoutContent } from './layout-content';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
@@ -21,9 +22,9 @@ export default async function AdminLayout({
     }
 
     return (
-        <>
+        <StackAuthProvider>
             <ImpersonationBanner />
             <AdminLayoutContent>{children}</AdminLayoutContent>
-        </>
+        </StackAuthProvider>
     );
 }
