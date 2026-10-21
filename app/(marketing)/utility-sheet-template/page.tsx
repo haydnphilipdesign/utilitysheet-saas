@@ -5,16 +5,18 @@ import './template.css';
 
 import { MarketingBreadcrumbs, MarketingCtaBand } from '@/components/marketing/page-shell';
 import { JsonLd } from '@/components/seo/JsonLd';
-import { UTILITY_CATEGORIES } from '@/lib/constants';
+import { DEFAULT_BUYER_STEPS, UTILITY_CATEGORIES } from '@/lib/constants';
 import { breadcrumbSchema } from '@/lib/seo/schema';
 import { createPageMetadata } from '@/lib/seo/site';
+import { sampleUtilitySheet } from '@/lib/templates/sample-utility-sheet';
 
 const pdfHref = '/templates/utility-info-sheet.pdf';
+const samplePdfHref = '/templates/utility-info-sheet-sample.pdf';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Free Utility Sheet Template (Printable PDF)',
   description:
-    'Download a free, printable utility sheet template for home sellers: providers, phone numbers, home basics, HOA details, and buyer next steps on one page.',
+    'Download a free utility sheet template for home sellers to fill in on screen or print: providers, phone numbers, home basics, HOA details, and buyer next steps on one page.',
   path: '/utility-sheet-template',
   keywords: [
     'utility sheet template',
@@ -53,7 +55,7 @@ const sections = [
 ];
 
 const comparison = [
-  { row: 'How the seller fills it in', paper: 'On paper or in a PDF editor', link: 'On their phone, with no account' },
+  { row: 'How the seller fills it in', paper: 'On paper, or typed into the PDF', link: 'On their phone, with no account' },
   { row: 'Provider names', paper: 'From memory', link: 'Suggested from the property address where available, then confirmed' },
   { row: 'Knowing it’s done', paper: 'When it comes back', link: 'A completion email, with the PDF attached if you want it' },
   { row: 'What you end up with', paper: 'Handwriting to check and retype', link: 'A clean web sheet and PDF' },
@@ -81,10 +83,142 @@ const faqs = [
     answer: 'Yes. Download it, print it, and share it with sellers, your team, or other agents. No signup or email needed.',
   },
   {
+    question: 'Can sellers fill it in on a computer?',
+    answer: 'Yes. The PDF has fill-in fields, so sellers can type their answers in a PDF reader or web browser, save it, and send it back. It still prints as a blank form for anyone who prefers paper.',
+  },
+  {
     question: 'Can I put my logo on it?',
     answer: 'This PDF is the same for everyone. If you want your logo and colors on the finished sheet, UtilitySheet’s Pro and Teams plans add custom branding to the web sheet and PDF.',
   },
 ];
+
+const sampleNotes = [
+  {
+    title: 'Names a buyer can look up',
+    body: '“Example Electric Co.” and a phone number, not “the power company”.',
+  },
+  {
+    title: 'No blank rows',
+    body: '“None” for propane and heating oil, “Not sure” for cable. A blank row leaves the buyer guessing.',
+  },
+  {
+    title: 'Notes that save a call',
+    body: 'Water and sewer on one bill, the trash pickup day, and how far ahead to book internet.',
+  },
+  {
+    title: 'Nothing private',
+    body: 'No account numbers, PINs, or copies of bills.',
+  },
+];
+
+// The same fictional answers as the sample PDF, as real text so it reads on
+// any screen and to screen readers.
+function SampleSheet() {
+  const sheet = sampleUtilitySheet;
+  const hoaRows = [
+    ['Association name', sheet.hoa.name],
+    ['Management company and contact', sheet.hoa.management],
+    ['Phone', sheet.hoa.phone],
+    ['Email', sheet.hoa.email],
+    ['Dues amount and how often', sheet.hoa.dues],
+    ['Where dues are paid or documents are found', sheet.hoa.paymentAndDocuments],
+  ];
+  return (
+    <figure className="ust-sample">
+      <div className="ust-sample-sheet">
+        <div className="ust-sample-top">
+          <span className="ust-sample-brand">UtilitySheet</span>
+          <span className="ust-sample-tag">Sample</span>
+        </div>
+        <p className="ust-sample-title">Utility Info Sheet</p>
+        <dl className="ust-sample-fields">
+          <div className="ust-sample-wide">
+            <dt>Property address</dt>
+            <dd>{sheet.propertyAddress}</dd>
+          </div>
+          <div>
+            <dt>Seller name</dt>
+            <dd>{sheet.sellerName}</dd>
+          </div>
+          <div>
+            <dt>Seller phone</dt>
+            <dd>{sheet.sellerPhone}</dd>
+          </div>
+          <div>
+            <dt>Date completed</dt>
+            <dd>{sheet.dateCompleted}</dd>
+          </div>
+        </dl>
+        <p className="ust-sample-heading">Home basics</p>
+        <dl className="ust-sample-fields">
+          <div>
+            <dt>Water source</dt>
+            <dd>{sheet.homeBasics.water}</dd>
+          </div>
+          <div>
+            <dt>Sewer</dt>
+            <dd>{sheet.homeBasics.sewer}</dd>
+          </div>
+          <div>
+            <dt>Primary heating</dt>
+            <dd>{sheet.homeBasics.heating}</dd>
+          </div>
+        </dl>
+        <p className="ust-sample-heading">Utility providers</p>
+        <table className="ust-sample-table">
+          <thead>
+            <tr>
+              <th scope="col">Utility</th>
+              <th scope="col">Provider</th>
+              <th scope="col">Phone</th>
+            </tr>
+          </thead>
+          <tbody>
+            {UTILITY_CATEGORIES.map((category) => {
+              const row: { provider: string; phone?: string; notes?: string } = sheet.providers[category.key];
+              return (
+                <tr key={category.key}>
+                  <th scope="row">{category.label}</th>
+                  <td>
+                    {row.provider}
+                    {row.notes && <small>{row.notes}</small>}
+                  </td>
+                  <td>{row.phone}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <dl className="ust-sample-fields">
+          <div>
+            <dt>Electric meter number</dt>
+            <dd>{sheet.electricMeterNumber}</dd>
+          </div>
+        </dl>
+        <p className="ust-sample-heading">HOA or condo association</p>
+        <dl className="ust-sample-fields">
+          <div>
+            <dt>Part of an HOA?</dt>
+            <dd>{sheet.hoa.member}</dd>
+          </div>
+          {hoaRows.map(([label, value]) => (
+            <div key={label} className={value.length > 30 ? 'ust-sample-wide' : undefined}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="ust-sample-heading">Buyer next steps</p>
+        <ol className="ust-sample-steps">
+          {DEFAULT_BUYER_STEPS.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </div>
+      <figcaption>Sample sheet. All names, addresses, and phone numbers are fictional.</figcaption>
+    </figure>
+  );
+}
 
 function SheetPreview() {
   return (
@@ -144,7 +278,7 @@ export default function UtilitySheetTemplatePage() {
             <h1 className="text-balance">Free utility sheet template for real estate closings</h1>
             <p className="ust-lead">
               A one-page form sellers fill in with their utility providers, so the buyer knows who to call
-              after closing. Print it, add it to your listing paperwork, or email the PDF. No signup needed.
+              after closing. Sellers can type into the PDF or print it and write by hand. No signup needed.
             </p>
             <div className="marketing-actions mt-7">
               <a href={pdfHref} download className="marketing-button">
@@ -154,7 +288,7 @@ export default function UtilitySheetTemplatePage() {
                 Or send it as a link <ArrowDown size={17} aria-hidden="true" />
               </a>
             </div>
-            <p className="ust-meta">US Letter · 1 page · Free to print and share</p>
+            <p className="ust-meta">US Letter · 1 page · Fill in on screen or print</p>
             <MarketingBreadcrumbs
               items={[
                 { label: 'Home', href: '/' },
@@ -211,7 +345,33 @@ export default function UtilitySheetTemplatePage() {
         </div>
       </section>
 
-      <section className="marketing-inner-section ust-section ust-section-alt">
+      <section id="sample" className="marketing-inner-section ust-section ust-section-alt">
+        <div className="marketing-container ust-two-col">
+          <SampleSheet />
+          <div>
+            <h2 className="marketing-inner-title">A filled-in example</h2>
+            <p className="ust-intro">
+              Here’s the template completed for a made-up house, so sellers can see how much detail helps.
+              Every name, address, and phone number on it is fictional.
+            </p>
+            <dl className="ust-sample-notes">
+              {sampleNotes.map((note) => (
+                <div key={note.title}>
+                  <dt>{note.title}</dt>
+                  <dd>{note.body}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="marketing-actions mt-6">
+              <a href={samplePdfHref} download className="marketing-text-link">
+                <Download size={17} aria-hidden="true" /> Download the sample PDF
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="marketing-inner-section ust-section">
         <div className="marketing-container ust-two-col">
           <div>
             <h2 className="marketing-inner-title">How to use it</h2>
@@ -251,7 +411,7 @@ export default function UtilitySheetTemplatePage() {
         </div>
       </section>
 
-      <section id="send-as-link" className="marketing-inner-section ust-section">
+      <section id="send-as-link" className="marketing-inner-section ust-section ust-section-alt">
         <div className="marketing-container">
           <h2 className="marketing-inner-title">Skip the printing: send it as a link</h2>
           <p className="ust-intro">
@@ -283,7 +443,7 @@ export default function UtilitySheetTemplatePage() {
         </div>
       </section>
 
-      <section className="marketing-inner-section ust-section ust-section-alt">
+      <section className="marketing-inner-section ust-section">
         <div className="marketing-container">
           <h2 className="marketing-inner-title">Questions</h2>
           <dl className="ust-faq">

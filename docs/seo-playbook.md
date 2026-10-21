@@ -91,7 +91,7 @@ two days. Requesting doesn't guarantee indexing; it moves the URL up the queue.
 | 8 | `https://www.utilitysheet.com/utility-sheet-for-real-estate-agents` | Second audience. |
 | 9 | `https://www.utilitysheet.com/how-it-works` | Supporting page. |
 | 10 | `https://www.utilitysheet.com/faq` | Supporting page. |
-| 11 | `https://www.utilitysheet.com/utility-sheet-template` | Free printable template; request it as soon as it's live. |
+| 11 | `https://www.utilitysheet.com/utility-sheet-template` | Free fillable template with a filled-in sample; request it as soon as it's live (and once more after the 2026-10-21 update if it was already requested). |
 | 12 | `https://www.utilitysheet.com/guides/transfer-utilities-when-selling-a-house` | Seller guide; request it as soon as it's live. |
 | 13 | `https://www.utilitysheet.com/guides/set-up-utilities-when-buying-a-house` | Buyer guide; request it as soon as it's live. |
 
@@ -172,8 +172,13 @@ built.
   utility categories and buyer steps) and a landing page covering what's on
   it, how to use it, what not to collect, a paper-vs-link comparison, and a
   short FAQ.
-- **Not built yet (optional follow-ups):** a fillable PDF version and a
-  clearly labeled sample filled-in sheet.
+- **Follow-ups (built 2026-10-21):** the same PDF is now fillable (text
+  fields and checkboxes on every printed line; it still prints as a blank
+  form), and the page has a "filled-in example" section plus a sample PDF at
+  `/templates/utility-info-sheet-sample.pdf`, both marked SAMPLE and using
+  obviously fictional data from `lib/templates/sample-utility-sheet.ts`.
+  Tested in Chrome, Edge (its Adobe-powered viewer), and Firefox; not tested
+  in Acrobat Reader or macOS Preview.
 - **Path to signup:** the template is the manual version; the CTA is "send
   this as a link instead and get the PDF back automatically". Free plan, no
   card.
