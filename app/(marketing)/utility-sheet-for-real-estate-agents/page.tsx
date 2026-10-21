@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 import { MarketingHeroArt } from '@/components/marketing/hero-art';
 import { MarketingBreadcrumbs, MarketingCtaBand, MarketingPageHero, MarketingPointsSection, MarketingRelatedLinks } from '@/components/marketing/page-shell';
@@ -63,7 +64,15 @@ export default function UtilitySheetForRealEstateAgentsPage() {
             copy: 'Give assistants and coordinators a repeatable process instead of relying on ad hoc reminders.',
           },
         ]}
-      />
+      >
+        <p className="marketing-section-note">
+          When the sheet goes to your buyer, send the{' '}
+          <Link href="/guides/set-up-utilities-when-buying-a-house" className="font-semibold text-foreground underline underline-offset-4">
+            buyer guide to setting up utilities
+          </Link>{' '}
+          with it. It covers when to call each provider and what to ask.
+        </p>
+      </MarketingPointsSection>
 
       <MarketingPointsSection
         title="What agents usually care about most"

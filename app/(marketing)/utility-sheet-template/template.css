@@ -325,3 +325,169 @@
   margin-top: 24px;
   max-width: 48rem;
 }
+
+/* Filled-in sample: the template's look, with real text. */
+.ust-sample {
+  margin: 0;
+  min-width: 0;
+}
+.ust-sample figcaption {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #526975;
+}
+.ust-sample-sheet {
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #cbd9d9;
+  border-radius: 4px;
+  box-shadow: 0 18px 40px -22px rgba(10, 44, 64, 0.35);
+  font-size: 13px;
+  line-height: 1.45;
+  color: #0a2c40;
+}
+/* Watermark, so a screenshot of the sample still says what it is. */
+.ust-sample-sheet::after {
+  content: 'SAMPLE' / '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-size: clamp(64px, 16vw, 120px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: rgba(204, 73, 50, 0.07);
+  pointer-events: none;
+}
+.ust-sample-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ust-sample-brand {
+  font-size: 12px;
+  font-weight: 700;
+}
+.ust-sample-tag {
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: #cc4932;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.ust-sample-title {
+  margin: 10px 0 12px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.ust-sample-heading {
+  margin: 18px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #176173;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #176173;
+}
+.ust-sample-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px 16px;
+}
+.ust-sample-fields + .ust-sample-fields {
+  margin-top: 10px;
+}
+.ust-sample-wide {
+  grid-column: 1 / -1;
+}
+.ust-sample-fields dt {
+  font-size: 11px;
+  color: #526975;
+}
+.ust-sample-fields dd {
+  padding-bottom: 3px;
+  border-bottom: 1px solid #9fb3b3;
+  color: #23588a;
+  overflow-wrap: anywhere;
+}
+.ust-sample-table {
+  width: 100%;
+  margin-bottom: 12px;
+  border: 1px solid #cbd9d9;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.ust-sample-table th,
+.ust-sample-table td {
+  padding: 6px 8px;
+  border-top: 1px solid #cbd9d9;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.ust-sample-table thead th {
+  background: #0a2c40;
+  color: #fff;
+  font-size: 12px;
+}
+.ust-sample-table th:first-child {
+  width: 30%;
+}
+.ust-sample-table th:last-child {
+  width: 32%;
+}
+.ust-sample-table tbody th {
+  font-weight: 700;
+}
+.ust-sample-table td {
+  color: #23588a;
+}
+.ust-sample-table tbody tr:nth-child(even) {
+  background: #eef3f1;
+}
+.ust-sample-table small {
+  display: block;
+  font-size: 12px;
+  color: #526975;
+}
+.ust-sample-steps {
+  padding-left: 20px;
+  list-style: decimal;
+  font-size: 12px;
+}
+.ust-sample-steps li + li {
+  margin-top: 2px;
+}
+@media (max-width: 479px) {
+  .ust-sample-sheet {
+    padding: 16px;
+    font-size: 12px;
+  }
+  .ust-sample-table th,
+  .ust-sample-table td {
+    padding: 5px 6px;
+  }
+}
+.ust-sample-notes > div {
+  padding: 16px 0;
+  border-top: 1px solid #cbd9d9;
+}
+.ust-sample-notes {
+  margin-top: 24px;
+}
+.ust-sample-notes dt {
+  font-weight: 600;
+  color: #0a2c40;
+}
+.ust-sample-notes dd {
+  margin-top: 4px;
+  line-height: 1.7;
+  color: #4c626b;
+}
