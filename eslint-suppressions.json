@@ -1,0 +1,85 @@
+{
+  "app/(admin)/admin/users/auth-reconciliation-card.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/auth/login/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/auth/signup/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/branding/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/page.tsx": {
+    "react-hooks/preserve-manual-memoization": {
+      "count": 3
+    },
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "app/dashboard/requests/[id]/page.tsx": {
+    "react-hooks/preserve-manual-memoization": {
+      "count": 1
+    }
+  },
+  "app/dashboard/requests/new/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/dashboard/requests/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "app/invite/[token]/page.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/referrals/referral-credit-card.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/requests/SubmittedSheetEditor.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 2
+    }
+  },
+  "components/seller-form/SellerWizard.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 7
+    }
+  },
+  "components/seller-forms/FormsWorkspace.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/settings/account-security.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  },
+  "components/settings/settings-view.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 3
+    }
+  },
+  "components/test-drive/TestDriveCard.tsx": {
+    "react-hooks/set-state-in-effect": {
+      "count": 1
+    }
+  }
+}

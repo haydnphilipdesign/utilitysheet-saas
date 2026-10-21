@@ -28,6 +28,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Keep `next dev` from writing its managed block into AGENTS.md; the docs pointer lives there by hand.
+  agentRules: false,
   productionBrowserSourceMaps: false,
   outputFileTracingIncludes: {
     '/api/seller/**': ['node_modules/@sparticuz/chromium/bin/**/*'],

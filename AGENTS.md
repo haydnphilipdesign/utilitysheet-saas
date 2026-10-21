@@ -23,6 +23,8 @@ This is a single Next.js application, not a monorepo.
 
 Use `PRD.md` for product intent, `ADMIN.md` for verified admin guardrails, `docs/pdf-system-reference.md` for the production PDF architecture, and `docs/ai-telemetry.md` for AI telemetry/privacy rules. Treat `docs/superpowers/` as historical design and implementation records; verify them against current code before reuse.
 
+Next.js documentation matching the installed version is in `node_modules/next/dist/docs/`. Check it before relying on remembered Next.js APIs or conventions.
+
 ## Toolchain and Commands
 
 The repository uses npm (`package-lock.json`). CI currently uses Node.js 20. Match that runtime unless the manifest or CI is deliberately updated.
