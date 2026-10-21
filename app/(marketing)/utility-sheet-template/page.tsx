@@ -16,7 +16,7 @@ const samplePdfHref = '/templates/utility-info-sheet-sample.pdf';
 export const metadata: Metadata = createPageMetadata({
   title: 'Free Utility Sheet Template (Printable PDF)',
   description:
-    'Download a free utility sheet template for home sellers to fill in on screen or print: providers, phone numbers, home basics, HOA details, and buyer next steps on one page.',
+    'Free utility sheet template for home sellers. Fill it in on screen or print it: providers, phone numbers, home basics, HOA details, and buyer next steps.',
   path: '/utility-sheet-template',
   keywords: [
     'utility sheet template',
