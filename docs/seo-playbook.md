@@ -234,6 +234,26 @@ and failed payments, with answers checked against the billing code.
       **Import from Google Search Console** → pick the property. Imports the
       sitemap and verification in one step. Bing's index also feeds other
       search tools (DuckDuckGo, for one), so it is worth the 5 minutes.
+- [ ] **IndexNow** (set up 2026-10-21): tells Bing, Yandex, Seznam, and Naver
+      when a page changes, so they recrawl it within days instead of waiting
+      for the sitemap. Google ignores it; keep requesting indexing in Search
+      Console for Google. The key file is
+      `public/9f6d1812ab874936961e80b77e565cdd.txt` (public by design; don't
+      delete or rename it, or submissions fail with 403). After a deploy that
+      changes page content, and after bumping that page's `lastModified` in
+      `app/sitemap.ts`:
+
+      ```powershell
+      npm run seo:indexnow -- --since 2026-10-21 --dry-run   # check the list
+      npm run seo:indexnow -- --since 2026-10-21             # send it
+      npm run seo:indexnow -- /pricing /faq                  # or name pages
+      ```
+
+      Use the date of your last submission for `--since`. Only submit pages
+      that actually changed; resubmitting unchanged pages gets ignored and, if
+      repeated, rate-limited. The first submission ever can be the whole
+      sitemap (`npm run seo:indexnow` with no arguments). Bing Webmaster
+      Tools → **IndexNow** shows what it received.
 
 ### Your own properties (links you control)
 - [ ] **multimedium.dev:** add UtilitySheet to a "Products" or "Work" section
