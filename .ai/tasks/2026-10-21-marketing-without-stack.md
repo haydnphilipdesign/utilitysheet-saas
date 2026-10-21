@@ -1,7 +1,7 @@
 ---
-status: ready
+status: done
 owner: claude
-updated: 2026-10-21 15:30
+updated: 2026-10-21 16:00
 scope: app/layout.tsx, app/(marketing)/page.tsx, app/auth/layout.tsx, app/dashboard/layout.tsx, app/(admin)/layout.tsx, app/onboarding/layout.tsx, app/account-closed/layout.tsx, app/handler/[...stack]/layout.tsx, app/invite/[token]/layout.tsx, app/test-fixtures/settings/layout.tsx, components/marketing, components/landing/AuthenticatedRedirect.tsx, lib/stack/session-hint.ts, tests/unit/marketing-session-hint.test.tsx
 ---
 # Marketing pages without Stack Auth; no signed-in redirect from home
@@ -61,6 +61,10 @@ with the checkout's .env/.env.local. No hosted services or data touched.
 
 ## Next
 
-Owner: sign in once on a preview or after merge to confirm dashboard and
-settings still load. Then merge. Separately, the two stale Playwright tests
-need updating.
+Merged into `main` and pushed on 2026-10-21 at the owner's request. Live check
+after deploy: /, /pricing, /auth/login, /auth/signup, /handler/sign-in, /demo,
+/utility-sheet-template, and the IndexNow key return 200; /dashboard signed out
+redirects to /auth/login; live header shows Sign in / Start free without a
+session cookie and Dashboard with one, no console errors. Owner to sign in
+once and open dashboard, settings, and the home page. The two stale
+Playwright tests still need updating.
