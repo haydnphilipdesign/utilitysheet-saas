@@ -22,7 +22,8 @@
     "eval:export": "tsx --env-file=.env --env-file=.env.local scripts/eval/export-silver-cases.ts",
     "eval:run": "tsx --env-file=.env --env-file=.env.local scripts/eval/run-eval.ts",
     "eval:compare": "tsx scripts/eval/compare-evals.ts",
-    "security:scan": "node scripts/security/scan-artifacts.mjs"
+    "security:scan": "node scripts/security/scan-artifacts.mjs",
+    "seo:indexnow": "node scripts/seo/indexnow.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
