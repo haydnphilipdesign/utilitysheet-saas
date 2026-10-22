@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Check, CheckCircle2, Copy, ExternalLink, Loader2, Palette, Phone, Mail, Globe, Sparkles, Link as LinkIcon } from 'lucide-react';
+import { ArrowLeft, Globe, ImagePlus, Loader2, Mail, Phone, Trash2, User, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,6 @@ import { trackEvent } from '@/lib/analytics/events';
 import { cn } from '@/lib/utils';
 import { DEFAULT_BRAND_COLOR } from '@/lib/branding/deliverable';
 import type { Account, BrandProfile, Organization, PacketMode } from '@/types';
-import { TestDriveCard } from '@/components/test-drive/TestDriveCard';
 
 const BRAND_COLORS = [
     { name: 'Slate blue', value: DEFAULT_BRAND_COLOR },
@@ -22,6 +22,9 @@ const BRAND_COLORS = [
     { name: 'Amber', value: '#d97706' },
     { name: 'Slate', value: '#475569' },
 ];
+
+const LOGO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 
 function clampChannel(value: number) {
     return Math.min(255, Math.max(0, value));
@@ -38,19 +41,30 @@ function adjustHexColor(hex: string, amount: number) {
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
+function normalizeWebsite(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : `https://${trimmed}`;
+}
+
+/**
+ * Optional branding step reached from the dashboard guide and the welcome
+ * email: name, logo, color, and contact details for the default Branding
+ * Profile, with a live preview. The seller link and seller test live on the
+ * dashboard guide. Saving also marks onboarding complete for this account.
+ */
 export default function OnboardingPage() {
     const router = useRouter();
     const completedRef = useRef(false);
     const viewedRef = useRef(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [loading, setLoading] = useState(true);
-    const [savingBranding, setSavingBranding] = useState(false);
-    const [savingContact, setSavingContact] = useState(false);
-    const [finishing, setFinishing] = useState(false);
-    const [copied, setCopied] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
 
     const [account, setAccount] = useState<Account | null>(null);
-    const [organization, setOrganization] = useState<Organization | null>(null);
+    const [organization, setOrganization] = useState<(Organization & { role?: string | null }) | null>(null);
     const [brandProfileId, setBrandProfileId] = useState<string | null>(null);
     const [brandName, setBrandName] = useState('');
     const [primaryColor, setPrimaryColor] = useState(DEFAULT_BRAND_COLOR);
@@ -58,11 +72,12 @@ export default function OnboardingPage() {
     const [contactEmail, setContactEmail] = useState('');
     const [contactPhone, setContactPhone] = useState('');
     const [contactWebsite, setContactWebsite] = useState('');
-    const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined);
-    const [intakeLink, setIntakeLink] = useState<{ slug: string; url: string; is_active: boolean; defaultPacketMode?: PacketMode } | null>(null);
+    // null means "clear the stored logo" when saving.
+    const [logoUrl, setLogoUrl] = useState<string | null | undefined>(undefined);
+    const [defaultPacketMode, setDefaultPacketMode] = useState<PacketMode | undefined>(undefined);
 
     const secondaryColor = useMemo(() => adjustHexColor(primaryColor, -24), [primaryColor]);
-    const displayFirstName = account?.full_name?.split(' ')[0] || organization?.name || 'there';
+    const sharedWorkspace = organization?.subscription_status === 'team' ? organization : null;
 
     useEffect(() => {
         let cancelled = false;
@@ -91,7 +106,7 @@ export default function OnboardingPage() {
                 if (cancelled) return;
 
                 const nextAccount = (accountData.account || null) as Account | null;
-                const nextOrganization = (accountData.activeOrganization || null) as Organization | null;
+                const nextOrganization = (accountData.activeOrganization || null) as (Organization & { role?: string | null }) | null;
                 const profiles = Array.isArray(brandData) ? (brandData as BrandProfile[]) : [];
                 const defaultProfile = profiles.find((profile) => profile.is_default) || profiles[0] || null;
 
@@ -105,7 +120,7 @@ export default function OnboardingPage() {
                 setContactPhone(defaultProfile?.contact_phone || nextAccount?.phone || '');
                 setContactWebsite(defaultProfile?.contact_website || '');
                 setLogoUrl(defaultProfile?.logo_url || undefined);
-                setIntakeLink(intakeData.intakeLink || null);
+                setDefaultPacketMode(intakeData.intakeLink?.defaultPacketMode);
                 completedRef.current = Boolean(nextAccount?.onboarding_completed_at);
 
                 if (!viewedRef.current) {
@@ -114,7 +129,7 @@ export default function OnboardingPage() {
                 }
             } catch (error) {
                 console.error(error);
-                toast.error('We couldn’t load your setup. Reload the page to try again.');
+                toast.error('We couldn’t load your branding. Reload the page to try again.');
             } finally {
                 if (!cancelled) {
                     setLoading(false);
@@ -137,116 +152,81 @@ export default function OnboardingPage() {
         }
 
         completedRef.current = true;
-        setAccount((prev) => prev ? { ...prev, onboarding_completed_at: new Date().toISOString() } : prev);
     };
 
-    const persistBrandProfile = async (body: Record<string, unknown>) => {
-        if (!brandProfileId) {
-            throw new Error('Your Branding Profile isn’t ready yet. Reload the page and try again.');
+    const handleLogoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!LOGO_TYPES.includes(file.type)) {
+            toast.error('That file type isn’t supported. Use a JPEG, PNG, WebP or SVG.');
+            return;
+        }
+        if (file.size > LOGO_MAX_BYTES) {
+            toast.error('That file is too large. The limit is 2 MB.');
+            return;
         }
 
-        const response = await fetch(`/api/branding/${brandProfileId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            throw new Error(data?.error || 'Failed to update brand profile');
-        }
-        return data as BrandProfile;
-    };
-
-    const handleCopyLink = async () => {
-        if (!intakeLink?.url || intakeLink.is_active === false) return;
-
+        setUploading(true);
         try {
-            await navigator.clipboard.writeText(intakeLink.url);
-            await completeOnboarding();
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-            trackEvent('seller_link_copied', { source: 'progressive_setup' });
-            trackEvent('progressive_setup_task_completed', {
-                source: 'onboarding_page',
-                task: 'seller_link',
-                method: 'copied',
-            });
-            toast.success('Seller link copied');
+            const body = new FormData();
+            body.append('file', file);
+            const response = await fetch('/api/branding/upload', { method: 'POST', body });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.error || 'We couldn’t upload the logo. Try again.');
+            }
+            setLogoUrl(data.url);
+            toast.success('Logo uploaded. Save to keep it.');
         } catch (error) {
             console.error(error);
-            toast.error('We couldn’t copy the seller link.');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t upload the logo. Try again.');
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
-    const handleSaveBranding = async () => {
-        setSavingBranding(true);
+    const handleSave = async () => {
+        if (!brandProfileId) {
+            toast.error('Your Branding Profile isn’t ready yet. Reload the page and try again.');
+            return;
+        }
+
+        setSaving(true);
         try {
-            await persistBrandProfile({
-                name: brandName.trim() || organization?.name || account?.full_name || 'My Workspace',
-                primary_color: primaryColor,
-                secondary_color: secondaryColor,
+            const response = await fetch(`/api/branding/${brandProfileId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: brandName.trim() || organization?.name || account?.full_name || 'My Workspace',
+                    primary_color: primaryColor,
+                    secondary_color: secondaryColor,
+                    contact_name: contactName.trim() || undefined,
+                    contact_email: contactEmail.trim() || undefined,
+                    contact_phone: contactPhone.trim() || undefined,
+                    contact_website: normalizeWebsite(contactWebsite),
+                    ...(logoUrl !== undefined ? { logo_url: logoUrl } : {}),
+                }),
             });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || 'We couldn’t save your branding. Try again.');
+            }
+            await completeOnboarding();
             trackEvent('progressive_setup_task_completed', {
                 source: 'onboarding_page',
                 task: 'branding',
                 method: 'saved',
             });
             toast.success('Branding saved');
-        } catch (error) {
-            console.error(error);
-            toast.error(error instanceof Error ? error.message : 'We couldn’t save your branding. Try again.');
-        } finally {
-            setSavingBranding(false);
-        }
-    };
-
-    const handleSaveContact = async () => {
-        setSavingContact(true);
-        try {
-            const normalizedWebsite = contactWebsite.trim()
-                ? contactWebsite.trim().startsWith('http://') || contactWebsite.trim().startsWith('https://')
-                    ? contactWebsite.trim()
-                    : `https://${contactWebsite.trim()}`
-                : undefined;
-
-            await persistBrandProfile({
-                name: brandName.trim() || organization?.name || account?.full_name || 'My Workspace',
-                primary_color: primaryColor,
-                secondary_color: secondaryColor,
-                contact_name: contactName.trim() || undefined,
-                contact_email: contactEmail.trim() || undefined,
-                contact_phone: contactPhone.trim() || undefined,
-                contact_website: normalizedWebsite,
-            });
-            trackEvent('progressive_setup_task_completed', {
-                source: 'onboarding_page',
-                task: 'contact_details',
-                method: 'saved',
-            });
-            toast.success('Contact details saved');
-        } catch (error) {
-            console.error(error);
-            toast.error(error instanceof Error ? error.message : 'We couldn’t save your contact details. Try again.');
-        } finally {
-            setSavingContact(false);
-        }
-    };
-
-    const handleGoToDashboard = async () => {
-        setFinishing(true);
-        try {
-            await completeOnboarding();
-            trackEvent('setup_dismissed', {
-                source: 'onboarding_page',
-                destination: 'dashboard',
-            });
             router.push('/dashboard');
             router.refresh();
         } catch (error) {
             console.error(error);
-            toast.error(error instanceof Error ? error.message : 'We couldn’t save that. Try again.');
+            toast.error(error instanceof Error ? error.message : 'We couldn’t save your branding. Try again.');
         } finally {
-            setFinishing(false);
+            setSaving(false);
         }
     };
 
@@ -261,106 +241,45 @@ export default function OnboardingPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-secondary via-background to-background px-4 py-8 sm:px-6">
             <div className="mx-auto max-w-5xl space-y-6">
-                <div className="flex items-center justify-center gap-2 pt-2">
-                    <Image src="/logo-sm.png" alt="UtilitySheet" width={28} height={28} className="h-7 w-7" />
-                    <span className="text-xl font-bold text-foreground">UtilitySheet</span>
+                <div className="flex items-center justify-between gap-4 pt-2">
+                    <Link
+                        href="/dashboard"
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
+                    >
+                        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                        Dashboard
+                    </Link>
+                    <div className="flex items-center gap-2">
+                        <Image src="/logo-sm.png" alt="UtilitySheet" width={28} height={28} className="h-7 w-7" />
+                        <span className="text-xl font-bold text-foreground">UtilitySheet</span>
+                    </div>
                 </div>
 
-                <Card className="overflow-hidden border-primary/25 bg-card/85 shadow-xl backdrop-blur">
-                    <CardHeader className="relative pb-4">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
-                        <div className="relative">
-                            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                Start here
-                            </div>
-                            <CardTitle>
-                                <h1 className="text-3xl font-semibold text-foreground">Your seller link is ready, {displayFirstName}.</h1>
-                            </CardTitle>
-                            <CardDescription className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                                Send this one link to any seller. They enter the property address and answer a short mobile form, and you get a finished utility sheet and PDF to share with the buyer. Setup is optional, so you can copy the link and use it now.
-                            </CardDescription>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
-                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                                <LinkIcon className="h-4 w-4 text-primary" />
-                                Reusable seller link
-                            </div>
-                            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                                <Input
-                                    value={intakeLink?.is_active === false ? 'Seller form paused. Resume it in Seller forms.' : intakeLink?.url || ''}
-                                    readOnly
-                                    className="font-mono text-sm"
-                                />
-                                <Button
-                                    type="button"
-                                    onClick={handleCopyLink}
-                                    disabled={!intakeLink?.url || intakeLink.is_active === false}
-                                    className="sm:min-w-[132px]"
-                                >
-                                    {copied ? (
-                                        <>
-                                            <Check className="mr-2 h-4 w-4" />
-                                            Copied
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Copy className="mr-2 h-4 w-4" />
-                                            Copy link
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                            <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
-                                <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">Add it to your email signature</div>
-                                <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">Share it in texts or listing docs</div>
-                                <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2">Use the same link across transactions</div>
-                            </div>
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleGoToDashboard}
-                            disabled={finishing}
-                            className="w-full sm:w-auto"
-                        >
-                            {finishing ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Saving…
-                                </>
-                            ) : (
-                                <>
-                                    <ExternalLink className="mr-2 h-4 w-4" />
-                                Go to dashboard
-                            </>
-                        )}
-                        </Button>
-                        <p className="text-xs text-muted-foreground">
-                            You can finish this setup from the dashboard whenever you like.
-                        </p>
-                    </CardFooter>
-                </Card>
+                <div>
+                    <h1 className="text-3xl font-semibold text-foreground">Put your brand on every sheet</h1>
+                    <p className="mt-2 max-w-2xl text-muted-foreground">
+                        Your name, logo, color, and contact details appear on the seller form, the utility sheet, and its PDF.
+                        This is optional. You can change it any time.
+                    </p>
+                </div>
 
-                <TestDriveCard source="onboarding" reusableSellerLink={intakeLink?.url} />
+                {sharedWorkspace ? (
+                    <p role="status" className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                        <Users className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                        Everyone in {sharedWorkspace.name || 'your team’s workspace'} shares these branding settings, so changes apply to the whole team.
+                    </p>
+                ) : null}
 
                 <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
                     <Card className="border-border/70 bg-card/80">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-foreground">
-                                <Palette className="h-5 w-5 text-primary" />
-                                Optional setup
+                            <CardTitle>
+                                <h2 className="text-lg font-semibold text-foreground">Your branding</h2>
                             </CardTitle>
-                            <CardDescription>
-                                Add your brand name, colors, and contact details. You can also change all of this later from the dashboard.
-                            </CardDescription>
+                            <CardDescription>The preview updates as you type.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 <Label htmlFor="brandName">Brand name</Label>
                                 <Input
                                     id="brandName"
@@ -368,11 +287,63 @@ export default function OnboardingPage() {
                                     onChange={(event) => setBrandName(event.target.value)}
                                     placeholder="My Workspace"
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="logo-upload">Logo</Label>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background">
+                                        {logoUrl ? (
+                                            <Image src={logoUrl} alt="Current brand logo" fill className="object-contain" />
+                                        ) : (
+                                            <ImagePlus className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                                        )}
+                                    </div>
+                                    <input
+                                        ref={fileInputRef}
+                                        id="logo-upload"
+                                        type="file"
+                                        accept={LOGO_TYPES.join(',')}
+                                        className="sr-only"
+                                        onChange={handleLogoChange}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                        className="min-h-11 sm:min-h-8"
+                                    >
+                                        {uploading ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+                                        {logoUrl ? 'Replace logo' : 'Upload logo'}
+                                    </Button>
+                                    {logoUrl ? (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setLogoUrl(null)}
+                                            className="min-h-11 text-muted-foreground sm:min-h-8"
+                                        >
+                                            <Trash2 />
+                                            Remove
+                                        </Button>
+                                    ) : null}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    JPEG, PNG, WebP, or SVG, up to 2 MB. Without a logo, your initials are shown.
+                                </p>
+                            </div>
+
+                            <fieldset className="space-y-2">
+                                <legend className="text-sm font-medium text-foreground">Color</legend>
                                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                     {BRAND_COLORS.map((color) => (
                                         <button
                                             key={color.value}
                                             type="button"
+                                            aria-pressed={primaryColor === color.value}
                                             onClick={() => setPrimaryColor(color.value)}
                                             className={cn(
                                                 'rounded-xl border px-3 py-3 text-left transition-colors',
@@ -384,79 +355,76 @@ export default function OnboardingPage() {
                                         </button>
                                     ))}
                                 </div>
-                                <Button
-                                    type="button"
-                                    onClick={handleSaveBranding}
-                                    disabled={savingBranding || !brandProfileId}
-                                >
-                                    {savingBranding ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Saving…
-                                        </>
-                                    ) : (
-                                        'Save branding'
-                                    )}
-                                </Button>
-                            </div>
+                            </fieldset>
 
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="contactName" className="flex items-center gap-2">
-                                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                                        <User className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                                         Your name
                                     </Label>
-                                    <Input id="contactName" value={contactName} onChange={(event) => setContactName(event.target.value)} />
+                                    <Input id="contactName" autoComplete="name" value={contactName} onChange={(event) => setContactName(event.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="contactEmail" className="flex items-center gap-2">
-                                        <Mail className="h-4 w-4 text-muted-foreground" />
+                                        <Mail className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                                         Email
                                     </Label>
-                                    <Input id="contactEmail" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} />
+                                    <Input id="contactEmail" type="email" autoComplete="email" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="contactPhone" className="flex items-center gap-2">
-                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        <Phone className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                                         Phone
                                     </Label>
-                                    <Input id="contactPhone" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} />
+                                    <Input id="contactPhone" type="tel" autoComplete="tel" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="contactWebsite" className="flex items-center gap-2">
-                                        <Globe className="h-4 w-4 text-muted-foreground" />
+                                        <Globe className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                                         Website
                                     </Label>
                                     <Input id="contactWebsite" value={contactWebsite} onChange={(event) => setContactWebsite(event.target.value)} placeholder="yourwebsite.com" />
                                 </div>
                             </div>
-
+                        </CardContent>
+                        <CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <Button
                                 type="button"
-                                variant="outline"
-                                onClick={handleSaveContact}
-                                disabled={savingContact || !brandProfileId}
+                                onClick={handleSave}
+                                disabled={saving || uploading || !brandProfileId}
+                                className="min-h-11 w-full sm:min-h-9 sm:w-auto"
                             >
-                                {savingContact ? (
+                                {saving ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        <Loader2 className="animate-spin" />
                                         Saving…
                                     </>
                                 ) : (
-                                    'Save contact details'
+                                    'Save and go to dashboard'
                                 )}
                             </Button>
-                        </CardContent>
+                            {brandProfileId ? (
+                                <Link
+                                    href={`/dashboard/branding/${brandProfileId}`}
+                                    className="text-sm font-medium text-primary hover:underline"
+                                >
+                                    More branding options
+                                </Link>
+                            ) : null}
+                        </CardFooter>
                     </Card>
 
                     <Card className="border-border/70 bg-card/80">
                         <CardHeader>
-                            <CardTitle className="text-foreground">Preview</CardTitle>
+                            <CardTitle>
+                                <h2 className="text-lg font-semibold text-foreground">Preview</h2>
+                            </CardTitle>
                             <CardDescription>
-                                This is how your branding appears when UtilitySheet generates the utility sheet.
+                                How your branding appears on the utility sheet.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent>
                             <UtilitySheetPdfPreview
                                 branding={{
                                     name: brandName || organization?.name || 'Your Brand',
@@ -466,18 +434,15 @@ export default function OnboardingPage() {
                                     contact_phone: contactPhone,
                                     contact_email: contactEmail,
                                     contact_website: contactWebsite,
-                                    logo_url: logoUrl,
+                                    logo_url: logoUrl || undefined,
                                     disclaimer_text: '',
                                     is_default: true,
                                     show_powered_by: true,
                                     show_generation_date: true,
                                 }}
                                 isPro={account?.subscription_status === 'pro' || organization?.subscription_status === 'team'}
-                                defaultMode={intakeLink?.defaultPacketMode}
+                                defaultMode={defaultPacketMode}
                             />
-                            <div className="rounded-xl border border-border/70 bg-muted/25 px-4 py-3 text-xs text-muted-foreground">
-                                Everything here is optional. The fastest path is still to copy your reusable link and start sharing it.
-                            </div>
                         </CardContent>
                     </Card>
                 </div>

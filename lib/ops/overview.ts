@@ -371,7 +371,6 @@ export async function getFollowUpCandidates(db: StatementExecutor, page = 1): Pr
                 FROM accounts a
                 WHERE a.role = 'user'
                   AND a.closure_status = 'active'
-                  AND a.onboarding_completed_at IS NULL
                   AND a.created_at < NOW() - make_interval(days => $1::int)
                   AND NOT EXISTS (
                       SELECT 1 FROM requests r
@@ -388,7 +387,6 @@ export async function getFollowUpCandidates(db: StatementExecutor, page = 1): Pr
                 FROM accounts a
                 WHERE a.role = 'user'
                   AND a.closure_status = 'active'
-                  AND a.onboarding_completed_at IS NULL
                   AND a.created_at < NOW() - make_interval(days => $1::int)
                   AND NOT EXISTS (
                       SELECT 1 FROM requests r

@@ -181,7 +181,7 @@ export default async function AdminUsersPage({ searchParams }: { searchParams: U
                                 className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
                             >
                                 <option value="">Any setup state</option>
-                                <option value="no-setup">No setup and no request</option>
+                                <option value="no-setup">No request yet</option>
                                 <option value="missing-defaults">Core setup incomplete</option>
                                 <option value="activated-7d">Activated this week</option>
                                 <option value="habitual">Habitual (3+ in 30 days)</option>

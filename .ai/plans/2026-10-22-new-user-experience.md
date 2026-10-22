@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress (approved by the user on 2026-10-22: "I agree with everything... let's begin"). Phases 1 and 2 done; Phase 3 next.
+In Progress (approved by the user on 2026-10-22: "I agree with everything... let's begin"). Phases 1 to 3 done; Phase 4 next.
 
 ## Objective
 
@@ -186,4 +186,31 @@ at the time of writing):
   CHECK constraint, and sending before the migration runs would fail to log
   and resend every run, so it must ship with the migration applied first.
 
-Phases 3 to 5 not started.
+Phase 2 committed as 860bca5.
+
+Phase 3 implemented 2026-10-22 on the same branch (uncommitted at the time of
+writing). Decisions (taken by Claude under the user's "agree with everything"
+approval of this plan's direction):
+
+- `/onboarding` is now "Put your brand on every sheet": brand name, logo
+  upload (all plans, existing `/api/branding/upload`), color, contact details,
+  live preview, one "Save and go to dashboard" button, and a link to the full
+  Branding editor. The seller link, test card, and "Start here" content are
+  gone (the dashboard guide owns them). The URL is unchanged because sent
+  emails link to it. Teams workspaces see a note that the settings are shared.
+- `onboarding_completed_at` is still set when that page saves (it now means
+  "saved branding on the setup page") but no longer drives anything except
+  testimonial scoring, where that meaning still fits.
+- Admin funnel: "Completed onboarding" replaced by "Finished the seller test"
+  (submitted demo request). "No setup and no request" became "No request yet"
+  in the funnel, admin overview chip, users filter (URL value `no-setup` kept
+  for existing links), and the ops follow-up list.
+- Deleted unused `/api/onboarding/brand-profile` and
+  `/api/onboarding/organization` (no callers; an older review noted the first
+  could create a default Branding Profile inside a Teams workspace).
+- Playwright `test-drive-journey` and `dialog-focus` specs now use the
+  dashboard fixture instead of `/onboarding`; 24/24 passed on all projects.
+- Read-only funnel query against the live database: valid; 163 accounts,
+  13 finished the seller test, 62 have a request, 101 have no request yet.
+
+Phases 4 and 5 not started.

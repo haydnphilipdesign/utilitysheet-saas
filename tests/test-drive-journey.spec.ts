@@ -1,8 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /**
- * First-use guide and seller test journey with every /api call mocked in the
- * browser, so no request, email, or account data is created.
+ * Dashboard first-run guide and seller test journey, on the dev-only
+ * /test-fixtures/dashboard page with every /api call mocked in the browser,
+ * so no request, email, or account data is created.
  */
 
 const TOKEN = 'test-drive-journey-token';
@@ -52,6 +53,13 @@ async function mockApis(page: Page, options: { testDrive: () => TestDriveMock; o
         show_powered_by: true,
         show_generation_date: true,
     }])));
+    await page.route('**/api/requests**', (route) => {
+        const stats = new URL(route.request().url()).searchParams.get('stats');
+        return route.fulfill(json(stats
+            ? { total_requests: 0, draft: 0, sent: 0, in_progress: 0, submitted: 0, needs_attention: 0 }
+            : { data: [], total: 0, page: 1, limit: 4, totalPages: 0 }));
+    });
+    await page.route('**/api/updates**', (route) => route.fulfill(json([])));
     await page.route('**/api/intake-link', (route) => route.fulfill(json({
         intakeLink: { slug: 'fixture-link', url: 'https://example.com/i/fixture-link', is_active: true },
     })));
@@ -83,7 +91,7 @@ async function mockApis(page: Page, options: { testDrive: () => TestDriveMock; o
 }
 
 test.describe('first-use guide and seller test', () => {
-    test('onboarding sample sheet, one-click test start, and evaluator completion', async ({ page }, testInfo) => {
+    test('guide sample sheet, one-click test start, and evaluator completion', async ({ page }, testInfo) => {
         const pageErrors: string[] = [];
         page.on('pageerror', (error) => pageErrors.push(error.message));
 
@@ -107,15 +115,14 @@ test.describe('first-use guide and seller test', () => {
             },
         });
 
-        await page.goto('/onboarding');
-        await expect(page.getByRole('heading', { name: /your seller link is ready/i })).toBeVisible();
-        await expect(page.getByRole('heading', { name: 'See how UtilitySheet works' })).toBeVisible();
+        await page.goto('/test-fixtures/dashboard');
+        await expect(page.getByRole('heading', { name: 'Get your first utility sheet' })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Start seller test' })).toBeVisible();
         await expectNoHorizontalOverflow(page);
-        await screenshot(page, '01-onboarding', testInfo.project.name);
+        await screenshot(page, '01-guide', testInfo.project.name);
 
         // Sample sheet: one click, no request created.
-        await page.getByRole('button', { name: 'View sample sheet' }).click();
+        await page.getByRole('button', { name: 'Or view a sample sheet' }).click();
         const dialog = page.getByRole('dialog');
         await expect(dialog.getByRole('heading', { name: 'Sample utility sheet' })).toBeVisible();
         await expect(dialog.getByText(/shown with your saved default Branding Profile/i)).toBeVisible();
@@ -173,16 +180,16 @@ test.describe('first-use guide and seller test', () => {
         expect(pageErrors).toEqual([]);
     });
 
-    test('onboarding shows resume and completed states', async ({ page }, testInfo) => {
+    test('guide shows resume and completed states', async ({ page }, testInfo) => {
         let state: TestDriveMock = { status: 'ready', sellerUrl: `/s/${TOKEN}`, invitationDelivery: 'failed' };
         await mockApis(page, { testDrive: () => state });
 
-        await page.goto('/onboarding');
+        await page.goto('/test-fixtures/dashboard');
         const resume = page.getByRole('link', { name: 'Resume seller test' });
         await expect(resume).toHaveAttribute('href', `/s/${TOKEN}`);
         await expect(page.getByText(/could not email you the test link/i)).toBeVisible();
         await expectNoHorizontalOverflow(page);
-        await screenshot(page, '05-onboarding-resume', testInfo.project.name);
+        await screenshot(page, '05-guide-resume', testInfo.project.name);
 
         state = {
             status: 'completed',
@@ -191,12 +198,12 @@ test.describe('first-use guide and seller test', () => {
             delivery: 'failed',
         };
         await page.reload();
-        await expect(page.getByText('Seller test complete')).toBeVisible();
+        await expect(page.getByRole('heading', { name: /try it as your seller \(done\)/i })).toBeVisible();
         await expect(page.getByText(/could not email your copy/i)).toBeVisible();
         await expect(page.getByRole('link', { name: /open test sheet/i })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Copy seller link' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Copy reusable seller link' })).toBeVisible();
         await expectNoHorizontalOverflow(page);
-        await screenshot(page, '06-onboarding-completed', testInfo.project.name);
+        await screenshot(page, '06-guide-completed', testInfo.project.name);
     });
 
     test('public demo entry still renders', async ({ page }) => {

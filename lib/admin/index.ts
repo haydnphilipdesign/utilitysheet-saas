@@ -219,10 +219,10 @@ export async function searchUsers(params: {
         }
     }
 
+    // 'no-setup' kept as the URL value for existing links; it means no real request yet.
     if (params.activation === 'no-setup') {
         whereClause = sql`
             ${whereClause}
-            AND ac.onboarding_completed_at IS NULL
             AND NOT EXISTS (
                 SELECT 1
                 FROM requests r

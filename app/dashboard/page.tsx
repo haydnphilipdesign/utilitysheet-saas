@@ -353,7 +353,7 @@ export default function DashboardPage() {
             fetchJson<DashboardStats>('/api/requests?stats=true'),
             fetchJson<{
                 usage?: { used: number; limit: number; plan: string };
-                account?: { onboarding_completed_at?: string | null; full_name?: string | null };
+                account?: { full_name?: string | null };
                 activeOrganization?: TeamWelcomeWorkspace | null;
                 organizations?: unknown[];
             }>('/api/account'),

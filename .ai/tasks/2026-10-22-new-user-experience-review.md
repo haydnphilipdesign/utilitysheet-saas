@@ -1,11 +1,11 @@
 ---
 status: active
 owner: claude
-updated: 2026-10-22 17:00
-scope: .ai/tasks/2026-10-22-new-user-experience-review.md, .ai/plans/2026-10-22-new-user-experience.md, app/test-fixtures/dashboard, app/dashboard/page.tsx, components/dashboard/first-run-guide.tsx, components/test-drive, lib/analytics/events.ts, app/onboarding/page.tsx, app/auth/signup/page.tsx, tests/unit, lib/email/email-service.ts, lib/neon/queries/activation-outreach.ts, app/api/cron/activation-reengagement, lib/ops, vercel.json
+updated: 2026-10-22 19:00
+scope: .ai/tasks/2026-10-22-new-user-experience-review.md, .ai/plans/2026-10-22-new-user-experience.md, app/test-fixtures/dashboard, app/dashboard/page.tsx, components/dashboard/first-run-guide.tsx, components/test-drive, lib/analytics/events.ts, app/onboarding/page.tsx, app/auth/signup/page.tsx, tests/unit, lib/email/email-service.ts, lib/neon/queries/activation-outreach.ts, app/api/cron/activation-reengagement, lib/ops, vercel.json, app/(admin)/admin, lib/admin, app/api/onboarding, tests/test-drive-journey.spec.ts, tests/dialog-focus.spec.ts
 ---
 
-Implementation follows [the plan](../plans/2026-10-22-new-user-experience.md); Phase 1 committed; Phase 2 done (uncommitted).
+Implementation follows [the plan](../plans/2026-10-22-new-user-experience.md); Phases 1 and 2 committed; Phase 3 done (uncommitted).
 # New user experience review
 
 ## Goal
@@ -66,8 +66,16 @@ scan passed; `git diff --check` clean. Email previews rendered for 4 variants
 at 900px and 390px (scratchpad). New candidate query run read-only against the
 live database: valid, 1 account due.
 
+Phase 3 (2026-10-22): `tsc --noEmit` pass (after `next typegen` and a dev
+server start refreshed generated route types for the deleted routes); ESLint
+on changed files pass; full Vitest 264 files passed, 1 skipped, 2319 tests
+passed, 13 skipped; Playwright `test-drive-journey` + `dialog-focus` on all 3
+projects: 24 passed; security scan passed; `git diff --check` clean. Setup
+page screenshots (desktop, iPhone, normal and Teams member): no page errors,
+no overflow.
+
 ## Next
 
-Phase 1 committed (51f6fd1) on branch `new-user-experience`. Phase 2 is
-uncommitted on the same branch, waiting for the user. Then Phase 3 (setup
-page role and `onboarding_completed_at` meaning).
+Phases 1 (51f6fd1) and 2 (860bca5) committed on branch `new-user-experience`.
+Phase 3 is uncommitted on the same branch, waiting for the user. Then Phase 4
+(first request follow-through) per the plan.
