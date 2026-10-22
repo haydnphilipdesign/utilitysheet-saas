@@ -268,7 +268,7 @@ export default function OnboardingPage() {
 
                 <Card className="overflow-hidden border-primary/25 bg-card/85 shadow-xl backdrop-blur">
                     <CardHeader className="relative pb-4">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.16),transparent_50%)]" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
                         <div className="relative">
                             <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                                 <Sparkles className="h-3.5 w-3.5" />

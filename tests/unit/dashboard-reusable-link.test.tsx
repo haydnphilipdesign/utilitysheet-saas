@@ -74,6 +74,11 @@ type FetchOptions = {
     attentionRequests?: Request[];
     submittedRequests?: Request[];
     failAttention?: boolean;
+    failStats?: boolean;
+    // Requests the seller has started but not submitted (not in either list).
+    inProgressRequests?: number;
+    testDrive?: Record<string, unknown>;
+    activeOrganization?: Record<string, unknown> | null;
 };
 
 function createDashboardFetchMock(options: FetchOptions) {
@@ -108,11 +113,15 @@ function createDashboardFetchMock(options: FetchOptions) {
         }
 
         if (url === '/api/requests?stats=true' && method === 'GET') {
+            if (options.failStats) {
+                return jsonResponse({ error: 'Unavailable' }, 503);
+            }
+            const inProgress = options.inProgressRequests || 0;
             return jsonResponse({
-                total_requests: attentionRequests.length + submittedRequests.length,
+                total_requests: attentionRequests.length + submittedRequests.length + inProgress,
                 draft: 0,
                 sent: attentionRequests.length,
-                in_progress: 0,
+                in_progress: inProgress,
                 submitted: submittedRequests.length,
                 needs_attention: attentionRequests.length,
             });
@@ -129,7 +138,9 @@ function createDashboardFetchMock(options: FetchOptions) {
                     subscription_status: options.plan === 'pro' ? 'pro' : 'free',
                     onboarding_completed_at: options.onboardingCompleted ? '2026-05-04T12:00:00.000Z' : null,
                 },
-                activeOrganization: options.plan === 'team' ? { subscription_status: 'team' } : null,
+                activeOrganization: options.activeOrganization !== undefined
+                    ? options.activeOrganization
+                    : options.plan === 'team' ? { subscription_status: 'team' } : null,
             });
         }
 
@@ -148,7 +159,7 @@ function createDashboardFetchMock(options: FetchOptions) {
         }
 
         if (url === '/api/test-drive' && method === 'GET') {
-            return jsonResponse({ status: 'eligible' });
+            return jsonResponse(options.testDrive || { status: 'eligible' });
         }
 
         if (url.includes('/remind') && method === 'POST') {
@@ -161,6 +172,7 @@ function createDashboardFetchMock(options: FetchOptions) {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     Object.defineProperty(navigator, 'clipboard', {
         value: {
             writeText: vi.fn().mockResolvedValue(undefined),
@@ -169,7 +181,7 @@ beforeEach(() => {
     });
 });
 describe('dashboard customer home', () => {
-    it('shows a compact first-run share workflow with all essential actions', async () => {
+    it('guides a brand-new account through three steps instead of empty work cards', async () => {
         const fetchMock = createDashboardFetchMock({
             plan: 'free',
             slug: 'free-slug-123',
@@ -179,7 +191,22 @@ describe('dashboard customer home', () => {
         render(<DashboardPage />);
 
         expect(screen.getByText('Loading dashboard…')).toBeInTheDocument();
-        await screen.findByRole('heading', { name: 'Your seller link is ready' });
+        await screen.findByRole('heading', { name: 'Get your first utility sheet' });
+        expect(screen.getByRole('heading', { level: 1, name: 'Welcome, Dash' })).toBeInTheDocument();
+        expect(screen.getByRole('progressbar', { name: /getting started progress/i })).toHaveAttribute('aria-valuenow', '0');
+        expect(screen.getByText('0 of 3 done')).toBeInTheDocument();
+
+        expect(screen.getByRole('heading', { name: /try it as your seller \(next step\)/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /send your link to a seller \(not started\)/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /get your first finished sheet \(not started\)/i })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'Start seller test' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /create a request for one property/i })).toHaveAttribute('href', '/dashboard/requests/new');
+        expect(screen.getByRole('link', { name: /add your branding/i })).toHaveAttribute('href', '/onboarding');
+
+        // Empty work cards and the separate test card wait until there is work.
+        expect(screen.queryByRole('heading', { name: 'Needs your attention' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Recently submitted' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'See how UtilitySheet works' })).not.toBeInTheDocument();
 
         const copyLinkButton = screen.getByRole('button', { name: /copy reusable seller link$/i });
         const smsButton = screen.getByRole('button', { name: /copy a text message with your reusable seller link/i });
@@ -199,13 +226,80 @@ describe('dashboard customer home', () => {
             expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://www.utilitysheet.com/i/free-slug-123');
         });
 
-        expect(screen.getByText('Seller enters the property address')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /finish optional setup/i })).toHaveAttribute('href', '/onboarding');
-        expect(screen.getByRole('link', { name: /manage seller forms/i })).toHaveAttribute(
-            'href',
-            '/dashboard/settings?tab=link'
-        );
+        expect(trackEventMock).toHaveBeenCalledWith('seller_link_copied', { source: 'dashboard_first_run_guide' });
         expect(screen.queryByLabelText(/branded link/i)).not.toBeInTheDocument();
+    });
+
+    it('marks steps done as the seller test finishes and a seller starts', async () => {
+        vi.stubGlobal('fetch', createDashboardFetchMock({
+            plan: 'free',
+            slug: 'progress-slug',
+            inProgressRequests: 1,
+            testDrive: {
+                status: 'completed',
+                reviewUrl: '/packet/test-public',
+                pdfUrl: '/api/packet/test-public/pdf',
+                delivery: 'sent',
+            },
+        }));
+
+        render(<DashboardPage />);
+
+        await screen.findByRole('heading', { name: /try it as your seller \(done\)/i });
+        expect(screen.getByText('2 of 3 done')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /send your link to a seller \(done\)/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /get your first finished sheet \(next step\)/i })).toBeInTheDocument();
+        expect(screen.getByText(/waiting on your seller/i)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /open test sheet/i })).toHaveAttribute('href', '/packet/test-public');
+
+        // With a request in flight, the work cards return under the guide.
+        expect(screen.getByRole('heading', { name: 'Needs your attention' })).toBeInTheDocument();
+    });
+
+    it('lets the user hide the guide and bring it back', async () => {
+        vi.stubGlobal('fetch', createDashboardFetchMock({ plan: 'free', slug: 'hide-slug' }));
+
+        const { unmount } = render(<DashboardPage />);
+
+        await screen.findByRole('heading', { name: 'Get your first utility sheet' });
+        fireEvent.click(screen.getByRole('button', { name: 'Hide this guide' }));
+
+        expect(screen.queryByRole('heading', { name: 'Get your first utility sheet' })).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Reusable seller link' })).toBeVisible();
+        expect(trackEventMock).toHaveBeenCalledWith('first_run_guide_toggled', { hidden: true, completed_steps: 0 });
+
+        // Remembered for this user on the next visit.
+        unmount();
+        render(<DashboardPage />);
+        await screen.findByRole('heading', { name: 'Reusable seller link' });
+        expect(screen.queryByRole('heading', { name: 'Get your first utility sheet' })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: /show the getting started guide/i }));
+        expect(await screen.findByRole('heading', { name: 'Get your first utility sheet' })).toBeInTheDocument();
+    });
+
+    it('does not show the guide to an invited Teams member', async () => {
+        vi.stubGlobal('fetch', createDashboardFetchMock({
+            plan: 'team',
+            slug: 'member-slug',
+            activeOrganization: { id: 'org_1', name: 'Riverbend Closings', role: 'member', subscription_status: 'team' },
+        }));
+
+        render(<DashboardPage />);
+
+        await screen.findByRole('heading', { name: 'Reusable seller link' });
+        expect(screen.queryByRole('heading', { name: 'Get your first utility sheet' })).not.toBeInTheDocument();
+    });
+
+    it('falls back to the regular dashboard when stats cannot load', async () => {
+        vi.stubGlobal('fetch', createDashboardFetchMock({ plan: 'free', slug: 'stats-slug', failStats: true }));
+
+        render(<DashboardPage />);
+
+        await screen.findByRole('heading', { name: 'Reusable seller link' });
+        expect(screen.queryByRole('heading', { name: 'Get your first utility sheet' })).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Needs your attention' })).toBeInTheDocument();
     });
 
     it('puts active work before promotion and links summaries to canonical request filters', async () => {
@@ -282,22 +376,22 @@ describe('dashboard customer home', () => {
             plan: 'pro',
             slug: 'pro-slug',
             onboardingCompleted: true,
+            submittedRequests: [createRequest({ id: 'done_1', status: 'submitted' })],
         });
         vi.stubGlobal('fetch', fetchMock);
 
         render(<DashboardPage />);
 
         await screen.findByRole('heading', { name: 'Reusable seller link' });
+        expect(screen.queryByRole('heading', { name: 'Get your first utility sheet' })).not.toBeInTheDocument();
         expect(screen.getByText('Nothing needs attention')).toBeInTheDocument();
-        expect(screen.getByText('No submitted sheets yet')).toBeInTheDocument();
 
         const helpTrigger = screen.getByRole('button', { name: /how the reusable link works/i });
         fireEvent.click(helpTrigger);
         expect(await screen.findByText('Seller opens your link and enters the property address.')).toBeVisible();
-        expect(screen.getByRole('link', { name: /manage seller forms/i })).toHaveAttribute(
-            'href',
-            '/dashboard/settings?tab=link'
-        );
+        // One way to manage forms, not two.
+        expect(screen.getAllByRole('link', { name: /manage (seller )?forms/i })).toHaveLength(1);
+        expect(screen.queryByText('Start here')).not.toBeInTheDocument();
     });
 
     it('shows a retryable work-section error without hiding the share workflow', async () => {
@@ -306,6 +400,7 @@ describe('dashboard customer home', () => {
             slug: 'pro-slug',
             onboardingCompleted: true,
             failAttention: true,
+            submittedRequests: [createRequest({ id: 'done_1', status: 'submitted' })],
         });
         vi.stubGlobal('fetch', fetchMock);
 

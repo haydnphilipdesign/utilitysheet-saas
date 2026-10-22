@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/components/ui/card';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, FileText, LayoutDashboard, Link2 } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics/events';
 import {
     consumePendingSignupVerification,
@@ -384,15 +384,15 @@ export default function SignupPage() {
                 {/* Features */}
                 <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-4 text-center px-2">
                     <div className="space-y-1 sm:space-y-2">
-                        <div className="text-xl sm:text-2xl">⚡</div>
+                        <Link2 className="mx-auto h-5 w-5 text-primary" aria-hidden="true" />
                         <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Seller link first</p>
                     </div>
                     <div className="space-y-1 sm:space-y-2">
-                        <div className="text-xl sm:text-2xl">📄</div>
+                        <FileText className="mx-auto h-5 w-5 text-primary" aria-hidden="true" />
                         <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Utility sheet PDF</p>
                     </div>
                     <div className="space-y-1 sm:space-y-2">
-                        <div className="text-xl sm:text-2xl">🔄</div>
+                        <LayoutDashboard className="mx-auto h-5 w-5 text-primary" aria-hidden="true" />
                         <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Dashboard review</p>
                     </div>
                 </div>
