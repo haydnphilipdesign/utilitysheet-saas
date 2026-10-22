@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress (approved by the user on 2026-10-22: "I agree with everything... let's begin"). Phases 1 to 5 done; Phase 5 uncommitted.
+Done (approved by the user on 2026-10-22). Phases 1 to 5 implemented and committed (Phase 5 in 8451298). Optional follow-ups are listed at the end of Outcome.
 
 ## Objective
 
@@ -298,3 +298,14 @@ approved the recommendations: ask for an area (city, state, optional ZIP),
 never a street; optional, with Anytown as the default; up to 3 seller tests
 per account, so earlier testers can run it again in their area. Details and
 validation: [the task](../tasks/2026-10-22-seller-test-your-area.md).
+Committed as 8451298.
+
+Optional follow-ups (not scheduled):
+
+- A third activation email (day 3 or 7). Needs a migration for the
+  `activation_outreach_logs.stage` CHECK constraint, applied before any send.
+- "St. Louis" parses as city "Louis" (`lib/address/location-parser.ts`),
+  for real requests too.
+- Measure the effect: activation (first live submission) was 15% for the 90
+  days before this plan; compare new sign-ups from 2026-10-22 on, and how
+  many seller tests use a custom area (`test_area` on `request_created`).

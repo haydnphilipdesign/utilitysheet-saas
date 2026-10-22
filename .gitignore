@@ -63,3 +63,7 @@ Screenshot_*.jpeg
 /.incident-reports/
 # evaluation case exports and results (scripts/eval)
 /.eval/
+# local browser-tool logs, generated deliverables and analytics exports
+/.playwright-cli/
+/output/
+/utilitysheet.com-*/

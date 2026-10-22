@@ -1,7 +1,7 @@
 ---
-status: ready
+status: done
 owner: claude
-updated: 2026-10-22 15:10
+updated: 2026-10-22 15:40
 scope: lib/test-drive, app/api/test-drive, lib/neon/queries/requests.ts, lib/validation/schemas.ts, components/test-drive, components/dashboard/first-run-guide.tsx, lib/analytics/events.ts, tests/unit, tests/test-drive-journey.spec.ts
 ---
 # Seller test in the agent's own area (new user experience, Phase 5)
@@ -78,4 +78,4 @@ scripts). `next dev` on 127.0.0.1:3000 with synthetic env for Playwright
 
 ## Next
 
-User review, then commit when asked. Optional: fix the "St." city parsing.
+Committed in 8451298. Optional follow-up: fix the "St." city parsing.
