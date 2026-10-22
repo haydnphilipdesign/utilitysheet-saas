@@ -6,6 +6,7 @@ import { DEFAULT_MESSAGE_TEMPLATES, escapeHtml, firstNameFromFullName, plainText
 import { createPacketPdfAttachmentForRequest } from '@/lib/pdf/packet-attachment';
 import { FEEDBACK_CATEGORY_LABELS, type FeedbackCategory } from '@/lib/feedback/constants';
 import type { PdfRenderEvidence } from '@/lib/telemetry/handoff-evidence';
+import { REQUEST_NEEDS_ATTENTION_DAYS } from '@/lib/requests/listing';
 
 function getAppBaseUrl(): string {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -1672,7 +1673,7 @@ function generateWeeklySummaryHtml({
                             <!-- Attention Card -->
                             <div style="background-color: #fef3c7; border-radius: 8px; padding: 16px; margin: 24px 0; border-left: 4px solid #f59e0b;">
                                 <p style="margin: 0; color: #92400e; font-size: 14px;">
-                                    <strong>⚠️ ${stats.needsAttention} request${stats.needsAttention > 1 ? 's' : ''}</strong> sent more than 3 days ago with no response. Consider sending a reminder.
+                                    <strong>⚠️ ${stats.needsAttention} request${stats.needsAttention > 1 ? 's' : ''}</strong> with no seller activity for ${REQUEST_NEEDS_ATTENTION_DAYS} days. Consider sending the link again or a reminder.
                                 </p>
                             </div>
                             ` : ''}
@@ -1715,29 +1716,100 @@ function generateWeeklySummaryHtml({
     `.trim();
 }
 
-interface SendActivationReminderEmailParams {
-    toEmail: string;
-    fullName?: string;
-    stage: 'after_15m' | 'after_1d';
-    setupUrl: string;
-    dashboardUrl: string;
-    sellerLinkUrl: string;
+type ActivationReminderStage = 'after_15m' | 'after_1d';
+
+// Replies to onboarding emails reach a person; noreply@ is only the sender.
+const ACTIVATION_REPLY_TO = 'haydn@multimedium.dev';
+
+// Same wording as the dashboard's "Text" share action.
+function sellerTextMessage(sellerLinkUrl: string) {
+    return `Hi, please use this link to fill in the utility providers for your property. No account is needed: ${sellerLinkUrl}`;
 }
 
-function generateActivationReminderHtml(params: {
+interface ActivationReminderContent {
     fullName?: string;
-    stage: 'after_15m' | 'after_1d';
+    stage: ActivationReminderStage;
     setupUrl: string;
     dashboardUrl: string;
+    newRequestUrl: string;
     sellerLinkUrl: string;
-}) {
+    testDriveCompleted?: boolean;
+}
+
+interface SendActivationReminderEmailParams extends ActivationReminderContent {
+    toEmail: string;
+}
+
+function activationReminderSubject(stage: ActivationReminderStage) {
+    return stage === 'after_1d'
+        ? 'Send your first seller link'
+        : 'Welcome to UtilitySheet: three steps to your first utility sheet';
+}
+
+const ACTIVATION_TEXT_STYLE = 'margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;';
+const ACTIVATION_SMALL_STYLE = 'margin: 0; color: #4b5563; font-size: 14px; line-height: 1.6;';
+
+function renderActivationLinkBox(sellerLinkUrl: string) {
+    return `
+                            <div style="background-color: #f9fafb; border-radius: 10px; padding: 16px 18px; margin: 12px 0 0; border-left: 4px solid ${PRODUCT_EMAIL_ACCENT};">
+                                <p style="margin: 0 0 6px; color: #111827; font-size: 14px; font-weight: 700;">Your seller link</p>
+                                <p style="margin: 0; color: ${PRODUCT_EMAIL_ACCENT}; font-size: 14px; line-height: 1.6; word-break: break-all;">${escapeHtml(sellerLinkUrl)}</p>
+                            </div>`;
+}
+
+function renderActivationStep(index: number, title: string, body: string, done = false) {
+    const marker = done
+        ? `<div style="width: 28px; height: 28px; border-radius: 14px; background-color: #059669; color: #ffffff; font-size: 14px; font-weight: 700; line-height: 28px; text-align: center;">&#10003;</div>`
+        : `<div style="width: 28px; height: 28px; border-radius: 14px; background-color: ${PRODUCT_EMAIL_ACCENT}; color: #ffffff; font-size: 14px; font-weight: 700; line-height: 28px; text-align: center;">${index}</div>`;
+    return `
+                            <tr>
+                                <td valign="top" style="width: 40px; padding: 0 0 20px;">${marker}</td>
+                                <td valign="top" style="padding: 2px 0 20px;">
+                                    <p style="margin: 0 0 4px; color: #111827; font-size: 16px; font-weight: 700;">${escapeHtml(title)}</p>
+                                    ${body}
+                                </td>
+                            </tr>`;
+}
+
+function renderWelcomeBody(params: ActivationReminderContent) {
+    const testStep = params.testDriveCompleted
+        ? renderActivationStep(1, 'Try it as your seller', `<p style="${ACTIVATION_SMALL_STYLE}">Done. You have already seen the form your sellers use and the sheet it creates.</p>`, true)
+        : renderActivationStep(1, 'Try it as your seller', `<p style="${ACTIVATION_SMALL_STYLE}">Start the seller test from your dashboard and fill it in with made-up answers. You see the same short form your sellers use and the finished sheet and PDF it creates. It does not count toward your plan.</p>`);
+
+    return `
+                            <p style="${ACTIVATION_TEXT_STYLE}">Thanks for signing up. Here is the quickest way to your first finished utility sheet.</p>
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 8px 0 4px;">
+                                ${testStep}
+                                ${renderActivationStep(2, 'Send your link to a seller', `<p style="${ACTIVATION_SMALL_STYLE}">Sellers open your link, enter the property address, and answer a short form on their phone. They do not need an account. Use the same link for every property.</p>${renderActivationLinkBox(params.sellerLinkUrl)}`)}
+                                ${renderActivationStep(3, 'Get the finished sheet', `<p style="${ACTIVATION_SMALL_STYLE}">When your seller submits, the sheet and PDF are ready for you to review and share with the buyer.</p>`)}
+                            </table>`;
+}
+
+function renderNextStepBody(params: ActivationReminderContent) {
+    const intro = params.testDriveCompleted
+        ? 'You have seen what your seller sees. The next step is sending your link to a real seller.'
+        : 'Your seller link is ready whenever you have a seller to send it to.';
+    const testNudge = params.testDriveCompleted
+        ? ''
+        : `<p style="${ACTIVATION_SMALL_STYLE} margin-top: 16px;">Not sure what your seller will see? Start the seller test from your dashboard first. It uses made-up answers and does not count toward your plan.</p>`;
+
+    return `
+                            <p style="${ACTIVATION_TEXT_STYLE}">${escapeHtml(intro)}</p>
+                            ${renderActivationLinkBox(params.sellerLinkUrl)}
+                            <p style="margin: 20px 0 8px; color: #111827; font-size: 14px; font-weight: 700;">Copy and paste this to your seller</p>
+                            <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px;">
+                                <p style="margin: 0; color: #374151; font-size: 14px; line-height: 1.6; word-break: break-word;">${escapeHtml(sellerTextMessage(params.sellerLinkUrl))}</p>
+                            </div>
+                            <p style="${ACTIVATION_SMALL_STYLE} margin-top: 16px;">No seller to send it to today? Add the link to your email signature or listing checklist so it is ready for the next one.</p>
+                            <p style="${ACTIVATION_SMALL_STYLE} margin-top: 12px;">Working on one property and want to fill in the address yourself? <a href="${escapeHtml(params.newRequestUrl)}" style="color: ${PRODUCT_EMAIL_ACCENT};">Create a request for one property</a>.</p>
+                            ${testNudge}`;
+}
+
+function generateActivationReminderHtml(params: ActivationReminderContent) {
     const greeting = params.fullName ? `Hi ${firstNameFromFullName(params.fullName) || params.fullName},` : 'Hello,';
-    const badgeText = params.stage === 'after_1d' ? 'Quick reminder' : 'Your link is ready';
-    const title = params.stage === 'after_1d' ? 'Your reusable seller link is still waiting' : 'Your reusable seller link is ready';
-    const intro =
-        params.stage === 'after_1d'
-            ? 'Your reusable seller link is ready and waiting. Use the same link for every listing, in your email signature or your text templates. There is nothing to create first.'
-            : 'Your UtilitySheet account is ready and so is your reusable seller link. You can start using it right away. There is no setup you have to finish first.';
+    const isWelcome = params.stage === 'after_15m';
+    const badgeText = isWelcome ? 'Welcome' : 'Your next step';
+    const title = activationReminderSubject(params.stage);
 
     return `
 <!DOCTYPE html>
@@ -1766,24 +1838,15 @@ function generateActivationReminderHtml(params: {
                     </tr>
                     <tr>
                         <td style="padding: 24px 32px 32px;">
-                            <p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">${escapeHtml(greeting)}</p>
-                            <p style="margin: 0 0 16px; color: #374151; font-size: 16px; line-height: 1.6;">${escapeHtml(intro)}</p>
+                            <p style="${ACTIVATION_TEXT_STYLE}">${escapeHtml(greeting)}</p>
+                            ${isWelcome ? renderWelcomeBody(params) : renderNextStepBody(params)}
 
-                            <div style="background-color: #f9fafb; border-radius: 10px; padding: 18px; margin: 20px 0; border-left: 4px solid ${PRODUCT_EMAIL_ACCENT};">
-                                <p style="margin: 0 0 8px; color: #111827; font-size: 14px; font-weight: 700;">Your reusable seller link</p>
-                                <p style="margin: 0; color: ${PRODUCT_EMAIL_ACCENT}; font-size: 14px; line-height: 1.6; word-break: break-all;">${escapeHtml(params.sellerLinkUrl)}</p>
-                            </div>
-
-                            <p style="margin: 0 0 20px; color: #374151; font-size: 15px; line-height: 1.6;">
-                                Open your setup page to copy the link and add your contact details, or go straight to the dashboard.
-                            </p>
-
-                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 8px;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 24px;">
                                 <tr>
                                     <td style="text-align: center;">
                                         ${renderBulletproofButton({
-        href: escapeHtml(params.setupUrl),
-        label: 'Open My Seller Link',
+        href: escapeHtml(params.dashboardUrl),
+        label: 'Open my dashboard',
         backgroundColor: PRODUCT_EMAIL_ACCENT,
         borderRadius: 10,
         fontWeight: 700,
@@ -1794,16 +1857,15 @@ function generateActivationReminderHtml(params: {
                                     </td>
                                 </tr>
                             </table>
+                            <p style="margin: 12px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6; text-align: center;">Your dashboard walks you through each step.</p>
 
-                            <p style="margin: 20px 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
-                                Want to skip setup? Go straight to your dashboard:<br>
-                                <a href="${escapeHtml(params.dashboardUrl)}" style="color: ${PRODUCT_EMAIL_ACCENT}; word-break: break-all;">${escapeHtml(params.dashboardUrl)}</a>
-                            </p>
+                            ${isWelcome ? `<p style="${ACTIVATION_SMALL_STYLE} margin-top: 24px;">Want your name, colors, and contact details on every sheet? <a href="${escapeHtml(params.setupUrl)}" style="color: ${PRODUCT_EMAIL_ACCENT};">Add your branding</a>.</p>` : ''}
+                            <p style="${ACTIVATION_SMALL_STYLE} margin-top: 16px;">Questions, or stuck on a step? Reply to this email.</p>
                         </td>
                     </tr>
                     <tr>
                         <td style="background-color: #f9fafb; padding: 18px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
-                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">Sent via UtilitySheet.</p>
+                            <p style="margin: 0; color: #9ca3af; font-size: 12px;">You are getting this because you created a UtilitySheet account in the last week.</p>
                         </td>
                     </tr>
                 </table>
@@ -1817,28 +1879,16 @@ function generateActivationReminderHtml(params: {
 
 export async function sendActivationReminderEmail({
     toEmail,
-    fullName,
-    stage,
-    setupUrl,
-    dashboardUrl,
-    sellerLinkUrl,
+    ...content
 }: SendActivationReminderEmailParams): Promise<{ success: boolean; error?: string }> {
-    const subject =
-        stage === 'after_1d'
-            ? 'Your UtilitySheet seller link is ready to share'
-            : 'Your UtilitySheet seller link is ready';
-    const html = generateActivationReminderHtml({
-        fullName,
-        stage,
-        setupUrl,
-        dashboardUrl,
-        sellerLinkUrl,
-    });
+    const subject = activationReminderSubject(content.stage);
+    const html = generateActivationReminderHtml(content);
 
     try {
         const { error } = await getResend().emails.send({
             from: 'UtilitySheet <noreply@utilitysheet.com>',
             to: toEmail,
+            replyTo: ACTIVATION_REPLY_TO,
             subject,
             html,
         });

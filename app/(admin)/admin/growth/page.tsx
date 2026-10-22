@@ -98,16 +98,17 @@ export default async function AdminGrowthPage() {
                                 rate={activation.dashboardReadyRate}
                             />
                             <FunnelStep
-                                label="Completed onboarding"
-                                value={activation.onboardingCompleted}
-                                total={total}
-                                rate={activation.onboardingCompletionRate}
-                            />
-                            <FunnelStep
                                 label="Seller link created"
                                 value={activation.sellerLinkReady}
                                 total={total}
                                 rate={total > 0 ? Math.round((activation.sellerLinkReady / total) * 100) : 0}
+                            />
+                            <FunnelStep
+                                label="Finished the seller test"
+                                value={activation.testDriveCompleted}
+                                total={total}
+                                rate={activation.testDriveRate}
+                                note="Optional step; accounts can send real requests without it."
                             />
                             <FunnelStep
                                 label="Created a request"
@@ -145,9 +146,9 @@ export default async function AdminGrowthPage() {
                                 href="/admin/users?activation=no-setup&role=user"
                                 className="flex items-center justify-between gap-3 rounded-lg border border-border/70 p-3 text-sm transition-colors hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                                <span className="text-muted-foreground">No setup and no request</span>
+                                <span className="text-muted-foreground">No request yet</span>
                                 <span className="font-semibold tabular-nums text-foreground">
-                                    {activation.noOnboardingNoRequest.toLocaleString()} · {activation.inactiveRate}%
+                                    {activation.noRequest.toLocaleString()} · {activation.inactiveRate}%
                                 </span>
                             </Link>
                             <Link

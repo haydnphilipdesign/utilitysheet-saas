@@ -94,11 +94,12 @@ describe('/api/test-drive', () => {
             defaultBrandProfile: { id: 'brand_1', contact_name: 'Test TC' },
         });
         mocks.checkRateLimit.mockResolvedValue({ success: true });
-        mocks.getTestDriveRequestState.mockResolvedValue({ request: null, hasLiveSubmission: false });
+        mocks.getTestDriveRequestState.mockResolvedValue({ request: null, hasLiveSubmission: false, testCount: 0 });
         mocks.getOrCreateTestDriveRequest.mockResolvedValue({
             request: demoRequest,
             created: true,
             hasLiveSubmission: false,
+            testCount: 1,
         });
         mocks.getTestDriveLifecycleEvents.mockResolvedValue([
             { event_type: 'test_drive_invitation_succeeded', event_data: null, created_at: '2026-07-21T10:00:00.000Z' },
@@ -134,16 +135,18 @@ describe('/api/test-drive', () => {
     it('reports eligible, resumable, completed, and live-submission states from account-scoped server data', async () => {
         expect(await (await GET()).json()).toEqual({ status: 'eligible' });
 
-        mocks.getTestDriveRequestState.mockResolvedValue({ request: demoRequest, hasLiveSubmission: false });
+        mocks.getTestDriveRequestState.mockResolvedValue({ request: demoRequest, hasLiveSubmission: false, testCount: 1 });
         expect(await (await GET()).json()).toEqual({
             status: 'ready',
             sellerUrl: '/s/seller_token',
             invitationDelivery: 'sent',
+            canStartAnother: true,
         });
 
         mocks.getTestDriveRequestState.mockResolvedValue({
             request: { ...demoRequest, status: 'submitted' },
             hasLiveSubmission: false,
+            testCount: 3,
         });
         mocks.getTestDriveLifecycleEvents.mockResolvedValue([
             { event_type: 'test_drive_delivery_failed', event_data: null, created_at: '2026-07-21T10:00:00.000Z' },
@@ -153,6 +156,7 @@ describe('/api/test-drive', () => {
             reviewUrl: '/packet/public_token',
             pdfUrl: '/api/packet/public_token/pdf',
             delivery: 'failed',
+            canStartAnother: false,
         });
 
         mocks.getTestDriveRequestState.mockResolvedValue({ request: demoRequest, hasLiveSubmission: true });
@@ -176,6 +180,8 @@ describe('/api/test-drive', () => {
             propertyAddress: '[TEST] 123 Maple Street, Anytown, PA 18301',
             brandProfileId: 'brand_1',
             utilityCategories: ['electric', 'water'],
+            startAnother: false,
+            limit: 3,
         }));
         expect(mocks.sendSellerNotificationEmail).toHaveBeenCalledWith(expect.objectContaining({
             sellerEmail: 'verified@example.com',
@@ -210,6 +216,7 @@ describe('/api/test-drive', () => {
             status: 'ready',
             sellerUrl: '/s/seller_token',
             invitationDelivery: 'failed',
+            canStartAnother: true,
         });
         expect(mocks.createEventLog).toHaveBeenCalledWith(expect.objectContaining({
             eventType: 'test_drive_invitation_failed',
@@ -248,6 +255,7 @@ describe('/api/test-drive', () => {
             status: 'ready',
             sellerUrl: '/s/seller_token',
             invitationDelivery: 'sent',
+            canStartAnother: true,
         });
     });
 
@@ -261,5 +269,94 @@ describe('/api/test-drive', () => {
         const response = await post();
         expect(await response.json()).toEqual({ status: 'ineligible', reason: 'live_submission' });
         expect(mocks.sendSellerNotificationEmail).not.toHaveBeenCalled();
+    });
+
+    describe('in the user’s own area', () => {
+        it('starts a new test at a made-up street in that area', async () => {
+            const areaRequest = { ...demoRequest, property_address: '[TEST] 123 Maple Street, Austin, TX 78704' };
+            mocks.getOrCreateTestDriveRequest.mockResolvedValue({
+                request: areaRequest,
+                created: true,
+                hasLiveSubmission: false,
+                testCount: 2,
+            });
+
+            const response = await post({ area: '  Austin,  TX 78704 ' });
+
+            expect(response.status).toBe(201);
+            expect(mocks.buildStructuredPropertyAddress).toHaveBeenCalledWith('[TEST] 123 Maple Street, Austin, TX 78704');
+            expect(mocks.getOrCreateTestDriveRequest).toHaveBeenCalledWith(expect.objectContaining({
+                propertyAddress: '[TEST] 123 Maple Street, Austin, TX 78704',
+                startAnother: true,
+                limit: 3,
+            }));
+            expect(mocks.sendSellerNotificationEmail).toHaveBeenCalledWith(expect.objectContaining({
+                propertyAddress: '[TEST] 123 Maple Street, Austin, TX 78704',
+            }));
+            expect(mocks.createEventLog).toHaveBeenCalledWith(expect.objectContaining({
+                eventType: 'request_created',
+                eventData: expect.objectContaining({ test_area: 'custom', is_demo: true }),
+            }), { signal: expect.any(AbortSignal) });
+            expect(JSON.stringify(mocks.createEventLog.mock.calls)).not.toContain('Austin');
+        });
+
+        it('treats a blank area as the sample address', async () => {
+            expect((await post({ area: '   ' })).status).toBe(201);
+            expect(mocks.getOrCreateTestDriveRequest).toHaveBeenCalledWith(expect.objectContaining({
+                propertyAddress: '[TEST] 123 Maple Street, Anytown, PA 18301',
+                startAnother: false,
+            }));
+        });
+
+        it.each([
+            ['a street address', '456 Oak Ave, Austin, TX 78704', 'not a street address'],
+            ['a ZIP alone', '78704', 'city and state'],
+            ['markup', '<b>Austin</b>, TX', 'city and state'],
+        ])('rejects %s before creating anything', async (_label, area, message) => {
+            const response = await post({ area });
+
+            expect(response.status).toBe(400);
+            const body = await response.json();
+            expect(body.code).toBe('invalid_area');
+            expect(body.error).toContain(message);
+            expect(mocks.getOrCreateTestDriveRequest).not.toHaveBeenCalled();
+            expect(mocks.sendSellerNotificationEmail).not.toHaveBeenCalled();
+        });
+
+        it('rejects a malformed body', async () => {
+            expect((await post({ area: 12 })).status).toBe(400);
+            const response = await POST(new Request('http://localhost/api/test-drive', { method: 'POST', body: '{nope' }));
+            expect(response.status).toBe(400);
+            expect(mocks.getOrCreateTestDriveRequest).not.toHaveBeenCalled();
+        });
+
+        it('says so when every test is used, without sending anything', async () => {
+            mocks.getOrCreateTestDriveRequest.mockResolvedValue({
+                request: { ...demoRequest, status: 'submitted' },
+                created: false,
+                hasLiveSubmission: false,
+                testCount: 3,
+            });
+
+            const response = await post({ area: 'Austin, TX' });
+
+            expect(response.status).toBe(409);
+            expect(await response.json()).toEqual({ error: 'You have used all 3 seller tests.', code: 'test_limit' });
+            expect(mocks.sendSellerNotificationEmail).not.toHaveBeenCalled();
+            expect(mocks.createEventLog).not.toHaveBeenCalled();
+        });
+
+        it('still refuses a test once a real seller has submitted', async () => {
+            mocks.getOrCreateTestDriveRequest.mockResolvedValue({
+                request: null,
+                created: false,
+                hasLiveSubmission: true,
+                testCount: 1,
+            });
+
+            const response = await post({ area: 'Austin, TX' });
+            expect(await response.json()).toEqual({ status: 'ineligible', reason: 'live_submission' });
+            expect(mocks.sendSellerNotificationEmail).not.toHaveBeenCalled();
+        });
     });
 });

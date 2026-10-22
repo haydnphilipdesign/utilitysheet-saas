@@ -4,11 +4,11 @@ import { sql } from '@/lib/neon/db';
 
 type ActivationFunnelAggregateRow = {
     total_accounts?: number | string | null;
-    onboarding_completed?: number | string | null;
+    test_drive_completed?: number | string | null;
     dashboard_ready?: number | string | null;
     has_request?: number | string | null;
     seller_link_ready?: number | string | null;
-    no_onboarding_no_request?: number | string | null;
+    no_request?: number | string | null;
     missing_defaults?: number | string | null;
     first_live_submission?: number | string | null;
     habitual_accounts?: number | string | null;
@@ -32,17 +32,17 @@ type ReferralLoopAggregateRow = {
 export type ActivationFunnelStats = {
     totalAccounts: number;
     dashboardReady: number;
-    onboardingCompleted: number;
+    testDriveCompleted: number;
     hasRequest: number;
     sellerLinkReady: number;
-    noOnboardingNoRequest: number;
+    noRequest: number;
     missingDefaults: number;
     firstLiveSubmission: number;
     habitualAccounts: number;
     paidAccounts: number;
     firstLiveSubmissionLast7d: number;
     dashboardReadyRate: number;
-    onboardingCompletionRate: number;
+    testDriveRate: number;
     firstRequestRate: number;
     inactiveRate: number;
     signupToActivationRate: number;
@@ -83,10 +83,10 @@ function percent(part: number, total: number) {
 export function toActivationFunnelStats(row: ActivationFunnelAggregateRow): ActivationFunnelStats {
     const totalAccounts = asCount(row.total_accounts);
     const dashboardReady = asCount(row.dashboard_ready);
-    const onboardingCompleted = asCount(row.onboarding_completed);
+    const testDriveCompleted = asCount(row.test_drive_completed);
     const hasRequest = asCount(row.has_request);
     const sellerLinkReady = asCount(row.seller_link_ready);
-    const noOnboardingNoRequest = asCount(row.no_onboarding_no_request);
+    const noRequest = asCount(row.no_request);
     const missingDefaults = asCount(row.missing_defaults);
     const firstLiveSubmission = asCount(row.first_live_submission);
     const habitualAccounts = asCount(row.habitual_accounts);
@@ -96,19 +96,19 @@ export function toActivationFunnelStats(row: ActivationFunnelAggregateRow): Acti
     return {
         totalAccounts,
         dashboardReady,
-        onboardingCompleted,
+        testDriveCompleted,
         hasRequest,
         sellerLinkReady,
-        noOnboardingNoRequest,
+        noRequest,
         missingDefaults,
         firstLiveSubmission,
         habitualAccounts,
         paidAccounts,
         firstLiveSubmissionLast7d,
         dashboardReadyRate: percent(dashboardReady, totalAccounts),
-        onboardingCompletionRate: percent(onboardingCompleted, totalAccounts),
+        testDriveRate: percent(testDriveCompleted, totalAccounts),
         firstRequestRate: percent(hasRequest, totalAccounts),
-        inactiveRate: percent(noOnboardingNoRequest, totalAccounts),
+        inactiveRate: percent(noRequest, totalAccounts),
         signupToActivationRate: percent(firstLiveSubmission, totalAccounts),
         activationToHabitRate: percent(habitualAccounts, firstLiveSubmission),
     };
@@ -167,6 +167,13 @@ export async function getActivationFunnelStats(): Promise<ActivationFunnelStats 
             LEFT JOIN intake_links il ON il.account_id = a.id
             GROUP BY a.id
         ),
+        test_drive_accounts AS (
+            SELECT DISTINCT account_id
+            FROM requests
+            WHERE COALESCE(is_demo, FALSE) = TRUE
+              AND status = 'submitted'
+              AND deleted_at IS NULL
+        ),
         live_submission_counts AS (
             SELECT
                 account_id,
@@ -187,13 +194,10 @@ export async function getActivationFunnelStats(): Promise<ActivationFunnelStats 
         SELECT
             COUNT(*)::int AS total_accounts,
             COUNT(*) FILTER (WHERE dc.has_active_org = 1 AND dc.has_brand_profile = 1)::int AS dashboard_ready,
-            COUNT(*) FILTER (WHERE a.onboarding_completed_at IS NOT NULL)::int AS onboarding_completed,
+            COUNT(*) FILTER (WHERE tda.account_id IS NOT NULL)::int AS test_drive_completed,
             COUNT(*) FILTER (WHERE COALESCE(rc.request_count, 0) > 0)::int AS has_request,
             COUNT(*) FILTER (WHERE dc.has_intake_link = 1)::int AS seller_link_ready,
-            COUNT(*) FILTER (
-                WHERE a.onboarding_completed_at IS NULL
-                  AND COALESCE(rc.request_count, 0) = 0
-            )::int AS no_onboarding_no_request,
+            COUNT(*) FILTER (WHERE COALESCE(rc.request_count, 0) = 0)::int AS no_request,
             COUNT(*) FILTER (
                 WHERE dc.has_active_org = 0
                    OR dc.has_brand_profile = 0
@@ -216,6 +220,7 @@ export async function getActivationFunnelStats(): Promise<ActivationFunnelStats 
         LEFT JOIN request_counts rc ON rc.account_id = a.id
         LEFT JOIN default_counts dc ON dc.account_id = a.id
         LEFT JOIN live_submission_counts lsc ON lsc.account_id = a.id
+        LEFT JOIN test_drive_accounts tda ON tda.account_id = a.id
         WHERE a.role = 'user'
     `;
 

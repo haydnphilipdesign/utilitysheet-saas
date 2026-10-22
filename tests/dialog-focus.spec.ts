@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 
 /**
  * Keyboard focus containment for dialogs built on components/ui/dialog.tsx.
- * Uses /onboarding (sample sheet dialog) and the dev-only
+ * Uses /test-fixtures/dashboard (sample sheet dialog) and the dev-only
  * /test-fixtures/dialogs page. Every /api call is mocked; nothing is
  * submitted or deleted.
  */
@@ -28,6 +28,10 @@ async function mockApis(page: Page): Promise<Writes> {
             return route.fulfill(json({ intakeLink: { slug: 'fixture', url: 'https://example.com/i/fixture', is_active: true } }));
         }
         if (url.endsWith('/api/test-drive')) return route.fulfill(json({ status: 'eligible' }));
+        if (url.includes('/api/requests?stats=true')) {
+            return route.fulfill(json({ total_requests: 0, draft: 0, sent: 0, in_progress: 0, submitted: 0, needs_attention: 0 }));
+        }
+        if (url.includes('/api/requests?')) return route.fulfill(json({ data: [], total: 0 }));
         return route.fulfill(json({ error: 'Not mocked' }, 404));
     });
     return writes;
@@ -139,8 +143,8 @@ async function exerciseDialog(page: Page, opener: Locator, checkInitial: (dialog
 test.describe('shared dialog keyboard focus', () => {
     test('sample sheet dialog keeps focus inside and returns it to the opener', async ({ page }) => {
         await mockApis(page);
-        await page.goto('/onboarding');
-        const opener = page.getByRole('button', { name: 'View sample sheet' });
+        await page.goto('/test-fixtures/dashboard');
+        const opener = page.getByRole('button', { name: 'Or view a sample sheet' });
         await expect(opener).toBeVisible();
 
         await exerciseDialog(page, opener, async (dialog) => {

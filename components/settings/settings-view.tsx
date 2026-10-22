@@ -45,6 +45,7 @@ const NOTIFICATION_DEFAULTS: NotificationPreferences = {
     collect_hoa_questions: true,
     contact_resolution: true,
     weekly_summary: false,
+    auto_seller_reminders: false,
 };
 
 // The plan arrives by webhook, so it can trail the return from checkout.

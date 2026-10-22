@@ -200,8 +200,8 @@ export default async function AdminDashboardPage() {
                     />
                     <AttentionChip
                         href="/admin/users?activation=no-setup&role=user"
-                        label="accounts with no setup and no request"
-                        value={activation?.noOnboardingNoRequest || 0}
+                        label="accounts with no request yet"
+                        value={activation?.noRequest || 0}
                         icon={UsersRound}
                         urgent
                     />

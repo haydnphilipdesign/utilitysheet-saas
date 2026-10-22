@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
     ArrowRight,
@@ -18,25 +18,18 @@ import {
 import { toast } from 'sonner';
 
 import { trackEvent } from '@/lib/analytics/events';
-import type { TestDriveSource, TestDriveState } from '@/lib/test-drive/types';
+import type { TestDriveSource } from '@/lib/test-drive/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SampleSheetDialog } from '@/components/test-drive/SampleSheetDialog';
+import { TestDriveAreaForm } from '@/components/test-drive/TestDriveAreaForm';
+import { useTestDrive } from '@/components/test-drive/use-test-drive';
 import { cn } from '@/lib/utils';
 
 type TestDriveCardProps = {
     source: TestDriveSource;
     reusableSellerLink?: string | null;
 };
-
-async function fetchState(method: 'GET' | 'POST' = 'GET'): Promise<TestDriveState> {
-    const response = await fetch('/api/test-drive', { method });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error(body.error || 'We could not load your seller test.');
-    }
-    return body as TestDriveState;
-}
 
 function PanelIcon({ children }: { children: ReactNode }) {
     return (
@@ -72,68 +65,9 @@ function outlineLinkClass(className?: string) {
  */
 export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps) {
     const headingId = useId();
-    const [state, setState] = useState<TestDriveState | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [starting, setStarting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const { state, loading, starting, error, areaError, clearAreaError, load, start } = useTestDrive(source);
     const [copied, setCopied] = useState(false);
     const [sampleOpen, setSampleOpen] = useState(false);
-    const viewedStateRef = useRef<string | null>(null);
-
-    const load = useCallback(async () => {
-        setLoading(true);
-        try {
-            setState(await fetchState());
-            setError(null);
-        } catch (loadError) {
-            setError(loadError instanceof Error ? loadError.message : 'We could not load your seller test.');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        void load();
-    }, [load]);
-
-    useEffect(() => {
-        if (!state || viewedStateRef.current === state.status) return;
-        viewedStateRef.current = state.status;
-        trackEvent('test_drive_offer_viewed', {
-            source,
-            state: state.status,
-        });
-    }, [source, state]);
-
-    // A test opened from the emailed link (for example on a phone) can finish
-    // elsewhere; refresh when the user comes back to this tab.
-    useEffect(() => {
-        if (state?.status !== 'ready') return;
-        const refresh = () => void load();
-        window.addEventListener('focus', refresh);
-        return () => window.removeEventListener('focus', refresh);
-    }, [load, state?.status]);
-
-    const start = async () => {
-        setStarting(true);
-        setError(null);
-        trackEvent('test_drive_started', { source });
-        try {
-            const next = await fetchState('POST');
-            if (next.status === 'ready') {
-                trackEvent('test_drive_opened', { source, action: 'open' });
-                // Same-tab navigation: one click, no popup blocking, and the
-                // seller flow links back to the dashboard.
-                window.location.assign(next.sellerUrl);
-                return;
-            }
-            setState(next);
-            setStarting(false);
-        } catch (startError) {
-            setError(startError instanceof Error ? startError.message : 'We could not start your seller test.');
-            setStarting(false);
-        }
-    };
 
     const copyReusableSellerLink = async () => {
         if (!reusableSellerLink) return;
@@ -153,6 +87,17 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
     if (source === 'dashboard' && !error && (!state || state.status === 'ineligible')) {
         return null;
     }
+
+    const anotherAreaForm = (state?.status === 'ready' || state?.status === 'completed') && state.canStartAnother ? (
+        <TestDriveAreaForm
+            mode="another"
+            starting={starting}
+            error={areaError}
+            onStart={start}
+            onClearError={clearAreaError}
+            buttonClassName="w-full sm:h-9 sm:w-fit"
+        />
+    ) : null;
 
     const renderTestPanel = () => {
         if (error) {
@@ -194,10 +139,17 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
                             </p>
                         </div>
                     </div>
-                    <Button type="button" variant="outline" onClick={start} disabled={starting} className="mt-auto w-full sm:h-9 sm:w-fit">
-                        {starting ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-                        {starting ? 'Starting your test…' : 'Start seller test'}
-                    </Button>
+                    <div className="mt-auto">
+                        <TestDriveAreaForm
+                            mode="first"
+                            starting={starting}
+                            error={areaError}
+                            onStart={start}
+                            onClearError={clearAreaError}
+                            buttonVariant="outline"
+                            buttonClassName="w-full sm:h-9 sm:w-fit"
+                        />
+                    </div>
                 </>
             );
         }
@@ -227,6 +179,7 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
                         <ArrowRight />
                         Resume seller test
                     </Link>
+                    {anotherAreaForm}
                 </>
             );
         }
@@ -275,6 +228,7 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
                             {newTabHint}
                         </a>
                     </div>
+                    {anotherAreaForm}
                 </>
             );
         }

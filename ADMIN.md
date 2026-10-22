@@ -25,6 +25,20 @@ breakpoint the same sidebar becomes a slide-over opened from the header. Routes 
 labels intentionally differ from their URL (`Seller Progress` → `/admin/abandonment`, `Workspaces` →
 `/admin/organizations`, `Customer Outreach` → `/admin/testimonial-candidates`).
 
+## Refresh behavior
+
+The shared admin toolbar refreshes the overview, Issues & Triage, Requests and Seller Progress
+every 30 seconds, and Feedback every 60 seconds. Users, Workspaces, Growth, Telemetry and Audit
+Logs refresh when returning to the tab. These automatic pages also refresh when connectivity
+returns. Other pages, including detail pages and editing tools, refresh manually.
+
+Refresh preserves the current URL (including filters and pagination), scroll and unaffected client
+state. Automatic reads are skipped while hidden or offline and overlapping refreshes are prevented.
+Open dialogs, inline triage/feedback editors, focused inputs and unapplied native form filters block
+both automatic and toolbar refreshes. Finish or cancel editing to resume. The timestamp records
+completion of a toolbar refresh transition; it is not a database event timestamp. Existing action
+buttons retain their own post-save refresh behavior. No background polling is added outside admin.
+
 ## Overview and Growth Split
 
 `/admin` carries only what an operator checks daily: total customer accounts, accounts with paid-plan access, total

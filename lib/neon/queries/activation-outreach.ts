@@ -7,10 +7,17 @@ export type ActivationOutreachCandidate = {
     auth_user_id: string | null;
     email: string;
     full_name: string | null;
+    test_drive_completed: boolean;
     created_at: string;
     stage: ActivationOutreachStage;
 };
 
+/**
+ * New accounts (created in the last 7 days, still open) with no real request
+ * yet. The window keeps older inactive accounts from being emailed. A failed
+ * send waits 6 hours before the next attempt for the same stage, since the
+ * cron runs every 15 minutes.
+ */
 export async function getDueActivationOutreachCandidates(limit = 50): Promise<ActivationOutreachCandidate[]> {
     if (!sql) return [];
 
@@ -30,12 +37,21 @@ export async function getDueActivationOutreachCandidates(limit = 50): Promise<Ac
                 a.email,
                 a.full_name,
                 a.created_at,
-                COALESCE(rc.request_count, 0) AS request_count
+                COALESCE(rc.request_count, 0) AS request_count,
+                EXISTS (
+                    SELECT 1
+                    FROM requests demo
+                    WHERE demo.account_id = a.id
+                      AND COALESCE(demo.is_demo, FALSE) = TRUE
+                      AND demo.status = 'submitted'
+                      AND demo.deleted_at IS NULL
+                ) AS test_drive_completed
             FROM accounts a
             LEFT JOIN request_counts rc ON rc.account_id = a.id
             WHERE a.role = 'user'
+              AND a.closure_status = 'active'
               AND COALESCE(a.email, '') <> ''
-              AND a.onboarding_completed_at IS NULL
+              AND a.created_at >= NOW() - INTERVAL '7 days'
               AND COALESCE(rc.request_count, 0) = 0
         )
         SELECT *
@@ -47,6 +63,7 @@ export async function getDueActivationOutreachCandidates(limit = 50): Promise<Ac
                 base.email,
                 base.full_name,
                 base.created_at,
+                base.test_drive_completed,
                 CASE
                     WHEN base.created_at <= NOW() - INTERVAL '1 day'
                         AND NOT EXISTS (
@@ -73,6 +90,15 @@ export async function getDueActivationOutreachCandidates(limit = 50): Promise<Ac
             FROM base
         ) candidates
         WHERE stage IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM activation_outreach_logs failed
+              WHERE failed.account_id = candidates.account_id
+                AND failed.campaign = 'activation_reengagement'
+                AND failed.stage = candidates.stage
+                AND failed.status = 'failed'
+                AND COALESCE((failed.metadata->>'attempted_at')::timestamptz, failed.created_at) > NOW() - INTERVAL '6 hours'
+          )
         ORDER BY created_at ASC
         LIMIT ${Math.max(1, Math.min(limit, 200))}
     `;

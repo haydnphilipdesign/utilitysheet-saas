@@ -69,7 +69,7 @@ export function NotificationsSection({ state, onRetry, notifications, status, on
         <SettingsSection
             icon={Bell}
             title="Email notifications"
-            description="Choose which emails UtilitySheet sends you. Each change saves as soon as you make it."
+            description="Choose which emails UtilitySheet sends you and your sellers. Each change saves as soon as you make it."
         >
             {state === 'loading' ? (
                 <LoadingRows label="Loading your notification settings…" rows={3} />
@@ -110,6 +110,18 @@ export function NotificationsSection({ state, onRetry, notifications, status, on
                         onChange={(checked) => onToggle('contact_resolution', checked)}
                         status={statusFor('contact_resolution')}
                     />
+                    <Separator />
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-semibold text-foreground">Emails to your sellers</h3>
+                        <ToggleRow
+                            id="notif-auto-seller-reminders"
+                            label="Remind sellers automatically"
+                            description="If a seller has not finished the form a day after they last worked on it, we email them one reminder with their link, in your branding. Only for requests where you added the seller’s email. Replies go to the email on your Branding Profile."
+                            checked={notifications.auto_seller_reminders}
+                            onChange={(checked) => onToggle('auto_seller_reminders', checked)}
+                            status={statusFor('auto_seller_reminders')}
+                        />
+                    </div>
                     {/* Weekly summary is intentionally not exposed. The cron route, query, and email
                         exist, but /api/cron/weekly-summary is not registered in vercel.json (only the
                         activation crons are), so no scheduling infrastructure runs it. Do not surface

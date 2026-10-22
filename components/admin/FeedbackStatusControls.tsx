@@ -75,7 +75,7 @@ export function FeedbackStatusControls({
     };
 
     return (
-        <div className="space-y-2 text-xs">
+        <div className="space-y-2 text-xs" data-admin-refresh-blocked={Boolean(target) || isPending}>
             <p className="text-muted-foreground">
                 <span className="font-medium text-foreground">{FEEDBACK_STATUS_LABELS[item.status]}</span>
                 {item.updatedByEmail && item.statusChangedAt

@@ -73,4 +73,37 @@ describe('GET /api/cron/activation-reengagement', () => {
 
         expect(sendActivationReminderEmailMock).toHaveBeenCalledTimes(2);
     });
+
+    it('passes seller-test progress to the email and stamps each attempt for the retry wait', async () => {
+        getDueActivationOutreachCandidatesMock.mockResolvedValue([
+            {
+                account_id: 'acct_1',
+                auth_user_id: 'auth_1',
+                email: 'one@example.com',
+                full_name: 'One User',
+                created_at: '2026-05-05T12:00:00.000Z',
+                stage: 'after_15m',
+                test_drive_completed: true,
+            },
+        ]);
+        sendActivationReminderEmailMock.mockResolvedValueOnce({ success: false, error: 'rejected' });
+
+        const response = await GET(new Request('http://localhost/api/cron/activation-reengagement', {
+            headers: { authorization: 'Bearer test-secret' },
+        }));
+        expect(response.status).toBe(200);
+
+        expect(sendActivationReminderEmailMock).toHaveBeenCalledWith(expect.objectContaining({
+            toEmail: 'one@example.com',
+            stage: 'after_15m',
+            testDriveCompleted: true,
+            dashboardUrl: expect.stringMatching(/\/dashboard$/),
+            newRequestUrl: expect.stringMatching(/\/dashboard\/requests\/new$/),
+        }));
+        expect(recordActivationOutreachAttemptMock).toHaveBeenCalledWith(expect.objectContaining({
+            accountId: 'acct_1',
+            status: 'failed',
+            metadata: expect.objectContaining({ reason: 'rejected', attempted_at: '2026-05-05T12:30:00.000Z' }),
+        }));
+    });
 });

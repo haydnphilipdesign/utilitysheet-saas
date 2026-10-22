@@ -96,6 +96,13 @@ export const sellerFormDeleteBodySchema = z.object({
     revision: z.number().int().positive(),
 }).strict();
 
+// The area's format is checked by testDriveAddressForArea, which also gives
+// the message the user sees. Other keys are dropped, not rejected: identity,
+// recipient and street always come from the server.
+export const testDriveStartBodySchema = z.object({
+    area: z.string().max(200).optional(),
+});
+
 export const sellerFormLinkBaseBodySchema = z.object({
     base: z.string().trim().min(1).max(60),
     revision: z.number().int().positive(),

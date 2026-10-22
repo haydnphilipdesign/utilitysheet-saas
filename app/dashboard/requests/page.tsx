@@ -338,6 +338,7 @@ export default function RequestsPage() {
                             >
                                 <option value="all">All statuses</option>
                                 <option value="needs_attention">Needs attention</option>
+                                <option value="waiting">Waiting on seller</option>
                                 <option value="draft">Draft</option>
                                 <option value="sent">Sent</option>
                                 <option value="in_progress">In progress</option>

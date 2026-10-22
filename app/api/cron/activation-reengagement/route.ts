@@ -72,7 +72,7 @@ export async function GET(request: Request) {
                     email: candidate.email,
                     stage: candidate.stage,
                     status: 'failed',
-                    metadata: { reason: 'missing_intake_link' },
+                    metadata: { reason: 'missing_intake_link', attempted_at: new Date().toISOString() },
                 });
                 continue;
             }
@@ -85,7 +85,9 @@ export async function GET(request: Request) {
                 stage: candidate.stage,
                 setupUrl: `${baseUrl}/onboarding`,
                 dashboardUrl: `${baseUrl}/dashboard`,
+                newRequestUrl: `${baseUrl}/dashboard/requests/new`,
                 sellerLinkUrl: `${baseUrl}${sellerFormLinkPath(intakeLink, links)}`,
+                testDriveCompleted: Boolean(candidate.test_drive_completed),
             });
 
             if (result.success) {
@@ -96,7 +98,7 @@ export async function GET(request: Request) {
                     email: candidate.email,
                     stage: candidate.stage,
                     status: 'sent',
-                    metadata: { trigger: 'cron' },
+                    metadata: { trigger: 'cron', attempted_at: new Date().toISOString() },
                     sentAt: new Date(),
                 });
             } else {
@@ -107,7 +109,7 @@ export async function GET(request: Request) {
                     email: candidate.email,
                     stage: candidate.stage,
                     status: 'failed',
-                    metadata: { trigger: 'cron', reason: result.error || 'send_failed' },
+                    metadata: { trigger: 'cron', reason: result.error || 'send_failed', attempted_at: new Date().toISOString() },
                 });
             }
         }

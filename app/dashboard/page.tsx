@@ -14,10 +14,10 @@ import {
     Loader2,
     Megaphone,
     RotateCcw,
-    Settings2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { FirstRunGuide } from '@/components/dashboard/first-run-guide';
 import { ReusableLinkActions } from '@/components/dashboard/reusable-link-actions';
 import { TeamWelcome, type TeamWelcomeWorkspace } from '@/components/dashboard/team-welcome';
 import { ReferralCreditCard } from '@/components/referrals/referral-credit-card';
@@ -38,6 +38,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { generatePacketPdf, notifyPacketPdfFailure } from '@/lib/pdf-generator';
 import { trackEvent } from '@/lib/analytics/events';
 import { mergeFeaturedProductUpdate } from '@/lib/product-updates';
+import { REQUEST_NEEDS_ATTENTION_DAYS } from '@/lib/requests/listing';
 import type { DashboardStats, ProductUpdate, Request } from '@/types';
 import { TestDriveCard } from '@/components/test-drive/TestDriveCard';
 
@@ -76,6 +77,28 @@ const EMPTY_STATS: DashboardStats = {
     submitted: 0,
     needs_attention: 0,
 };
+
+const FIRST_RUN_GUIDE_HIDDEN_KEY = 'firstRunGuideHidden';
+
+function readGuideHidden(userId: string | undefined) {
+    if (!userId) return false;
+    try {
+        return localStorage.getItem(`${FIRST_RUN_GUIDE_HIDDEN_KEY}:${userId}`) === '1';
+    } catch {
+        return false;
+    }
+}
+
+function writeGuideHidden(userId: string | undefined, hidden: boolean) {
+    if (!userId) return;
+    try {
+        const key = `${FIRST_RUN_GUIDE_HIDDEN_KEY}:${userId}`;
+        if (hidden) localStorage.setItem(key, '1');
+        else localStorage.removeItem(key);
+    } catch {
+        // Hiding is a convenience; the guide simply shows again next visit.
+    }
+}
 
 async function fetchJson<T>(url: string): Promise<T> {
     const response = await fetch(url);
@@ -283,7 +306,8 @@ export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
     const [statsLoaded, setStatsLoaded] = useState(false);
     const [usageInfo, setUsageInfo] = useState<{ used: number; limit: number; plan: string } | null>(null);
-    const [showSetupPrompt, setShowSetupPrompt] = useState(false);
+    const [invitedMember, setInvitedMember] = useState(false);
+    const [guideHiddenChoice, setGuideHiddenChoice] = useState<boolean | null>(null);
     const [workspace, setWorkspace] = useState<TeamWelcomeWorkspace | null>(null);
     const [hasOtherWorkspaces, setHasOtherWorkspaces] = useState(false);
     const [intakeLink, setIntakeLink] = useState<{ url: string; slug: string; isActive?: boolean } | null>(null);
@@ -297,6 +321,22 @@ export default function DashboardPage() {
     const [updates, setUpdates] = useState<ProductUpdate[]>([]);
     const [updatesLoading, setUpdatesLoading] = useState(true);
     const [dismissedUpdateId, setDismissedUpdateId] = useState<string | null>(null);
+
+    // First run lasts until the workspace has a submitted real sheet. Invited
+    // members of a Teams workspace get the Team welcome instead; their admin
+    // owns setup. Read during render: the guide only appears after data loads,
+    // so server and first client render never differ on it.
+    const guideHidden = guideHiddenChoice ?? readGuideHidden(stackUser?.id);
+    const showFirstRunGuide = statsLoaded && stats.submitted === 0 && !invitedMember && !guideHidden;
+    const linkSource = showFirstRunGuide ? 'dashboard_first_run_guide' : 'dashboard_reusable_link_card';
+    const [accountName, setAccountName] = useState<string | null>(null);
+    const firstName = (stackUser?.displayName || accountName)?.trim().split(/\s+/)[0] || null;
+
+    const setFirstRunGuideHidden = useCallback((hidden: boolean, completedSteps: number) => {
+        writeGuideHidden(stackUser?.id, hidden);
+        setGuideHiddenChoice(hidden);
+        trackEvent('first_run_guide_toggled', { hidden, completed_steps: completedSteps });
+    }, [stackUser?.id]);
 
     const loadDashboardData = useCallback(async () => {
         setLoading(true);
@@ -314,7 +354,7 @@ export default function DashboardPage() {
             fetchJson<DashboardStats>('/api/requests?stats=true'),
             fetchJson<{
                 usage?: { used: number; limit: number; plan: string };
-                account?: { onboarding_completed_at?: string | null };
+                account?: { full_name?: string | null };
                 activeOrganization?: TeamWelcomeWorkspace | null;
                 organizations?: unknown[];
             }>('/api/account'),
@@ -362,12 +402,12 @@ export default function DashboardPage() {
         if (accountResult.status === 'fulfilled') {
             const activeWorkspace = accountResult.value.activeOrganization || null;
             setUsageInfo(accountResult.value.usage || null);
+            setAccountName(accountResult.value.account?.full_name || null);
             setWorkspace(activeWorkspace);
             setHasOtherWorkspaces((accountResult.value.organizations?.length || 0) > 1);
             // Setup creates a default Branding Profile for the workspace, which is
             // not a member's to do in a team they were invited to.
-            const invitedMember = activeWorkspace?.role === 'member' && activeWorkspace?.subscription_status === 'team';
-            setShowSetupPrompt(!accountResult.value.account?.onboarding_completed_at && !invitedMember);
+            setInvitedMember(activeWorkspace?.role === 'member' && activeWorkspace?.subscription_status === 'team');
         } else {
             console.error('Error fetching dashboard account context:', accountResult.reason);
             setUsageInfo(null);
@@ -412,15 +452,15 @@ export default function DashboardPage() {
     }, []);
 
     useEffect(() => {
-        if (!showSetupPrompt || !intakeLink?.url || firstRunLinkViewedRef.current) {
+        if (!showFirstRunGuide || !intakeLink?.url || firstRunLinkViewedRef.current) {
             return;
         }
 
         firstRunLinkViewedRef.current = true;
         trackEvent('dashboard_first_run_link_viewed', {
-            source: 'dashboard_first_run_card',
+            source: 'dashboard_first_run_guide',
         });
-    }, [intakeLink?.url, showSetupPrompt]);
+    }, [intakeLink?.url, showFirstRunGuide]);
 
     const handleCopyDashboardIntakeLink = useCallback(async () => {
         if (!intakeLink?.url) return;
@@ -428,13 +468,11 @@ export default function DashboardPage() {
             await navigator.clipboard.writeText(intakeLink.url);
             setCopiedDashboardLink(true);
             setTimeout(() => setCopiedDashboardLink(false), 2000);
-            trackEvent('seller_link_copied', {
-                source: showSetupPrompt ? 'dashboard_first_run_card' : 'dashboard_reusable_link_card',
-            });
+            trackEvent('seller_link_copied', { source: linkSource });
         } catch {
             toast.error('We couldn’t copy the link.');
         }
-    }, [intakeLink?.url, showSetupPrompt]);
+    }, [intakeLink?.url, linkSource]);
 
     const handleCopyReusableLinkSms = useCallback(async () => {
         if (!intakeLink?.url) return;
@@ -442,14 +480,12 @@ export default function DashboardPage() {
             await navigator.clipboard.writeText(
                 `Hi, please use this link to fill in the utility providers for your property. No account is needed: ${intakeLink.url}`
             );
-            trackEvent('seller_link_sms_copied', {
-                source: showSetupPrompt ? 'dashboard_first_run_card' : 'dashboard_reusable_link_card',
-            });
+            trackEvent('seller_link_sms_copied', { source: linkSource });
             toast.success('Text message copied');
         } catch {
             toast.error('We couldn’t copy the text message.');
         }
-    }, [intakeLink?.url, showSetupPrompt]);
+    }, [intakeLink?.url, linkSource]);
 
     const handleOpenReusableLinkEmail = useCallback(() => {
         if (!intakeLink?.url) return;
@@ -458,11 +494,9 @@ export default function DashboardPage() {
             `Hi,\n\nPlease use the link below to fill in the utility providers for your property. No account is needed.\n\n${intakeLink.url}\n\nThank you.`
         );
 
-        trackEvent('seller_link_email_opened', {
-            source: showSetupPrompt ? 'dashboard_first_run_card' : 'dashboard_reusable_link_card',
-        });
+        trackEvent('seller_link_email_opened', { source: linkSource });
         window.open(`mailto:?subject=${subject}&body=${body}`);
-    }, [intakeLink?.url, showSetupPrompt]);
+    }, [intakeLink?.url, linkSource]);
 
     const handleCopySellerLink = useCallback(async (request: Request) => {
         const token = request.seller_token || request.public_token;
@@ -549,81 +583,69 @@ export default function DashboardPage() {
             />
 
             <PageHeader
-                title="Dashboard"
-                description="Share your seller link, follow up on active work, and review completed sheets."
+                title={showFirstRunGuide && firstName ? `Welcome, ${firstName}` : 'Dashboard'}
+                description={showFirstRunGuide
+                    ? 'Here is how to get your first finished utility sheet.'
+                    : 'Share your seller link, follow up on active work, and review completed sheets.'}
             />
 
             <TeamWelcome workspace={workspace} hasOtherWorkspaces={hasOtherWorkspaces} />
 
-            <Card className="gap-0 border-primary/25 bg-card/70 py-0 backdrop-blur-sm">
-                <CardHeader className="border-b border-border/60 py-4 sm:py-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <CardTitle>
-                                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                                    <Link2 className="h-5 w-5 text-primary" />
-                                    {showSetupPrompt ? 'Your seller link is ready' : 'Reusable seller link'}
-                                </h2>
-                            </CardTitle>
-                            <CardDescription className="mt-1 max-w-3xl">
-                                Share one link that never changes. Sellers enter the property address and fill in the utility details themselves.
-                            </CardDescription>
-                        </div>
-                        <Badge variant="outline" className="w-fit border-primary/30 text-primary">
-                            Start here
-                        </Badge>
-                    </div>
-                </CardHeader>
+            {showFirstRunGuide ? (
+                <FirstRunGuide
+                    totalRequests={stats.total_requests}
+                    submittedRequests={stats.submitted}
+                    sellerLink={intakeLink}
+                    sellerLinkError={intakeError}
+                    copied={copiedDashboardLink}
+                    onCopyLink={handleCopyDashboardIntakeLink}
+                    onCopySms={handleCopyReusableLinkSms}
+                    onOpenEmail={handleOpenReusableLinkEmail}
+                    onOpenLink={() => intakeLink?.url && window.open(intakeLink.url, '_blank', 'noopener,noreferrer')}
+                    onRetrySellerLink={loadDashboardData}
+                    onHide={(completedSteps) => setFirstRunGuideHidden(true, completedSteps)}
+                />
+            ) : null}
 
-                <CardContent className="space-y-4 py-4 sm:py-5">
-                    <FormShareSelector onSelect={selectShareForm} />
-                    {intakeLink?.url && intakeLink.isActive !== false ? (
-                        <ReusableLinkActions
-                            url={intakeLink.url}
-                            copied={copiedDashboardLink}
-                            onCopyLink={handleCopyDashboardIntakeLink}
-                            onCopySms={handleCopyReusableLinkSms}
-                            onOpenEmail={handleOpenReusableLinkEmail}
-                            onOpenLink={() => window.open(intakeLink.url, '_blank', 'noopener,noreferrer')}
-                        />
-                    ) : (
-                        <div role={intakeError ? 'alert' : 'status'} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-4">
-                            <p className="text-sm text-muted-foreground">
-                                {intakeLink?.isActive === false ? 'This seller form is paused.' : 'Unable to load your reusable link right now.'}
-                            </p>
-                            <Button type="button" variant="outline" size="sm" onClick={loadDashboardData}>
-                                <RotateCcw />
-                                Retry
-                            </Button>
-                        </div>
-                    )}
+            {/* During first run the guide shares the default form's link from
+                /api/intake-link; choosing among saved forms waits until later. */}
+            {showFirstRunGuide ? null : (
+                <Card className="gap-0 border-primary/25 bg-card/70 py-0 backdrop-blur-sm">
+                    <CardHeader className="border-b border-border/60 py-4 sm:py-4">
+                        <CardTitle>
+                            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                                <Link2 className="h-5 w-5 text-primary" />
+                                Reusable seller link
+                            </h2>
+                        </CardTitle>
+                        <CardDescription className="mt-1 max-w-3xl">
+                            Share one link that never changes. Sellers enter the property address and fill in the utility details themselves.
+                        </CardDescription>
+                    </CardHeader>
 
-                    {showSetupPrompt ? (
-                        <div className="rounded-lg border border-border bg-background/45 p-4">
-                            <div className="grid gap-3 sm:grid-cols-3">
-                                {[
-                                    'Seller enters the property address',
-                                    'Utility details are collected for you',
-                                    'You review the completed sheet',
-                                ].map((step, index) => (
-                                    <div key={step} className="flex items-start gap-2 text-xs text-muted-foreground">
-                                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
-                                            {index + 1}
-                                        </span>
-                                        <span className="pt-0.5">{step}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="mt-4 flex flex-col gap-2 border-t border-border/70 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                                <p className="text-xs text-muted-foreground">
-                                    Branding and contact details are optional before your first share.
+                    <CardContent className="space-y-4 py-4 sm:py-5">
+                        <FormShareSelector onSelect={selectShareForm} />
+                        {intakeLink?.url && intakeLink.isActive !== false ? (
+                            <ReusableLinkActions
+                                url={intakeLink.url}
+                                copied={copiedDashboardLink}
+                                onCopyLink={handleCopyDashboardIntakeLink}
+                                onCopySms={handleCopyReusableLinkSms}
+                                onOpenEmail={handleOpenReusableLinkEmail}
+                                onOpenLink={() => window.open(intakeLink.url, '_blank', 'noopener,noreferrer')}
+                            />
+                        ) : (
+                            <div role={intakeError ? 'alert' : 'status'} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-4">
+                                <p className="text-sm text-muted-foreground">
+                                    {intakeLink?.isActive === false ? 'This seller form is paused.' : 'Unable to load your reusable link right now.'}
                                 </p>
-                                <Link href="/onboarding" className="text-xs font-medium text-primary hover:underline">
-                                    Finish optional setup
-                                </Link>
+                                <Button type="button" variant="outline" size="sm" onClick={loadDashboardData}>
+                                    <RotateCcw />
+                                    Retry
+                                </Button>
                             </div>
-                        </div>
-                    ) : (
+                        )}
+
                         <Accordion className="border-border bg-background/35">
                             <AccordionItem value="reusable-link-help">
                                 <AccordionTrigger className="min-h-10 px-3 py-2.5 text-sm">
@@ -641,61 +663,67 @@ export default function DashboardPage() {
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
-                    )}
 
-                    <div className="flex justify-end">
-                        <Link
-                            href="/dashboard/settings?tab=link"
-                            className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                            <Settings2 className="h-3.5 w-3.5" />
-                            Manage seller forms
-                        </Link>
-                    </div>
-                </CardContent>
-            </Card>
+                        {guideHidden && statsLoaded && stats.submitted === 0 && !invitedMember ? (
+                            <div className="flex justify-end">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setFirstRunGuideHidden(false, 0)}
+                                    className="text-xs text-muted-foreground"
+                                >
+                                    Show the getting started guide
+                                </Button>
+                            </div>
+                        ) : null}
+                    </CardContent>
+                </Card>
+            )}
 
-            <TestDriveCard source="dashboard" reusableSellerLink={intakeLink?.url} />
+            {showFirstRunGuide ? null : <TestDriveCard source="dashboard" reusableSellerLink={intakeLink?.url} />}
 
-            <div className="grid gap-4 xl:grid-cols-2">
-                <WorkSection
-                    title="Needs your attention"
-                    description="Sent requests that have been waiting more than three days."
-                    href="/dashboard/requests?status=needs_attention"
-                    linkLabel="View all"
-                    requests={attentionWork.requests}
-                    total={attentionWork.total}
-                    error={attentionWork.error}
-                    emptyTitle="Nothing needs attention"
-                    emptyDescription="You are caught up. Requests that need follow-up will appear here."
-                    onRetry={loadDashboardData}
-                    onCopySellerLink={handleCopySellerLink}
-                    onSendReminder={handleSendReminder}
-                    onDownloadPdf={handleDownloadPdf}
-                    onDelete={setDeleteTarget}
-                    sendingReminderId={sendingReminderId}
-                    downloadingPdfToken={downloadingPdfToken}
-                />
+            {showFirstRunGuide && !hasAnyRequests ? null : (
+                <div className="grid gap-4 xl:grid-cols-2">
+                    <WorkSection
+                        title="Needs your attention"
+                        description={`Your seller has not done anything for ${REQUEST_NEEDS_ATTENTION_DAYS} days. Send the link again or a reminder.`}
+                        href="/dashboard/requests?status=needs_attention"
+                        linkLabel="View all"
+                        requests={attentionWork.requests}
+                        total={attentionWork.total}
+                        error={attentionWork.error}
+                        emptyTitle="Nothing needs attention"
+                        emptyDescription="You are caught up. Requests that need follow-up will appear here."
+                        onRetry={loadDashboardData}
+                        onCopySellerLink={handleCopySellerLink}
+                        onSendReminder={handleSendReminder}
+                        onDownloadPdf={handleDownloadPdf}
+                        onDelete={setDeleteTarget}
+                        sendingReminderId={sendingReminderId}
+                        downloadingPdfToken={downloadingPdfToken}
+                    />
 
-                <WorkSection
-                    title="Recently submitted"
-                    description="The latest utility sheets ready for review."
-                    href="/dashboard/requests?status=submitted"
-                    linkLabel="View all"
-                    requests={recentWork.requests}
-                    total={recentWork.total}
-                    error={recentWork.error}
-                    emptyTitle="No submitted sheets yet"
-                    emptyDescription="Sheets appear here as soon as a seller submits."
-                    onRetry={loadDashboardData}
-                    onCopySellerLink={handleCopySellerLink}
-                    onSendReminder={handleSendReminder}
-                    onDownloadPdf={handleDownloadPdf}
-                    onDelete={setDeleteTarget}
-                    sendingReminderId={sendingReminderId}
-                    downloadingPdfToken={downloadingPdfToken}
-                />
-            </div>
+                    <WorkSection
+                        title="Recently submitted"
+                        description="The latest utility sheets ready for review."
+                        href="/dashboard/requests?status=submitted"
+                        linkLabel="View all"
+                        requests={recentWork.requests}
+                        total={recentWork.total}
+                        error={recentWork.error}
+                        emptyTitle="No submitted sheets yet"
+                        emptyDescription="Sheets appear here as soon as a seller submits."
+                        onRetry={loadDashboardData}
+                        onCopySellerLink={handleCopySellerLink}
+                        onSendReminder={handleSendReminder}
+                        onDownloadPdf={handleDownloadPdf}
+                        onDelete={setDeleteTarget}
+                        sendingReminderId={sendingReminderId}
+                        downloadingPdfToken={downloadingPdfToken}
+                    />
+                </div>
+            )}
 
             {statsLoaded && hasAnyRequests ? (
                 <section aria-labelledby="dashboard-work-summary" className="space-y-3">
@@ -717,9 +745,9 @@ export default function DashboardPage() {
                     </div>
                     <div className="grid gap-3 sm:grid-cols-3">
                         <MetricLink
-                            href="/dashboard/requests?status=sent"
+                            href="/dashboard/requests?status=waiting"
                             label="Waiting on seller"
-                            value={stats.sent}
+                            value={stats.waiting ?? stats.sent + stats.in_progress}
                             icon={Clock3}
                             tone="text-blue-600 dark:text-blue-400"
                         />

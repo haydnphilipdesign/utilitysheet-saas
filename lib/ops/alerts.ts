@@ -14,7 +14,7 @@
  */
 import { getResend } from '@/lib/resend';
 import { AI_HEALTH_LABELS, loadAiHealth, type AiFeatureHealth, type AiHealthConfig } from '@/lib/ops/ai-health';
-import { JOB_LABELS, jobOverdueMinutes, getJobOverdueHours, type JobStatus } from '@/lib/ops/overview';
+import { JOB_LABELS, JOB_SCHEDULES, jobOverdueMinutes, getJobOverdueHours, type JobStatus } from '@/lib/ops/overview';
 import { getStatementExecutor, type StatementExecutor } from '@/lib/neon/statements';
 
 export type AlertConfig = {
@@ -85,7 +85,7 @@ export function evaluateAlertConditions(snapshot: AlertSnapshot, config: AlertCo
         conditions.push({
             key: `job_overdue:${job.jobName}`,
             firing: job.health === 'overdue',
-            summary: `${JOB_LABELS[job.jobName]} has not succeeded in over ${job.jobName === 'ops_monitor' ? `${overdueMinutes} minutes` : `${config.jobOverdueHours} hours`}`,
+            summary: `${JOB_LABELS[job.jobName]} has not succeeded in over ${JOB_SCHEDULES[job.jobName].intervalMinutes < 24 * 60 ? `${overdueMinutes} minutes` : `${config.jobOverdueHours} hours`}`,
             evaluable: job.health === 'overdue' || job.lastStatus === 'success',
         });
         conditions.push({

@@ -58,6 +58,16 @@ type AnalyticsEventMap = {
   dashboard_first_run_link_viewed: BasePayload & {
     source: string;
   };
+  first_run_guide_viewed: BasePayload & {
+    completed_steps: number;
+  };
+  first_run_guide_action: BasePayload & {
+    action: "new_request" | "view_requests" | "branding" | "sample_sheet";
+  };
+  first_run_guide_toggled: BasePayload & {
+    hidden: boolean;
+    completed_steps: number;
+  };
   progressive_setup_viewed: BasePayload & {
     source: string;
   };
@@ -195,6 +205,8 @@ type AnalyticsEventMap = {
   };
   test_drive_started: BasePayload & {
     source: "onboarding" | "dashboard";
+    /** Whether the user entered their own area; the area itself is never sent. */
+    area: "sample" | "custom";
   };
   test_drive_opened: BasePayload & {
     source: "onboarding" | "dashboard";

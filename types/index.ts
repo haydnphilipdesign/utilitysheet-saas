@@ -593,4 +593,6 @@ export interface DashboardStats {
     in_progress: number;
     submitted: number;
     needs_attention: number;
+    /** Sent or opened, not submitted, created within the Needs Attention window. */
+    waiting?: number;
 }

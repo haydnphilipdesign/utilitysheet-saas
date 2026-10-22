@@ -87,7 +87,7 @@ export function TriageControls({
     };
 
     return (
-        <div className="space-y-2 text-xs">
+        <div className="space-y-2 text-xs" data-admin-refresh-blocked={Boolean(action) || isPending}>
             <p className="text-muted-foreground">
                 <span className="font-medium text-foreground">{STATE_LABELS[item.state]}</span>
                 {item.returned === 'snooze_expired' ? ' · snooze ended, back in the queue' : ''}
