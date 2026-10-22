@@ -154,7 +154,7 @@ export function MarketingCapabilities() {
               "02",
               "Your name on the handoff",
               "PRO + TEAMS",
-              "Add your logo and colors to the finished PDF and use a branded seller link for a consistent client experience.",
+              "Add your logo and colors to the finished PDF and choose your own link name, like utilitysheet.com/form/yourname, for a consistent client experience.",
             ],
             [
               "03",

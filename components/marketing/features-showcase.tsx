@@ -117,7 +117,7 @@ const growth: { eyebrow: string; title: ReactNode; copy: string; points: string[
     eyebrow: "BRANDING",
     title: <>Your name on <em>the handoff.</em></>,
     copy: "Branding Profiles carry your logo, colors, and contact details onto the seller form, the web sheet, and the PDF.",
-    points: ["Branded seller link", "Branded PDFs and completion attachments", "No UtilitySheet footer"],
+    points: ["Your own link name", "Branded PDFs and completion attachments", "No UtilitySheet footer"],
     mock: <MockBranding />,
   },
   {

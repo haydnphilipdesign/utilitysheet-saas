@@ -39,7 +39,7 @@ const tiers = [
     features: [
       "Use UtilitySheet on every file",
       "Up to 10 saved seller forms per workspace",
-      "Custom branded link",
+      "Your own link name, like utilitysheet.com/form/yourname",
       "Property Handoff Packet mode",
       "Edit sheets after the seller submits",
       "Custom PDF branding",

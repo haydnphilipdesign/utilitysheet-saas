@@ -145,7 +145,8 @@ export const pricingTiers = [
       'Property Handoff Packet mode',
       'Edit submitted sheets after seller submission',
       'Live updates to future PDF downloads',
-      'Custom branding and branded links',
+      'Custom branding',
+      'Your own link name, like utilitysheet.com/form/yourname',
       'Branded PDF attachments',
       'Locked submissions unlocked',
       'Priority support',
@@ -240,7 +241,7 @@ export const featureHighlights = [
   {
     title: 'Your own branding on paid plans',
     description:
-      'Paid plans can add your logo, colors, branded link, and branded PDF output so the sheet looks like it came from your team.',
+      'Paid plans can add your logo, colors, and branded PDF output so the sheet looks like it came from your team, and you can choose your own link name, like utilitysheet.com/form/yourname.',
   },
 ] as const;
 
