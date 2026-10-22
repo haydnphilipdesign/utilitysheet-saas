@@ -21,9 +21,13 @@ export const REMINDER_RETRY_WINDOW_SECONDS = 23 * 60 * 60;
 /** An unknown outcome blocks fresh sends for as long as the provider could still deduplicate it. */
 export const REMINDER_UNKNOWN_BLOCK_SECONDS = 24 * 60 * 60;
 
+/** Stored as the operation's `reason` for reminders sent by the automatic job. */
+export const AUTOMATIC_REMINDER_REASON = 'automatic';
+
 export type ReminderActor =
     | { type: 'admin'; admin: AdminActor; reason: string }
-    | { type: 'agent'; accountId: string; ipAddress: string | null; userAgent: string | null };
+    /** `automatic`: sent by the scheduled job on the owner's behalf, per their setting. */
+    | { type: 'agent'; accountId: string; ipAddress: string | null; userAgent: string | null; automatic?: boolean };
 
 export type ReminderClaimOutcome =
     | 'CLAIMED'
@@ -205,7 +209,9 @@ export function reminderClaimStatements(input: {
                 input.requestId,
                 input.actor.type,
                 actorAccountId(input.actor),
-                input.actor.type === 'admin' ? input.actor.reason : null,
+                input.actor.type === 'admin'
+                    ? input.actor.reason
+                    : input.actor.automatic ? AUTOMATIC_REMINDER_REASON : null,
                 input.recipientEmail,
                 input.payloadFingerprint,
                 isAdmin,
@@ -275,6 +281,7 @@ export async function finalizeReminderAccepted(input: Db & {
                         'operationId', op.id,
                         'adminId', CASE WHEN op.actor_type = 'admin' THEN op.actor_account_id::text END,
                         'reason', CASE WHEN op.actor_type = 'admin' THEN op.reason END,
+                        'trigger', CASE WHEN op.actor_type = 'agent' AND op.reason = 'automatic' THEN 'automatic' END,
                         'verifiedManually', CASE WHEN $5::boolean THEN TRUE END
                     )),
                     $3::text, $4::text

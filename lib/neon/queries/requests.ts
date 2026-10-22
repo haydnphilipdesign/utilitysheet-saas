@@ -16,6 +16,7 @@ import type {
 import {
     DEFAULT_REQUEST_LIST_SORT,
     REQUEST_NEEDS_ATTENTION_DAYS,
+    REQUEST_NEEDS_ATTENTION_WINDOW_DAYS,
     REQUESTS_DEFAULT_PAGE_SIZE,
     type RequestListOwnerFilter,
     type RequestListSort,
@@ -62,10 +63,13 @@ export async function getRequests(
     const limit = Math.min(100, Math.max(1, options.limit || REQUESTS_DEFAULT_PAGE_SIZE));
     const search = options.search?.trim() || null;
     const filterStatus = options.status || 'all';
-    const status = filterStatus === 'all' || filterStatus === 'needs_attention'
+    const status = filterStatus === 'all' || filterStatus === 'needs_attention' || filterStatus === 'waiting'
         ? null
         : filterStatus;
     const needsAttention = filterStatus === 'needs_attention';
+    // Waiting on the seller: sent, or opened and not yet submitted, within the
+    // same window as Needs Attention so long-abandoned requests drop out.
+    const waiting = filterStatus === 'waiting';
     const sort = options.sort || DEFAULT_REQUEST_LIST_SORT;
     const canViewLockedDetails = options.canViewLockedDetails === true;
     const mineOnly = options.owner === 'mine';
@@ -107,11 +111,13 @@ export async function getRequests(
                     )
                 )
                 AND (${status}::text IS NULL OR status = ${status})
+                AND (${waiting}::boolean = FALSE OR (status IN ('sent', 'in_progress') AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')))
                 AND (
                     ${needsAttention}::boolean = FALSE
                     OR (
-                        status = 'sent'
-                        AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                        status IN ('sent', 'in_progress')
+                        AND COALESCE(last_activity_at, created_at) < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                        AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')
                     )
                 )
         `
@@ -133,11 +139,13 @@ export async function getRequests(
                     )
                 )
                 AND (${status}::text IS NULL OR status = ${status})
+                AND (${waiting}::boolean = FALSE OR (status IN ('sent', 'in_progress') AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')))
                 AND (
                     ${needsAttention}::boolean = FALSE
                     OR (
-                        status = 'sent'
-                        AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                        status IN ('sent', 'in_progress')
+                        AND COALESCE(last_activity_at, created_at) < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                        AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')
                     )
                 )
         `;
@@ -151,8 +159,9 @@ export async function getRequests(
             SELECT
                 requests.*,
                 (
-                    status = 'sent'
-                    AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    status IN ('sent', 'in_progress')
+                    AND COALESCE(last_activity_at, created_at) < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')
                 ) AS needs_attention,
                 (
                     SELECT COALESCE(NULLIF(TRIM(owner.full_name), ''), owner.email)
@@ -178,11 +187,13 @@ export async function getRequests(
                     )
                 )
                 AND (${status}::text IS NULL OR status = ${status})
+                AND (${waiting}::boolean = FALSE OR (status IN ('sent', 'in_progress') AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')))
                 AND (
                     ${needsAttention}::boolean = FALSE
                     OR (
-                        status = 'sent'
-                        AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                        status IN ('sent', 'in_progress')
+                        AND COALESCE(last_activity_at, created_at) < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                        AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')
                     )
                 )
             ORDER BY
@@ -208,8 +219,9 @@ export async function getRequests(
             SELECT
                 requests.*,
                 (
-                    status = 'sent'
-                    AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    status IN ('sent', 'in_progress')
+                    AND COALESCE(last_activity_at, created_at) < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')
                 ) AS needs_attention
             FROM requests
             WHERE account_id = ${accountId}
@@ -227,11 +239,13 @@ export async function getRequests(
                     )
                 )
                 AND (${status}::text IS NULL OR status = ${status})
+                AND (${waiting}::boolean = FALSE OR (status IN ('sent', 'in_progress') AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')))
                 AND (
                     ${needsAttention}::boolean = FALSE
                     OR (
-                        status = 'sent'
-                        AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                        status IN ('sent', 'in_progress')
+                        AND COALESCE(last_activity_at, created_at) < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                        AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')
                     )
                 )
             ORDER BY
@@ -844,7 +858,7 @@ export async function deleteRequest(id: string): Promise<boolean> {
  */
 export async function getDashboardStats(accountId: string, organizationId?: string) {
     if (!sql) {
-        return { total_requests: 0, draft: 0, sent: 0, in_progress: 0, submitted: 0, needs_attention: 0 };
+        return { total_requests: 0, draft: 0, sent: 0, in_progress: 0, submitted: 0, needs_attention: 0, waiting: 0 };
     }
 
     const result = await sql`
@@ -855,8 +869,13 @@ export async function getDashboardStats(accountId: string, organizationId?: stri
             COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
             COUNT(*) FILTER (WHERE status = 'submitted') as submitted,
             COUNT(*) FILTER (
-                WHERE status = 'sent'
-                    AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                WHERE status IN ('sent', 'in_progress')
+                    AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')
+            ) as waiting,
+            COUNT(*) FILTER (
+                WHERE status IN ('sent', 'in_progress')
+                    AND COALESCE(last_activity_at, created_at) < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')
             ) as needs_attention
         FROM requests 
         WHERE ${organizationId
@@ -871,6 +890,7 @@ export async function getDashboardStats(accountId: string, organizationId?: stri
         in_progress: Number(result[0].in_progress) || 0,
         submitted: Number(result[0].submitted) || 0,
         needs_attention: Number(result[0].needs_attention) || 0,
+        waiting: Number(result[0].waiting) || 0,
     };
 }
 
@@ -903,8 +923,9 @@ export async function getWeeklyStats(
             COUNT(*) FILTER (WHERE status = 'sent') as sent,
             COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
             COUNT(*) FILTER (
-                WHERE status = 'sent'
-                    AND created_at < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                WHERE status IN ('sent', 'in_progress')
+                    AND COALESCE(last_activity_at, created_at) < NOW() - (${REQUEST_NEEDS_ATTENTION_DAYS} * INTERVAL '1 day')
+                    AND created_at >= NOW() - (${REQUEST_NEEDS_ATTENTION_WINDOW_DAYS} * INTERVAL '1 day')
             ) as needs_attention
         FROM requests 
         WHERE ${whereClause}

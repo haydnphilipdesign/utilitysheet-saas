@@ -350,7 +350,7 @@ describe('dashboard customer home', () => {
 
         expect(screen.getByRole('link', { name: /waiting on seller/i })).toHaveAttribute(
             'href',
-            '/dashboard/requests?status=sent'
+            '/dashboard/requests?status=waiting'
         );
         expect(screen.getByRole('link', { name: /ready to review/i })).toHaveAttribute(
             'href',

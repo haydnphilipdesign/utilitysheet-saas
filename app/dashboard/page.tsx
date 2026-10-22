@@ -38,6 +38,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { generatePacketPdf, notifyPacketPdfFailure } from '@/lib/pdf-generator';
 import { trackEvent } from '@/lib/analytics/events';
 import { mergeFeaturedProductUpdate } from '@/lib/product-updates';
+import { REQUEST_NEEDS_ATTENTION_DAYS } from '@/lib/requests/listing';
 import type { DashboardStats, ProductUpdate, Request } from '@/types';
 import { TestDriveCard } from '@/components/test-drive/TestDriveCard';
 
@@ -686,7 +687,7 @@ export default function DashboardPage() {
                 <div className="grid gap-4 xl:grid-cols-2">
                     <WorkSection
                         title="Needs your attention"
-                        description="Sent requests that have been waiting more than three days."
+                        description={`Your seller has not done anything for ${REQUEST_NEEDS_ATTENTION_DAYS} days. Send the link again or a reminder.`}
                         href="/dashboard/requests?status=needs_attention"
                         linkLabel="View all"
                         requests={attentionWork.requests}
@@ -744,9 +745,9 @@ export default function DashboardPage() {
                     </div>
                     <div className="grid gap-3 sm:grid-cols-3">
                         <MetricLink
-                            href="/dashboard/requests?status=sent"
+                            href="/dashboard/requests?status=waiting"
                             label="Waiting on seller"
-                            value={stats.sent}
+                            value={stats.waiting ?? stats.sent + stats.in_progress}
                             icon={Clock3}
                             tone="text-blue-600 dark:text-blue-400"
                         />

@@ -222,7 +222,7 @@ describe('scheduled jobs', () => {
             summary: expect.stringContaining('6 hours') }));
         expect((await getJobStatuses(exec, new Date(), 48))[0].health).toBe('ok');
         vi.stubEnv('OPS_ALERT_JOB_OVERDUE_HOURS', '6');
-        try { expect((await getOperationsSnapshot({ db: exec })).jobs).toMatchObject({ status: 'ok', data: [expect.objectContaining({ health: 'overdue' }), expect.anything(), expect.anything(), expect.anything()] }); }
+        try { expect((await getOperationsSnapshot({ db: exec })).jobs).toMatchObject({ status: 'ok', data: [expect.objectContaining({ health: 'overdue' }), expect.anything(), expect.anything(), expect.anything(), expect.anything()] }); }
         finally { vi.unstubAllEnvs(); }
     });
     const base = { jobName: 'activation_reconcile' as const, lastDurationMs: 10 };
@@ -245,7 +245,7 @@ describe('scheduled jobs', () => {
         expect(classifyJob({ ...seen, lastStartedAt: ago(30), lastStatus: 'success', lastSuccessAt: ago(26.1) }, now)).toBe('overdue');
     });
 
-    it('records runs with count-only summaries and reports all four scheduled jobs', async () => {
+    it('records runs with count-only summaries and reports all five scheduled jobs', async () => {
         const run = await startJobRun('activation_reconcile', exec);
         await finishJobRun(run, 'partial', { created: 2, failures: 1, emails: ['a@example.com'], note: 'text' }, exec);
         const other = await startJobRun('ops_monitor', exec);
@@ -256,6 +256,7 @@ describe('scheduled jobs', () => {
         const jobs = await getJobStatuses(exec);
         expect(jobs.map((job) => [job.jobName, job.health])).toEqual([
             ['activation_reconcile', 'partial'], ['activation_reengagement', 'not_observed'], ['account_closure_retry', 'not_observed'], ['ops_monitor', 'ok'],
+            ['seller_auto_reminders', 'not_observed'],
         ]);
     });
 });
@@ -638,9 +639,10 @@ describe('Slice 7 heartbeat and coverage', () => {
         const crons = JSON.parse(readFileSync('vercel.json', 'utf8')).crons;
         expect(Object.keys(JOB_SCHEDULES).map(name => name.replaceAll('_', '-')))
             .toEqual(crons.map((cron: { path: string }) => cron.path.split('/').at(-1)));
-        expect(crons.map((cron: { schedule: string }) => cron.schedule)).toEqual(['0 12 * * *', '5,20,35,50 * * * *', '0 13 * * *', '*/15 * * * *']);
+        expect(crons.map((cron: { schedule: string }) => cron.schedule)).toEqual(['0 12 * * *', '5,20,35,50 * * * *', '0 13 * * *', '*/15 * * * *', '40 * * * *']);
         // Sub-daily jobs declare a 15-minute interval to match their cron.
         expect(JOB_SCHEDULES.activation_reengagement.intervalMinutes).toBe(15);
+        expect(JOB_SCHEDULES.seller_auto_reminders.intervalMinutes).toBe(60);
     });
 
     it('measures overdue time for sub-daily jobs by their own interval', async () => {

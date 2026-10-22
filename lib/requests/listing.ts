@@ -3,7 +3,12 @@ import type { RequestStatus } from '@/types';
 export const REQUESTS_DEFAULT_PAGE_SIZE = 20;
 export const REQUESTS_MAX_PAGE_SIZE = 100;
 export const REQUESTS_SEARCH_MAX_LENGTH = 200;
-export const REQUEST_NEEDS_ATTENTION_DAYS = 3;
+// A sent or opened request needs attention once the seller has done nothing
+// for this many days. Nearly every seller submits within a day, so two quiet
+// days means they are unlikely to finish without a nudge.
+export const REQUEST_NEEDS_ATTENTION_DAYS = 2;
+// Requests older than this are treated as abandoned, not as follow-up work.
+export const REQUEST_NEEDS_ATTENTION_WINDOW_DAYS = 30;
 
 export const REQUEST_LIST_STATUS_FILTERS = [
     'all',
@@ -12,12 +17,15 @@ export const REQUEST_LIST_STATUS_FILTERS = [
     'in_progress',
     'submitted',
     'needs_attention',
+    'waiting',
 ] as const;
 
 export type RequestListStatusFilter =
     | 'all'
     | RequestStatus
-    | 'needs_attention';
+    | 'needs_attention'
+    // Sent or opened by the seller, not yet submitted.
+    | 'waiting';
 
 export const REQUEST_LIST_SORTS = [
     'last_activity_desc',

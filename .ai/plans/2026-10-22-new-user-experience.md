@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress (approved by the user on 2026-10-22: "I agree with everything... let's begin"). Phases 1 to 3 done; Phase 4 next.
+In Progress (approved by the user on 2026-10-22: "I agree with everything... let's begin"). Phases 1 to 4 done; Phase 5 (test drive on a real address) remains a draft needing a decision.
 
 ## Objective
 
@@ -213,4 +213,45 @@ approval of this plan's direction):
 - Read-only funnel query against the live database: valid; 163 accounts,
   13 finished the seller test, 62 have a request, 101 have no request yet.
 
-Phases 4 and 5 not started.
+Phase 3 committed as 4864f98.
+
+Phase 4 in progress (2026-10-22). Approved by the user: Needs Attention and
+Waiting on seller fixes (done, see
+[the metric task](../tasks/2026-10-22-waiting-on-seller-metric.md)),
+automatic seller reminders as an account setting defaulting to off, and
+seller email capture "if implemented properly" (design pending the user).
+Data gathered for that design (read-only, live):
+
+- 100 requests had the seller use "Email me this link"; 98 of them were
+  submitted. The address is sent to but never stored.
+- 722 requests had a seller open the form; 592 were submitted.
+- Manual reminders: 12 sent on 6 requests, 2 later submitted.
+- Of the 25 requests the new rule flags today, 1 has a seller email.
+
+Decisions 2026-10-22: the user skipped seller email capture ("we already
+have the Email me a link button") and approved one automatic reminder.
+
+Phase 4 implemented (uncommitted at the time of writing):
+
+- Needs Attention / Waiting on seller fixes as recorded in the metric task.
+- Automatic seller reminders: account preference `auto_seller_reminders`
+  (Settings > Notifications, "Emails to your sellers", off by default). Hourly
+  job `/api/cron/seller-auto-reminders` (:40) registered in `vercel.json`,
+  `SCHEDULED_JOBS` and `JOB_SCHEDULES` (alerts after 3 hours without success).
+  Candidates (`lib/neon/queries/automatic-reminders.ts`): owner opted in,
+  open and active owner, `sent`/`in_progress`, never metered, not locked or
+  demo, seller email present, created in the last 30 days, quiet for 24
+  hours, and no earlier reminder of any kind (operation row or legacy
+  `reminder_sent` event). Sending reuses `prepareSellerReminder` and
+  `executeSellerReminder` (claim, cooldown, idempotency key, outcome record)
+  as an agent actor with `automatic: true`, stored as reason `automatic` and
+  event `trigger: automatic`. No schema change.
+- Live read-only check: 0 requests due now (nobody has the setting on); 1
+  would be due if every account turned it on, because reusable-link requests
+  carry no seller email.
+- Validation: tsc pass; ESLint on changed files pass (3 pre-existing warnings
+  in untouched settings files); full Vitest 266 files passed, 1 skipped, 2328
+  tests passed; Playwright settings + requests-list specs 63 passed; security
+  scan passed; diff check clean.
+
+Phase 5 not started.

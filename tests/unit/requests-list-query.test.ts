@@ -122,7 +122,7 @@ describe('getRequests list query', () => {
         }
     });
 
-    it('reuses the existing three-day sent rule for Needs Attention before counting and paging', async () => {
+    it('applies the Needs Attention rule (sent or opened, 2 quiet days, last 30 days) before counting and paging', async () => {
         sqlMock
             .mockResolvedValueOnce([{ count: '7' }])
             .mockResolvedValueOnce([{ id: 'req_attention' }]);
@@ -134,9 +134,27 @@ describe('getRequests list query', () => {
 
         expect(result.total).toBe(7);
         const queryText = sqlMock.mock.calls.map(callSqlText).join('\n');
-        expect(queryText).toContain("status = 'sent'");
-        expect(queryText).toContain("INTERVAL '1 day'");
-        expect(sqlMock.mock.calls.flatMap(callSqlValues)).toContain(3);
+        expect(queryText).toContain("status IN ('sent', 'in_progress')");
+        expect(queryText).toContain('COALESCE(last_activity_at, created_at) < NOW()');
+        expect(queryText).toContain('created_at >= NOW()');
+        const values = sqlMock.mock.calls.flatMap(callSqlValues);
+        expect(values).toContain(2);
+        expect(values).toContain(30);
+    });
+
+    it('lists requests waiting on the seller as sent or opened', async () => {
+        sqlMock
+            .mockResolvedValueOnce([{ count: '3' }])
+            .mockResolvedValueOnce([{ id: 'req_waiting' }]);
+
+        await getRequests('acct_1', undefined, { status: 'waiting' });
+
+        const [countCall] = sqlMock.mock.calls;
+        expect(callSqlText(countCall)).toContain("::boolean = FALSE OR (status IN ('sent', 'in_progress') AND created_at >= NOW()");
+        // The plain status filter is off, and the waiting flag is on.
+        const values = callSqlValues(countCall);
+        expect(values).toContain(true);
+        expect(values).not.toContain('waiting');
     });
 
     it('clamps an out-of-range page after the filtered count and returns complete metadata', async () => {

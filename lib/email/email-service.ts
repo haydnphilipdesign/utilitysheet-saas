@@ -6,6 +6,7 @@ import { DEFAULT_MESSAGE_TEMPLATES, escapeHtml, firstNameFromFullName, plainText
 import { createPacketPdfAttachmentForRequest } from '@/lib/pdf/packet-attachment';
 import { FEEDBACK_CATEGORY_LABELS, type FeedbackCategory } from '@/lib/feedback/constants';
 import type { PdfRenderEvidence } from '@/lib/telemetry/handoff-evidence';
+import { REQUEST_NEEDS_ATTENTION_DAYS } from '@/lib/requests/listing';
 
 function getAppBaseUrl(): string {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -1672,7 +1673,7 @@ function generateWeeklySummaryHtml({
                             <!-- Attention Card -->
                             <div style="background-color: #fef3c7; border-radius: 8px; padding: 16px; margin: 24px 0; border-left: 4px solid #f59e0b;">
                                 <p style="margin: 0; color: #92400e; font-size: 14px;">
-                                    <strong>⚠️ ${stats.needsAttention} request${stats.needsAttention > 1 ? 's' : ''}</strong> sent more than 3 days ago with no response. Consider sending a reminder.
+                                    <strong>⚠️ ${stats.needsAttention} request${stats.needsAttention > 1 ? 's' : ''}</strong> with no seller activity for ${REQUEST_NEEDS_ATTENTION_DAYS} days. Consider sending the link again or a reminder.
                                 </p>
                             </div>
                             ` : ''}

@@ -91,6 +91,21 @@ describe('one logical reminder', () => {
         expect(await audits('request_reminder_sent')).toBe(1);
     });
 
+    it('marks an automatic reminder as automatic, and a manual agent reminder not', async () => {
+        const automatic: ReminderActor = { ...agentActor, userAgent: 'UtilitySheet automatic reminder', automatic: true } as ReminderActor;
+        expect((await run(op(40), automatic, accepted('msg_auto'))).status).toBe('accepted');
+        expect(await one('SELECT actor_type, actor_account_id, reason FROM reminder_operations WHERE id = $1', [op(40)]))
+            .toEqual({ actor_type: 'agent', actor_account_id: OWNER, reason: 'automatic' });
+        expect((await one("SELECT event_data FROM event_logs WHERE event_type = 'reminder_sent'")).event_data)
+            .toMatchObject({ actor: 'agent', trigger: 'automatic' });
+
+        await db.exec("TRUNCATE reminder_operations, event_logs CASCADE");
+        expect((await run(op(41), agentActor, accepted('msg_manual'))).status).toBe('accepted');
+        expect((await one('SELECT reason FROM reminder_operations WHERE id = $1', [op(41)])).reason).toBeNull();
+        expect((await one("SELECT event_data FROM event_logs WHERE event_type = 'reminder_sent'")).event_data)
+            .not.toHaveProperty('trigger');
+    });
+
     it('keeps capability tokens and rendered bodies out of every durable record', async () => {
         const p = prepared();
         expect(p.email.html).toContain('secret-seller-token');

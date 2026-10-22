@@ -20,6 +20,7 @@ import { useTestDrive } from '@/components/test-drive/use-test-drive';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { trackEvent } from '@/lib/analytics/events';
+import { REQUEST_NEEDS_ATTENTION_DAYS } from '@/lib/requests/listing';
 import { cn } from '@/lib/utils';
 
 export type FirstRunSellerLink = {
@@ -391,6 +392,10 @@ export function FirstRunGuide({
                                 <p>
                                     Waiting on your seller. As soon as they submit, the finished sheet appears in
                                     Requests, ready to review, download as a PDF, and share with the buyer.
+                                </p>
+                                <p>
+                                    Most sellers finish the same day. If yours has not after {REQUEST_NEEDS_ATTENTION_DAYS} days,
+                                    the request moves to Needs your attention, where you can send the link again.
                                 </p>
                                 <Link
                                     href="/dashboard/requests"

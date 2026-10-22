@@ -5,6 +5,8 @@ export type NotificationPreferences = {
     collect_hoa_questions: boolean;
     contact_resolution: boolean;
     weekly_summary: boolean;
+    /** One automatic reminder to a seller who has not finished after a day. Off unless turned on. */
+    auto_seller_reminders: boolean;
 };
 
 export type ActiveOrganization = {

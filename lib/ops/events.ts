@@ -151,7 +151,7 @@ export async function recordOperationalSuccess(input: Omit<OperationalEventInput
 // ---------------------------------------------------------------------------
 
 /** Jobs with a schedule in vercel.json. Anything else is never reported overdue. */
-export const SCHEDULED_JOBS = ['activation_reconcile', 'activation_reengagement', 'account_closure_retry', 'ops_monitor'] as const;
+export const SCHEDULED_JOBS = ['activation_reconcile', 'activation_reengagement', 'account_closure_retry', 'ops_monitor', 'seller_auto_reminders'] as const;
 export type ScheduledJobName = (typeof SCHEDULED_JOBS)[number];
 /** `telemetry_retention` runs from the monitor at most daily and is not part of the heartbeat. */
 export type JobName = ScheduledJobName | 'telemetry_retention';
