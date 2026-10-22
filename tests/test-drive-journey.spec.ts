@@ -25,7 +25,11 @@ async function expectNoHorizontalOverflow(page: Page) {
     expect(overflow).toBeLessThanOrEqual(0);
 }
 
-async function mockApis(page: Page, options: { testDrive: () => TestDriveMock; onStart?: () => void; onSubmit?: () => void }) {
+async function mockApis(page: Page, options: {
+    testDrive: () => TestDriveMock;
+    onStart?: (body: string | null) => void;
+    onSubmit?: () => void;
+}) {
     // Registered first so specific handlers below take precedence.
     await page.route('**/api/**', (route) => route.fulfill({
         status: 404,
@@ -65,7 +69,7 @@ async function mockApis(page: Page, options: { testDrive: () => TestDriveMock; o
     })));
     await page.route('**/api/test-drive', (route) => {
         if (route.request().method() === 'POST') {
-            options.onStart?.();
+            options.onStart?.(route.request().postData());
             return route.fulfill(json({ status: 'ready', sellerUrl: `/s/${TOKEN}`, invitationDelivery: 'sent' }, 201));
         }
         return route.fulfill(json(options.testDrive()));
@@ -204,6 +208,44 @@ test.describe('first-use guide and seller test', () => {
         await expect(page.getByRole('button', { name: 'Copy reusable seller link' })).toBeVisible();
         await expectNoHorizontalOverflow(page);
         await screenshot(page, '06-guide-completed', testInfo.project.name);
+    });
+
+    test('seller test in the user’s own area', async ({ page }, testInfo) => {
+        let state: TestDriveMock = { status: 'eligible' };
+        const startBodies: Array<string | null> = [];
+        await mockApis(page, { testDrive: () => state, onStart: (body) => startBodies.push(body) });
+
+        await page.goto('/test-fixtures/dashboard');
+        const area = page.getByLabel('Your area (optional)');
+        await expect(area).toBeVisible();
+
+        // A street address is refused in the browser, before any request.
+        await area.fill('456 Oak Ave, Austin, TX');
+        await page.getByRole('button', { name: 'Start seller test' }).click();
+        await expect(page.getByRole('alert').filter({ hasText: 'not a street address' })).toBeVisible();
+        await expect(area).toHaveAttribute('aria-invalid', 'true');
+        expect(startBodies).toEqual([]);
+        await expectNoHorizontalOverflow(page);
+        await screenshot(page, '07-guide-area-error', testInfo.project.name);
+
+        await area.fill('Austin, TX 78704');
+        await area.press('Enter');
+        await page.waitForURL(`**/s/${TOKEN}`);
+        expect(startBodies).toEqual([JSON.stringify({ area: 'Austin, TX 78704' })]);
+
+        state = {
+            status: 'completed',
+            reviewUrl: '/packet/fixture-public-token',
+            pdfUrl: '/api/packet/fixture-public-token/pdf',
+            delivery: 'sent',
+            canStartAnother: true,
+        };
+        await page.goto('/test-fixtures/dashboard');
+        await page.getByRole('button', { name: 'Try it in another area' }).click();
+        await expect(page.getByLabel('City and state')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Start new test' })).toBeDisabled();
+        await expectNoHorizontalOverflow(page);
+        await screenshot(page, '08-guide-another-area', testInfo.project.name);
     });
 
     test('public demo entry still renders', async ({ page }) => {

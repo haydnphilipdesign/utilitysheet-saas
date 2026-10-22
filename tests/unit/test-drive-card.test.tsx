@@ -83,7 +83,7 @@ describe('TestDriveCard', () => {
         expect(openSpy).not.toHaveBeenCalled();
         expect(screen.getByRole('button', { name: /starting your test/i })).toBeDisabled();
         expect(mocks.trackEvent).toHaveBeenCalledWith('test_drive_offer_viewed', { source: 'onboarding', state: 'eligible' });
-        expect(mocks.trackEvent).toHaveBeenCalledWith('test_drive_started', { source: 'onboarding' });
+        expect(mocks.trackEvent).toHaveBeenCalledWith('test_drive_started', { source: 'onboarding', area: 'sample' });
         expect(mocks.trackEvent).toHaveBeenCalledWith('test_drive_opened', { source: 'onboarding', action: 'open' });
         expect(JSON.stringify(mocks.trackEvent.mock.calls)).not.toContain('private-token');
     });
@@ -206,5 +206,86 @@ describe('TestDriveCard', () => {
         expect(screen.getByRole('button', { name: 'View sample sheet' })).toBeEnabled();
         fireEvent.click(screen.getByRole('button', { name: /try again/i }));
         expect(await screen.findByRole('button', { name: 'Start seller test' })).toBeInTheDocument();
+    });
+
+    describe('in the user’s own area', () => {
+        it('starts the first test in the area typed, sending only that it was custom', async () => {
+            const fetchMock = vi.fn()
+                .mockImplementationOnce(() => jsonResponse({ status: 'eligible' }))
+                .mockImplementationOnce(() => jsonResponse({
+                    status: 'ready',
+                    sellerUrl: '/s/area-token',
+                    invitationDelivery: 'sent',
+                    canStartAnother: true,
+                }, 201));
+            vi.stubGlobal('fetch', fetchMock);
+            render(<TestDriveCard source="dashboard" />);
+
+            fireEvent.change(await screen.findByLabelText('Your area (optional)'), { target: { value: 'Austin, TX 78704' } });
+            fireEvent.click(screen.getByRole('button', { name: 'Start seller test' }));
+
+            await waitFor(() => expect(mocks.assign).toHaveBeenCalledWith('/s/area-token'));
+            expect(fetchMock).toHaveBeenLastCalledWith('/api/test-drive', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ area: 'Austin, TX 78704' }),
+            });
+            expect(mocks.trackEvent).toHaveBeenCalledWith('test_drive_started', { source: 'dashboard', area: 'custom' });
+            expect(JSON.stringify(mocks.trackEvent.mock.calls)).not.toContain('Austin');
+        });
+
+        it('explains a street address next to the field without calling the server', async () => {
+            const fetchMock = vi.fn(() => jsonResponse({ status: 'eligible' }));
+            vi.stubGlobal('fetch', fetchMock);
+            render(<TestDriveCard source="dashboard" />);
+
+            const field = await screen.findByLabelText('Your area (optional)');
+            fireEvent.change(field, { target: { value: '456 Oak Ave, Austin, TX' } });
+            fireEvent.click(screen.getByRole('button', { name: 'Start seller test' }));
+
+            expect(await screen.findByRole('alert')).toHaveTextContent('not a street address');
+            expect(field).toHaveAttribute('aria-invalid', 'true');
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(mocks.trackEvent).not.toHaveBeenCalledWith('test_drive_started', expect.anything());
+
+            fireEvent.change(field, { target: { value: 'Austin, TX' } });
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        });
+
+        it('offers another area after a test, and shows the server’s limit message there', async () => {
+            const fetchMock = vi.fn()
+                .mockImplementationOnce(() => jsonResponse({
+                    status: 'completed',
+                    reviewUrl: '/packet/t',
+                    pdfUrl: '/api/packet/t/pdf',
+                    delivery: 'sent',
+                    canStartAnother: true,
+                }))
+                .mockImplementationOnce(() => jsonResponse({ error: 'You have used all 3 seller tests.', code: 'test_limit' }, 409));
+            vi.stubGlobal('fetch', fetchMock);
+            render(<TestDriveCard source="dashboard" />);
+
+            fireEvent.click(await screen.findByRole('button', { name: 'Try it in another area' }));
+            const start = screen.getByRole('button', { name: 'Start new test' });
+            expect(start).toBeDisabled();
+            fireEvent.change(screen.getByLabelText('City and state'), { target: { value: 'Denver, CO' } });
+            fireEvent.click(start);
+
+            expect(await screen.findByRole('alert')).toHaveTextContent('You have used all 3 seller tests.');
+            expect(screen.getByText('Seller test complete')).toBeInTheDocument();
+            expect(mocks.assign).not.toHaveBeenCalled();
+        });
+
+        it('does not offer another area once every test is used', async () => {
+            vi.stubGlobal('fetch', vi.fn(() => jsonResponse({
+                status: 'ready',
+                sellerUrl: '/s/t',
+                invitationDelivery: 'sent',
+                canStartAnother: false,
+            })));
+            render(<TestDriveCard source="dashboard" />);
+            await screen.findByRole('link', { name: 'Resume seller test' });
+            expect(screen.queryByRole('button', { name: 'Try it in another area' })).not.toBeInTheDocument();
+        });
     });
 });

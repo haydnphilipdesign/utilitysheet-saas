@@ -1,0 +1,264 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - link "UtilitySheet logo UtilitySheet" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "UtilitySheet logo" [ref=e8]
+        - generic [ref=e9]: UtilitySheet
+    - main [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e13]:
+          - generic [ref=e14]:
+            - paragraph [ref=e15]: BUILT FOR A BETTER HANDOFF
+            - heading [level=1] [ref=e17]:
+              - text: Every detail.
+              - emphasis [ref=e18]: A smoother handoff.
+            - paragraph [ref=e19]: From the first seller link to the finished utility sheet. Everything you need to collect, organize, and share the details that help buyers settle in.
+            - generic [ref=e20]:
+              - link "Start free" [ref=e21] [cursor=pointer]:
+                - /url: /auth/signup
+              - link "Try the demo" [ref=e24] [cursor=pointer]:
+                - /url: /demo
+            - paragraph [ref=e28]: 3 submitted sheets per month on Free. No credit card required.
+          - figure "Illustrative handoff · Custom branding available on paid plans" [ref=e29]:
+            - generic [aria-hidden] [ref=e30]:
+              - generic [ref=e45]:
+                - generic [ref=e46]: A little less chasing.
+                - generic [ref=e47]: One thoughtful handoff.
+              - generic [ref=e48]:
+                - generic [ref=e49]: Your real estate team
+                - strong [ref=e53]: Utility Info Sheet
+                - paragraph [ref=e54]: 123 Maple Avenue · Sample property
+                - generic [ref=e58]:
+                  - generic [ref=e59]: UTILITY
+                  - generic [ref=e60]: PROVIDER
+                - generic [ref=e61]:
+                  - generic [ref=e62]: Electricity
+                  - generic [ref=e63]: Maple Electric
+                - generic [ref=e64]:
+                  - generic [ref=e65]: Water & sewer
+                  - generic [ref=e66]: City Utilities
+                - generic [ref=e67]:
+                  - generic [ref=e68]: Internet
+                  - generic [ref=e69]: Local Fiber
+                - generic [ref=e70]:
+                  - generic [ref=e71]: Trash & recycling
+                  - generic [ref=e72]: Community Services
+                - generic [ref=e73]: Details collected.Ready for your review.
+              - generic [ref=e83]:
+                - generic [ref=e84]: Seller submitted
+                - generic [ref=e85]: Web sheet + PDF
+        - region [ref=e87]:
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - paragraph [ref=e90]: LESS BUSYWORK. MORE CLARITY.
+              - heading [level=2] [ref=e91]:
+                - text: Made for the work
+                - emphasis [ref=e92]: between listing and closing.
+            - link "See the full workflow" [ref=e93] [cursor=pointer]:
+              - /url: /how-it-works
+          - generic [ref=e96]:
+            - article [ref=e97]:
+              - generic [aria-hidden] [ref=e103]: "01"
+              - heading "One link. Every property." [level=3] [ref=e104]
+              - paragraph [ref=e105]: Add your reusable seller link to a welcome email, text template, or closing checklist. Sellers start with their property address, so you can use the same link on your next file.
+              - generic [aria-hidden] [ref=e106]:
+                - generic [ref=e107]: YOUR REUSABLE SELLER LINK
+                - generic [ref=e108]: Your saved form · One reusable link
+                - generic [ref=e113]: Ready for your next property
+              - generic [ref=e118]: Every plan
+            - article [ref=e119]:
+              - generic [aria-hidden] [ref=e125]: "02"
+              - heading "An easier ask for sellers." [level=3] [ref=e126]
+              - paragraph [ref=e127]: A guided, mobile-friendly form helps sellers work through their utility details one step at a time. They open the link and get started without an account or app.
+              - generic [aria-hidden] [ref=e128]:
+                - generic [ref=e129]:
+                  - generic [ref=e130]: Home
+                  - generic [ref=e133]: 2 Utilities
+                  - generic [ref=e134]: 3 Review
+                - generic [ref=e137]: Let’s start with the property address
+              - generic [ref=e142]: Every plan
+            - article [ref=e143]:
+              - generic [aria-hidden] [ref=e149]: "03"
+              - heading "A head start on providers." [level=3] [ref=e150]
+              - paragraph [ref=e151]: Address-based suggestions help sellers find likely utility providers when available. They confirm the match, search for another provider, or enter the details themselves.
+              - generic [aria-hidden] [ref=e152]:
+                - generic [ref=e153]: A SUGGESTION, READY TO CONFIRM
+                - generic [ref=e158]:
+                  - generic [ref=e159]: Maple Electric
+                  - generic [ref=e160]: Electricity · Suggested provider
+                - generic [ref=e163]: Or search for a different provider
+              - generic [ref=e167]: Every plan
+            - article [ref=e168]:
+              - generic [aria-hidden] [ref=e174]: "04"
+              - heading "Your form, your questions." [level=3] [ref=e175]
+              - paragraph [ref=e176]: Choose utilities, HOA questions, and meter-number collection on every plan. Save one form on Free or up to ten on Pro; paid plans also add Property Handoff Packet sections.
+              - generic [aria-hidden] [ref=e177]:
+                - generic [ref=e178]: ASK WHAT MATTERS FOR THIS PROPERTY
+                - generic [ref=e179]: Water & sewer
+                - generic [ref=e182]: HOA / condo association
+                - generic [ref=e185]: Electric meter number
+              - generic [ref=e188]: More flexibility on paid plans
+            - article [ref=e189]:
+              - generic [aria-hidden] [ref=e196]: "05"
+              - heading "A handoff worth sharing." [level=3] [ref=e197]
+              - paragraph [ref=e198]: Get a clean web sheet and PDF, with an optional PDF attachment on completion emails. Pro and Teams add your logo, colors, branded links, and branded PDF output.
+              - generic [ref=e208]:
+                - generic [ref=e209]: One organized handoff.
+                - generic [ref=e210]: Shareable web sheet
+                - generic [ref=e211]: Downloadable PDF
+              - generic [ref=e216]: Branding on Pro & Teams
+            - article [ref=e217]:
+              - generic [aria-hidden] [ref=e223]: "06"
+              - heading "Keep the details in order." [level=3] [ref=e224]
+              - paragraph [ref=e225]: Track submissions and review completed sheets in your dashboard. On Pro and Teams, correct submitted details without restarting the seller; new PDF downloads reflect your saved changes.
+              - generic [aria-hidden] [ref=e226]:
+                - generic [ref=e227]: FROM YOUR DASHBOARD
+                - generic [ref=e232]:
+                  - generic [ref=e233]: Seller submitted
+                  - generic [ref=e234]: Review details
+                - generic [ref=e239]:
+                  - generic [ref=e240]: Correction saved
+                  - generic [ref=e241]: New PDFs updated
+              - generic [ref=e242]: Editing on Pro & Teams
+        - generic [ref=e244]:
+          - generic [ref=e245]:
+            - paragraph [ref=e246]: BETTER TOGETHER
+            - heading [level=2] [ref=e247]:
+              - text: Your team.
+              - emphasis [ref=e248]: On the same page.
+            - paragraph [ref=e249]: Teams gives your coordinators, agents, and support staff shared request access and shared Branding Profiles. Keep the handoff consistent while each member manages their own seller forms.
+            - link "Find the right plan" [ref=e250] [cursor=pointer]:
+              - /url: /pricing
+          - generic [ref=e253]:
+            - generic [ref=e261]:
+              - heading "Shared visibility" [level=3] [ref=e262]
+              - paragraph [ref=e263]: See the requests your workspace can access and keep track of seller submissions.
+            - generic [ref=e269]:
+              - heading "The right access" [level=3] [ref=e270]
+              - paragraph [ref=e271]: Workspace roles help you manage who can work with your team’s requests.
+            - generic [ref=e278]:
+              - heading "A consistent finish" [level=3] [ref=e279]
+              - paragraph [ref=e280]: Shared Branding Profiles keep your team’s logo, colors, and contact details close at hand.
+        - generic [ref=e282]:
+          - heading "See the features inside a real workflow" [level=2] [ref=e283]
+          - paragraph [ref=e284]: Try the guided seller form, then put your free link to work on a real file.
+          - generic [ref=e285]:
+            - link "Start Free" [ref=e286] [cursor=pointer]:
+              - /url: /auth/signup
+            - link "Try the Demo" [ref=e289] [cursor=pointer]:
+              - /url: /demo
+    - contentinfo [ref=e293]:
+      - generic [ref=e294]:
+        - generic [ref=e295]:
+          - generic [ref=e296]:
+            - link "UtilitySheet logo UtilitySheet" [ref=e297] [cursor=pointer]:
+              - /url: /
+              - img "UtilitySheet logo" [ref=e299]
+              - generic [ref=e300]: UtilitySheet
+            - paragraph [ref=e301]: A simpler way to collect seller utility details and give buyers a thoughtful, organized handoff.
+            - generic [ref=e302]:
+              - generic [ref=e303]: Free plan available
+              - generic [ref=e305]: No credit card required
+          - generic [ref=e307]:
+            - heading "Product" [level=3] [ref=e308]
+            - list [ref=e309]:
+              - listitem [ref=e310]:
+                - link "Features" [ref=e311] [cursor=pointer]:
+                  - /url: /features
+              - listitem [ref=e312]:
+                - link "How It Works" [ref=e313] [cursor=pointer]:
+                  - /url: /how-it-works
+              - listitem [ref=e314]:
+                - link "Pricing" [ref=e315] [cursor=pointer]:
+                  - /url: /pricing
+              - listitem [ref=e316]:
+                - link "FAQ" [ref=e317] [cursor=pointer]:
+                  - /url: /faq
+              - listitem [ref=e318]:
+                - link "Interactive Demo" [ref=e319] [cursor=pointer]:
+                  - /url: /demo
+          - generic [ref=e320]:
+            - heading "Use Cases" [level=3] [ref=e321]
+            - list [ref=e322]:
+              - listitem [ref=e323]:
+                - link "For Transaction Coordinators" [ref=e324] [cursor=pointer]:
+                  - /url: /utility-sheet-for-transaction-coordinators
+              - listitem [ref=e325]:
+                - link "For Real Estate Agents" [ref=e326] [cursor=pointer]:
+                  - /url: /utility-sheet-for-real-estate-agents
+              - listitem [ref=e327]:
+                - link "Seller Utility Information Form" [ref=e328] [cursor=pointer]:
+                  - /url: /seller-utility-information-form
+              - listitem [ref=e329]:
+                - link "Closing Utility Checklist" [ref=e330] [cursor=pointer]:
+                  - /url: /real-estate-closing-utility-checklist
+          - generic [ref=e331]:
+            - heading "Company" [level=3] [ref=e332]
+            - list [ref=e333]:
+              - listitem [ref=e334]:
+                - link "About" [ref=e335] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e336]:
+                - link "Start Free" [ref=e337] [cursor=pointer]:
+                  - /url: /auth/signup
+              - listitem [ref=e338]:
+                - link "Sign In" [ref=e339] [cursor=pointer]:
+                  - /url: /auth/login
+          - generic [ref=e340]:
+            - heading "Legal" [level=3] [ref=e341]
+            - list [ref=e342]:
+              - listitem [ref=e343]:
+                - link "Privacy Policy" [ref=e344] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=e345]:
+                - link "Terms of Service" [ref=e346] [cursor=pointer]:
+                  - /url: /terms
+              - listitem [ref=e347]:
+                - link "Cookie Policy" [ref=e348] [cursor=pointer]:
+                  - /url: /cookie-policy
+        - generic [ref=e349]:
+          - generic [ref=e350]:
+            - generic [ref=e351]:
+              - paragraph [ref=e352]: Part of Norma
+              - heading "Explore the rest of the suite" [level=3] [ref=e353]
+              - paragraph [ref=e354]: Norma keeps each tool focused. Intake handles the front-end handoff, UtilitySheet handles utility coordination, and NormaTC is opening to private beta as the transaction hub.
+            - link "Explore the suite" [ref=e355] [cursor=pointer]:
+              - /url: https://normatc.com/products?utm_source=norma_suite&utm_medium=cross_link&utm_campaign=utilitysheet_footer
+          - generic [ref=e358]:
+            - article [ref=e359]:
+              - generic [ref=e360]:
+                - generic [ref=e361]:
+                  - paragraph [ref=e362]: Norma Intake
+                  - paragraph [ref=e363]: Contract-first intake for cleaner handoffs before utility setup starts.
+                - generic [ref=e364]: Live
+              - link "Learn more" [ref=e366] [cursor=pointer]:
+                - /url: https://normatc.com/products?utm_source=norma_suite&utm_medium=cross_link&utm_campaign=utilitysheet_footer_norma-intake#norma-intake
+            - article [ref=e367]:
+              - generic [ref=e368]:
+                - generic [ref=e369]:
+                  - paragraph [ref=e370]: UtilitySheet by Norma
+                  - paragraph [ref=e371]: One seller link for polished utility coordination and clean closing packets.
+                - generic [ref=e372]: Live
+              - generic [ref=e373]: You're here
+            - article [ref=e374]:
+              - generic [ref=e375]:
+                - generic [ref=e376]:
+                  - paragraph [ref=e377]: NormaTC
+                  - paragraph [ref=e378]: Full transaction coordination hub opening to private beta soon.
+                - generic [ref=e379]: Private beta soon
+              - link "Learn more" [ref=e381] [cursor=pointer]:
+                - /url: https://normatc.com/waitlist?utm_source=norma_suite&utm_medium=cross_link&utm_campaign=utilitysheet_footer_normatc
+        - generic [ref=e382]:
+          - paragraph [ref=e383]:
+            - text: Part of the Norma ecosystem ·
+            - link "normatc.com" [ref=e384] [cursor=pointer]:
+              - /url: https://normatc.com
+          - generic [ref=e385]:
+            - paragraph [ref=e386]: © 2026 UtilitySheet. All rights reserved.
+            - paragraph [ref=e387]:
+              - text: Built by
+              - link "Multimedium" [ref=e388] [cursor=pointer]:
+                - /url: https://www.multimedium.dev
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e394] [cursor=pointer]

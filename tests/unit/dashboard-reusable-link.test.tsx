@@ -200,6 +200,8 @@ describe('dashboard customer home', () => {
         expect(screen.getByRole('heading', { name: /send your link to a seller \(not started\)/i })).toBeInTheDocument();
         expect(screen.getByRole('heading', { name: /get your first finished sheet \(not started\)/i })).toBeInTheDocument();
         expect(await screen.findByRole('button', { name: 'Start seller test' })).toBeInTheDocument();
+        // The test can run in the user's own area; blank keeps the sample town.
+        expect(screen.getByLabelText('Your area (optional)')).toHaveAttribute('placeholder', 'e.g. Austin, TX 78704');
         expect(screen.getByRole('link', { name: /create a request for one property/i })).toHaveAttribute('href', '/dashboard/requests/new');
         expect(screen.getByRole('link', { name: /add your branding/i })).toHaveAttribute('href', '/onboarding');
 
@@ -240,6 +242,7 @@ describe('dashboard customer home', () => {
                 reviewUrl: '/packet/test-public',
                 pdfUrl: '/api/packet/test-public/pdf',
                 delivery: 'sent',
+                canStartAnother: true,
             },
         }));
 
@@ -251,6 +254,7 @@ describe('dashboard customer home', () => {
         expect(screen.getByRole('heading', { name: /get your first finished sheet \(next step\)/i })).toBeInTheDocument();
         expect(screen.getByText(/waiting on your seller/i)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /open test sheet/i })).toHaveAttribute('href', '/packet/test-public');
+        expect(screen.getByRole('button', { name: 'Try it in another area' })).toBeInTheDocument();
 
         // With a request in flight, the work cards return under the guide.
         expect(screen.getByRole('heading', { name: 'Needs your attention' })).toBeInTheDocument();

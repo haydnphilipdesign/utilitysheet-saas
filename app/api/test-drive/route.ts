@@ -18,18 +18,27 @@ import {
 } from '@/lib/neon/queries';
 import { normalizeAdvancedModuleExclusions, normalizeAdvancedModules } from '@/lib/packet/modules';
 import { checkRateLimit, getRateLimitHeaders, isRateLimitUnavailable, requestCreationRatelimit } from '@/lib/rate-limit';
+import { enforceMaxRequestBodyBytes, invalidRequestBodyResponse } from '@/lib/security/api-response';
 import { stackServerApp } from '@/lib/stack/server';
-import { buildTestDriveState, TEST_DRIVE_PROPERTY_ADDRESS, TEST_DRIVE_SELLER_NAME } from '@/lib/test-drive/service';
+import { testDriveAddressForArea } from '@/lib/test-drive/area';
+import {
+    buildTestDriveState,
+    TEST_DRIVE_LIMIT,
+    TEST_DRIVE_PROPERTY_ADDRESS,
+    TEST_DRIVE_SELLER_NAME,
+} from '@/lib/test-drive/service';
+import { testDriveStartBodySchema } from '@/lib/validation/schemas';
 import { UTILITY_CATEGORY_KEYS } from '@/lib/constants';
 import type { Request as StoredRequest } from '@/types';
 
 const recordAuxiliaryEvent = auxiliaryEventWriter(createEventLog);
+const TEST_DRIVE_BODY_LIMIT_BYTES = 2 * 1024;
 
 export const runtime = 'nodejs';
 
-async function stateFor(request: StoredRequest | null, hasLiveSubmission: boolean) {
+async function stateFor(request: StoredRequest | null, hasLiveSubmission: boolean, testCount: number) {
     const events = request ? await getTestDriveLifecycleEvents(request.id) : [];
-    return buildTestDriveState({ request, hasLiveSubmission, events });
+    return buildTestDriveState({ request, hasLiveSubmission, testCount, events });
 }
 
 export async function GET() {
@@ -52,15 +61,14 @@ export async function GET() {
         }
 
         const current = await getTestDriveRequestState(activation.account.id);
-        return NextResponse.json(await stateFor(current.request, current.hasLiveSubmission));
+        return NextResponse.json(await stateFor(current.request, current.hasLiveSubmission, current.testCount));
     } catch (error) {
         console.error('Error loading test drive:', error);
         return NextResponse.json({ error: 'We could not load your seller test. Please try again.' }, { status: 500 });
     }
 }
 
-export async function POST(_request: Request) {
-    void _request;
+export async function POST(request: Request) {
     try {
         const user = await stackServerApp.getUser();
         if (!user) {
@@ -91,6 +99,33 @@ export async function POST(_request: Request) {
             );
         }
 
+        // No body (or no area) starts the test at the sample address. An area
+        // starts a new test there, within the account's test limit.
+        const payloadTooLarge = enforceMaxRequestBodyBytes(request, TEST_DRIVE_BODY_LIMIT_BYTES);
+        if (payloadTooLarge) {
+            return payloadTooLarge;
+        }
+        const rawBody = await request.text();
+        let body: unknown = {};
+        try {
+            body = rawBody.trim() ? JSON.parse(rawBody) : {};
+        } catch {
+            body = null;
+        }
+        const parsedBody = testDriveStartBodySchema.safeParse(body);
+        if (!parsedBody.success) {
+            return invalidRequestBodyResponse();
+        }
+        const area = parsedBody.data.area?.trim() || '';
+        let propertyAddress = TEST_DRIVE_PROPERTY_ADDRESS;
+        if (area) {
+            const areaResult = testDriveAddressForArea(area);
+            if (!areaResult.ok) {
+                return NextResponse.json({ error: areaResult.error, code: 'invalid_area' }, { status: 400 });
+            }
+            propertyAddress = areaResult.propertyAddress;
+        }
+
         const activation = await ensureAccountActivation(user);
         if (!activation?.account) {
             return NextResponse.json({ error: 'Failed to access account' }, { status: 500 });
@@ -112,14 +147,14 @@ export async function POST(_request: Request) {
         const advancedModuleExclusions = packetMode === 'advanced'
             ? normalizeAdvancedModuleExclusions(intakeLink?.advanced_module_exclusions || {}, advancedModules)
             : {};
-        const propertyAddressStructured = await buildStructuredPropertyAddress(TEST_DRIVE_PROPERTY_ADDRESS);
+        const propertyAddressStructured = await buildStructuredPropertyAddress(propertyAddress);
 
         const result = await getOrCreateTestDriveRequest({
             ...(intakeLink ? formRequestFields(intakeLink, isPaid) : {}),
             accountId: account.id,
             organizationId,
             brandProfileId: brandProfile?.id,
-            propertyAddress: TEST_DRIVE_PROPERTY_ADDRESS,
+            propertyAddress,
             propertyAddressStructured,
             sellerName: TEST_DRIVE_SELLER_NAME,
             sellerEmail: recipient,
@@ -129,6 +164,8 @@ export async function POST(_request: Request) {
             packetMode,
             advancedModules,
             advancedModuleExclusions,
+            startAnother: Boolean(area),
+            limit: TEST_DRIVE_LIMIT,
         });
 
         if (!result.request) {
@@ -136,6 +173,13 @@ export async function POST(_request: Request) {
                 return NextResponse.json({ status: 'ineligible', reason: 'live_submission' });
             }
             return NextResponse.json({ error: 'We could not start your seller test. Please try again.' }, { status: 500 });
+        }
+
+        if (area && !result.created && !result.hasLiveSubmission) {
+            return NextResponse.json(
+                { error: `You have used all ${TEST_DRIVE_LIMIT} seller tests.`, code: 'test_limit' },
+                { status: 409 }
+            );
         }
 
         if (result.created) {
@@ -146,6 +190,7 @@ export async function POST(_request: Request) {
                     actor: 'agent',
                     is_demo: true,
                     source: 'self_serve_test_drive',
+                    test_area: area ? 'custom' : 'sample',
                 },
             });
 
@@ -158,7 +203,7 @@ export async function POST(_request: Request) {
                 const emailResult = await sendSellerNotificationEmail({
                     sellerEmail: recipient,
                     sellerName: TEST_DRIVE_SELLER_NAME,
-                    propertyAddress: TEST_DRIVE_PROPERTY_ADDRESS,
+                    propertyAddress,
                     agentName: resolvedBrandProfile?.contact_name || account.full_name || user.displayName || undefined,
                     brandProfile: resolvedBrandProfile || undefined,
                     sellerToken: result.request.seller_token || result.request.public_token,
@@ -188,7 +233,7 @@ export async function POST(_request: Request) {
         }
 
         return NextResponse.json(
-            await stateFor(result.request, result.hasLiveSubmission),
+            await stateFor(result.request, result.hasLiveSubmission, result.testCount),
             {
                 status: result.created ? 201 : 200,
                 headers: getRateLimitHeaders(rateLimitResult),

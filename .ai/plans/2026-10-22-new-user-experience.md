@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress (approved by the user on 2026-10-22: "I agree with everything... let's begin"). Phases 1 to 4 done; Phase 5 (test drive on a real address) remains a draft needing a decision.
+In Progress (approved by the user on 2026-10-22: "I agree with everything... let's begin"). Phases 1 to 5 done; Phase 5 uncommitted.
 
 ## Objective
 
@@ -117,6 +117,27 @@ them there in the first session. Findings and numbers are in
   - Live numbers at handoff: 13 accounts finished the seller test (of 163);
     since the test launched (2026-07-21), 7 accounts tried it and 1 went on
     to a real submission.
+- Findings 2026-10-22 (code plus read-only live aggregates):
+  - Suggestions already run for the test address. `/api/seller/[token]/suggestions`
+    has no test-drive branch (its canned list only matches `123 Main Street`
+    in the `utilitysheet-demo` workspace), so it calls Gemini with mode `test`.
+    18301 is a real ZIP (East Stroudsburg, PA), so test sellers saw real Monroe
+    County providers (PPL, Met-Ed, UGI, Brodhead Creek, Blue Ridge). 7 test
+    requests (last 2026-09-24, before the October pipeline changes): 35 runs,
+    1 fallback, 2 quality rejections; 4 submitted, 19 picks from suggestions,
+    8 "unknown".
+  - The gap is relevance (a Pennsylvania town for every agent), not absence.
+  - Cost: fresh suggestion runs in the last 14 days average about 2,300 input
+    and 1,200 output tokens per request (4.5 runs), roughly $0.004 at the
+    `lib/telemetry/ai-cost.ts` list price for gemini-3.5-flash-lite. Grounding
+    is on by default; reported search counts were 0, which is not billing proof.
+    Test submissions skip the post-submit contact lookup.
+  - Privacy: Gemini receives only city, state and ZIP (prompt is "non-PII"),
+    telemetry keeps state, ZIP3 and city. The full address would sit on the
+    `is_demo` request row with no retention rule, appear in the public packet
+    URL, PDF and the invitation email to the agent. Exclusions keyed on
+    `is_demo` (billing, stats, provider memory, outreach) are unaffected by
+    the address. One seller test per account (`getOrCreateTestDriveRequest`).
 
 ## Out of Scope
 
@@ -272,4 +293,8 @@ Phase 4 implemented (uncommitted at the time of writing):
   tests passed; Playwright settings + requests-list specs 63 passed; security
   scan passed; diff check clean.
 
-Phase 5 not started.
+Phase 5 implemented 2026-10-22 (uncommitted at the time of writing). The user
+approved the recommendations: ask for an area (city, state, optional ZIP),
+never a street; optional, with Anytown as the default; up to 3 seller tests
+per account, so earlier testers can run it again in their area. Details and
+validation: [the task](../tasks/2026-10-22-seller-test-your-area.md).

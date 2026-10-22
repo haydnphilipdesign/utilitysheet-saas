@@ -205,6 +205,8 @@ type AnalyticsEventMap = {
   };
   test_drive_started: BasePayload & {
     source: "onboarding" | "dashboard";
+    /** Whether the user entered their own area; the area itself is never sent. */
+    area: "sample" | "custom";
   };
   test_drive_opened: BasePayload & {
     source: "onboarding" | "dashboard";

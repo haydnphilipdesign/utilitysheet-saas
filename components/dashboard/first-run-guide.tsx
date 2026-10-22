@@ -16,6 +16,7 @@ import {
 
 import { ReusableLinkActions } from '@/components/dashboard/reusable-link-actions';
 import { SampleSheetDialog } from '@/components/test-drive/SampleSheetDialog';
+import { TestDriveAreaForm } from '@/components/test-drive/TestDriveAreaForm';
 import { useTestDrive } from '@/components/test-drive/use-test-drive';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -152,6 +153,18 @@ export function FirstRunGuide({
 
     const sellerLinkUsable = Boolean(sellerLink?.url) && sellerLink?.isActive !== false;
 
+    const anotherAreaForm = (testDrive.state?.status === 'ready' || testDrive.state?.status === 'completed')
+        && testDrive.state.canStartAnother ? (
+            <TestDriveAreaForm
+                mode="another"
+                starting={testDrive.starting}
+                error={testDrive.areaError}
+                onStart={testDrive.start}
+                onClearError={testDrive.clearAreaError}
+                buttonClassName="min-h-11 sm:min-h-8"
+            />
+        ) : null;
+
     const renderTestStep = () => {
         if (testDrive.error) {
             return (
@@ -195,6 +208,7 @@ export function FirstRunGuide({
                             Resume seller test
                         </Link>
                     </div>
+                    {anotherAreaForm}
                 </>
             );
         }
@@ -205,18 +219,15 @@ export function FirstRunGuide({
                     Fill in a test request with made-up answers on the same short form your sellers use. You get
                     the finished sheet and PDF they would create. It does not count toward your plan.
                 </p>
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    <Button
-                        type="button"
-                        size="sm"
-                        variant={currentStep === 1 ? 'default' : 'outline'}
-                        onClick={testDrive.start}
-                        disabled={testDrive.starting}
-                        className="min-h-11 sm:min-h-8"
-                    >
-                        {testDrive.starting ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-                        {testDrive.starting ? 'Starting your test…' : 'Start seller test'}
-                    </Button>
+                <TestDriveAreaForm
+                    mode="first"
+                    starting={testDrive.starting}
+                    error={testDrive.areaError}
+                    onStart={testDrive.start}
+                    onClearError={testDrive.clearAreaError}
+                    buttonVariant={currentStep === 1 ? 'default' : 'outline'}
+                    buttonClassName="min-h-11 sm:min-h-8"
+                >
                     <Button
                         type="button"
                         size="sm"
@@ -230,7 +241,7 @@ export function FirstRunGuide({
                         <FileText />
                         Or view a sample sheet
                     </Button>
-                </div>
+                </TestDriveAreaForm>
             </>
         );
     };
@@ -269,6 +280,7 @@ export function FirstRunGuide({
                     {newTabHint}
                 </a>
             </div>
+            {anotherAreaForm}
         </>
     ) : (
         <p>You have already seen the seller side.</p>

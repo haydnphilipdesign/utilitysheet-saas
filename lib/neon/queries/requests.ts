@@ -40,6 +40,8 @@ export type TestDriveRequestResult = {
     request: Request | null;
     created: boolean;
     hasLiveSubmission: boolean;
+    /** Seller tests the account has, including one just created. */
+    testCount: number;
 };
 
 /**
@@ -453,7 +455,9 @@ export async function createRequest(data: {
 }
 
 /**
- * Atomically creates or returns the account's one self-serve test request.
+ * Atomically creates or returns the account's latest self-serve test request.
+ * A test is created when the account has none, or when `startAnother` asks for
+ * a new one and the account has fewer than `limit`.
  *
  * The transaction-scoped advisory lock serializes concurrent clicks for this
  * account without adding a schema constraint. The later statements run after
@@ -476,16 +480,18 @@ export async function getOrCreateTestDriveRequest(data: {
     packetMode: PacketMode;
     advancedModules: AdvancedModuleKey[];
     advancedModuleExclusions: AdvancedModuleExclusions;
+    startAnother?: boolean;
+    limit: number;
 }): Promise<TestDriveRequestResult> {
     if (!sql) {
-        return { request: null, created: false, hasLiveSubmission: false };
+        return { request: null, created: false, hasLiveSubmission: false, testCount: 0 };
     }
 
     const publicToken = generateToken();
     const sellerToken = generateToken();
     const lockKey = `test-drive:${data.accountId}`;
 
-    const [, insertedRows, demoRows, liveRows] = await sql.transaction([
+    const [, insertedRows, demoRows, liveRows, countRows] = await sql.transaction([
         sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`,
         sql`
             INSERT INTO requests (
@@ -529,12 +535,12 @@ export async function getOrCreateTestDriveRequest(data: {
                 'sent',
                 NULL,
                 FALSE
-            WHERE NOT EXISTS (
-                SELECT 1
+            WHERE (
+                SELECT COUNT(*)
                 FROM requests
                 WHERE account_id = ${data.accountId}
                   AND COALESCE(is_demo, FALSE) = TRUE
-            )
+            ) < CASE WHEN ${data.startAnother === true}::boolean THEN ${data.limit}::int ELSE 1 END
               AND NOT EXISTS (
                 SELECT 1
                 FROM requests
@@ -550,7 +556,7 @@ export async function getOrCreateTestDriveRequest(data: {
             FROM requests
             WHERE account_id = ${data.accountId}
               AND COALESCE(is_demo, FALSE) = TRUE
-            ORDER BY created_at ASC, id ASC
+            ORDER BY created_at DESC, id DESC
             LIMIT 1
         `,
         sql`
@@ -563,28 +569,36 @@ export async function getOrCreateTestDriveRequest(data: {
                   AND COALESCE(is_demo, FALSE) = FALSE
             ) AS has_live_submission
         `,
+        sql`
+            SELECT COUNT(*)::int AS test_count
+            FROM requests
+            WHERE account_id = ${data.accountId}
+              AND COALESCE(is_demo, FALSE) = TRUE
+        `,
     ]);
 
     return {
-        request: (demoRows[0] as Request) || null,
+        request: (insertedRows[0] as Request) || (demoRows[0] as Request) || null,
         created: insertedRows.length > 0,
         hasLiveSubmission: Boolean(liveRows[0]?.has_live_submission),
+        testCount: Number(countRows[0]?.test_count ?? 0),
     };
 }
 
 export async function getTestDriveRequestState(accountId: string): Promise<{
     request: Request | null;
     hasLiveSubmission: boolean;
+    testCount: number;
 }> {
-    if (!sql) return { request: null, hasLiveSubmission: false };
+    if (!sql) return { request: null, hasLiveSubmission: false, testCount: 0 };
 
-    const [demoRows, liveRows] = await Promise.all([
+    const [demoRows, liveRows, countRows] = await Promise.all([
         sql`
             SELECT *
             FROM requests
             WHERE account_id = ${accountId}
               AND COALESCE(is_demo, FALSE) = TRUE
-            ORDER BY created_at ASC, id ASC
+            ORDER BY created_at DESC, id DESC
             LIMIT 1
         `,
         sql`
@@ -597,11 +611,18 @@ export async function getTestDriveRequestState(accountId: string): Promise<{
                   AND COALESCE(is_demo, FALSE) = FALSE
             ) AS has_live_submission
         `,
+        sql`
+            SELECT COUNT(*)::int AS test_count
+            FROM requests
+            WHERE account_id = ${accountId}
+              AND COALESCE(is_demo, FALSE) = TRUE
+        `,
     ]);
 
     return {
         request: (demoRows[0] as Request) || null,
         hasLiveSubmission: Boolean(liveRows[0]?.has_live_submission),
+        testCount: Number(countRows[0]?.test_count ?? 0),
     };
 }
 

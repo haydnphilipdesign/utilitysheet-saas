@@ -3,13 +3,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { trackEvent } from '@/lib/analytics/events';
+import { testDriveAddressForArea } from '@/lib/test-drive/area';
 import type { TestDriveSource, TestDriveState } from '@/lib/test-drive/types';
 
-async function fetchState(method: 'GET' | 'POST' = 'GET'): Promise<TestDriveState> {
-    const response = await fetch('/api/test-drive', { method });
+// Errors about the area the user typed are shown next to the field.
+const AREA_ERROR_CODES = new Set(['invalid_area', 'test_limit']);
+
+class TestDriveRequestError extends Error {
+    constructor(message: string, readonly code: string | null) {
+        super(message);
+    }
+}
+
+async function fetchState(method: 'GET' | 'POST' = 'GET', area?: string): Promise<TestDriveState> {
+    const response = await fetch('/api/test-drive', area
+        ? { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ area }) }
+        : { method });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-        throw new Error(body.error || 'We could not load your seller test.');
+        throw new TestDriveRequestError(
+            body.error || 'We could not load your seller test.',
+            typeof body.code === 'string' ? body.code : null
+        );
     }
     return body as TestDriveState;
 }
@@ -23,6 +38,7 @@ export function useTestDrive(source: TestDriveSource) {
     const [loading, setLoading] = useState(true);
     const [starting, setStarting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [areaError, setAreaError] = useState<string | null>(null);
     const viewedStateRef = useRef<string | null>(null);
 
     const load = useCallback(async () => {
@@ -59,12 +75,22 @@ export function useTestDrive(source: TestDriveSource) {
         return () => window.removeEventListener('focus', refresh);
     }, [load, state?.status]);
 
-    const start = useCallback(async () => {
+    /** Starts the test at the sample address, or in `area` ("Austin, TX 78704") when given. */
+    const start = useCallback(async (area?: string) => {
+        const trimmedArea = area?.trim() || undefined;
+        if (trimmedArea) {
+            const checked = testDriveAddressForArea(trimmedArea);
+            if (!checked.ok) {
+                setAreaError(checked.error);
+                return;
+            }
+        }
         setStarting(true);
         setError(null);
-        trackEvent('test_drive_started', { source });
+        setAreaError(null);
+        trackEvent('test_drive_started', { source, area: trimmedArea ? 'custom' : 'sample' });
         try {
-            const next = await fetchState('POST');
+            const next = await fetchState('POST', trimmedArea);
             if (next.status === 'ready') {
                 trackEvent('test_drive_opened', { source, action: 'open' });
                 // Same-tab navigation: one click, no popup blocking, and the
@@ -75,10 +101,16 @@ export function useTestDrive(source: TestDriveSource) {
             setState(next);
             setStarting(false);
         } catch (startError) {
-            setError(startError instanceof Error ? startError.message : 'We could not start your seller test.');
+            if (startError instanceof TestDriveRequestError && startError.code && AREA_ERROR_CODES.has(startError.code)) {
+                setAreaError(startError.message);
+            } else {
+                setError(startError instanceof Error ? startError.message : 'We could not start your seller test.');
+            }
             setStarting(false);
         }
     }, [source]);
 
-    return { state, loading, starting, error, load, start };
+    const clearAreaError = useCallback(() => setAreaError(null), []);
+
+    return { state, loading, starting, error, areaError, clearAreaError, load, start };
 }

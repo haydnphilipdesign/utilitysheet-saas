@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Building2, FileText, Inbox, LayoutDashboard, Megaphone, Menu, MessageSquare, MessageSquareQuote, Shield, Sparkles, TrendingDown, TrendingUp, Users, Wrench, X, Zap } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { AdminMaintenanceIndicator } from '@/components/maintenance/AdminMaintenanceIndicator';
+import { AdminRefresh } from '@/components/admin/AdminRefresh';
 import { cn } from '@/lib/utils';
 
 // `id` is a slug because it is used to build `aria-labelledby` references, which are
@@ -169,6 +170,7 @@ export function AdminLayoutContent({ children }: { children: React.ReactNode }) 
 
                 <main className="min-w-0 flex-1 py-6">
                     <AdminMaintenanceIndicator />
+                    <AdminRefresh />
                     {children}
                 </main>
             </div>

@@ -22,6 +22,7 @@ import type { TestDriveSource } from '@/lib/test-drive/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SampleSheetDialog } from '@/components/test-drive/SampleSheetDialog';
+import { TestDriveAreaForm } from '@/components/test-drive/TestDriveAreaForm';
 import { useTestDrive } from '@/components/test-drive/use-test-drive';
 import { cn } from '@/lib/utils';
 
@@ -64,7 +65,7 @@ function outlineLinkClass(className?: string) {
  */
 export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps) {
     const headingId = useId();
-    const { state, loading, starting, error, load, start } = useTestDrive(source);
+    const { state, loading, starting, error, areaError, clearAreaError, load, start } = useTestDrive(source);
     const [copied, setCopied] = useState(false);
     const [sampleOpen, setSampleOpen] = useState(false);
 
@@ -86,6 +87,17 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
     if (source === 'dashboard' && !error && (!state || state.status === 'ineligible')) {
         return null;
     }
+
+    const anotherAreaForm = (state?.status === 'ready' || state?.status === 'completed') && state.canStartAnother ? (
+        <TestDriveAreaForm
+            mode="another"
+            starting={starting}
+            error={areaError}
+            onStart={start}
+            onClearError={clearAreaError}
+            buttonClassName="w-full sm:h-9 sm:w-fit"
+        />
+    ) : null;
 
     const renderTestPanel = () => {
         if (error) {
@@ -127,10 +139,17 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
                             </p>
                         </div>
                     </div>
-                    <Button type="button" variant="outline" onClick={start} disabled={starting} className="mt-auto w-full sm:h-9 sm:w-fit">
-                        {starting ? <Loader2 className="animate-spin" /> : <ArrowRight />}
-                        {starting ? 'Starting your test…' : 'Start seller test'}
-                    </Button>
+                    <div className="mt-auto">
+                        <TestDriveAreaForm
+                            mode="first"
+                            starting={starting}
+                            error={areaError}
+                            onStart={start}
+                            onClearError={clearAreaError}
+                            buttonVariant="outline"
+                            buttonClassName="w-full sm:h-9 sm:w-fit"
+                        />
+                    </div>
                 </>
             );
         }
@@ -160,6 +179,7 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
                         <ArrowRight />
                         Resume seller test
                     </Link>
+                    {anotherAreaForm}
                 </>
             );
         }
@@ -208,6 +228,7 @@ export function TestDriveCard({ source, reusableSellerLink }: TestDriveCardProps
                             {newTabHint}
                         </a>
                     </div>
+                    {anotherAreaForm}
                 </>
             );
         }
