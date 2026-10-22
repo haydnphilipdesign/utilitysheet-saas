@@ -56,6 +56,19 @@ describe('growth attribution', () => {
         });
     });
 
+    it('keeps the Facebook group placement from posted group links', () => {
+        expect(parseGrowthAttribution(new URL(
+            'https://www.utilitysheet.com/utility-sheet-template?utm_source=facebook&utm_medium=group&utm_content=re-tc'
+        ))).toEqual({
+            source: 'facebook',
+            medium: 'group',
+            campaign: null,
+            content: 're-tc',
+            referralCode: null,
+            landingPath: '/utility-sheet-template',
+        });
+    });
+
     it('returns null for a visit with no attribution fields', () => {
         expect(parseGrowthAttribution(new URL('https://utilitysheet.com/pricing'))).toBeNull();
     });

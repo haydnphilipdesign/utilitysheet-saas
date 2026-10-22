@@ -24,7 +24,7 @@ beforeAll(async () => {
             created_at timestamptz DEFAULT NOW() - INTERVAL '10 days', property_address text,
             seller_name text, seller_email text, seller_edit_version int DEFAULT 0);
         CREATE TABLE event_logs (id serial, request_id text, event_type text, event_data jsonb, created_at timestamptz);
-        CREATE TABLE growth_attributions (account_id text, source text, medium text);
+        CREATE TABLE growth_attributions (account_id text, source text, medium text, content text);
         CREATE TABLE growth_referral_events (event_type text, occurred_at timestamptz);
     `);
 }, 30000);
@@ -36,7 +36,7 @@ beforeEach(async () => {
         (await db.query(strings.reduce((q, part, i) => q + (i ? `$${i}` : '') + part, ''), values)).rows);
     await db.exec(`TRUNCATE accounts, requests, event_logs, growth_attributions;
         INSERT INTO accounts (id, role) VALUES ('modern','user'),('legacy','user'),('excluded','user'),('admin','admin');
-        INSERT INTO growth_attributions VALUES ('modern','referral','product_referral'),('legacy','legacy','direct'),('excluded','other','direct');
+        INSERT INTO growth_attributions VALUES ('modern','referral','product_referral',NULL),('legacy','legacy','direct',NULL),('excluded','facebook','group','re-tc');
         INSERT INTO requests (id,account_id,status,metered_at,last_activity_at,seller_edit_version) VALUES
             ('reopened','modern','in_progress',NOW()-INTERVAL '2 days',NOW(),1),
             ('second','modern','draft',NOW()-INTERVAL '3 days',NOW(),0),
@@ -59,7 +59,7 @@ describe('retained customer report definitions against PostgreSQL', () => {
         expect(await getGrowthSourceStats()).toEqual(expect.arrayContaining([
             expect.objectContaining({ source: 'referral', activated: 1 }),
             expect.objectContaining({ source: 'legacy', activated: 1 }),
-            expect.objectContaining({ source: 'other', activated: 0 }),
+            expect.objectContaining({ source: 'facebook / re-tc', activated: 0 }),
         ]));
         expect(await getReferralLoopStats()).toMatchObject({ signups: 1, activated: 1 });
         await db.exec(`UPDATE requests SET metered_at=NOW()-INTERVAL '60 days', last_activity_at=NOW() WHERE id='third'`);

@@ -194,7 +194,7 @@ export default async function AdminGrowthPage() {
                                 <table className="w-full min-w-[420px] text-sm">
                                     <thead className="bg-secondary/35 text-left">
                                         <tr>
-                                            <th className="px-3 py-2 font-medium">Source</th>
+                                            <th className="px-3 py-2 font-medium">Source / content</th>
                                             <th className="px-3 py-2 text-right font-medium">Signups</th>
                                             <th className="px-3 py-2 text-right font-medium">Activated</th>
                                             <th className="px-3 py-2 text-right font-medium">Rate</th>

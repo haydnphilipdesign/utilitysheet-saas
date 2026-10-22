@@ -55,6 +55,30 @@ describe('collector boundaries', () => {
         expect(result).toEqual({ type, url: 'https://utilitysheet.com/s/[token]' });
     });
 
+    it('keeps only allow-listed UTM values on public page views', () => {
+        expect(beforeAnalyticsSend({
+            type: 'pageview',
+            url: 'https://www.utilitysheet.com/utility-sheet-template?utm_source=facebook&utm_medium=group&utm_content=vtc-social&utm_campaign=123+Sentinel+Street&email=private-account',
+        })).toEqual({
+            type: 'pageview',
+            url: 'https://www.utilitysheet.com/utility-sheet-template?utm_source=facebook&utm_medium=group&utm_content=vtc-social',
+        });
+        expect(beforeAnalyticsSend({ type: 'pageview', url: 'https://utilitysheet.com/pricing?utm_content=synthetic-secret' }))
+            .toEqual({ type: 'pageview', url: 'https://utilitysheet.com/pricing' });
+        expect(beforeAnalyticsSend({ type: 'event', url: 'https://utilitysheet.com/pricing?utm_source=facebook' }))
+            .toEqual({ type: 'event', url: 'https://utilitysheet.com/pricing' });
+    });
+
+    it('never adds UTM values to capability or private route families', () => {
+        for (const url of [
+            'https://utilitysheet.com/s/synthetic-secret?utm_source=facebook&utm_content=re-tc',
+            'https://utilitysheet.com/dashboard/requests/private-id?utm_source=facebook',
+            'https://utilitysheet.com/123%20Sentinel%20Street?utm_source=facebook',
+        ]) {
+            expect(beforeAnalyticsSend({ type: 'pageview', url })?.url).not.toContain('?');
+        }
+    });
+
     it('normalizes both Speed Insights URL and route and drops unknown fields', () => {
         expect(beforeSpeedInsightsSend({
             type: 'vital', url: 'https://utilitysheet.com/admin/users/private-account?password=secret',

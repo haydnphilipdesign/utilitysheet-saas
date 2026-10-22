@@ -34,6 +34,11 @@ export function telemetryPath(raw: string): string {
     }
 }
 
+// True only for the finite marketing/auth pages, never token or slug families.
+export function isPublicTelemetryPath(path: string): boolean {
+    return PUBLIC_PATHS.has(path);
+}
+
 export function telemetryUrl(raw: string): string | null {
     try {
         const url = new URL(raw);

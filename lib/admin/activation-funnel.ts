@@ -234,7 +234,8 @@ export async function getGrowthSourceStats(): Promise<GrowthSourceStats[]> {
               AND COALESCE(is_demo, FALSE) = FALSE
         )
         SELECT
-            COALESCE(ga.source, 'unknown') AS source,
+            -- utm_content splits a source by placement, e.g. one Facebook group.
+            COALESCE(ga.source, 'unknown') || COALESCE(' / ' || ga.content, '') AS source,
             COUNT(*)::int AS signups,
             COUNT(*) FILTER (WHERE aa.account_id IS NOT NULL)::int AS activated
         FROM accounts a
@@ -242,7 +243,7 @@ export async function getGrowthSourceStats(): Promise<GrowthSourceStats[]> {
         LEFT JOIN activated_accounts aa ON aa.account_id = a.id
         WHERE a.role = 'user'
           AND a.created_at >= NOW() - INTERVAL '90 days'
-        GROUP BY COALESCE(ga.source, 'unknown')
+        GROUP BY 1
         ORDER BY activated DESC, signups DESC, source ASC
     `;
 

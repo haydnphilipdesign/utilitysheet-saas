@@ -15,9 +15,14 @@ export type GrowthAttribution = {
 // adding a campaign; arbitrary text (even slug-shaped text) can contain PII.
 const CAMPAIGN_VALUES = {
     source: ['facebook', 'partner', 'tc collective', 'handoff-kit', 'utilitysheet_packet', 'utilitysheet_email', 'norma_suite'],
-    medium: ['facebook', 'social', 'resource', 'product_referral', 'cross_link'],
+    medium: ['facebook', 'social', 'group', 'resource', 'product_referral', 'cross_link'],
     campaign: ['handoff-kit', '90-day-tc-growth', 'transaction_exposure'],
-    content: ['case-study', 'kit-cta', 'completion-email', 'from-a-closing'],
+    content: [
+        'case-study', 'kit-cta', 'completion-email', 'from-a-closing',
+        // Facebook group slugs from docs/facebook-group-posts.md.
+        're-tc', 'tc-group-us', 'vtc-social', 'agent-lender', 'tc-referral',
+        'leaders-re', 'tc-beginners-1k', 'leverage-lab', 'tc-admins',
+    ],
 } as const;
 
 function campaignValue(field: keyof typeof CAMPAIGN_VALUES, value: unknown): string | null {
