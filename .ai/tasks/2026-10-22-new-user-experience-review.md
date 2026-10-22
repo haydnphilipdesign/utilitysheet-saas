@@ -1,11 +1,11 @@
 ---
-status: active
+status: ready
 owner: claude
-updated: 2026-10-22 19:00
+updated: 2026-10-22 22:30
 scope: .ai/tasks/2026-10-22-new-user-experience-review.md, .ai/plans/2026-10-22-new-user-experience.md, app/test-fixtures/dashboard, app/dashboard/page.tsx, components/dashboard/first-run-guide.tsx, components/test-drive, lib/analytics/events.ts, app/onboarding/page.tsx, app/auth/signup/page.tsx, tests/unit, lib/email/email-service.ts, lib/neon/queries/activation-outreach.ts, app/api/cron/activation-reengagement, lib/ops, vercel.json, app/(admin)/admin, lib/admin, app/api/onboarding, tests/test-drive-journey.spec.ts, tests/dialog-focus.spec.ts
 ---
 
-Implementation follows [the plan](../plans/2026-10-22-new-user-experience.md); Phases 1 and 2 committed; Phase 3 done (uncommitted).
+Implementation follows [the plan](../plans/2026-10-22-new-user-experience.md); Phases 1 to 4 committed; Phase 5 handed off to a new session.
 # New user experience review
 
 ## Goal
@@ -76,6 +76,7 @@ no overflow.
 
 ## Next
 
-Phases 1 (51f6fd1) and 2 (860bca5) committed on branch `new-user-experience`.
-Phase 3 is uncommitted on the same branch, waiting for the user. Then Phase 4
-(first request follow-through) per the plan.
+Phases 1 to 4 committed on branch `new-user-experience` (51f6fd1, 860bca5,
+4864f98, 5d9f725); not pushed, merged or deployed. Phase 5 (seller test on a
+real address) moves to a new session; handoff notes are in the plan's
+Phase 5 section.

@@ -99,6 +99,24 @@ them there in the first session. Findings and numbers are in
 
 - Let the user test with a real address so provider suggestions appear. Needs
   decisions on AI cost, rate limits, and privacy before any work.
+- Handoff notes (2026-10-22, for a new session; verify before relying on them):
+  - The seller test always uses `TEST_DRIVE_PROPERTY_ADDRESS`
+    (`[TEST] 123 Maple Street, Anytown, PA 18301`, `lib/test-drive/service.ts`),
+    created in `app/api/test-drive/route.ts`.
+  - Unverified: whether provider suggestions run, or return anything useful,
+    for that fictional address. Check the suggestion path for `is_demo`
+    handling and what a test seller actually sees before designing anything.
+  - Read `docs/ai-telemetry.md` (redaction rules) and the October suggestion
+    work (`git log --since=2026-10-10 --grep=suggest`) first. Seller-test
+    requests are excluded from billing, telemetry and ops counts in several
+    places (`tests/unit/test-drive-*`); a real address must keep those
+    exclusions.
+  - Questions for the user: AI cost per test and any cap, whether a real
+    address entered by an agent is stored and for how long, and whether the
+    fictional address stays as the default with an optional real one.
+  - Live numbers at handoff: 13 accounts finished the seller test (of 163);
+    since the test launched (2026-07-21), 7 accounts tried it and 1 went on
+    to a real submission.
 
 ## Out of Scope
 
