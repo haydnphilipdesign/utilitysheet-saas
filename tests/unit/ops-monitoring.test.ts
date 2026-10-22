@@ -632,13 +632,22 @@ describe('Slice 7 heartbeat and coverage', () => {
         expect((await getJobStatuses(exec, now)).find(item => item.jobName === 'ops_monitor')?.health).toBe('stuck');
     });
 
-    it('matches expected schedules to the unchanged source cron configuration', async () => {
+    it('matches expected schedules to the source cron configuration', async () => {
         const { readFileSync } = await import('node:fs');
         const { JOB_SCHEDULES } = await import('@/lib/ops/overview');
         const crons = JSON.parse(readFileSync('vercel.json', 'utf8')).crons;
         expect(Object.keys(JOB_SCHEDULES).map(name => name.replaceAll('_', '-')))
             .toEqual(crons.map((cron: { path: string }) => cron.path.split('/').at(-1)));
-        expect(crons.map((cron: { schedule: string }) => cron.schedule)).toEqual(['0 12 * * *', '30 12 * * *', '0 13 * * *', '*/15 * * * *']);
+        expect(crons.map((cron: { schedule: string }) => cron.schedule)).toEqual(['0 12 * * *', '5,20,35,50 * * * *', '0 13 * * *', '*/15 * * * *']);
+        // Sub-daily jobs declare a 15-minute interval to match their cron.
+        expect(JOB_SCHEDULES.activation_reengagement.intervalMinutes).toBe(15);
+    });
+
+    it('measures overdue time for sub-daily jobs by their own interval', async () => {
+        const { jobOverdueMinutes } = await import('@/lib/ops/overview');
+        expect(jobOverdueMinutes('ops_monitor', 26)).toBe(35);
+        expect(jobOverdueMinutes('activation_reengagement', 26)).toBe(120);
+        expect(jobOverdueMinutes('activation_reconcile', 26)).toBe(26 * 60);
     });
 
     it('reports per-collector retained timestamps without counting unrelated seller events', async () => {

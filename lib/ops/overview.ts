@@ -164,7 +164,9 @@ export const JOB_LABELS: Record<ScheduledJobName, string> = {
 /** Source schedules only; hosted execution/configuration is unverified. */
 export const JOB_SCHEDULES: Record<ScheduledJobName, { schedule: string; intervalMinutes: number; graceMinutes: number; maxRunningMinutes: number }> = {
     activation_reconcile: { schedule: 'Daily at 12:00 UTC', intervalMinutes: 1440, graceMinutes: 120, maxRunningMinutes: 15 },
-    activation_reengagement: { schedule: 'Daily at 12:30 UTC', intervalMinutes: 1440, graceMinutes: 120, maxRunningMinutes: 15 },
+    // Every 15 minutes so the welcome email lands soon after sign-up. Alerts
+    // after about 2 hours without a success, not on one missed run.
+    activation_reengagement: { schedule: 'Every 15 minutes (:05, :20, :35, :50)', intervalMinutes: 15, graceMinutes: 105, maxRunningMinutes: 15 },
     account_closure_retry: { schedule: 'Daily at 13:00 UTC', intervalMinutes: 1440, graceMinutes: 120, maxRunningMinutes: 15 },
     // 20-minute grace: one missed run (a ~30-minute gap) stays quiet; two in a row (~45 minutes) alert.
     ops_monitor: { schedule: 'Every 15 minutes', intervalMinutes: 15, graceMinutes: 20, maxRunningMinutes: 15 },
@@ -172,7 +174,8 @@ export const JOB_SCHEDULES: Record<ScheduledJobName, { schedule: string; interva
 
 export function jobOverdueMinutes(jobName: ScheduledJobName, dailyOverdueHours = JOB_OVERDUE_HOURS): number {
     const schedule = JOB_SCHEDULES[jobName];
-    return jobName === 'ops_monitor' ? schedule.intervalMinutes + schedule.graceMinutes : dailyOverdueHours * 60;
+    // Sub-daily jobs use their own interval and grace; daily jobs share the configurable threshold.
+    return schedule.intervalMinutes < 24 * 60 ? schedule.intervalMinutes + schedule.graceMinutes : dailyOverdueHours * 60;
 }
 
 /**

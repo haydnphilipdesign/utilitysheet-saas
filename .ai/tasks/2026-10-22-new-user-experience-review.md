@@ -1,11 +1,11 @@
 ---
 status: active
 owner: claude
-updated: 2026-10-22 15:00
-scope: .ai/tasks/2026-10-22-new-user-experience-review.md, .ai/plans/2026-10-22-new-user-experience.md, app/test-fixtures/dashboard, app/dashboard/page.tsx, components/dashboard/first-run-guide.tsx, components/test-drive, lib/analytics/events.ts, app/onboarding/page.tsx, app/auth/signup/page.tsx, tests/unit
+updated: 2026-10-22 17:00
+scope: .ai/tasks/2026-10-22-new-user-experience-review.md, .ai/plans/2026-10-22-new-user-experience.md, app/test-fixtures/dashboard, app/dashboard/page.tsx, components/dashboard/first-run-guide.tsx, components/test-drive, lib/analytics/events.ts, app/onboarding/page.tsx, app/auth/signup/page.tsx, tests/unit, lib/email/email-service.ts, lib/neon/queries/activation-outreach.ts, app/api/cron/activation-reengagement, lib/ops, vercel.json
 ---
 
-Implementation follows [the plan](../plans/2026-10-22-new-user-experience.md); Phase 1 done (uncommitted); Phase 2 next.
+Implementation follows [the plan](../plans/2026-10-22-new-user-experience.md); Phase 1 committed; Phase 2 done (uncommitted).
 # New user experience review
 
 ## Goal
@@ -60,7 +60,14 @@ Phase 1 (2026-10-22, after final edits):
   (new, after test, test in progress, seller started, activated, guide hidden):
   no page errors, no horizontal overflow.
 
+Phase 2 (2026-10-22): `tsc --noEmit` pass; ESLint on changed files pass; full
+Vitest 264 files passed, 1 skipped, 2319 tests passed, 13 skipped; security
+scan passed; `git diff --check` clean. Email previews rendered for 4 variants
+at 900px and 390px (scratchpad). New candidate query run read-only against the
+live database: valid, 1 account due.
+
 ## Next
 
-Phase 1 is uncommitted on `main`. User reviews it, then Phase 2 (emails) per
-the plan; its reminder retargeting needs an account-age window chosen first.
+Phase 1 committed (51f6fd1) on branch `new-user-experience`. Phase 2 is
+uncommitted on the same branch, waiting for the user. Then Phase 3 (setup
+page role and `onboarding_completed_at` meaning).

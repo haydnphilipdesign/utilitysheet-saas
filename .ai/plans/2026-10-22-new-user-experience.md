@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress (approved by the user on 2026-10-22: "I agree with everything... let's begin"). Phase 1 done; Phase 2 next.
+In Progress (approved by the user on 2026-10-22: "I agree with everything... let's begin"). Phases 1 and 2 done; Phase 3 next.
 
 ## Objective
 
@@ -163,4 +163,27 @@ Follow-up found while verifying: the "Waiting on seller" metric counts only
 changing it touches request filters, so it is tracked separately in
 [its own task](../tasks/2026-10-22-waiting-on-seller-metric.md).
 
-Phases 2 to 5 not started.
+Phase 2 implemented 2026-10-22 on branch `new-user-experience` (uncommitted
+at the time of writing):
+
+- `after_15m` is now a welcome email (three steps, seller link, branding link)
+  and `after_1d` a "Send your first seller link" email with a ready-to-paste
+  text message, a one-property request link, and a seller-test nudge only if
+  the test is not done. Both say "Reply to this email"; `replyTo` is the
+  existing support address (`haydn@multimedium.dev`), defined locally in
+  `email-service.ts` because importing `lib/account/closure.ts` would be circular.
+- Targeting: open accounts created in the last 7 days with no real request.
+  `onboarding_completed_at` no longer matters. A failed send waits 6 hours
+  before retrying (`metadata.attempted_at`).
+- Found during the work: the cron ran once a day (12:30 UTC), so "after 15
+  minutes" really meant up to 24 hours. It now runs at :05/:20/:35/:50.
+  `JOB_SCHEDULES` and `jobOverdueMinutes` were generalized so sub-daily jobs
+  are judged by their own interval (re-engagement alerts after 2 hours
+  without success); the alert summary wording follows the schedule.
+- Read-only check against the live database on 2026-10-22: the new rule makes
+  1 account due now (welcome stage); the old rule in the same window made 0.
+- Not done: a later (day 3 or 7) stage. It needs a migration for the `stage`
+  CHECK constraint, and sending before the migration runs would fail to log
+  and resend every run, so it must ship with the migration applied first.
+
+Phases 3 to 5 not started.
